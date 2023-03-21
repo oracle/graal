@@ -58,6 +58,41 @@ import com.oracle.svm.core.sampler.SamplerStackWalkVisitor;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 
+
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
+
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoCursor;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.jfr.JfrBuffer;
+import com.oracle.svm.core.jfr.JfrFrameType;
+import com.oracle.svm.core.jfr.JfrNativeEventWriter;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
+import com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntry;
+import com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntryStatus;
+import com.oracle.svm.core.jfr.JfrThreadLocal;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.sampler.SamplerBufferNode;
+import com.oracle.svm.core.sampler.SamplerBufferList;
+import com.oracle.svm.core.sampler.SamplerBuffer;
+import com.oracle.svm.core.sampler.SamplerBufferAccess;
+
 /**
  * Repository that collects all metadata about stacktraces.
  */
@@ -228,15 +263,14 @@ public class JfrStackTraceRepository implements JfrRepository {
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flushpoint) {
-        if (flushpoint) {  // *** I think this comment is referencing the recorder thread serializing the full buffers ("while its being written").
-            /*
-             * Flushing is not support for stack traces at the moment. When a stack trace is
-             * serialized, the methods getOrPutStackTrace() and commitSerializedStackTrace() are
-             * used. The lock is not held all the time, so a flushpoint could destroy the JfrBuffer
-             * of the epoch, while it is being written.
-             */
-            return EMPTY;
-        }
+         // *** I think this comment is referencing the recorder thread serializing the full buffers ("while its being written").
+        /*
+         * Flushing is not support for stack traces at the moment. When a stack trace is
+         * serialized, the methods getOrPutStackTrace() and commitSerializedStackTrace() are
+         * used. The lock is not held all the time, so a flushpoint could destroy the JfrBuffer
+         * of the epoch, while it is being written.
+         */
+
 
         mutex.lockNoTransition();
         try {
@@ -379,5 +413,180 @@ public class JfrStackTraceRepository implements JfrRepository {
             JfrBufferAccess.free(buffer);
             buffer = WordFactory.nullPointer();
         }
+    }
+    private final FrameInfoCursor FRAME_INFO_CURSOR = new FrameInfoCursor();
+
+    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
+    public void serializeStackTraces(SamplerBuffer rawStackTraceBuffer, boolean flushpoint) {
+        mutex.lockNoTransition(); // *** TODO this can probably be moved in a bit
+        try {
+            com.oracle.svm.core.util.VMError.guarantee( rawStackTraceBuffer.isNonNull());
+
+            Pointer end = rawStackTraceBuffer.getPos();
+            // *** start at the flush pos, so you don't double flush
+            Pointer current = rawStackTraceBuffer.getFlushedPos();//SamplerBufferAccess.getDataStart(rawStackTraceBuffer);
+            while (current.belowThan(end)) {
+                Pointer entryStart = current;
+                com.oracle.svm.core.util.VMError.guarantee( entryStart.unsignedRemainder(Long.BYTES).equal(0));
+
+                /* Sample hash. */
+                int sampleHash = current.readInt(0);
+                current = current.add(Integer.BYTES);
+
+                /* Is truncated. */
+                boolean isTruncated = current.readInt(0) == 1;
+                current = current.add(Integer.BYTES);
+
+                /* Sample size, excluding the header and the end marker. */
+                int sampleSize = current.readInt(0);
+                current = current.add(Integer.BYTES);
+
+                /* Padding. */
+                current = current.add(Integer.BYTES);
+
+                /* Tick. */
+                long sampleTick = current.readLong(0);
+                current = current.add(Long.BYTES);
+
+                /* Event thread. */
+                long threadId = current.readLong(0);
+                current = current.add(Long.BYTES);
+
+                /* Thread state. */
+                long threadState = current.readLong(0);
+                current = current.add(Long.BYTES);
+
+                com.oracle.svm.core.util.VMError.guarantee( current.subtract(entryStart).equal(SamplerSampleWriter.getHeaderSize()));
+
+                CIntPointer statusPtr = StackValue.get(CIntPointer.class);
+                JfrStackTraceTableEntry entry = getOrPutStackTrace0(current, WordFactory.unsigned(sampleSize), sampleHash, statusPtr); // TODO  ***
+                long stackTraceId = entry.isNull() ? 0 : entry.getId();
+
+                int status = statusPtr.read();
+                if (status == JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceTableEntryStatus.EXISTING_RAW) {
+                    /* Walk the IPs and serialize the stacktrace. */
+                    com.oracle.svm.core.util.VMError.guarantee( current.add(sampleSize).belowThan(end));
+                    boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId); // TODO *** This is also in the critical section.
+                    if (serialized) {
+//                        commitSerializedStackTrace(entry);  // TODO  ***
+                        entry.setSerialized(true);
+                        getEpochData(false).unflushedEntries++;
+                    }
+                } else {
+                    /* Processing is not needed: skip the rest of the data. */
+                    com.oracle.svm.core.util.VMError.guarantee( status == JfrStackTraceTableEntryStatus.EXISTING_SERIALIZED || status == JfrStackTraceTableEntryStatus.INSERT_FAILED);
+                }
+                current = current.add(sampleSize);
+
+                /*
+                 * Emit an event depending on the end marker of the raw stack trace. This needs to be
+                 * done here because the sampler can't emit the event directly.
+                 */
+                long endMarker = current.readLong(0);
+                if (endMarker == SamplerSampleWriter.EXECUTION_SAMPLE_END) {
+                    if (stackTraceId != 0) {
+                        ExecutionSampleEvent.writeExecutionSample(sampleTick, threadId, stackTraceId, threadState);
+                    } else {
+                        JfrThreadLocal.increaseMissedSamples();
+                    }
+                } else {
+                    com.oracle.svm.core.util.VMError.guarantee( endMarker == SamplerSampleWriter.JFR_STACK_TRACE_END);
+                }
+                current = current.add(SamplerSampleWriter.END_MARKER_SIZE);
+            }
+            if (!flushpoint) { // *** TODO:  Remove this later
+                SamplerBufferAccess.reinitialize(rawStackTraceBuffer);
+            } else {
+                rawStackTraceBuffer.setFlushedPos(end);
+            }
+        } finally {
+            mutex.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
+    private boolean serializeStackTrace(Pointer rawStackTrace, int sampleSize, boolean isTruncated, long stackTraceId) {
+        com.oracle.svm.core.util.VMError.guarantee( sampleSize % Long.BYTES == 0);
+
+        JfrBuffer targetBuffer = SubstrateJVM.getStackTraceRepo().getCurrentBuffer();
+        if (targetBuffer.isNull()) {
+            return false;
+        }
+
+        /*
+         * One IP may correspond to multiple Java-level stack frames. We need to precompute the
+         * number of stack trace elements because the count can't be patched later on
+         * (JfrNativeEventWriter.putInt() would not necessarily reserve enough bytes).
+         */
+        int numStackTraceElements = visitRawStackTrace(rawStackTrace, sampleSize, WordFactory.nullPointer());
+        if (numStackTraceElements == 0) {
+            return false;
+        }
+
+        JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+        JfrNativeEventWriterDataAccess.initialize(data, targetBuffer);
+        JfrNativeEventWriter.putLong(data, stackTraceId);
+        JfrNativeEventWriter.putBoolean(data, isTruncated);
+        JfrNativeEventWriter.putInt(data, numStackTraceElements);
+        visitRawStackTrace(rawStackTrace, sampleSize, data);
+        boolean success = JfrNativeEventWriter.commit(data);
+
+        /* Buffer can get replaced with a larger one. */
+        SubstrateJVM.getStackTraceRepo().setCurrentBuffer(data.getJfrBuffer());
+        return success;
+    }
+
+    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
+    private int visitRawStackTrace(Pointer rawStackTrace, int sampleSize, JfrNativeEventWriterData data) {
+        int numStackTraceElements = 0;
+        Pointer rawStackTraceEnd = rawStackTrace.add(sampleSize);
+        Pointer ipPtr = rawStackTrace;
+        while (ipPtr.belowThan(rawStackTraceEnd)) {
+            long ip = ipPtr.readLong(0);
+            numStackTraceElements += visitFrame(data, ip);
+            ipPtr = ipPtr.add(Long.BYTES);
+        }
+        return numStackTraceElements;
+    }
+
+    @Uninterruptible(reason = "Prevent JFR recording, epoch change, and that the GC frees the CodeInfo.")
+    private int visitFrame(JfrNativeEventWriterData data, long address) {
+        CodePointer ip = WordFactory.pointer(address);
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (untetheredInfo.isNull()) {
+            /* Unknown frame. Must not happen for AOT-compiled code. */
+            VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
+        }
+
+        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+        CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
+        try {
+            return visitFrame(data, tetheredCodeInfo, ip);
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredInfo, tether);
+        }
+    }
+
+    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
+    private int visitFrame(JfrNativeEventWriterData data, CodeInfo codeInfo, CodePointer ip) {
+        int numStackTraceElements = 0;
+        FRAME_INFO_CURSOR.initialize(codeInfo, ip);
+        while (FRAME_INFO_CURSOR.advance()) {
+            if (data.isNonNull()) {
+                FrameInfoQueryResult frame = FRAME_INFO_CURSOR.get();
+                serializeStackTraceElement(data, frame);
+            }
+            numStackTraceElements++;
+        }
+        return numStackTraceElements;
+    }
+
+    @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
+    private void serializeStackTraceElement(JfrNativeEventWriterData data, FrameInfoQueryResult stackTraceElement) {
+        long methodId = SubstrateJVM.getMethodRepo().getMethodId(stackTraceElement.getSourceClass(), stackTraceElement.getSourceMethodName(), stackTraceElement.getMethodId());
+        JfrNativeEventWriter.putLong(data, methodId);
+        JfrNativeEventWriter.putInt(data, stackTraceElement.getSourceLineNumber());
+        JfrNativeEventWriter.putInt(data, stackTraceElement.getBci());
+        JfrNativeEventWriter.putLong(data, JfrFrameType.FRAME_AOT_COMPILED.getId());
     }
 }

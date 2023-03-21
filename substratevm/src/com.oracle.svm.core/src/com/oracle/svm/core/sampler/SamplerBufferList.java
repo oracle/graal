@@ -91,7 +91,7 @@ public class SamplerBufferList {
 
         lockNoTransition();
         try {
-            VMError.guarantee(buffer.getNode().isNull());  // TODO: add this back later. Only passes if nodes are dissassociated properly
+            VMError.guarantee(buffer.getNode().isNull());
             buffer.setNode(node);
 
             node.setNext(head);

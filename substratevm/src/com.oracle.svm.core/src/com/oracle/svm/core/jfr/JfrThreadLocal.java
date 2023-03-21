@@ -177,10 +177,7 @@ public class JfrThreadLocal implements ThreadListener {
         assert samplerWriterData.get(isolateThread).isNull();
 
         SamplerBuffer buffer = samplerBuffer.get(isolateThread);
-//        if (buffer.isNonNull()) {
-//            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
-//            samplerBuffer.set(isolateThread, WordFactory.nullPointer());
-//        }
+
         if (buffer.isNonNull()) {
             SamplerBufferNode node = buffer.getNode();
             // *** must lock in case flushing thread is in the middle of processing the buffer
