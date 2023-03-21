@@ -24,16 +24,13 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.Option;
@@ -46,7 +43,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 /**
  * Support for {@link ServiceLoader} on Substrate VM.
@@ -83,11 +79,7 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     }
 
-    /**
-     * Services that should not be processed here, for example because they are handled by
-     * specialized features.
-     */
-    protected final Set<String> servicesToSkip = new HashSet<>(List.of(
+    private static final Set<String> SKIPPED_SERVICES = Set.of(
                     // image builder internal ServiceLoader interfaces
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "org.graalvm.nativeimage.Platform",
@@ -104,7 +96,7 @@ public class ServiceLoaderFeature implements InternalFeature {
                     "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
                     "org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider$Extensions",
                     "org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
-                    "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory"));
+                    "org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory");
 
     // NOTE: Platform class had to be added to this list since our analysis discovers that
     // Platform.includedIn is reachable regardless of fact that it is constant folded at
@@ -112,13 +104,17 @@ public class ServiceLoaderFeature implements InternalFeature {
     // before because implementation classes were instantiated using runtime reflection instead of
     // ServiceLoader (and thus weren't reachable in analysis).
 
-    protected final Set<String> serviceProvidersToSkip = new HashSet<>(List.of(
-                    /* Graal hotspot-specific service-providers */
-                    "org.graalvm.compiler.hotspot.meta.HotSpotDisassemblerProvider"));
+    /**
+     * Services that should not be processed here, for example because they are handled by
+     * specialized features.
+     */
+    private final Set<String> servicesToSkip = new HashSet<>(SKIPPED_SERVICES);
 
-    private AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
-    private Predicate<AnnotatedElement> platformSupported;
-    private NativeImageClassLoaderSupport classLoaderSupport;
+    private static final Set<String> SKIPPED_PROVIDERS = Set.of(
+                    /* Graal hotspot-specific service-providers */
+                    "org.graalvm.compiler.hotspot.meta.HotSpotDisassemblerProvider");
+
+    private final Set<String> serviceProvidersToSkip = new HashSet<>(SKIPPED_PROVIDERS);
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -134,10 +130,7 @@ public class ServiceLoaderFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        annotationSubstitutionProcessor = ((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor();
-        platformSupported = accessImpl.getHostVM()::platformSupported;
-        classLoaderSupport = accessImpl.imageClassLoader.classLoaderSupport;
-        classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
+        accessImpl.imageClassLoader.classLoaderSupport.serviceProvidersForEach((serviceName, providers) -> {
             if (servicesToSkip.contains(serviceName)) {
                 return;
             }
@@ -145,7 +138,7 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (serviceClass == null || serviceClass.isArray() || serviceClass.isPrimitive()) {
                 return;
             }
-            if (!platformSupported.test(serviceClass)) {
+            if (!accessImpl.getHostVM().platformSupported(serviceClass)) {
                 return;
             }
             access.registerReachabilityHandler(a -> handleServiceClassIsReachable(a, serviceClass, providers), serviceClass);
@@ -160,10 +153,12 @@ public class ServiceLoaderFeature implements InternalFeature {
             }
             /* Make provider reflectively instantiable */
             Class<?> providerClass = access.findClassByName(provider);
-            if (!platformSupported.test(providerClass)) {
+
+            FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+            if (!accessImpl.getHostVM().platformSupported(providerClass)) {
                 continue;
             }
-            if (annotationSubstitutionProcessor.isDeleted(providerClass)) {
+            if (((Inflation) accessImpl.getBigBang()).getAnnotationSubstitutionProcessor().isDeleted(providerClass)) {
                 /* Disallow services with implementation classes that are marked as @Deleted */
                 continue;
             }
@@ -173,7 +168,7 @@ public class ServiceLoaderFeature implements InternalFeature {
                 try {
                     nullaryConstructor = providerClass.getDeclaredConstructor();
                 } catch (NoSuchMethodException | SecurityException | LinkageError e) {
-                    /* Skip providers that do not comply to requirements */
+                    /* Skip providers that do not comply with requirements */
                     nullaryConstructor = null;
                 }
                 if (nullaryConstructor != null) {
