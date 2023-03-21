@@ -31,9 +31,12 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.ModuleUtil;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -41,6 +44,19 @@ final class IncubatorConcurrentModule implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
         return JavaVersionUtil.JAVA_SPEC >= 20 && ModuleUtil.bootLayerContainsModule("jdk.incubator.concurrent");
+    }
+}
+
+@TargetClass(className = "jdk.incubator.concurrent.ScopedValue", onlyWith = IncubatorConcurrentModule.class)
+final class Target_jdk_incubator_concurrent_ScopedValue {
+    @Substitute
+    static Target_jdk_incubator_concurrent_ScopedValue_Snapshot scopedValueBindings() {
+        Object bindings = Target_java_lang_Thread.scopedValueBindings();
+        if (bindings == Target_java_lang_Thread.NEW_THREAD_BINDINGS) {
+            return Target_jdk_incubator_concurrent_ScopedValue_Snapshot.EMPTY_SNAPSHOT;
+        }
+        assert bindings != null;
+        return (Target_jdk_incubator_concurrent_ScopedValue_Snapshot) bindings;
     }
 }
 
@@ -53,6 +69,7 @@ final class Target_jdk_incubator_concurrent_ScopedValue_Carrier {
     @Alias int bitmask;
 
     @Substitute
+    @Uninterruptible(reason = "Ensure no safepoint actions can disrupt reverting scoped value bindings.", calleeMustBe = false)
     private <R> R runWith(Target_jdk_incubator_concurrent_ScopedValue_Snapshot newSnapshot, Callable<R> op) throws Exception {
         Target_java_lang_Thread.setScopedValueBindings(newSnapshot);
         try {
@@ -64,6 +81,7 @@ final class Target_jdk_incubator_concurrent_ScopedValue_Carrier {
     }
 
     @Substitute
+    @Uninterruptible(reason = "Ensure no safepoint actions can disrupt reverting scoped value bindings.", calleeMustBe = false)
     private void runWith(Target_jdk_incubator_concurrent_ScopedValue_Snapshot newSnapshot, Runnable op) {
         Target_java_lang_Thread.setScopedValueBindings(newSnapshot);
         try {
@@ -86,6 +104,11 @@ final class Target_jdk_internal_vm_ScopedValueContainer {
 
 @TargetClass(className = "jdk.incubator.concurrent.ScopedValue", innerClass = "Snapshot", onlyWith = IncubatorConcurrentModule.class)
 final class Target_jdk_incubator_concurrent_ScopedValue_Snapshot {
+    // Checkstyle: stop
+    @Alias @TargetElement(onlyWith = JDK20OrLater.class) //
+    static Target_jdk_incubator_concurrent_ScopedValue_Snapshot EMPTY_SNAPSHOT;
+    // Checkstyle: resume
+
     @Alias //
     Target_jdk_incubator_concurrent_ScopedValue_Snapshot prev;
 }

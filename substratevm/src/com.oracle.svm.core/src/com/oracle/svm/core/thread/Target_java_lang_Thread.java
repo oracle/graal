@@ -39,7 +39,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
-import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -703,23 +702,31 @@ public final class Target_java_lang_Thread {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
+    @Alias
+    @TargetElement(onlyWith = JDK20OrLater.class)
+    static native Object scopedValueBindings();
+
     /**
      * This method is used to set and revert {@code ScopedValue} bindings as follows:
      *
      * {@code setScopedValueBindings(b); try { work(); } finally { setScopedValueBindings(previous);
      * }}
      *
-     * If the second call fails due to a stack overflow, ScopedValue bindings leak out of their
-     * scope. Therefore, we force-inline this method into its callers. This requires both calls to
-     * happen in the same caller, which is the case in the usages in the JDK, and those are expected
-     * to remain the only direct usages. {@code ScopedValue.Carrier} calls this method through the
-     * implementation of {@code JavaLangAccess}, which is an anonymous class that we cannot
-     * substitute to force inlining, so we substitute the calling class to invoke this method
-     * directly in {@link Target_jdk_incubator_concurrent_ScopedValue_Carrier}.
+     * If a stack overflow or a throwing safepoint action (e.g. recurring callback) disrupts the
+     * second call, ScopedValue bindings can leak out of their scope. Therefore, we require this
+     * method and its direct callers to be uninterruptible. Both calls should be in a single same
+     * caller, which is the case for the usages in the JDK, and those are expected to remain the
+     * only direct usages. Because turning methods uninterruptible prevents inlining through them,
+     * we would prefer another approach such as force-inlining this method instead, but that would
+     * not prevent a throwing safepoint action in the {@code finally} block of the above pattern.
+     *
+     * {@code ScopedValue.Carrier} calls this method through the implementation of
+     * {@code JavaLangAccess}, which is an anonymous class that we cannot substitute, so we also
+     * substitute the calling class to invoke this method directly in
+     * {@link Target_jdk_incubator_concurrent_ScopedValue_Carrier}.
      */
     @Substitute
-    @AlwaysInline("Must ensure that this can never become a call that can trigger a stack overflow and leak bindings outside the scope.")
-    @Uninterruptible(reason = "Must not call other methods which can trigger a stack overflow.", mayBeInlined = true)
+    @Uninterruptible(reason = "Must not call other methods which can trigger a stack overflow.", callerMustBe = true)
     @TargetElement(onlyWith = JDK20OrLater.class)
     static void setScopedValueBindings(Object bindings) {
         Target_java_lang_Thread thread = SubstrateUtil.cast(PlatformThreads.currentThread.get(), Target_java_lang_Thread.class);
@@ -735,14 +742,13 @@ public final class Target_java_lang_Thread {
      * parameter from the frame. It is used following stack overflows and other situations that
      * could result in bindings leaking to another scope, during which {@link #scopedValueBindings}
      * is cleared as a precaution. We don't have the means to extract the bindings object from the
-     * stack, but we ensure that {@link #setScopedValueBindings} does not trigger stack overflows,
-     * so this method should never be needed.
+     * stack, but we ensure that {@link #setScopedValueBindings} does not trigger stack overflows
+     * and substitute {@link Target_jdk_incubator_concurrent_ScopedValue#scopedValueBindings} to
+     * never call this method.
      */
-    @Substitute
+    @Delete
     @TargetElement(onlyWith = JDK20OrLater.class)
-    static Object findScopedValueBindings() {
-        throw VMError.shouldNotReachHere("ScopedValue bindings are never cleared.");
-    }
+    static native Object findScopedValueBindings();
 
     @Substitute
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
