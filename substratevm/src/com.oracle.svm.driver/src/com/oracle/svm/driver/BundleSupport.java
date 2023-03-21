@@ -41,6 +41,7 @@ import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -232,7 +233,9 @@ final class BundleSupport {
 
             Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
-                archive.stream().filter(unused -> !deleteBundleRoot.get()).forEach(jarEntry -> {
+                Enumeration<JarEntry> jarEntries = archive.entries();
+                while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
+                    JarEntry jarEntry = jarEntries.nextElement();
                     Path bundleEntry = rootDir.resolve(jarEntry.getName());
                     if (bundleEntry.startsWith(outputDir)) {
                         /* Extract original output to different path */
@@ -247,7 +250,7 @@ final class BundleSupport {
                     } catch (IOException e) {
                         throw NativeImage.showError("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
                     }
-                });
+                }
             }
         } catch (IOException e) {
             throw NativeImage.showError("Unable to expand bundle directory layout from bundle file " + bundleName + BUNDLE_FILE_EXTENSION, e);
