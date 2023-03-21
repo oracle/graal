@@ -50,6 +50,7 @@ import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
@@ -176,15 +177,14 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * the node has an exact type. This works with allocation site sensitivity because the
          * StoreVMThreadLocal is modeled by writing the objects to the all-instantiated.
          */
-        if (n instanceof StoreVMThreadLocalNode) {
-            StoreVMThreadLocalNode node = (StoreVMThreadLocalNode) n;
+        if (n instanceof StoreVMThreadLocalNode node) {
             storeVMThreadLocal(state, node, node.getValue());
             return true;
-        } else if (n instanceof CompareAndSetVMThreadLocalNode) {
-            CompareAndSetVMThreadLocalNode node = (CompareAndSetVMThreadLocalNode) n;
+        } else if (n instanceof CompareAndSetVMThreadLocalNode node) {
             storeVMThreadLocal(state, node, node.getUpdate());
             return true;
         }
+
         return super.delegateNodeProcessing(n, state);
     }
 
