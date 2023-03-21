@@ -4,7 +4,7 @@
 
 GraalVM is a high-performance JDK distribution designed to accelerate the execution of applications written in Java and other JVM languages along with support for JavaScript, Ruby, Python, and a number of other popular languages.
 
-The project website at [https://www.graalvm.org/][website] describes how to [get started][getting-started], how to [stay connected][community], and how to [contribute][contributors].
+The project [website](https://www.graalvm.org/) describes how to [get started][getting-started], how to [stay connected][community], and how to [contribute][contributors].
 
 ## Documentation
 
