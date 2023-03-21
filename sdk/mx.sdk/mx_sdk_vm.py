@@ -77,7 +77,7 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(object, metaclass=ABCMeta):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None, rebuildable=True):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -89,6 +89,7 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         :type home_finder: bool
         :type build_time: int
         :type build_args_enterprise: list[str] | None
+        :param bool rebuildable: Whether the GraalVM should include macros and support files (e.g., profiles) to rebuild
         """
         self.destination = mx_subst.path_substitutions.substitute(destination)
         self.jar_distributions = jar_distributions
@@ -100,11 +101,13 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         self.home_finder = home_finder
         self.build_time = build_time
         self.build_args_enterprise = build_args_enterprise or []
+        self.rebuildable = rebuildable
         self.relative_home_paths = {}
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, (list, types.GeneratorType))
         assert isinstance(self.build_args_enterprise, list)
+        assert isinstance(self.rebuildable, bool)
 
     def __str__(self):
         return self.destination
@@ -149,6 +152,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         :param list[str] | None extra_jvm_args
         :param str main_module: Specifies the main module. Mandatory if use_modules is not None
+        :param bool link_at_build_time
         :param list[str] | None option_vars
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
@@ -1055,6 +1059,27 @@ def parse_release_file(release_file_path):
 def format_release_file(release_dict, skip_quoting=None):
     skip_quoting = skip_quoting or set()
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
+
+
+def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
+    """
+    Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
+    :type jdk_home: str
+    :type ce_edition: list[str] | None
+    :type oracle_edition: list[str] | None
+    :rtype: list[str] | None
+    """
+    release_file_path = join(jdk_home, 'release')
+    release_dict = parse_release_file(release_file_path)
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        if implementor == 'Oracle Corporation':
+            return oracle_edition
+        else:
+            return ce_edition
+    else:
+        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
+        return ce_edition
 
 
 @mx.command(_suite, 'verify-graalvm-configs')

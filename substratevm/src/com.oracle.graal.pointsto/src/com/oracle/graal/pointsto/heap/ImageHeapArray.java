@@ -24,34 +24,40 @@
  */
 package com.oracle.graal.pointsto.heap;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class ImageHeapArray extends ImageHeapConstant {
 
+    private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
+
     /**
-     * Contains the already scanned array elements.
+     * Stores either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
+     * {@link JavaConstant}, indexed by array index.
      */
-    private final JavaConstant[] arrayElementValues;
+    private final Object[] arrayElementValues;
 
     public ImageHeapArray(ResolvedJavaType type, int length) {
-        this(type, null, new JavaConstant[length]);
+        this(type, null, new Object[length]);
     }
 
     public ImageHeapArray(ResolvedJavaType type, JavaConstant object, int length) {
-        this(type, object, new JavaConstant[length]);
+        this(type, object, new Object[length]);
     }
 
-    ImageHeapArray(ResolvedJavaType type, JavaConstant object, JavaConstant[] arrayElementValues) {
+    ImageHeapArray(ResolvedJavaType type, JavaConstant object, Object[] arrayElementValues) {
         this(type, object, arrayElementValues, createIdentityHashCode(object), false);
     }
 
-    private ImageHeapArray(ResolvedJavaType type, JavaConstant object, JavaConstant[] arrayElementValues, int identityHashCode, boolean compressed) {
+    private ImageHeapArray(ResolvedJavaType type, JavaConstant object, Object[] arrayElementValues, int identityHashCode, boolean compressed) {
         super(type, object, identityHashCode, compressed);
         assert type.isArray();
         this.arrayElementValues = arrayElementValues;
@@ -61,12 +67,26 @@ public final class ImageHeapArray extends ImageHeapConstant {
      * Return the value of the element at the specified index as computed by
      * {@link ImageHeapScanner#onArrayElementReachable(ImageHeapArray, AnalysisType, JavaConstant, int, ObjectScanner.ScanReason, Consumer)}.
      */
-    public JavaConstant getElement(int idx) {
-        return arrayElementValues[idx];
+    public Object getElement(int idx) {
+        return arrayHandle.getVolatile(this.arrayElementValues, idx);
+    }
+
+    /**
+     * Returns the element value, i.e., a {@link JavaConstant}. If the value is not yet materialized
+     * then the future is executed on the current thread.
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public JavaConstant readElementValue(int index) {
+        Object value = getElement(index);
+        return value instanceof JavaConstant ? (JavaConstant) value : ((AnalysisFuture<ImageHeapConstant>) value).ensureDone();
     }
 
     public void setElement(int idx, JavaConstant value) {
-        arrayElementValues[idx] = value;
+        arrayHandle.setVolatile(this.arrayElementValues, idx, value);
+    }
+
+    public void setElementTask(int idx, AnalysisFuture<JavaConstant> task) {
+        arrayHandle.setVolatile(this.arrayElementValues, idx, task);
     }
 
     public int getLength() {

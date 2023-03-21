@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -319,92 +319,99 @@ public class BytecodeParser {
         final byte[] bytecode = module.bytecode();
         CodeEntry[] codeEntries = new CodeEntry[module.codeEntryCount()];
         for (int i = 0; i < module.codeEntryCount(); i++) {
-            final int codeEntryOffset = module.codeEntryOffset(i);
-            final int flags = bytecode[codeEntryOffset];
-            int effectiveOffset = codeEntryOffset + 1;
-
-            final int functionIndex;
-            switch (flags & BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_MASK) {
-                case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_ZERO:
-                    functionIndex = 0;
-                    break;
-                case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8:
-                    functionIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16:
-                    functionIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32:
-                    functionIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            final int maxStackSize;
-            switch (flags & BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_MASK) {
-                case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_ZERO:
-                    maxStackSize = 0;
-                    break;
-                case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_U8:
-                    maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_U16:
-                    maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_I32:
-                    maxStackSize = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            final int length;
-            switch (flags & BytecodeBitEncoding.CODE_ENTRY_LENGTH_MASK) {
-                case BytecodeBitEncoding.CODE_ENTRY_LENGTH_U8:
-                    length = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
-                    effectiveOffset++;
-                    break;
-                case BytecodeBitEncoding.CODE_ENTRY_LENGTH_U16:
-                    length = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
-                    effectiveOffset += 2;
-                    break;
-                case BytecodeBitEncoding.CODE_ENTRY_LENGTH_I32:
-                    length = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
-                    effectiveOffset += 4;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-            final byte[] locals;
-            if ((flags & BytecodeBitEncoding.CODE_ENTRY_LOCALS_FLAG) != 0) {
-                ByteArrayList localsList = new ByteArrayList();
-                for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                    localsList.add(bytecode[effectiveOffset]);
-                }
-                effectiveOffset++;
-                locals = localsList.toArray();
-            } else {
-                locals = Bytecode.EMPTY_BYTES;
-            }
-            final byte[] results;
-            if ((flags & BytecodeBitEncoding.CODE_ENTRY_RESULT_FLAG) != 0) {
-                ByteArrayList resultsList = new ByteArrayList();
-                for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
-                    resultsList.add(bytecode[effectiveOffset]);
-                }
-                results = resultsList.toArray();
-            } else {
-                results = Bytecode.EMPTY_BYTES;
-            }
-            List<CallNode> callNodes = readCallNodes(bytecode, codeEntryOffset - length, codeEntryOffset);
-            codeEntries[i] = new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, codeEntryOffset - length, codeEntryOffset);
+            codeEntries[i] = readCodeEntry(module, bytecode, i);
         }
         module.setCodeEntries(codeEntries);
+    }
+
+    /**
+     * Rereads a code entry in a module that has already been parsed and linked.
+     */
+    public static CodeEntry readCodeEntry(WasmModule module, byte[] bytecode, int codeEntryIndex) {
+        final int codeEntryOffset = module.codeEntryOffset(codeEntryIndex);
+        final int flags = bytecode[codeEntryOffset];
+        int effectiveOffset = codeEntryOffset + 1;
+
+        final int functionIndex;
+        switch (flags & BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_MASK) {
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_ZERO:
+                functionIndex = 0;
+                break;
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8:
+                functionIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                effectiveOffset++;
+                break;
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16:
+                functionIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                effectiveOffset += 2;
+                break;
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32:
+                functionIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                effectiveOffset += 4;
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        final int maxStackSize;
+        switch (flags & BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_MASK) {
+            case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_ZERO:
+                maxStackSize = 0;
+                break;
+            case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_U8:
+                maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                effectiveOffset++;
+                break;
+            case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_U16:
+                maxStackSize = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                effectiveOffset += 2;
+                break;
+            case BytecodeBitEncoding.CODE_ENTRY_MAX_STACK_SIZE_I32:
+                maxStackSize = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                effectiveOffset += 4;
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        final int length;
+        switch (flags & BytecodeBitEncoding.CODE_ENTRY_LENGTH_MASK) {
+            case BytecodeBitEncoding.CODE_ENTRY_LENGTH_U8:
+                length = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                effectiveOffset++;
+                break;
+            case BytecodeBitEncoding.CODE_ENTRY_LENGTH_U16:
+                length = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                effectiveOffset += 2;
+                break;
+            case BytecodeBitEncoding.CODE_ENTRY_LENGTH_I32:
+                length = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                effectiveOffset += 4;
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        final byte[] locals;
+        if ((flags & BytecodeBitEncoding.CODE_ENTRY_LOCALS_FLAG) != 0) {
+            ByteArrayList localsList = new ByteArrayList();
+            for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
+                localsList.add(bytecode[effectiveOffset]);
+            }
+            effectiveOffset++;
+            locals = localsList.toArray();
+        } else {
+            locals = Bytecode.EMPTY_BYTES;
+        }
+        final byte[] results;
+        if ((flags & BytecodeBitEncoding.CODE_ENTRY_RESULT_FLAG) != 0) {
+            ByteArrayList resultsList = new ByteArrayList();
+            for (; bytecode[effectiveOffset] != 0; effectiveOffset++) {
+                resultsList.add(bytecode[effectiveOffset]);
+            }
+            results = resultsList.toArray();
+        } else {
+            results = Bytecode.EMPTY_BYTES;
+        }
+        List<CallNode> callNodes = readCallNodes(bytecode, codeEntryOffset - length, codeEntryOffset);
+        return new CodeEntry(functionIndex, maxStackSize, locals, results, callNodes, codeEntryOffset - length, codeEntryOffset);
     }
 
     /**

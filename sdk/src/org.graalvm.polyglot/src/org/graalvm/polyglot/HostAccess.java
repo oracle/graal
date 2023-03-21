@@ -134,6 +134,7 @@ public final class HostAccess {
      * <code>
      * HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).
      *                allowImplementationsAnnotatedBy(HostAccess.Implementable.class).
+     *                allowImplementationsAnnotatedBy(FunctionalInterface.class).
      *                .build();
      * </code>
      * </pre>
@@ -157,6 +158,7 @@ public final class HostAccess {
      * <code>
      * HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).
      *                 allowImplementationsAnnotatedBy(HostAccess.Implementable.class).
+     *                 allowImplementationsAnnotatedBy(FunctionalInterface.class).
      *                 methodScoping(true).
      *                 disableMethodScopingAnnotatedBy(HostAccess.DisableMethodScoping.class)
      *                 .build();

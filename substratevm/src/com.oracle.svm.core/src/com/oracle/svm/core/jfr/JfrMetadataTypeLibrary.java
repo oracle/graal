@@ -24,14 +24,18 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.HashMap;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.internal.PlatformEventType;
 import jdk.jfr.internal.Type;
@@ -47,12 +51,28 @@ public class JfrMetadataTypeLibrary {
 
     private static synchronized HashMap<String, Type> getTypes() {
         if (types.isEmpty()) {
-            for (Type type : TypeLibrary.getInstance().getTypes()) {
+            for (Type type : getTypes0()) {
                 assert !types.containsKey(type.getName());
                 types.put(type.getName(), type);
             }
         }
         return types;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Collection<Type> getTypes0() {
+        try {
+            Method getTypes = ReflectionUtil.lookupMethod(TypeLibrary.class, "getTypes");
+            if (JavaVersionUtil.JAVA_SPEC >= 21) {
+                return (Collection<Type>) getTypes.invoke(null);
+            } else {
+                Method getInstance = ReflectionUtil.lookupMethod(TypeLibrary.class, "getInstance");
+                TypeLibrary instance = (TypeLibrary) getInstance.invoke(null);
+                return (Collection<Type>) getTypes.invoke(instance);
+            }
+        } catch (Throwable e) {
+            throw VMError.shouldNotReachHere("Error while calling TypeLibrary.getTypes().", e);
+        }
     }
 
     public static int getPlatformEventCount() {

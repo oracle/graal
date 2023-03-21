@@ -1040,7 +1040,7 @@ public class InvocationPlugins {
                 }
                 klass = klass.getSuperclass();
             }
-            throw new AssertionError(format("graph builder plugin for %s not found", plugin.getMethodNameWithArgumentsDescriptor()));
+            throw new AssertionError(format("graph builder plugin for %s not found. check that the plugin-method signature matches the target", plugin.getMethodNameWithArgumentsDescriptor()));
         }
 
         static boolean checkResolvable(Type declaringType, InvocationPlugin plugin) {

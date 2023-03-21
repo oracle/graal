@@ -101,9 +101,13 @@ local common_json = import "../common.json";
     },
 
     truffleruby:: {
-      packages+: if self.os == "linux" then {
-        ruby: "==2.6.3",
-      } else {},
+      packages+: (if self.os == "linux" && self.arch == "amd64" then {
+        ruby: "==3.1.2", # Newer version, also used for benchmarking
+      } else {
+        ruby: "==3.0.2",
+      }) + (if self.os == "linux" then {
+        libyaml: "==0.2.5",
+      } else {}),
     },
 
     graalnodejs:: {
