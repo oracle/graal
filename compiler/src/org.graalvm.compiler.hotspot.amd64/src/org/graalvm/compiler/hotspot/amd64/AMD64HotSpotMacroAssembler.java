@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.amd64;
 
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -71,9 +72,9 @@ public class AMD64HotSpotMacroAssembler extends AMD64MacroAssembler {
         emitByte(0x41);
         emitByte(0x81);
         emitByte(0x7f);
-        assert NumUtil.isByte(displacement) : "expected byte sized displacement";
+        GraalError.guarantee(NumUtil.isByte(displacement), "expected byte sized displacement");
         emitByte(displacement & 0xff);
-        assert position() % 4 == 0 : "must be aligned";
+        GraalError.guarantee(position() % 4 == 0, "must be aligned");
         emitInt(0);
     }
 }
