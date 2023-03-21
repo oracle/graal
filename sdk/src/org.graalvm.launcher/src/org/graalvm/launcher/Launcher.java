@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -852,7 +852,8 @@ public abstract class Launcher {
         OptionDescriptor descriptor = findOptionDescriptor(group, key);
         if (descriptor == null) {
             if (defaultOptionPrefix != null) {
-                descriptor = findOptionDescriptor(defaultOptionPrefix, defaultOptionPrefix + "." + key);
+                key = defaultOptionPrefix + "." + key;
+                descriptor = findOptionDescriptor(defaultOptionPrefix, key);
             }
             if (descriptor == null) {
                 throw abortUnrecognizedArgument(arg);
@@ -878,8 +879,7 @@ public abstract class Launcher {
             throw abort(String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +
                             "Do not use experimental options in production environments.", arg));
         }
-        // use the full name of the found descriptor
-        polyglotOptions.put(descriptor.getName(), value);
+        polyglotOptions.put(key, value);
     }
 
     private Set<String> collectAllArguments() {
