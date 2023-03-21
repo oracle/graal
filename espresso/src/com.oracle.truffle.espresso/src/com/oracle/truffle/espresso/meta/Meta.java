@@ -901,6 +901,9 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_foreign_abi_VMStorage_indexOrOffset = jdk_internal_foreign_abi_VMStorage.requireDeclaredField(Name.indexOrOffset, Type._int);
             jdk_internal_foreign_abi_NativeEntryPoint = knownKlass(Type.jdk_internal_foreign_abi_NativeEntryPoint);
             jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress = jdk_internal_foreign_abi_NativeEntryPoint.requireDeclaredField(Name.downcallStubAddress, Type._long);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs = knownKlass(Type.jdk_internal_foreign_abi_UpcallLinker_CallRegs);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs = jdk_internal_foreign_abi_UpcallLinker_CallRegs.requireDeclaredField(Name.argRegs, Type.jdk_internal_foreign_abi_VMStorage_array);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs = jdk_internal_foreign_abi_UpcallLinker_CallRegs.requireDeclaredField(Name.retRegs, Type.jdk_internal_foreign_abi_VMStorage_array);
         } else {
             // also exists in a different shape in 19 but we don't support that
             jdk_internal_foreign_abi_VMStorage = null;
@@ -909,6 +912,9 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_foreign_abi_VMStorage_indexOrOffset = null;
             jdk_internal_foreign_abi_NativeEntryPoint = null;
             jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs = null;
         }
 
         jdk_internal_module_ModuleLoaderMap_Modules = diff() //
@@ -1536,6 +1542,9 @@ public final class Meta extends ContextAccessImpl {
     public final Field jdk_internal_foreign_abi_VMStorage_indexOrOffset;
     public final Klass jdk_internal_foreign_abi_NativeEntryPoint;
     public final Field jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress;
+    public final Klass jdk_internal_foreign_abi_UpcallLinker_CallRegs;
+    public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs;
+    public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;

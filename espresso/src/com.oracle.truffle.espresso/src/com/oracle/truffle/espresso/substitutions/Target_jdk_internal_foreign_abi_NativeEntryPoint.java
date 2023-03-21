@@ -24,10 +24,8 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.invoke.MethodType;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -47,44 +45,29 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
                     boolean needsReturnBuffer,
                     int capturedStateMask,
                     @Inject EspressoContext context, @Inject Meta meta) {
-        EspressoLanguage language = meta.getLanguage();
-
-        StaticObject guestPTypes = meta.java_lang_invoke_MethodType_ptypes.getObject(methodType);
-        int numParamTypes = guestPTypes.length(language);
-        assert encArgMoves.length(language) == numParamTypes;
-
-        Klass[] pTypes = new Klass[numParamTypes];
-        VMStorage[] inputRegs = new VMStorage[numParamTypes];
-        for (int i = 0; i < numParamTypes; i++) {
-            pTypes[i] = guestPTypes.<StaticObject> get(language, i).getMirrorKlass(meta);
-            StaticObject guestVmStorage = encArgMoves.get(language, i);
-            inputRegs[i] = new VMStorage(
-                            meta.jdk_internal_foreign_abi_VMStorage_type.getByte(guestVmStorage),
-                            meta.jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize.getShort(guestVmStorage),
-                            meta.jdk_internal_foreign_abi_VMStorage_indexOrOffset.getInt(guestVmStorage));
-        }
-
-        int numOuts = encRetMoves.length(language);
-        VMStorage[] outRegs = new VMStorage[numOuts];
-        for (int i = 0; i < numOuts; i++) {
-            StaticObject guestVmStorage = encRetMoves.get(language, i);
-            outRegs[i] = new VMStorage(
-                            meta.jdk_internal_foreign_abi_VMStorage_type.getByte(guestVmStorage),
-                            meta.jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize.getShort(guestVmStorage),
-                            meta.jdk_internal_foreign_abi_VMStorage_indexOrOffset.getInt(guestVmStorage));
-        }
+        Klass[] pTypes = getPTypes(methodType, meta);
         Klass rType = meta.java_lang_invoke_MethodType_rtype.getObject(methodType).getMirrorKlass(meta);
 
-        return context.getDowncallStubs().makeDowncallStub(pTypes, rType, inputRegs, outRegs, needsReturnBuffer, capturedStateMask);
+        VMStorage[] inputRegs = VMStorage.fromGuestArray(encArgMoves, meta);
+        VMStorage[] outRegs = VMStorage.fromGuestArray(encRetMoves, meta);
+        assert inputRegs.length == pTypes.length;
+
+        return context.getDowncallStubs().makeStub(pTypes, rType, inputRegs, outRegs, needsReturnBuffer, capturedStateMask);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static EspressoError unimplemented() {
-        throw EspressoError.unimplemented();
+    static Klass[] getPTypes(StaticObject methodType, Meta meta) {
+        EspressoLanguage language = meta.getLanguage();
+        StaticObject guestPTypes = meta.java_lang_invoke_MethodType_ptypes.getObject(methodType);
+        int numParamTypes = guestPTypes.length(language);
+        Klass[] pTypes = new Klass[numParamTypes];
+        for (int i = 0; i < numParamTypes; i++) {
+            pTypes[i] = guestPTypes.<StaticObject> get(language, i).getMirrorKlass(meta);
+        }
+        return pTypes;
     }
 
     @Substitution
     public static boolean freeDowncallStub0(long downcallStub, @Inject EspressoContext context) {
-        return context.getDowncallStubs().freeDowncallStub(downcallStub);
+        return context.getDowncallStubs().freeStub(downcallStub);
     }
 }

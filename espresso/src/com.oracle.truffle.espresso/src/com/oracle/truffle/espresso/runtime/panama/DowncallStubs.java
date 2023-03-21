@@ -50,7 +50,7 @@ public final class DowncallStubs {
     }
 
     @TruffleBoundary
-    public long makeDowncallStub(Klass[] pTypes, Klass rType, VMStorage[] inputRegs, VMStorage[] outRegs, boolean needsReturnBuffer, int capturedStateMask) {
+    public long makeStub(Klass[] pTypes, Klass rType, VMStorage[] inputRegs, VMStorage[] outRegs, boolean needsReturnBuffer, int capturedStateMask) {
         int id;
         synchronized (this) {
             id = nextId++;
@@ -118,10 +118,11 @@ public final class DowncallStubs {
         if (targetIndex < 0) {
             throw EspressoError.shouldNotReachHere("Didn't find the target index in downcall arguments");
         }
-        return new DowncallStub(targetIndex, Arrays.copyOf(shuffle, nativeIndex), NativeSignature.create(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeIndex)));
+        NativeSignature nativeSignature = NativeSignature.create(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeIndex));
+        return new DowncallStub(targetIndex, Arrays.copyOf(shuffle, nativeIndex), nativeSignature);
     }
 
-    public boolean freeDowncallStub(long downcallStub) {
+    public boolean freeStub(long downcallStub) {
         // TODO maybe trim this when possible.
         int id = Math.toIntExact(downcallStub);
         if (stubs[id] == null) {

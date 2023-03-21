@@ -567,6 +567,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> segmentMaskOrSize = StaticSymbols.putName("segmentMaskOrSize");
         public static final Symbol<Name> indexOrOffset = StaticSymbols.putName("indexOrOffset");
         public static final Symbol<Name> downcallStubAddress = StaticSymbols.putName("downcallStubAddress");
+        public static final Symbol<Name> argRegs = StaticSymbols.putName("argRegs");
+        public static final Symbol<Name> retRegs = StaticSymbols.putName("retRegs");
     }
 
     /**
@@ -906,6 +908,8 @@ public final class Symbol<T> extends ByteSequence {
         // Panama
         public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage = StaticSymbols.putType("Ljdk/internal/foreign/abi/VMStorage;");
         public static final Symbol<Type> jdk_internal_foreign_abi_NativeEntryPoint = StaticSymbols.putType("Ljdk/internal/foreign/abi/NativeEntryPoint;");
+        public static final Symbol<Type> jdk_internal_foreign_abi_UpcallLinker_CallRegs = StaticSymbols.putType("Ljdk/internal/foreign/abi/UpcallLinker$CallRegs;");
+        public static final Symbol<Type> jdk_internal_foreign_abi_VMStorage_array = StaticSymbols.putType("[Ljdk/internal/foreign/abi/VMStorage;");
     }
 
     /**

@@ -22,9 +22,12 @@
  */
 package com.oracle.truffle.espresso.runtime.panama;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public record VMStorage(byte type,
                         short segmentMaskOrSize,
@@ -57,5 +60,23 @@ public record VMStorage(byte type,
                 default -> throw EspressoError.unimplemented("Unknown id: " + id);
             };
         }
+    }
+
+    public static VMStorage fromGuest(StaticObject guestVmStorage, Meta meta) {
+        return new VMStorage(
+                meta.jdk_internal_foreign_abi_VMStorage_type.getByte(guestVmStorage),
+                meta.jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize.getShort(guestVmStorage),
+                meta.jdk_internal_foreign_abi_VMStorage_indexOrOffset.getInt(guestVmStorage));
+    }
+
+    public static VMStorage[] fromGuestArray(StaticObject guestVmStorageArray, Meta meta) {
+        EspressoLanguage language = meta.getLanguage();
+        int length = guestVmStorageArray.length(language);
+        VMStorage[] result = new VMStorage[length];
+        for (int i = 0; i < length; i++) {
+            StaticObject guestVmStorage = guestVmStorageArray.get(language, i);
+            result[i] = fromGuest(guestVmStorage, meta);
+        }
+        return result;
     }
 }

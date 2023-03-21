@@ -45,8 +45,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.runtime.panama.Platform;
-import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
@@ -104,6 +102,9 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinition
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
+import com.oracle.truffle.espresso.runtime.panama.DowncallStubs;
+import com.oracle.truffle.espresso.runtime.panama.Platform;
+import com.oracle.truffle.espresso.runtime.panama.UpcallStubs;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -190,6 +191,7 @@ public final class EspressoContext {
     @CompilationFinal private EspressoBindings topBindings;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
     @CompilationFinal private DowncallStubs downcallStubs;
+    @CompilationFinal private UpcallStubs upcallStubs;
 
     public TruffleLogger getLogger() {
         return logger;
@@ -365,7 +367,6 @@ public final class EspressoContext {
             long initStartTimeNanos = System.nanoTime();
 
             this.nativeAccess = spawnNativeAccess();
-            this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
             initVmProperties();
 
             // Spawn JNI first, then the VM.
@@ -375,6 +376,8 @@ public final class EspressoContext {
                 vm.attachThread(Thread.currentThread());
                 // The Java version is extracted from libjava and is available after this line.
                 JavaVersion contextJavaVersion = vm.loadJavaLibrary(vmProperties.bootLibraryPath()); // libjava
+                this.downcallStubs = new DowncallStubs(Platform.getHostPlatform());
+                this.upcallStubs = new UpcallStubs(Platform.getHostPlatform(), nativeAccess, language);
 
                 // Ensure that the extracted Java version equals the language's Java version, if it
                 // is set
@@ -1139,5 +1142,9 @@ public final class EspressoContext {
 
     public DowncallStubs getDowncallStubs() {
         return downcallStubs;
+    }
+
+    public UpcallStubs getUpcallStubs() {
+        return upcallStubs;
     }
 }
