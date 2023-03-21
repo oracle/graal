@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.lir.framemap.FrameMap;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 
+import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.lir.amd64.AMD64FrameMap;
+
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 
 /**
- * AMD64 specific frame map.
- *
- * This is the format of an AMD64 stack frame:
+ * AMD64 HotSpot specific frame map.
+ * <p>
+ * The layout is basically the same as {@link AMD64FrameMap} except that space for rbp is reserved
+ * at the standard location if {@link #preserveFramePointer} is false and a
+ * {@link #deoptimizationRescueSlot} is always allocated. This is done to be consistent with
+ * assumptions on HotSpot about frame layout. The extra spill slot for rbp is only used if rbp is
+ * actually used by the register allocator.
  *
  * <pre>
  *   Base       Contents
@@ -49,6 +57,11 @@ import jdk.vm.ci.code.StackSlot;
  *            | preserved rbp                  |    |            |
  *            | iff preserveFramePointer       |    |            |
  *            +--------------------------------+    |            |    -----
+ *            | preserved rbp                  |    |            |      ^
+ *            | iff not preserveFramePointer   |    |            |      |
+ *            +--------------------------------+    |            |      |
+ *            | deopt rescue slot              |    |            |      |
+ *            +--------------------------------+    |            |      |
  *            |                                |    |            |      |
  *            : callee save area               :    |            |      |
  *            |                                |    |            |      |
@@ -65,60 +78,46 @@ import jdk.vm.ci.code.StackSlot;
  *    %sp--&gt;  +--------------------------------+---------------------------
  *
  * </pre>
- *
- * The spill slot area also includes stack allocated memory blocks (ALLOCA blocks). The size of such
- * a block may be greater than the size of a normal spill slot or the word size.
- * <p>
- * A runtime can reserve space at the beginning of the overflow argument area. The calling
- * convention can specify that the first overflow stack argument is not at offset 0, but at a
- * specified offset. Use {@link CodeCacheProvider#getMinimumOutgoingSize()} to make sure that
- * call-free methods also have this space reserved. Then the VM can use the memory at offset 0
- * relative to the stack pointer.
  */
-public class AMD64FrameMap extends FrameMap {
+public class AMD64HotSpotFrameMap extends AMD64FrameMap {
+    /**
+     * The spill slot for rbp if {@link #preserveFramePointer} )is false.
+     */
+    private StackSlot rbpSpillSlot;
 
     /**
-     * If true then the frame setup always pushes and pops rbp.
+     * The deoptimization rescue slot.
      */
-    protected final boolean preserveFramePointer;
+    private StackSlot deoptimizationRescueSlot;
 
-    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean preserveFramePointer) {
-        super(codeCache, registerConfig, referenceMapFactory);
-        // (negative) offset relative to sp + total frame size
-        this.preserveFramePointer = preserveFramePointer;
-        this.initialSpillSize = returnAddressSize() + (preserveFramePointer ? getTarget().arch.getWordSize() : 0);
-        this.spillSize = initialSpillSize;
-    }
-
-    @Override
-    public int totalFrameSize() {
-        int result = frameSize() + initialSpillSize;
-        assert result % getTarget().stackAlignment == 0 : "Total frame size not aligned: " + result;
-        return result;
-    }
-
-    @Override
-    public int currentFrameSize() {
-        return alignFrameSize(outgoingSize + spillSize - initialSpillSize);
-    }
-
-    @Override
-    protected int alignFrameSize(int size) {
-        return NumUtil.roundUp(size + initialSpillSize, getTarget().stackAlignment) - initialSpillSize;
+    public AMD64HotSpotFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, GraalHotSpotVMConfig config) {
+        super(codeCache, registerConfig, referenceMapFactory, config.preserveFramePointer);
+        // HotSpot is picky about the frame layout in the presence of nmethod entry barriers, so
+        // always allocate the space for rbp and the deoptimization rescue slot. If we don't
+        // allocate rbp the rbp spill slot will never be written.
+        if (!preserveFramePointer()) {
+            assert spillSize == initialSpillSize : "RBP spill slot must be the first allocated stack slots";
+            rbpSpillSlot = allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
+            assert asStackSlot(rbpSpillSlot).getRawOffset() == -16 : asStackSlot(rbpSpillSlot).getRawOffset();
+        }
+        deoptimizationRescueSlot = allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
     }
 
     @Override
     public int offsetForStackSlot(StackSlot slot) {
-        // @formatter:off
-        assert (!slot.getRawAddFrameSize() && slot.getRawOffset() <  outgoingSize) ||
-               (slot.getRawAddFrameSize() && slot.getRawOffset()  <  0 && -slot.getRawOffset() <= spillSize) ||
-               (slot.getRawAddFrameSize() && slot.getRawOffset()  >= 0) :
-                   String.format("RawAddFrameSize: %b RawOffset: 0x%x spillSize: 0x%x outgoingSize: 0x%x", slot.getRawAddFrameSize(), slot.getRawOffset(), spillSize, outgoingSize);
-        // @formatter:on
-        return super.offsetForStackSlot(slot);
+        int offset = super.offsetForStackSlot(slot);
+        // rbp is always saved in the standard location if it is saved
+        assert !slot.equals(rbpSpillSlot) || offset - totalFrameSize() == -16;
+        return offset;
     }
 
-    public boolean preserveFramePointer() {
-        return preserveFramePointer;
+    public StackSlot getRBPSpillSlot() {
+        assert rbpSpillSlot != null;
+        return rbpSpillSlot;
+    }
+
+    public StackSlot getDeoptimizationRescueSlot() {
+        assert deoptimizationRescueSlot != null;
+        return deoptimizationRescueSlot;
     }
 }

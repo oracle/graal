@@ -1102,10 +1102,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             crb.recordMark(SubstrateMarkId.EPILOGUE_END);
         }
 
-        @Override
-        public boolean hasFrame() {
-            return true;
-        }
     }
 
     /**
