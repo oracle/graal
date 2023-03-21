@@ -94,7 +94,7 @@ public class AMD64FrameMap extends FrameMap {
 
     /**
      * If true then a spill slot has been allocated for rbp. In this case the spill slot is loaded
-     * and stored instead of being psuhed and popped.
+     * and stored instead of being pushed and popped.
      */
     private final boolean forceRBPSpillSlot;
 
