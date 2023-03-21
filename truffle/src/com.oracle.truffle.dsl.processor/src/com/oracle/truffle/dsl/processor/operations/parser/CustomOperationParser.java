@@ -45,7 +45,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedNam
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeElement;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEquals;
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEqualsAny;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 import static javax.lang.model.element.Modifier.PUBLIC;
 
@@ -184,10 +184,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         CodeTypeElement nodeType;
         if (isNode) {
             nodeType = cloneTypeHierarchy(te, ct -> {
-                ct.getAnnotationMirrors().removeIf(m -> typeEquals(m.getAnnotationType(), types.NodeChild) || typeEquals(m.getAnnotationType(), types.NodeChildren));
-                ct.getAnnotationMirrors().removeIf(m -> typeEquals(m.getAnnotationType(), types.GenerateUncached));
-                ct.getAnnotationMirrors().removeIf(m -> typeEquals(m.getAnnotationType(), types.GenerateNodeFactory));
-
+                ct.getAnnotationMirrors().removeIf(m -> typeEqualsAny(m.getAnnotationType(), types.NodeChild, types.NodeChildren, types.GenerateUncached, types.GenerateNodeFactory));
                 // remove all non-static or private elements. this includes all the execute methods
                 ct.getEnclosedElements().removeIf(e -> !e.getModifiers().contains(Modifier.STATIC) || e.getModifiers().contains(Modifier.PRIVATE));
             });
@@ -505,7 +502,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         int numLocalSetterRanges = 0;
 
         for (VariableElement param : spec.getParameters()) {
-            if (isAssignable(param.asType(), types.Frame)) {
+            if (isAssignable(param.asType(), types.Frame) || isDSLParameter(param)) {
+                // nothing, we ignore these
                 continue;
             } else if (isAssignable(param.asType(), types.LocalSetter)) {
                 if (isDSLParameter(param)) {
@@ -551,8 +549,6 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 canBeBoxingEliminated.add(false);
                 numValues++;
                 hasVariadic = true;
-            } else if (isDSLParameter(param)) {
-                // nothing, we ignore these
             } else {
                 if (hasVariadic) {
                     data.addError(param, "Non-variadic value parameters must precede variadic ones.");
@@ -607,14 +603,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
     private boolean isDSLParameter(VariableElement param) {
         for (AnnotationMirror mir : param.getAnnotationMirrors()) {
-            DeclaredType annotationType = mir.getAnnotationType();
-            if (typeEquals(annotationType, types.Cached)) {
-                return true;
-            }
-            if (typeEquals(annotationType, types.CachedLibrary)) {
-                return true;
-            }
-            if (typeEquals(annotationType, types.Bind)) {
+            if (typeEqualsAny(mir.getAnnotationType(), types.Cached, types.CachedLibrary, types.Bind)) {
                 return true;
             }
         }

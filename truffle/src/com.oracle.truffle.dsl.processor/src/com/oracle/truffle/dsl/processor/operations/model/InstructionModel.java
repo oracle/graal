@@ -170,4 +170,8 @@ public class InstructionModel implements InfoDumpable {
     public String getInternalName() {
         return name.replace('.', '_');
     }
+
+    public String getConstantName() {
+        return getInternalName().toUpperCase();
+    }
 }
