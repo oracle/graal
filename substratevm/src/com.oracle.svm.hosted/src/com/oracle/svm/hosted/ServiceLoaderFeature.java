@@ -169,15 +169,17 @@ public class ServiceLoaderFeature implements InternalFeature {
             }
 
             if (providerClass != null && !providerClass.isArray() && !providerClass.isPrimitive()) {
+                Constructor<?> nullaryConstructor;
                 try {
-                    Constructor<?> nullaryConstructor = providerClass.getDeclaredConstructor();
-                    if (nullaryConstructor != null) {
-                        RuntimeReflection.register(providerClass);
-                        RuntimeReflection.register(nullaryConstructor);
-                        registeredProviders.add(provider);
-                    }
+                    nullaryConstructor = providerClass.getDeclaredConstructor();
                 } catch (NoSuchMethodException | SecurityException | LinkageError e) {
                     /* Skip providers that do not comply to requirements */
+                    nullaryConstructor = null;
+                }
+                if (nullaryConstructor != null) {
+                    RuntimeReflection.register(providerClass);
+                    RuntimeReflection.register(nullaryConstructor);
+                    registeredProviders.add(provider);
                 }
             }
         }
