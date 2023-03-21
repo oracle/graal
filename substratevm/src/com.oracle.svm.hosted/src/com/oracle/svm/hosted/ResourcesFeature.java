@@ -447,13 +447,19 @@ public final class ResourcesFeature implements InternalFeature {
 
         plugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), parameterTypes.toArray(new Class<?>[0])) {
             @Override
+            public boolean isDecorator() {
+                return true;
+            }
+
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 try {
                     if (!sealed && receiver.isConstant() && arg.isJavaConstant() && !arg.isNullConstant()) {
                         String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
                         Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
                         String resourceName = (String) resolveResourceName.invoke(clazz, resource);
-                        RuntimeResourceAccess.addResource(clazz.getModule(), resourceName);
+                        b.add(new ReachabilityRegistrationNode(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName)));
+                        return true;
                     }
                 } catch (IllegalAccessException | InvocationTargetException e) {
                     throw VMError.shouldNotReachHere(e);
