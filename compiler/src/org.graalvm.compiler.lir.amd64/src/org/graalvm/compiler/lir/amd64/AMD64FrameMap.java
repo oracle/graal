@@ -51,9 +51,15 @@ import jdk.vm.ci.code.StackSlot;
  *   current  | return address                 |    |            ^
  *   frame    +--------------------------------+    |            |
  *            | preserved rbp                  |    |            |
- *            | (iff {@link #reserveRBP})   |    |            |
+ *            | iff {@link #preserveFramePointer}       |    |            |
  *            +--------------------------------+    |            |    -----
- *            |                                |    |            |      ^
+ *            | preserved rbp                  |    |            |      ^
+ *            | iff {@link #forceRBPSpillSlot}          |    |            |      |
+ *            +--------------------------------+    |            |      |
+ *            | deopt rescue slot              |    |            |      |
+ *            | if {@link #deoptRescueSlot} is non-null |    |            |      |
+ *            +--------------------------------+    |            |      |
+ *            |                                |    |            |      |
  *            : callee save area               :    |            |      |
  *            |                                |    |            |      |
  *            +--------------------------------+    |            |      |
@@ -82,27 +88,43 @@ import jdk.vm.ci.code.StackSlot;
 public class AMD64FrameMap extends FrameMap {
 
     /**
-     * Always allocate space for rbp.
+     * If true then the frame setup always pushes and pops rbp.
      */
-    private final boolean reserveRBP;
+    private final boolean preserveFramePointer;
+
+    /**
+     * If true then a spill slot has been allocated for rbp. In this case the spill slot is loaded
+     * and stored instead of being psuhed and popped.
+     */
+    private final boolean forceRBPSpillSlot;
+
+    /**
+     * The spill slot for rbp if preserveFramePointer is false.
+     */
 
     private StackSlot rbpSpillSlot;
 
+    /**
+     * The deoptimization rescue slot if allocated.
+     */
     private StackSlot deoptRescueSlot;
 
-    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useStandardFrameProlog, boolean reserveRBP) {
+    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean preserveFramePointer, boolean requireRBPSpillSlot) {
         super(codeCache, registerConfig, referenceMapFactory);
         // (negative) offset relative to sp + total frame size
-        this.initialSpillSize = returnAddressSize() + (useStandardFrameProlog ? getTarget().arch.getWordSize() : 0);
+        this.preserveFramePointer = preserveFramePointer;
+        this.initialSpillSize = returnAddressSize() + (preserveFramePointer ? getTarget().arch.getWordSize() : 0);
         this.spillSize = initialSpillSize;
-        this.reserveRBP = reserveRBP && !useStandardFrameProlog;
-        if (this.reserveRBP) {
+
+        // Ensure there's a spill slot for RBP even if preserveFramePointer is false.
+        this.forceRBPSpillSlot = requireRBPSpillSlot && !preserveFramePointer;
+        if (this.forceRBPSpillSlot) {
             allocateRBPSpillSlot();
         }
     }
 
-    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useStandardFrameProlog) {
-        this(codeCache, registerConfig, referenceMapFactory, useStandardFrameProlog, false);
+    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean preserveFramePointer) {
+        this(codeCache, registerConfig, referenceMapFactory, preserveFramePointer, false);
     }
 
     @Override
@@ -136,6 +158,15 @@ public class AMD64FrameMap extends FrameMap {
         return offset;
     }
 
+    public StackSlot getRBPSpillSlot() {
+        assert rbpSpillSlot != null;
+        return rbpSpillSlot;
+    }
+
+    public boolean preserveFramePointer() {
+        return preserveFramePointer;
+    }
+
     /**
      * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
      * runtime for walking/inspecting frames of such methods.
@@ -150,7 +181,7 @@ public class AMD64FrameMap extends FrameMap {
     }
 
     void freeRBPSpillSlot() {
-        if (!reserveRBP) {
+        if (!forceRBPSpillSlot) {
             int size = spillSlotSize(LIRKind.value(AMD64Kind.QWORD));
             assert spillSize == NumUtil.roundUp(initialSpillSize + size, size) : "RBP spill slot can not be freed after allocation other stack slots";
             spillSize = initialSpillSize;

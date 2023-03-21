@@ -138,12 +138,10 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         final boolean isStub;
         final boolean omitFrame;
-        final boolean preserveFramePointer;
 
-        HotSpotFrameContext(boolean isStub, boolean omitFrame, boolean preserveFramePointer) {
+        HotSpotFrameContext(boolean isStub, boolean omitFrame) {
             this.isStub = isStub;
             this.omitFrame = omitFrame;
-            this.preserveFramePointer = preserveFramePointer;
         }
 
         @Override
@@ -153,7 +151,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         @Override
         public void enter(CompilationResultBuilder crb) {
-            FrameMap frameMap = crb.frameMap;
+            AMD64FrameMap frameMap = (AMD64FrameMap) crb.frameMap;
             int frameSize = frameMap.frameSize();
             AMD64HotSpotMacroAssembler asm = (AMD64HotSpotMacroAssembler) crb.asm;
             if (omitFrame) {
@@ -168,7 +166,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     // assert asm.position() - verifiedEntryPointOffset >=
                     // PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                 }
-                if (preserveFramePointer) {
+                if (frameMap.preserveFramePointer()) {
                     // Stack-walking friendly instructions
                     asm.push(rbp);
                     asm.movq(rbp, rsp);
@@ -219,14 +217,16 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 /*
                  * The nmethod entry barrier can deoptimize by manually removing this frame. It
                  * makes some assumptions about the frame layout that aren't always true for Graal.
-                 * In particular it assumes the callers rbp has always been saved in the standard
-                 * location. With -XX:+PreserveFramePointer it's always saved by the frame setup but
-                 * it's only lazily saved normally. The space for rbp is always reserved in the
-                 * frame so make sure it's been properly stored before calling the nmethod entry
-                 * barrier.
+                 * In particular it assumes the caller`s rbp is always saved in the standard
+                 * location. With -XX:+PreserveFramePointer this has been done by the frame setup.
+                 * Otherwise it is only saved lazily (i.e. if rbp is actually used by the register
+                 * allocator). Since nmethod entry barriers are enabled, the space for rbp has been
+                 * reserved in the frame and here we ensure it is properly saved before calling the
+                 * nmethod entry barrier.
                  */
-                if (!config.preserveFramePointer) {
-                    asm.movq(new AMD64Address(rsp, crb.frameMap.totalFrameSize() - 16), rbp);
+                AMD64FrameMap frameMap = (AMD64FrameMap) crb.frameMap;
+                if (!frameMap.preserveFramePointer()) {
+                    asm.movq(new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getRBPSpillSlot())), rbp);
                 }
                 // This is always a near call
                 int beforeCall = asm.position();
@@ -242,15 +242,15 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         @Override
         public void leave(CompilationResultBuilder crb) {
             if (!omitFrame) {
+                AMD64FrameMap frameMap = (AMD64FrameMap) crb.frameMap;
                 AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
-                assert crb.frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
+                assert frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
 
-                int frameSize = crb.frameMap.frameSize();
-                if (preserveFramePointer) {
+                if (frameMap.preserveFramePointer()) {
                     asm.movq(rsp, rbp);
                     asm.pop(rbp);
                 } else {
-                    asm.incrementq(rsp, frameSize);
+                    asm.incrementq(rsp, frameMap.frameSize());
                 }
             }
         }
@@ -262,13 +262,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         public void rawEnter(CompilationResultBuilder crb) {
             AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
-            if (preserveFramePointer) {
+            AMD64FrameMap frameMap = (AMD64FrameMap) crb.frameMap;
+
+            if (frameMap.preserveFramePointer()) {
                 // Stack-walking friendly instructions
                 asm.push(rbp);
                 asm.movq(rbp, rsp);
             }
-            int frameSize = crb.frameMap.frameSize();
-            asm.decrementq(rsp, frameSize);
+            asm.decrementq(rsp, frameMap.frameSize());
         }
 
         public void rawLeave(CompilationResultBuilder crb) {
@@ -294,7 +295,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
         Stub stub = gen.getStub();
         AMD64MacroAssembler masm = new AMD64HotSpotMacroAssembler(config, getTarget(), options, config.CPU_HAS_INTEL_JCC_ERRATUM);
-        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame, config.preserveFramePointer);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None, lir);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
