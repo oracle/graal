@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -25,18 +25,14 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.svm.core.jdk.JNIRegistrationUtil;
-import com.oracle.svm.core.util.VMError;
-
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.JNIRegistrationUtil;
+import com.oracle.svm.core.jni.JNIRuntimeAccess;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
@@ -46,22 +42,11 @@ public class JmxClientFeature extends JNIRegistrationUtil implements InternalFea
         return VMInspectionOptions.hasJmxClientSupport();
     }
 
-    private static void handleNativeLibraries(BeforeAnalysisAccess access) {
-        BeforeAnalysisAccessImpl a = (BeforeAnalysisAccessImpl) access;
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("rmi");
-        a.getNativeLibraries().addStaticJniLibrary("rmi");
-
-        // Resolve calls to sun_rmi_transport* as builtIn. For calls to native method
-        // maxObjectInspectionAge()
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_rmi_transport");
-    }
-
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         try {
             configureJNI();
             configureReflection(access);
-            handleNativeLibraries(access);
         } catch (Exception e) {
             throw VMError.shouldNotReachHere("ManagementClientFeature configuration failed: " + e);
         }
