@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jvmstat;
+package com.oracle.svm.core.jdk;
 
-import java.nio.ByteBuffer;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.jdk.DirectByteBufferUtil;
-
-/**
- * Allocates a buffer with a minimal size that only contains the performance data header (see
- * {@link PerfMemoryPrologue}).
- */
-public class CHeapPerfMemoryProvider implements PerfMemoryProvider {
-    private Pointer memory;
-
+public class JDK20OrEarlier implements BooleanSupplier {
     @Override
-    public ByteBuffer create() {
-        int size = PerfMemoryPrologue.getPrologueSize();
-        memory = UnmanagedMemory.calloc(size);
-        return DirectByteBufferUtil.allocate(memory.rawValue(), size);
-    }
-
-    @Override
-    public void teardown() {
-        if (memory.isNonNull()) {
-            UnmanagedMemory.free(memory);
-            memory = WordFactory.nullPointer();
-        }
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC <= 20;
     }
 }
