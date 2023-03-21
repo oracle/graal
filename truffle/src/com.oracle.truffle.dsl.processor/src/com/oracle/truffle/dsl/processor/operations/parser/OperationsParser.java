@@ -363,7 +363,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
                     // strings are treated as comments
                     continue;
                 } else {
-                    parseDecision(model, result, filePath, o.getJSONObject(i));
+                    parseDecision(model, result, o.getJSONObject(i));
                 }
             }
         } catch (FileNotFoundException ex) {
@@ -377,7 +377,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         }
     }
 
-    private static void parseDecision(OperationsModel model, OptimizationDecisionsModel result, String filePath, JSONObject decision) {
+    private static void parseDecision(OperationsModel model, OptimizationDecisionsModel result, JSONObject decision) {
         switch (decision.getString("type")) {
             case "SuperInstruction": {
                 SuperInstructionDecision m = new SuperInstructionDecision();

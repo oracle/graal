@@ -246,4 +246,8 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
         return kind == OperationKind.SOURCE || kind == OperationKind.SOURCE_SECTION;
     }
 
+    public String getConstantName() {
+        return name.toUpperCase();
+    }
+
 }

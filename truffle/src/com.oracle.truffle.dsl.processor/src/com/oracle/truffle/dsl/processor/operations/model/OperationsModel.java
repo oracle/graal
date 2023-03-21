@@ -230,11 +230,11 @@ public class OperationsModel extends Template implements InfoDumpable {
 
         popVariadicInstruction = new InstructionModel[9];
         for (int i = 0; i <= 8; i++) {
-            popVariadicInstruction[i] = instruction(InstructionKind.LOAD_VARIADIC, "store.variadic[" + i + "]");
+            popVariadicInstruction[i] = instruction(InstructionKind.LOAD_VARIADIC, "store.variadic_" + i);
             popVariadicInstruction[i].variadicPopCount = i;
         }
         mergeVariadicInstruction = instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic");
-        storeNullInstruction = instruction(InstructionKind.STORE_NULL, "store.variadic-end");
+        storeNullInstruction = instruction(InstructionKind.STORE_NULL, "store.variadic_end");
     }
 
     private static TypeMirror generic(DeclaredType el, TypeMirror... args) {
