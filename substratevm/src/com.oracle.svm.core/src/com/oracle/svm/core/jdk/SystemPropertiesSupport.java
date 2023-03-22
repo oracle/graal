@@ -56,6 +56,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     /** System properties that are taken from the VM hosting the image generator. */
     private static final String[] HOSTED_PROPERTIES = {
                     "java.version",
+                    "java.version.date",
                     ImageInfo.PROPERTY_IMAGE_KIND_KEY,
                     /*
                      * We do not support cross-compilation for now. Separator might also be cached
@@ -115,6 +116,9 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         VM vm = ImageSingletons.lookup(VM.class);
         initializeProperty("java.vendor", vm.vendor);
         initializeProperty("java.vendor.url", vm.vendorUrl);
+        initializeProperty("java.vendor.version", vm.vendorVersion);
+        assert vm.info.equals(vm.info.toLowerCase()) : "java.vm.info should not contain uppercase characters";
+        initializeProperty("java.vm.info", vm.info);
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", vm.vendor);
         initializeProperty("java.vm.version", vm.version);

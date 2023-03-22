@@ -695,7 +695,7 @@ public class ProgressReporter {
             l().link(NativeImageOptions.getErrorFilePath(parsedHostedOptions)).println();
             l().println();
             l().a("If you are unable to resolve this problem, please file an issue with the error report at:").println();
-            var supportURL = ImageSingletonsSupport.isInstalled() ? ImageSingletons.lookup(VM.class).supportURL : new VM().supportURL;
+            var supportURL = VM.getErrorReportingInstance().supportURL;
             l().link(supportURL, supportURL).println();
         }
     }
