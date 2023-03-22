@@ -11,8 +11,8 @@ Docker containers provide the flexibility of development environments to match a
 
 To support container-based development, there are several GraalVM container images available, depending on the platform, the architecture, the Java version, and the edition:
 
-- GraalVM Enterprise container images are in [Oracle Container Registry](https://container-registry.oracle.com/ords/f?p=113:10::::::)
-- GraalVM Community container images in [GitHub Container Registry](https://github.com/orgs/graalvm/packages)
+- Oracle GraalVM container images can be found in the [Oracle Container Registry](https://container-registry.oracle.com/ords/f?p=113:10::::::)
+- GraalVM Community Edition container images can be found in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages)
 
 This guide shows how to containerise a Java application with Docker on macOS. 
 You will use `ghcr.io/graalvm/jdk:ol8-java17` which is a size compact GraalVM Community container image with the GraalVM JDK pre-installed. 

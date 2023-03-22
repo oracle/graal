@@ -260,6 +260,7 @@ import com.oracle.svm.hosted.code.CEntryPointCallStubSupport;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CFunctionSubstitutionProcessor;
 import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.code.DynamicMethodAddressResolutionHostedSupport;
 import com.oracle.svm.hosted.code.HostedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.code.NativeMethodSubstitutionProcessor;
 import com.oracle.svm.hosted.code.RestrictHeapAccessCalleesImpl;
@@ -685,6 +686,11 @@ public class NativeImageGenerator {
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
+
+                        if (ImageSingletons.contains(DynamicMethodAddressResolutionHostedSupport.class)) {
+                            ImageSingletons.lookup(DynamicMethodAddressResolutionHostedSupport.class).install(image.getObjectFile());
+                        }
+
                         image.build(imageName, debug);
                         if (NativeImageOptions.PrintUniverse.getValue()) {
                             /*
@@ -1108,8 +1114,7 @@ public class NativeImageGenerator {
         ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aMetaAccess, (SVMHost) aUniverse.hostVM());
 
-        AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(
-                        aUniverse, aMetaAccess, originalProviders.getConstantReflection(), classInitializationSupport);
+        AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(aUniverse, aMetaAccess, classInitializationSupport);
 
         WordTypes aWordTypes = new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind());
 

@@ -9,7 +9,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/AOTOverview/
 There are several different flavors of AOT preinitialization, compilation, and caching supported in Truffle.
 This document is intended to provide an overview of these capabilities.
 
-Note that some of the features mentioned here are only supported in GraalVM EE.
+Note that some of the features mentioned here are only supported in Oracle GraalVM.
 
 ### Preinitialization of the First Context
 
@@ -63,9 +63,9 @@ It may be costly to create context independent code, therefore, speculation on r
 [SimpleLanguage](https://github.com/graalvm/simplelanguage/blob/master/language/src/main/java/com/oracle/truffle/sl/SLLanguage.java#L196) and [JavaScript](https://github.com/oracle/graaljs/blob/master/graal-js/src/com.oracle.truffle.js/src/com/oracle/truffle/js/lang/JavaScriptLanguage.java) are two languages that already support context independent code and might be useful as a guidance on concrete problems.
 
 
-### Persistent Context Independent Code with Auxiliary Engine Caching (EE)
+### Persistent Context Independent Code with Auxiliary Engine Caching (Oracle GraalVM)
 
-GraalVM Enterprise Edition supports persisting code data structures to disk.
+Oracle GraalVM supports persisting code data structures to disk.
 This enables to almost eliminate warmup time for the first run of an application in an isolate/process.
 The SVM auxiliary image feature is used to persist and load the necessary data structures to the disk.
 Persisting the image can take a significant amount of time as compilation needs to be performed.

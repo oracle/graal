@@ -80,7 +80,7 @@ There are two installation options:
 * Install the Visual Studio Build Tools with the Windows 10 SDK
 * Install Visual Studio with the Windows 10 SDK
 
-You can use Visual Studio 2017 version 15.9 or later.
+You can use Visual Studio 2022 version 17.1.0 or later.
 
 For more information, see [Using GraalVM and Native Image on Windows 10](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311). -->
 

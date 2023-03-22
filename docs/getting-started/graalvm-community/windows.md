@@ -57,7 +57,7 @@ Currently, the GraalVM environment on Windows can be extended with [Java on Truf
 
 ## Prerequisites for Using Native Image on Windows
 On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC).
-You can use Visual Studio 2017 version 15.9 or later.
+You can use Visual Studio 2022 version 17.1.0 or later.
 There are two installation options:
 - Install the Visual Studio Build Tools with the Windows 10 SDK
 - Install Visual Studio with the Windows 10 SDK

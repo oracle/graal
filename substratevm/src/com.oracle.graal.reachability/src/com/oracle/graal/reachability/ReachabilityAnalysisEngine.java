@@ -185,6 +185,14 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         }
     }
 
+    public void markMethodSpecialInvoked(ReachabilityAnalysisMethod targetMethod, Object reason) {
+        ReachabilityAnalysisType declaringClass = targetMethod.getDeclaringClass();
+        declaringClass.addSpecialInvokedMethod(targetMethod);
+        if (!declaringClass.getInstantiatedSubtypes().isEmpty()) {
+            markMethodImplementationInvoked(targetMethod, reason);
+        }
+    }
+
     @Override
     public boolean registerTypeAsInHeap(AnalysisType t, Object reason) {
         ReachabilityAnalysisType type = (ReachabilityAnalysisType) t;
@@ -265,6 +273,10 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
                 if (method != null) {
                     markMethodImplementationInvoked(method, reason);
                 }
+            }
+
+            for (ReachabilityAnalysisMethod method : ((ReachabilityAnalysisType) current).getInvokedSpecialMethods()) {
+                markMethodImplementationInvoked(method, reason);
             }
         });
     }

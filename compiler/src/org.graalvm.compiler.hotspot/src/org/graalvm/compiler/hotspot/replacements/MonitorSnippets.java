@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.unlockedMask;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.useBiasedLocking;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.useHeavyMonitors;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.verifyOop;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.wordSize;
 import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.ProfileMonitors;
@@ -109,6 +110,7 @@ import org.graalvm.compiler.hotspot.nodes.CurrentLockNode;
 import org.graalvm.compiler.hotspot.nodes.FastAcquireBiasedLockNode;
 import org.graalvm.compiler.hotspot.nodes.MonitorCounterNode;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -229,6 +231,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Note that {@code Thread::allocate} enforces {@code JavaThread} objects to be aligned
  * appropriately to comply with the layouts above.
  */
+
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
+          lineStart = 474,
+          lineEnd   = 932,
+          commit    = "431e702b676e2c02224d60181c34b5fe97873d8b",
+          sha1      = "9945a7b132ccd437330801ce62cf0cedbc54e7d0")
+// @formatter:on
 public class MonitorSnippets implements Snippets {
 
     private static final boolean PROFILE_CONTEXT = false;
@@ -275,7 +285,7 @@ public class MonitorSnippets implements Snippets {
             if (tryEnterInflated(object, lock, mark, thread, trace, counters)) {
                 return;
             }
-        } else {
+        } else if (!useHeavyMonitors(INJECTED_VMCONFIG)) {
             // Create the unlocked mark word pattern
             Word unlockedMark = mark.or(unlockedMask(INJECTED_VMCONFIG));
             trace(trace, "     unlockedMark: 0x%016lx\n", unlockedMark);
@@ -547,7 +557,7 @@ public class MonitorSnippets implements Snippets {
         final Word displacedMark = lock.readWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), DISPLACED_MARK_WORD_LOCATION);
         trace(trace, "    displacedMark: 0x%016lx\n", displacedMark);
 
-        if (probability(NOT_LIKELY_PROBABILITY, displacedMark.equal(0))) {
+        if (!useHeavyMonitors(INJECTED_VMCONFIG) && probability(NOT_LIKELY_PROBABILITY, displacedMark.equal(0))) {
             // Recursive locking => done
             traceObject(trace, "-lock{recursive}", object, false);
             counters.unlockCasRecursive.inc();
@@ -561,7 +571,8 @@ public class MonitorSnippets implements Snippets {
                 // the displaced mark in the object - if the object's mark word is not pointing to
                 // the displaced mark word, do unlocking via runtime call.
                 Pointer objectPointer = Word.objectToTrackedPointer(object);
-                if (probability(VERY_FAST_PATH_PROBABILITY, objectPointer.logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG), lock, displacedMark, MARK_WORD_LOCATION))) {
+                if (!useHeavyMonitors(INJECTED_VMCONFIG) &&
+                                probability(VERY_FAST_PATH_PROBABILITY, objectPointer.logicCompareAndSwapWord(markOffset(INJECTED_VMCONFIG), lock, displacedMark, MARK_WORD_LOCATION))) {
                     traceObject(trace, "-lock{cas}", object, false);
                     counters.unlockCas.inc();
                     decrementHeldMonitorCount(thread);
@@ -610,7 +621,7 @@ public class MonitorSnippets implements Snippets {
         if (!inlineFastUnlockSupported(INJECTED_OPTIONVALUES)) {
             return false;
         }
-        if (probability(SLOW_PATH_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
+        if (useHeavyMonitors(INJECTED_VMCONFIG) || probability(SLOW_PATH_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
             // Inflated case
             // mark is a pointer to the ObjectMonitor + monitorMask
             Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));

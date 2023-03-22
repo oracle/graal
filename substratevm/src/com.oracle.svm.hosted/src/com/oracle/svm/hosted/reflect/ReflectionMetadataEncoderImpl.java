@@ -28,6 +28,7 @@ import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_FLAGS_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.COMPLETE_FLAG_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.FIRST_ERROR_INDEX;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.HIDING_FLAG_MASK;
@@ -258,7 +259,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         Class<?>[] permittedSubclasses = getPermittedSubclasses(metaAccess, javaClass);
         Class<?>[] nestMembers = getNestMembers(metaAccess, javaClass);
         Object[] signers = javaClass.getSigners();
-        int classAccessFlags = Reflection.getClassAccessFlags(javaClass);
+        int classAccessFlags = Reflection.getClassAccessFlags(javaClass) & CLASS_ACCESS_FLAGS_MASK;
         int enabledQueries = dataBuilder.getEnabledReflectionQueries(javaClass);
         VMError.guarantee((classAccessFlags & enabledQueries) == 0);
         int flags = classAccessFlags | enabledQueries;

@@ -106,7 +106,7 @@ The following steps demonstrate how to use the agent, and its output, to create 
     ```shell
     $JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=META-INF/native-image ReflectionExample StringReverser reverse "hello"
     ```
-    This command creates a file named _reflection-config.json_ containing the name of the class `StringReverser` and its `reverse()` method.
+    This command creates a file named _reflect-config.json_ containing the name of the class `StringReverser` and its `reverse()` method.
     ```json
     [
         {
@@ -143,12 +143,12 @@ The following steps demonstrate how to use the agent, and its output, to create 
     The agent observes and records which program elements are accessed using reflection when you run the program. In this case, the `native-image` tool has not been configured to include references to class `StringCapitalizer`.
 
 5. Update the configuration to include class `StringCapitalizer`.
-    You can manually edit the _reflection-config.json_ file or re-run the tracing agent to update the existing configuration file using the `config-merge-dir` option, as follows:
+    You can manually edit the _reflect-config.json_ file or re-run the tracing agent to update the existing configuration file using the `config-merge-dir` option, as follows:
     ```shell
     $JAVA_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=META-INF/native-image ReflectionExample StringCapitalizer capitalize "hello"
     ```
 
-    This command updates the _reflection-config.json_ file to include the name of the class `StringCapitalizer` and its `capitalize()` method.
+    This command updates the _reflect-config.json_ file to include the name of the class `StringCapitalizer` and its `capitalize()` method.
     ```json
     [
         {

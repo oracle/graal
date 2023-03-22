@@ -68,6 +68,10 @@ public abstract class ProfileData {
          */
         ADOPTED,
         /**
+         * The profiling information comes from the ML model.
+         */
+        INFERRED,
+        /**
          * The profiling information comes from immature profiling information or some unknown
          * source.
          */
@@ -91,7 +95,11 @@ public abstract class ProfileData {
         }
 
         public static boolean isTrusted(ProfileSource source) {
-            return source == INJECTED || source == PROFILED || source == ADOPTED;
+            return source == INJECTED || source == PROFILED || source == ADOPTED || source == INFERRED;
+        }
+
+        public boolean isInjected() {
+            return this == INJECTED;
         }
 
         public boolean isProfiled() {
@@ -100,6 +108,10 @@ public abstract class ProfileData {
 
         public boolean isAdopted() {
             return this == ADOPTED;
+        }
+
+        public boolean isInferred() {
+            return this == INFERRED;
         }
 
         public boolean isUnknown() {
@@ -174,6 +186,10 @@ public abstract class ProfileData {
 
         public static BranchProbabilityData adopted(double probability) {
             return BranchProbabilityData.create(probability, ProfileSource.ADOPTED);
+        }
+
+        public static BranchProbabilityData inferred(double probability) {
+            return BranchProbabilityData.create(probability, ProfileSource.INFERRED);
         }
 
         /**

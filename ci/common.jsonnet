@@ -49,7 +49,7 @@ local common_json = import "../common.json";
 
   # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)
   devkits: {
-    "windows-jdk17": { packages+: { "devkit:VS2019-16.9.3+1": "==0" }},
+    "windows-jdk17": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "linux-jdk17": { packages+: { "devkit:gcc10.3.0-OL6.4+1": "==0" }},
@@ -101,9 +101,13 @@ local common_json = import "../common.json";
     },
 
     truffleruby:: {
-      packages+: if self.os == "linux" then {
-        ruby: "==2.6.3",
-      } else {},
+      packages+: (if self.os == "linux" && self.arch == "amd64" then {
+        ruby: "==3.1.2", # Newer version, also used for benchmarking
+      } else {
+        ruby: "==3.0.2",
+      }) + (if self.os == "linux" then {
+        libyaml: "==0.2.5",
+      } else {}),
     },
 
     graalnodejs:: {

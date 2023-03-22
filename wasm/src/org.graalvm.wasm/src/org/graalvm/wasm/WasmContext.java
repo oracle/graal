@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -168,8 +168,8 @@ public final class WasmContext {
     }
 
     public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
-        final WasmModule module = WasmModule.create(moduleName, data, moduleLimits);
-        final BinaryParser reader = new BinaryParser(module, this);
+        final WasmModule module = WasmModule.create(moduleName, moduleLimits);
+        final BinaryParser reader = new BinaryParser(module, this, data);
         reader.readModule();
         return module;
     }

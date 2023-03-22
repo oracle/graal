@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,9 +66,14 @@ public class ProgressReporterJsonHelper {
     }
 
     @SuppressWarnings("unchecked")
-    public void putGeneralInfo(GeneralInfo info, String value) {
+    public void putGeneralInfo(GeneralInfo info, Object value) {
         Map<String, Object> generalInfoMap = (Map<String, Object>) statsHolder.computeIfAbsent(GENERAL_INFO_KEY, gi -> new HashMap<>());
-        generalInfoMap.put(info.jsonKey(), value);
+        if (info.bucket != null) {
+            Map<String, Object> subMap = (Map<String, Object>) generalInfoMap.computeIfAbsent(info.bucket, k -> new HashMap<>());
+            subMap.put(info.jsonKey(), value);
+        } else {
+            generalInfoMap.put(info.jsonKey(), value);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -196,27 +201,32 @@ public class ProgressReporterJsonHelper {
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
-            if (value instanceof Integer) {
-                helper.putAnalysisResults(this, (Integer) value);
-            } else if (value instanceof Long) {
-                helper.putAnalysisResults(this, (Long) value);
+            if (value instanceof Integer v) {
+                helper.putAnalysisResults(this, v);
+            } else if (value instanceof Long v) {
+                helper.putAnalysisResults(this, v);
             } else {
                 VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());
             }
         }
     }
 
-    enum GeneralInfo implements JsonMetric {
-        IMAGE_NAME("name"),
-        JAVA_VERSION("java_version"),
-        GRAALVM_VERSION("graalvm_version"),
-        GC("garbage_collector"),
-        CC("c_compiler");
+    public enum GeneralInfo implements JsonMetric {
+        IMAGE_NAME("name", null),
+        JAVA_VERSION("java_version", null),
+        GRAALVM_VERSION("graalvm_version", null),
+        GRAAL_COMPILER_OPTIMIZATION_LEVEL("optimization_level", "graal_compiler"),
+        GRAAL_COMPILER_MARCH("march", "graal_compiler"),
+        GRAAL_COMPILER_PGO("pgo", "graal_compiler"),
+        GC("garbage_collector", null),
+        CC("c_compiler", null);
 
         private String key;
+        private String bucket;
 
-        GeneralInfo(String key) {
+        GeneralInfo(String key, String bucket) {
             this.key = key;
+            this.bucket = bucket;
         }
 
         public String jsonKey() {
@@ -225,7 +235,11 @@ public class ProgressReporterJsonHelper {
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
-            helper.putGeneralInfo(this, (String) value);
+            if (value instanceof String || value instanceof Boolean) {
+                helper.putGeneralInfo(this, value);
+            } else {
+                VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());
+            }
         }
     }
 }

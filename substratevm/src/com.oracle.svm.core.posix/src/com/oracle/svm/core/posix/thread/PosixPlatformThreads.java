@@ -404,7 +404,7 @@ final class PosixParker extends Parker {
                  * Signal without holding the mutex, which is safe and avoids futile wakeups if the
                  * platform does not implement wait morphing.
                  */
-                PosixUtils.checkStatusIs0(Pthread.pthread_cond_signal(currentCond), "PosixParker.unpark(): condition variable signal");
+                PosixUtils.checkStatusIs0(Pthread.pthread_cond_signal(p), "PosixParker.unpark(): condition variable signal");
             }
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();

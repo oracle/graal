@@ -251,8 +251,11 @@ public class ProgressReporter {
         if (javaVersion != null) {
             l().a(" ").doclink("Java version info", "#glossary-java-version-info").a(": '").a(javaVersion).a("'").println();
         }
-        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: '%s', target machine: '%s'",
-                        SubstrateOptions.Optimize.getValue(), CPUType.getSelectedOrDefaultMArch());
+        String optimizationLevel = SubstrateOptions.Optimize.getValue();
+        recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
+        String march = CPUType.getSelectedOrDefaultMArch();
+        recordJsonMetric(GeneralInfo.GRAAL_COMPILER_MARCH, march);
+        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: '%s', target machine: '%s'", optimizationLevel, march);
         ImageSingletons.lookup(ProgressReporterFeature.class).appendGraalSuffix(graalLine);
         graalLine.println();
         String cCompilerShort = null;
@@ -784,7 +787,7 @@ public class ProgressReporter {
         lastGCStats = currentGCStats;
     }
 
-    private void recordJsonMetric(JsonMetric metric, Object value) {
+    public void recordJsonMetric(JsonMetric metric, Object value) {
         if (jsonHelper != null) {
             metric.record(jsonHelper, value);
         }

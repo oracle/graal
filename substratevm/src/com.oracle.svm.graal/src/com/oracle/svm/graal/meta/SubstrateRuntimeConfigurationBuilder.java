@@ -66,14 +66,12 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigurationBuilder {
 
     private final AnalysisUniverse aUniverse;
-    private final ConstantReflectionProvider originalReflectionProvider;
 
     public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, UniverseMetaAccess metaAccess,
-                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
+                    Function<Providers, SubstrateBackend> backendProvider,
                     ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider, SubstratePlatformConfigurationProvider platformConfig) {
         super(options, hostVM, metaAccess, backendProvider, classInitializationSupport, loopsDataProvider, platformConfig);
         this.aUniverse = aUniverse;
-        this.originalReflectionProvider = originalReflectionProvider;
     }
 
     @Override
@@ -86,7 +84,7 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     @Override
     protected ConstantReflectionProvider createConstantReflectionProvider() {
-        return new AnalysisConstantReflectionProvider(aUniverse, metaAccess, originalReflectionProvider, classInitializationSupport);
+        return new AnalysisConstantReflectionProvider(aUniverse, metaAccess, classInitializationSupport);
     }
 
     @Override
