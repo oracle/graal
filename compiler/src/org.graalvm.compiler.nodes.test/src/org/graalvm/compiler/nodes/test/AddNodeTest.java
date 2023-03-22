@@ -64,6 +64,40 @@ public class AddNodeTest extends GraalCompilerTest {
         test("addNotLeftSnippet", Integer.MIN_VALUE);
     }
 
+    public static int iteratedAddSnippet(int start, int addend) {
+        int sum = start;
+
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+
+        return sum;
+    }
+
+    public static int iteratedAddLeftAssocSnippet(int start, int addend) {
+        return ((((((((start + addend) + addend) + addend) + addend) + addend) + addend) + addend) + addend);
+    }
+
+    public static int iteratedAddRightAssocSnippet(int start, int addend) {
+        return start + (addend + (addend + (addend + (addend + (addend + (addend + (addend + addend)))))));
+    }
+
+    public static int iteratedAddReferenceSnippet(int start, int addend) {
+        return start + (addend << 3);
+    }
+
+    @Test
+    public void iteratedAdd() {
+        testAgainstReference("iteratedAddReferenceSnippet", "iteratedAddSnippet");
+        testAgainstReference("iteratedAddReferenceSnippet", "iteratedAddLeftAssocSnippet");
+        testAgainstReference("iteratedAddReferenceSnippet", "iteratedAddRightAssocSnippet");
+    }
+
     private void testAgainstReference(String referenceSnippet, String testSnippet) {
         StructuredGraph referenceGraph = parseForCompile(getResolvedJavaMethod(referenceSnippet));
         StructuredGraph testGraph = parseForCompile(getResolvedJavaMethod(testSnippet));
