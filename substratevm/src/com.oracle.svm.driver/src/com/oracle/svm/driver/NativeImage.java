@@ -124,7 +124,7 @@ public class NativeImage {
 
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
     static final String graalvmConfig = System.getProperty("org.graalvm.config", "CE");
-    static final String graalvmVendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
+    static final String graalvmVendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
     static final String graalvmVendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
 
     private static Map<String, String[]> getCompilerFlags() {

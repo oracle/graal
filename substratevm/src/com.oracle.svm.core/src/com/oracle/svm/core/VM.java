@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ public final class VM {
         String versionStr = System.getProperty("org.graalvm.version", "Unknown Version");
         String edition = System.getProperty("org.graalvm.config", "CE");
         version = String.format("GraalVM %s Java %s %s", versionStr, Runtime.version(), edition);
-        vendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
+        vendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
         vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
         runtimeName = System.getProperty("java.runtime.name", "Unknown Runtime Environment");
         supportURL = System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
