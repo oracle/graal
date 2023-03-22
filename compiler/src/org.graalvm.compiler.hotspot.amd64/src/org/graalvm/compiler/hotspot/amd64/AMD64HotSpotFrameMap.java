@@ -41,8 +41,10 @@ import jdk.vm.ci.code.StackSlot;
  * The layout is basically the same as {@link AMD64FrameMap} except that space for rbp is reserved
  * at the standard location if {@link #preserveFramePointer} is false and a
  * {@link #deoptimizationRescueSlot} is always allocated. This is done to be consistent with
- * assumptions on HotSpot about frame layout. The extra spill slot for rbp is only used if rbp is
- * actually used by the register allocator.
+ * assumptions on HotSpot about frame layout. In particular, the nmethod entry barrier deoptimize
+ * function in barrierSetNMethod_x86.cpp will manually tear down this frame so it needs to know the
+ * location of the saved rbp. The extra spill slot for rbp is only written to if rbp is actually
+ * used by the register allocator.
  *
  * <pre>
  *   Base       Contents
