@@ -74,7 +74,6 @@ import com.oracle.svm.core.c.struct.CInterfaceLocationIdentity;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.CInterfaceWriteNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.CInterfaceError;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -490,7 +489,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 break;
             case STRING:
             case BYTEARRAY:
-                valueNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(value), b.getMetaAccess(), b.getGraph());
+                valueNode = ConstantNode.forConstant(snippetReflection.forObject(value), b.getMetaAccess(), b.getGraph());
                 break;
             default:
                 throw shouldNotReachHere("Unexpected constant kind " + constantInfo);

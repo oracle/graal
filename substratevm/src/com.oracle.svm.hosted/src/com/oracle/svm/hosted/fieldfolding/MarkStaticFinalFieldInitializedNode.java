@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.fieldfolding;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -35,7 +36,7 @@ import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -69,7 +70,8 @@ public final class MarkStaticFinalFieldInitializedNode extends AbstractStateSpli
 
         Integer fieldCheckIndex = feature.fieldCheckIndexMap.get(StaticFinalFieldFoldingFeature.toAnalysisField(field));
         if (fieldCheckIndex != null) {
-            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
+            SnippetReflectionProvider snippetReflection = ((UniverseMetaAccess) tool.getMetaAccess()).getUniverse().getSnippetReflection();
+            ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(snippetReflection.forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
             ConstantNode fieldCheckIndexNode = ConstantNode.forInt(fieldCheckIndex, graph());
             ConstantNode trueNode = ConstantNode.forBoolean(true, graph());
             StoreIndexedNode replacementNode = graph().add(new StoreIndexedNode(fieldInitializationStatusNode, fieldCheckIndexNode, null, null, JavaKind.Boolean, trueNode));

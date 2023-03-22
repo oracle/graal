@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.meta;
 
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -44,8 +45,9 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (object instanceof WordBase) {
-            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), ((WordBase) object).rawValue());
+        if (object instanceof WordBase word && !(object instanceof RelocatedPointer)) {
+            /* Relocated pointers are subject to relocation, so we don't know their value yet. */
+            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
         return super.forObject(object);
     }
