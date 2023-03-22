@@ -1560,6 +1560,12 @@ public class NativeImage {
             } else {
                 environment.forEach((key, val) -> {
                     if (keyMapper.apply(key).equals(keyMapper.apply(entry.getKey()))) {
+                        /*
+                         * Record key as it was given by -E<key-name> (by using `entry.getKey()`
+                         * instead of `key`) to allow creating bundles on Windows that will also
+                         * work on Linux. `System.getEnv(val)` is case-insensitive on Windows but
+                         * not on Linux.
+                         */
                         restrictedEnvironment.put(entry.getKey(), val);
                         /* Capture found value for storing vars in bundle */
                         entry.setValue(val);

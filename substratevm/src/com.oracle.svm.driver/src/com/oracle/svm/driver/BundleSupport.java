@@ -41,6 +41,7 @@ import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +51,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -194,7 +196,7 @@ final class BundleSupport {
         loadBundle = false;
         writeBundle = true;
         try {
-            rootDir = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+            rootDir = createBundleRootDir();
             bundleProperties = new BundleProperties();
 
             Path inputDir = rootDir.resolve("input");
@@ -223,7 +225,7 @@ final class BundleSupport {
         updateBundleLocation(Path.of(bundleFilenameArg), false);
 
         try {
-            rootDir = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+            rootDir = createBundleRootDir();
             bundleProperties = new BundleProperties();
 
             outputDir = rootDir.resolve("output");
@@ -231,7 +233,9 @@ final class BundleSupport {
 
             Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
-                archive.stream().forEach(jarEntry -> {
+                Enumeration<JarEntry> jarEntries = archive.entries();
+                while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
+                    JarEntry jarEntry = jarEntries.nextElement();
                     Path bundleEntry = rootDir.resolve(jarEntry.getName());
                     if (bundleEntry.startsWith(outputDir)) {
                         /* Extract original output to different path */
@@ -246,10 +250,15 @@ final class BundleSupport {
                     } catch (IOException e) {
                         throw NativeImage.showError("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
                     }
-                });
+                }
             }
         } catch (IOException e) {
             throw NativeImage.showError("Unable to expand bundle directory layout from bundle file " + bundleName + BUNDLE_FILE_EXTENSION, e);
+        }
+
+        if (deleteBundleRoot.get()) {
+            /* Abort image build request without error message and exit with 0 */
+            throw NativeImage.showError(null, null, 0);
         }
 
         bundleProperties.loadAndVerify();
@@ -280,10 +289,12 @@ final class BundleSupport {
             throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
         }
         Path environmentFile = stageDir.resolve("environment.json");
-        try (Reader reader = Files.newBufferedReader(environmentFile)) {
-            new EnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
-        } catch (IOException e) {
-            throw NativeImage.showError("Failed to read bundle-file " + environmentFile, e);
+        if (Files.isReadable(environmentFile)) {
+            try (Reader reader = Files.newBufferedReader(environmentFile)) {
+                new EnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
+            } catch (IOException e) {
+                throw NativeImage.showError("Failed to read bundle-file " + environmentFile, e);
+            }
         }
 
         Path buildArgsFile = stageDir.resolve("build.json");
@@ -294,6 +305,17 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + buildArgsFile, e);
         }
+    }
+
+    private final AtomicBoolean deleteBundleRoot = new AtomicBoolean();
+
+    private Path createBundleRootDir() throws IOException {
+        Path bundleRoot = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            deleteBundleRoot.set(true);
+            nativeImage.deleteAllFiles(bundleRoot);
+        }));
+        return bundleRoot;
     }
 
     public List<String> getNativeImageArgs() {
@@ -486,9 +508,9 @@ final class BundleSupport {
     void complete() {
         boolean writeOutput;
         try (Stream<Path> pathOutputFiles = Files.list(imagePathOutputDir); Stream<Path> auxiliaryOutputFiles = Files.list(auxiliaryOutputDir)) {
-            writeOutput = pathOutputFiles.findAny().isPresent() || auxiliaryOutputFiles.findAny().isPresent();
+            writeOutput = (pathOutputFiles.findAny().isPresent() || auxiliaryOutputFiles.findAny().isPresent()) && !deleteBundleRoot.get();
         } catch (IOException e) {
-            throw NativeImage.showError("Unable to determine if bundle output should be written.");
+            writeOutput = false;
         }
 
         /*
@@ -517,7 +539,6 @@ final class BundleSupport {
             }
         } finally {
             nativeImage.showNewline();
-            nativeImage.deleteAllFiles(rootDir);
         }
     }
 
