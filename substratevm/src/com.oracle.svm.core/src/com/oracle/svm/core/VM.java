@@ -24,23 +24,47 @@
  */
 package com.oracle.svm.core;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 public final class VM {
 
+    public final String info;
     public final String version;
     public final String vendor;
     public final String vendorUrl;
+    public final String vendorVersion;
     public final String supportURL;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public VM() {
-        String versionStr = System.getProperty("org.graalvm.version", "Unknown Version");
-        String edition = System.getProperty("org.graalvm.config", "CE");
-        version = String.format("GraalVM %s Java %s %s", versionStr, Runtime.version(), edition);
+    public VM(String vmInfo) {
+        info = vmInfo;
+        supportURL = System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
+        version = stripJVMCISuffix(System.getProperty("java.runtime.version"));
         vendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
         vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
-        supportURL = System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
+        vendorVersion = System.getProperty("org.graalvm.vendorversion", "GraalVM CE");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static VM getErrorReportingInstance() {
+        if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(VM.class)) {
+            return ImageSingletons.lookup(VM.class);
+        } else {
+            // create a fall back instance
+            return new VM(System.getProperty("java.vm.info", ""));
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String stripJVMCISuffix(String javaRuntimeVersion) {
+        int jvmciIndex = javaRuntimeVersion.indexOf("-jvmci");
+        if (jvmciIndex >= 0) {
+            return javaRuntimeVersion.substring(0, jvmciIndex);
+        } else {
+            return javaRuntimeVersion;
+        }
     }
 }
