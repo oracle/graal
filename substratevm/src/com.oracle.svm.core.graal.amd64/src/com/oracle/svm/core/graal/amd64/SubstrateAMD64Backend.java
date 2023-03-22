@@ -39,6 +39,8 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -268,15 +270,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         private final boolean destroysCallerSavedRegisters;
         @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
+        private final BiConsumer<CompilationResultBuilder, Integer> offsetRecorder;
 
         public SubstrateAMD64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
-                        LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
+                        LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
+                        BiConsumer<CompilationResultBuilder, Integer> offsetRecorder) {
             super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
             this.newThreadStatus = newThreadStatus;
             this.javaFrameAnchor = javaFrameAnchor;
             this.javaFrameAnchorTemp = javaFrameAnchorTemp;
             this.destroysCallerSavedRegisters = destroysCallerSavedRegisters;
             this.exceptionTemp = exceptionTemp;
+            this.offsetRecorder = offsetRecorder;
 
             assert differentRegisters(parameters, temps, targetAddress, javaFrameAnchor, javaFrameAnchorTemp);
         }
@@ -284,7 +289,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             maybeTransitionToNative(crb, masm, javaFrameAnchor, javaFrameAnchorTemp, state, newThreadStatus);
-            AMD64Call.indirectCall(crb, masm, asRegister(targetAddress), callTarget, state);
+            int offset = AMD64Call.indirectCall(crb, masm, asRegister(targetAddress), callTarget, state);
+            if (offsetRecorder != null) {
+                offsetRecorder.accept(crb, offset);
+            }
         }
 
         @Override
@@ -635,7 +643,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
-                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL, null));
             } else {
                 assert targetAddress == null;
                 append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL,
@@ -817,8 +825,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
     public final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
+        private Function<IndirectCallTargetNode, BiConsumer<CompilationResultBuilder, Integer>> indirectCallOffsetRecorderFactory = node -> null;
+
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
+        }
+
+        public void setIndirectCallOffsetRecorderFactory(Function<IndirectCallTargetNode, BiConsumer<CompilationResultBuilder, Integer>> indirectCallOffsetRecorderFactory) {
+            this.indirectCallOffsetRecorderFactory = indirectCallOffsetRecorderFactory;
         }
 
         @Override
@@ -943,7 +957,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
             append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
-                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
+                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), indirectCallOffsetRecorderFactory.apply(callTarget)));
         }
 
         protected void emitComputedIndirectCall(ComputedIndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
