@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.lir.amd64;
+package org.graalvm.compiler.hotspot.amd64;
 
+import org.graalvm.compiler.lir.amd64.AMD64FrameMapBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMap;
-import org.graalvm.compiler.lir.framemap.FrameMapBuilderImpl;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
 
-public class AMD64FrameMapBuilder extends FrameMapBuilderImpl {
-
-    public AMD64FrameMapBuilder(FrameMap frameMap, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
+public class AMD64HotSpotFrameMapBuilder extends AMD64FrameMapBuilder {
+    public AMD64HotSpotFrameMapBuilder(FrameMap frameMap, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
         super(frameMap, codeCache, registerConfig);
+    }
+
+    @Override
+    public AMD64HotSpotFrameMap getFrameMap() {
+        return (AMD64HotSpotFrameMap) super.getFrameMap();
+    }
+
+    /**
+     * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
+     * runtime for walking/inspecting frames of such methods.
+     */
+    public StackSlot getRBPSpillSlot() {
+        return getFrameMap().getRBPSpillSlot();
+    }
+
+    public StackSlot getDeoptimizationRescueSlot() {
+        return getFrameMap().getDeoptimizationRescueSlot();
     }
 }

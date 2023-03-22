@@ -66,7 +66,6 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.amd64.AMD64FrameMapBuilder;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MoveFromRegOp;
 import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
@@ -90,7 +89,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterArray;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -163,15 +161,8 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
 
         final NoOp placeholder;
 
-        /**
-         * The slot reserved for saving RBP.
-         */
-        final StackSlot reservedSlot;
-
         SaveRbp(NoOp placeholder) {
             this.placeholder = placeholder;
-            AMD64FrameMapBuilder frameMapBuilder = (AMD64FrameMapBuilder) getResult().getFrameMapBuilder();
-            this.reservedSlot = config.preserveFramePointer ? null : frameMapBuilder.allocateRBPSpillSlot();
         }
 
         /**
@@ -183,12 +174,10 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             assert !config.preserveFramePointer : "rbp has been pushed onto the stack";
             AllocatableValue dst;
             if (useStack) {
-                dst = reservedSlot;
+                dst = ((AMD64HotSpotFrameMapBuilder) getResult().getFrameMapBuilder()).getRBPSpillSlot();
             } else {
-                ((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).freeRBPSpillSlot();
                 dst = newVariable(LIRKind.value(AMD64Kind.QWORD));
             }
-
             placeholder.replace(getResult().getLIR(), new MoveFromRegOp(AMD64Kind.QWORD, dst, rbp.asValue(LIRKind.value(AMD64Kind.QWORD))));
             return dst;
         }
@@ -503,7 +492,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
         }
 
         if (hasDebugInfo) {
-            getResult().setDeoptimizationRescueSlot(((AMD64FrameMapBuilder) getResult().getFrameMapBuilder()).allocateDeoptimizationRescueSlot());
+            getResult().setDeoptimizationRescueSlot(((AMD64HotSpotFrameMapBuilder) getResult().getFrameMapBuilder()).getDeoptimizationRescueSlot());
         }
         getResult().setMaxInterpreterFrameSize(debugInfoBuilder.maxInterpreterFrameSize());
 
