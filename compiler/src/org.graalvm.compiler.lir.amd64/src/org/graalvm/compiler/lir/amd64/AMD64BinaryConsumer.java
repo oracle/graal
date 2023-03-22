@@ -306,10 +306,6 @@ public class AMD64BinaryConsumer {
 
         @State protected LIRFrameState state;
 
-        public MemoryConstOp(AMD64BinaryArithmetic opcode, OperandSize size, AMD64AddressValue x, int y, LIRFrameState state) {
-            this(opcode.getMIOpcode(size, NumUtil.isByte(y)), size, x, y, state);
-        }
-
         public MemoryConstOp(AMD64MIOp opcode, OperandSize size, AMD64AddressValue x, int y, LIRFrameState state) {
             this(TYPE, opcode, size, x, y, state);
         }
