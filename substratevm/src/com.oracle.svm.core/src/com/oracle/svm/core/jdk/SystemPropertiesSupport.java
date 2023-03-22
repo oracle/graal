@@ -112,11 +112,12 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
 
         initializeProperty("java.runtime.name", "GraalVM Runtime Environment");
 
+        VM vm = ImageSingletons.lookup(VM.class);
+        initializeProperty("java.vendor", vm.vendor);
+        initializeProperty("java.vendor.url", vm.vendorUrl);
         initializeProperty("java.vm.name", "Substrate VM");
-        initializeProperty("java.vm.vendor", ImageSingletons.lookup(VM.class).vendor);
-        initializeProperty("java.vm.version", ImageSingletons.lookup(VM.class).version);
-        initializeProperty("java.vendor", ImageSingletons.lookup(VM.class).vendor);
-        initializeProperty("java.vendor.url", ImageSingletons.lookup(VM.class).vendorUrl);
+        initializeProperty("java.vm.vendor", vm.vendor);
+        initializeProperty("java.vm.version", vm.version);
 
         initializeProperty("java.class.path", "");
         initializeProperty("java.endorsed.dirs", "");
