@@ -63,7 +63,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
@@ -108,10 +107,10 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        registerLoadLibraryPlugin(plugins, System.class);
+        registerLoadLibraryPlugin(providers, plugins, System.class);
     }
 
-    public void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
+    public void registerLoadLibraryPlugin(Providers providers, Plugins plugins, Class<?> clazz) {
         Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
         r.register(new RequiredInvocationPlugin("loadLibrary", String.class) {
             @Override
@@ -122,7 +121,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                  * String arguments.
                  */
                 if (libnameNode.isConstant()) {
-                    registerLibrary((String) SubstrateObjectConstant.asObject(libnameNode.asConstant()));
+                    registerLibrary(providers.getSnippetReflection().asObject(String.class, libnameNode.asJavaConstant()));
                 }
                 /* We never want to do any actual intrinsification, process the original invoke. */
                 return false;

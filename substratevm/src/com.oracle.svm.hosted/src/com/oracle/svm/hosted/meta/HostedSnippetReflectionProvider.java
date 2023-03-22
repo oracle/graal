@@ -50,12 +50,13 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     @Override
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        if ((type == Class.class || type == Object.class) && constant instanceof SubstrateObjectConstant) {
-            Object objectValue = SubstrateObjectConstant.asObject(constant);
-            if (objectValue instanceof DynamicHub) {
-                return type.cast(((DynamicHub) objectValue).getHostedJavaClass());
+        if (type == Class.class && constant instanceof SubstrateObjectConstant) {
+            /* Only unwrap the DynamicHub if a Class object is required explicitly. */
+            if (SubstrateObjectConstant.asObject(constant) instanceof DynamicHub hub) {
+                return type.cast(hub.getHostedJavaClass());
             }
         }
         return super.asObject(type, constant);
     }
+
 }

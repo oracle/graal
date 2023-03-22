@@ -246,8 +246,8 @@ public final class NativeImageHeap implements ImageHeap {
         assert addObjectWorklist.isEmpty();
     }
 
-    private static Object readObjectField(HostedField field, JavaConstant receiver) {
-        return SubstrateObjectConstant.asObject(field.readStorageValue(receiver));
+    private Object readObjectField(HostedField field, JavaConstant receiver) {
+        return universe.getSnippetReflection().asObject(Object.class, field.readStorageValue(receiver));
     }
 
     private static JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
@@ -293,12 +293,8 @@ public final class NativeImageHeap implements ImageHeap {
         }
 
         if (metaAccess.isInstanceOf(constant, Class.class)) {
-            Object original = SubstrateObjectConstant.asObject(constant);
-            if (original instanceof Class) {
-                throw VMError.shouldNotReachHere("Must not have Class in native image heap: " + original);
-            }
-            assert original instanceof DynamicHub;
-            if (((DynamicHub) original).getClassInitializationInfo() == null) {
+            DynamicHub hub = universe.getSnippetReflection().asObject(DynamicHub.class, constant);
+            if (hub.getClassInitializationInfo() == null) {
                 /*
                  * All DynamicHub instances written into the image heap must have a
                  * ClassInitializationInfo, otherwise we can get a NullPointerException at run time.
@@ -308,7 +304,7 @@ public final class NativeImageHeap implements ImageHeap {
                  * image that the static analysis has not seen - so this check actually protects
                  * against much more than just missing class initialization information.
                  */
-                throw reportIllegalType(original, reason);
+                throw reportIllegalType(universe.getSnippetReflection().asObject(Object.class, constant), reason);
             }
         }
 
@@ -318,7 +314,7 @@ public final class NativeImageHeap implements ImageHeap {
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
         if (metaAccess.isInstanceOf(uncompressed, String.class)) {
-            handleImageString((String) SubstrateObjectConstant.asObject(uncompressed));
+            handleImageString(universe.getSnippetReflection().asObject(String.class, uncompressed));
         }
 
         final ObjectInfo existing = objects.get(uncompressed);
@@ -531,7 +527,7 @@ public final class NativeImageHeap implements ImageHeap {
                     if (constant instanceof ImageHeapConstant) {
                         relocatable = addConstantArrayElements(constant, length, false, info);
                     } else {
-                        Object object = SubstrateObjectConstant.asObject(constant);
+                        Object object = universe.getSnippetReflection().asObject(Object.class, constant);
                         relocatable = addArrayElements((Object[]) object, false, info);
                     }
                     references = true;
@@ -546,7 +542,7 @@ public final class NativeImageHeap implements ImageHeap {
         }
 
         if (relocatable && !isKnownImmutableConstant(constant)) {
-            VMError.shouldNotReachHere("Object with relocatable pointers must be explicitly immutable: " + SubstrateObjectConstant.asObject(constant));
+            VMError.shouldNotReachHere("Object with relocatable pointers must be explicitly immutable: " + universe.getSnippetReflection().asObject(Object.class, constant));
         }
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable);
     }
@@ -592,7 +588,7 @@ public final class NativeImageHeap implements ImageHeap {
             /* Currently injected ImageHeapObject cannot be marked as immutable. */
             return false;
         }
-        return isKnownImmutable(SubstrateObjectConstant.asObject(constant));
+        return isKnownImmutable(universe.getSnippetReflection().asObject(Object.class, constant));
     }
 
     /** Determine if an object in the host heap will be immutable in the native image heap. */
@@ -742,7 +738,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         @Override
         public Object getObject() {
-            return SubstrateObjectConstant.asObject(constant);
+            return universe.getSnippetReflection().asObject(Object.class, constant);
         }
 
         @Override

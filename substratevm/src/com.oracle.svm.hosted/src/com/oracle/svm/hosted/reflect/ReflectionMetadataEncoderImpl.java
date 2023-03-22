@@ -65,6 +65,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -122,7 +123,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * Emitting the metadata happens in two phases. In the first phase, the string and class encoders
  * are filled with the necessary values (in the {@code #add*Metadata} functions). In a second phase,
- * the values are encoded into their intended byte arrays (see {@link #encodeAllAndInstall()}).
+ * the values are encoded into their intended byte arrays (see
+ * {@link ReflectionMetadataEncoder#encodeAllAndInstall(SnippetReflectionProvider)}).
  *
  * The metadata encoding format is detailed in {@link ReflectionMetadataDecoderImpl}.
  */
@@ -725,7 +727,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
      * See {@link ReflectionMetadataDecoderImpl} for the encoding format description.
      */
     @Override
-    public void encodeAllAndInstall() {
+    public void encodeAllAndInstall(SnippetReflectionProvider snippetReflection) {
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         int typesIndex = encodeAndAddCollection(buf, sortedTypes.toArray(new HostedType[0]), this::encodeType, false);
         assert typesIndex == 0;
@@ -756,7 +758,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             }
         }
         for (AccessibleObjectMetadata metadata : heapData) {
-            AccessibleObject heapObject = (AccessibleObject) SubstrateObjectConstant.asObject(metadata.heapObject);
+            AccessibleObject heapObject = snippetReflection.asObject(AccessibleObject.class, metadata.heapObject);
             annotationsEncodings.put(heapObject, encodeAnnotations(metadata.annotations));
             typeAnnotationsEncodings.put(heapObject, encodeTypeAnnotations(metadata.typeAnnotations));
             if (metadata instanceof ExecutableMetadata) {

@@ -147,12 +147,13 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         super.onObjectReachable(imageHeapConstant, reason, onAnalysisModified);
 
-        if (metaAccess.isInstanceOf(imageHeapConstant, Field.class)) {
-            reflectionSupport.registerHeapReflectionField((Field) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
-        } else if (metaAccess.isInstanceOf(imageHeapConstant, Executable.class)) {
-            reflectionSupport.registerHeapReflectionExecutable((Executable) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
-        } else if (metaAccess.isInstanceOf(imageHeapConstant, DynamicHub.class)) {
-            reflectionSupport.registerHeapDynamicHub(SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
+        Object object = snippetReflection.asObject(Object.class, imageHeapConstant.getHostedObject());
+        if (object instanceof Field field) {
+            reflectionSupport.registerHeapReflectionField(field, reason);
+        } else if (object instanceof Executable executable) {
+            reflectionSupport.registerHeapReflectionExecutable(executable, reason);
+        } else if (object instanceof DynamicHub hub) {
+            reflectionSupport.registerHeapDynamicHub(hub, reason);
         }
     }
 }

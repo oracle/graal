@@ -69,7 +69,6 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneWithExceptionNode;
 import com.oracle.svm.core.jdk.AnnotationSupportConfig;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
@@ -597,7 +596,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             } else {
                 returnValue = "@" + annotationInterfaceType.toJavaName(true);
             }
-            ValueNode returnConstant = kit.unique(ConstantNode.forConstant(SubstrateObjectConstant.forObject(returnValue), providers.getMetaAccess()));
+            ValueNode returnConstant = kit.unique(ConstantNode.forConstant(providers.getSnippetReflection().forObject(returnValue), providers.getMetaAccess()));
             kit.append(new ReturnNode(returnConstant));
 
             return kit.finalizeGraph();

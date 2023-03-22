@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Arrays;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
@@ -104,11 +105,13 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
     private final NativeLibraries nativeLibs;
 
     private final ResolvedJavaType functionPointerType;
+    private final SnippetReflectionProvider snippetReflection;
 
-    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, WordTypes wordTypes, NativeLibraries nativeLibs) {
+    public CInterfaceInvocationPlugin(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, WordTypes wordTypes, NativeLibraries nativeLibs) {
         this.wordTypes = wordTypes;
         this.nativeLibs = nativeLibs;
         this.functionPointerType = metaAccess.lookupJavaType(CFunctionPointer.class);
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
@@ -191,7 +194,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                     readKind = resultKind;
                 }
                 AddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
-                LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
+                LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
                 final Stamp stamp;
                 if (readKind == JavaKind.Object) {
                     stamp = b.getInvokeReturnStamp(null).getTrustedStamp();
@@ -215,7 +218,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 JavaKind valueKind = value.getStackKind();
                 JavaKind writeKind = kindFromSize(elementSize, valueKind);
                 AddressNode offsetAddress = makeOffsetAddress(graph, args, accessorInfo, base, displacement, elementSize);
-                LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
+                LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
                 if (isPinnedObject) {
                     b.add(new JavaWriteNode(writeKind, offsetAddress, locationIdentity, value, BarrierType.NONE, true));
                 } else {
@@ -290,7 +293,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
          * bits around the written bitfield unchanged.
          */
         AddressNode address = makeOffsetAddress(graph, args, accessorInfo, base, byteOffset, -1);
-        LocationIdentity locationIdentity = makeLocationIdentity(b, method, args, accessorInfo);
+        LocationIdentity locationIdentity = makeLocationIdentity(b, snippetReflection, method, args, accessorInfo);
         Stamp stamp = IntegerStamp.create(memoryKind.getBitCount());
         ValueNode cur = readPrimitive(b, address, locationIdentity, stamp, accessorInfo);
         cur = adaptPrimitiveType(graph, cur, memoryKind, computeKind, true);
@@ -386,7 +389,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
         return graph.addOrUniqueWithInputs(new OffsetAddressNode(base, makeOffset(graph, args, accessorInfo, displacement, indexScaling)));
     }
 
-    private static LocationIdentity makeLocationIdentity(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args, AccessorInfo accessorInfo) {
+    private static LocationIdentity makeLocationIdentity(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, ResolvedJavaMethod method, ValueNode[] args, AccessorInfo accessorInfo) {
         LocationIdentity locationIdentity;
         if (accessorInfo.hasLocationIdentityParameter()) {
             ValueNode locationIdentityNode = args[accessorInfo.locationIdentityParameterNumber(true)];
@@ -395,7 +398,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                                 "locationIdentity is not a compile time constant for call to " + method.format("%H.%n(%p)") + " in " + b.getMethod().asStackTraceElement(b.bci()),
                                 method).getMessage());
             }
-            locationIdentity = (LocationIdentity) SubstrateObjectConstant.asObject(locationIdentityNode.asConstant());
+            locationIdentity = snippetReflection.asObject(LocationIdentity.class, locationIdentityNode.asJavaConstant());
         } else if (accessorInfo.hasUniqueLocationIdentity()) {
             StructFieldInfo fieldInfo = (StructFieldInfo) accessorInfo.getParent();
             assert fieldInfo.getLocationIdentity() != null;

@@ -30,7 +30,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.FrameAccess;
@@ -119,8 +120,8 @@ public final class NativeImageHeapWriter {
         }
     }
 
-    private static Object readObjectField(HostedField field, JavaConstant receiver) {
-        return SubstrateObjectConstant.asObject(field.readStorageValue(receiver));
+    private Object readObjectField(HostedField field, JavaConstant receiver) {
+        return snippetReflection().asObject(Object.class, field.readStorageValue(receiver));
     }
 
     private int referenceSize() {
@@ -147,7 +148,7 @@ public final class NativeImageHeapWriter {
         }
 
         if (value.getJavaKind() == JavaKind.Object && heap.getMetaAccess().isInstanceOf(value, RelocatedPointer.class)) {
-            addNonDataRelocation(buffer, index, (RelocatedPointer) SubstrateObjectConstant.asObject(value));
+            addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, value));
         } else {
             write(buffer, index, value, info != null ? info : field);
         }
@@ -174,20 +175,20 @@ public final class NativeImageHeapWriter {
                 int shift = compressEncoding.getShift();
                 writeReferenceValue(buffer, index, targetInfo.getAddress() >>> shift);
             } else {
-                addDirectRelocationWithoutAddend(buffer, index, referenceSize(), SubstrateObjectConstant.asObject(target));
+                addDirectRelocationWithoutAddend(buffer, index, referenceSize(), snippetReflection().asObject(Object.class, target));
             }
         }
     }
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, JavaConstant constant, ObjectInfo info) {
         if (heap.getMetaAccess().isInstanceOf(constant, RelocatedPointer.class)) {
-            addNonDataRelocation(buffer, index, (RelocatedPointer) SubstrateObjectConstant.asObject(constant));
+            addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, constant));
             return;
         }
 
         final JavaConstant con;
         if (heap.getMetaAccess().isInstanceOf(constant, WordBase.class)) {
-            Object value = heap.getUniverse().getSnippetReflection().asObject(Object.class, constant);
+            Object value = snippetReflection().asObject(Object.class, constant);
             con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), ((WordBase) value).rawValue());
         } else if (constant.isNull() && kind == FrameAccess.getWordKind()) {
             con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0);
@@ -431,4 +432,9 @@ public final class NativeImageHeapWriter {
             throw NativeImageHeap.reportIllegalType(ex.getType(), reason);
         }
     }
+
+    private SnippetReflectionProvider snippetReflection() {
+        return heap.getUniverse().getSnippetReflection();
+    }
+
 }
