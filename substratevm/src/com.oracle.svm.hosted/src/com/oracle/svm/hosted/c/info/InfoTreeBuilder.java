@@ -345,10 +345,28 @@ public class InfoTreeBuilder {
             StructFieldInfo fieldInfo = new StructFieldInfo(entry.getKey(), elementKind(entry.getValue()));
             fieldInfo.adoptChildren(entry.getValue());
             structInfo.adoptChild(fieldInfo);
+            assert verifyRawStructFieldAccessors(fieldInfo) : "fields must have both a getter and a setter";
         }
 
         nativeCodeInfo.adoptChild(structInfo);
         nativeLibs.registerElementInfo(type, structInfo);
+    }
+
+    private boolean verifyRawStructFieldAccessors(StructFieldInfo fieldInfo) {
+        boolean hasGetter = false;
+        boolean hasSetter = false;
+        for (ElementInfo child : fieldInfo.getChildren()) {
+            if (child instanceof AccessorInfo) {
+                AccessorKind kind = ((AccessorInfo) child).getAccessorKind();
+                if (kind == AccessorKind.GETTER) {
+                    hasGetter = true;
+                }
+                if (kind == AccessorKind.SETTER) {
+                    hasSetter = true;
+                }
+            }
+        }
+        return hasSetter && hasGetter;
     }
 
     private boolean hasLocationIdentityParameter(ResolvedJavaMethod method) {

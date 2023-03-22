@@ -534,7 +534,7 @@ public class SubstrateDiagnostics {
                 log.string("General purpose register values:").indent(true);
                 RegisterDumper.singleton().dumpRegisters(log, context.getRegisterContext(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
                 log.indent(false);
-            } else if (CalleeSavedRegisters.supportedByPlatform() && context.frameHasCalleeSavedRegisters()) {
+            } else if (CalleeSavedRegisters.supportedByPlatform() && context.getFrameHasCalleeSavedRegisters()) {
                 CalleeSavedRegisters.singleton().dumpRegisters(log, context.getStackPointer(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
             }
         }
@@ -1037,7 +1037,7 @@ public class SubstrateDiagnostics {
         void setRegisterContext(RegisterDumper.Context value);
 
         @RawField
-        boolean frameHasCalleeSavedRegisters();
+        boolean getFrameHasCalleeSavedRegisters();
 
         @RawField
         void setFrameHasCalleeSavedRegisters(boolean value);
