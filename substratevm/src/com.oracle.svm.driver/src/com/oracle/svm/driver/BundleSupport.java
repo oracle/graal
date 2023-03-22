@@ -827,9 +827,9 @@ final class BundleSupport {
                 localDateStr = "unknown time";
             }
             nativeImage.showNewline();
-            nativeImage.showMessage(String.format("%sLoaded Bundle from %s", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName));
-            nativeImage.showMessage(String.format("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, localDateStr));
-            nativeImage.showMessage(String.format("%sUsing version: '%s'%s on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX, bundleVersion, currentVersion, bundlePlatform, currentPlatform));
+            nativeImage.showMessage("%sLoaded Bundle from %s", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName);
+            nativeImage.showMessage("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, localDateStr);
+            nativeImage.showMessage("%sUsing version: '%s'%s on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX, bundleVersion, currentVersion, bundlePlatform, currentPlatform);
         }
 
         private void write() {
