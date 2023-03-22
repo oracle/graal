@@ -32,7 +32,6 @@ public final class VM {
     public final String version;
     public final String vendor;
     public final String vendorUrl;
-    public final String runtimeName;
     public final String supportURL;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -42,7 +41,6 @@ public final class VM {
         version = String.format("GraalVM %s Java %s %s", versionStr, Runtime.version(), edition);
         vendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
         vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
-        runtimeName = System.getProperty("java.runtime.name", "Unknown Runtime Environment");
         supportURL = System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
     }
 }

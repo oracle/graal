@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
                     /* For our convenience for now. */
                     "file.encoding", "sun.jnu.encoding", "native.encoding", "stdout.encoding", "stderr.encoding",
                     "java.class.version",
+                    "java.runtime.version",
                     "java.specification.name",
                     "java.specification.vendor",
                     "java.specification.version",
@@ -109,11 +110,11 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
             }
         }
 
+        initializeProperty("java.runtime.name", "GraalVM Runtime Environment");
+
         initializeProperty("java.vm.name", "Substrate VM");
-        initializeProperty("java.runtime.name", ImageSingletons.lookup(VM.class).runtimeName);
         initializeProperty("java.vm.vendor", ImageSingletons.lookup(VM.class).vendor);
         initializeProperty("java.vm.version", ImageSingletons.lookup(VM.class).version);
-        initializeProperty("java.runtime.version", ImageSingletons.lookup(VM.class).version);
         initializeProperty("java.vendor", ImageSingletons.lookup(VM.class).vendor);
         initializeProperty("java.vendor.url", ImageSingletons.lookup(VM.class).vendorUrl);
 
