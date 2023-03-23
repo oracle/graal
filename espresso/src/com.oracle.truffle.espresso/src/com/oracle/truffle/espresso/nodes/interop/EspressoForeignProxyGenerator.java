@@ -55,11 +55,14 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -69,12 +72,17 @@ import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.jni.Mangle;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.ModulesHelperVM;
 
 /**
  * EspressoForeignProxyGenerator contains the code to generate a dynamic Espresso proxy class for
@@ -89,27 +97,32 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private static final String JLR_UNDECLARED_THROWABLE_EX = "java/lang/reflect/UndeclaredThrowableException";
     private static final int VARARGS = 0x00000080;
 
-    private Meta meta;
+    private final Meta meta;
+
+    private final EspressoContext context;
+
+    private final StaticObject proxyClassLoader;
 
     /* name of proxy class */
-    private String className;
+    private final String className;
 
     /* proxy interfaces */
-    private ObjectKlass[] interfaces;
+    private final ObjectKlass[] interfaces;
 
     /* proxy class access flags */
-    private int accessFlags;
+    private final int accessFlags;
 
     /*
      * Maps method signature string to list of ProxyMethod objects for proxy methods with that
      * signature.
      */
-    private Map<String, List<ProxyMethod>> proxyMethods = new HashMap<>();
+    private final Map<String, List<ProxyMethod>> proxyMethods = new HashMap<>();
 
     // next number to use for generation of unique proxy class names
     private static final AtomicLong nextUniqueNumber = new AtomicLong();
 
-    private static final String proxyNamePrefix = "com.oracle.truffle.espresso.polyglot.Foreign$Proxy$";
+    public static final String PROXY_PACKAGE_PREFIX = "com.oracle.truffle.espresso.polyglot";
+    public static final String PROXY_NAME_PREFIX = "Foreign$Proxy$";
 
     /**
      * Construct a ProxyGenerator to generate a proxy class with the specified name and for the
@@ -118,12 +131,15 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      * A ProxyGenerator object contains the state for the ongoing generation of a particular proxy
      * class.
      */
-    private EspressoForeignProxyGenerator(Meta meta, ObjectKlass[] interfaces) {
+    private EspressoForeignProxyGenerator(Meta meta, ObjectKlass[] interfaces, EspressoContext context) {
         super(ClassWriter.COMPUTE_FRAMES);
+
         this.meta = meta;
-        this.className = nextClassName();
+        this.context = context;
         this.interfaces = interfaces;
         this.accessFlags = ACC_PUBLIC | ACC_FINAL | ACC_SUPER;
+        this.proxyClassLoader = context.getBindings().getBindingsLoader();
+        this.className = nextClassName(proxyClassContext(referencedTypes(interfaces)));
     }
 
     public static class GeneratedProxyBytes {
@@ -141,7 +157,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         synchronized (context) {
             GeneratedProxyBytes generatedProxyBytes = context.getProxyBytesOrNull(metaName);
             if (generatedProxyBytes == null) {
-                EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(context.getMeta(), interfaces);
+                EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(context.getMeta(), interfaces, context);
                 generatedProxyBytes = new GeneratedProxyBytes(generator.generateClassFile(), generator.className);
                 context.registerProxyBytes(metaName, generatedProxyBytes);
             }
@@ -149,8 +165,167 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         }
     }
 
-    private static String nextClassName() {
-        return proxyNamePrefix + nextUniqueNumber.getAndIncrement();
+    /*
+     * Returns all types referenced by all public non-static method signatures of the proxy
+     * interfaces
+     */
+    private Set<Klass> referencedTypes(ObjectKlass[] interfaces) {
+        HashSet<Klass> types = new HashSet<>();
+        for (ObjectKlass intf : interfaces) {
+            for (Method m : intf.getDeclaredMethods()) {
+                if (!Modifier.isStatic(m.getModifiers())) {
+                    addElementType(types, m.resolveReturnKlass());
+                    addElementTypes(types, m.resolveParameterKlasses());
+                    addElementTypes(types, m.getCheckedExceptions());
+                }
+            }
+        }
+        return types;
+    }
+
+    private void addElementTypes(HashSet<Klass> types, Klass... classes) {
+        for (var cls : classes) {
+            addElementType(types, cls);
+        }
+    }
+
+    private void addElementType(HashSet<Klass> types, Klass cls) {
+        var type = getElementType(cls);
+        if (!type.isPrimitive()) {
+            types.add(type);
+        }
+    }
+
+    private static Klass getElementType(Klass type) {
+        Klass e = type;
+        while (e.isArray()) {
+            e = e.getElementalType();
+        }
+        return e;
+    }
+
+    private static final class ProxyClassContext {
+
+        private final ModuleTable.ModuleEntry module;
+        private final String packageName;
+        private final int accessFlags;
+
+        private ProxyClassContext(ModuleTable.ModuleEntry module, String packageName, int accessFlags, EspressoContext context) {
+            if (module.isNamed()) {
+                if (packageName.isEmpty()) {
+                    // Per JLS 7.4.2, unnamed package can only exist in unnamed modules.
+                    // This means a package-private superinterface exist in the unnamed
+                    // package of a named module.
+                    throw new InternalError("Unnamed package cannot be added to " + module);
+                }
+
+                try {
+                    ModulesHelperVM.extractPackageEntry(packageName, module, context.getMeta(), null);
+                } catch (EspressoException ex) {
+                    throw new InternalError(packageName + " not exist in " + module.getName());
+                }
+            }
+
+            if ((accessFlags & ~Modifier.PUBLIC) != 0) {
+                throw new InternalError("proxy access flags must be Modifier.PUBLIC or 0");
+            }
+            this.module = module;
+            this.packageName = packageName;
+            this.accessFlags = accessFlags;
+        }
+    }
+
+    private ProxyClassContext proxyClassContext(Set<Klass> refTypes) {
+        Map<ObjectKlass, ModuleTable.ModuleEntry> packagePrivateTypes = new HashMap<>();
+        boolean nonExported = false;
+
+        for (ObjectKlass intf : interfaces) {
+            ModuleTable.ModuleEntry m = intf.getModuleEntry();
+            if (!Modifier.isPublic(intf.getModifiers())) {
+                packagePrivateTypes.put(intf, m);
+            } else {
+                if (!m.isOpen() && !intf.packageEntry().isUnqualifiedExported()) {
+                    // module-private types
+                    nonExported = true;
+                }
+            }
+        }
+
+        if (packagePrivateTypes.size() > 0) {
+            // all package-private types must be in the same runtime package
+            // i.e. same package name and same module (named or unnamed)
+            //
+            // Configuration will fail if M1 and in M2 defined by the same loader
+            // and both have the same package p (so no need to check class loader)
+            ModuleTable.ModuleEntry targetModule = null;
+            String targetPackageName = null;
+            for (Map.Entry<ObjectKlass, ModuleTable.ModuleEntry> e : packagePrivateTypes.entrySet()) {
+                ObjectKlass intf = e.getKey();
+                ModuleTable.ModuleEntry m = e.getValue();
+                if ((targetModule != null && targetModule != m) ||
+                                (targetPackageName != null && !targetPackageName.equals(intf.packageEntry().getNameAsString()))) {
+                    throw new IllegalArgumentException(
+                                    "cannot have non-public interfaces in different packages");
+                }
+                if (context.getRegistries().getClassRegistry((StaticObject) m.classLoader()) != context.getRegistries().getClassRegistry(proxyClassLoader)) {
+                    // the specified loader is not the same class loader
+                    // of the non-public interface
+                    throw new IllegalArgumentException(
+                                    "non-public interface is not defined by the given loader");
+                }
+
+                targetModule = m;
+                targetPackageName = e.getKey().packageEntry().getNameAsString();
+            }
+
+            // validate if the target module can access all other interfaces
+            for (ObjectKlass intf : interfaces) {
+                ModuleTable.ModuleEntry m = intf.getModuleEntry();
+                if (m == targetModule) {
+                    continue;
+                }
+
+                if (!targetModule.canRead(m, context) || (!m.isOpen() && !intf.packageEntry().isUnqualifiedExported())) {
+                    throw new IllegalArgumentException(targetModule + " can't access " + intf.getName());
+                }
+            }
+            // return the module of the package-private interface
+            return new ProxyClassContext(targetModule, targetPackageName, 0, context);
+        }
+
+        // All proxy interfaces are public. Define in bindings loader unnamed module then.
+        ModuleTable.ModuleEntry targetModule = context.getRegistries().getClassRegistry(context.getBindings().getBindingsLoader()).getUnnamedModule();
+
+        // set up proxy class access to proxy interfaces and types
+        // referenced in the method signature
+        Set<Klass> types = new HashSet<>(Arrays.asList(interfaces));
+        types.addAll(refTypes);
+        for (Klass c : types) {
+            ensureAccess(targetModule, c);
+        }
+
+        String pkgName = nonExported ? PROXY_PACKAGE_PREFIX + '.' + targetModule.getName()
+                        : targetModule.getNameAsString();
+        return new ProxyClassContext(targetModule, pkgName, Modifier.PUBLIC, context);
+    }
+
+    /*
+     * Ensure the given module can access the given class.
+     */
+    private void ensureAccess(ModuleTable.ModuleEntry target, Klass c) {
+        ModuleTable.ModuleEntry m = c.getModuleEntry();
+        // add read edge and qualified export for the target module to access
+        if (!target.canRead(m, context)) {
+            m.addReads(target);
+        }
+        PackageTable.PackageEntry pe = c.packageEntry();
+        if (!m.isOpen() && !pe.isUnqualifiedExported() && pe.isQualifiedExportTo(target)) {
+            pe.addExports(target);
+        }
+    }
+
+    private String nextClassName(ProxyClassContext proxyClassContext) {
+        return proxyClassContext.packageName + "." + PROXY_NAME_PREFIX + nextUniqueNumber.getAndIncrement();
     }
 
     /**
@@ -159,7 +334,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      */
     private byte[] generateClassFile() {
         visit(V1_8, accessFlags, dotToSlash(className), null,
-                        meta.sun_reflect_MagicAccessorImpl.getNameAsString(), typeNames(interfaces));
+                        JL_OBJECT, typeNames(interfaces));
 
         // toString is implemented by interop protocol by means of
         // toDisplayString and asString
@@ -269,7 +444,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         ctor.visitParameter(null, 0);
         ctor.visitCode();
         ctor.visitVarInsn(ALOAD, 0);
-        ctor.visitMethodInsn(INVOKESPECIAL, meta.sun_reflect_MagicAccessorImpl.getNameAsString(), "<init>",
+        ctor.visitMethodInsn(INVOKESPECIAL, JL_OBJECT, "<init>",
                         "()V", false);
         ctor.visitInsn(RETURN);
 
@@ -481,7 +656,8 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             mv.visitLdcInsn(Mangle.truffleJniMethodName(methodName, signature));
 
             if (parameterTypes.length > 0) {
-                // Create an array and fill with the parameters converting primitives to wrappers
+                // Create an array and fill with the parameters converting primitives to
+                // wrappers
                 emitIconstInsn(mv, parameterTypes.length);
                 mv.visitTypeInsn(ANEWARRAY, JL_OBJECT);
                 for (int i = 0; i < parameterTypes.length; i++) {

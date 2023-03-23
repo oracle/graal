@@ -1701,6 +1701,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         return module();
     }
 
+    public final ModuleEntry getModuleEntry() {
+        return module();
+    }
+
     // visible to TypeCheckNode
     public Assumption getRedefineAssumption() {
         return Assumption.ALWAYS_VALID;
