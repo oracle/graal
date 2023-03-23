@@ -49,16 +49,14 @@ public class Providers extends CoreProvidersImpl implements CodeGenProviders {
 
     private final CodeCacheProvider codeCache;
 
-    private final SnippetReflectionProvider snippetReflection;
     private final WordTypes wordTypes;
 
     public Providers(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, PlatformConfigurationProvider platformConfigurationProvider,
                     MetaAccessExtensionProvider metaAccessExtensionProvider, SnippetReflectionProvider snippetReflection, WordTypes wordTypes, LoopsDataProvider loopsDataProvider) {
         super(metaAccess, constantReflection, constantFieldProvider, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider,
-                        new WordVerificationImpl(wordTypes));
+                        new WordVerificationImpl(wordTypes), snippetReflection);
         this.codeCache = codeCache;
-        this.snippetReflection = snippetReflection;
         this.wordTypes = wordTypes;
     }
 
@@ -73,29 +71,22 @@ public class Providers extends CoreProvidersImpl implements CodeGenProviders {
         return codeCache;
     }
 
-    public SnippetReflectionProvider getSnippetReflection() {
-        return snippetReflection;
-    }
-
     public WordTypes getWordTypes() {
         return wordTypes;
     }
 
-    @Override
     public Providers copyWith(ConstantReflectionProvider substitution) {
         assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, substitution, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
                         snippetReflection, wordTypes, loopsDataProvider);
     }
 
-    @Override
     public Providers copyWith(ConstantFieldProvider substitution) {
         assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, constantReflection, substitution, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
                         snippetReflection, wordTypes, loopsDataProvider);
     }
 
-    @Override
     public Providers copyWith(Replacements substitution) {
         assert this.getClass() == Providers.class : "must override in " + getClass();
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, substitution, stampProvider, platformConfigurationProvider,
