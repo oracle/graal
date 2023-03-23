@@ -184,7 +184,7 @@ public class CFStackifierSortPhase extends BasePhase<StackifierData> {
          */
         private static HIRBlock getSuccessorAt(HIRBlock current, int index) {
             if (current.isLoopEnd()) {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere("unexpected loop end"); // ExcludeFromJacocoGeneratedReport
             } else {
                 return current.getSuccessorAt(index);
             }

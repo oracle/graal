@@ -58,7 +58,7 @@ public class GraalError extends Error {
     }
 
     public static RuntimeException shouldNotReachHereUnexpectedValue(Object obj) {
-        throw new GraalError("should not reach here: unexpected value: %s", obj.toString());
+        throw new GraalError("should not reach here: unexpected value: %s", obj);
     }
 
     public static RuntimeException shouldNotReachHere(Throwable cause) {
