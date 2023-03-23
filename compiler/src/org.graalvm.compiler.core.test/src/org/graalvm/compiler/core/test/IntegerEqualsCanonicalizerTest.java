@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -155,6 +155,25 @@ public class IntegerEqualsCanonicalizerTest extends GraalCompilerTest {
     @Test
     public void testIntegerTest() {
         test("testNormalIntegerTest", "testAlternateIntegerTest");
+    }
+
+    public static boolean testEqualsNotLeftSnippet(int x) {
+        return ~x == x;
+    }
+
+    public static boolean testEqualsNotRightSnippet(int x) {
+        return x == ~x;
+    }
+
+    @SuppressWarnings("unused")
+    public static boolean testEqualsNotReferenceSnippet(int x) {
+        return false;
+    }
+
+    @Test
+    public void testEqualsNot() {
+        test("testEqualsNotLeftSnippet", "testEqualsNotReferenceSnippet");
+        test("testEqualsNotRightSnippet", "testEqualsNotReferenceSnippet");
     }
 
     private void test(String snippet, String referenceSnippet) {
