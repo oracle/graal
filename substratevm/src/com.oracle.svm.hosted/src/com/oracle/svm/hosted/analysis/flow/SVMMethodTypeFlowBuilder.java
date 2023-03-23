@@ -176,14 +176,15 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * the node has an exact type. This works with allocation site sensitivity because the
          * StoreVMThreadLocal is modeled by writing the objects to the all-instantiated.
          */
-        if (n instanceof StoreVMThreadLocalNode node) {
+        if (n instanceof StoreVMThreadLocalNode) {
+            StoreVMThreadLocalNode node = (StoreVMThreadLocalNode) n;
             storeVMThreadLocal(state, node, node.getValue());
             return true;
-        } else if (n instanceof CompareAndSetVMThreadLocalNode node) {
+        } else if (n instanceof CompareAndSetVMThreadLocalNode) {
+            CompareAndSetVMThreadLocalNode node = (CompareAndSetVMThreadLocalNode) n;
             storeVMThreadLocal(state, node, node.getUpdate());
             return true;
         }
-
         return super.delegateNodeProcessing(n, state);
     }
 

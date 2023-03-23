@@ -643,7 +643,6 @@ public class SVMHost extends HostVM {
         if (InliningUtilities.isTrivialMethod(graph)) {
             analysisTrivialMethods.put(method, true);
         }
-
         for (Node n : graph.getNodes()) {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);

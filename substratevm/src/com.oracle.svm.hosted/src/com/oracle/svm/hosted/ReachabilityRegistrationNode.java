@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.BuildPhaseProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -32,11 +31,40 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.core.BuildPhaseProvider;
 
+/**
+ * Allows a custom callback to be executed when this node is reachable.
+ *
+ * Native Image is able to automatically deduce usages of dynamic Java features such as reflection,
+ * proxies, etc. Usually, this is done in an invocation plugin. This plugin can do one of two
+ * things:
+ *
+ * <ol>
+ * <li>Fold the invocation, leaving behind for example a Method object.</li>
+ * <li>Leave the invocation as is and based on the arguments to the invoke register additional
+ * metadata.</li>
+ * </ol>
+ *
+ * Registering the metadata directly in the invocation plugin can lead to over-registration:
+ * invocation plugins are processed during inlining before analysis and the invoke for which they
+ * are executed may not exist in the final graph. Use this node for such registrations instead.
+ *
+ * To use:
+ * <ol>
+ * <li>Create a subclass of
+ * {@link org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin}
+ * RequiredInvocationPlugin that is also a decorator
+ * (override @{@link InvocationPlugin.RequiredInvocationPlugin#isDecorator()} isDecorator)</li>
+ * <li>When applying the plugin, add this node to the graph with a @{link {@link Runnable} runnable
+ * that registers the metadata.}</li>
+ * </ol>
+ */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public class ReachabilityRegistrationNode extends FixedWithNextNode implements Canonicalizable {
     public static final NodeClass<ReachabilityRegistrationNode> TYPE = NodeClass.create(ReachabilityRegistrationNode.class);
