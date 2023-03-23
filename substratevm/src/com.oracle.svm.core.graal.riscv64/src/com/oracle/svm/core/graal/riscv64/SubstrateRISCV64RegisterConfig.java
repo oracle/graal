@@ -218,6 +218,10 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
     @Override
     public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
+        if (type.fixedParameterAssignment != null) {
+            throw unimplemented();
+        }
+
         boolean isEntryPoint = type.nativeABI() && !type.outgoing;
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];

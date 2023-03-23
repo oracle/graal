@@ -27,10 +27,14 @@ package com.oracle.svm.core.graal.amd64;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static jdk.vm.ci.amd64.AMD64.cpuRegisters;
+import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
+import static jdk.vm.ci.amd64.AMD64.xmmRegistersAVX512;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -849,6 +853,33 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 emitComputedIndirectCall((ComputedIndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
             } else {
                 super.emitInvoke(callTarget, parameters, callState, result);
+            }
+
+            var cc = (SubstrateCallingConventionType) callTarget.callType();
+            if (cc.returnSaving != null) {
+                // The pointer to the return buffer is passed as first argument
+                Value baseSaveLocation = parameters[0];
+                RegisterValue scratch = r10.asValue(parameters[0].getValueKind()); // One of x86 scratch registers
+                gen.emitMove(scratch, baseSaveLocation);
+                long offset = 0;
+                for (SubstrateCallingConventionType.MemoryAssignment ret: cc.returnSaving) {
+                    Value saveLocation = gen.getArithmetic().emitAdd(scratch, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
+                    switch (ret.kind()) {
+                        case INTEGER -> {
+                            var kind = gen.getValueKind(JavaKind.Long);
+                            var register = cpuRegisters[ret.index()];
+                            gen.getArithmetic().emitStore(kind, saveLocation, gen.emitReadRegister(register, kind), callState, MemoryOrderMode.PLAIN);
+                            offset += 8;
+                        }
+                        case FLOAT -> {
+                            var kind = gen.getValueKind(JavaKind.Double);
+                            var register = xmmRegistersAVX512[ret.index()];
+                            gen.getArithmetic().emitStore(kind, saveLocation, gen.emitReadRegister(register, kind), callState, MemoryOrderMode.PLAIN);
+                            offset += 16;
+                        }
+                        case STACK -> throw unsupportedFeature("Return should never happen on stack");
+                    };
+                }
             }
         }
 

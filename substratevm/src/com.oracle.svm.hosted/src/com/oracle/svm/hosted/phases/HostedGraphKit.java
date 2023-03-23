@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.phases;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -61,6 +62,10 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.ArrayList;
 
 public class HostedGraphKit extends SubstrateGraphKit {
 
@@ -132,5 +137,24 @@ public class HostedGraphKit extends SubstrateGraphKit {
         }
         createCheckThrowingBytecodeException(IsNullNode.create(object), true, BytecodeExceptionNode.BytecodeExceptionKind.NULL_POINTER);
         return append(PiNode.create(object, StampFactory.objectNonNull()));
+    }
+
+    public List<ValueNode> liftArray(ValueNode array, JavaKind[] elementKinds, int length) {
+        assert elementKinds.length == length;
+
+        List<ValueNode> result = new ArrayList<>();
+        GuardingNode argsBoundsCheckGuard = AbstractBeginNode.prevBegin(lastFixedNode);
+        for (int i = 0; i < length; ++i) {
+            ValueNode load = createLoadIndexed(array, i, elementKinds[i], argsBoundsCheckGuard);
+            append(load);
+            result.add(load);
+        }
+        return result;
+    }
+
+    public List<ValueNode> liftArray(ValueNode array, JavaKind elementKind, int length) {
+        JavaKind[] elementKinds = new JavaKind[length];
+        Arrays.fill(elementKinds, elementKind);
+        return liftArray(array, elementKinds, length);
     }
 }
