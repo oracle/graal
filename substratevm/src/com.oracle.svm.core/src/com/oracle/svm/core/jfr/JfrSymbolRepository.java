@@ -65,6 +65,10 @@ public class JfrSymbolRepository implements JfrRepository {
         epochData0.teardown();
         epochData1.teardown();
     }
+    public void clear() {
+        epochData0.clear(false);
+        epochData1.clear(false);
+    }
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getSymbolId(String imageHeapString, boolean previousEpoch) {

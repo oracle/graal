@@ -186,7 +186,7 @@ public final class SamplerSampleWriter {
         SamplerBufferNodeAccess.lockNoTransition(oldNode);
         try {
             // Signal to thread iterating list that this node can be removed
-            oldNode.setBuffer(WordFactory.nullPointer());
+            oldNode.setBuffer(WordFactory.nullPointer()); // *** wont actually be removed until we release the lock
 
             JfrThreadLocal.setSamplerBuffer(newBuffer);
             UnsignedWord uncommitted = getUncommittedSize(data);

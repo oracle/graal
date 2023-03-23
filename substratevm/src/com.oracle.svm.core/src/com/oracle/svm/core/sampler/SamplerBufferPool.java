@@ -158,7 +158,7 @@ public class SamplerBufferPool {
             result.setSize(dataSize);
             result.setNext(WordFactory.nullPointer());
             result.setNode(WordFactory.nullPointer());
-            result.setFlushedPos(com.oracle.svm.core.sampler.SamplerBufferAccess.getDataStart(result));
+            result.setFlushedPos(com.oracle.svm.core.sampler.SamplerBufferAccess.getDataStart(result)); // *** not needed see below
             SamplerBufferAccess.reinitialize(result);
         }
         return result;

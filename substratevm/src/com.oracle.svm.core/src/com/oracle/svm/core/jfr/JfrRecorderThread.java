@@ -109,8 +109,11 @@ public class JfrRecorderThread extends Thread {
     }
 
     private void run0() {
-        SamplerBuffersAccess.processFullBuffers(true);  // *** TODO uncomment this
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        // *** C.H. Threads that serialize stack traces into the epoch-specific buffer in JfrStackTraceRepository, need to hold the JfrChunkWriter lock.
+        // Why? Otherwise a flush could destroy in progress work.
+//        System.out.println("Recorder thread processing full buffers");
+        SamplerBuffersAccess.processFullBuffers(true, false); // TODO uncomment ***
         try {
             if (chunkWriter.hasOpenFile()) {
                 persistBuffers(chunkWriter);

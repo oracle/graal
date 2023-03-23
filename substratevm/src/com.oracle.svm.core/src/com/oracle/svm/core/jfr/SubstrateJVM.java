@@ -180,6 +180,7 @@ public class SubstrateJVM {
         return get().jfrLogging;
     }
 
+    public static com.oracle.svm.core.jfr.JfrUnlockedChunkWriter getUnlockedChunkWriter() { return get().unlockedChunkWriter;}
     public static Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
         try {
             Field f = eventClass.getDeclaredField("eventHandler");
@@ -711,6 +712,11 @@ public class SubstrateJVM {
          */
         @Override
         protected void operate() {
+//            JfrChunkWriter chunkWriter = SubstrateJVM.getUnlockedChunkWriter().lock();
+//            try {
+            System.out.println("-----ending recording-----");
+            System.out.println("-----Flush count-----" + JfrChunkWriter.flushCount + "--Rotation count "+ com.oracle.svm.core.jfr.JfrChunkWriter.rotationCount) ;
+
             SubstrateJVM.get().recording = false;
             JfrExecutionSampler.singleton().update();
 
@@ -725,7 +731,14 @@ public class SubstrateJVM {
              */
             SubstrateJVM.getThreadLocal().teardown();
             SubstrateJVM.getSamplerBufferPool().teardown();
+                SubstrateJVM.getStackTraceRepo().clear(); // *** this  one doesnt really have to be torn down
+                SubstrateJVM.getMethodRepo().clear();
+                SubstrateJVM.getSymbolRepository().clear();
+                SubstrateJVM.getTypeRepository().teardown();// *** this  one doesnt really have to be torn down
             SubstrateJVM.getGlobalMemory().clear();
+//            } finally {
+//                chunkWriter.unlock();
+//            }
         }
     }
 

@@ -59,10 +59,8 @@ public class SamplerBufferList {
         while (node.isNonNull()) {
             /* If the buffer is still alive, then mark it as removed from the list. */
             SamplerBuffer buffer = SamplerBufferNodeAccess.getBuffer(node);
-            if (buffer.isNonNull()) {
-                buffer.setNode(WordFactory.nullPointer());
-            }
-
+            // Buffer should have been removed and put on full list in stopRecording.
+            com.oracle.svm.core.util.VMError.guarantee(buffer.isNull());
             SamplerBufferNode next = node.getNext();
             SamplerBufferNodeAccess.free(node);
             node = next;
@@ -84,7 +82,7 @@ public class SamplerBufferList {
     public SamplerBufferNode addNode(SamplerBuffer buffer) {
         VMError.guarantee( buffer.isNonNull());
 
-        SamplerBufferNode node = SamplerBufferNodeAccess.allocate(buffer);
+        SamplerBufferNode node = SamplerBufferNodeAccess.allocate(buffer); // *** set node's buffer
         if (node.isNull()) {
             return WordFactory.nullPointer();
         }
@@ -92,7 +90,7 @@ public class SamplerBufferList {
         lockNoTransition();
         try {
             VMError.guarantee(buffer.getNode().isNull());
-            buffer.setNode(node);
+            buffer.setNode(node);  // *** set buffer's node
 
             node.setNext(head);
             head = node;

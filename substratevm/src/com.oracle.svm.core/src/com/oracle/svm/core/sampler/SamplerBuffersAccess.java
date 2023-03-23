@@ -65,7 +65,7 @@ public final class SamplerBuffersAccess {
     private SamplerBuffersAccess() {
     }
 
-    @Uninterruptible(reason = "Prevent JFR recording.")
+    @Uninterruptible(reason = "Locking no transition.")
     public static void processActiveBuffers(boolean flushpoint) {
         SamplerBufferList samplerBufferList =  JfrThreadLocal.getSamplerBufferList();
         SamplerBufferNode node = samplerBufferList.getHead();
@@ -77,7 +77,7 @@ public final class SamplerBuffersAccess {
             // Must block because if nodes are skipped, then flushed events may be missing stack trace data
             SamplerBufferNodeAccess.lockNoTransition(node);
             SamplerBuffer buffer = SamplerBufferNodeAccess.getBuffer(node);
-            // Try to remove old nodes
+            /* Try to remove old nodes. If a node's buffer is null, it means it's no longer needed.*/
             if (buffer.isNull()) {
                 samplerBufferList.removeNode(node, prev);
                 SamplerBufferNodeAccess.free(node);
@@ -86,7 +86,7 @@ public final class SamplerBuffersAccess {
             }
             try {
                 // serialize active buffers
-                SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint);
+                    SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint); // *** works when this is only done when !flushpoint
             } finally {
                 SamplerBufferNodeAccess.unlock(node);
             }
@@ -105,7 +105,7 @@ public final class SamplerBuffersAccess {
      * </ul>
      */
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    public static void processFullBuffers(boolean useSafepointChecks) {
+    public static void processFullBuffers(boolean useSafepointChecks, boolean flushpoint) {
         while (true) {
             SamplerBuffer buffer = SubstrateJVM.getSamplerBufferPool().popFullBuffer();
             if (buffer.isNull()) {
@@ -113,7 +113,7 @@ public final class SamplerBuffersAccess {
                 break;
             }
 
-            SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, useSafepointChecks);
+            SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint);
             SubstrateJVM.getSamplerBufferPool().releaseBuffer(buffer);
 
             /* Do a safepoint check if the caller requested one. */
