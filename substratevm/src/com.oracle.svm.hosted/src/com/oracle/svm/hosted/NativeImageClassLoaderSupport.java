@@ -754,8 +754,12 @@ public class NativeImageClassLoaderSupport {
             }
         }
 
+        private static final String SERVICE_PREFIX = "META-INF/services/";
+        private static final String SERVICE_PREFIX_VARIANT = File.separatorChar == '/' ? null : SERVICE_PREFIX.replace('/', File.separatorChar);
+
         private void registerClassPathServiceProviders(String fileName, Path serviceRegistrationFile) {
-            if (!fileName.startsWith("META-INF/services/")) {
+            boolean found = fileName.startsWith(SERVICE_PREFIX) || (SERVICE_PREFIX_VARIANT != null && fileName.startsWith(SERVICE_PREFIX_VARIANT));
+            if (!found) {
                 return;
             }
             Path serviceFileName = serviceRegistrationFile.getFileName();
