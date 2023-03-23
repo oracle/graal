@@ -1455,7 +1455,7 @@ public class NativeImage {
         }
 
         if (useBundle()) {
-            showWarning("Bundle support is an experimental feature.");
+            showWarning("Native Image Bundles are an experimental feature.");
         }
 
         BiFunction<Path, BundleMember.Role, Path> substituteAuxiliaryPath = useBundle() ? bundleSupport::substituteAuxiliaryPath : (a, b) -> a;
