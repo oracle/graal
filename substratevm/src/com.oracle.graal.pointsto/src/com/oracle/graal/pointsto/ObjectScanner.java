@@ -499,7 +499,7 @@ public class ObjectScanner {
 
         final String reason;
 
-        protected OtherReason(String reason) {
+        public OtherReason(String reason) {
             super(null, null);
             this.reason = reason;
         }
