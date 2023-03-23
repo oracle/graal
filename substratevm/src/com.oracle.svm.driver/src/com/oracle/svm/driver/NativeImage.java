@@ -2100,21 +2100,18 @@ public class NativeImage {
         return Long.toUnsignedString(memMax);
     }
 
-    private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
-    private static final boolean IS_DUMB_TERM = isDumbTerm();
-
     private static boolean isDumbTerm() {
         String term = System.getenv().getOrDefault("TERM", "");
         return term.isEmpty() || term.equals("dumb") || term.equals("unknown");
     }
 
     private static boolean hasColorSupport() {
-        return !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
+        return !isDumbTerm() && !SubstrateUtil.isRunningInCI() && OS.getCurrent() != OS.WINDOWS &&
                         System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
     }
 
     private static boolean hasProgressSupport(List<String> imageBuilderArgs) {
-        return !IS_DUMB_TERM && !IS_CI &&
+        return !isDumbTerm() && !SubstrateUtil.isRunningInCI() &&
                         /*
                          * When DebugOptions.Log is used, progress cannot be reported as logging
                          * works around NativeImageSystemIOWrappers to access stdio handles.
