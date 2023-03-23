@@ -106,9 +106,6 @@ final class BundleSupport {
 
     private final BundleProperties bundleProperties;
 
-    static boolean allowBundleSupport;
-    static final String UNLOCK_BUNDLE_SUPPORT_OPTION = "--enable-experimental-bundle-support";
-
     static final String BUNDLE_OPTION = "--bundle";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
 
@@ -122,11 +119,6 @@ final class BundleSupport {
     }
 
     static BundleSupport create(NativeImage nativeImage, String bundleArg, NativeImage.ArgumentQueue args) {
-        if (!allowBundleSupport) {
-            throw NativeImage.showError(
-                            "Bundle support is still experimental and needs to be unlocked with '" + UNLOCK_BUNDLE_SUPPORT_OPTION + "'. The unlock option must precede '" + bundleArg + "'.");
-        }
-
         try {
             String variant = bundleArg.substring(BUNDLE_OPTION.length() + 1);
             String bundleFilename = null;
@@ -615,7 +607,7 @@ final class BundleSupport {
 
         Path buildArgsFile = stageDir.resolve("build.json");
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
-            List<String> equalsNonBundleOptions = List.of(UNLOCK_BUNDLE_SUPPORT_OPTION, CmdLineOptionHandler.VERBOSE_OPTION, CmdLineOptionHandler.DRY_RUN_OPTION);
+            List<String> equalsNonBundleOptions = List.of(CmdLineOptionHandler.VERBOSE_OPTION, CmdLineOptionHandler.DRY_RUN_OPTION);
             List<String> startsWithNonBundleOptions = List.of(BUNDLE_OPTION, DefaultOptionHandler.ADD_ENV_VAR_OPTION, nativeImage.oHPath);
             ArrayList<String> bundleArgs = new ArrayList<>(updatedNativeImageArgs != null ? updatedNativeImageArgs : nativeImageArgs);
             ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
