@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.UnsignedWord;
 
@@ -36,6 +37,7 @@ import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.InstalledCode;
 
@@ -239,6 +241,11 @@ interface CodeInfoImpl extends CodeInfo {
     /** GC-specific data that may only be accessed by the GC. */
     @RawField
     Word getGCData();
+
+    @RawFieldOffset
+    static int offsetOfGCData() {
+        throw VMError.unimplemented(); // replaced
+    }
 
     @RawField
     void setAllObjectsAreInImageHeap(boolean value);
