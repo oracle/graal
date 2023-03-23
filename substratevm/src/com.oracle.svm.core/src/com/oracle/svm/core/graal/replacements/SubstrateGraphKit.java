@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.replacements;
 import java.util.ArrayList;
 import java.util.List;
 
+import jdk.vm.ci.code.CallingConvention;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -189,6 +190,10 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
+        return createCFunctionCall(targetAddress, arguments, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true));
+    }
+
+    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget, CallingConvention.Type convention) {
         boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
         if (emitTransition) {
             append(new CFunctionPrologueNode(newThreadStatus));
@@ -205,7 +210,7 @@ public class SubstrateGraphKit extends GraphKit {
         JavaKind cReturnKind = javaReturnKind.getStackKind();
         JavaType returnType = signature.getReturnType(null);
         Stamp returnStamp = returnStamp(returnType, cReturnKind);
-        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, SubstrateCallingConventionKind.Native);
+        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, convention);
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
@@ -242,13 +247,19 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
-                    SubstrateCallingConventionKind callKind) {
+                                          SubstrateCallingConventionKind callKind) {
+        return createIndirectCall(targetAddress, arguments, parameterTypes, returnStamp, returnKind, callKind.toType(true));
+    }
+
+
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+                                          CallingConvention.Type callKind) {
         frameState.clearStack();
 
         int bci = bci();
         CallTargetNode callTarget = getGraph().add(
-                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
-                                        callKind.toType(true), InvokeKind.Static));
+                new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
+                        callKind, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         // Insert framestate.

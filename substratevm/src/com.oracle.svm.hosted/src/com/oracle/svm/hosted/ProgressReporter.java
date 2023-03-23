@@ -115,6 +115,7 @@ public class ProgressReporter {
     private int numJNIClasses = -1;
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
+    private int numPanamaDowncallStubs = -1;
     private Timer debugInfoTimer;
     private boolean creationStageEndCompleted = false;
 
@@ -181,6 +182,10 @@ public class ProgressReporter {
         numJNIClasses = numClasses;
         numJNIFields = numFields;
         numJNIMethods = numMethods;
+    }
+
+    public void setPanamaInfo(int numDowncallStubs) {
+        this.numPanamaDowncallStubs = numDowncallStubs;
     }
 
     public void printStart(String imageName, NativeImageKind imageKind) {
@@ -374,6 +379,12 @@ public class ProgressReporter {
         if (numJNIClasses >= 0) {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
+        }
+        String stubsFormat = "%,8d stubs";
+        recordJsonMetric(AnalysisResults.STUBS_PANAMA, (numPanamaDowncallStubs >= 0 ? numPanamaDowncallStubs : UNAVAILABLE_METRIC));
+        if (numPanamaDowncallStubs >= 0) {
+            l().a(stubsFormat, numPanamaDowncallStubs)
+                            .a(" registered for Panama downcalls").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {

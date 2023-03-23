@@ -40,14 +40,20 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
+import com.oracle.svm.core.panama.downcalls.PanamaDowncallsSupport;
+import com.oracle.svm.core.panama.Target_jdk_internal_foreign_abi_NativeEntrypoint;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Method;
 import com.oracle.svm.core.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 import com.oracle.svm.core.util.VMError;
 
+import org.graalvm.word.WordFactory;
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
+
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 @TargetClass(className = "java.lang.invoke.MethodHandle")
 final class Target_java_lang_invoke_MethodHandle {
@@ -113,6 +119,42 @@ final class Target_java_lang_invoke_MethodHandle {
     @Substitute(polymorphicSignature = true)
     static Object linkToSpecial(Object... args) throws Throwable {
         return Util_java_lang_invoke_MethodHandle.linkTo(true, args);
+    }
+
+    @Substitute(polymorphicSignature = true)
+    static Object linkToNative(Object... args) throws Throwable {
+        if (args[args.length-1] instanceof Target_jdk_internal_foreign_abi_NativeEntrypoint nep) {
+            int specialArguments = 0;
+
+            if (nep.needsReturnBuffer()) {
+                // Swap the return buffer with the call address:
+                // the buffer is provided before the address, yet we want
+                // to pass the buffer as an argument to the actual function,
+                // but not the function address.
+                Object tmp = args[specialArguments];
+                args[specialArguments] = args[specialArguments+1];
+                args[specialArguments+1] = tmp;
+            }
+            long address = (Long) args[specialArguments++];
+
+            // Drop the special arguments (+ NEP)
+            var filteredArgs = Arrays.copyOfRange(args, specialArguments, args.length-1);
+
+            int typeId = PanamaDowncallsSupport.singleton().getStubId(nep);
+            if (typeId < 0) {
+                var pair = PanamaDowncallsSupport.singleton().mapping().getEntries();
+                System.out.println("Registered:");
+                while (pair.advance()) {
+                    System.out.println(pair.getKey().toString() + " " + pair.getKey().equals(nep));
+                }
+                throw new RuntimeException(nep.methodType() + " was not registered for downcalls.");
+            }
+
+            return PanamaDowncallsSupport.doLinkToNative(address, typeId, filteredArgs);
+        }
+        else {
+            throw shouldNotReachHere("Last argument to linkToNative was not a NativeEntryPoint.");
+        }
     }
 }
 
