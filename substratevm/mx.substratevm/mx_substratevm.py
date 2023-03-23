@@ -87,16 +87,6 @@ def graal_compiler_flags():
 
     return [adjusted_exports(line) for line in compiler_flags[str(version_tag)]]
 
-def svm_unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # Run the VM in a mode where application/test classes can
-    # access JVMCI loaded classes.
-    vmArgs = graal_compiler_flags() + vmArgs
-    return (vmArgs, mainClass, mainClassArgs)
-
-if mx.primary_suite() == suite:
-    mx_unittest.add_config_participant(svm_unittest_config_participant)
-
 def classpath(args):
     if not args:
         return [] # safeguard against mx.classpath(None) behaviour
