@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+import jdk.vm.ci.services.Services;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -120,6 +121,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
+import org.graalvm.nativeimage.ImageInfo;
 
 public class InliningUtil extends ValueMergeUtil {
 
@@ -520,12 +522,19 @@ public class InliningUtil extends ValueMergeUtil {
     @SuppressWarnings("try")
     public static EconomicSet<Node> inlineForCanonicalization(Invoke invoke, StructuredGraph inlineGraph, boolean receiverNullCheck, ResolvedJavaMethod inlineeMethod,
                     Consumer<UnmodifiableEconomicMap<Node, Node>> duplicatesConsumer, String reason, String phase, InlineeReturnAction action) {
-        GraalError.guarantee(inlineGraph.isSubstitution() || invoke.asNode().graph().getSpeculationLog() == inlineGraph.getSpeculationLog(),
-                        "caller (%s) speculation log (%s) != callee (%s) speculation log (%s)",
-                        invoke.asNode().graph(),
-                        invoke.asNode().graph().getSpeculationLog(),
-                        inlineGraph,
-                        inlineGraph.getSpeculationLog());
+        if (!inlineGraph.isSubstitution() && invoke.asNode().graph().getSpeculationLog() != inlineGraph.getSpeculationLog()) {
+            String message = String.format("caller (%s) speculation log (%s) != callee (%s) speculation log (%s)",
+                            invoke.asNode().graph(),
+                            invoke.asNode().graph().getSpeculationLog(),
+                            inlineGraph,
+                            inlineGraph.getSpeculationLog());
+            if (!ImageInfo.inImageCode() || Services.IS_IN_NATIVE_IMAGE) {
+                GraalError.shouldNotReachHere(message);
+            } else {
+                // Workaround for GR-45129 - disable this check for non-libgraal SVM runtime
+                // compilations
+            }
+        }
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         /*
          * This code relies on the fact that Graph.addDuplicates doesn't trigger the
