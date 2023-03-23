@@ -26,17 +26,11 @@ import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.r8;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.r9;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.rax;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.rcx;
-import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.rdi;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.rdx;
-import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.rsi;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm0;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm1;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm2;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm3;
-import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm4;
-import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm5;
-import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm6;
-import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm7;
 
 import com.oracle.truffle.espresso.runtime.panama.ArgumentsCalculator;
 import com.oracle.truffle.espresso.runtime.panama.DefaultArgumentsCalculator;
@@ -44,12 +38,12 @@ import com.oracle.truffle.espresso.runtime.panama.Platform;
 import com.oracle.truffle.espresso.runtime.panama.StorageType;
 import com.oracle.truffle.espresso.runtime.panama.VMStorage;
 
-public final class SysVx64 extends Platform {
-    public static final SysVx64 INSTANCE = new SysVx64();
-    public static final VMStorage[] CALL_INT_REGS = {rdi, rsi, rdx, rcx, r8, r9};
-    public static final VMStorage[] CALL_FLOAT_REGS = {xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7};
+public final class WindowsX64 extends Platform {
+    public static final WindowsX64 INSTANCE = new WindowsX64();
+    public static final VMStorage[] CALL_INT_REGS = {rcx, rdx, r8, r9};
+    public static final VMStorage[] CALL_FLOAT_REGS = {xmm0, xmm1, xmm2, xmm3};
 
-    private SysVx64() {
+    private WindowsX64() {
     }
 
     @Override
@@ -59,8 +53,7 @@ public final class SysVx64 extends Platform {
 
     @Override
     public boolean ignoreDownCallArgument(VMStorage reg) {
-        // used for variadic functions to store the number of arguments
-        return X64Regs.rax.equals(reg);
+        return false;
     }
 
     @Override

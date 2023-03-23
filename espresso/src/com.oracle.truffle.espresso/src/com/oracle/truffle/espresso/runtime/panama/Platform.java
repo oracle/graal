@@ -22,17 +22,26 @@
  */
 package com.oracle.truffle.espresso.runtime.panama;
 
+import java.util.Locale;
+
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.OS;
+import com.oracle.truffle.espresso.runtime.panama.aarch64.AAPCS64;
 import com.oracle.truffle.espresso.runtime.panama.x64.SysVx64;
+import com.oracle.truffle.espresso.runtime.panama.x64.WindowsX64;
 
 public abstract class Platform {
     public static Platform getHostPlatform() {
-        String arch = System.getProperty("os.arch");
+        String arch = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
         return switch (arch) {
             case "x86_64", "amd64" -> switch (OS.getCurrent()) {
-                    case Linux -> SysVx64.INSTANCE;
+                    case Linux, Darwin -> SysVx64.INSTANCE;
+                    case Windows -> WindowsX64.INSTANCE;
                     default -> throw EspressoError.unimplemented(OS.getCurrent() + "-x86_64");
+                };
+            case "aarch64", "arm64" -> switch (OS.getCurrent()) {
+                    case Linux, Darwin -> AAPCS64.INSTANCE;
+                    default -> throw EspressoError.unimplemented(OS.getCurrent() + "-aarch64");
                 };
             default -> throw EspressoError.unimplemented(arch);
         };

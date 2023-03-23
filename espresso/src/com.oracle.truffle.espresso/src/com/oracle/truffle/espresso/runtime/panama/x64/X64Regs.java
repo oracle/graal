@@ -24,7 +24,7 @@ package com.oracle.truffle.espresso.runtime.panama.x64;
 
 import com.oracle.truffle.espresso.runtime.panama.VMStorage;
 
-class X64Regs {
+final class X64Regs {
     // See jdk.internal.foreign.abi.x64.X86_64Architecture
     static final short REG64_MASK = 0b0000000000001111;
     static final short XMM_MASK = 0b0000000000000001;
@@ -78,6 +78,9 @@ class X64Regs {
     static final VMStorage xmm29 = vectorRegister(29);
     static final VMStorage xmm30 = vectorRegister(30);
     static final VMStorage xmm31 = vectorRegister(31);
+
+    private X64Regs() {
+    }
 
     private static VMStorage integerRegister(int index) {
         return new VMStorage(X64StorageType.INTEGER.getId(), REG64_MASK, index);
