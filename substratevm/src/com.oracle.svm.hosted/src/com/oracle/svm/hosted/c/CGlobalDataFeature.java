@@ -129,7 +129,7 @@ public class CGlobalDataFeature implements InternalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode cGlobalDataNode = receiver.get();
                 if (cGlobalDataNode.isConstant()) {
-                    CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) SubstrateObjectConstant.asObject(cGlobalDataNode.asConstant());
+                    CGlobalDataImpl<?> data = providers.getSnippetReflection().asObject(CGlobalDataImpl.class, cGlobalDataNode.asJavaConstant());
                     CGlobalDataInfo info = CGlobalDataFeature.this.map.get(data);
                     b.addPush(targetMethod.getSignature().getReturnKind(), new CGlobalDataLoadAddressNode(info));
                 } else {

@@ -148,7 +148,6 @@ import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
@@ -190,7 +189,7 @@ public class SubstrateGraphBuilderPlugins {
                     boolean supportsStubBasedPlugins) {
 
         // register the substratevm plugins
-        registerSystemPlugins(metaAccess, plugins);
+        registerSystemPlugins(metaAccess, snippetReflection, plugins);
         registerReflectionPlugins(plugins, replacements);
         registerImageInfoPlugins(metaAccess, plugins);
         registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, parsingReason);
@@ -331,14 +330,14 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerSystemPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, System.class);
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
             r.register(new RequiredInvocationPlugin("getSecurityManager") {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     /* System.getSecurityManager() always returns null. */
-                    b.addPush(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(null), metaAccess, b.getGraph()));
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(null), metaAccess, b.getGraph()));
                     return true;
                 }
             });

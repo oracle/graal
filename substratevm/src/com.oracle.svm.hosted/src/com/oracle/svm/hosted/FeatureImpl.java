@@ -591,7 +591,7 @@ public class FeatureImpl {
                     JavaConstant constant = SubstrateObjectConstant.forObject(cur);
                     for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
                         if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
-                            Object fieldValue = SubstrateObjectConstant.asObject(field.readValue(constant));
+                            Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, field.readValue(constant));
                             addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
                         }
                     }
