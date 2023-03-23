@@ -59,6 +59,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -147,7 +148,6 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
@@ -844,16 +844,17 @@ public final class VM extends NativeEnv {
         StaticObject currentThread = context.getCurrentPlatformThread();
         State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
         try (Transition transition = Transition.transition(context, state)) {
-            if (context.getEspressoEnv().EnableManagement) {
-                // Locks bookkeeping.
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, self);
-                Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.HIDDEN_THREAD_WAITED_COUNT);
-            }
             final boolean report = context.shouldReportVMEvents();
             if (report) {
                 context.reportMonitorWait(self, timeout);
             }
-            boolean timedOut = !InterpreterToVM.monitorWait(self.getLock(getContext()), timeout);
+            boolean timedOut;
+            if (context.getEspressoEnv().EnableManagement) {
+                Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.HIDDEN_THREAD_WAITED_COUNT);
+                timedOut = !InterpreterToVM.monitorWait(self.getLock(context), timeout, currentThread, self);
+            } else {
+                timedOut = !InterpreterToVM.monitorWait(self.getLock(context), timeout);
+            }
             if (report) {
                 context.reportMonitorWaited(self, timedOut);
             }
@@ -869,10 +870,6 @@ public final class VM extends NativeEnv {
         } catch (IllegalArgumentException e) {
             profiler.profile(2);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
-        } finally {
-            if (context.getEspressoEnv().EnableManagement) {
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, null);
-            }
         }
     }
 

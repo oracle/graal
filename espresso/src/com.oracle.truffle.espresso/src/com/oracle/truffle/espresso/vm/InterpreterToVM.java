@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.NATIVE_BCI;
 import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.UNKNOWN_BCI;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -87,9 +88,13 @@ public final class InterpreterToVM extends ContextAccessImpl {
         self.signal();
     }
 
-    @TruffleBoundary(allowInlining = true)
     public static boolean monitorWait(EspressoLock self, long timeout) throws GuestInterruptedException {
-        return self.await(timeout);
+        return self.await(timeout, TimeUnit.MILLISECONDS, null, null);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    public static boolean monitorWait(EspressoLock self, long timeout, StaticObject thread, StaticObject obj) throws GuestInterruptedException {
+        return self.await(timeout, TimeUnit.MILLISECONDS, thread, obj);
     }
 
     @TruffleBoundary(allowInlining = true)
