@@ -246,14 +246,11 @@ public class ProgressReporter {
 
     public void printInitializeEnd() {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
-        String version = ImageSingletons.lookup(VM.class).version;
-        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, version);
-        l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(version).a("'").println();
-        String javaVersion = System.getProperty("java.runtime.version");
-        recordJsonMetric(GeneralInfo.JAVA_VERSION, javaVersion);
-        if (javaVersion != null) {
-            l().a(" ").doclink("Java version info", "#glossary-java-version-info").a(": '").a(javaVersion).a("'").println();
-        }
+        VM vm = ImageSingletons.lookup(VM.class);
+        recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
+        recordJsonMetric(GeneralInfo.VENDOR, vm.vendor);
+        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion + " " + vm.version); // deprecated
+        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor", "#glossary-java-info").a(": ").a(vm.vendor).println();
         String optimizationLevel = SubstrateOptions.Optimize.getValue();
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
         String march = CPUType.getSelectedOrDefaultMArch();
