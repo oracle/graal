@@ -1703,7 +1703,7 @@ public class NativeImageGenerator {
         }
         nativeLibs.processCLibraryAnnotations(loader);
 
-        nativeLibs.finish();
+        nativeLibs.finish(loader);
         nativeLibs.reportErrors();
     }
 
