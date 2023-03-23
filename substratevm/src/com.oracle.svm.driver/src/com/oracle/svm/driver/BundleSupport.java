@@ -97,7 +97,7 @@ final class BundleSupport {
     private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 0;
     private static final int BUNDLE_FILE_FORMAT_VERSION_MINOR = 9;
 
-    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "GraalVM Native Image Bundle Support: ";
+    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
     private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
     private static final String ORIGINAL_DIR_EXTENSION = ".orig";
 
