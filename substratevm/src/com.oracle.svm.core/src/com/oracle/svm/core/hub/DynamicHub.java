@@ -992,40 +992,27 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private void checkField(String fieldName, Field field, boolean publicOnly) throws NoSuchFieldException {
         boolean throwMissingErrors = throwMissingRegistrationErrors();
-        boolean noSuchField = false;
-        boolean missingRegistration = false;
+        Class<?> clazz = DynamicHub.toClass(this);
         if (field == null) {
-            if (throwMissingErrors) {
-                if (isClassFlagSet(ALL_DECLARED_FIELDS_FLAG) || (publicOnly && isClassFlagSet(ALL_FIELDS_FLAG))) {
-                    /*
-                     * If getDeclaredFields (or getFields for a public field) is registered, we know
-                     * for sure that the field does indeed not exist if we don't find it.
-                     */
-                    noSuchField = true;
-                } else {
-                    missingRegistration = true;
-                }
+            if (throwMissingErrors && !allElementsRegistered(publicOnly, ALL_DECLARED_FIELDS_FLAG, ALL_FIELDS_FLAG)) {
+                throw MissingReflectionRegistrationUtils.forField(clazz, fieldName);
             } else {
-                noSuchField = true;
+                /*
+                 * If getDeclaredFields (or getFields for a public field) is registered, we know for
+                 * sure that the field does indeed not exist if we don't find it.
+                 */
+                throw new NoSuchFieldException(fieldName);
             }
         } else {
             ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
             int fieldModifiers = field.getModifiers();
-            if (decoder.isNegative(fieldModifiers)) {
-                noSuchField = true;
-            } else if (decoder.isHiding(fieldModifiers)) {
-                if (throwMissingErrors) {
-                    missingRegistration = true;
-                } else {
-                    noSuchField = true;
-                }
+            boolean negative = decoder.isNegative(fieldModifiers);
+            boolean hiding = decoder.isHiding(fieldModifiers);
+            if (throwMissingErrors && hiding) {
+                throw MissingReflectionRegistrationUtils.forField(clazz, fieldName);
+            } else if (negative || hiding) {
+                throw new NoSuchFieldException(fieldName);
             }
-        }
-        VMError.guarantee(!missingRegistration || !noSuchField, "Either a MissingRegistrationError or a NoSuchFieldException should be thrown, not both");
-        if (missingRegistration) {
-            throw MissingReflectionRegistrationUtils.forField(DynamicHub.toClass(this), fieldName);
-        } else if (noSuchField) {
-            throw new NoSuchFieldException(fieldName);
         }
     }
 
@@ -1039,41 +1026,32 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private void checkMethod(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) throws NoSuchMethodException {
         boolean throwMissingErrors = throwMissingRegistrationErrors();
-        boolean noSuchMethod = false;
-        boolean missingRegistration = false;
+        Class<?> clazz = DynamicHub.toClass(this);
         if (method == null) {
-            if (throwMissingErrors) {
-                if (isClassFlagSet(ALL_DECLARED_METHODS_FLAG) || (publicOnly && isClassFlagSet(ALL_METHODS_FLAG))) {
-                    /*
-                     * If getDeclaredMethods (or getMethods for a public method) is registered, we
-                     * know for sure that the method does indeed not exist if we don't find it.
-                     */
-                    noSuchMethod = true;
-                } else {
-                    missingRegistration = true;
-                }
+            if (throwMissingErrors && !allElementsRegistered(publicOnly, ALL_DECLARED_METHODS_FLAG, ALL_METHODS_FLAG)) {
+                throw MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
             } else {
-                noSuchMethod = true;
+                /*
+                 * If getDeclaredMethods (or getMethods for a public method) is registered, we know
+                 * for sure that the method does indeed not exist if we don't find it.
+                 */
+                throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
             }
         } else {
             ReflectionMetadataDecoder decoder = ImageSingletons.lookup(ReflectionMetadataDecoder.class);
             int methodModifiers = method.getModifiers();
-            if (decoder.isNegative(methodModifiers)) {
-                noSuchMethod = true;
-            } else if (decoder.isHiding(methodModifiers)) {
-                if (throwMissingErrors) {
-                    missingRegistration = true;
-                } else {
-                    noSuchMethod = true;
-                }
+            boolean negative = decoder.isNegative(methodModifiers);
+            boolean hiding = decoder.isHiding(methodModifiers);
+            if (throwMissingErrors && hiding) {
+                throw MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
+            } else if (negative || hiding) {
+                throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
             }
         }
-        VMError.guarantee(!missingRegistration || !noSuchMethod, "Either a MissingRegistrationError or a NoSuchMethodException should be thrown, not both");
-        if (missingRegistration) {
-            throw MissingReflectionRegistrationUtils.forMethod(DynamicHub.toClass(this), methodName, parameterTypes);
-        } else if (noSuchMethod) {
-            throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
-        }
+    }
+
+    private boolean allElementsRegistered(boolean publicOnly, int allDeclaredElementsFlag, int allPublicElementsFlag) {
+        return isClassFlagSet(allDeclaredElementsFlag) || (publicOnly && isClassFlagSet(allPublicElementsFlag));
     }
 
     @KeepOriginal
