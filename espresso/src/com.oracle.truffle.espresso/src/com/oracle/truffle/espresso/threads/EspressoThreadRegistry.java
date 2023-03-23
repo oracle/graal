@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.threads;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -34,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
@@ -441,6 +443,93 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
     public void resetPeakThreadCount() {
         synchronized (activeThreadLock) {
             peakThreadCount.set(activeThreads.size());
+        }
+    }
+
+    private EspressoLock getCurrentPendingMonitor(StaticObject thread) {
+        StaticObject obj = (StaticObject) getMeta().HIDDEN_THREAD_BLOCKED_OBJECT.getHiddenObject(thread);
+        if (obj == null) {
+            return null;
+        }
+        return obj.getLock(getContext());
+    }
+
+    private static final class DeadlockCycle {
+        DeadlockCycle prev;
+        final StaticObject thread;
+
+        DeadlockCycle(StaticObject thread) {
+            this.thread = thread;
+        }
+
+        DeadlockCycle(StaticObject thread, DeadlockCycle prev) {
+            this.thread = thread;
+            this.prev = prev;
+        }
+
+        void addTo(List<StaticObject> threads) {
+            DeadlockCycle p = this;
+            while (p != null) {
+                threads.add(p.thread);
+                p = p.prev;
+            }
+        }
+    }
+
+    public StaticObject[] findDeadlocks(boolean objectMonitorsOnly) {
+        assert objectMonitorsOnly;
+        synchronized (activeThreadLock) {
+            // see ThreadService::find_deadlocks_at_safepoint
+            // in share/services/threadService.cpp
+            ThreadsAccess threadAccess = getThreadAccess();
+            StaticObject[] threads = activeThreads();
+            for (StaticObject thread : threads) {
+                if (!threadAccess.isVirtualOrCarrierThread(thread)) {
+                    threadAccess.setDepthFirstNumber(thread, -1);
+                }
+            }
+            int globalDepthFirstNumber = 0;
+            List<StaticObject> deadLockedGuestThreads = new ArrayList<>();
+            for (StaticObject thread : threads) {
+                if (threadAccess.isVirtualOrCarrierThread(thread)) {
+                    continue;
+                }
+                if (threadAccess.getDepthFirstNumber(thread) >= 0) {
+                    continue;
+                }
+                int startDepthFirstNumber = globalDepthFirstNumber;
+                threadAccess.setDepthFirstNumber(thread, globalDepthFirstNumber++);
+                DeadlockCycle cycle = new DeadlockCycle(thread);
+                StaticObject currentThread = thread;
+                EspressoLock waitingToLockMonitor = getCurrentPendingMonitor(currentThread);
+                while (waitingToLockMonitor != null) {
+                    Thread ownerThread = waitingToLockMonitor.getOwnerThread();
+                    if (ownerThread == null) {
+                        cycle.addTo(deadLockedGuestThreads);
+                        break;
+                    } else {
+                        currentThread = getGuestThreadFromHost(ownerThread);
+                    }
+                    if (currentThread == null || threadAccess.isVirtualOrCarrierThread(currentThread)) {
+                        break;
+                    }
+                    cycle = new DeadlockCycle(currentThread, cycle);
+                    int currentThreadDFN = threadAccess.getDepthFirstNumber(currentThread);
+                    if (currentThreadDFN < 0) {
+                        threadAccess.setDepthFirstNumber(currentThread, globalDepthFirstNumber++);
+                    } else if (currentThreadDFN < startDepthFirstNumber) {
+                        break;
+                    } else if (currentThread == cycle.prev.thread) {
+                        break;
+                    } else {
+                        cycle.addTo(deadLockedGuestThreads);
+                        break;
+                    }
+                    waitingToLockMonitor = getCurrentPendingMonitor(currentThread);
+                }
+            }
+
+            return deadLockedGuestThreads.toArray(StaticObject.EMPTY_ARRAY);
         }
     }
 }

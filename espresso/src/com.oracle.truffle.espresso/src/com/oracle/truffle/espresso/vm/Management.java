@@ -27,12 +27,16 @@ import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ThreadLocalAction;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -60,6 +64,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 
@@ -643,9 +648,46 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
+    @TruffleBoundary
     public @JavaType(Thread[].class) StaticObject FindDeadlocks(boolean objectMonitorsOnly, @Inject Meta meta) {
-        getLogger().warning(() -> "Calling unimplemented Management.FindDeadlocks(" + objectMonitorsOnly + ")");
-        return StaticObject.createArray(meta.java_lang_Thread.getArrayClass(), StaticObject.EMPTY_ARRAY, getContext());
+        if (!objectMonitorsOnly) {
+            getLogger().warning(() -> "Calling unimplemented Management.FindDeadlocks(false)");
+            return StaticObject.createArray(meta.java_lang_Thread.getArrayClass(), StaticObject.EMPTY_ARRAY, getContext());
+        }
+        Thread initiatingThread = Thread.currentThread();
+        EspressoThreadRegistry threadRegistry = getContext().getEspressoEnv().getThreadRegistry();
+        FindDeadLocksAction action = new FindDeadLocksAction(initiatingThread, threadRegistry, objectMonitorsOnly);
+        Future<Void> future = getContext().getEnv().submitThreadLocal(null, action);
+        TruffleSafepoint.setBlockedThreadInterruptible(null, f -> {
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }, future);
+        assert action.results != null;
+        return StaticObject.createArray(meta.java_lang_Thread.getArrayClass(), action.results, getContext());
+    }
+
+    private static class FindDeadLocksAction extends ThreadLocalAction {
+        private final Thread initiatingThread;
+        private final EspressoThreadRegistry threadRegistry;
+        private final boolean objectMonitorsOnly;
+        private StaticObject[] results;
+
+        public FindDeadLocksAction(Thread initiatingThread, EspressoThreadRegistry threadRegistry, boolean objectMonitorsOnly) {
+            super(false, true);
+            this.initiatingThread = initiatingThread;
+            this.threadRegistry = threadRegistry;
+            this.objectMonitorsOnly = objectMonitorsOnly;
+        }
+
+        @Override
+        protected void perform(Access access) {
+            if (access.getThread() == initiatingThread) {
+                results = threadRegistry.findDeadlocks(objectMonitorsOnly);
+            }
+        }
     }
 
     @ManagementImpl

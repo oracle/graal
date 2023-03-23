@@ -208,6 +208,15 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         return meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass());
     }
 
+    public boolean isVirtualOrCarrierThread(StaticObject thread) {
+        assert !StaticObject.isNull(thread);
+        if (meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass())) {
+            return true;
+        }
+        // TODO check for carrier thread with mounted vthread
+        return false;
+    }
+
     @SuppressWarnings("unused")
     private int updateState(StaticObject self, State state) {
         int old = getState(self);
@@ -495,6 +504,14 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             }
         }
         return support;
+    }
+
+    public void setDepthFirstNumber(StaticObject thread, int i) {
+        meta.HIDDEN_THREAD_DEPTH_FIRST_NUMBER.setHiddenObject(thread, i);
+    }
+
+    public int getDepthFirstNumber(StaticObject thread) {
+        return (int) meta.HIDDEN_THREAD_DEPTH_FIRST_NUMBER.getHiddenObject(thread);
     }
 
     private final class DeprecationSupport {
