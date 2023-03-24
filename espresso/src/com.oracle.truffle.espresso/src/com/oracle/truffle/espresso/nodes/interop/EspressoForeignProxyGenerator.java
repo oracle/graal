@@ -241,7 +241,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         boolean nonExported = false;
 
         for (ObjectKlass intf : interfaces) {
-            ModuleTable.ModuleEntry m = intf.getModuleEntry();
+            ModuleTable.ModuleEntry m = intf.module();
             if (!Modifier.isPublic(intf.getModifiers())) {
                 packagePrivateTypes.put(intf, m);
             } else {
@@ -281,7 +281,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
             // validate if the target module can access all other interfaces
             for (ObjectKlass intf : interfaces) {
-                ModuleTable.ModuleEntry m = intf.getModuleEntry();
+                ModuleTable.ModuleEntry m = intf.module();
                 if (m == targetModule) {
                     continue;
                 }
@@ -334,7 +334,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      * Ensure the given module can access the given class.
      */
     private void ensureAccess(ModuleTable.ModuleEntry target, Klass c) {
-        ModuleTable.ModuleEntry m = c.getModuleEntry();
+        ModuleTable.ModuleEntry m = c.module();
         // add read edge and qualified export for the target module to access
         if (!target.canRead(m, context)) {
             m.addReads(target);
