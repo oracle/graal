@@ -159,7 +159,7 @@ public class NFINativeAccess implements NativeAccess {
         if (!Files.exists(libraryPath)) {
             return null;
         }
-        String nfiSource = String.format("load(RTLD_LAZY) '%s'", libraryPath);
+        String nfiSource = String.format("load(RTLD_LAZY|RTLD_LOCAL) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }
 
