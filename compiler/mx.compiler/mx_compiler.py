@@ -632,6 +632,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
+    # stress entry barrier deopt
+    with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.test, report=task_report_component) as t:
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.unittest + GraalTags.coverage),
 ]
