@@ -70,9 +70,6 @@ public class JmxClientFeature extends JNIRegistrationUtil implements InternalFea
      * </ul>
      */
     private static void configureReflection(BeforeAnalysisAccess access) {
-        RuntimeReflection.register(access.findClassByName("com.sun.jndi.url.rmi.rmiURLContextFactory"));
-        RuntimeReflection.register(access.findClassByName("sun.rmi.server.UnicastRef"));
-
         RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ClientProvider"));
         RuntimeReflection.register(access.findClassByName("com.sun.jndi.url.rmi.rmiURLContextFactory").getConstructors());
         RuntimeReflection.register(access.findClassByName("sun.rmi.server.UnicastRef").getConstructors());
