@@ -1630,7 +1630,7 @@ public final class Meta extends ContextAccessImpl {
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
 
             VMHelper = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_VMHelper);
-            VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_ClassLoader);
+            VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
         }
     }
 

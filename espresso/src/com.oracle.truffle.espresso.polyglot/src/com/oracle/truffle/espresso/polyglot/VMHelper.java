@@ -43,23 +43,11 @@ package com.oracle.truffle.espresso.polyglot;
 import static java.lang.module.ModuleDescriptor.Modifier.SYNTHETIC;
 
 import java.lang.module.ModuleDescriptor;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
 
 final class VMHelper {
 
-    public static final String PROXY_PACKAGE_PREFIX = "com.oracle.truffle.espresso.polyglot";
-    private static final Map<ClassLoader, ModuleDescriptor> dynProxyModuleDesc = new HashMap<>();
-    private static final AtomicInteger counter = new AtomicInteger();
-
-    public static ModuleDescriptor getDynamicModuleDescriptor(ClassLoader loader) {
-        return dynProxyModuleDesc.computeIfAbsent(loader, (ld) -> {
-            // create a dynamic module and setup module access
-            String mn = "foreign.proxy" + counter.incrementAndGet();
-            String pn = PROXY_PACKAGE_PREFIX + "." + mn;
-            return ModuleDescriptor.newModule(mn, Set.of(SYNTHETIC)).packages(Set.of(pn, mn)).exports(mn).build();
-        });
+    static ModuleDescriptor getDynamicModuleDescriptor(String moduleName, String pkgName) {
+        return ModuleDescriptor.newModule(moduleName, Set.of(SYNTHETIC)).packages(Set.of(pkgName, moduleName)).exports(moduleName).build();
     }
 }
