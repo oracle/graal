@@ -107,13 +107,6 @@ final class Target_java_lang_Object {
     @Substitute
     @TargetElement(name = "wait")
     private void waitSubst(long timeoutMillis) throws InterruptedException {
-        /*
-         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
-         * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned.
-         * Also, we get interrupted on the virtual thread instead of the carrier thread, which
-         * clears the carrier thread's interrupt status too, so we don't have to intercept an
-         * InterruptedException from the carrier thread to clear the virtual thread interrupt.
-         */
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 
