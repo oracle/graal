@@ -269,6 +269,7 @@ public class ClassEntry extends StructureTypeEntry {
      * @return a stream of all compiled method entries for this class.
      */
     public Stream<CompiledMethodEntry> compiledEntries() {
+        assert verifyCompiledMethodOrder() : "compiled methods muts be presented in ascending order";
         Stream<CompiledMethodEntry> stream = normalCompiledEntries.stream();
         if (deoptCompiledEntries != null) {
             stream = Stream.concat(stream, deoptCompiledEntries.stream());
@@ -297,6 +298,32 @@ public class ClassEntry extends StructureTypeEntry {
         } else {
             return Stream.empty();
         }
+    }
+
+    /**
+     * Verify that the normal and deopt entries lists have each been presented in order of ascending
+     * address range and that all deopt methods are in a higher range than all non-deopt methods
+     * @return false if any method is out of order otherwise true
+     */
+    private boolean verifyCompiledMethodOrder() {
+        int lo = 0;
+        for (CompiledMethodEntry c : normalCompiledEntries) {
+            int next = c.getPrimary().getLo();
+            if  (next < lo) {
+                return false;
+            }
+            lo = next;
+        }
+        if (deoptCompiledEntries != null) {
+            for (CompiledMethodEntry c : deoptCompiledEntries) {
+                int next = c.getPrimary().getLo();
+                if (next < lo) {
+                    return false;
+                }
+                lo = next;
+            }
+        }
+        return true;
     }
 
     public List<DirEntry> getLocalDirs() {
