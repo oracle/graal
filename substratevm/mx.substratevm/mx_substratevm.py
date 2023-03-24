@@ -1171,7 +1171,6 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
             add_to_module='java.base',
             headers=False,
-            rebuildable=False,
         ),
     ],
     stability="supported",
