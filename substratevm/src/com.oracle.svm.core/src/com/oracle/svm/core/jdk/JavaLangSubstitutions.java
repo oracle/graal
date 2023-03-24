@@ -276,10 +276,6 @@ final class Target_java_lang_StringLatin1 {
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static native char getChar(byte[] val, int index);
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native int hashCode(byte[] value);
 }
 
 @TargetClass(className = "java.lang.StringUTF16")
@@ -288,10 +284,6 @@ final class Target_java_lang_StringUTF16 {
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static native char getChar(byte[] val, int index);
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native int hashCode(byte[] value);
 }
 
 @TargetClass(java.lang.Throwable.class)
@@ -853,26 +845,6 @@ public final class JavaLangSubstitutions {
 
         public static byte coder(String string) {
             return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int hashCode(java.lang.String string) {
-            return string != null ? hashCode0(string) : 0;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static int hashCode0(java.lang.String string) {
-            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
-            byte[] value = str.value;
-            if (str.hash == 0 && value.length > 0) {
-                boolean isLatin1 = str.isLatin1();
-                if (isLatin1) {
-                    str.hash = Target_java_lang_StringLatin1.hashCode(value);
-                } else {
-                    str.hash = Target_java_lang_StringUTF16.hashCode(value);
-                }
-            }
-            return str.hash;
         }
     }
 
