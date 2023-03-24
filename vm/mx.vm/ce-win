@@ -1,5 +1,5 @@
 DYNAMIC_IMPORTS=/compiler,/graal-js,/sdk,/substratevm,/tools,/truffle
 COMPONENTS=cmp,cov,dap,gu,gvm,ins,insight,insightheap,jss,lg,lsp,nfi-libffi,ni,nic,nil,poly,polynative,pro,sdk,svm,svmnfi,svmsl,tfl,tflm
 NATIVE_IMAGES=lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,native-image
-NON_BUILDABLE_IMAGES=lib:jvmcicompiler
+NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
 DISABLE_INSTALLABLES=False
