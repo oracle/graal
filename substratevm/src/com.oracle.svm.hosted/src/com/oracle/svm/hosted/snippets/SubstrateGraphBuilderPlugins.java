@@ -178,6 +178,9 @@ public class SubstrateGraphBuilderPlugins {
     public static class Options {
         @Option(help = "Enable trace logging for dynamic proxy.")//
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
+
+        @Option(help = "Check reachability before automatically registering proxies observed in the code.")//
+        public static final HostedOptionKey<Boolean> StrictProxyAutoRegistration = new HostedOptionKey<>(false);
     }
 
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -418,7 +421,7 @@ public class SubstrateGraphBuilderPlugins {
             proxyRegistration.register(new RequiredInvocationPlugin("getProxyClass", ClassLoader.class, Class[].class) {
                 @Override
                 public boolean isDecorator() {
-                    return true;
+                    return Options.StrictProxyAutoRegistration.getValue();
                 }
 
                 @Override
@@ -430,7 +433,7 @@ public class SubstrateGraphBuilderPlugins {
             proxyRegistration.register(new RequiredInvocationPlugin("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class) {
                 @Override
                 public boolean isDecorator() {
-                    return true;
+                    return Options.StrictProxyAutoRegistration.getValue();
                 }
 
                 @Override
@@ -449,9 +452,10 @@ public class SubstrateGraphBuilderPlugins {
                     AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode interfacesNode) {
         Class<?>[] interfaces = extractClassArray(b, snippetReflection, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
-            final var method = b.getMethod();
-            final var bci = b.bci();
-            b.add(new ReachabilityRegistrationNode(() -> {
+            var caller = b.getGraph().method();
+            var method = b.getMethod();
+            var bci = b.bci();
+            Runnable registerProxy = () -> {
                 /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
                 RuntimeProxyCreation.register(interfaces);
                 if (ImageSingletons.contains(FallbackFeature.class)) {
@@ -459,10 +463,17 @@ public class SubstrateGraphBuilderPlugins {
                 }
                 if (Options.DynamicProxyTracing.getValue()) {
                     System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
-                                    " reached from " + b.getGraph().method().format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
+                                    " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
                 }
-            }));
-            return true;
+            };
+
+            if (Options.StrictProxyAutoRegistration.getValue()) {
+                b.add(new ReachabilityRegistrationNode(registerProxy));
+                return true;
+            }
+
+            registerProxy.run();
+            return false;
         }
         if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
             System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
