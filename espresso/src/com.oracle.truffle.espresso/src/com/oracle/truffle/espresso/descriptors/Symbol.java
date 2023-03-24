@@ -1128,7 +1128,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> ModuleFinder_SystemModules = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.jdk_internal_module_SystemModules);
         public static final Symbol<Signature> ModuleFinder_Path_array = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.java_nio_file_Path_array);
         public static final Symbol<Signature> ModuleFinder_ModuleFinder_array = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.java_lang_module_ModuleFinder_array);
-        public static final Symbol<Signature> Module_ClassLoader_ModuleDescriptor_URI = StaticSymbols.putSignature(Type.java_lang_Module, Type.java_lang_ClassLoader, Type.java_lang_module_ModuleDescriptor, Type.java_net_URI);
+        public static final Symbol<Signature> Module_ClassLoader_ModuleDescriptor_URI = StaticSymbols.putSignature(Type.java_lang_Module, Type.java_lang_ClassLoader,
+                        Type.java_lang_module_ModuleDescriptor, Type.java_net_URI);
         public static final Symbol<Signature> ModuleDescriptor_ClassLoader = StaticSymbols.putSignature(Type.java_lang_module_ModuleDescriptor, Type.java_lang_ClassLoader);
     }
 }
