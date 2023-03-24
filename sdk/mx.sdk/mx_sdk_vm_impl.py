@@ -3998,7 +3998,7 @@ def _buildable_image(image_config):
     :rtype: bool
     """
     if isinstance(image_config, mx_sdk_vm.LauncherConfig):
-       name = _get_launcher_name(image_config)
+        name = _get_launcher_name(image_config)
     elif isinstance(image_config, mx_sdk_vm.LibraryConfig):
         name = 'lib:' + _get_library_name(image_config)
     else:
