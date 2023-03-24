@@ -59,10 +59,10 @@ import com.oracle.svm.core.BuildPhaseProvider;
  * <ol>
  * <li>Create a subclass of
  * {@link org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin}
- * RequiredInvocationPlugin that is also a decorator
- * (override @{@link InvocationPlugin.RequiredInvocationPlugin#isDecorator()} isDecorator)</li>
- * <li>When applying the plugin, add this node to the graph with a @{link {@link Runnable} runnable
- * that registers the metadata.}</li>
+ * that is also a decorator
+ * (override @{@link InvocationPlugin.RequiredInvocationPlugin#isDecorator()})</li>
+ * <li>When applying the plugin, add this node to the graph with a @{link {@link Runnable} that
+ * registers the metadata.}</li>
  * </ol>
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
