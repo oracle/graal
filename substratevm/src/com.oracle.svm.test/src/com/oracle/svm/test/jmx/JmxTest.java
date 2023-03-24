@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2022, 2025, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2025, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,9 @@
  */
 package com.oracle.svm.test.jmx;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
@@ -39,9 +42,14 @@ import java.lang.management.MemoryUsage;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerConnection;
@@ -50,6 +58,7 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import javax.rmi.ssl.SslRMIClientSocketFactory;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
@@ -58,6 +67,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
+import com.oracle.svm.hosted.c.util.FileUtils;
 import com.oracle.svm.test.AddExports;
 
 import jdk.management.jfr.FlightRecorderMXBean;
@@ -65,25 +75,116 @@ import jdk.management.jfr.FlightRecorderMXBean;
 @AddExports("jdk.management.agent/jdk.internal.agent")
 public class JmxTest {
     static final String PORT_PROPERTY = "com.sun.management.jmxremote.port";
+    static final String RMI_PORT_PROPERTY = "com.sun.management.jmxremote.rmi.port";
     static final String AUTH_PROPERTY = "com.sun.management.jmxremote.authenticate";
+    static final String CLIENT_AUTH_PROPERTY = "com.sun.management.jmxremote.ssl.need.client.auth";
+    static final String ACCESS_PROPERTY = "com.sun.management.jmxremote.access.file";
+    static final String PASSWORD_PROPERTY = "com.sun.management.jmxremote.password.file";
     static final String SSL_PROPERTY = "com.sun.management.jmxremote.ssl";
+    static final String KEYSTORE_FILENAME = "clientkeystore";
+    static final String KEYSTORE_PASSWORD = "clientpass";
+    static final String KEYSTORE_PASSWORD_PROPERTY = "javax.net.ssl.keyStorePassword";
+    static final String KEYSTORE_PROPERTY = "javax.net.ssl.keyStore";
+    static final String TRUSTSTORE_FILENAME = "servertruststore";
+    static final String TRUSTSTORE_PASSWORD = "servertrustpass";
+    static final String TRUSTSTORE_PASSWORD_PROPERTY = "javax.net.ssl.trustStorePassword";
+    static final String TRUSTSTORE_PROPERTY = "javax.net.ssl.trustStore";
+    static final String REGISTRY_SSL_PROPERTY = "com.sun.management.jmxremote.registry.ssl";
+    static final String SOCKET_FACTORY_PROPERTY = "com.sun.jndi.rmi.factory.socket";
     static final String TEST_PORT = "12345";
-    static final String FALSE = "false";
+    static final String TEST_ROLE = "myTestRole";
+    static final String TEST_ROLE_PASSWORD = "MYTESTP@SSWORD";
+    static final String TRUE = "true";
 
     @BeforeClass
-    public static void checkForJFR() {
+    public static void setup() throws IOException {
         assumeTrue("skipping JMX tests", !ImageInfo.inImageCode() ||
                         (VMInspectionOptions.hasJmxClientSupport() && VMInspectionOptions.hasJmxServerSupport()));
 
         System.setProperty(PORT_PROPERTY, TEST_PORT);
-        System.setProperty(AUTH_PROPERTY, FALSE);
-        System.setProperty(SSL_PROPERTY, FALSE);
+        System.setProperty(RMI_PORT_PROPERTY, TEST_PORT);
+        System.setProperty(AUTH_PROPERTY, TRUE);
+        System.setProperty(CLIENT_AUTH_PROPERTY, TRUE);
+        System.setProperty(SSL_PROPERTY, TRUE);
+        System.setProperty(REGISTRY_SSL_PROPERTY, TRUE);
+
+        // Prepare temp directory with files required for testing authentication.
+        Path tempDirectory = Files.createTempDirectory("jmxtest");
+        Path jmxRemoteAccess = tempDirectory.resolve("jmxremote.access");
+        Path jmxRemotePassword = tempDirectory.resolve("jmxremote.password");
+        Path clientKeyStore = tempDirectory.resolve(KEYSTORE_FILENAME);
+        Path serverTrustStore = tempDirectory.resolve(TRUSTSTORE_FILENAME);
+
+        // Generate SSL keystore, client cert, and truststore for testing SSL connection.
+        createClientKey(tempDirectory);
+        createClientCert(tempDirectory);
+        assertTrue("Failed to create " + KEYSTORE_FILENAME, Files.exists(clientKeyStore));
+        System.setProperty(KEYSTORE_PROPERTY, clientKeyStore.toString());
+        System.setProperty(KEYSTORE_PASSWORD_PROPERTY, KEYSTORE_PASSWORD);
+        createServerTrustStore(tempDirectory);
+        assertTrue("Failed to create " + TRUSTSTORE_FILENAME, Files.exists(serverTrustStore));
+        System.setProperty(TRUSTSTORE_PROPERTY, serverTrustStore.toString());
+        System.setProperty(TRUSTSTORE_PASSWORD_PROPERTY, TRUSTSTORE_PASSWORD);
+
+        // The following are dummy access and password files required for testing authentication.
+        Files.writeString(jmxRemoteAccess, TEST_ROLE + " readwrite");
+        System.setProperty(ACCESS_PROPERTY, jmxRemoteAccess.toString());
+        Files.writeString(jmxRemotePassword, TEST_ROLE + " " + TEST_ROLE_PASSWORD);
+        System.setProperty(PASSWORD_PROPERTY, jmxRemotePassword.toString());
+
+        // Password file must have restricted access.
+        Files.setPosixFilePermissions(jmxRemotePassword, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+
         try {
             // We need to rerun the startup hook with the correct properties set.
             ManagementAgentStartupHook startupHook = new ManagementAgentStartupHook();
             startupHook.execute(false);
         } catch (Exception e) {
-            Assert.fail("Failed to start server Cause: " + e.getMessage());
+            Assert.fail("Failed to start server. Cause: " + e.getMessage());
+        }
+    }
+
+    private static void createClientKey(Path tempDirectory) throws IOException {
+        runCommand(tempDirectory, List.of("keytool", "-genkey",
+                        "-keystore", KEYSTORE_FILENAME,
+                        "-alias", "clientkey",
+                        "-storepass", KEYSTORE_PASSWORD,
+                        "-keypass", KEYSTORE_PASSWORD,
+                        "-dname", "CN=test, OU=test, O=test, L=test, ST=test, C=test, EMAILADDRESS=test",
+                        "-validity", "99999",
+                        "-keyalg", "rsa"));
+    }
+
+    private static void createClientCert(Path tempDirectory) throws IOException {
+        runCommand(tempDirectory, List.of("keytool", "-exportcert",
+                        "-keystore", KEYSTORE_FILENAME,
+                        "-alias", "clientkey",
+                        "-storepass", KEYSTORE_PASSWORD,
+                        "-file", "client.cer"));
+    }
+
+    private static void createServerTrustStore(Path tempDirectory) throws IOException {
+        runCommand(tempDirectory, List.of("keytool", "-importcert",
+                        "-noprompt",
+                        "-file", "client.cer",
+                        "-keystore", TRUSTSTORE_FILENAME,
+                        "-storepass", TRUSTSTORE_PASSWORD));
+    }
+
+    private static void runCommand(Path tempDirectory, List<String> command) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder().command(command);
+        pb.directory(tempDirectory.toFile());
+        final Process process = pb.start();
+        try {
+            process.waitFor(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new IOException("Keytool execution error");
+        }
+        if (process.exitValue() > 0) {
+            final String processError = String.join(" \\ ", FileUtils.readAllLines(process.getErrorStream()));
+            final String processOutput = String.join(" \\ ", FileUtils.readAllLines(process.getInputStream()));
+            throw new IOException(
+                            "Keytool execution error: " + processError + ", output: " + processOutput + ", command: " + command);
         }
     }
 
@@ -91,7 +192,10 @@ public class JmxTest {
         try {
             JMXServiceURL jmxUrl = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + "localhost" + ":" + TEST_PORT + "/jmxrmi");
             Map<String, Object> env = new HashMap<>();
-
+            String[] credentials = {TEST_ROLE, TEST_ROLE_PASSWORD};
+            env.put(JMXConnector.CREDENTIALS, credentials);
+            // Include below if protecting registry with SSL
+            env.put(SOCKET_FACTORY_PROPERTY, new SslRMIClientSocketFactory());
             JMXConnector connector = JMXConnectorFactory.connect(jmxUrl, env);
             return connector.getMBeanServerConnection();
         } catch (IOException e) {
@@ -104,8 +208,8 @@ public class JmxTest {
     public void testConnection() throws Exception {
         // This simply tests that we can establish a connection between client and server
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
-        assertTrue("Connection should not be null", mbsc != null);
-        assertTrue("Connection default domain should not be empty", !mbsc.getDefaultDomain().isEmpty());
+        assertNotNull("Connection should not be null", mbsc);
+        assertFalse("Connection default domain should not be empty", mbsc.getDefaultDomain().isEmpty());
     }
 
     @Test
@@ -138,7 +242,7 @@ public class JmxTest {
         }
 
         assertTrue("PID should be positive.", runtimeMXBean.getPid() > 0);
-        assertTrue("Class Path should not be null: ", runtimeMXBean.getClassPath() != null);
+        assertNotNull("Class Path should not be null: ", runtimeMXBean.getClassPath());
         assertTrue("Start time should be positive", runtimeMXBean.getStartTime() > 0);
     }
 
@@ -149,7 +253,7 @@ public class JmxTest {
         ObjectName objectName = new ObjectName("java.lang:type=Runtime");
         try {
             assertTrue("Uptime should be positive. ", (long) mbsc.getAttribute(objectName, "Pid") > 0);
-            assertTrue("Class Path should not be null: ", mbsc.getAttribute(objectName, "ClassPath") != null);
+            assertNotNull("Class Path should not be null: ", mbsc.getAttribute(objectName, "ClassPath"));
             assertTrue("Start time should be positive", (long) mbsc.getAttribute(objectName, "StartTime") > 0);
         } catch (Exception e) {
             Assert.fail("Remote invocations failed : " + e.getMessage());
@@ -168,7 +272,7 @@ public class JmxTest {
             Assert.fail("Failed to get ClassLoadingMXBean. : " + e.getMessage());
         }
         if (ImageInfo.inImageRuntimeCode()) {
-            assertTrue("Loaded Class count should be 0 (hardcoded at 0): ", classLoadingMXBean.getLoadedClassCount() == 0);
+            assertEquals("Loaded Class count should be 0 (hardcoded at 0): ", 0, classLoadingMXBean.getLoadedClassCount());
         } else {
             assertTrue("If in java mode, number of loaded classes should be positive: ", classLoadingMXBean.getLoadedClassCount() > 0);
         }
@@ -246,7 +350,7 @@ public class JmxTest {
             Assert.fail("Failed to get GarbageCollectorMXBean. : " + e.getMessage());
         }
         for (GarbageCollectorMXBean gcBean : garbageCollectorMXBeans) {
-            assertTrue("GC object name should not be null", gcBean.getObjectName() != null);
+            assertNotNull("GC object name should not be null", gcBean.getObjectName());
             assertTrue("Number of GC should not be negative", gcBean.getCollectionCount() >= 0);
         }
     }
@@ -263,7 +367,7 @@ public class JmxTest {
         } catch (Exception e) {
             Assert.fail("Failed to get OperatingSystemMXBean. : " + e.getMessage());
         }
-        assertTrue("OS version can't be null. ", operatingSystemMXBean.getVersion() != null);
+        assertNotNull("OS version can't be null. ", operatingSystemMXBean.getVersion());
     }
 
     @Test
@@ -272,7 +376,7 @@ public class JmxTest {
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         ObjectName objectName = new ObjectName("java.lang:type=OperatingSystem");
         try {
-            assertTrue("OS version can't be null. ", mbsc.getAttribute(objectName, "Version") != null);
+            assertNotNull("OS version can't be null. ", mbsc.getAttribute(objectName, "Version"));
         } catch (Exception e) {
             Assert.fail("Remote invokations failed : " + e.getMessage());
         }
@@ -290,7 +394,7 @@ public class JmxTest {
             Assert.fail("Failed to get MemoryManagerMXBean. : " + e.getMessage());
         }
         for (MemoryManagerMXBean memoryManagerMXBean : memoryManagerMXBeans) {
-            assertTrue("Memory pool names should not be null. ", memoryManagerMXBean.getMemoryPoolNames() != null);
+            assertNotNull("Memory pool names should not be null. ", memoryManagerMXBean.getMemoryPoolNames());
         }
     }
 
@@ -307,7 +411,7 @@ public class JmxTest {
             Assert.fail("Failed to get MemoryPoolMXBean. : " + e.getMessage());
         }
         for (MemoryPoolMXBean memoryPoolMXBean : memoryPoolMXBeans) {
-            assertTrue("Memory Pool name should not be null ", memoryPoolMXBean.getName() != null);
+            assertNotNull("Memory Pool name should not be null ", memoryPoolMXBean.getName());
         }
     }
 
@@ -324,7 +428,7 @@ public class JmxTest {
             Assert.fail("Failed to get FlightRecorderMXBean. : " + e.getMessage());
         }
         flightRecorderMXBean.newRecording();
-        assertTrue("Flight recordings should be available because we just created one.", !flightRecorderMXBean.getRecordings().isEmpty());
+        assertFalse("Flight recordings should be available because we just created one.", flightRecorderMXBean.getRecordings().isEmpty());
     }
 
     @Test
@@ -336,7 +440,7 @@ public class JmxTest {
             mbsc.invoke(objectName, "startRecording", new Object[]{recording}, new String[]{"long"});
             mbsc.invoke(objectName, "stopRecording", new Object[]{recording}, new String[]{"long"});
         } catch (Exception e) {
-            Assert.fail("Remote invokations failed : " + e.getMessage());
+            Assert.fail("Remote invocations failed : " + e.getMessage());
         }
     }
 }
