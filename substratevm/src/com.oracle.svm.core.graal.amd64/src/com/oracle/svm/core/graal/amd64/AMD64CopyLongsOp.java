@@ -35,6 +35,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -49,7 +50,6 @@ import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.*;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 @Opcode("AMD64_COPY_LONGS")
@@ -71,7 +71,7 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value[] vtmp;
 
     public AMD64CopyLongsOp(LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, int useAVX3Threshold, boolean forward, Value src, Value dst, Value len) {
-        super(TYPE, tool, runtimeCheckedCPUFeatures, ZMM);
+        super(TYPE, tool, runtimeCheckedCPUFeatures, AVXKind.AVXSize.ZMM);
         this.forward = forward;
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
@@ -99,9 +99,9 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
     }
 
     private void emitCopyForward(AMD64MacroAssembler masm) {
-        Label L_copy_bytes = new Label();
-        Label L_copy_8_bytes = new Label();
-        Label L_exit = new Label();
+        Label copyBytes = new Label();
+        Label copy8Bytes = new Label();
+        Label exit = new Label();
 
         Register src = asRegister(rsrc);
         Register dst = asRegister(rdst);
@@ -112,63 +112,63 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
         masm.leaq(dst, new AMD64Address(dst, len, Stride.S1, -8));
         masm.shrq(len, 3);  // bytes -> qwords
         masm.negq(len);
-        masm.jmp(L_copy_bytes);
+        masm.jmp(copyBytes);
 
         // Copy trailing qwords
-        masm.bind(L_copy_8_bytes);
+        masm.bind(copy8Bytes);
         masm.movq(tmp, new AMD64Address(src, len, Stride.S8, 8));
         masm.movq(new AMD64Address(dst, len, Stride.S8, 8), tmp);
-        masm.incqAndJcc(len, ConditionFlag.NotZero, L_copy_8_bytes, true);
-        masm.jmp(L_exit);
+        masm.incqAndJcc(len, ConditionFlag.NotZero, copy8Bytes, true);
+        masm.jmp(exit);
 
         // Copy in multi-bytes chunks
-        emitCopyForward(masm, src, dst, len, tmp, L_copy_bytes, L_copy_8_bytes);
-        masm.bind(L_exit);
+        emitCopyForward(masm, src, dst, len, tmp, copyBytes, copy8Bytes);
+        masm.bind(exit);
     }
 
     private void emitCopyForward(AMD64MacroAssembler masm, Register src, Register dst, Register len, Register tmp,
-                                 Label L_copy_bytes, Label L_copy_8_bytes) {
-        Label L_loop = new Label();
+                    Label copyBytes, Label copy8Bytes) {
+        Label loop = new Label();
         masm.align(16);
         if (supports(CPUFeature.AVX)) {
             Register tmp0 = asRegister(vtmp[0]);
             Register tmp1 = asRegister(vtmp[1]);
             Register tmp2 = asRegister(vtmp[2]);
             Register tmp3 = asRegister(vtmp[3]);
-            Label L_end = new Label();
+            Label end = new Label();
             // Copy 64-bytes per iteration
             if (supportsAVX512VLBWAndZMM()) {
-                Label L_loop_avx512 = new Label();
-                Label L_loop_avx2 = new Label();
-                Label L_32_byte_head = new Label();
-                Label L_above_threshold = new Label();
-                Label L_below_threshold = new Label();
+                Label avx512Loop = new Label();
+                Label avx2Loop = new Label();
+                Label copy32Bytes = new Label();
+                Label aboveThreshold = new Label();
+                Label belowThreshold = new Label();
 
-                masm.bind(L_copy_bytes);
-                masm.cmpqAndJcc(len, -useAVX3Threshold / 8, ConditionFlag.Less, L_above_threshold, true);
-                masm.jmpb(L_below_threshold);
+                masm.bind(copyBytes);
+                masm.cmpqAndJcc(len, -useAVX3Threshold / 8, ConditionFlag.Less, aboveThreshold, true);
+                masm.jmpb(belowThreshold);
 
-                masm.bind(L_loop_avx512);
+                masm.bind(avx512Loop);
                 masm.vmovdqu64(tmp0, new AMD64Address(src, len, Stride.S8, -56));
                 masm.vmovdqu64(new AMD64Address(dst, len, Stride.S8, -56), tmp0);
 
-                masm.bind(L_above_threshold);
-                masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, L_loop_avx512, true);
-                masm.jmpb(L_32_byte_head);
+                masm.bind(aboveThreshold);
+                masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, avx512Loop, true);
+                masm.jmpb(copy32Bytes);
 
-                masm.bind(L_loop_avx2);
+                masm.bind(avx2Loop);
                 masm.vmovdqu(tmp0, new AMD64Address(src, len, Stride.S8, -56));
                 masm.vmovdqu(new AMD64Address(dst, len, Stride.S8, -56), tmp0);
                 masm.vmovdqu(tmp1, new AMD64Address(src, len, Stride.S8, -24));
                 masm.vmovdqu(new AMD64Address(dst, len, Stride.S8, -24), tmp1);
 
-                masm.bind(L_below_threshold);
-                masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, L_loop_avx2, true);
+                masm.bind(belowThreshold);
+                masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, avx2Loop, true);
 
-                masm.bind(L_32_byte_head);
-                masm.subqAndJcc(len, 4, ConditionFlag.Greater, L_end, true);
+                masm.bind(copy32Bytes);
+                masm.subqAndJcc(len, 4, ConditionFlag.Greater, end, true);
             } else {
-                masm.bind(L_loop);
+                masm.bind(loop);
                 if (supportsAVX2AndYMM()) {
                     masm.vmovdqu(tmp0, new AMD64Address(src, len, Stride.S8, -56));
                     masm.vmovdqu(new AMD64Address(dst, len, Stride.S8, -56), tmp0);
@@ -184,9 +184,9 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
                     masm.movdqu(tmp3, new AMD64Address(src, len, Stride.S8, -8));
                     masm.movdqu(new AMD64Address(dst, len, Stride.S8, -8), tmp3);
                 }
-                masm.bind(L_copy_bytes);
-                masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, L_loop, true);
-                masm.subqAndJcc(len, 4, ConditionFlag.Greater, L_end, true);
+                masm.bind(copyBytes);
+                masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, loop, true);
+                masm.subqAndJcc(len, 4, ConditionFlag.Greater, end, true);
             }
             // Copy trailing 32 bytes
             if (supportsAVX2AndYMM()) {
@@ -195,33 +195,33 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
             } else { // AVX1 and XMM
                 masm.movdqu(tmp0, new AMD64Address(src, len, Stride.S8, -24));
                 masm.movdqu(new AMD64Address(dst, len, Stride.S8, -24), tmp0);
-                masm.movdqu(tmp1, new AMD64Address(src, len, Stride.S8,  -8));
-                masm.movdqu(new AMD64Address(dst, len, Stride.S8,  -8), tmp1);
+                masm.movdqu(tmp1, new AMD64Address(src, len, Stride.S8, -8));
+                masm.movdqu(new AMD64Address(dst, len, Stride.S8, -8), tmp1);
             }
             masm.addq(len, 4);
-            masm.bind(L_end);
+            masm.bind(end);
         } else {
             // Copy 32-byte chunks
-            masm.bind(L_loop);
+            masm.bind(loop);
             masm.movq(tmp, new AMD64Address(src, len, Stride.S8, -24));
             masm.movq(new AMD64Address(dst, len, Stride.S8, -24), tmp);
             masm.movq(tmp, new AMD64Address(src, len, Stride.S8, -16));
             masm.movq(new AMD64Address(dst, len, Stride.S8, -16), tmp);
-            masm.movq(tmp, new AMD64Address(src, len, Stride.S8,  -8));
-            masm.movq(new AMD64Address(dst, len, Stride.S8,  -8), tmp);
-            masm.movq(tmp, new AMD64Address(src, len, Stride.S8,  -0));
-            masm.movq(new AMD64Address(dst, len, Stride.S8,  -0), tmp);
+            masm.movq(tmp, new AMD64Address(src, len, Stride.S8, -8));
+            masm.movq(new AMD64Address(dst, len, Stride.S8, -8), tmp);
+            masm.movq(tmp, new AMD64Address(src, len, Stride.S8, 0));
+            masm.movq(new AMD64Address(dst, len, Stride.S8, 0), tmp);
 
-            masm.bind(L_copy_bytes);
-            masm.addqAndJcc(len, 4, ConditionFlag.LessEqual, L_loop, true);
+            masm.bind(copyBytes);
+            masm.addqAndJcc(len, 4, ConditionFlag.LessEqual, loop, true);
         }
-        masm.subqAndJcc(len, 4, ConditionFlag.Less, L_copy_8_bytes, false);
+        masm.subqAndJcc(len, 4, ConditionFlag.Less, copy8Bytes, false);
     }
 
     private void emitCopyBackward(AMD64MacroAssembler masm) {
-        Label L_copy_bytes = new Label();
-        Label L_copy_8_bytes = new Label();
-        Label L_exit = new Label();
+        Label copyBytes = new Label();
+        Label copy8Bytes = new Label();
+        Label exit = new Label();
 
         Register src = asRegister(rsrc);
         Register dst = asRegister(rdst);
@@ -229,63 +229,63 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
         Register tmp = asRegister(rtmp);
 
         masm.shrq(len, 3);  // bytes -> qwords
-        masm.jmp(L_copy_bytes);
+        masm.jmp(copyBytes);
 
         // Copy trailing qwords
-        masm.bind(L_copy_8_bytes);
+        masm.bind(copy8Bytes);
         masm.movq(tmp, new AMD64Address(src, len, Stride.S8, -8));
         masm.movq(new AMD64Address(dst, len, Stride.S8, -8), tmp);
-        masm.decqAndJcc(len, ConditionFlag.NotZero, L_copy_8_bytes, true);
-        masm.jmp(L_exit);
+        masm.decqAndJcc(len, ConditionFlag.NotZero, copy8Bytes, true);
+        masm.jmp(exit);
 
         // Copy in multi-bytes chunks
-        emitCopyBackward(masm, src, dst, len, tmp, L_copy_bytes, L_copy_8_bytes);
-        masm.bind(L_exit);
+        emitCopyBackward(masm, src, dst, len, tmp, copyBytes, copy8Bytes);
+        masm.bind(exit);
     }
 
     private void emitCopyBackward(AMD64MacroAssembler masm, Register src, Register dst, Register len, Register tmp,
-                             Label L_copy_bytes, Label L_copy_8_bytes) {
-        Label L_loop = new Label();
+                    Label copyBytes, Label copy8Bytes) {
+        Label loop = new Label();
         masm.align(16);
         if (supports(CPUFeature.AVX)) {
             Register tmp0 = asRegister(vtmp[0]);
             Register tmp1 = asRegister(vtmp[1]);
             Register tmp2 = asRegister(vtmp[2]);
             Register tmp3 = asRegister(vtmp[3]);
-            Label L_end = new Label();
+            Label end = new Label();
             // Copy 64-bytes per iteration
             if (supportsAVX512VLBWAndZMM()) {
-                Label L_loop_avx512 = new Label();
-                Label L_loop_avx2 = new Label();
-                Label L_32_byte_head = new Label();
-                Label L_above_threshold = new Label();
-                Label L_below_threshold = new Label();
+                Label avx512Loop = new Label();
+                Label avx2Loop = new Label();
+                Label copy32Bytes = new Label();
+                Label aboveThreshold = new Label();
+                Label belowThreshold = new Label();
 
-                masm.bind(L_copy_bytes);
-                masm.cmpqAndJcc(len, useAVX3Threshold / 8, ConditionFlag.Greater, L_above_threshold, true);
-                masm.jmpb(L_below_threshold);
+                masm.bind(copyBytes);
+                masm.cmpqAndJcc(len, useAVX3Threshold / 8, ConditionFlag.Greater, aboveThreshold, true);
+                masm.jmpb(belowThreshold);
 
-                masm.bind(L_loop_avx512);
+                masm.bind(avx512Loop);
                 masm.vmovdqu64(tmp0, new AMD64Address(src, len, Stride.S8, 0));
                 masm.vmovdqu64(new AMD64Address(dst, len, Stride.S8, 0), tmp0);
 
-                masm.bind(L_above_threshold);
-                masm.subqAndJcc(len, 8, ConditionFlag.GreaterEqual, L_loop_avx512, true);
-                masm.jmpb(L_32_byte_head);
+                masm.bind(aboveThreshold);
+                masm.subqAndJcc(len, 8, ConditionFlag.GreaterEqual, avx512Loop, true);
+                masm.jmpb(copy32Bytes);
 
-                masm.bind(L_loop_avx2);
+                masm.bind(avx2Loop);
                 masm.vmovdqu(tmp0, new AMD64Address(src, len, Stride.S8, 32));
                 masm.vmovdqu(new AMD64Address(dst, len, Stride.S8, 32), tmp0);
                 masm.vmovdqu(tmp1, new AMD64Address(src, len, Stride.S8, 0));
                 masm.vmovdqu(new AMD64Address(dst, len, Stride.S8, 0), tmp1);
 
-                masm.bind(L_below_threshold);
-                masm.subqAndJcc(len, 8, ConditionFlag.GreaterEqual, L_loop_avx2, true);
+                masm.bind(belowThreshold);
+                masm.subqAndJcc(len, 8, ConditionFlag.GreaterEqual, avx2Loop, true);
 
-                masm.bind(L_32_byte_head);
-                masm.addqAndJcc(len, 4, ConditionFlag.Less, L_end, true);
+                masm.bind(copy32Bytes);
+                masm.addqAndJcc(len, 4, ConditionFlag.Less, end, true);
             } else {
-                masm.bind(L_loop);
+                masm.bind(loop);
                 if (supportsAVX2AndYMM()) {
                     masm.vmovdqu(tmp0, new AMD64Address(src, len, Stride.S8, 32));
                     masm.vmovdqu(new AMD64Address(dst, len, Stride.S8, 32), tmp0);
@@ -301,9 +301,9 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
                     masm.movdqu(tmp3, new AMD64Address(src, len, Stride.S8, 0));
                     masm.movdqu(new AMD64Address(dst, len, Stride.S8, 0), tmp3);
                 }
-                masm.bind(L_copy_bytes);
-                masm.subqAndJcc(len, 8, ConditionFlag.GreaterEqual, L_loop, true);
-                masm.addqAndJcc(len, 4, ConditionFlag.Less, L_end, true);
+                masm.bind(copyBytes);
+                masm.subqAndJcc(len, 8, ConditionFlag.GreaterEqual, loop, true);
+                masm.addqAndJcc(len, 4, ConditionFlag.Less, end, true);
             }
             // Copy trailing 32 bytes
             if (supportsAVX2AndYMM()) {
@@ -316,10 +316,10 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
                 masm.movdqu(new AMD64Address(dst, len, Stride.S8, 0), tmp1);
             }
             masm.subq(len, 4);
-            masm.bind(L_end);
+            masm.bind(end);
         } else {
             // Copy 32-bytes per iteration
-            masm.bind(L_loop);
+            masm.bind(loop);
             masm.movq(tmp, new AMD64Address(src, len, Stride.S8, 24));
             masm.movq(new AMD64Address(dst, len, Stride.S8, 24), tmp);
             masm.movq(tmp, new AMD64Address(src, len, Stride.S8, 16));
@@ -329,9 +329,9 @@ public final class AMD64CopyLongsOp extends AMD64ComplexVectorOp {
             masm.movq(tmp, new AMD64Address(src, len, Stride.S8, 0));
             masm.movq(new AMD64Address(dst, len, Stride.S8, 0), tmp);
 
-            masm.bind(L_copy_bytes);
-            masm.subqAndJcc(len, 4, ConditionFlag.GreaterEqual, L_loop, true);
+            masm.bind(copyBytes);
+            masm.subqAndJcc(len, 4, ConditionFlag.GreaterEqual, loop, true);
         }
-        masm.addqAndJcc(len, 4, ConditionFlag.Greater, L_copy_8_bytes, false);
+        masm.addqAndJcc(len, 4, ConditionFlag.Greater, copy8Bytes, false);
     }
 }
