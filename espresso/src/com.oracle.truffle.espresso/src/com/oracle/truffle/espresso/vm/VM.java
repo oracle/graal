@@ -58,8 +58,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
+import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -148,6 +148,7 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
@@ -2280,6 +2281,22 @@ public final class VM extends NativeEnv {
         }
         try {
             TruffleObject function = getNativeAccess().lookupSymbol(library, name);
+            if (getLogger().isLoggable(Level.FINEST)) {
+                InteropLibrary interop = InteropLibrary.getUncached();
+                String libraryName;
+                if (nativePtr == rtldDefaultValue || nativePtr == processHandleValue) {
+                    libraryName = "RTLD_DEFAULT";
+                } else {
+                    libraryName = interop.asString(interop.toDisplayString(library, false));
+                }
+                String functionName;
+                if (function == null) {
+                    functionName = "null";
+                } else {
+                    functionName = interop.asString(interop.toDisplayString(function, false));
+                }
+                getLogger().finest("JVM_FindLibraryEntry(%s, %s) -> %s".formatted(libraryName, name, functionName));
+            }
             if (function == null) {
                 return RawPointer.nullInstance(); // not found
             }
