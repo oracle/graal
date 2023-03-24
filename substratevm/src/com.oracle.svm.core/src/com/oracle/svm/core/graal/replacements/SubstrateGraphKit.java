@@ -268,7 +268,7 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ConstantNode createObject(Object value) {
-        SnippetReflectionProvider snippetReflection = ((Providers) getProviders()).getSnippetReflection();
+        SnippetReflectionProvider snippetReflection = getProviders().getSnippetReflection();
         return ConstantNode.forConstant(snippetReflection.forObject(value), getMetaAccess(), graph);
     }
 

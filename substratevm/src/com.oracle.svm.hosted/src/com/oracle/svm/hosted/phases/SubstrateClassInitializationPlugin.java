@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.hosted.SVMHost;
 
@@ -62,7 +61,7 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     @Override
     public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
         if (EnsureClassInitializedNode.needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
-            SnippetReflectionProvider snippetReflection = ((UniverseMetaAccess) builder.getMetaAccess()).getUniverse().getSnippetReflection();
+            SnippetReflectionProvider snippetReflection = builder.getSnippetReflection();
             emitEnsureClassInitialized(builder, snippetReflection.forObject(host.dynamicHub(type)), frameState.get());
             /*
              * The classInit value is only registered with Invoke nodes. Since we do not need that,

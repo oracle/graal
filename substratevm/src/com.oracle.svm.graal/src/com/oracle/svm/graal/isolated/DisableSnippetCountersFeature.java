@@ -34,7 +34,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
 
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -53,18 +52,16 @@ final class DisableSnippetCountersPlugin implements NodePlugin {
 
     @Override
     public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
-        UniverseMetaAccess metaAccess = (UniverseMetaAccess) b.getMetaAccess();
-        SnippetReflectionProvider snippetReflection = metaAccess.getUniverse().getSnippetReflection();
         if (field.getName().equals("group") && field.getDeclaringClass().getName().equals(snippetCounterName)) {
-            b.addPush(JavaKind.Object, ConstantNode.forConstant(JavaConstant.NULL_POINTER, metaAccess));
+            b.addPush(JavaKind.Object, ConstantNode.forConstant(JavaConstant.NULL_POINTER, b.getMetaAccess()));
             return true;
         }
         if (field.getType().getName().equals(snippetCounterName)) {
-            b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(SnippetCounter.DISABLED_COUNTER), metaAccess));
+            b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(SnippetCounter.DISABLED_COUNTER), b.getMetaAccess()));
             return true;
         }
         if (field.getType().getName().equals(snippetIntegerHistogramName)) {
-            b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(SnippetIntegerHistogram.DISABLED_COUNTER), metaAccess));
+            b.addPush(JavaKind.Object, ConstantNode.forConstant(b.getSnippetReflection().forObject(SnippetIntegerHistogram.DISABLED_COUNTER), b.getMetaAccess()));
             return true;
         }
         return false;

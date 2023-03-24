@@ -110,8 +110,8 @@ public final class StaticFieldsSupport {
         return result;
     }
 
-    public static FloatingNode createStaticFieldBaseNode(SnippetReflectionProvider snippetReflection, boolean primitive) {
-        return new StaticFieldBaseNode(primitive, snippetReflection);
+    public static FloatingNode createStaticFieldBaseNode(boolean primitive) {
+        return new StaticFieldBaseNode(primitive);
     }
 
     @NodeInfo(cycles = CYCLES_0, size = SIZE_1)
@@ -119,16 +119,14 @@ public final class StaticFieldsSupport {
         public static final NodeClass<StaticFieldBaseNode> TYPE = NodeClass.create(StaticFieldBaseNode.class);
 
         public final boolean primitive;
-        private final SnippetReflectionProvider snippetReflection;
 
         /**
          * We must not expose that the stamp will eventually be an array, to avoid memory graph
          * problems. See the comment on {@link StaticFieldsSupport}.
          */
-        protected StaticFieldBaseNode(boolean primitive, SnippetReflectionProvider snippetReflection) {
+        protected StaticFieldBaseNode(boolean primitive) {
             super(TYPE, StampFactory.objectNonNull());
             this.primitive = primitive;
-            this.snippetReflection = snippetReflection;
         }
 
         /**
@@ -160,7 +158,7 @@ public final class StaticFieldsSupport {
                 return;
             }
 
-            JavaConstant constant = snippetReflection.forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+            JavaConstant constant = tool.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
             assert constant.isNonNull();
             replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
         }
@@ -176,14 +174,14 @@ final class StaticFieldsFeature implements InternalFeature {
         r.register(new RequiredInvocationPlugin("getStaticObjectFields") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused) {
-                b.addPush(JavaKind.Object, new StaticFieldsSupport.StaticFieldBaseNode(false, snippetReflection));
+                b.addPush(JavaKind.Object, new StaticFieldsSupport.StaticFieldBaseNode(false));
                 return true;
             }
         });
         r.register(new RequiredInvocationPlugin("getStaticPrimitiveFields") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused) {
-                b.addPush(JavaKind.Object, new StaticFieldsSupport.StaticFieldBaseNode(true, snippetReflection));
+                b.addPush(JavaKind.Object, new StaticFieldsSupport.StaticFieldBaseNode(true));
                 return true;
             }
         });

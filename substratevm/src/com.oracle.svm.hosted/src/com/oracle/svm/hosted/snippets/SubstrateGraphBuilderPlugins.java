@@ -802,7 +802,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
-                    return processStaticFieldBase(b, snippetReflection, targetField, isSunMiscUnsafe);
+                    return processStaticFieldBase(b, targetField, isSunMiscUnsafe);
                 }
                 return false;
 
@@ -897,12 +897,12 @@ public class SubstrateGraphBuilderPlugins {
         return true;
     }
 
-    private static boolean processStaticFieldBase(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, Field targetField, boolean isSunMiscUnsafe) {
+    private static boolean processStaticFieldBase(GraphBuilderContext b, Field targetField, boolean isSunMiscUnsafe) {
         if (!isValidField(targetField, isSunMiscUnsafe)) {
             return false;
         }
 
-        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(snippetReflection, targetField.getType().isPrimitive()));
+        b.addPush(JavaKind.Object, StaticFieldsSupport.createStaticFieldBaseNode(targetField.getType().isPrimitive()));
         return true;
     }
 

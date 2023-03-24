@@ -178,7 +178,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
         SharedField field = (SharedField) f;
         assert field.isStatic();
-        return graph.unique(StaticFieldsSupport.createStaticFieldBaseNode(this.getProviders().getSnippetReflection(), field.getStorageKind() != JavaKind.Object));
+        return graph.unique(StaticFieldsSupport.createStaticFieldBaseNode(field.getStorageKind() != JavaKind.Object));
     }
 
     private static ValueNode maybeUncompress(ValueNode node) {
