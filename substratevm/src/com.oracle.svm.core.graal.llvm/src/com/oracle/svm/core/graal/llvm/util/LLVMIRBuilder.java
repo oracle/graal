@@ -227,7 +227,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public enum LLVMCallingConvention {
-        GraalCallingConvention(102);
+        GraalCallingConvention(487);
 
         private final int value;
 
