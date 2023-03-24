@@ -61,7 +61,6 @@ public class DefaultLoopPolicies implements LoopPolicies {
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(500);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(10);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(10.0);
-        @Option(help = "Default unswitching factor for control split node with unkown profile data.", type = OptionType.Expert) public static final OptionKey<Double> DefaultUnswitchFactor = new OptionKey<>(0.7);
         @Option(help = "Maximum number of split successors before aborting unswitching.", type = OptionType.Expert) public static final OptionKey<Integer> MaxUnswitchSuccessors = new OptionKey<>(64);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(400);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);

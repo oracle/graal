@@ -30,7 +30,6 @@ import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 import org.junit.Test;
 
@@ -224,8 +223,6 @@ public class LoopUnswitchTest extends GraalCompilerTest {
 
     @Test
     public void test05() {
-        final StructuredGraph graph = parseEager("manySwitch", AllowAssumptions.NO);
-        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
-        new LoopUnswitchingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, getDefaultHighTierContext());
+        test("manySwitch");
     }
 }
