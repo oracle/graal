@@ -31,7 +31,6 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
@@ -60,7 +59,7 @@ import com.oracle.svm.core.BuildPhaseProvider;
  * <li>Create a subclass of
  * {@link org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin}
  * that is also a decorator
- * (override @{@link InvocationPlugin.RequiredInvocationPlugin#isDecorator()})</li>
+ * (override @{@link org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin#isDecorator()})</li>
  * <li>When applying the plugin, add this node to the graph with a @{link {@link Runnable} that
  * registers the metadata.}</li>
  * </ol>
