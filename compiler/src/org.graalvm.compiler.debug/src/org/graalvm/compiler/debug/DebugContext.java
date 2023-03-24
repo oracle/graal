@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -188,10 +188,6 @@ public final class DebugContext implements AutoCloseable {
      */
     public static Map<Object, Object> addVersionProperties(Map<Object, Object> properties) {
         return Versions.VERSIONS.withVersions(properties);
-    }
-
-    public CompilationListener getCompilationListener() {
-        return compilationListener;
     }
 
     /**
@@ -423,7 +419,7 @@ public final class DebugContext implements AutoCloseable {
 
     private final Description description;
 
-    private CompilationListener compilationListener;
+    private final CompilationListener compilationListener;
 
     /**
      * Gets a description of the computation associated with this debug context.
@@ -442,16 +438,6 @@ public final class DebugContext implements AutoCloseable {
      */
     public boolean hasCompilationListener() {
         return compilationListener != null;
-    }
-
-    /**
-     * Sets the compilation listener, which will be notified about subsequent inlinings and entered
-     * phases.
-     *
-     * @param compilationListener the new compilation listener
-     */
-    public void setCompilationListener(CompilationListener compilationListener) {
-        this.compilationListener = compilationListener;
     }
 
     private int compilerPhaseNesting = 0;
@@ -969,7 +955,7 @@ public final class DebugContext implements AutoCloseable {
      *
      * @param context an object to be appended to the {@linkplain #context() current} debug context
      */
-    public DebugContext.Scope withContext(Object context) throws Throwable {
+    public DebugContext.Scope withContext(Object context) {
         if (currentScope != null) {
             return enterScope("", null, context);
         } else {
@@ -1826,24 +1812,9 @@ public final class DebugContext implements AutoCloseable {
      * Debug.memUseTracker(format, arg, null)
      * </pre>
      *
-     * except that the string formatting only happens if mem tracking is enabled.
-     *
-     * @see #counter(String, Object, Object)
-     */
-    public static MemUseTrackerKey memUseTracker(String format, Object arg) {
-        return createMemUseTracker(format, arg, null);
-    }
-
-    /**
-     * Creates a debug memory use tracker. Invoking this method is equivalent to:
-     *
-     * <pre>
-     * Debug.memUseTracker(String.format(format, arg1, arg2))
-     * </pre>
-     *
-     * except that the string formatting only happens if memory use tracking is enabled. In
-     * addition, each argument is subject to the following type based conversion before being passed
-     * as an argument to {@link String#format(String, Object...)}:
+     * except that the string formatting only happens if mem tracking is enabled. In addition, each
+     * argument is subject to the following type based conversion before being passed as an argument
+     * to {@link String#format(String, Object...)}:
      *
      * <pre>
      *     Type          | Conversion
@@ -1853,9 +1824,10 @@ public final class DebugContext implements AutoCloseable {
      * </pre>
      *
      * @see #memUseTracker(CharSequence)
+     * @see #counter(String, Object, Object)
      */
-    public static MemUseTrackerKey memUseTracker(String format, Object arg1, Object arg2) {
-        return createMemUseTracker(format, arg1, arg2);
+    public static MemUseTrackerKey memUseTracker(String format, Object arg) {
+        return createMemUseTracker(format, arg, null);
     }
 
     private static MemUseTrackerKey createMemUseTracker(String format, Object arg1, Object arg2) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,6 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.ProfileProvider;
 import org.graalvm.compiler.nodes.spi.StableProfileProvider;
 import org.graalvm.compiler.nodes.spi.StableProfileProvider.TypeFilter;
 import org.graalvm.compiler.options.OptionKey;
@@ -370,10 +369,6 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                 }
             }
         }
-    }
-
-    public ProfileProvider getProfileProvider() {
-        return profileProvider;
     }
 
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {

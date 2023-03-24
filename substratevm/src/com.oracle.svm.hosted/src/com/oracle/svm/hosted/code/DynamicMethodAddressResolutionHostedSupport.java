@@ -22,30 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jvmstat;
+package com.oracle.svm.hosted.code;
 
-import static jdk.vm.ci.meta.JavaKind.Byte;
+import com.oracle.objectfile.ObjectFile;
 
-import java.nio.ByteBuffer;
+public interface DynamicMethodAddressResolutionHostedSupport {
 
-import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+    void install(ObjectFile imageObjectFile);
 
-/**
- * Similar to {@link PerfStringConstant} and {@link PerfStringVariable} but supports direct memory
- * access. To ensure the same behavior as on HotSpot, this class also has to treat the maxLength
- * differently (see comment below and in {@link PerfStringVariable}).
- */
-public class PerfDirectMemoryString extends PerfDirectMemoryEntry {
-    PerfDirectMemoryString(String name, PerfUnit unit) {
-        super(name, unit);
-    }
-
-    protected ByteBuffer allocate(PerfVariability variability, byte[] value, int maxLength) {
-        assert value.length <= maxLength;
-        // As on HotSpot, add one extra byte for the null terminator.
-        int nullTerminatedMaxLength = maxLength + 1;
-        allocate(variability, Byte, nullTerminatedMaxLength);
-        writeNullTerminatedString(valuePtr, value, maxLength);
-        return DirectByteBufferUtil.allocate(valuePtr.rawValue(), nullTerminatedMaxLength);
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jvmstat;
-
-import static jdk.vm.ci.meta.JavaKind.Byte;
+package com.oracle.svm.core.jdk;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.svm.core.jdk.DirectByteBufferUtil;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-/**
- * Similar to {@link PerfStringConstant} and {@link PerfStringVariable} but supports direct memory
- * access. To ensure the same behavior as on HotSpot, this class also has to treat the maxLength
- * differently (see comment below and in {@link PerfStringVariable}).
- */
-public class PerfDirectMemoryString extends PerfDirectMemoryEntry {
-    PerfDirectMemoryString(String name, PerfUnit unit) {
-        super(name, unit);
-    }
+import com.oracle.svm.core.SubstrateUtil;
 
-    protected ByteBuffer allocate(PerfVariability variability, byte[] value, int maxLength) {
-        assert value.length <= maxLength;
-        // As on HotSpot, add one extra byte for the null terminator.
-        int nullTerminatedMaxLength = maxLength + 1;
-        allocate(variability, Byte, nullTerminatedMaxLength);
-        writeNullTerminatedString(valuePtr, value, maxLength);
-        return DirectByteBufferUtil.allocate(valuePtr.rawValue(), nullTerminatedMaxLength);
+public class DirectByteBufferUtil {
+    public static ByteBuffer allocate(long addr, long cap) {
+        Target_java_nio_DirectByteBuffer result;
+        if (JavaVersionUtil.JAVA_SPEC <= 20) {
+            result = new Target_java_nio_DirectByteBuffer(addr, NumUtil.safeToInt(cap));
+        } else {
+            result = new Target_java_nio_DirectByteBuffer(addr, cap);
+        }
+        return SubstrateUtil.cast(result, ByteBuffer.class);
     }
 }

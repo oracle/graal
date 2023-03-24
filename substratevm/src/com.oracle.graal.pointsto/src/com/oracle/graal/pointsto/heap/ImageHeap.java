@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -42,11 +43,11 @@ public class ImageHeap {
     /**
      * Map the original object *and* the replaced object to the same snapshot. The value is either a
      * not-yet-executed {@link AnalysisFuture} of {@link ImageHeapConstant} or its results, an
-     * {@link ImageHeapConstant}.
+     * {@link ImageHeapConstant}. Not all objects in this cache are reachable.
      */
-    private final ConcurrentHashMap<JavaConstant, /* ImageHeapObject */ Object> heapObjects;
+    private final ConcurrentHashMap<JavaConstant, /* ImageHeapObject */ Object> objectsCache;
     /** Store a mapping from types to object snapshots. */
-    private final Map<AnalysisType, Set<ImageHeapConstant>> typesToObjects;
+    private final Map<AnalysisType, Set<ImageHeapConstant>> reachableObjects;
 
     /*
      * Note on the idea of merging the heapObjects and typesToObjects maps:
@@ -70,31 +71,33 @@ public class ImageHeap {
      */
 
     public ImageHeap() {
-        heapObjects = new ConcurrentHashMap<>();
-        typesToObjects = new ConcurrentHashMap<>();
+        objectsCache = new ConcurrentHashMap<>();
+        reachableObjects = new ConcurrentHashMap<>();
     }
 
-    /** Record the future computing the snapshot or its result. */
-    public Object getTask(JavaConstant constant) {
-        return heapObjects.get(constant);
+    /** Get the constant snapshot from the cache. */
+    public Object getSnapshot(JavaConstant constant) {
+        return objectsCache.get(constant);
     }
 
     /** Record the future computing the snapshot in the heap. */
     public Object setTask(JavaConstant constant, AnalysisFuture<ImageHeapConstant> task) {
-        return heapObjects.putIfAbsent(constant, task);
+        return objectsCache.putIfAbsent(constant, task);
     }
 
     /** Record the snapshot in the heap. */
     public void setValue(JavaConstant constant, ImageHeapConstant value) {
-        heapObjects.put(constant, value);
+        Object previous = objectsCache.put(constant, value);
+        AnalysisError.guarantee(!(previous instanceof ImageHeapConstant), "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
     }
 
-    public Set<ImageHeapConstant> getObjects(AnalysisType type) {
-        return typesToObjects.getOrDefault(type, Collections.emptySet());
+    public Set<ImageHeapConstant> getReachableObjects(AnalysisType type) {
+        return reachableObjects.getOrDefault(type, Collections.emptySet());
     }
 
-    public boolean add(AnalysisType type, ImageHeapConstant heapObj) {
-        Set<ImageHeapConstant> objectSet = typesToObjects.computeIfAbsent(type, t -> ConcurrentHashMap.newKeySet());
+    public boolean addReachableObject(AnalysisType type, ImageHeapConstant heapObj) {
+        assert heapObj.isReachable();
+        Set<ImageHeapConstant> objectSet = reachableObjects.computeIfAbsent(type, t -> ConcurrentHashMap.newKeySet());
         return objectSet.add(heapObj);
     }
 }

@@ -3702,6 +3702,11 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x50 + encode(src));
     }
 
+    public final void push(int imm32) {
+        emitByte(0x68);
+        emitInt(imm32);
+    }
+
     public void pushfq() {
         emitByte(0x9c);
     }

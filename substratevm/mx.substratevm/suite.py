@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "6.15.3",
+    "mxversion": "6.17.0",
     "name": "substratevm",
     "version" : "23.0.0",
     "release" : False,
@@ -252,6 +252,7 @@ suite = {
                 "jdk.httpserver",
                 "jdk.jfr",
                 "jdk.management",
+                "jdk.management.jfr",
                 "jdk.unsupported",
             ],
             "requiresConcealed" : {
@@ -292,9 +293,6 @@ suite = {
                 ],
                 "jdk.management.agent": [
                     "jdk.internal.agent",
-                ],
-                "jdk.management.jfr": [
-                    "jdk.management.jfr"
                 ],
                 "jdk.httpserver@19+": [
                     "sun.net.httpserver.simpleserver",
@@ -619,6 +617,7 @@ suite = {
                 "java.xml.crypto",
                 "jdk.jfr",
                 "jdk.management",
+                "jdk.unsupported",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -653,6 +652,9 @@ suite = {
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
                 ],
+                "jdk.unsupported": [
+                    "sun.reflect",
+                ]
             },
             "javaCompliance" : "17+",
             "checkstyleVersion": "10.7.0",

@@ -172,6 +172,7 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-H:Debug=2'] # GR-43934
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
+            self.base_image_build_args += ['-H:+ReportExceptionStackTraces']
             self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
             self.base_image_build_args += self.system_properties
@@ -851,7 +852,7 @@ class NativeImageVM(GraalVm):
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
-            instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}']
+            instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}']
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()

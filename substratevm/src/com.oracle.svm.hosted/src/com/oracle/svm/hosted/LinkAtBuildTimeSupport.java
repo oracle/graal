@@ -208,7 +208,7 @@ public final class LinkAtBuildTimeSupport {
 
     public String errorMessageFor(Class<?> clazz) {
         assert linkAtBuildTime(clazz);
-        return "This error is reported at image build time because class " + clazz.getTypeName() + " is registered for linking at image build time by " + linkAtBuildTimeReason(clazz);
+        return "This error is reported at image build time because class " + clazz.getTypeName() + " is registered for linking at image build time by " + linkAtBuildTimeReason(clazz) + ".";
     }
 
     @SuppressWarnings("unchecked")

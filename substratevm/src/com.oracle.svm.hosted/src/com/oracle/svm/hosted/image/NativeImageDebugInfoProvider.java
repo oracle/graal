@@ -225,7 +225,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     @Override
     public Stream<DebugCodeInfo> codeInfoProvider() {
-        return codeCache.getOrderedCompilations().stream().map(pair -> new NativeImageDebugCodeInfo(pair.getLeft(), pair.getRight()));
+        // despite what it says on the tin method getOrderedCompilations may not actually present
+        // compiled methods in ascending address range order, whether globally or within a class.
+        // so we need to sort them here
+        return codeCache.getOrderedCompilations().stream()
+                .map(pair -> (DebugCodeInfo) new NativeImageDebugCodeInfo(pair.getLeft(), pair.getRight()))
+                .sorted((c1, c2) -> (c1.addressLo() - c2.addressLo()));
     }
 
     @Override

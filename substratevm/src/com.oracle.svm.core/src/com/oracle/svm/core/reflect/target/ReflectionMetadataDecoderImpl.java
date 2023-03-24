@@ -89,10 +89,9 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     public static final int ALL_PERMITTED_SUBCLASSES_FLAG = 1 << 25;
     public static final int ALL_NEST_MEMBERS_FLAG = 1 << 26;
     public static final int ALL_SIGNERS_FLAG = 1 << 27;
-    public static final int ALL_ENABLED_QUERIES_FLAGS_MASK = ALL_FIELDS_FLAG | ALL_DECLARED_FIELDS_FLAG | ALL_METHODS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_CONSTRUCTORS_FLAG |
-                    ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CLASSES_FLAG | ALL_DECLARED_CLASSES_FLAG | ALL_RECORD_COMPONENTS_FLAG | ALL_PERMITTED_SUBCLASSES_FLAG | ALL_NEST_MEMBERS_FLAG |
-                    ALL_SIGNERS_FLAG;
-    public static final int CLASS_ACCESS_FLAGS_MASK = ~ALL_ENABLED_QUERIES_FLAGS_MASK;
+
+    // Value from Reflection.getClassAccessFlags()
+    public static final int CLASS_ACCESS_FLAGS_MASK = 0x1FFF;
 
     static byte[] getEncoding() {
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding();
