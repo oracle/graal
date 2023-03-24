@@ -58,6 +58,7 @@ public class CompilationInfo {
     private OptionValues compileOptions;
 
     protected boolean isTrivialMethod;
+    protected boolean trivialInliningDisabled;
 
     protected boolean canDeoptForTesting;
 
@@ -148,6 +149,14 @@ public class CompilationInfo {
 
     public void setTrivialMethod(boolean trivial) {
         isTrivialMethod = trivial;
+    }
+
+    public boolean isTrivialInliningDisabled() {
+        return trivialInliningDisabled;
+    }
+
+    public void setTrivialInliningDisabled(boolean trivialInliningDisabled) {
+        this.trivialInliningDisabled = trivialInliningDisabled;
     }
 
     public void setCustomParseFunction(ParseFunction parseFunction) {
