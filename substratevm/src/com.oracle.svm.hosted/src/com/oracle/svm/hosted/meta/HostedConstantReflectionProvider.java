@@ -57,6 +57,18 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
     }
 
     @Override
+    public JavaConstant boxPrimitive(JavaConstant source) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return universe.getConstantReflectionProvider().boxPrimitive(source);
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return universe.getConstantReflectionProvider().unboxPrimitive(source);
+    }
+
+    @Override
     public ResolvedJavaType asJavaType(Constant constant) {
         /* Delegate to the AnalysisConstantReflectionProvider. */
         return universe.lookup(universe.getConstantReflectionProvider().asJavaType(constant));

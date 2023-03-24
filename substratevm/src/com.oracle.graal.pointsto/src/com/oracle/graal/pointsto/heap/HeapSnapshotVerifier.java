@@ -206,7 +206,7 @@ public class HeapSnapshotVerifier {
 
         @Override
         public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, AnalysisType elementType, int index, ScanReason reason) {
-            ImageHeapArray arrayObject = (ImageHeapArray) getReceiverObject(array, reason);
+            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getReceiverObject(array, reason);
             Object elementValueTask = arrayObject.getElement(index);
             if (elementValueTask instanceof JavaConstant elementSnapshot) {
                 verifyArrayElementValue(elementValue, index, reason, arrayObject, elementSnapshot);
@@ -226,7 +226,7 @@ public class HeapSnapshotVerifier {
             return false;
         }
 
-        private void verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, ImageHeapArray arrayObject, JavaConstant elementSnapshot) {
+        private void verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, ImageHeapObjectArray arrayObject, JavaConstant elementSnapshot) {
             if (!Objects.equals(maybeUnwrapSnapshot(elementSnapshot, elementValue instanceof ImageHeapConstant), elementValue)) {
                 Consumer<ScanReason> onAnalysisModified = (deepReason) -> onArrayElementMismatch(elementSnapshot, elementValue, deepReason);
                 scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
@@ -236,6 +236,10 @@ public class HeapSnapshotVerifier {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private ImageHeapConstant getReceiverObject(JavaConstant constant, ScanReason reason) {
+            if (constant instanceof ImageHeapConstant) {
+                /* This is a simulated constant. */
+                return (ImageHeapConstant) constant;
+            }
             Object task = imageHeap.getSnapshot(constant);
             if (task == null) {
                 throw error(reason, "Task is null for constant %s.", constant);
@@ -275,10 +279,6 @@ public class HeapSnapshotVerifier {
          * Since embedded constants or constants reachable when scanning from roots can also be
          * ImageHeapObject that are not backed by a hosted object, we need to make sure that we
          * compare it with the correct representation of the snapshot, i.e., without unwrapping it.
-         * Moreover, since embedded ImageHeapObject can reference JavaConstant values directly (see
-         * the comment in
-         * {@link ImageHeapScanner#convertInjectedConstant(ImageHeapConstant, ScanReason)} for
-         * details why that happens), then the 'snapshot' itself can be a JavaConstant.
          */
         private JavaConstant maybeUnwrapSnapshot(JavaConstant snapshot, boolean asImageHeapObject) {
             if (snapshot instanceof ImageHeapConstant) {
