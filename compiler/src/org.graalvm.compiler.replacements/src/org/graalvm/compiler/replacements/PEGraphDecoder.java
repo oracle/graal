@@ -1105,6 +1105,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
 
             if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
+                if (invocationPlugin.isDecorator()) {
+                    graphBuilderContext.lastInstr.setNext(invoke.asFixedNode());
+                    return false;
+                }
 
                 if (graphBuilderContext.invokeConsumed) {
                     /* Nothing to do. */
@@ -1127,7 +1131,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     deleteInvoke(invoke);
                 }
                 return true;
-
             } else {
                 /* Intrinsification failed, restore original state: invoke is in Graph. */
                 invokePredecessor.setNext(invoke.asFixedNode());
@@ -1138,7 +1141,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
         Object invocationPlugin = invocationPluginCache.computeIfAbsent(targetMethod, method -> {
-            Object plugin = invocationPlugins.lookupInvocation(targetMethod, options);
+            Object plugin = invocationPlugins.lookupInvocation(targetMethod, true, true, options);
             if (plugin == null) {
                 plugin = CACHED_NULL_VALUE;
             }
