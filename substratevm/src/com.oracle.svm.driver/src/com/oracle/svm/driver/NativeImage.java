@@ -1515,6 +1515,7 @@ public class NativeImage {
         try {
             p = pb.inheritIO().start();
             imageBuilderPid = p.pid();
+            installImageBuilderCleanupHook(p);
             return p.waitFor();
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
@@ -1523,6 +1524,23 @@ public class NativeImage {
                 p.destroy();
             }
         }
+    }
+
+    /**
+     * Adds a shutdown hook to kill the image builder process if it's still alive.
+     * 
+     * @param p image builder process
+     */
+    private static void installImageBuilderCleanupHook(Process p) {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                if (p.isAlive()) {
+                    System.out.println("DESTROYING " + p.pid());
+                    p.destroy();
+                }
+            }
+        });
     }
 
     boolean useBundle() {

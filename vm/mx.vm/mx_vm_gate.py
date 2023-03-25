@@ -153,7 +153,7 @@ def _test_libgraal_basic(extra_vm_arguments):
                 stub = f'{m.group(1)}{m.group(2)}'
                 stub_compilations[stub] = stub_compilations.get(stub, 0) + 1
         if not stub_compilations:
-            mx.abort('Expected at least one stub compilation in compiler log')
+            mx.abort(f'Expected at least one stub compilation in compiler log:\n{compiler_log}')
         duplicated = {stub: count for stub, count in stub_compilations.items() if count > 1}
         if duplicated:
             table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
@@ -220,6 +220,26 @@ def _test_libgraal_fatal_error_handling():
 
         if 'JVMCINativeLibraryErrorFile' in out.data and not seen_libjvmci_log:
             mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
+
+    # Only clean up scratch dir on success
+    for scratch_dir in bench_suite.scratchDirs():
+        mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
+        mx.rmtree(scratch_dir)
+
+def _test_libgraal_systemic_failure_detection():
+    """
+    Tests that system compilation failures are detected and cause the VM to exit.
+    """
+    vmargs = ['-Dlibgraal.CrashAt=get,set,toString']
+    cmd = ["dacapo:fop", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
+    out = mx.OutputCapture()
+    exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
+    if exitcode == 0:
+        mx.abort('Expected benchmark to result in non-zero exit code: ' + ' '.join(cmd) + linesep + out.data)
+    else:
+        expect = 'Systemic Graal compilation failure detected'
+        if expect not in out.data:
+            mx.abort(f'Expected "{expect}" in output:{linesep}{out.data}')
 
     # Only clean up scratch dir on success
     for scratch_dir in bench_suite.scratchDirs():
@@ -424,6 +444,8 @@ def gate_body(args, tasks):
                     if t: _test_libgraal_basic(extra_vm_arguments)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
+                with Task('LibGraal Compiler:SystemicFailureDetection', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
+                    if t: _test_libgraal_systemic_failure_detection()
                 with Task('LibGraal Compiler:CompilationTimeout:JIT', tasks, tags=[VmGateTasks.libgraal]) as t:
                     if t: _test_libgraal_CompilationTimeout_JIT()
                 with Task('LibGraal Compiler:CompilationTimeout:Truffle', tasks, tags=[VmGateTasks.libgraal]) as t:

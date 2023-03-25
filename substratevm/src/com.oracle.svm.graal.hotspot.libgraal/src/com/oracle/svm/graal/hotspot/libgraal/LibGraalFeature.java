@@ -109,7 +109,6 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -738,26 +737,8 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider {
-
-    @Substitute
-    private static Pointer getBarrierPointer() {
-        return LibGraalEntryPoints.LOG_FILE_BARRIER.get();
-    }
-}
-
 @TargetClass(className = "org.graalvm.compiler.serviceprovider.GraalServices", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
-
-    @Substitute
-    public static long getGlobalTimeStamp() {
-        Pointer timestamp = LibGraalEntryPoints.GLOBAL_TIMESTAMP.get();
-        if (timestamp.readLong(0) == 0) {
-            timestamp.compareAndSwapLong(0, 0, System.currentTimeMillis(), LocationIdentity.ANY_LOCATION);
-        }
-        return timestamp.readLong(0);
-    }
 
     @Substitute
     private static void notifyLowMemoryPoint(boolean fullGC) {
@@ -829,9 +810,11 @@ final class HotSpotGraalOptionValuesUtil {
 @TargetClass(className = "org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeInstance {
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
+    @Alias//
+    @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
     // Checkstyle: resume
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
+    @Alias//
+    @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
 }
 
 @TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)
