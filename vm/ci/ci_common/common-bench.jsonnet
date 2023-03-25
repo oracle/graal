@@ -1,3 +1,5 @@
+# note: this file needs to be in sync between CE and EE
+
 local vm = import '../ci_includes/vm.jsonnet';
 local common = import '../../../ci/ci_common/common.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
@@ -176,7 +178,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       self.warmup_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=one-shot'],
     ],
     timelimit: '1:30:00',
-    notify_emails: [],
+    notify_groups: ['polybench'],
   },
 
   vm_bench_polybench_nfi: {
