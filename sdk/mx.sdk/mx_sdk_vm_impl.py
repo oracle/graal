@@ -2572,6 +2572,11 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
         if extra_installable_qualifiers:
             name += '_' + '_'.join(sorted(q.upper() for q in extra_installable_qualifiers))
         name += '_JAVA{}'.format(_src_jdk_version)
+
+        for component_ in [component] + extra_components:
+            for boot_jar in component_.boot_jars:
+                mx.warn("Component '{}' declares '{}' as 'boot_jar', which is ignored by the build process of the '{}' installable".format(component_.name, boot_jar, name))
+
         self.maven = _graalvm_maven_attributes(tag='installable')
         components = [component]
         if extra_components:
