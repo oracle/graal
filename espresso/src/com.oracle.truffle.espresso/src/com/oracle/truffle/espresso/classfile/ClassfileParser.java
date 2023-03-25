@@ -144,9 +144,6 @@ public final class ClassfileParser {
     public static final int JAVA_16_VERSION = 60;
     public static final int JAVA_17_VERSION = 61;
 
-    @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MIN = 0;
-    @SuppressWarnings("unused") private static final int MAJOR_VERSION_JAVA_MAX = JAVA_17_VERSION;
-
     public static final int STRICTER_ACCESS_CTRL_CHECK_VERSION = JAVA_1_5_VERSION;
     public static final int STACKMAP_ATTRIBUTE_MAJOR_VERSION = JAVA_6_VERSION;
     public static final int INVOKEDYNAMIC_MAJOR_VERSION = JAVA_7_VERSION;
@@ -154,7 +151,6 @@ public final class ClassfileParser {
     public static final int DYNAMICCONSTANT_MAJOR_VERSION = JAVA_11_VERSION;
 
     public static final char JAVA_MIN_SUPPORTED_VERSION = JAVA_1_1_VERSION;
-    public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_11_VERSION;
     public static final char JAVA_MAX_SUPPORTED_MINOR_VERSION = 0;
     public static final char JAVA_PREVIEW_MINOR_VERSION = 65535;
 
