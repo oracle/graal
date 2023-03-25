@@ -24,33 +24,29 @@ package com.oracle.truffle.espresso.runtime.panama;
 
 import com.oracle.truffle.espresso.impl.Klass;
 
-public class DefaultArgumentsCalculator extends AbstractArgumentsCalculator {
-    private int intIndex;
-    private int floatIndex;
+public class WindowsArgumentsCalculator extends AbstractArgumentsCalculator {
     private int globalIndex;
 
-    public DefaultArgumentsCalculator(Platform platform, VMStorage[] callIntRegs, VMStorage[] callFloatRegs, VMStorage intReturn, VMStorage floatReturn) {
+    public WindowsArgumentsCalculator(Platform platform, VMStorage[] callIntRegs, VMStorage[] callFloatRegs, VMStorage intReturn, VMStorage floatReturn) {
         super(platform, callIntRegs, callFloatRegs, intReturn, floatReturn);
     }
 
     @Override
     public int getNextInputIndex(VMStorage reg, Klass type) {
-        // This depends on order since int and float register are independently allocated
+        // TODO this currently depends on order but doesn't actually need to
         assert isInt(type) || isFloat(type);
-        if (intIndex < callIntRegs.length && callIntRegs[intIndex].equals(reg)) {
+        if (globalIndex < callIntRegs.length && callIntRegs[globalIndex].equals(reg)) {
             assert isInt(type);
-            intIndex++;
             return globalIndex++;
         }
-        if (floatIndex < callFloatRegs.length && callFloatRegs[floatIndex].equals(reg)) {
+        if (globalIndex < callFloatRegs.length && callFloatRegs[globalIndex].equals(reg)) {
             assert isFloat(type);
-            floatIndex++;
             return globalIndex++;
         }
         if (reg.type(platform).isStack()) {
             // TODO validate offset
-            assert !isInt(type) || intIndex == callIntRegs.length;
-            assert !isFloat(type) || floatIndex == callFloatRegs.length;
+            assert !isInt(type) || globalIndex >= callIntRegs.length;
+            assert !isFloat(type) || globalIndex >= callFloatRegs.length;
             return globalIndex++;
         }
         return -1;
@@ -73,8 +69,6 @@ public class DefaultArgumentsCalculator extends AbstractArgumentsCalculator {
     public String toString() {
         return "DefaultArgumentsCalculator{" +
                         "platform=" + platform +
-                        ", intIndex=" + intIndex +
-                        ", floatIndex=" + floatIndex +
                         ", globalIndex=" + globalIndex +
                         '}';
     }

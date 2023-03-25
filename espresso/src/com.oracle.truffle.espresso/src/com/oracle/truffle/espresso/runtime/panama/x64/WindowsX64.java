@@ -33,10 +33,10 @@ import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm2;
 import static com.oracle.truffle.espresso.runtime.panama.x64.X64Regs.xmm3;
 
 import com.oracle.truffle.espresso.runtime.panama.ArgumentsCalculator;
-import com.oracle.truffle.espresso.runtime.panama.DefaultArgumentsCalculator;
 import com.oracle.truffle.espresso.runtime.panama.Platform;
 import com.oracle.truffle.espresso.runtime.panama.StorageType;
 import com.oracle.truffle.espresso.runtime.panama.VMStorage;
+import com.oracle.truffle.espresso.runtime.panama.WindowsArgumentsCalculator;
 
 public final class WindowsX64 extends Platform {
     public static final WindowsX64 INSTANCE = new WindowsX64();
@@ -58,6 +58,6 @@ public final class WindowsX64 extends Platform {
 
     @Override
     public ArgumentsCalculator getArgumentsCalculator() {
-        return new DefaultArgumentsCalculator(this, CALL_INT_REGS, CALL_FLOAT_REGS, rax, xmm0);
+        return new WindowsArgumentsCalculator(this, CALL_INT_REGS, CALL_FLOAT_REGS, rax, xmm0);
     }
 }
