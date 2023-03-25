@@ -170,6 +170,7 @@ innr public static ObjectPoolingAllocator
 meth public <%0 extends java.lang.Object> void topDown({%%0},java.util.function.BiFunction<{%%0},java.lang.Long,{%%0}>,java.util.function.BiConsumer<{%%0},java.lang.Long>)
 meth public org.graalvm.collections.LockFreePrefixTree$Allocator allocator()
 meth public org.graalvm.collections.LockFreePrefixTree$Node root()
+meth public void reset()
 supr java.lang.Object
 hfds allocator,root
 hcls FailedAllocationException
