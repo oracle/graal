@@ -52,4 +52,9 @@ public abstract class Platform {
     public abstract boolean ignoreDownCallArgument(VMStorage reg);
 
     public abstract ArgumentsCalculator getArgumentsCalculator();
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 }

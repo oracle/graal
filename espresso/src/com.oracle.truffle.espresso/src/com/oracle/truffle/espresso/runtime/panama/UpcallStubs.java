@@ -94,7 +94,7 @@ public class UpcallStubs {
                     nativeParamTypes[nativeIndex] = argReg.asNativeType(platform, pType);
                     nativeIndex++;
                 } else if (!platform.ignoreDownCallArgument(argReg)) {
-                    throw EspressoError.shouldNotReachHere("Cannot understand argument " + nativeArgIndex + " in upcall: " + argReg + " for type " + pType);
+                    throw EspressoError.shouldNotReachHere("Cannot understand argument " + nativeArgIndex + " in upcall: " + argReg + " for type " + pType + " calc: " + argsCalc);
                 }
             }
         }

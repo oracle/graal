@@ -78,7 +78,7 @@ public class DefaultArgumentsCalculator implements ArgumentsCalculator {
         return false;
     }
 
-    private boolean isInt(Klass type) {
+    private static boolean isInt(Klass type) {
         return switch (type.getJavaKind()) {
             case Boolean, Byte, Char, Short, Int, Long -> true;
             case Float, Double -> false;
@@ -86,11 +86,21 @@ public class DefaultArgumentsCalculator implements ArgumentsCalculator {
         };
     }
 
-    private boolean isFloat(Klass type) {
+    private static boolean isFloat(Klass type) {
         return switch (type.getJavaKind()) {
             case Boolean, Byte, Char, Short, Int, Long -> false;
             case Float, Double -> true;
             case Void, Illegal, Object, ReturnAddress -> throw EspressoError.shouldNotReachHere(type.getJavaKind().toString());
         };
+    }
+
+    @Override
+    public String toString() {
+        return "DefaultArgumentsCalculator{" +
+                        "platform=" + platform +
+                        ", intIndex=" + intIndex +
+                        ", floatIndex=" + floatIndex +
+                        ", globalIndex=" + globalIndex +
+                        '}';
     }
 }
