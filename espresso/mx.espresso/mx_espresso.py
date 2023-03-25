@@ -179,6 +179,7 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
         '-H:-JNIExportSymbols',
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
+        '-H:+DumpThreadStacksOnSignal',
         '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
     ],
 )
