@@ -29,14 +29,15 @@ import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.nodes.spi.CoreProvidersImpl;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.word.WordVerificationImpl;
+import org.graalvm.compiler.nodes.spi.WordVerification;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.compiler.word.WordVerificationImpl;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -45,18 +46,37 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * A set of providers, some of which may not be present (i.e., null).
  */
-public class Providers extends CoreProvidersImpl implements CodeGenProviders {
+public class Providers implements CoreProviders, CodeGenProviders {
 
-    private final CodeCacheProvider codeCache;
-
-    private final SnippetReflectionProvider snippetReflection;
-    private final WordTypes wordTypes;
+    protected final MetaAccessProvider metaAccess;
+    protected final ConstantReflectionProvider constantReflection;
+    protected final ConstantFieldProvider constantFieldProvider;
+    protected final LoweringProvider lowerer;
+    protected final Replacements replacements;
+    protected final StampProvider stampProvider;
+    protected final ForeignCallsProvider foreignCalls;
+    protected final PlatformConfigurationProvider platformConfigurationProvider;
+    protected final MetaAccessExtensionProvider metaAccessExtensionProvider;
+    protected final LoopsDataProvider loopsDataProvider;
+    protected final WordVerification wordVerification;
+    protected final CodeCacheProvider codeCache;
+    protected final SnippetReflectionProvider snippetReflection;
+    protected final WordTypes wordTypes;
 
     public Providers(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, PlatformConfigurationProvider platformConfigurationProvider,
                     MetaAccessExtensionProvider metaAccessExtensionProvider, SnippetReflectionProvider snippetReflection, WordTypes wordTypes, LoopsDataProvider loopsDataProvider) {
-        super(metaAccess, constantReflection, constantFieldProvider, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider,
-                        new WordVerificationImpl(wordTypes));
+        this.metaAccess = metaAccess;
+        this.constantReflection = constantReflection;
+        this.constantFieldProvider = constantFieldProvider;
+        this.lowerer = lowerer;
+        this.replacements = replacements;
+        this.stampProvider = stampProvider;
+        this.foreignCalls = foreignCalls;
+        this.platformConfigurationProvider = platformConfigurationProvider;
+        this.metaAccessExtensionProvider = metaAccessExtensionProvider;
+        this.loopsDataProvider = loopsDataProvider;
+        this.wordVerification = new WordVerificationImpl(wordTypes);
         this.codeCache = codeCache;
         this.snippetReflection = snippetReflection;
         this.wordTypes = wordTypes;
@@ -69,10 +89,66 @@ public class Providers extends CoreProvidersImpl implements CodeGenProviders {
     }
 
     @Override
+    public MetaAccessProvider getMetaAccess() {
+        return metaAccess;
+    }
+
+    @Override
+    public ConstantReflectionProvider getConstantReflection() {
+        return constantReflection;
+    }
+
+    @Override
+    public ConstantFieldProvider getConstantFieldProvider() {
+        return constantFieldProvider;
+    }
+
+    @Override
+    public LoweringProvider getLowerer() {
+        return lowerer;
+    }
+
+    @Override
+    public Replacements getReplacements() {
+        return replacements;
+    }
+
+    @Override
+    public StampProvider getStampProvider() {
+        return stampProvider;
+    }
+
+    @Override
+    public ForeignCallsProvider getForeignCalls() {
+        return foreignCalls;
+    }
+
+    @Override
+    public PlatformConfigurationProvider getPlatformConfigurationProvider() {
+        return platformConfigurationProvider;
+    }
+
+    @Override
+    public MetaAccessExtensionProvider getMetaAccessExtensionProvider() {
+        return metaAccessExtensionProvider;
+    }
+
+    @Override
+    public LoopsDataProvider getLoopsDataProvider() {
+        return loopsDataProvider;
+    }
+
+    @Override
+    public WordVerification getWordVerification() {
+        return wordVerification;
+    }
+
+    @Override
     public CodeCacheProvider getCodeCache() {
         return codeCache;
     }
 
+    @Override
     public SnippetReflectionProvider getSnippetReflection() {
         return snippetReflection;
     }
@@ -81,21 +157,18 @@ public class Providers extends CoreProvidersImpl implements CodeGenProviders {
         return wordTypes;
     }
 
-    @Override
     public Providers copyWith(ConstantReflectionProvider substitution) {
         assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, substitution, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
                         snippetReflection, wordTypes, loopsDataProvider);
     }
 
-    @Override
     public Providers copyWith(ConstantFieldProvider substitution) {
         assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, constantReflection, substitution, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
                         snippetReflection, wordTypes, loopsDataProvider);
     }
 
-    @Override
     public Providers copyWith(Replacements substitution) {
         assert this.getClass() == Providers.class : "must override in " + getClass();
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, substitution, stampProvider, platformConfigurationProvider,
