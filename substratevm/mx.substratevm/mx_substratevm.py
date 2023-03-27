@@ -846,7 +846,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_arch' : mx.get_arch()})
     # run objdump on the image to see the line info
-    print("### Running objdump --dwarf=decodedline %s | grep -A 2200 -E '^Hello.java:$'"%(hello_binary))
+    print("### Running objdump --dwarf=decodedline %s | grep -A 2200 -E 'Hello.java:'"%(hello_binary))
     mx.run(['bash', '-c', "objdump --dwarf=decodedline %s | grep -A 2200 -E 'Hello.java:'"%(hello_binary)])
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_isolates' : 'yes'})
