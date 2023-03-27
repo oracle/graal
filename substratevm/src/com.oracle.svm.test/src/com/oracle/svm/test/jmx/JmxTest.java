@@ -81,6 +81,7 @@ public class JmxTest {
     static final String TRUSTSTORE_PROPERTY = "javax.net.ssl.trustStore";
     static final String TRUSTSTORE_PASSWORD_PROPERTY = "javax.net.ssl.trustStorePassword";
     static final String REGISTRY_SSL_PROPERTY = "com.sun.management.jmxremote.registry.ssl";
+    static final String SOCKET_FACTORY_PROPERTY = "com.sun.jndi.rmi.factory.socket";
     static final String TEST_PORT = "12345";
     static final String TRUE = "true";
     static final String JMX_REMOTE_RESOURCES = "src/com.oracle.svm.test/src/com/oracle/svm/test/jmx/jmxremoteresources";
@@ -96,10 +97,16 @@ public class JmxTest {
         System.setProperty(CLIENT_AUTH_PROPERTY, TRUE);
         System.setProperty(SSL_PROPERTY, TRUE);
         System.setProperty(REGISTRY_SSL_PROPERTY, TRUE);
-        // The following are dummy password access, and SSL files required for testing
-        // authentication and SSL.
+
+        // The following are dummy password and access files required for testing authentication.
         System.setProperty(ACCESS_PROPERTY, JMX_REMOTE_RESOURCES + "/jmxremote.access");
         System.setProperty(PASSWORD_PROPERTY, JMX_REMOTE_RESOURCES + "/jmxremote.password");
+
+        /*
+         * The following are dummy SSL keystore and truststore files required for testing connection
+         * using SSL. The clientkeystore was used to create a client certificate
+         * (jmxremoteresources/client.cer) which was then imported into the servertruststore.
+         */
         System.setProperty(KEYSTORE_PROPERTY, JMX_REMOTE_RESOURCES + "/clientkeystore");
         System.setProperty(KEYSTORE_PASSWORD_PROPERTY, "clientpass");
         System.setProperty(TRUSTSTORE_PROPERTY, JMX_REMOTE_RESOURCES + "/servertruststore");
@@ -128,7 +135,7 @@ public class JmxTest {
             String[] credentials = {"myrole", "MYP@SSWORD"}; // dummy password for testing
             env.put(JMXConnector.CREDENTIALS, credentials);
             // Include below if protecting registry with SSL
-            env.put("com.sun.jndi.rmi.factory.socket", new SslRMIClientSocketFactory());
+            env.put(SOCKET_FACTORY_PROPERTY, new SslRMIClientSocketFactory());
             JMXConnector connector = JMXConnectorFactory.connect(jmxUrl, env);
             return connector.getMBeanServerConnection();
         } catch (IOException e) {
