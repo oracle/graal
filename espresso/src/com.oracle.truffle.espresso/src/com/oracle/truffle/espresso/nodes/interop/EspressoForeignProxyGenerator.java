@@ -70,6 +70,7 @@ import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
@@ -192,37 +193,23 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     }
 
     private static void addElementType(HashSet<Klass> types, Klass cls) {
-        var type = getElementType(cls);
+        var type = cls.getElementalType();
         if (!type.isPrimitive()) {
             types.add(type);
         }
-    }
-
-    private static Klass getElementType(Klass type) {
-        Klass e = type;
-        while (e.isArray()) {
-            e = e.getElementalType();
-        }
-        return e;
     }
 
     private final class ProxyClassContext {
 
         private final String packageName;
 
-        private ProxyClassContext(ModuleTable.ModuleEntry module, String packageName, int accessFlags) {
+        private ProxyClassContext(ModuleTable.ModuleEntry module, PackageTable.PackageEntry packageEntry, int accessFlags) {
             if (module.isNamed()) {
-                if (packageName.isEmpty()) {
+                if (packageEntry == null) {
                     // Per JLS 7.4.2, unnamed package can only exist in unnamed modules.
                     // This means a package-private superinterface exist in the unnamed
                     // package of a named module.
                     throw new InternalError("Unnamed package cannot be added to " + module);
-                }
-
-                try {
-                    ModulesHelperVM.extractPackageEntry(packageName.replace('.', '/'), module, meta, null);
-                } catch (EspressoException ex) {
-                    throw new InternalError(packageName + " not exist in " + module.getName());
                 }
             } else {
                 if (Modifier.isPublic(accessFlags)) {
@@ -234,7 +221,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             if ((accessFlags & ~Modifier.PUBLIC) != 0) {
                 throw new InternalError("proxy access flags must be Modifier.PUBLIC or 0");
             }
-            this.packageName = packageName;
+            this.packageName = packageEntry.getNameAsString();
         }
     }
 
@@ -261,12 +248,12 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             // Configuration will fail if M1 and in M2 defined by the same loader
             // and both have the same package p (so no need to check class loader)
             ModuleTable.ModuleEntry targetModule = null;
-            String targetPackageName = null;
+            PackageTable.PackageEntry targetPackage = null;
             for (Map.Entry<ObjectKlass, ModuleTable.ModuleEntry> e : packagePrivateTypes.entrySet()) {
-                ObjectKlass intf = e.getKey();
+                PackageTable.PackageEntry currentPackage = e.getKey().packageEntry();
                 ModuleTable.ModuleEntry m = e.getValue();
                 if ((targetModule != null && targetModule != m) ||
-                                (targetPackageName != null && !targetPackageName.equals(intf.packageEntry().getNameAsString()))) {
+                                (targetPackage != null && !targetPackage.equals(currentPackage))) {
                     throw new IllegalArgumentException(
                                     "cannot have non-public interfaces in different packages");
                 }
@@ -278,7 +265,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                 }
 
                 targetModule = m;
-                targetPackageName = e.getKey().packageEntry().getNameAsString();
+                targetPackage = currentPackage;
             }
 
             // validate if the target module can access all other interfaces
@@ -293,7 +280,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                 }
             }
             // return the module of the package-private interface
-            return new ProxyClassContext(targetModule, targetPackageName, 0);
+            return new ProxyClassContext(targetModule, targetPackage, 0);
         }
 
         // All proxy interfaces are public. So maps to a dynamic proxy module
@@ -310,7 +297,12 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
         String pkgName = nonExported ? PROXY_PACKAGE_PREFIX + '.' + targetModule.getName()
                         : targetModule.getNameAsString();
-        return new ProxyClassContext(targetModule, pkgName, Modifier.PUBLIC);
+        try {
+            PackageTable.PackageEntry packageEntry = ModulesHelperVM.extractPackageEntry(pkgName.replace('.', '/'), targetModule, meta, null);
+            return new ProxyClassContext(targetModule, packageEntry, Modifier.PUBLIC);
+        } catch (EspressoException ex) {
+            throw new InternalError(pkgName + " not exist in " + targetModule.getName());
+        }
     }
 
     private synchronized ModuleTable.ModuleEntry getDynamicModule(StaticObject loader) {
@@ -903,7 +895,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             Klass parameterType = parameterTypes[i];
             int dimensions = 0;
             while (parameterType.isArray()) {
-                parameterType = parameterType.getElementalType();
+                parameterType = ((ArrayKlass) parameterType).getComponentType();
                 dimensions++;
             }
             sig.append(parameterType.getName());
