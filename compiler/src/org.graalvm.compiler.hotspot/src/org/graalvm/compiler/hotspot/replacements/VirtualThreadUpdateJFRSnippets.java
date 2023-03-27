@@ -156,7 +156,7 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
         public void lower(VirtualThreadUpdateJFRNode virtualThreadUpdateJFRNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             Arguments args = new Arguments(virtualThreadUpdateJFR, virtualThreadUpdateJFRNode.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("javaThreadRegister", registers.getThreadRegister());
-            args.add("thread", virtualThreadUpdateJFRNode.getThread());
+            args.add("threadObj", virtualThreadUpdateJFRNode.getThread());
 
             template(tool, virtualThreadUpdateJFRNode, args).instantiate(tool.getMetaAccess(), virtualThreadUpdateJFRNode, DEFAULT_REPLACER, args);
         }
