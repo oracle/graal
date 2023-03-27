@@ -83,6 +83,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -187,7 +188,7 @@ public class ContextPreInitializationTest {
 
         final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
         final Method preInitMethod = holderClz.getDeclaredMethod("resetPreInitializedEngine");
-        preInitMethod.setAccessible(true);
+        ReflectionUtils.setAccessible(preInitMethod, true);
         preInitMethod.invoke(null);
     }
 
@@ -1163,7 +1164,7 @@ public class ContextPreInitializationTest {
         try {
             Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl");
             Method m = clz.getDeclaredMethod("getEngineLogger");
-            m.setAccessible(true);
+            ReflectionUtils.setAccessible(m, true);
             return (TruffleLogger) m.invoke(engine);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
@@ -2074,7 +2075,7 @@ public class ContextPreInitializationTest {
 
     AbstractPolyglotImpl findImpl() throws ReflectiveOperationException {
         Method getImplMethod = Engine.class.getDeclaredMethod("getImpl");
-        getImplMethod.setAccessible(true);
+        ReflectionUtils.setAccessible(getImplMethod, true);
         return (AbstractPolyglotImpl) getImplMethod.invoke(null);
     }
 
@@ -2619,7 +2620,7 @@ public class ContextPreInitializationTest {
     private static void resetLanguageHomes() throws ReflectiveOperationException {
         Class<?> languageCache = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
         Method reset = languageCache.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
-        reset.setAccessible(true);
+        ReflectionUtils.setAccessible(reset, true);
         reset.invoke(null);
     }
 
@@ -2628,7 +2629,7 @@ public class ContextPreInitializationTest {
         try {
             final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
             final Method preInitMethod = holderClz.getDeclaredMethod("preInitializeEngine");
-            preInitMethod.setAccessible(true);
+            ReflectionUtils.setAccessible(preInitMethod, true);
             preInitMethod.invoke(null);
         } finally {
             // PreinitializeContexts should only be set during pre-initialization, not at runtime
@@ -2655,7 +2656,7 @@ public class ContextPreInitializationTest {
     private static Set<Path> getActiveFileHandlers() throws ReflectiveOperationException {
         Class<?> polyglotLoggersClass = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers");
         Method m = polyglotLoggersClass.getDeclaredMethod("getActiveFileHandlers");
-        m.setAccessible(true);
+        ReflectionUtils.setAccessible(m, true);
         return (Set<Path>) m.invoke(null);
     }
 
