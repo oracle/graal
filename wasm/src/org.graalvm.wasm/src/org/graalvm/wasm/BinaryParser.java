@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,6 +68,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.ExportIdentifier;
@@ -77,14 +78,17 @@ import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.constants.Section;
 import org.graalvm.wasm.constants.SegmentMode;
+import org.graalvm.wasm.debugging.parser.DebugUtil;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.bytecode.BytecodeGen;
+import org.graalvm.wasm.parser.bytecode.BytecodeParser;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ParserState;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
 
 /**
@@ -101,15 +105,14 @@ public class BinaryParser extends BinaryStreamParser {
     private final long[] longMultiResult;
 
     private final boolean multiValue;
-
     private final boolean bulkMemoryAndRefTypes;
     private final boolean memory64;
 
     private final boolean unsafeMemory;
 
-    @CompilerDirectives.TruffleBoundary
-    public BinaryParser(WasmModule module, WasmContext context) {
-        super(module.data());
+    @TruffleBoundary
+    public BinaryParser(WasmModule module, WasmContext context, byte[] data) {
+        super(data);
         this.module = module;
         this.wasmContext = context;
         this.multiResult = new int[2];
@@ -120,7 +123,7 @@ public class BinaryParser extends BinaryStreamParser {
         this.unsafeMemory = context.getContextOptions().useUnsafeMemory();
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public void readModule() {
         module.limits().checkModuleSize(data.length);
         validateMagicNumberAndVersion();
@@ -134,8 +137,11 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readSymbolSections() {
         int lastNonCustomSection = 0;
-        boolean hasCodeSection = false;
-        BytecodeGen bytecode = new BytecodeGen();
+        int codeSectionOffset = -1;
+        int codeSectionLength = 0;
+        final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+        final BytecodeGen customData = new BytecodeGen();
+        final BytecodeGen functionDebugData = new BytecodeGen();
         while (!isEOF()) {
             final byte sectionID = read1();
 
@@ -156,7 +162,7 @@ public class BinaryParser extends BinaryStreamParser {
             final int startOffset = offset;
             switch (sectionID) {
                 case Section.CUSTOM:
-                    readCustomSection(size);
+                    readCustomSection(size, customData);
                     break;
                 case Section.TYPE:
                     readTypeSection();
@@ -193,8 +199,9 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     break;
                 case Section.CODE:
-                    readCodeSection(bytecode);
-                    hasCodeSection = true;
+                    codeSectionOffset = offset;
+                    readCodeSection(bytecode, functionDebugData);
+                    codeSectionLength = size;
                     break;
                 case Section.DATA:
                     readDataSection(bytecode);
@@ -202,21 +209,30 @@ public class BinaryParser extends BinaryStreamParser {
             }
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
         }
-        if (!hasCodeSection) {
+        if (codeSectionOffset == -1) {
             assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
         }
         module.setBytecode(bytecode.toArray());
         module.removeFunctionReferences();
+        module.setCustomData(customData.toArray());
+        if (module.hasDebugInfo()) {
+            functionDebugData.add(codeSectionLength);
+            final byte[] codeSection = new byte[codeSectionLength + functionDebugData.location()];
+            System.arraycopy(data, codeSectionOffset, codeSection, 0, codeSectionLength);
+            System.arraycopy(functionDebugData.toArray(), 0, codeSection, codeSectionLength, functionDebugData.location());
+            module.setCodeSection(codeSection);
+        }
     }
 
-    private void readCustomSection(int size) {
+    private void readCustomSection(int size, BytecodeGen customData) {
         final int sectionEndOffset = offset + size;
         final String name = readName();
         Assert.assertUnsignedIntLessOrEqual(sectionEndOffset, data.length, Failure.LENGTH_OUT_OF_BOUNDS);
         Assert.assertUnsignedIntLessOrEqual(offset, sectionEndOffset, Failure.UNEXPECTED_END);
-        final byte[] sectionData = new byte[sectionEndOffset - offset];
-        System.arraycopy(data, offset, sectionData, 0, sectionEndOffset - offset);
-        module.allocateCustomSection(name, sectionData);
+        final int customDataSection = customData.location();
+        final int sectionSize = sectionEndOffset - offset;
+        customData.addBytes(data, offset, sectionSize);
+        module.allocateCustomSection(name, customDataSection, sectionSize);
         if ("name".equals(name)) {
             try {
                 readNameSection();
@@ -224,8 +240,69 @@ public class BinaryParser extends BinaryStreamParser {
                 // Malformed name section should not result in invalidation of the module
                 assert ex.getExceptionType() == ExceptionType.PARSE_ERROR;
             }
+        } else {
+            readDebugSection(name, customDataSection, sectionSize, customData);
         }
         offset = sectionEndOffset;
+    }
+
+    /**
+     * Reads possible debug sections and stores their offset in the custom data array.
+     * 
+     * @param name the name of the custom section
+     * @param size the size of the custom section excluding the name
+     * @param customData the custom data
+     */
+    private void readDebugSection(String name, int sectionOffset, int size, BytecodeGen customData) {
+        switch (name) {
+            case DebugUtil.ABBREV_NAME:
+                DebugUtil.setAbbrevOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.ARANGES_NAME:
+                DebugUtil.setArangesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.FRAME_NAME:
+                DebugUtil.setFrameOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.INFO_NAME:
+                DebugUtil.setInfo(customData, allocateDebugOffsets(customData), sectionOffset, size);
+                break;
+            case DebugUtil.LINE_NAME:
+                DebugUtil.setLineOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.LOC_NAME:
+                DebugUtil.setLocOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.MAC_INFO_NAME:
+                DebugUtil.setMacInfoOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.PUBNAMES_NAME:
+                DebugUtil.setPubnamesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.PUBTYPES_NAME:
+                DebugUtil.setPubtypesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.RANGES_NAME:
+                DebugUtil.setRangesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.STR_NAME:
+                DebugUtil.setStrOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+            case DebugUtil.TYPES_NAME:
+                DebugUtil.setTypesOffset(customData, allocateDebugOffsets(customData), sectionOffset);
+                break;
+        }
+    }
+
+    /**
+     * Allocates space for the debug information in the custom data array.
+     */
+    private int allocateDebugOffsets(BytecodeGen customData) {
+        if (module.hasDebugInfo()) {
+            return module.debugInfoOffset();
+        }
+        module.setDebugInfoOffset(customData.location());
+        return customData.allocate(DebugUtil.CUSTOM_DATA_SIZE);
     }
 
     /**
@@ -389,7 +466,8 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readCodeSection(BytecodeGen bytecode) {
+    private void readCodeSection(RuntimeBytecodeGen bytecode, BytecodeGen functionDebugData) {
+        final int codeSectionOffset = offset;
         final int importedFunctionCount = module.importedFunctions().size();
         final int codeEntryCount = readLength();
         final int expectedCodeEntryCount = module.numFunctions() - importedFunctionCount;
@@ -403,13 +481,17 @@ public class BinaryParser extends BinaryStreamParser {
             final ByteArrayList locals = readCodeEntryLocals();
             final int localCount = locals.size() + module.function(importedFunctionCount + entryIndex).paramCount();
             module.limits().checkLocalCount(localCount);
+            // Store the function start offset, instruction start offset, and function end offset.
+            functionDebugData.add(startOffset - codeSectionOffset);
+            functionDebugData.add(offset - codeSectionOffset);
             codeEntries[entryIndex] = readCodeEntry(importedFunctionCount + entryIndex, locals, startOffset + codeEntrySize, entryIndex < codeEntryCount - 1, bytecode, entryIndex);
+            functionDebugData.add(offset - codeSectionOffset);
             assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
         }
         module.setCodeEntries(codeEntries);
     }
 
-    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction, BytecodeGen bytecode, int codeEntryIndex) {
+    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset, boolean hasNextFunction, RuntimeBytecodeGen bytecode, int codeEntryIndex) {
         final WasmFunction function = module.symbolTable().function(functionIndex);
         int paramCount = function.paramCount();
         byte[] localTypes = new byte[function.paramCount() + locals.size()];
@@ -423,7 +505,7 @@ public class BinaryParser extends BinaryStreamParser {
         for (int index = 0; index != resultTypes.length; index++) {
             resultTypes[index] = function.resultTypeAt(index);
         }
-        return readFunction(functionIndex, localTypes, resultTypes, endOffset, hasNextFunction, bytecode, codeEntryIndex);
+        return readFunction(functionIndex, localTypes, resultTypes, endOffset, hasNextFunction, bytecode, codeEntryIndex, null);
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -482,13 +564,22 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int sourceCodeEndOffset, boolean hasNextFunction, BytecodeGen bytecode, int codeEntryIndex) {
+    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int sourceCodeEndOffset, boolean hasNextFunction, RuntimeBytecodeGen bytecode,
+                    int codeEntryIndex, EconomicMap<Integer, Integer> sourceLocationToLineMap) {
         final ParserState state = new ParserState(bytecode);
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         final int bytecodeStartOffset = bytecode.location();
         state.enterFunction(resultTypes);
+
         int opcode;
         while (offset < sourceCodeEndOffset) {
+            // Insert a debug instruction if a line mapping exists.
+            if (sourceLocationToLineMap != null) {
+                if (sourceLocationToLineMap.containsKey(offset)) {
+                    bytecode.addNotify(sourceLocationToLineMap.get(offset), offset);
+                }
+            }
+
             opcode = read1() & 0xFF;
             switch (opcode) {
                 case Instructions.UNREACHABLE:
@@ -882,7 +973,10 @@ public class BinaryParser extends BinaryStreamParser {
         if (resultTypes.length != 0) {
             bytecode.addByte((byte) 0);
         }
-        module.setCodeEntryOffset(codeEntryIndex, bytecodeEndOffset);
+        if (sourceLocationToLineMap == null) {
+            // Do not override the code entry offset when rereading the function.
+            module.setCodeEntryOffset(codeEntryIndex, bytecodeEndOffset);
+        }
         return new CodeEntry(functionIndex, state.maxStackSize(), locals, resultTypes, callNodes, bytecodeStartOffset, bytecodeEndOffset);
     }
 
@@ -1524,7 +1618,7 @@ public class BinaryParser extends BinaryStreamParser {
         return functionIndices;
     }
 
-    private void readElementSection(BytecodeGen bytecode) {
+    private void readElementSection(RuntimeBytecodeGen bytecode) {
         int elemSegmentCount = readLength();
         module.limits().checkElementSegmentCount(elemSegmentCount);
         for (int elemSegmentIndex = 0; elemSegmentIndex != elemSegmentCount; elemSegmentIndex++) {
@@ -1771,7 +1865,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void readDataSection(BytecodeGen bytecode) {
+    private void readDataSection(RuntimeBytecodeGen bytecode) {
         final int dataSegmentCount = readLength();
         module.limits().checkDataSegmentCount(dataSegmentCount);
         if (bulkMemoryAndRefTypes && dataSegmentCount != 0) {
@@ -2077,5 +2171,23 @@ public class BinaryParser extends BinaryStreamParser {
         final byte length = peekLeb128Length(data, offset);
         offset += length;
         return value;
+    }
+
+    /**
+     * Creates a runtime bytecode of a function with added debug opcodes.
+     *
+     * @param functionIndex the function index
+     * @param sourceLocationToLineMap a mapping from source code locations to source code lines
+     *            numbers (extracted from debugging information)
+     */
+    @TruffleBoundary
+    public byte[] createFunctionDebugBytecode(int functionIndex, EconomicMap<Integer, Integer> sourceLocationToLineMap) {
+        final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+        final int codeEntryIndex = functionIndex - module.numImportedFunctions();
+        final CodeEntry codeEntry = BytecodeParser.readCodeEntry(module, module.bytecode(), codeEntryIndex);
+        offset = module.functionSourceCodeInstructionOffset(functionIndex);
+        final int endOffset = module.functionSourceCodeEndOffset(functionIndex);
+        readFunction(functionIndex, codeEntry.localTypes(), codeEntry.resultTypes(), endOffset, true, bytecode, codeEntryIndex, sourceLocationToLineMap);
+        return bytecode.toArray();
     }
 }

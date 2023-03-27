@@ -24,16 +24,17 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.meta.AllocatableValue;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.meta.AllocatableValue;
 
 /**
  * AMD64 rdtscp operation. The timestamp result is in EDX:EAX, the processor ID is left in ECX. Note
@@ -62,10 +63,6 @@ public class AMD64ReadTimestampCounterWithProcid extends AMD64LIRInstruction {
 
     public AllocatableValue getLowResult() {
         return lowResult;
-    }
-
-    public AllocatableValue getProcid() {
-        return procidResult;
     }
 
     @Override

@@ -854,7 +854,7 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements org.graalvm.compiler.api.replacements.SnippetTemplateCache {
 
         protected final OptionValues options;
-        private final SnippetReflectionProvider snippetReflection;
+        protected final SnippetReflectionProvider snippetReflection;
         private final Map<CacheKey, SnippetTemplate> templates;
 
         private final boolean shouldTrackNodeSourcePosition;
@@ -1678,10 +1678,6 @@ public class SnippetTemplate {
             }
         }
         return replacements;
-    }
-
-    public boolean hasSideEffects() {
-        return !sideEffectNodes.isEmpty();
     }
 
     /**

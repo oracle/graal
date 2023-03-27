@@ -646,6 +646,8 @@ public class SVMHost extends HostVM {
         for (Node n : graph.getNodes()) {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
+            } else if (n instanceof ReachabilityRegistrationNode node) {
+               bb.postTask(debug -> node.getRegistrationTask().ensureDone());
             }
             checkClassInitializerSideEffect(method, n);
         }
@@ -870,9 +872,9 @@ public class SVMHost extends HostVM {
         }
     }
 
-    public boolean preventConstantFolding(ResolvedJavaField field) {
+    public boolean allowConstantFolding(ResolvedJavaField field) {
         AnalysisField aField = field instanceof HostedField ? ((HostedField) field).getWrapped() : (AnalysisField) field;
-        return finalFieldsInitializedOutsideOfConstructor.contains(aField);
+        return !finalFieldsInitializedOutsideOfConstructor.contains(aField);
     }
 
     @Override

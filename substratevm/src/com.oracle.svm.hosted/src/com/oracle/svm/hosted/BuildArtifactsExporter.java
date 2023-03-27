@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,10 @@ package com.oracle.svm.hosted;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
-import java.util.Collection;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -39,7 +39,6 @@ import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonPrinter;
 import com.oracle.svm.core.util.json.JsonWriter;
 
 public class BuildArtifactsExporter {
@@ -58,18 +57,28 @@ public class BuildArtifactsExporter {
         }
         Path buildPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
         Path targetPath = buildPath.resolve(SubstrateOptions.BUILD_ARTIFACTS_FILE_NAME);
+        /*
+         * Create intermediate map from buildArtifactsMap for JSON conversion. note that this also
+         * merges ArtifactTypes with the same JSON key.
+         */
+        Map<String, List<String>> jsonMap = new TreeMap<>();
+        for (var artifact : buildArtifactsMap.entrySet()) {
+            String key = artifact.getKey().getJsonKey();
+            List<String> value = artifact.getValue().stream().map(p -> buildPath.relativize(p.toAbsolutePath()).toString()).toList();
+            jsonMap.computeIfAbsent(key, k -> new ArrayList<>()).addAll(value);
+        }
+
         try (JsonWriter writer = new JsonWriter(targetPath)) {
-            writer.append('{');
-            var iterator = buildArtifactsMap.entrySet().iterator();
+            writer.appendObjectStart();
+            var iterator = jsonMap.entrySet().iterator();
             while (iterator.hasNext()) {
                 var entry = iterator.next();
-                writer.quote(entry.getKey().getJsonKey()).append(":");
-                JsonPrinter.printCollection(writer, (Collection<Path>) entry.getValue(), Comparator.naturalOrder(), (p, w) -> w.quote(buildPath.relativize(p.toAbsolutePath()).toString()));
+                writer.quote(entry.getKey()).appendFieldSeparator().print(entry.getValue());
                 if (iterator.hasNext()) {
-                    writer.append(',');
+                    writer.appendSeparator();
                 }
             }
-            writer.append('}');
+            writer.appendObjectEnd();
             buildArtifacts.add(ArtifactType.BUILD_INFO, targetPath);
         } catch (IOException e) {
             throw VMError.shouldNotReachHere("Unable to create " + SubstrateOptions.BUILD_ARTIFACTS_FILE_NAME, e);

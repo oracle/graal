@@ -913,10 +913,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             crb.recordMark(SubstrateMarkId.EPILOGUE_END);
         }
 
-        @Override
-        public boolean hasFrame() {
-            return true;
-        }
     }
 
     /**

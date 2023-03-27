@@ -41,7 +41,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
+import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 
 @AutomaticallyRegisteredImageSingleton(CTypeConversionSupport.class)
 class CTypeConversionSupportImpl implements CTypeConversionSupport {
@@ -163,7 +163,7 @@ class CTypeConversionSupportImpl implements CTypeConversionSupport {
 
     @Override
     public ByteBuffer asByteBuffer(PointerBase address, int size) {
-        ByteBuffer byteBuffer = SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(address.rawValue(), size), ByteBuffer.class);
+        ByteBuffer byteBuffer = DirectByteBufferUtil.allocate(address.rawValue(), size);
         return byteBuffer.order(ConfigurationValues.getTarget().arch.getByteOrder());
     }
 }

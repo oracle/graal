@@ -52,18 +52,20 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 /**
  * This class holds various JFR-specific thread local values.
  *
- * Each thread uses both a Java and a native {@link JfrBuffer}:
+ * Each thread may use both a Java and a native {@link JfrBuffer}:
  * <ul>
- * <li>The Java buffer is accessed by JFR events that are implemented as Java classes and written
- * using {@code EventWriter}.</li>
- * <li>The native buffer is accessed when {@link JfrNativeEventWriter} is used to write an
- * event.</li>
+ * <li>The Java buffer is accessed when the JDK class {@code EventWriter} emits a Java-level JFR
+ * event. When JFR recording is stopped, we can't free the Java buffer right away because the class
+ * {@code EventWriter} is not uninterruptible (i.e., the thread may continue writing data to the
+ * buffer, even after JFR recording was already stopped). Therefore, we mark the buffer as retired
+ * (see {@link JfrBufferAccess#setRetired}) and either reinstate it at a later point in time or free
+ * it when the thread exits.</li>
+ * <li>The native buffer is accessed when the VM tries to emit a VM-level JFR event (see
+ * {@link JfrNativeEventWriter}). Native buffers are freed right away when JFR recording stops.</li>
  * </ul>
  *
  * It is necessary to have separate buffers as a native JFR event (e.g., a GC or an allocation)
- * could otherwise destroy a Java-level JFR event. All methods that access a {@link JfrBuffer} must
- * be uninterruptible to avoid races with JFR code that is executed at a safepoint (such code may
- * access and modify the buffers of other threads).
+ * could otherwise destroy a Java-level JFR event.
  *
  * Additionally, each thread may store stack trace data in a {@link SamplerBuffer}. This buffer is
  * used for both JFR stack traces and JFR sampling. All methods that access a {@link SamplerBuffer}
@@ -75,8 +77,8 @@ public class JfrThreadLocal implements ThreadListener {
     /* Event-related thread-locals. */
     private static final FastThreadLocalObject<Target_jdk_jfr_internal_EventWriter> javaEventWriter = FastThreadLocalFactory.createObject(Target_jdk_jfr_internal_EventWriter.class,
                     "JfrThreadLocal.javaEventWriter");
-    private static final FastThreadLocalWord<JfrBufferNode> javaBufferNode = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBufferNode");
-    private static final FastThreadLocalWord<JfrBufferNode> nativeBufferNode = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBufferNode");
+    private static final FastThreadLocalWord<JfrBuffer> javaBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBuffer");
+    private static final FastThreadLocalWord<JfrBuffer> nativeBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBuffer");
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
 
     /* Stacktrace-related thread-locals. */
@@ -113,16 +115,9 @@ public class JfrThreadLocal implements ThreadListener {
         return threadLocalBufferSize;
     }
 
-    public void teardown(boolean destroyJfr) {
+    public void teardown() {
         getNativeBufferList().teardown();
-        /*
-         * Java buffers and their nodes can only be freed in destroyJfr(). Otherwise, there is no
-         * guarantee that the buffer isn't still needed (JDK class EventWriter is not
-         * uninterruptible).
-         */
-        if (destroyJfr) {
-            getJavaBufferList().teardown();
-        }
+        getJavaBufferList().teardown();
     }
 
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
@@ -139,23 +134,28 @@ public class JfrThreadLocal implements ThreadListener {
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             ThreadEndEvent.emit(javaThread);
-            stopRecording(isolateThread, true);
         }
+
+        /*
+         * Try to free the Java-level JFR buffer, no matter if recording is currently active or not
+         * because the thread could still reference a retired buffer.
+         */
+        stopRecording(isolateThread, true);
     }
 
     @Uninterruptible(reason = "Accesses various JFR buffers.")
     public static void stopRecording(IsolateThread isolateThread, boolean freeJavaBuffer) {
         /* Flush event buffers. From this point onwards, no further JFR events may be emitted. */
-        JfrBufferNode nativeNode = nativeBufferNode.get(isolateThread);
-        nativeBufferNode.set(isolateThread, WordFactory.nullPointer());
-        flushToGlobalMemoryAndFreeBuffer(nativeNode);
+        JfrBuffer nb = nativeBuffer.get(isolateThread);
+        nativeBuffer.set(isolateThread, WordFactory.nullPointer());
+        flushToGlobalMemoryAndFreeBuffer(nb);
 
-        JfrBufferNode javaNode = javaBufferNode.get(isolateThread);
-        javaBufferNode.set(isolateThread, WordFactory.nullPointer());
+        JfrBuffer jb = javaBuffer.get(isolateThread);
+        javaBuffer.set(isolateThread, WordFactory.nullPointer());
         if (freeJavaBuffer) {
-            flushToGlobalMemoryAndFreeBuffer(javaNode);
+            flushToGlobalMemoryAndFreeBuffer(jb);
         } else {
-            flushToGlobalMemoryAndRetireBuffer(javaNode);
+            flushToGlobalMemoryAndRetireBuffer(jb);
         }
 
         /* Clear the other event-related thread-locals. */
@@ -175,18 +175,24 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private static void flushToGlobalMemoryAndFreeBuffer(JfrBufferNode node) {
-        if (node.isNull()) {
+    private static void flushToGlobalMemoryAndFreeBuffer(JfrBuffer buffer) {
+        if (buffer.isNull()) {
             return;
         }
 
-        /* Free the buffer but leave the node alive as it still needed. */
+        /* Retired buffers can be freed right away. */
+        JfrBufferNode node = buffer.getNode();
+        if (node.isNull()) {
+            assert JfrBufferAccess.isRetired(buffer);
+            JfrBufferAccess.free(buffer);
+            return;
+        }
+
+        /* Free the buffer but leave the node alive as it may still be needed. */
         JfrBufferNodeAccess.lockNoTransition(node);
         try {
-            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
-            node.setBuffer(WordFactory.nullPointer());
-
             flushToGlobalMemory0(buffer, WordFactory.unsigned(0), 0);
+            node.setBuffer(WordFactory.nullPointer());
             JfrBufferAccess.free(buffer);
         } finally {
             JfrBufferNodeAccess.unlock(node);
@@ -194,18 +200,17 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private static void flushToGlobalMemoryAndRetireBuffer(JfrBufferNode node) {
+    private static void flushToGlobalMemoryAndRetireBuffer(JfrBuffer buffer) {
         assert VMOperation.isInProgressAtSafepoint();
-        if (node.isNull()) {
+        if (buffer.isNull()) {
             return;
         }
 
+        JfrBufferNode node = buffer.getNode();
         JfrBufferNodeAccess.lockNoTransition(node);
         try {
-            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
             flushToGlobalMemory0(buffer, WordFactory.unsigned(0), 0);
-
-            JfrBufferNodeAccess.setRetired(node);
+            JfrBufferAccess.setRetired(buffer);
         } finally {
             JfrBufferNodeAccess.unlock(node);
         }
@@ -246,7 +251,7 @@ public class JfrThreadLocal implements ThreadListener {
     public Target_jdk_jfr_internal_EventWriter newEventWriter() {
         assert javaEventWriter.get() == null;
 
-        JfrBuffer buffer = reinstateBuffer(getJavaBuffer());
+        JfrBuffer buffer = reinstateJavaBuffer(getJavaBuffer());
         if (buffer.isNull()) {
             throw new OutOfMemoryError("OOME for thread local buffer");
         }
@@ -258,64 +263,66 @@ public class JfrThreadLocal implements ThreadListener {
 
     /**
      * If recording is started and stopped multiple times, then we may get a retired buffer instead
-     * of a new one. Retired buffers can have an invalid state, so we need to reset them before
-     * clearing the retired flag.
+     * of a new one. Retired buffers may have an invalid state and must be reset before adding them
+     * to the list of thread-local Java buffers.
      */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private static JfrBuffer reinstateBuffer(JfrBuffer buffer) {
+    private static JfrBuffer reinstateJavaBuffer(JfrBuffer buffer) {
         if (buffer.isNull()) {
             return WordFactory.nullPointer();
         }
 
         JfrBufferNode node = buffer.getNode();
-        JfrBufferNodeAccess.lockNoTransition(node);
-        try {
-            if (JfrBufferNodeAccess.isRetired(node)) {
-                JfrBufferAccess.reinitialize(buffer);
-                JfrBufferNodeAccess.clearRetired(node);
+        if (node.isNull()) {
+            assert JfrBufferAccess.isRetired(buffer);
+            JfrBufferAccess.reinitialize(buffer);
+            JfrBufferAccess.clearRetired(buffer);
+
+            node = javaBufferList.addNode(buffer);
+            if (node.isNull()) {
+                return WordFactory.nullPointer();
             }
-        } finally {
-            JfrBufferNodeAccess.unlock(node);
         }
+
         return buffer;
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public JfrBuffer getJavaBuffer() {
-        JfrBufferNode node = javaBufferNode.get();
-        if (node.isNull()) {
-            JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
+        JfrBuffer buffer = javaBuffer.get();
+        if (buffer.isNull()) {
+            buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_JAVA);
             if (buffer.isNull()) {
                 return WordFactory.nullPointer();
             }
 
-            node = javaBufferList.addNode(buffer);
+            JfrBufferNode node = javaBufferList.addNode(buffer);
             if (node.isNull()) {
                 JfrBufferAccess.free(buffer);
                 return WordFactory.nullPointer();
             }
-            javaBufferNode.set(node);
+            javaBuffer.set(buffer);
         }
-        return node.getBuffer();
+        return buffer;
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public JfrBuffer getNativeBuffer() {
-        JfrBufferNode node = nativeBufferNode.get();
-        if (node.isNull()) {
-            JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_NATIVE);
+        JfrBuffer buffer = nativeBuffer.get();
+        if (buffer.isNull()) {
+            buffer = JfrBufferAccess.allocate(WordFactory.unsigned(threadLocalBufferSize), JfrBufferType.THREAD_LOCAL_NATIVE);
             if (buffer.isNull()) {
                 return WordFactory.nullPointer();
             }
 
-            node = nativeBufferList.addNode(buffer);
+            JfrBufferNode node = nativeBufferList.addNode(buffer);
             if (node.isNull()) {
                 JfrBufferAccess.free(buffer);
                 return WordFactory.nullPointer();
             }
-            nativeBufferNode.set(node);
+            nativeBuffer.set(buffer);
         }
-        return node.getBuffer();
+        return buffer;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -325,18 +332,24 @@ public class JfrThreadLocal implements ThreadListener {
         }
     }
 
+    /**
+     * May only be called for thread-local buffers and the current thread must own the thread-local
+     * buffer.
+     */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public static JfrBuffer flushToGlobalMemory(JfrBuffer buffer, UnsignedWord uncommitted, int requested) {
         assert buffer.isNonNull();
         assert JfrBufferAccess.isThreadLocal(buffer);
-        assert buffer.getNode().isNonNull();
 
+        /* Skip retired buffers. */
         JfrBufferNode node = buffer.getNode();
+        if (node.isNull()) {
+            assert JfrBufferAccess.isRetired(buffer);
+            return WordFactory.nullPointer();
+        }
+
         JfrBufferNodeAccess.lockNoTransition(node);
         try {
-            if (JfrBufferNodeAccess.isRetired(node)) {
-                return WordFactory.nullPointer();
-            }
             return flushToGlobalMemory0(buffer, uncommitted, requested);
         } finally {
             JfrBufferNodeAccess.unlock(node);

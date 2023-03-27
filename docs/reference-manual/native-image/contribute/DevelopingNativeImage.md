@@ -17,9 +17,7 @@ For compilation, `native-image` depends on the local toolchain. Install
 `gcc`, using a package manager available on your OS. Some Linux distributions
 may additionally require `libstdc++-static`.
 
-Building native images on Windows requires a Microsoft Visual C++ (MSVC) that comes with Visual Studio 2017 15.5.5 or later.
-In addition, a proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/).
-On Windows, the `native-image` tool only works when it is executed from the x64 Native Tools Command Prompt.
+On Windows, Native Image requires Visual Studio 2022 version 17.1.0 or later.
 
 ```shell
 cd substratevm

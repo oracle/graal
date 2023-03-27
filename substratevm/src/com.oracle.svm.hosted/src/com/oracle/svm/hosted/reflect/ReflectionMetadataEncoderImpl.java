@@ -28,6 +28,7 @@ import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_FLAGS_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_NEST_MEMBERS_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_PERMITTED_SUBCLASSES_FLAG;
+import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.CLASS_ACCESS_FLAGS_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.COMPLETE_FLAG_MASK;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.FIRST_ERROR_INDEX;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.HIDING_FLAG_MASK;
@@ -64,6 +65,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -121,7 +123,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * Emitting the metadata happens in two phases. In the first phase, the string and class encoders
  * are filled with the necessary values (in the {@code #add*Metadata} functions). In a second phase,
- * the values are encoded into their intended byte arrays (see {@link #encodeAllAndInstall()}).
+ * the values are encoded into their intended byte arrays (see
+ * {@link ReflectionMetadataEncoder#encodeAllAndInstall(SnippetReflectionProvider)}).
  *
  * The metadata encoding format is detailed in {@link ReflectionMetadataDecoderImpl}.
  */
@@ -258,7 +261,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
         Class<?>[] permittedSubclasses = getPermittedSubclasses(metaAccess, javaClass);
         Class<?>[] nestMembers = getNestMembers(metaAccess, javaClass);
         Object[] signers = javaClass.getSigners();
-        int classAccessFlags = Reflection.getClassAccessFlags(javaClass);
+        int classAccessFlags = Reflection.getClassAccessFlags(javaClass) & CLASS_ACCESS_FLAGS_MASK;
         int enabledQueries = dataBuilder.getEnabledReflectionQueries(javaClass);
         VMError.guarantee((classAccessFlags & enabledQueries) == 0);
         int flags = classAccessFlags | enabledQueries;
@@ -724,7 +727,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
      * See {@link ReflectionMetadataDecoderImpl} for the encoding format description.
      */
     @Override
-    public void encodeAllAndInstall() {
+    public void encodeAllAndInstall(SnippetReflectionProvider snippetReflection) {
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
         int typesIndex = encodeAndAddCollection(buf, sortedTypes.toArray(new HostedType[0]), this::encodeType, false);
         assert typesIndex == 0;
@@ -755,7 +758,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
             }
         }
         for (AccessibleObjectMetadata metadata : heapData) {
-            AccessibleObject heapObject = (AccessibleObject) SubstrateObjectConstant.asObject(metadata.heapObject);
+            AccessibleObject heapObject = snippetReflection.asObject(AccessibleObject.class, metadata.heapObject);
             annotationsEncodings.put(heapObject, encodeAnnotations(metadata.annotations));
             typeAnnotationsEncodings.put(heapObject, encodeTypeAnnotations(metadata.typeAnnotations));
             if (metadata instanceof ExecutableMetadata) {

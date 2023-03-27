@@ -87,16 +87,6 @@ def graal_compiler_flags():
 
     return [adjusted_exports(line) for line in compiler_flags[str(version_tag)]]
 
-def svm_unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # Run the VM in a mode where application/test classes can
-    # access JVMCI loaded classes.
-    vmArgs = graal_compiler_flags() + vmArgs
-    return (vmArgs, mainClass, mainClassArgs)
-
-if mx.primary_suite() == suite:
-    mx_unittest.add_config_participant(svm_unittest_config_participant)
-
 def classpath(args):
     if not args:
         return [] # safeguard against mx.classpath(None) behaviour
@@ -1171,6 +1161,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
             add_to_module='java.base',
             headers=False,
+            rebuildable=False,
         ),
     ],
     stability="supported",
@@ -1480,9 +1471,19 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
             else:
                 mx.abort('gen_fallbacks not supported on ' + sys.platform)
 
+            seen_gnu_property_type_5_warnings = False
+            def suppress_gnu_property_type_5_warnings(line):
+                nonlocal seen_gnu_property_type_5_warnings
+                if 'unsupported GNU_PROPERTY_TYPE (5)' not in line:
+                    mx.log_error(line.rstrip())
+                elif not seen_gnu_property_type_5_warnings:
+                    mx.log_error(line.rstrip())
+                    mx.log_error('(suppressing all further warnings about "unsupported GNU_PROPERTY_TYPE (5)")')
+                    seen_gnu_property_type_5_warnings = True
+
             for staticlib_path in self.staticlibs:
                 mx.logv('Collect from : ' + staticlib_path)
-                mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'))
+                mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'), err=suppress_gnu_property_type_5_warnings)
 
             if len(symbols) == 0:
                 mx.abort('Could not find any unresolved JVM_* symbols in static JDK libraries')

@@ -559,7 +559,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (v instanceof FixedNode) {
                 FixedNode fixedNode = (FixedNode) v;
                 if (lastInstr != null) {
+                    FixedNode oldNext = lastInstr.next();
                     lastInstr.setNext(fixedNode);
+                    if (oldNext != null) {
+                        /*
+                         * For now, we only need to handle the case where the new instruction ends
+                         * the control flow, in which case we can just delete oldNext after it is
+                         * unliked from the graph. If we need more complete support in the future,
+                         * we would need to append oldNext again after determining the value of
+                         * lastInstr below.
+                         */
+                        GraalError.guarantee(fixedNode instanceof ControlSinkNode, "deleting the old next instruction is only implemented when the new instruction ends the control flow.");
+                        oldNext.safeDelete();
+                    }
                 }
 
                 if (fixedNode instanceof FixedWithNextNode) {
@@ -1093,6 +1105,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
 
             if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
+                if (invocationPlugin.isDecorator()) {
+                    graphBuilderContext.lastInstr.setNext(invoke.asFixedNode());
+                    return false;
+                }
 
                 if (graphBuilderContext.invokeConsumed) {
                     /* Nothing to do. */
@@ -1115,7 +1131,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     deleteInvoke(invoke);
                 }
                 return true;
-
             } else {
                 /* Intrinsification failed, restore original state: invoke is in Graph. */
                 invokePredecessor.setNext(invoke.asFixedNode());
@@ -1126,7 +1141,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
         Object invocationPlugin = invocationPluginCache.computeIfAbsent(targetMethod, method -> {
-            Object plugin = invocationPlugins.lookupInvocation(targetMethod, options);
+            Object plugin = invocationPlugins.lookupInvocation(targetMethod, true, true, options);
             if (plugin == null) {
                 plugin = CACHED_NULL_VALUE;
             }

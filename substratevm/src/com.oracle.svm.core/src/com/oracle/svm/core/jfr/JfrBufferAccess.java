@@ -41,6 +41,9 @@ import com.oracle.svm.core.util.UnsignedUtils;
  * Used to access the raw memory of a {@link JfrBuffer}.
  */
 public final class JfrBufferAccess {
+    private static final byte NO_FLAGS = 0b00;
+    private static final byte RETIRED_FLAG = 0b01;
+
     private JfrBufferAccess() {
     }
 
@@ -63,6 +66,7 @@ public final class JfrBufferAccess {
             result.setSize(dataSize);
             result.setBufferType(bufferType);
             result.setNode(WordFactory.nullPointer());
+            result.setFlags(NO_FLAGS);
             reinitialize(result);
         }
         return result;
@@ -169,5 +173,26 @@ public final class JfrBufferAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isThreadLocal(JfrBuffer buffer) {
         return buffer.getBufferType().isThreadLocal();
+    }
+
+    /**
+     * If a buffer can't be freed right away, then we retire it instead. Retired buffers are ignored
+     * by the JFR infrastructure and may be reinstate or freed at a later point in time.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void setRetired(JfrBuffer buffer) {
+        assert !isRetired(buffer);
+        buffer.setFlags((byte) (buffer.getFlags() | RETIRED_FLAG));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void clearRetired(JfrBuffer buffer) {
+        assert isRetired(buffer);
+        buffer.setFlags((byte) (buffer.getFlags() & ~RETIRED_FLAG));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isRetired(JfrBuffer buffer) {
+        return (buffer.getFlags() & RETIRED_FLAG) != 0;
     }
 }

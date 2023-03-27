@@ -77,7 +77,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
@@ -255,8 +254,11 @@ public class ProgressReporter {
         if (javaVersion != null) {
             l().a(" ").doclink("Java version info", "#glossary-java-version-info").a(": '").a(javaVersion).a("'").println();
         }
-        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: '%s', target machine: '%s'",
-                        SubstrateOptions.Optimize.getValue(), CPUType.getSelectedOrDefaultMArch());
+        String optimizationLevel = SubstrateOptions.Optimize.getValue();
+        recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
+        String march = CPUType.getSelectedOrDefaultMArch();
+        recordJsonMetric(GeneralInfo.GRAAL_COMPILER_MARCH, march);
+        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: '%s', target machine: '%s'", optimizationLevel, march);
         ImageSingletons.lookup(ProgressReporterFeature.class).appendGraalSuffix(graalLine);
         graalLine.println();
         String cCompilerShort = null;
@@ -514,7 +516,7 @@ public class ProgressReporter {
             heapBreakdown.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
             JavaConstant javaObject = o.getConstant();
             if (reportStringBytes && metaAccess.isInstanceOf(javaObject, String.class)) {
-                stringByteLength += Utils.getInternalByteArrayLength((String) SubstrateObjectConstant.asObject(javaObject));
+                stringByteLength += Utils.getInternalByteArrayLength(metaAccess.getUniverse().getSnippetReflection().asObject(String.class, javaObject));
             }
         }
 
@@ -776,7 +778,7 @@ public class ProgressReporter {
         lastGCStats = currentGCStats;
     }
 
-    private void recordJsonMetric(JsonMetric metric, Object value) {
+    public void recordJsonMetric(JsonMetric metric, Object value) {
         if (jsonHelper != null) {
             metric.record(jsonHelper, value);
         }

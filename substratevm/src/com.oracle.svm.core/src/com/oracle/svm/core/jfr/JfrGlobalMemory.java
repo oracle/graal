@@ -117,8 +117,6 @@ public class JfrGlobalMemory {
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public boolean write(JfrBuffer buffer, UnsignedWord unflushedSize, boolean flushpoint) {
-        assert !JfrBufferNodeAccess.isRetired(buffer.getNode());
-
         if (unflushedSize.equal(0)) {
             return true;
         }

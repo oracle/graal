@@ -172,7 +172,7 @@ public enum CEOptimization {
      * This phase is enabled by default and can be disabled with
      * {@link GraalOptions#PartialEscapeAnalysis}.
      */
-    PartialEscapeAnanylsis(GraalOptions.PartialEscapeAnalysis, PartialEscapePhase.class),
+    PartialEscapeAnalysis(GraalOptions.PartialEscapeAnalysis, PartialEscapePhase.class),
 
     /**
      * {@link LockEliminationPhase} tries to reduce Java monitor enter/exit overhead of an

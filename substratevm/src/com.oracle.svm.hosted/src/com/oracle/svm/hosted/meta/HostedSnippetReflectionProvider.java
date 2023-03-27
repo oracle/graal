@@ -27,6 +27,8 @@ package com.oracle.svm.hosted.meta;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -50,12 +52,19 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     @Override
     public <T> T asObject(Class<T> type, JavaConstant constant) {
-        if ((type == Class.class || type == Object.class) && constant instanceof SubstrateObjectConstant) {
-            Object objectValue = SubstrateObjectConstant.asObject(constant);
-            if (objectValue instanceof DynamicHub) {
-                return type.cast(((DynamicHub) objectValue).getHostedJavaClass());
+        if (type == Class.class && constant instanceof SubstrateObjectConstant) {
+            /* Only unwrap the DynamicHub if a Class object is required explicitly. */
+            if (SubstrateObjectConstant.asObject(constant) instanceof DynamicHub hub) {
+                return type.cast(hub.getHostedJavaClass());
             }
+        }
+        if (constant instanceof ImageHeapPrimitiveArray heapArray) {
+            return type.cast(heapArray.getArray());
+        }
+        if (constant instanceof ImageHeapConstant heapConstant) {
+            return super.asObject(type, heapConstant.getHostedObject());
         }
         return super.asObject(type, constant);
     }
+
 }

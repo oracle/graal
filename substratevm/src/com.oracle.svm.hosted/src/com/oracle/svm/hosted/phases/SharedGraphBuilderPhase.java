@@ -68,6 +68,7 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -165,6 +166,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         protected RuntimeException throwParserError(Throwable e) {
             if (e instanceof UserException) {
                 throw (UserException) e;
+            }
+            if (e instanceof UnsupportedFeatureException) {
+                throw (UnsupportedFeatureException) e;
             }
             throw super.throwParserError(e);
         }

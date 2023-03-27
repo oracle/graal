@@ -37,7 +37,6 @@ import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryManagerMXBean;
 import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.GarbageCollectorMXBean;
-import java.lang.management.BufferPoolMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
 import java.util.HashMap;
@@ -126,7 +125,7 @@ public class JmxTest {
     }
 
     @Test
-    public void testRuntimeMXBean() {
+    public void testRuntimeMXBeanProxy() {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         RuntimeMXBean runtimeMXBean = null;
@@ -135,14 +134,28 @@ public class JmxTest {
         } catch (IOException e) {
             Assert.fail("Failed to get RuntimeMXBean. : " + e.getMessage());
         }
-        assertTrue("Uptime should be positive. ", runtimeMXBean.getUptime() > 0);
+
         assertTrue("PID should be positive.", runtimeMXBean.getPid() > 0);
         assertTrue("Class Path should not be null: ", runtimeMXBean.getClassPath() != null);
         assertTrue("Start time should be positive", runtimeMXBean.getStartTime() > 0);
     }
 
     @Test
-    public void testClassLoadingMXBean() {
+    public void testRuntimeMXBeanDirect() throws MalformedObjectNameException {
+        // Basic test to make sure reflective accesses are set up correctly.
+        MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
+        ObjectName objectName = new ObjectName("java.lang:type=Runtime");
+        try {
+            assertTrue("Uptime should be positive. ", (long) mbsc.getAttribute(objectName, "Pid") > 0);
+            assertTrue("Class Path should not be null: ", mbsc.getAttribute(objectName, "ClassPath") != null);
+            assertTrue("Start time should be positive", (long) mbsc.getAttribute(objectName, "StartTime") > 0);
+        } catch (Exception e) {
+            Assert.fail("Remote invocations failed : " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testClassLoadingMXBeanProxy() {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
 
@@ -160,7 +173,7 @@ public class JmxTest {
     }
 
     @Test
-    public void testThreadMXBean() {
+    public void testThreadMXBeanProxy() {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         ThreadMXBean threadMXBean = null;
@@ -176,11 +189,23 @@ public class JmxTest {
         if (!ImageInfo.inImageRuntimeCode()) {
             assertTrue("Current thread user time should be positive in java mode", threadMXBean.getCurrentThreadUserTime() >= 0);
         }
-
     }
 
     @Test
-    public void testMemoryMXBean() {
+    public void testThreadMXBeanDirect() throws MalformedObjectNameException {
+        // Basic test to make sure reflective accesses are set up correctly.
+        MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
+        ObjectName objectName = new ObjectName("java.lang:type=Threading");
+        try {
+            mbsc.invoke(objectName, "resetPeakThreadCount", null, null);
+            assertTrue("Peak thread count should be positive ", (int) mbsc.getAttribute(objectName, "PeakThreadCount") > 0);
+        } catch (Exception e) {
+            Assert.fail("Remote invocations failed : " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testMemoryMXBeanProxy() {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         MemoryMXBean memoryMXBean = null;
@@ -196,9 +221,20 @@ public class JmxTest {
     }
 
     @Test
-    public void testGarbageCollectorMXBean() {
-        // This test checks to make sure we are able to get the MXBean and do simple things with it.
+    public void testMemoryMXBeanDirect() throws MalformedObjectNameException {
+        // Basic test to make sure reflective accesses are set up correctly.
+        MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
+        ObjectName objectName = new ObjectName("java.lang:type=Memory");
+        try {
+            mbsc.invoke(objectName, "gc", null, null);
+        } catch (Exception e) {
+            Assert.fail("Remote invocations failed : " + e.getMessage());
+        }
+    }
 
+    @Test
+    public void testGarbageCollectorMXBeanProxy() {
+        // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         List<GarbageCollectorMXBean> garbageCollectorMXBeans = null;
         try {
@@ -214,7 +250,7 @@ public class JmxTest {
     }
 
     @Test
-    public void testOperatingSystemMXBean() {
+    public void testOperatingSystemMXBeanProxy() {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
 
@@ -229,7 +265,19 @@ public class JmxTest {
     }
 
     @Test
-    public void testMemoryManagerMXBean() {
+    public void testOperatingSystemMXBeanDirect() throws MalformedObjectNameException {
+        // Basic test to make sure reflective accesses are set up correctly.
+        MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
+        ObjectName objectName = new ObjectName("java.lang:type=OperatingSystem");
+        try {
+            assertTrue("OS version can't be null. ", mbsc.getAttribute(objectName, "Version") != null);
+        } catch (Exception e) {
+            Assert.fail("Remote invokations failed : " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void testMemoryManagerMXBeanProxy() {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         List<MemoryManagerMXBean> memoryManagerMXBeans = null;
@@ -245,23 +293,7 @@ public class JmxTest {
     }
 
     @Test
-    public void testBufferPoolMXBean() {
-        // This test checks to make sure we are able to get the MXBean and do simple things with it.
-        MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
-        List<BufferPoolMXBean> bufferPoolMXBeans = null;
-        try {
-            bufferPoolMXBeans = ManagementFactory.getPlatformMXBeans(mbsc, BufferPoolMXBean.class);
-
-        } catch (Exception e) {
-            Assert.fail("Failed to get BufferPoolMXBean. : " + e.getMessage());
-        }
-        for (BufferPoolMXBean bufferPoolMXBean : bufferPoolMXBeans) {
-            assertTrue("Total buffer pool capacity should be positive. ", bufferPoolMXBean.getName() != null);
-        }
-    }
-
-    @Test
-    public void testMemoryPoolMXBean() {
+    public void testMemoryPoolMXBeanProxy() {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
 
@@ -278,7 +310,7 @@ public class JmxTest {
     }
 
     @Test
-    public void testFlightRecorderMXBean() {
+    public void testFlightRecorderMXBeanProxy() {
         // This test checks to make sure we are able to get the MXBean and do simple things with it.
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
 
@@ -294,7 +326,7 @@ public class JmxTest {
     }
 
     @Test
-    public void testRemoteInvocation() throws MalformedObjectNameException {
+    public void testFlightRecorderMXBeanDirect() throws MalformedObjectNameException {
         MBeanServerConnection mbsc = getLocalMBeanServerConnectionStatic();
         ObjectName objectName = new ObjectName("jdk.management.jfr:type=FlightRecorder");
         try {

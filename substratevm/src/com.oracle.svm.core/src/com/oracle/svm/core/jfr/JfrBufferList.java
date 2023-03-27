@@ -34,6 +34,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.JavaSpinLockUtils;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -61,14 +62,17 @@ public class JfrBufferList {
     public JfrBufferList() {
     }
 
-    /**
-     * This method is called after the {@link JfrBuffer}s were already flushed and freed, but there
-     * may still be nodes in the list.
-     */
     public void teardown() {
+        assert VMOperation.isInProgressAtSafepoint();
+
         JfrBufferNode node = head;
         while (node.isNonNull()) {
-            assert node.getBuffer().isNull();
+            /* If the buffer is still alive, then mark it as removed from the list. */
+            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+            if (buffer.isNonNull()) {
+                assert JfrBufferAccess.isRetired(buffer);
+                buffer.setNode(WordFactory.nullPointer());
+            }
 
             JfrBufferNode next = node.getNext();
             ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);

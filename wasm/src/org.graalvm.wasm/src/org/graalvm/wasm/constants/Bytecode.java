@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -334,6 +334,8 @@ public class Bytecode {
     public static final int TABLE_SET = 0xFA;
 
     public static final int MISC = 0xFB;
+
+    public static final int NOTIFY = 0xFE;
 
     // Misc opcodes
     public static final int I32_TRUNC_SAT_F32_S = 0x00;

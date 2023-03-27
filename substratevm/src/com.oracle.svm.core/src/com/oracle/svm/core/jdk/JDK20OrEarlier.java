@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.meta;
+package com.oracle.svm.core.jdk;
 
-public enum HotSpotConstantLoadAction {
-    RESOLVE(0),
-    INITIALIZE(1),
-    MAKE_NOT_ENTRANT(2),
-    LOAD_COUNTERS(3);
+import java.util.function.BooleanSupplier;
 
-    private int value;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-    HotSpotConstantLoadAction(int value) {
-        this.value = value;
-    }
-
-    public int value() {
-        return value;
+public class JDK20OrEarlier implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC <= 20;
     }
 }

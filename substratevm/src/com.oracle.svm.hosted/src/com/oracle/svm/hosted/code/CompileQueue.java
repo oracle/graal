@@ -1295,12 +1295,15 @@ public class CompileQueue {
         // Hook for subclasses
     }
 
+    protected boolean isDynamicallyResolvedCall(@SuppressWarnings("unused") CompilationResult result, @SuppressWarnings("unused") Call call) {
+        return false;
+    }
+
     protected void ensureCalleesCompiled(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (Infopoint infopoint : result.getInfopoints()) {
-            if (infopoint instanceof Call) {
-                Call call = (Call) infopoint;
+            if (infopoint instanceof Call call) {
                 HostedMethod callTarget = (HostedMethod) call.target;
-                if (call.direct) {
+                if (call.direct || isDynamicallyResolvedCall(result, call)) {
                     ensureCompiled(callTarget, new DirectCallReason(method, reason));
                 } else if (callTarget != null && callTarget.getImplementations() != null) {
                     for (HostedMethod impl : callTarget.getImplementations()) {

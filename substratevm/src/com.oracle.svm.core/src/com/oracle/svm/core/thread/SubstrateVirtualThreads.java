@@ -218,6 +218,11 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
     }
 
     @Override
+    public boolean isCurrentPinned() {
+        return current().isPinned();
+    }
+
+    @Override
     public Executor getScheduler(Thread thread) {
         return cast(thread).getScheduler();
     }

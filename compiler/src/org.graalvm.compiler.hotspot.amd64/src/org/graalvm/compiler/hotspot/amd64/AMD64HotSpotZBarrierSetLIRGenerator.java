@@ -25,8 +25,6 @@
 package org.graalvm.compiler.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.r15;
-import static jdk.vm.ci.amd64.AMD64.rbp;
-import static jdk.vm.ci.amd64.AMD64.rsp;
 import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_ARRAY_BARRIER;
 import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_FIELD_BARRIER;
 import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.Z_PHANTOM_REFERS_TO_BARRIER;
@@ -94,7 +92,7 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64BarrierSetLIRGener
      * required.
      */
     public static void emitBarrier(CompilationResultBuilder crb, AMD64MacroAssembler masm, Label success, Register resultReg, GraalHotSpotVMConfig config, ForeignCallLinkage callTarget,
-                    AMD64Address address, LIRInstruction op, AMD64FrameMap frameMap) {
+                    AMD64Address address, LIRInstruction op, AMD64HotSpotBackend.HotSpotFrameContext frameContext) {
         assert !resultReg.equals(address.getBase()) && !resultReg.equals(address.getIndex());
 
         final Label entryPoint = new Label();
@@ -110,13 +108,8 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64BarrierSetLIRGener
         crb.getLIR().addSlowPath(op, () -> {
             masm.bind(entryPoint);
 
-            if (frameMap != null) {
-                if (frameMap.useStandardFrameProlog()) {
-                    // Stack-walking friendly instructions
-                    masm.push(rbp);
-                    masm.movq(rbp, rsp);
-                }
-                masm.decrementq(rsp, frameMap.frameSize());
+            if (frameContext != null) {
+                frameContext.rawEnter(crb);
             }
 
             CallingConvention cc = callTarget.getOutgoingCallingConvention();
@@ -129,13 +122,8 @@ public class AMD64HotSpotZBarrierSetLIRGenerator extends AMD64BarrierSetLIRGener
             AMD64Call.directCall(crb, masm, callTarget, null, false, null);
             masm.movq(resultReg, cArg0);
 
-            if (frameMap != null) {
-                if (frameMap.useStandardFrameProlog()) {
-                    masm.movq(rsp, rbp);
-                    masm.pop(rbp);
-                } else {
-                    masm.incrementq(rsp, frameMap.frameSize());
-                }
+            if (frameContext != null) {
+                frameContext.rawLeave(crb);
             }
 
             // Return to inline code

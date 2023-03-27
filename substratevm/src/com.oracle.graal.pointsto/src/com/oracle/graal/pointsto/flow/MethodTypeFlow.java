@@ -39,11 +39,13 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AnalysisError.ParsingError;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
@@ -162,7 +164,12 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             parsingReason = reason;
             try {
                 MethodTypeFlowBuilder builder = bb.createMethodTypeFlowBuilder(bb, method, null, graphKind);
-                builder.apply(forceReparseOnCreation, PointsToAnalysisMethod.unwrapInvokeReason(parsingReason));
+                try {
+                    builder.apply(forceReparseOnCreation, PointsToAnalysisMethod.unwrapInvokeReason(parsingReason));
+                } catch (UnsupportedFeatureException ex) {
+                    String message = String.format("%s%n%s", ex.getMessage(), ParsingError.message(method));
+                    bb.getUnsupportedFeatures().addMessage("typeflow_" + method.getQualifiedName(), null, message, null, ex);
+                }
                 bb.numParsedGraphs.incrementAndGet();
 
                 boolean computeIndex = bb.getHostVM().getMultiMethodAnalysisPolicy().canComputeReturnedParameterIndex(method.getMultiMethodKey());

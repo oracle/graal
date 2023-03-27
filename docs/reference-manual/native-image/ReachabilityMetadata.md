@@ -69,7 +69,7 @@ Computing metadata in code can be achieved in two ways:
 
 Each dynamic Java feature that requires metadata has a corresponding JSON file named `<feature>-config.json`.
 The JSON file consists of entries that tell Native Image the elements to include.
-For example, Java reflection metadata is specified in `reflection-config.json`, and a sample entry looks like:
+For example, Java reflection metadata is specified in `reflect-config.json`, and a sample entry looks like:
 ```json
 {
   "name": "Foo"
@@ -221,7 +221,15 @@ Java is capable of accessing any resource on the application class path, or the 
 Resource metadata instructs the `native-image` builder to include specified resources and resource bundles in the produced binary.
 A consequence of this approach is that some parts of the application that use resources for configuration (such as logging) are effectively configured at build time.
 
-The code below accesses a text file and requires providing resource metadata: 
+### Resource Metadata In Code
+Native Image will detect calls to `java.lang.Class#getResource` and `java.lang.Class#getResourceAsStream` in which:
+ - The class on which these methods are called is constant
+ - The first parameter, `name`, is a constant
+and automatically register such resources.
+
+The code below will work out of the box, because:
+ - We are using a class literal (`Example.class`)
+ - We are using a string literal as the `name` parameter
 ```java
 class Example {
     public void conquerTheWorld() {
@@ -231,9 +239,6 @@ class Example {
     }
 }
 ```
-
-### Resource Metadata In Code
-It is not possible to specify used resources and resource bundles in code.
 
 ### Resource Metadata in JSON
 Metadata for resources is provided in `resource-config.json` files.
@@ -328,13 +333,37 @@ Metadata for dynamic proxies is provided in `proxy-config.json` files.
 
 ## Serialization
 Java can serialize any class that implements the `Serializable` interface.
-Serialization usually requires reflectively accessing the class of the object being serialized.
-The JDK also requires additional information about the class to serialize its object.
-Native Image supports serialization with proper metadata.
+Native Image supports serialization with proper serializaiton metadata registration. This is necessary as serialization usually
+requires reflectively accessing the class of the object that is being serialized.
 
-### Serialization Metadata In Code
+### Serialization Metadata Registration In Code
 
-It is not possible to register classes used for serialization in code.
+Native Image detects calls to `ObjectInputFilter.Config#createFilter(String pattern)` and if the `pattern` argument is constant, the exact classes mentioned in the pattern will be registered for serialization. 
+For example, the following pattern will register the class `pkg.SerializableClass` for serialization:
+```java
+  var filter = ObjectInputFilter.Config.createFilter("pkg.SerializableClass;!*;")
+  objectInputStream.setObjectInputFilter(proof);
+```
+Using this pattern has a positive side effect of improving security on the JVM as only `pkg.SerializableClass` can be received by the 
+`objectInputStream`.
+
+Wildcard patterns do the serialization registration only for lambda-proxy classes of an enclosing class. For example, to register lambda serialization in an enclosing class `pkg.LambdaHolder` use:
+```java
+  ObjectInputFilter.Config.createFilter("pkg.LambdaHolder$$Lambda$*;")
+```
+
+Patterns like `"pkg.**"` and `"pkg.Prefix*"` will not perform serialization registration as they are too general and would increase image size significantly. 
+
+For calls to the `sun.reflect.ReflectionFactory#newConstructorForSerialization(java.lang.Class)` and `sun.reflect.ReflectionFactory#newConstructorForSerialization(java.lang.Class, )` native image detects calls to these functions when all arguments and the receiver are constant. For example, the following call will register `SerializlableClass` for serialization: 
+```java
+  ReflectionFactory.getReflectionFactory().newConstructorForSerialization(SerializableClass.class);
+```
+To create a custom constructor for serialization use:
+```java
+  var constructor = SuperSuperClass.class.getDeclaredConstructor();
+  var newConstructor = ReflectionFactory.getReflectionFactory().newConstructorForSerialization(BaseClass.class, constructor);
+```
+Proxy classes can only be registered for serialization via the JSON files. 
 
 ### Serialization Metadata in JSON
 Metadata for serialization is provided in `serialization-config.json` files.
@@ -354,16 +383,25 @@ Metadata for serialization is provided in `serialization-config.json` files.
       "condition": {
         "typeReachable": "<condition-class>"
       },
-      "name": "<fully-qualified-class-name>",
-      "customTargetConstructorClass": "<custom-target-constructor-class>"
+      "name": "<fully-qualified-class-name>"
     }
-  ]
+  ],
+ "proxies": [
+   {
+     "condition": {
+       "typeReachable": "<condition-class>"
+     },
+     "interfaces": ["<fully-qualified-interface-name-1>", "<fully-qualified-interface-name-n>"]
+   }
+ ]
 }
 ```
 
 Each entry in `types` enables serializing and deserializing objects of the class given by `name`.
 
-Lambda serialization is also supported: all lambdas declared in the methods of the class given by `name` can be serialized/deserialized.
+Each entry in `lambdaCapturingTypes` enables lambda serialization: all lambdas declared in the methods of the class given by `name` can be serialized and deserialized.
+
+Each entry in `proxies` enables the [Proxy](https://docs.oracle.com/javase/8/docs/technotes/guides/reflection/proxy.html) serialization by providing an interface list that a proxy implements.
 
 ## Predefined Classes
 

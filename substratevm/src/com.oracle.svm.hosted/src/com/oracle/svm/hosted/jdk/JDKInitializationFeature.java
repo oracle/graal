@@ -159,6 +159,8 @@ public class JDKInitializationFeature implements InternalFeature {
             rci.initializeAtBuildTime("apple.security", JDK_CLASS_REASON);
         }
 
+        rci.initializeAtBuildTime("sun.rmi.transport.GC", "Loaded an unneeded library (rmi) in static initializer.");
+
         rci.rerunInitialization("com.sun.jndi.dns.DnsClient", "Contains Random references, therefore can't be included in the image heap.");
         rci.rerunInitialization("sun.net.www.protocol.http.DigestAuthentication$Parameters", "Contains Random references, therefore can't be included in the image heap.");
         rci.rerunInitialization("sun.security.krb5.KrbServiceLocator", "Contains Random references, therefore can't be included in the image heap.");
