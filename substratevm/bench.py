@@ -86,6 +86,7 @@ if __name__ == "__main__":
         "--context-sensitive", default="1-default", choices=ALL_CONFIGS.keys()
     )
     parser.add_argument("--dump-heap", action="store_true")
+    parser.add_argument("--dump-igv", action="store_true")
     parser.add_argument("--memory", help="For example, '10g'")
     parser.add_argument("--verbose", action="store_true", default=False)
     parser.add_argument(
@@ -109,6 +110,10 @@ if __name__ == "__main__":
         cmd.append(native_image_arg("-H:DumpHeap=during-analysis"))
     if args.memory:
         cmd.append(native_image_arg(f"-J-Xmx{args.memory}"))
+    if args.dump_igv:
+        cmd.append(native_image_arg("-H:Dump=:2"))
+        cmd.append(native_image_arg("-H:MethodFilter=HashMap.get"))
+        cmd.append(native_image_arg("-H:PrintGraph=Network"))
     extra_args = [native_image_arg(arg) for arg in ALL_CONFIGS[args.context_sensitive]]
     cmd.extend(extra_args)
     run(cmd, verbose=args.verbose)
