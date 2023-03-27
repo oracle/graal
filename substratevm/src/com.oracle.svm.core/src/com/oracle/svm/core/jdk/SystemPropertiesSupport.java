@@ -129,6 +129,11 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
             initializeProperty("awt.toolkit", System.getProperty("awt.toolkit"));
             initializeProperty("java.awt.graphicsenv", System.getProperty("java.awt.graphicsenv"));
             initializeProperty("java.awt.printerjob", System.getProperty("java.awt.printerjob"));
+
+            final String javaAWTHeadless = System.getProperty("java.awt.headless");
+            if (javaAWTHeadless != null) {
+                initializeProperty("java.awt.headless", javaAWTHeadless);
+            }
         }
 
         lazyRuntimeValues = new HashMap<>();
