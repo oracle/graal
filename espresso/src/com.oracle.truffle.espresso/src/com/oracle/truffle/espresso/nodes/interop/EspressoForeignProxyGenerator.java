@@ -71,6 +71,7 @@ import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable;
@@ -118,8 +119,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      * signature.
      */
     private final Map<String, List<ProxyMethod>> proxyMethods = new HashMap<>();
-
-    private ModuleTable.ModuleEntry dynamicModule;
 
     // next number to use for generation of unique proxy class names
     private static final AtomicLong nextUniqueNumber = new AtomicLong();
@@ -306,7 +305,8 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     }
 
     private synchronized ModuleTable.ModuleEntry getDynamicModule(StaticObject loader) {
-        if (dynamicModule == null) {
+        ClassRegistry classRegistry = context.getRegistries().getClassRegistry(proxyClassLoader);
+        if (classRegistry.getDynamicModule() == null) {
             // call VM helper to get the ModuleDescriptor
             String moduleName = "foreign.proxy";
             String pkgName = PROXY_PACKAGE_PREFIX + "." + moduleName;
@@ -321,13 +321,17 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             ModuleTable.ModuleEntry javaBaseModule = context.getRegistries().getJavaBaseModule();
             moduleEntry.addReads(javaBaseModule);
 
+            // needed for using Interop API in the proxies
+            ModuleTable.ModuleEntry polyglotAPIModule = context.getRegistries().getPolyglotAPIModule();
+            moduleEntry.addReads(polyglotAPIModule);
+
             String pn = PROXY_PACKAGE_PREFIX + "." + moduleEntry.getNameAsString();
 
             PackageTable.PackageEntry pkgEntry = ModulesHelperVM.extractPackageEntry(pn.replace('.', '/'), moduleEntry, meta, null);
             pkgEntry.addExports(javaBaseModule);
-            dynamicModule = moduleEntry;
+            classRegistry.setDynamicModule(moduleEntry);
         }
-        return dynamicModule;
+        return classRegistry.getDynamicModule();
     }
 
     /*
@@ -337,7 +341,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         ModuleTable.ModuleEntry m = c.module();
         // add read edge and qualified export for the target module to access
         if (!target.canRead(m, context)) {
-            m.addReads(target);
+            target.addReads(m);
         }
         PackageTable.PackageEntry pe = c.packageEntry();
         if (!pe.isUnqualifiedExported() && !pe.isQualifiedExportTo(target)) {
