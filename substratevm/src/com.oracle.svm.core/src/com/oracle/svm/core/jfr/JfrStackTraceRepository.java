@@ -237,23 +237,20 @@ public class JfrStackTraceRepository implements JfrRepository {
              */
             return EMPTY;
         }
-
+        int result = EMPTY;
         mutex.lockNoTransition();
-        JfrStackTraceEpochData epochData = null;
         try {
-            epochData = getEpochData(!flushpoint);
+            JfrStackTraceEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
-            if (count == 0) {
-                return EMPTY;
+            if (count != 0) {
+                writer.writeCompressedLong(JfrType.StackTrace.getId());
+                writer.writeCompressedInt(count);
+                writer.write(epochData.buffer);
+                result = NON_EMPTY;
             }
-
-            writer.writeCompressedLong(JfrType.StackTrace.getId());
-            writer.writeCompressedInt(count);
-            writer.write(epochData.buffer);
-
-            return NON_EMPTY;
-        } finally {
             epochData.clear(flushpoint);
+            return result;
+        } finally {
             mutex.unlock();
         }
     }

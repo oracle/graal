@@ -71,7 +71,6 @@ public final class JfrThreadRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Required to get epoch data.")
     public void clearPreviousEpoch() {
-        assert VMOperation.isInProgressAtSafepoint();
         getEpochData(true).clear(false);
     }
 
