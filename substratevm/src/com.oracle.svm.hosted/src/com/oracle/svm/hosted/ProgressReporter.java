@@ -703,6 +703,7 @@ public class ProgressReporter {
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
+        ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifacts(artifacts);
         BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
     }
 
