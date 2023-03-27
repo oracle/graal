@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -91,7 +91,7 @@ def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
     """
-    source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
+    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
     out = mx.OutputCapture()
     mx.run([jdk.java, '-Xlog:disable', source_path], out=out)
     global _jdk_jvmci_version
@@ -1404,5 +1404,6 @@ def mx_post_parse_cmd_line(opts):
     for dist in _suite.dists:
         if hasattr(dist, 'set_archiveparticipant'):
             dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
+
     global _vm_prefix
     _vm_prefix = opts.vm_prefix
