@@ -239,8 +239,9 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
 
         mutex.lockNoTransition();
+        JfrStackTraceEpochData epochData = null;
         try {
-            JfrStackTraceEpochData epochData = getEpochData(!flushpoint);
+            epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
             if (count == 0) {
                 return EMPTY;
@@ -250,9 +251,9 @@ public class JfrStackTraceRepository implements JfrRepository {
             writer.writeCompressedInt(count);
             writer.write(epochData.buffer);
 
-            epochData.clear(flushpoint);
             return NON_EMPTY;
         } finally {
+            epochData.clear(flushpoint);
             mutex.unlock();
         }
     }
