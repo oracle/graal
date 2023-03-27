@@ -203,12 +203,10 @@ class LibraryConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, home_finder=False, headers=True, **kwargs):
         """
         :param bool jvm_library
-        :param str add_to_module: the simple name of a module that should be modified to include this native library. It must not be a path or end with `.jmod`
         :param bool headers: whether headers produced by the native image build should be placed next to the native image.
         """
         super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
-        self.add_to_module = add_to_module
         self.headers = headers
 
 
