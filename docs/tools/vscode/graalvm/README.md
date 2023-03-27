@@ -20,8 +20,6 @@ You can conveniently set up the default Java runtime to GraalVM JDK which comes 
 
 The GraalVM Tools for Java in combination with the [GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) brings native support for the Micronaut framework in VS Code and opens many more possibilities for Java developers.
 
-> Note: The extension is a Technology Preview. The development team is actively working on further improvements to provide better usability for developers.
-
 ## Extension Installation
 
 To install the GraalVM Tools for Java extension in VS Code, do the following:
