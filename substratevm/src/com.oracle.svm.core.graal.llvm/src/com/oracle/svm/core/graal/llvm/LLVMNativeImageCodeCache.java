@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -245,24 +245,28 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
         List<String> args = new ArrayList<>();
+        List<String> passes = new ArrayList<>();
         if (LLVMOptions.BitcodeOptimizations.getValue()) {
             /*
              * This runs LLVM's bitcode optimizations in addition to the Graal optimizations.
              * Inlining has to be disabled in this case as the functions are already stored in the
              * image heap and inlining them would produce bogus runtime information for garbage
-             * collection and exception handling.
+             * collection and exception handling. Starting with LLVM 16, the -disable-inlining flag
+             * doesn't work anymore. But inlining is implicitly disabled by adding no-inline to all
+             * bitcode functions.
              */
-            args.add("-disable-inlining");
-            args.add("-O2");
+            passes.add("default<O2>");
         } else {
             /*
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
              */
-            args.add("-mem2reg");
+            passes.add("function(mem2reg)");
         }
-        args.add("-rewrite-statepoints-for-gc");
-        args.add("-always-inline");
+        passes.add("rewrite-statepoints-for-gc");
+        passes.add("always-inline");
+
+        args.add("--passes=" + String.join(",", passes));
 
         args.add("-o");
         args.add(outputPath);
