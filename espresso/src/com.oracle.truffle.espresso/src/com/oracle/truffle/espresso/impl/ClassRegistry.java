@@ -54,6 +54,8 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  */
 public abstract class ClassRegistry {
 
+    private ModuleTable.ModuleEntry dynamicModule;
+
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
      * (hidden, anonymous or with a specified protection domain).
@@ -493,6 +495,14 @@ public abstract class ClassRegistry {
             throw EspressoClassLoadingException.incompatibleClassChangeError("Super interface of " + type + " is in fact not an interface.");
         }
         return (ObjectKlass) klass;
+    }
+
+    public ModuleEntry getDynamicModule() {
+        return dynamicModule;
+    }
+
+    public void setDynamicModule(ModuleEntry module) {
+        dynamicModule = module;
     }
 
     public void onClassRenamed(ObjectKlass renamedKlass) {

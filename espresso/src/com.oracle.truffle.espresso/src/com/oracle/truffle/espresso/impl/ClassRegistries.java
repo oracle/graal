@@ -48,6 +48,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public final class ClassRegistries {
 
     private ModuleTable.ModuleEntry javaBaseModule;
+    private ModuleTable.ModuleEntry polyglotAPIModule;
 
     private final ClassRegistry bootClassRegistry;
     private final LoadingConstraints constraints;
@@ -118,6 +119,19 @@ public final class ClassRegistries {
 
     public ModuleTable.ModuleEntry getJavaBaseModule() {
         return javaBaseModule;
+    }
+
+    public ModuleTable.ModuleEntry getPolyglotAPIModule() {
+        if (polyglotAPIModule == null) {
+            ModuleRef[] allModuleRefs = getAllModuleRefs();
+            for (ModuleRef module : allModuleRefs) {
+                if ("espresso.polyglot".equals(module.jdwpName())) {
+                    polyglotAPIModule = (ModuleTable.ModuleEntry) module;
+                    break;
+                }
+            }
+        }
+        return polyglotAPIModule;
     }
 
     public boolean javaBaseDefined() {
