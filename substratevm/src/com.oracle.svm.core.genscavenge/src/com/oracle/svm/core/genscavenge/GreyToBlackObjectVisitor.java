@@ -56,8 +56,14 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
 
     @Override
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public boolean visitObjectInline(Object o) {
+        return visitObjectUninterruptibly(o);
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private boolean visitObjectUninterruptibly(Object o) {
         ReferenceObjectProcessing.discoverIfReference(o, objRefVisitor);
         InteriorObjRefWalker.walkObjectInline(o, objRefVisitor);
         return true;

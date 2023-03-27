@@ -701,6 +701,7 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         int derivedOffset = NumUtil.safeToInt(objRef.rawValue());
         result.markReferenceAtOffset(derivedOffset, derivedOffset - innerOffset, compressed);

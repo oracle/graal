@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.Uninterruptible;
+
 /**
  * Supply a closure to be applied to Objects.
  *
@@ -38,8 +40,15 @@ public interface ObjectVisitor {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
     boolean visitObject(Object o);
 
-    /** Like visitObject(Object), but inlined for performance. */
+    /**
+     * Like visitObject(Object), but inlined for performance.
+     *
+     * This method is invoked from both uninterruptible (parallel GC) and regular (HeapDumpWriter, HeapVerifier etc)
+     * contexts. It is marked @Uninterruptible, so that uninterruptible invocations are possible, but with
+     * calleeMustBe=false, so that it can call interruptible implementations.
+     */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while visiting the heap.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     default boolean visitObjectInline(Object o) {
         return visitObject(o);
     }

@@ -61,13 +61,19 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+        return visitObjectReferenceUninterruptibly(objRef, 0, compressed, holderObject);
     }
 
     @Override
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        return visitObjectReferenceUninterruptibly(objRef, innerOffset, compressed, holderObject);
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private boolean visitObjectReferenceUninterruptibly(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
         assert !objRef.isNull();
         counters.noteObjRef();

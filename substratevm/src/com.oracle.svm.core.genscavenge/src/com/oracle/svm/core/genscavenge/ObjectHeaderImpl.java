@@ -210,6 +210,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return header.and(IDHASH_STATE_BITS).equal(inFieldState);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setIdentityHashInField(Object o) {
         assert VMOperation.isGCInProgress();
         VMError.guarantee(!hasFixedIdentityHashField());
