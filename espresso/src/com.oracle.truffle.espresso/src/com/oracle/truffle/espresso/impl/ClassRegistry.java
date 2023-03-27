@@ -54,7 +54,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  */
 public abstract class ClassRegistry {
 
-    private ModuleTable.ModuleEntry dynamicModule;
+    private ModuleTable.ModuleEntry dynamicModuleForGeneratedProxies;
 
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
@@ -497,12 +497,12 @@ public abstract class ClassRegistry {
         return (ObjectKlass) klass;
     }
 
-    public ModuleEntry getDynamicModule() {
-        return dynamicModule;
+    public ModuleEntry getDynamicModuleForGeneratedProxies() {
+        return dynamicModuleForGeneratedProxies;
     }
 
-    public void setDynamicModule(ModuleEntry module) {
-        dynamicModule = module;
+    public void setDynamicModuleForGeneratedProxies(ModuleEntry module) {
+        dynamicModuleForGeneratedProxies = module;
     }
 
     public void onClassRenamed(ObjectKlass renamedKlass) {
