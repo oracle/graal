@@ -252,7 +252,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             // nothing to do
             return;
         }
-        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) HotSpotTruffleCompilerEnvironment.get().runtime();
+        HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) config.runtime();
         HotSpotCompilationIdentifier compilationId = (HotSpotCompilationIdentifier) config.lastTier().backend().getCompilationIdentifier(method);
         OptionValues options = runtime.getGraalOptions(OptionValues.class);
         try (DebugContext debug = DebugStubsAndSnippets.getValue(options)
@@ -362,7 +362,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     @Override
     protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
         if (result instanceof HotSpotTruffleCompilationResult) {
-            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) HotSpotTruffleCompilerEnvironment.get().runtime();
+            HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) config.runtime();
             runtime.onCodeInstallation(((HotSpotTruffleCompilationResult) result).compilable, installedCode);
         }
     }

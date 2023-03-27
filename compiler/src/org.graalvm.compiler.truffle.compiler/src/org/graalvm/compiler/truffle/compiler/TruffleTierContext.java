@@ -37,6 +37,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.options.OptionValues;
 
@@ -106,6 +107,10 @@ public final class TruffleTierContext extends HighTierContext {
 
     public KnownTruffleTypes types() {
         return env().types();
+    }
+
+    public TruffleCompilerRuntime runtime() {
+        return config().runtime();
     }
 
     public JavaConstant getNodeRewritingAssumption(Providers providers) {

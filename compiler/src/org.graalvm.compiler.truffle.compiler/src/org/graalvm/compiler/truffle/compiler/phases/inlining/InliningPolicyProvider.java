@@ -37,7 +37,7 @@ public abstract class InliningPolicyProvider implements Comparable<InliningPolic
         this.name = name;
     }
 
-    public abstract InliningPolicy get(OptionValues options, CoreProviders providers);
+    public abstract InliningPolicy get(org.graalvm.compiler.options.OptionValues graalOptions, OptionValues truffleOptions, CoreProviders providers);
 
     @Override
     public int compareTo(InliningPolicyProvider o) {

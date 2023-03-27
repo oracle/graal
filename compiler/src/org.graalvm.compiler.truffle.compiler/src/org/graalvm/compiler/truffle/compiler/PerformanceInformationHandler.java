@@ -64,17 +64,20 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * This class handles reporting of performance warning.
  *
- * One instance is installed ({@link #install(OptionValues)} for each compilation before the
- * {@link org.graalvm.compiler.truffle.compiler.phases.TruffleTier} and closed after.
+ * One instance is installed ({@link #install(TruffleCompilerRuntime,OptionValues)} for each
+ * compilation before the {@link org.graalvm.compiler.truffle.compiler.phases.TruffleTier} and
+ * closed after.
  */
 public final class PerformanceInformationHandler implements Closeable {
 
     private static final ThreadLocal<PerformanceInformationHandler> instance = new ThreadLocal<>();
+    private final TruffleCompilerRuntime runtime;
     private final OptionValues options;
     private final Set<PolyglotCompilerOptions.PerformanceWarningKind> warningKinds = EnumSet.noneOf(PolyglotCompilerOptions.PerformanceWarningKind.class);
 
-    private PerformanceInformationHandler(OptionValues options) {
+    private PerformanceInformationHandler(TruffleCompilerRuntime runtime, OptionValues options) {
         this.options = options;
+        this.runtime = runtime;
     }
 
     private void addWarning(PolyglotCompilerOptions.PerformanceWarningKind warningKind) {
@@ -91,9 +94,9 @@ public final class PerformanceInformationHandler implements Closeable {
         instance.remove();
     }
 
-    public static PerformanceInformationHandler install(OptionValues options) {
+    public static PerformanceInformationHandler install(TruffleCompilerRuntime runtime, OptionValues options) {
         assert instance.get() == null : "PerformanceInformationHandler already installed";
-        PerformanceInformationHandler handler = new PerformanceInformationHandler(options);
+        PerformanceInformationHandler handler = new PerformanceInformationHandler(runtime, options);
         instance.set(handler);
         return handler;
     }
@@ -109,15 +112,15 @@ public final class PerformanceInformationHandler implements Closeable {
                     Map<String, Object> properties) {
         PerformanceInformationHandler handler = instance.get();
         handler.addWarning(warningKind);
-        logPerformanceWarningImpl(compilable, "perf warn", details, properties, handler.getPerformanceStackTrace(locations));
+        handler.logPerformanceWarningImpl(compilable, "perf warn", details, properties, handler.getPerformanceStackTrace(locations));
     }
 
-    private static void logPerformanceInfo(CompilableTruffleAST compilable, List<? extends Node> locations, String details, Map<String, Object> properties) {
+    private void logPerformanceInfo(CompilableTruffleAST compilable, List<? extends Node> locations, String details, Map<String, Object> properties) {
         logPerformanceWarningImpl(compilable, "perf info", details, properties, instance.get().getPerformanceStackTrace(locations));
     }
 
-    private static void logPerformanceWarningImpl(CompilableTruffleAST compilable, String event, String details, Map<String, Object> properties, String message) {
-        TruffleCompilerEnvironment.get().runtime().logEvent(compilable, 0, event, String.format("%-60s|%s", compilable.getName(), details), properties, message);
+    private void logPerformanceWarningImpl(CompilableTruffleAST compilable, String event, String details, Map<String, Object> properties, String message) {
+        runtime.logEvent(compilable, 0, event, String.format("%-60s|%s", compilable.getName(), details), properties, message);
     }
 
     private String getPerformanceStackTrace(List<? extends Node> locations) {
@@ -179,7 +182,6 @@ public final class PerformanceInformationHandler implements Closeable {
                     continue; // native methods cannot be inlined
                 }
 
-                TruffleCompilerRuntime runtime = TruffleCompilerEnvironment.get().runtime();
                 if (runtime.isInlineable(targetMethod) && runtime.getInlineKind(targetMethod, true).allowsInlining()) {
                     logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, target, Arrays.asList(call),
                                     String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).", call.invokeKind(), targetMethod, call),

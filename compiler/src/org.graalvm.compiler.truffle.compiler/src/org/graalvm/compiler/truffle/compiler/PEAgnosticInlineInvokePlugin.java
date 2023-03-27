@@ -50,7 +50,7 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
 
     @Override
     public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
-        InlineInfo inlineInfo = PartialEvaluator.asInlineInfo(original);
+        InlineInfo inlineInfo = partialEvaluator.asInlineInfo(original);
         if (original.equals(partialEvaluator.types.OptimizedCallTarget_callDirect)) {
             ValueNode arg0 = arguments[1];
             if (!arg0.isConstant()) {

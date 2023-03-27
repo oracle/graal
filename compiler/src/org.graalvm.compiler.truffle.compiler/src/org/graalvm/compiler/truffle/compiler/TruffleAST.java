@@ -164,7 +164,7 @@ final class TruffleAST implements JavaMethodContext {
             ConstantReflectionProvider constantReflection = constantReflection();
             for (ResolvedJavaField field : type.getInstanceFields(true)) {
                 String label = field.getName();
-                ConstantFieldInfo info = TruffleCompilerEnvironment.get().runtime().getConstantFieldInfo(field);
+                ConstantFieldInfo info = config.runtime().getConstantFieldInfo(field);
                 if (info == null) {
                     continue;
                 } else if (info.isChild()) {

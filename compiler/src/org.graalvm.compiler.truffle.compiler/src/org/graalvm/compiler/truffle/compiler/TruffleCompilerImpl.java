@@ -238,7 +238,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     }
 
     private DebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
-        OptionValues graalOptions = TruffleCompilerEnvironment.get().runtime().getGraalOptions(OptionValues.class);
+        OptionValues graalOptions = config.runtime().getGraalOptions(OptionValues.class);
         final DebugContext debugContext;
         if (compilation == null) {
             debugContext = new Builder(graalOptions).build();
@@ -277,7 +277,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
-                        new PostPartialEvaluationSuite(options.get(IterativePartialEscape)));
+                        new PostPartialEvaluationSuite(config.runtime().getGraalOptions(OptionValues.class), options.get(IterativePartialEscape)));
     }
 
     /**
@@ -409,13 +409,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         }
     }
 
-    final ExpansionStatistics getExpansionHistogram(org.graalvm.options.OptionValues options) {
+    final ExpansionStatistics getExpansionHistogram(TruffleCompilerRuntime runtime, org.graalvm.options.OptionValues options) {
         ExpansionStatistics local = expansionStatistics;
         if (local == null && !expansionStatisticsInitialized) {
             synchronized (this) {
                 local = expansionStatistics;
                 if (local == null) {
-                    this.expansionStatistics = local = ExpansionStatistics.create(options);
+                    this.expansionStatistics = local = ExpansionStatistics.create(runtime, options);
                     this.expansionStatisticsInitialized = true;
                 }
             }
@@ -494,7 +494,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         StructuredGraph graph;
         try (DebugCloseable a = PartialEvaluationTime.start(debug);
                         DebugCloseable c = PartialEvaluationMemUse.start(debug);
-                        PerformanceInformationHandler handler = PerformanceInformationHandler.install(wrapper.options)) {
+                        PerformanceInformationHandler handler = PerformanceInformationHandler.install(config.runtime(), wrapper.options)) {
 
             /*
              * TODO GR-37097 Merge TruffleTierConfiguration and TruffleCompilationWrapper so that
@@ -661,7 +661,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             this.task = task;
             this.listener = listener;
             this.compilationId = compilationId;
-            this.statistics = getExpansionHistogram(options);
+            this.statistics = getExpansionHistogram(config.runtime(), options);
         }
 
         @Override
@@ -734,8 +734,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     /**
      * Handles a Truffle compilation failure by calling {@code failure.handle()}.
      */
-    private static boolean isSuppressedFailure(CompilableTruffleAST compilable, Throwable cause) {
-        return TruffleCompilerEnvironment.get().runtime().isSuppressedFailure(
+    private boolean isSuppressedFailure(CompilableTruffleAST compilable, Throwable cause) {
+        return config.runtime().isSuppressedFailure(
                         compilable, () -> CompilableTruffleAST.serializeException(cause));
     }
 
@@ -766,7 +766,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             if (result == null || result.getAssumptions() == null) {
                 return;
             }
-            TruffleCompilerRuntime runtime = TruffleCompilerEnvironment.get().runtime();
+            TruffleCompilerRuntime runtime = config.runtime();
             ArrayList<Assumption> newAssumptions = new ArrayList<>();
             for (Assumption assumption : result.getAssumptions()) {
                 if (assumption != null && assumption instanceof TruffleAssumption) {

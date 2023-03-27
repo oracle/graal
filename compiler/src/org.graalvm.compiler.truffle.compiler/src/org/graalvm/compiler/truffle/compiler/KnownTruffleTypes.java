@@ -69,6 +69,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType ReadOnlyBufferException = lookupType(ReadOnlyBufferException.class);
     public final ResolvedJavaType ScopedMemoryAccess_ScopedAccessError = lookupTypeOptional("jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError");
     public final ResolvedJavaType AbstractMemorySegmentImpl = lookupTypeOptional("jdk.internal.foreign.AbstractMemorySegmentImpl");
+    public final ResolvedJavaType MemorySegmentProxy = lookupTypeOptional("jdk.internal.access.foreign.MemorySegmentProxy");
+
     public final Set<ResolvedJavaType> primitiveBoxTypes = Set.of(
                     lookupType(JavaKind.Boolean.toBoxedJavaClass()),
                     lookupType(JavaKind.Byte.toBoxedJavaClass()),
@@ -143,6 +145,7 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType Shape = lookupType("com.oracle.truffle.api.object.Shape");
     public final ResolvedJavaType DynamicObject = lookupType("com.oracle.truffle.api.object.DynamicObject");
     public final ResolvedJavaType UnsafeAccess = lookupType("com.oracle.truffle.object.UnsafeAccess");
+    public final ResolvedJavaType enterprise_UnsafeAccess = lookupTypeOptional("com.oracle.truffle.object.enterprise.UnsafeAccess");
 
     // truffle.api.string
     public final ResolvedJavaType TruffleString = lookupType("com.oracle.truffle.api.strings.TruffleString");
@@ -189,7 +192,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField OptimizedDirectCallNode_callCount = findField(OptimizedDirectCallNode, "callCount");
 
     public final ResolvedJavaType OptimizedAssumption = lookupType("org.graalvm.compiler.truffle.runtime.OptimizedAssumption");
-
     public final ResolvedJavaType[] skippedExceptionTypes = createSkippedExceptionTypes();
 
     // Checkstyle: resume field name check

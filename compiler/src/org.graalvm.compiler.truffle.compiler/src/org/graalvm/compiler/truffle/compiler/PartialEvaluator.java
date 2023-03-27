@@ -132,8 +132,9 @@ public abstract class PartialEvaluator {
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
         this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(
-                        this.config.lastTier().providers().getConstantFieldProvider(),
-                        this.config.lastTier().providers().getMetaAccess(),
+                        config.runtime(),
+                        config.lastTier().providers().getConstantFieldProvider(),
+                        config.lastTier().providers().getMetaAccess(),
                         types);
     }
 
@@ -185,8 +186,8 @@ public abstract class PartialEvaluator {
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
     }
 
-    public static InlineInvokePlugin.InlineInfo asInlineInfo(ResolvedJavaMethod method) {
-        final TruffleCompilerRuntime.InlineKind inlineKind = TruffleCompilerEnvironment.get().runtime().getInlineKind(method, true);
+    public final InlineInvokePlugin.InlineInfo asInlineInfo(ResolvedJavaMethod method) {
+        final TruffleCompilerRuntime.InlineKind inlineKind = config.runtime().getInlineKind(method, true);
         switch (inlineKind) {
             case DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION:
                 return InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
@@ -362,11 +363,11 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private static final class PELoopExplosionPlugin implements LoopExplosionPlugin {
+    private final class PELoopExplosionPlugin implements LoopExplosionPlugin {
 
         @Override
         public LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method) {
-            TruffleCompilerRuntime.LoopExplosionKind explosionKind = TruffleCompilerEnvironment.get().runtime().getLoopExplosionKind(method);
+            TruffleCompilerRuntime.LoopExplosionKind explosionKind = config.runtime().getLoopExplosionKind(method);
             switch (explosionKind) {
                 case NONE:
                     return LoopExplosionKind.NONE;
@@ -404,7 +405,7 @@ public abstract class PartialEvaluator {
         InvocationPlugins decodingPlugins = context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins;
 
         DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
-                        method -> TruffleCompilerEnvironment.get().runtime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
+                        method -> config.runtime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 
         Providers compilationUnitProviders = config.lastTier().providers().copyWith(compilationLocalConstantProvider);
 
@@ -460,8 +461,7 @@ public abstract class PartialEvaluator {
 
     protected void appendParsingNodePlugins(Plugins plugins) {
         if (JavaVersionUtil.JAVA_SPEC < 19) {
-            ResolvedJavaType memorySegmentProxyType = TruffleCompilerEnvironment.get().runtime().resolveType(config.lastTier().providers().getMetaAccess(),
-                            "jdk.internal.access.foreign.MemorySegmentProxy");
+            ResolvedJavaType memorySegmentProxyType = config.types().MemorySegmentProxy;
             for (ResolvedJavaMethod m : memorySegmentProxyType.getDeclaredMethods(false)) {
                 if (m.getName().equals("scope")) {
                     appendMemorySegmentScopePlugin(plugins, m);
