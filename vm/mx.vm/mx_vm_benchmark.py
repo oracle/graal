@@ -34,6 +34,7 @@ from os.path import basename, dirname, getsize, join
 from traceback import print_tb
 import inspect
 import subprocess
+import zipfile
 
 import mx
 import mx_benchmark
@@ -895,9 +896,12 @@ class NativeImageVM(GraalVm):
         if self.cached_jdk_pgo:
             # choose appropriate profiles
             jdk_profiles = f"JDK{mx.get_jdk().javaCompliance}_PROFILES"
-            cached_profiles_base_dir = mx.library(jdk_profiles).get_path(True)
-            cached_profiles = ','.join(list(map(lambda f: os.path.join(cached_profiles_base_dir, f), os.listdir(cached_profiles_base_dir))))
-            jdk_profiles_args = [f'-H:CachedPGOEnabled={cached_profiles}']
+            adopted_profiles_zip = mx.library(jdk_profiles).get_path(True)
+            adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
+            with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
+                zip_ref.extractall(adopted_profiles_dir)
+            adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
+            jdk_profiles_args = [f'-H:CachedPGOEnabled={adopted_profile}']
         else:
             jdk_profiles_args = []
         if self.profile_inference_feature_extraction:
