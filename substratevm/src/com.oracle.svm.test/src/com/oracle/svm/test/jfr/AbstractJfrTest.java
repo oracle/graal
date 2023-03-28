@@ -74,8 +74,7 @@ public abstract class AbstractJfrTest {
             System.out.println("Recording: " + jfrFile);
         }
 
-        Configuration defaultConfig = Configuration.getConfiguration("default");
-        startRecording(defaultConfig);
+        startRecording();
     }
 
     @After
@@ -91,13 +90,17 @@ public abstract class AbstractJfrTest {
         }
     }
 
-    protected abstract void startRecording(Configuration config) throws Throwable;
+    protected abstract void startRecording() throws Throwable;
 
     protected abstract void stopRecording() throws Throwable;
 
     protected abstract String[] getTestedEvents();
 
     protected abstract void validateEvents(List<RecordedEvent> events) throws Throwable;
+
+    protected static Configuration getDefaultConfiguration() throws Throwable {
+        return Configuration.getConfiguration("default");
+    }
 
     protected void checkRecording(Path path) throws AssertionError {
         try {

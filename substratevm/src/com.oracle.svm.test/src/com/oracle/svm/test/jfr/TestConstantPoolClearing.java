@@ -28,22 +28,17 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
 import java.util.List;
+import java.util.Map;
 
-import jdk.jfr.Configuration;
-import jdk.jfr.Recording;
 import org.junit.Test;
 
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.test.jfr.events.ClassEvent;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 
+import jdk.jfr.Configuration;
 import jdk.jfr.consumer.RecordedEvent;
 
 /**
@@ -51,32 +46,14 @@ import jdk.jfr.consumer.RecordedEvent;
  * or recording. Upon a new chunk, a constant pool epochData starts with residual entries, while the
  * serialized data buffer does not, it will fail constant pool verification in {@link JfrFileParser}
  */
-public class TestConstantPoolClearing extends AbstractJfrTest {
-    private Recording recording;
-    Path preTestFile;
+public class TestConstantPoolClearing extends JfrRecordingTest {
 
     @Override
-    public void startRecording(Configuration config) throws Throwable {
-        long id = new Random().nextLong(0, Long.MAX_VALUE);
-        preTestFile = File.createTempFile(getClass().getName() + "-" + id, ".jfr").toPath();
-        startRecording(config, preTestFile);
-    }
-
-    private void startRecording(Configuration config, Path destination) throws IOException {
-        recording = new Recording(config);
-        recording.setDestination(destination);
-        // Turn off flushing so we can control it precisely.
+    protected Map<String, String> getJfrSettings() {
+        /* Turn off flushing so we can control it precisely. */
         Map<String, String> settings = new HashMap<>();
-        settings.put("flush-interval", String.valueOf(Long.MAX_VALUE));
-        recording.setSettings(settings);
-        recording.enable("com.jfr.Class");
-        recording.start();
-    }
-
-    @Override
-    public void stopRecording() {
-        recording.stop();
-        recording.close();
+        settings.put("flush-interval", "0");
+        return settings;
     }
 
     @Override
@@ -103,6 +80,7 @@ public class TestConstantPoolClearing extends AbstractJfrTest {
 
         // Epoch 2 ---------------
         // Force another chunk rotation and end recording.
+        stopRecording();
         recording.stop();
         recording.close();
         // A new recording is started, now we can test if it has completely fresh constant pool
@@ -116,5 +94,4 @@ public class TestConstantPoolClearing extends AbstractJfrTest {
         eventWithDanglingReference.clazz = TestConstantPoolClearing.class;
         eventWithDanglingReference.commit();
     }
-
 }

@@ -45,7 +45,8 @@ abstract class JfrStreamingTest extends AbstractJfrTest {
     private volatile boolean streamEndedSuccessfully = false;
 
     @Override
-    public void startRecording(Configuration config) throws Throwable {
+    public void startRecording() throws Throwable {
+        Configuration config = getDefaultConfiguration();
         stream = new RecordingStream(config);
         stream.setMaxSize(JFR_MAX_SIZE);
 
