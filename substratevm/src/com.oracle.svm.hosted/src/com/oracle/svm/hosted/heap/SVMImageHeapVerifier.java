@@ -33,7 +33,6 @@ import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -71,8 +70,8 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
         bb.getUniverse().getTypes().stream().filter(AnalysisType::isReachable).forEach(t -> verifyHub(svmHost, objectScanner, t));
     }
 
-    private static void verifyHub(SVMHost svmHost, ObjectScanner objectScanner, AnalysisType type) {
-        JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
+    private void verifyHub(SVMHost svmHost, ObjectScanner objectScanner, AnalysisType type) {
+        JavaConstant hubConstant = bb.getSnippetReflectionProvider().forObject(svmHost.dynamicHub(type));
         objectScanner.scanConstant(hubConstant, ObjectScanner.OtherReason.HUB);
     }
 

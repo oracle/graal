@@ -31,6 +31,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.ExceptionProxy;
@@ -40,14 +42,14 @@ public final class AnnotationArrayValue extends AnnotationMemberValue {
 
     private final AnnotationMemberValue[] elements;
 
-    static AnnotationArrayValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
+    static AnnotationArrayValue extract(SnippetReflectionProvider snippetReflection, ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
         int length = buf.getShort() & 0xFFFF;
         if (length == 0) {
             return EMPTY_ARRAY_VALUE;
         }
         AnnotationMemberValue[] elements = new AnnotationMemberValue[length];
         for (int i = 0; i < length; ++i) {
-            elements[i] = AnnotationMemberValue.extract(buf, cp, container, skip);
+            elements[i] = AnnotationMemberValue.extract(snippetReflection, buf, cp, container, skip);
         }
         return skip ? null : new AnnotationArrayValue(elements);
     }

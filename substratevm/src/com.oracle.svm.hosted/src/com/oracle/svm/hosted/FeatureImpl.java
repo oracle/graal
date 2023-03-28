@@ -73,7 +73,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -588,7 +587,7 @@ public class FeatureImpl {
                         addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
                     }
                 } else {
-                    JavaConstant constant = SubstrateObjectConstant.forObject(cur);
+                    JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
                     for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
                         if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
                             Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, field.readValue(constant));

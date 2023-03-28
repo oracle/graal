@@ -29,23 +29,25 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 
 public abstract class AnnotationMemberValue {
-    static AnnotationMemberValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
+    static AnnotationMemberValue extract(SnippetReflectionProvider snippetReflection, ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
         char tag = (char) buf.get();
         switch (tag) {
             case 'e':
-                return AnnotationEnumValue.extract(buf, cp, container, skip);
+                return AnnotationEnumValue.extract(snippetReflection, buf, cp, container, skip);
             case 'c':
-                return AnnotationClassValue.extract(buf, cp, container, skip);
+                return AnnotationClassValue.extract(snippetReflection, buf, cp, container, skip);
             case 's':
                 return AnnotationStringValue.extract(buf, cp, skip);
             case '@':
-                return AnnotationValue.extract(buf, cp, container, true, skip);
+                return AnnotationValue.extract(snippetReflection, buf, cp, container, true, skip);
             case '[':
-                return AnnotationArrayValue.extract(buf, cp, container, skip);
+                return AnnotationArrayValue.extract(snippetReflection, buf, cp, container, skip);
             default:
                 return AnnotationPrimitiveValue.extract(buf, cp, tag, skip);
         }

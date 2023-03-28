@@ -69,7 +69,6 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.jdk.StringInternSupport;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -157,7 +156,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
-        return objects.get(SubstrateObjectConstant.forObject(obj));
+        return objects.get(universe.getSnippetReflection().forObject(obj));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
@@ -282,7 +281,7 @@ public final class NativeImageHeap implements ImageHeap {
      * Not every object is added to the heap, for various reasons.
      */
     public void addObject(final Object original, boolean immutableFromParent, final Object reason) {
-        addConstant(SubstrateObjectConstant.forObject(original), immutableFromParent, reason);
+        addConstant(universe.getSnippetReflection().forObject(original), immutableFromParent, reason);
     }
 
     public void addConstant(final JavaConstant constant, boolean immutableFromParent, final Object reason) {
@@ -604,7 +603,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     /** Add an object to the model of the native image heap. */
     private ObjectInfo addToImageHeap(Object object, HostedClass clazz, long size, int identityHashCode, Object reason) {
-        return addToImageHeap(SubstrateObjectConstant.forObject(object), clazz, size, identityHashCode, reason);
+        return addToImageHeap(universe.getSnippetReflection().forObject(object), clazz, size, identityHashCode, reason);
     }
 
     private ObjectInfo addToImageHeap(JavaConstant constant, HostedClass clazz, long size, int identityHashCode, Object reason) {
@@ -673,7 +672,7 @@ public final class NativeImageHeap implements ImageHeap {
      */
     private void recursiveAddObject(Object original, boolean immutableFromParent, Object reason) {
         if (original != null) {
-            addObjectWorklist.push(new AddObjectData(SubstrateObjectConstant.forObject(original), immutableFromParent, reason));
+            addObjectWorklist.push(new AddObjectData(universe.getSnippetReflection().forObject(original), immutableFromParent, reason));
         }
     }
 

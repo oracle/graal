@@ -211,7 +211,7 @@ public final class NativeImageHeapWriter {
             con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0);
         } else {
             assert kind == JavaKind.Object || value != null : "primitive value must not be null";
-            con = SubstrateObjectConstant.forBoxedValue(kind, value);
+            con = snippetReflection().forBoxed(kind, value);
         }
         write(buffer, index, con, info);
     }

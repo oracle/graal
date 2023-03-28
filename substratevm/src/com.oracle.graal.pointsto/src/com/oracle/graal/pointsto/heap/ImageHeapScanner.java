@@ -307,7 +307,7 @@ public abstract class ImageHeapScanner {
     }
 
     private Optional<JavaConstant> maybeReplace(JavaConstant constant, ScanReason reason) {
-        Object unwrapped = unwrapObject(constant);
+        Object unwrapped = snippetReflection.asObject(Object.class, constant);
         if (unwrapped == null) {
             throw GraalError.shouldNotReachHere(formatReason("Could not unwrap constant", reason)); // ExcludeFromJacocoGeneratedReport
         } else if (unwrapped instanceof ImageHeapConstant) {
@@ -329,10 +329,6 @@ public abstract class ImageHeapScanner {
 
         }
         return Optional.empty();
-    }
-
-    protected Object unwrapObject(JavaConstant constant) {
-        return snippetReflection.asObject(Object.class, constant);
     }
 
     JavaConstant onFieldValueReachable(AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
