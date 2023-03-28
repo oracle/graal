@@ -538,15 +538,16 @@ class NativeImageVM(GraalVm):
                 self.failed = True
                 if self.exit_code is not None and self.exit_code != 0:
                     mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
-                    if self.stdout_path:
-                        mx.log(mx.colorize('--------- Standard output:', 'blue'))
-                        with open(self.stdout_path, 'r') as stdout:
-                            mx.log(stdout.read())
 
-                    if self.stderr_path:
-                        mx.log(mx.colorize('--------- Standard error:', 'red'))
-                        with open(self.stderr_path, 'r') as stderr:
-                            mx.log(stderr.read())
+                if self.stdout_path:
+                    mx.log(mx.colorize('--------- Standard output:', 'blue'))
+                    with open(self.stdout_path, 'r') as stdout:
+                        mx.log(stdout.read())
+
+                if self.stderr_path:
+                    mx.log(mx.colorize('--------- Standard error:', 'red'))
+                    with open(self.stderr_path, 'r') as stderr:
+                        mx.log(stderr.read())
 
                 if tb:
                     mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' with ', 'red'))
