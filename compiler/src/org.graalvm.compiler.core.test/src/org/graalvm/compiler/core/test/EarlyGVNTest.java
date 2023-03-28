@@ -39,6 +39,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
@@ -46,12 +47,16 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.junit.Assert;
@@ -128,28 +133,32 @@ public class EarlyGVNTest extends GraalCompilerTest {
 
             @Override
             protected void run(@SuppressWarnings("hiding") StructuredGraph graph, HighTierContext context) {
-                LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
-
-                for (NodeCount count : counts) {
-                    List<Node> nodes = graph.getNodes().filter(x -> x.getNodeClass().equals(count.nodeClass)).snapshot();
-                    int realCount = nodes.size();
-                    Assert.assertEquals("Wrong node count for node class " + count.nodeClass, count.count, realCount);
-                    if (count.invariantCount != 0) {
-                        int invariantCount = count.count;
-                        for (Node node : nodes) {
-                            for (LoopEx loop : loops.loops()) {
-                                if (loop.whole().contains(node)) {
-                                    invariantCount--;
-                                    break;
-                                }
-                            }
-                        }
-                        Assert.assertEquals("Wrong number of invariant nodes for node class " + count.nodeClass.getClazz(), count.invariantCount, invariantCount);
-                    }
-                }
+                checkHighTierGraph(graph, counts);
             }
         });
         ht.apply(graph, getDefaultHighTierContext());
+    }
+
+    private void checkHighTierGraph(StructuredGraph graph, NodeCount... counts) {
+        LoopsData loops = getDefaultHighTierContext().getLoopsDataProvider().getLoopsData(graph);
+
+        for (NodeCount count : counts) {
+            List<Node> nodes = graph.getNodes().filter(x -> x.getNodeClass().equals(count.nodeClass)).snapshot();
+            int realCount = nodes.size();
+            Assert.assertEquals("Wrong node count for node class " + count.nodeClass, count.count, realCount);
+            if (count.invariantCount != 0) {
+                int invariantCount = count.count;
+                for (Node node : nodes) {
+                    for (LoopEx loop : loops.loops()) {
+                        if (loop.whole().contains(node)) {
+                            invariantCount--;
+                            break;
+                        }
+                    }
+                }
+                Assert.assertEquals("Wrong number of invariant nodes for node class " + count.nodeClass.getClazz(), count.invariantCount, invariantCount);
+            }
+        }
     }
 
     @MustFold()
@@ -576,5 +585,58 @@ public class EarlyGVNTest extends GraalCompilerTest {
         String s = "snippetNestLoops";
         test(s, new int[0]);
         checkHighTierGraph(s, invariantCount(ArrayLengthNode.TYPE, 1));
+    }
+
+    public static int doubleNest(int l0, int l1, int l2, Object[] arr, Object[] arr2) {
+        int i0 = 0;
+        int i1 = 0;
+        int i2 = 0;
+        int result = 0;
+        Object[] nonNullArray = GraalDirectives.guardingNonNull(arr);
+        if (nonNullArray.length < 10) {
+            GraalDirectives.deoptimizeAndInvalidate();
+        }
+        do {
+            Object[] proxy = null;
+            do {
+                if (i1 > i0) {
+                    proxy = nonNullArray;
+                } else {
+                    proxy = arr2;
+                }
+            } while (i1++ < l1);
+            do {
+                Object o1 = proxy[0];
+                if (o1 == null) {
+                    result *= 2;
+                }
+            } while (i2++ < l2);
+            Object o2 = proxy[0];
+            result += (Integer) o2;
+        } while (i0++ < l0);
+        return result;
+    }
+
+    @Test
+    public void testNested2() {
+        String s = "doubleNest";
+        StructuredGraph g = parseEager(getResolvedJavaMethod(s), AllowAssumptions.NO);
+        HighTierContext highTierContext = getDefaultHighTierContext();
+        CanonicalizerPhase c = CanonicalizerPhase.create();
+
+        c.apply(g, getDefaultHighTierContext());
+        new ConvertDeoptimizeToGuardPhase(c).apply(g, highTierContext);
+        new ConditionalEliminationPhase(false).apply(g, highTierContext);
+        c.apply(g, getDefaultHighTierContext());
+        new DominatorBasedGlobalValueNumberingPhase(c).apply(g, highTierContext);
+        new ConditionalEliminationPhase(false).apply(g, highTierContext);
+        c.apply(g, getDefaultHighTierContext());
+        new DominatorBasedGlobalValueNumberingPhase(c).apply(g, highTierContext);
+
+        checkHighTierGraph(g, count(FixedGuardNode.TYPE, 4),
+                        count(LoopBeginNode.TYPE, 3),
+                        invariantCount(ArrayLengthNode.TYPE, 1),
+                        count(LoadIndexedNode.TYPE, 1));
+
     }
 }
