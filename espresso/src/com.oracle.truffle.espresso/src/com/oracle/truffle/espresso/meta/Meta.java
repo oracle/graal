@@ -330,6 +330,14 @@ public final class Meta extends ContextAccessImpl {
             java_lang_ClassLoader_name = null;
         }
 
+        if (getJavaVersion().java19OrLater()) {
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = knownKlass(Type.jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl);
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl.requireDeclaredField(Name.handle, Type._long);
+        } else {
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = null;
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = null;
+        }
+
         java_net_URL = knownKlass(Type.java_net_URL);
 
         java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.requireDeclaredMethod(Name.getResourceAsStream, Signature.InputStream_String);
@@ -1114,6 +1122,9 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
     public final Method java_lang_ClassLoader_getResourceAsStream;
     public final Method java_lang_ClassLoader_loadClass;
+
+    public final ObjectKlass jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl;
+    public final Field jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle;
 
     public final ObjectKlass java_net_URL;
 

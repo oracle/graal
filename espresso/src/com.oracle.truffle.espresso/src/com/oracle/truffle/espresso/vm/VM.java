@@ -2213,12 +2213,16 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
-        getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
-
         // We don't pass `throwException` down due to GR-37925, but even if Sulong would
         // be fixed, it might be garbage if the used base lib has a mismatching signature,
         // so we recompute its value instead on our side.
         boolean throwException = !hasDynamicLoaderCache();
+        return JVM_LoadLibrary(name, throwException);
+    }
+
+    @TruffleBoundary
+    public @Pointer TruffleObject JVM_LoadLibrary(String name, boolean throwException) {
+        getLogger().fine(() -> String.format("JVM_LoadLibrary(%s, %s)", name, throwException));
 
         TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
         if (lib == null) {
@@ -2230,7 +2234,7 @@ public final class VM extends NativeEnv {
         }
         long handle = getLibraryHandle(lib);
         handle2Lib.put(handle, lib);
-        getLogger().fine(String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
+        getLogger().fine(() -> String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
         return RawPointer.create(handle);
     }
 
