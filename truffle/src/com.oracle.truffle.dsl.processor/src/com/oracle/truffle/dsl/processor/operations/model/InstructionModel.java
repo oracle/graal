@@ -174,4 +174,9 @@ public class InstructionModel implements InfoDumpable {
     public String getConstantName() {
         return getInternalName().toUpperCase();
     }
+
+    @Override
+    public String toString() {
+        return String.format("Operation(%s)", name);
+    }
 }

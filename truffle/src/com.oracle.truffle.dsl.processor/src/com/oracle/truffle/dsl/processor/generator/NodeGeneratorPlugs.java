@@ -52,6 +52,12 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 
+/**
+ * Interface that allows node generators to customize the way {@link FlatNodeGenFactory} generates
+ * nodes. A node generator (e.g., {@link OperationsNodeFactory}) can pass its own implementation of
+ * this interface to the {@link FlatNodeGenFactory} during construction, and the factory will
+ * delegate to it.
+ */
 public interface NodeGeneratorPlugs {
     NodeGeneratorPlugs DEFAULT = new NodeGeneratorPlugs() {
     };

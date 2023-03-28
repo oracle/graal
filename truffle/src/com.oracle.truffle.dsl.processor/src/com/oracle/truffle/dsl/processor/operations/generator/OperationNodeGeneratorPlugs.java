@@ -75,6 +75,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
         this.isBoxingOperations = nodeType.toString().endsWith("BoxingOperationsGen");
     }
 
+    @Override
     public List<? extends VariableElement> additionalArguments() {
         return List.of(
                         new CodeVariableElement(nodeType, "$root"),
@@ -83,6 +84,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
                         new CodeVariableElement(context.getType(int.class), "$sp"));
     }
 
+    @Override
     public ChildExecutionResult createExecuteChild(FlatNodeGenFactory factory, CodeTreeBuilder builder, FrameState originalFrameState, FrameState frameState, NodeExecutionData execution,
                     LocalVariable targetValue) {
 
@@ -153,10 +155,12 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
         throw new AssertionError("index=" + index + ", signature=" + instr.signature);
     }
 
+    @Override
     public String createNodeChildReferenceForException(FlatNodeGenFactory flatNodeGenFactory, FrameState frameState, NodeExecutionData execution, NodeChildData child) {
         return "null";
     }
 
+    @Override
     public CodeTree createTransferToInterpreterAndInvalidate() {
         if (isBoxingOperations) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
