@@ -88,6 +88,7 @@ final class BundleSupport {
     Map<Path, Path> pathCanonicalizations = new HashMap<>();
     Map<Path, Path> pathSubstitutions = new HashMap<>();
 
+    private final boolean forceBuilderOnClasspath;
     private final List<String> nativeImageArgs;
     private List<String> updatedNativeImageArgs;
 
@@ -203,7 +204,8 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
-        this.nativeImageArgs = nativeImage.getNativeImageArgs();
+        forceBuilderOnClasspath = !nativeImage.config.modulePathBuild;
+        nativeImageArgs = nativeImage.getNativeImageArgs();
     }
 
     private BundleSupport(NativeImage nativeImage, String bundleFilenameArg) {
@@ -254,6 +256,8 @@ final class BundleSupport {
         }
 
         bundleProperties.loadAndVerify();
+        forceBuilderOnClasspath = bundleProperties.forceBuilderOnClasspath();
+        nativeImage.config.modulePathBuild = !forceBuilderOnClasspath;
 
         try {
             Path inputDir = rootDir.resolve("input");
@@ -764,6 +768,7 @@ final class BundleSupport {
         private static final String PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR = "BundleFileVersionMajor";
         private static final String PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR = "BundleFileVersionMinor";
         private static final String PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP = "BundleFileCreationTimestamp";
+        private static final String PROPERTY_KEY_BUILDER_ON_CLASSPATH = "BuilderOnClasspath";
         private static final String PROPERTY_KEY_IMAGE_BUILT = "ImageBuilt";
         private static final String PROPERTY_KEY_BUILT_WITH_CONTAINER = "BuiltWithContainer";
         private static final String PROPERTY_KEY_NATIVE_IMAGE_PLATFORM = "NativeImagePlatform";
@@ -824,10 +829,16 @@ final class BundleSupport {
             nativeImage.showMessage(String.format("%sUsing version: '%s'%s on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX, bundleVersion, currentVersion, bundlePlatform, currentPlatform));
         }
 
+        private boolean forceBuilderOnClasspath() {
+            assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
+            return Boolean.parseBoolean(properties.getOrDefault(PROPERTY_KEY_BUILDER_ON_CLASSPATH, Boolean.FALSE.toString()));
+        }
+
         private void write() {
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MAJOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MINOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, ZonedDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+            properties.put(PROPERTY_KEY_BUILDER_ON_CLASSPATH, String.valueOf(forceBuilderOnClasspath));
             boolean imageBuilt = !nativeImage.isDryRun();
             properties.put(PROPERTY_KEY_IMAGE_BUILT, String.valueOf(imageBuilt));
             if (imageBuilt) {
