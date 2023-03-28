@@ -99,7 +99,9 @@ final class LinuxVMSemaphoreFeature implements InternalFeature {
         LinuxVMSemaphore[] semaphores = semaphoreReplacer.getReplacements().toArray(new LinuxVMSemaphore[0]);
         int semaphoreSize = NumUtil.roundUp(SizeOf.get(Semaphore.sem_t.class), alignment);
         for (LinuxVMSemaphore semaphore : semaphores) {
-            semaphore.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
+            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
+            assert offset % alignment == 0;
+            semaphore.structOffset = WordFactory.unsigned(offset);
             nextIndex += semaphoreSize;
         }
 
