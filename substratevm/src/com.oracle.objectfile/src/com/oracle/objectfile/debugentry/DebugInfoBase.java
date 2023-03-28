@@ -315,6 +315,8 @@ public abstract class DebugInfoBase {
             PrimaryRange primaryRange = Range.createPrimary(methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
+            // verify that compiled methods have been recorded in ascending address order
+            assert classEntry.verifyCompiledMethodOrder() : "compiled methods must be presented in ascending order";
             /*
              * Record all subranges even if they have no line or file so we at least get a symbol
              * for them and don't see a break in the address range.
@@ -322,6 +324,7 @@ public abstract class DebugInfoBase {
             EconomicMap<DebugLocationInfo, SubRange> subRangeIndex = EconomicMap.create();
             debugCodeInfo.locationInfoProvider().forEach(debugLocationInfo -> addSubrange(debugLocationInfo, primaryRange, classEntry, subRangeIndex, debugContext));
         }));
+        assert verifyCompiledMethodRanges() : "each class must have its own unique compiled method code address range";
 
         debugInfoProvider.dataInfoProvider().forEach(debugDataInfo -> debugDataInfo.debugContext((debugContext) -> {
             String provenance = debugDataInfo.getProvenance();
@@ -669,5 +672,34 @@ public abstract class DebugInfoBase {
 
     public ClassEntry getHubClassEntry() {
         return hubClassEntry;
+    }
+
+    /**
+     * Check that each class's compiled full address range is unique to that class.
+     *
+     * Specifically, verify that for any two instance classes A and B whose compiled methods sets
+     * {ma_1, ... ma_k} and {mb_1, ... mb_l} lie in the respective, minimal, enclosing address
+     * ranges [a_lo,a_hi] and [b_lo,b_hi] the following constraint is met:
+     *
+     * [a_lo,a_hi] intersect [b_lo,b_hi] == empty.
+     */
+    private boolean verifyCompiledMethodRanges() {
+        for (ClassEntry classEntry : getInstanceClasses()) {
+            if (!classEntry.hasCompiledEntries()) {
+                continue;
+            }
+            for (ClassEntry otherClassEntry : getInstanceClasses()) {
+                if (classEntry == otherClassEntry) {
+                    break;
+                }
+                if (!otherClassEntry.hasCompiledEntries()) {
+                    continue;
+                }
+                if (!classEntry.verifyCompiledMethodRange(otherClassEntry)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

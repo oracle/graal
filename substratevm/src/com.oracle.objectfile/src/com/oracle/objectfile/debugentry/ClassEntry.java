@@ -460,4 +460,65 @@ public class ClassEntry extends StructureTypeEntry {
         assert hasDeoptCompiledEntries();
         return deoptCompiledEntries.get(deoptCompiledEntries.size() - 1).getPrimary().getHi();
     }
+
+    /**
+     * Verify that the normal and deopt entries lists have each been presented in order of ascending
+     * address range and that all deopt methods are in a higher range than all non-deopt methods.
+     *
+     * @return false if any method is out of order otherwise true.
+     */
+    boolean verifyCompiledMethodOrder() {
+        int lo = 0;
+        for (CompiledMethodEntry c : normalCompiledEntries) {
+            int next = c.getPrimary().getLo();
+            if (next < lo) {
+                assert false : "invalid method address order %s 0x%x -> 0x%x".formatted(c.getPrimary().getFullMethodNameWithParams(), lo, next);
+                return false;
+            }
+            lo = next;
+        }
+        if (deoptCompiledEntries != null) {
+            for (CompiledMethodEntry c : deoptCompiledEntries) {
+                int next = c.getPrimary().getLo();
+                if (next < lo) {
+                    assert false : "invalid method address order %s 0x%x -> 0x%x".formatted(c.getPrimary().getFullMethodNameWithParams(), lo, next);
+                    return false;
+                }
+                lo = next;
+            }
+        }
+        return true;
+    }
+
+    public boolean verifyCompiledMethodRange(ClassEntry other) {
+        boolean check = lowpc() >= other.hipc() || hipc() <= other.lowpc();
+        if (!check) {
+            assert false : "detected address range overlap %s [0x%x,0x%x], %s [0x%x,0x%x]".formatted(getTypeName(), lowpc(), hipc(), other.getTypeName(), other.lowpc(), other.hipc());
+            return false;
+        }
+        if (hasDeoptCompiledEntries()) {
+            check = lowpcDeopt() >= other.hipc();
+            if (!check) {
+                assert false : "detected deopt vs normal address range overlap %s [0x%x,0x%x], %s [0x%x,0x%x]".formatted(getTypeName(), lowpcDeopt(), hipcDeopt(), other.getTypeName(), other.lowpc(),
+                                other.hipc());
+                return false;
+            }
+            if (other.hasDeoptCompiledEntries()) {
+                check = lowpcDeopt() >= other.hipcDeopt() || other.lowpcDeopt() >= hipcDeopt();
+                if (!check) {
+                    assert false : "detected deopt vs deopt address range overlap %s [0x%x,0x%x], %s [0x%x,0x%x]".formatted(getTypeName(), lowpcDeopt(), hipcDeopt(), other.getTypeName(),
+                                    other.lowpcDeopt(), other.hipcDeopt());
+                    return false;
+                }
+            }
+        } else if (other.hasDeoptCompiledEntries()) {
+            check = hipc() <= other.lowpcDeopt();
+            if (!check) {
+                assert false : "detected normal vs deopt  address range overlap %s [0x%x,0x%x], %s [0x%x,0x%x]".formatted(getTypeName(), lowpc(), hipc(), other.getTypeName(), other.lowpcDeopt(),
+                                other.hipcDeopt());
+                return false;
+            }
+        }
+        return true;
+    }
 }
