@@ -53,12 +53,14 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -1712,8 +1714,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
                 FrameState stateAfter = oldMerge.stateAfter();
                 if (stateAfter != null) {
-                    stateAfter = stateAfter.duplicate();
-                    stateAfter.replaceFirstInput(oldPhi, newPhi);
+                    stateAfter = stateAfter.duplicateWithVirtualState();
+                    stateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
+                        @Override
+                        public void apply(Node from, Position p) {
+                            ValueNode to = (ValueNode) p.get(from);
+                            if (to == oldPhi) {
+                                p.set(from, newPhi);
+                            }
+                        }
+                    });
                     newMerge.setStateAfter(stateAfter);
                 }
 
