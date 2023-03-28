@@ -1532,14 +1532,18 @@ public final class VM extends NativeEnv {
     }
 
     private int attachCurrentThread(@SuppressWarnings("unused") @Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr, boolean daemon) {
-        JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
         StaticObject group = null;
         String name = null;
-        if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
-            group = attachArgs.group();
-            name = NativeUtils.fromUTF8Ptr(attachArgs.name());
+        if (!InteropLibrary.getUncached().isNull(argsPtr)) {
+            JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
+            if (JVM_IsSupportedJNIVersion(attachArgs.version())) {
+                group = attachArgs.group();
+                name = NativeUtils.fromUTF8Ptr(attachArgs.name());
+            } else {
+                getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", attachArgs.version()));
+            }
         } else {
-            getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", attachArgs.version()));
+            getLogger().warning("AttachCurrentThread with null args");
         }
         StaticObject thread = getContext().createThread(Thread.currentThread(), group, name);
         if (daemon) {
