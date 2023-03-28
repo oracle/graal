@@ -240,7 +240,7 @@ class NativeImageVM(GraalVm):
         self.config = None
         self.stages = None
         self.jdk_profiles_collect = False
-        self.cached_jdk_pgo = False
+        self.adopted_jdk_pgo = False
         self.async_sampler = False
         self.safepoint_sampler = False
         self.profile_inference_feature_extraction = False
@@ -264,7 +264,7 @@ class NativeImageVM(GraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-|iterative-|inline-explored-)?' \
-               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|cached-jdk-pgo-)?' \
+               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
                r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
@@ -359,8 +359,8 @@ class NativeImageVM(GraalVm):
                         rules = map(lambda r: r['includeClasses'][:-2], filter(lambda r: 'includeClasses' in r, rules))
                         return ','.join(rules)
                 self.generate_profiling_package_prefixes = generate_profiling_package_prefixes
-            elif config == 'cached-jdk-pgo':
-                self.cached_jdk_pgo = True
+            elif config == 'adopted-jdk-pgo':
+                self.adopted_jdk_pgo = True
             else:
                 mx.abort(f'Unknown jdk profiles configuration: {config}')
 
@@ -893,7 +893,7 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
-        if self.cached_jdk_pgo:
+        if self.adopted_jdk_pgo:
             # choose appropriate profiles
             jdk_profiles = f"JDK{mx.get_jdk().javaCompliance}_PROFILES"
             adopted_profiles_zip = mx.library(jdk_profiles).get_path(True)
@@ -901,7 +901,7 @@ class NativeImageVM(GraalVm):
             with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
                 zip_ref.extractall(adopted_profiles_dir)
             adopted_profile = os.path.join(adopted_profiles_dir, 'jdk_profile.iprof')
-            jdk_profiles_args = [f'-H:CachedPGOEnabled={adopted_profile}']
+            jdk_profiles_args = [f'-H:AdoptedPGOEnabled={adopted_profile}']
         else:
             jdk_profiles_args = []
         if self.profile_inference_feature_extraction:
