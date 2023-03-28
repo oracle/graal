@@ -15,7 +15,6 @@ redirect_from: /$version/docs/graalvm-updater/
 * [Install Components Manually](#install-components-manually)
 * [Install Components from Local Collection](#install-cmponents-from-local-collection)
 * [Uninstall Components](#uninstall-components)
-* [Upgrade GraalVM](#upgrade-graalvm)
 * [Rebuild Images](#rebuild-images)
 * [Replace Components and Files](#replace-components-and-files)
 * [Configure Proxies](#configure-proxies)
@@ -23,7 +22,7 @@ redirect_from: /$version/docs/graalvm-updater/
 * [GraalVM Updater Commands Overview](#graalvm-updater-commands-overview)
 
 GraalVM Updater, `gu`, is a command-line tool for installing and managing optional GraalVM language runtimes and utilities. 
-It is available in the core GraalVM package.
+It is available in the GraalVM JDK.
 To assist you with the installation, language runtimes and utilities are pre-packaged as JAR files and referenced in the documentation as "components".
 GraalVM Updater can be also used to update your local GraalVM installation to a newer version or upgrade from GraalVM Community Edition to Oracle GraalVM.
 Read more in [Upgrade GraalVM](#upgrade-graalvm).
@@ -77,7 +76,6 @@ You can install a component **by component's ID** using GraalVM Updater: `gu ins
     ```
     The installation starts, displaying progress.
 
-If you are installing on Oracle GraalVM, GraalVM Updater downloads a component from Oracle's storage point. If you are installing GraalVM Community Edition, the wizard downloads a component from [Github](https://github.com/graalvm/graalvm-ce-builds/releases).
 To see more verbose output during the installation, as the download progress bar, print versions, and dependency information, use the `-v` (`--verbose`) switch.
 
 If a component is installed that depends on another component, GraalVM Updater will search for the appropriate dependency and install it as well.
@@ -85,7 +83,7 @@ If a required component cannot be found, the installation will fail.
 
 ## Install Components with a Download Token
 
-On Oracle GraalVM versions older than 23.0 (licensed under [Oracle Technology Network License Agreement GraalVM Enterprise Edition Including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html)), installing a component requires a user to provide a valid email address and accept a license for a given component.
+On GraalVM Enterprise Edition, the predecessor of Oracle GraalVM, installing a component requires users to provide a valid email address and accept a license for a given component.
 GraalVM Updater uses the **download token** (a personal access token, an alternative to using a password) which is bound to the user's email and defines the set of accepted licenses.
 Follow these steps to install, for example, Python: 
 
@@ -114,12 +112,6 @@ Follow these steps to install, for example, Python:
 Once the installation completes, you can continue installing other components using the same command: `gu install ComponentId`. 
 GraalVM Updater reads your `~/.gu/config` and you do not have to re-accept the license. 
  
-Consider the following aspects:
-
-* A single download token is associated with a single email address.
-* If you use the same email address to download an artifact from another computer, the existing download token will become invalid.
-* You can transfer a download token to another computer, `gu` will accept it.
-
 The following commands can help you manage a download token: 
 
 * `--email <address>` to print an e-mail address used for generating a download token
@@ -197,37 +189,6 @@ Note that the LLVM toolchain component may fail uninstallation if its dependent 
 ```shell
 gu -D remove llvm-toolchain
 ```
-
-## Upgrade GraalVM
-
-You can update the existing GraalVM installation to the most recent version with GraalVM Updater.
-
-For example, having GraalVM 22.x installed, update to the most recent available version with:
-```shell
-gu upgrade
-```
-
-GraalVM Updater will attempt to download the latest version of either Oracle GraalVM or GraalVM Community Edition, if available.
-
-> Note: The upgrade will not be possible from version 21.3.5 to 21.3.5, and also from 20.3.9 to 20.3.10 because GraalVM download binaries reside on different servers.
-
-Consider the following aspects:
-
-* It will not rewrite the existing installation, but unpack it into a new directory and print out the location path.
-* It will also verify if you have any optional components installed in the current GraalVM installation and update those as well.
-* If your setup involves some environment variables (e.g., `PATH`) pointing to a selected GraalVM installation, those variables should be updated manually.
-
-You can also upgrade the edition from **GraalVM Community Edition** to **Oracle GraalVM**.
-To upgrade, run:
-```shell
-gu upgrade --edition ee
-```
-
-It will install the newest version of Oracle GraalVM, next to the current installation.
-GraalVM Updater will check for the optional component presence, verify if a component is appropriate for the installation, and upgrade it as well.
-
-> Note: You can only upgrade GraalVM to a newer version with GraalVM Updater.
-The downgrade to an older version, and from Oracle GraalVM to GraalVM Community Edition, is not possible.
 
 ## Rebuild Images
 
