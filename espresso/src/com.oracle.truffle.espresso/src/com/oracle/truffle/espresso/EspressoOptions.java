@@ -643,6 +643,18 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnablePreview = new OptionKey<>(false);
 
+    @Option(help = "Enables the WhiteBox API.", //
+            category = OptionCategory.EXPERT, //
+            stability = OptionStability.EXPERIMENTAL, //
+            usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> WhiteBoxAPI = new OptionKey<>(false);
+
+    @Option(help = "Explicitly allow using diagnostic VM options.", //
+            category = OptionCategory.EXPERT, //
+            stability = OptionStability.STABLE, //
+            usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> UnlockDiagnosticVMOptions = new OptionKey<>(false);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);

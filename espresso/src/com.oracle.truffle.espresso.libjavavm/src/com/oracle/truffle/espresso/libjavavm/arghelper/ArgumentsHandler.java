@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.libjavavm.arghelper;
 
 import static com.oracle.truffle.espresso.libjavavm.Arguments.abort;
+import static com.oracle.truffle.espresso.libjavavm.Arguments.warn;
 
 import java.io.PrintStream;
 import java.util.function.Consumer;
@@ -138,21 +139,42 @@ public class ArgumentsHandler {
      * </ul>
      */
     public void handleXXArg(String optionString) {
-        String toPolyglot = optionString.substring("-XX:".length());
-        if (toPolyglot.length() >= 1 && (toPolyglot.charAt(0) == '+' || toPolyglot.charAt(0) == '-')) {
-            String value = Boolean.toString(toPolyglot.charAt(0) == '+');
-            toPolyglot = "--java." + toPolyglot.substring(1) + "=" + value;
+        String arg = optionString.substring("-XX:".length());
+        String group;
+        String name;
+        String value;
+        if (arg.length() >= 1 && (arg.charAt(0) == '+' || arg.charAt(0) == '-')) {
+            name = arg.substring(1);
+            value = Boolean.toString(arg.charAt(0) == '+');
+            group = "java";
         } else {
-            toPolyglot = "--java." + toPolyglot;
+            int idx = arg.indexOf('=');
+            if (idx < 0) {
+                name = arg;
+                value = "";
+            } else {
+                name = arg.substring(0, idx);
+                value = arg.substring(idx + 1);
+            }
+            group = "java";
         }
         try {
-            parsePolyglotOption(toPolyglot);
+            parsePolyglotOption(group, name, value, optionString);
             return;
         } catch (Arguments.ArgumentException e) {
             if (e.isExperimental()) {
-                throw abort(e.getMessage().replace(toPolyglot, optionString));
+                throw abort(e.getMessage().replace(arg, optionString));
             }
             /* Ignore, and try to pass it as a vm arg */
+        }
+        if ("ReservedCodeCacheSize".equals(name) || "TieredStopAtLevel".equals(name)) {
+            // ignore
+            warn("Ignoring option: " + optionString);
+            return;
+        }
+        if ("TieredCompilation".equals(name)) {
+            parsePolyglotOption("engine", "engine.MultiTier", value, optionString);
+            return;
         }
         // Pass as host vm arg
         nativeAccess.init(true);
@@ -161,6 +183,10 @@ public class ArgumentsHandler {
 
     public void parsePolyglotOption(String optionString) {
         polyglotAccess.parsePolyglotOption(optionString, experimental);
+    }
+
+    public void parsePolyglotOption(String group, String key, String value, String arg) {
+        polyglotAccess.parsePolyglotOption(group, key, value, arg, experimental);
     }
 
     public void handleVMOption(String optionString) {

@@ -125,6 +125,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
     @CompilationFinal private int livenessAnalysisMinimumLocals;
     @CompilationFinal private boolean previewEnabled;
+    @CompilationFinal private boolean whiteBoxEnabled;
 
     private boolean optionsInitialized;
     // endregion Options
@@ -194,6 +195,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
             livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
             previewEnabled = env.getOptions().get(EspressoOptions.EnablePreview);
+            whiteBoxEnabled = env.getOptions().get(EspressoOptions.WhiteBoxAPI);
             optionsInitialized = true;
         }
     }
@@ -268,7 +270,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.SpecCompliance) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysis) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals) &&
-                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview);
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.EnablePreview) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.WhiteBoxAPI);
     }
 
     private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
@@ -471,6 +474,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public boolean isPreviewEnabled() {
         return previewEnabled;
+    }
+
+    public boolean isWhiteBoxEnabled() {
+        return whiteBoxEnabled;
     }
 
     public EspressoLanguageCache getLanguageCache() {

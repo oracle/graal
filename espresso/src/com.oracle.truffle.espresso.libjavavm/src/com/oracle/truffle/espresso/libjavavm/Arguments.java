@@ -174,6 +174,13 @@ public final class Arguments {
                         ignoreUnrecognized = false;
                     } else if (optionString.startsWith("--vm.")) {
                         handler.handleVMOption(optionString);
+                    } else if (optionString.startsWith("-Xcomp")) {
+                        builder.option("engine.CompileImmediately", "true");
+                    } else if (optionString.startsWith("-Xbatch")) {
+                        builder.option("engine.BackgroundCompilation", "false");
+                        builder.option("engine.CompileImmediately", "true");
+                    } else if (optionString.startsWith("-Xint") || optionString.equals("-XX:TieredStopAtLevel=0")) {
+                        builder.option("engine.Compilation", "false");
                     } else if (optionString.startsWith("-XX:")) {
                         handler.handleXXArg(optionString);
                     } else if (optionString.startsWith("--help:")) {
