@@ -190,7 +190,7 @@ public final class EspressoContext {
     @CompilationFinal private EspressoBindings topBindings;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
 
-    private Map<ClassRegistry, ModuleTable.ModuleEntry> dynamicModuleForGeneratedProxies = new ConcurrentHashMap<>();
+    private Map<Object, ModuleTable.ModuleEntry> dynamicModuleForGeneratedProxies = new ConcurrentHashMap<>();
 
     public TruffleLogger getLogger() {
         return logger;
@@ -1126,7 +1126,7 @@ public final class EspressoContext {
         return espressoEnv.getThreadRegistry().nextThreadId();
     }
 
-    public ModuleTable.ModuleEntry getDynamicModuleForProxyGeneration(ClassRegistry registry, Function<ClassRegistry, ModuleTable.ModuleEntry> function) {
-        return dynamicModuleForGeneratedProxies.computeIfAbsent(registry, function);
+    public ModuleTable.ModuleEntry getDynamicModuleForProxyGeneration(Object key, Function<Object, ModuleTable.ModuleEntry> function) {
+        return dynamicModuleForGeneratedProxies.computeIfAbsent(key, function);
     }
 }

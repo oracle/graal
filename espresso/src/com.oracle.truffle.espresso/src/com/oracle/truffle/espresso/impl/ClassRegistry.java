@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,8 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
 public abstract class ClassRegistry {
+
+    private final Object proxyDynamicModuleHolder = new Object();
 
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
@@ -526,5 +528,9 @@ public abstract class ClassRegistry {
         if (removed != null && removed.klass() != null) {
             removed.klass().getRegistries().removeUnloadedKlassConstraint(removed.klass(), type);
         }
+    }
+
+    public final Object getProxyDynamicModuleHolder() {
+        return proxyDynamicModuleHolder;
     }
 }
