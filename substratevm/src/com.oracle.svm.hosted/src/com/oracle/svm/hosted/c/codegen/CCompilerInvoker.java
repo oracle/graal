@@ -187,7 +187,7 @@ public abstract class CCompilerInvoker {
             int minimumMinorVersion = 31;
             if (compilerInfo.versionMajor < minimumMajorVersion || compilerInfo.versionMinor0 < minimumMinorVersion) {
                 UserError.abort("On Windows, GraalVM Native Image for JDK %s requires %s or later (C/C++ Optimizing Compiler Version %s.%s or later).%nCompiler info detected: %s",
-                                JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION, minimumMajorVersion, minimumMinorVersion, compilerInfo);
+                                JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION, minimumMajorVersion, minimumMinorVersion, compilerInfo.getShortDescription());
             }
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
                 String targetPrefix = compilerInfo.targetArch.matches("(.*x|i\\d)86$") ? "32-bit architecture " : "";
