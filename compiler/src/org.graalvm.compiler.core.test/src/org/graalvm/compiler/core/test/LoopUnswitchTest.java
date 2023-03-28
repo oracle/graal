@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
@@ -92,7 +93,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     @SuppressWarnings("fallthrough")
     public static int test2Snippet(int a) {
         int sum = 0;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); i++) {
             switch (a) {
                 case 0:
                     sum += System.currentTimeMillis();
@@ -223,6 +224,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
 
     @Test
     public void test05() {
-        test("manySwitch");
+        final StructuredGraph graph = parseEager("manySwitch", AllowAssumptions.NO);
+        new LoopUnswitchingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
     }
 }
