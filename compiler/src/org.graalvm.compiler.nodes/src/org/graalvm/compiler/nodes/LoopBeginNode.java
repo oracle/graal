@@ -577,4 +577,18 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected boolean verifyState() {
         return !this.graph().getGraphState().getFrameStateVerification().implies(GraphState.FrameStateVerificationFeature.LOOP_BEGINS) || super.verifyState();
     }
+
+    @Override
+    public void setStateAfter(FrameState x) {
+        super.setStateAfter(x);
+        if (x != null && graph() != null) {
+            /*
+             * We disable counted loop checking for loops whose overflow guard failed. Some
+             * optimizations can change the loop begin's frame state and thus the associated BCI. In
+             * this case we need to check the speculation log again to see if the new BCI is
+             * associated with a failed overflow guard.
+             */
+            checkDisableCountedBySpeculation(x.bci, graph());
+        }
+    }
 }
