@@ -132,9 +132,9 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             data.proxyMirror = mirror;
         }
 
-        boolean isNode = isAssignable(te.asType(), types.NodeInterface);
+        boolean isOperationProxy = isAssignable(te.asType(), types.NodeInterface);
 
-        if (!isNode) {
+        if (!isOperationProxy) {
             // operation specification
 
             if (!te.getModifiers().contains(Modifier.FINAL)) {
@@ -155,15 +155,15 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 data.addError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.");
             }
 
+            // Ensure all non-private methods are static (except the default 0-argument
+            // constructor).
             for (Element el : te.getEnclosedElements()) {
                 if (el.getModifiers().contains(Modifier.PRIVATE)) {
-                    // ignore everything private
                     continue;
                 }
 
                 if (!el.getModifiers().contains(Modifier.STATIC)) {
                     if (el.getKind() == ElementKind.CONSTRUCTOR && ((ExecutableElement) el).getParameters().size() == 0) {
-                        // we must allow the implicit 0-argument non-static constructor.
                         continue;
                     }
                     data.addError(el, "@Operation annotated class must not contain non-static members.");
@@ -182,10 +182,13 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         }
 
         CodeTypeElement nodeType;
-        if (isNode) {
+        if (isOperationProxy) {
             nodeType = cloneTypeHierarchy(te, ct -> {
+                // Remove annotations that will cause {@link FlatNodeGenFactory} to generate
+                // unnecessary code. We programmatically add @NodeChildren later, so remove them
+                // here.
                 ct.getAnnotationMirrors().removeIf(m -> typeEqualsAny(m.getAnnotationType(), types.NodeChild, types.NodeChildren, types.GenerateUncached, types.GenerateNodeFactory));
-                // remove all non-static or private elements. this includes all the execute methods
+                // Remove all non-static or private elements, including all of the execute methods.
                 ct.getEnclosedElements().removeIf(e -> !e.getModifiers().contains(Modifier.STATIC) || e.getModifiers().contains(Modifier.PRIVATE));
             });
         } else {
@@ -210,6 +213,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         nodeType.addAll(createExecuteMethods(signature));
 
+        // Add @NodeChildren to this node for each argument to the operation. These get used by
+        // FlatNodeGenFactory to synthesize specialization logic. We remove the fields afterwards.
         CodeAnnotationMirror nodeChildrenAnnotation = new CodeAnnotationMirror(types.NodeChildren);
         nodeChildrenAnnotation.setElementValue("value", new CodeAnnotationValue(createNodeChildAnnotations(signature).stream().map(CodeAnnotationValue::new).collect(Collectors.toList())));
         nodeType.addAnnotationMirror(nodeChildrenAnnotation);
@@ -300,10 +305,10 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             List<TypeMirror> boxingEliminatedTypes;
             if (parent.boxingEliminatedTypes.isEmpty() || !signature.resultBoxingElimination) {
                 boxingEliminatedTypes = new ArrayList<>();
-            } else if (signature.possibleBoxingResults == null) {
-                boxingEliminatedTypes = new ArrayList<>(parent.boxingEliminatedTypes);
-            } else {
+            } else if (signature.possibleBoxingResults != null) {
                 boxingEliminatedTypes = new ArrayList<>(signature.possibleBoxingResults);
+            } else {
+                boxingEliminatedTypes = new ArrayList<>(parent.boxingEliminatedTypes);
             }
 
             boxingEliminatedTypes.sort((o1, o2) -> getQualifiedName(o1).compareTo(getQualifiedName(o2)));

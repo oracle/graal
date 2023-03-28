@@ -329,7 +329,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, instr.getInternalName() + "Gen");
             el.setSuperClass(types.Node);
             factory.create(el);
-            new CustomInstructionNodeFactory().processNodeType(el, instr);
+            new CustomInstructionPostProcessor().process(el, instr);
 
             nodeConsts.prependToClass(el);
             operationNodeGen.add(el);
@@ -4037,12 +4037,21 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
     }
 
-    private static final Set<String> EXECUTE_NAMES = Set.of("executeBoolean", "executeLong", "executeInt", "executeByte", "executeDouble", "executeFloat");
+    private static final Set<String> BOXING_ELIMINATED_EXECUTE_NAMES = Set.of("executeBoolean", "executeLong", "executeInt", "executeByte", "executeDouble", "executeFloat");
+    private static final Set<String> EXECUTE_NAMES = Set.of("executeBoolean", "executeLong", "executeInt", "executeByte", "executeDouble", "executeFloat", "executeObject");
 
-    private class CustomInstructionNodeFactory {
+    /**
+     * Custom instructions are generated from Operations and OperationProxies. During parsing we
+     * convert these definitions into Nodes for which {@link FlatNodeGenFactory} understands how to
+     * generate specialization code. We clean up the result (removing unnecessary fields/methods,
+     * fixing up types, etc.) here.
+     */
+    private class CustomInstructionPostProcessor {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        private void processNodeType(CodeTypeElement el, InstructionModel instr) {
+        private void process(CodeTypeElement el, InstructionModel instr) {
+            // The parser injects @NodeChildren of dummy type "C". We do not directly execute the
+            // children (the plugs rewire child executions to stack loads), so we can remove them.
             for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
                 if (ElementUtils.getQualifiedName(fld.asType()).equals("C")) {
                     el.getEnclosedElements().remove(fld);
@@ -4054,7 +4063,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             for (ExecutableElement met : ElementFilter.methodsIn(el.getEnclosedElements())) {
-                if (EXECUTE_NAMES.contains(met.getSimpleName().toString())) {
+                if (BOXING_ELIMINATED_EXECUTE_NAMES.contains(met.getSimpleName().toString())) {
                     if (!met.getThrownTypes().contains(types.UnexpectedResultException)) {
                         ((List) met.getThrownTypes()).add(types.UnexpectedResultException);
                     }
@@ -4088,6 +4097,26 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (instr.signature.resultBoxingElimination) {
                 el.getInterfaces().add(boxableInterface.asType());
                 el.add(createSetBoxing(instr));
+            }
+
+            if (OperationsNodeFactory.this.model.generateUncached) {
+                // We inject a method to ensure the uncached entrypoint is statically known. We do
+                // not need this method on the base class.
+                for (ExecutableElement met : ElementFilter.methodsIn(el.getEnclosedElements())) {
+                    if (met.getSimpleName().toString().equals("executeUncached")) {
+                        el.getEnclosedElements().remove(met);
+                    }
+                }
+                // We do not need any other execute methods on the Uncached class.
+                for (TypeElement cls : ElementFilter.typesIn(el.getEnclosedElements())) {
+                    if (cls.getSimpleName() == Uncached_Name) {
+                        for (ExecutableElement met : ElementFilter.methodsIn(cls.getEnclosedElements())) {
+                            if (EXECUTE_NAMES.contains(met.getSimpleName().toString())) {
+                                cls.getEnclosedElements().remove(met);
+                            }
+                        }
+                    }
+                }
             }
         }
 
