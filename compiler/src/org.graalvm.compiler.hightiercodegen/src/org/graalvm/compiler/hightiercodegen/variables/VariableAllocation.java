@@ -33,6 +33,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.hightiercodegen.CodeGenTool;
+import org.graalvm.compiler.hightiercodegen.NodeLowerer;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
@@ -43,9 +45,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.cfg.HIRBlock;
-
-import org.graalvm.compiler.hightiercodegen.CodeGenTool;
-import org.graalvm.compiler.hightiercodegen.NodeLowerer;
 
 /**
  * Performs variable allocation on SSA form.
@@ -135,6 +134,10 @@ public abstract class VariableAllocation {
                 HIRBlock thisNodeBlock = nodeToBlockMap.get(node);
                 // Not safe if any of the usages are in a different block.
                 if (!effectiveUsages.stream().allMatch(usage -> getBlockUsage(node, usage, nodeToBlockMap) == thisNodeBlock)) {
+                    return false;
+                }
+
+                if (thisNodeBlock == null) {
                     return false;
                 }
 
