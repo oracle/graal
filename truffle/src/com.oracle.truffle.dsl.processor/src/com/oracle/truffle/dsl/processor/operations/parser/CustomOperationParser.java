@@ -128,13 +128,17 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         OperationModel data = parent.operation(te, kind, name);
 
+        if (name.contains("_")) {
+            data.addError("Operation class name cannot contain underscores.");
+        }
+
         if (mirror != null) {
             data.proxyMirror = mirror;
         }
 
-        boolean isOperationProxy = isAssignable(te.asType(), types.NodeInterface);
+        boolean isNode = isAssignable(te.asType(), types.NodeInterface);
 
-        if (!isOperationProxy) {
+        if (!isNode) {
             // operation specification
 
             if (!te.getModifiers().contains(Modifier.FINAL)) {
@@ -173,7 +177,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         for (ExecutableElement cel : findSpecializations(te)) {
             if (!cel.getModifiers().contains(Modifier.STATIC)) {
-                data.addError("Operation specification must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.");
+                data.addError("Operation specifications can only contain static specializations. Use @Bind(\"this\") parameter if you need a Node instance.");
             }
         }
 
@@ -182,7 +186,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         }
 
         CodeTypeElement nodeType;
-        if (isOperationProxy) {
+        if (isNode) {
             nodeType = cloneTypeHierarchy(te, ct -> {
                 // Remove annotations that will cause {@link FlatNodeGenFactory} to generate
                 // unnecessary code. We programmatically add @NodeChildren later, so remove them

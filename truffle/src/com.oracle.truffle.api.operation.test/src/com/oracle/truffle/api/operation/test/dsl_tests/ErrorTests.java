@@ -53,6 +53,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.LocalSetter;
+import com.oracle.truffle.api.operation.LocalSetterRange;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
@@ -139,7 +140,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError({"Could not proxy operation: the proxied type must be a class, not int."})
+    @ExpectError("Could not proxy operation: the proxied type must be a class, not int.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @OperationProxy(int.class)
     public abstract class BadProxyType extends RootNode implements OperationRootNode {
@@ -149,7 +150,16 @@ public class ErrorTests {
     }
 
     @GenerateOperations(languageClass = ErrorLanguage.class)
-    @OperationProxy(TestNode.class)
+    @OperationProxy(NonFinalOperationProxy.class)
+    @OperationProxy(NonStaticInnerOperationProxy.class)
+    @OperationProxy(PrivateOperationProxy.class)
+    @OperationProxy(CloneableOperationProxy.class)
+    @OperationProxy(NonStaticMemberOperationProxy.class)
+    @OperationProxy(MultiVariadicOperationProxy.class)
+    @OperationProxy(ValueParamAfterSetterOperationProxy.class)
+    @OperationProxy(ValueParamAfterVariadicOperationProxy.class)
+    @OperationProxy(ValueParamAfterSetterRangeOperationProxy.class)
+    @OperationProxy(Underscored_Operation_Proxy.class)
     public abstract static class OperationErrorTests extends RootNode implements OperationRootNode {
         protected OperationErrorTests(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
@@ -157,33 +167,36 @@ public class ErrorTests {
 
         @ExpectError("Operation class must be declared final. Inheritance in operation specifications is not supported.")
         @Operation
-        public static class TestOperation1 {
+        public static class NonFinalOperation {
         }
 
         @ExpectError("Operation class must not be an inner class (non-static nested class). Declare the class as static.")
         @Operation
-        public final class TestOperation1a {
+        public final class NonStaticInnerOperation {
         }
 
         @ExpectError("Operation class must not be declared private. Remove the private modifier to make it visible.")
         @Operation
-        private static final class TestOperation2 {
+        private static final class PrivateOperation {
         }
 
         @ExpectError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.")
         @Operation
-        public static final class TestOperation3 implements Cloneable {
+        public static final class CloneableOperation implements Cloneable {
         }
 
         @Operation
-        public static final class TestOperation4 {
+        public static final class NonStaticMemberOperation {
+
+            @ExpectError("@Operation annotated class must not contain non-static members.") public int field;
+
             @ExpectError("@Operation annotated class must not contain non-static members.")
             public void doSomething() {
             }
         }
 
         @Operation
-        public static final class TestOperation5 {
+        public static final class MultiVariadicOperation {
             @Specialization
             public static void spec(@Variadic Object[] a,
                             @ExpectError("Multiple variadic arguments not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
@@ -191,29 +204,91 @@ public class ErrorTests {
         }
 
         @Operation
-        public static final class TestOperation6 {
+        public static final class ValueParamAfterSetterOperation {
             @Specialization
             public static void spec(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
         }
 
         @Operation
-        public static final class TestOperation8 {
+        public static final class ValueParamAfterVariadicOperation {
             @Specialization
             public static void spec(@Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic ones.") Object b) {
             }
         }
 
         @Operation
-        public static final class TestOperation9 {
+        public static final class ValueParamAfterSetterRangeOperation {
             @Specialization
-            public static void spec(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+            public static void spec(LocalSetterRange a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
         }
-    } 
 
-    // todo: more tests when parsing becomes more robust (right now messages are pretty useless, and
-    // also contain full filepath, making the tests non-portable)
+        @ExpectError("Operation class name cannot contain underscores.")
+        @Operation
+        public static final class Underscored_Operation {
+        }
+    }
+
+    // Proxy node definitions
+
+    @ExpectError("Operation class must be declared final. Inheritance in operation specifications is not supported.")
+    public static class NonFinalOperationProxy {
+    }
+
+    @ExpectError("Operation class must not be an inner class (non-static nested class). Declare the class as static.")
+    public final class NonStaticInnerOperationProxy {
+    }
+
+    @ExpectError("Operation class must not be declared private. Remove the private modifier to make it visible.")
+    private static final class PrivateOperationProxy {
+    }
+
+    @ExpectError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.")
+    public static final class CloneableOperationProxy implements Cloneable {
+    }
+
+    @ExpectError("Operation specifications can only contain static specializations. Use @Bind(\"this\") parameter if you need a Node instance.")
+    public static final class NonStaticMemberOperationProxy {
+
+        @ExpectError("@Operation annotated class must not contain non-static members.") public int field;
+
+        @Specialization
+        @ExpectError("@Operation annotated class must not contain non-static members.")
+        public int add(int x, int y) {
+            return x + y;
+        }
+    }
+
+    public static final class MultiVariadicOperationProxy {
+        @Specialization
+        public static void spec(@Variadic Object[] a,
+                        @ExpectError("Multiple variadic arguments not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
+        }
+    }
+
+    public static final class ValueParamAfterSetterOperationProxy {
+        @Specialization
+        public static void spec(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+        }
+    }
+
+    public static final class ValueParamAfterVariadicOperationProxy {
+        @Specialization
+        public static void spec(@Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic ones.") Object b) {
+        }
+    }
+
+    public static final class ValueParamAfterSetterRangeOperationProxy {
+        @Specialization
+        public static void spec(LocalSetterRange a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+        }
+    }
+
+    @ExpectError("Operation class name cannot contain underscores.")
+    public static final class Underscored_Operation_Proxy {
+    }
+
     // todo: test for bad quicken decision when we parse those
     @ExpectError({
                     "Unknown optimization decision type: 'MadeUpType'.",
@@ -238,27 +313,11 @@ public class ErrorTests {
     private class ErroredTypeSystem {
     }
 
-    @ExpectError("%")
-    public static class ErroredNode {
-        @Specialization
-        public static void doStuff() {
-        }
-    }
-
-    @ExpectError("Operation specification must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.")
-    public static final class TestNode {
-
-        @Specialization
-        @ExpectError("@Operation annotated class must not contain non-static members.")
-        public int add(int x, int y) {
-            return x + y;
-        }
-    }
-
     public class ErrorLanguage extends TruffleLanguage<Object> {
         @Override
         protected Object createContext(Env env) {
             return null;
         }
     }
+
 }

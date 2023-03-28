@@ -210,8 +210,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(new OperationLabelImplFactory().create());
 
         // Define helper classes containing the constants for instructions and operations.
-        operationNodeGen.add(new InstructionConstantsFactory(model.getInstructions()).create());
-        operationNodeGen.add(new OperationsConstantsFactory(model.getOperations()).create());
+        operationNodeGen.add(new InstructionConstantsFactory().create());
+        operationNodeGen.add(new OperationsConstantsFactory().create());
 
         // Define the classes that model instruction data (e.g., branches, inline caches).
         operationNodeGen.add(new BoxableInterfaceFactory().create());
@@ -3173,14 +3173,8 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     // Generates an Instructions class with constants for each instruction.
     class InstructionConstantsFactory {
-        private List<InstructionModel> instructions;
-
-        InstructionConstantsFactory(List<InstructionModel> instructions) {
-            this.instructions = instructions;
-        }
-
         private CodeTypeElement create() {
-            for (InstructionModel instruction : instructions) {
+            for (InstructionModel instruction : OperationsNodeFactory.this.model.getInstructions()) {
                 CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(short.class), instruction.getConstantName());
                 fld.createInitBuilder().string(instruction.id).end();
                 instructionsElement.add(fld);
@@ -3191,14 +3185,8 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     // Generates an Operations class with constants for each operation.
     class OperationsConstantsFactory {
-        private List<OperationModel> operations;
-
-        OperationsConstantsFactory(List<OperationModel> operations) {
-            this.operations = operations;
-        }
-
         private CodeTypeElement create() {
-            for (OperationModel operation : operations) {
+            for (OperationModel operation : OperationsNodeFactory.this.model.getOperations()) {
                 CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(int.class), operation.getConstantName());
                 fld.createInitBuilder().string(operation.id).end();
                 operationsElement.add(fld);

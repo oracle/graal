@@ -1,6 +1,6 @@
 # Operation DSL
 
-Operation DSL is a DSL and runtime support component of Truffle that allows simpler implementation of bytecode-based interpreters in Truffle. Similarly to how Truffle DSL simplified the logic of node specialization by abstracting away the precondition checks into typechecks and guards, the main idea of Operation DSL is to simplify the creation of bytecode-based interpreters by abstracting away the bytecode format, control flow, etc. and leaving only the language-speciffic semantics up to the language to implement.
+Operation DSL is a DSL and runtime support component of Truffle that makes it easier to implement bytecode-based interpreters in Truffle. Just as Truffle DSL abstracts away the messy details of AST interpreters (e.g., specialization, caching, boxing elimination), the goal of Operation DSL is to abstract away the messy details of a bytecode interpreter --- the bytecode format, control flow, quickening, and so on --- leaving only the language-specific semantics for the language to implement.
 
 [ bytecode vs AST pros and cons ]
 
@@ -26,13 +26,13 @@ Each of these operations can then be individually defined. For example, the `if-
 
 ## Built-in vs custom operations
 
-The operations in Operaiton DSL are divided into two groups: built-in and custom. Built-in operations come with the DSL itself, and their semantics cannot be changed. They model behaviour that is common accross languages, such as flow control (`IfThen`, `While`, ...), constants (`LoadConstant`) and local variable manipulation (`LoadLocal`, `StoreLocal`). Semantics of each operation are defined later.
+The operations in Operation DSL are divided into two groups: built-in and custom. Built-in operations come with the DSL itself, and their semantics cannot be changed. They model behaviour that is common across languages, such as control flow (`IfThen`, `While`, ...), constants (`LoadConstant`) and local variable manipulation (`LoadLocal`, `StoreLocal`). Semantics of each operation are defined later.
 
-Custom operations are the ones that each language is responsible to implement. They are supposed to model language-speciffic behaviour, such as the semantics of operators, value conversions, calls, etc. In our previous example, `Equals`, `CallFunction` and `LoadGlobal` would be custom operations. Custom operations further come in two types: regular and short-circuiting.
+Custom operations are the ones that each language is responsible to implement. They are supposed to model language-specific behaviour, such as the semantics of operators, value conversions, calls, etc. In our previous example, `Equals`, `CallFunction` and `LoadGlobal` would be custom operations. Custom operations further come in two types: regular and short-circuiting.
 
 ## Operation DSL walkthrough
 
-As an example on how to implement a Operation DSL language, we will use a simple example language that can only add integers and concatenate strings, using its singular operatior `+`. Some "code" examples, and their results are given below:
+As an example on how to implement a Operation DSL language, we will use a simple example language that can only add integers and concatenate strings, using its singular operator `+`. Some "code" examples, and their results are given below:
 
 ```
 1 + 2
@@ -52,11 +52,11 @@ The entry-point into Operation DSL is the `@GenerateOperations` annotation. This
 ```java
 @GenerateOperations
 public abstract class ExampleOperationRootNode extends RootNode implements OperationRootNode {
-    // super-constructor ommitted
+    // super-constructor omitted
 }
 ```
 
-Inside this class, we can stard defining our custom operations. Each operation is structured similarly to a Truffle DSL Node, just it's not a Node subclass, and needs to have all its specializations `static`. In our example language, our addition could be expressed as the following operation:
+We can define our custom operations inside this class. Each operation is structured similarly to a Truffle DSL Node, just it's not a Node subclass, and it needs to have all its specializations `static`. In our example language, our addition could be expressed as the following operation:
 
 ```java
 // place inside ExampleOperationRootNode
@@ -84,7 +84,7 @@ From this simple description, the DSL will generate a `ExampleOperationRootNodeG
 
 ### Converting our program into operations
 
-For this example, lets assume our program is in a parsed AST structure as follows:
+For this example, let's assume our program is in a parsed AST structure as follows:
 
 ```java
 class Expr { }
@@ -92,7 +92,7 @@ class AddExpr extends Expr { Expr left; Expr right; }
 class IntExpr extends Expr { int value; }
 class StringExpr extends Expr { String value; }
 ```
-Lets also assume there is a simple visitor pattern implemented over the AST.
+Let's also assume there is a simple visitor pattern implemented over the AST.
 
 The process of converting your langauge's program structure to a OperationRootNode is referred to as "parsing". This is performed by invoking the functions on the `Builder` that correspond to the structure of your program when represented in terms of operations. For example, the program `1 + 2` can be expressed as operations `(Add (LoadConstant 1) (LoadConstant 2))` and thus expressed as the following sequence of builder calls:
 
@@ -543,7 +543,7 @@ With this, we can define some common short-circuiting operations:
 
 ## Translating your language into operations
 
-When writing the Operation DSL parser for a language, your task is to translate the semantics of your language into individual operations. This is a process called "desugaring", as it can be thought as a similar process to removing syntax sugar from a language - translating higher level language constructs into lower, more verbose level. As an example of this process, lets take a simple iterator-style `for` loop (we use `«...»` as metaqotes):
+When writing the Operation DSL parser for a language, your task is to translate the semantics of your language into individual operations. This is a process called "desugaring", as it can be thought as a similar process to removing syntax sugar from a language - translating higher level language constructs into lower, more verbose level. As an example of this process, let's take a simple iterator-style `for` loop (we use `«...»` as metaqotes):
 
 ```python
 for x in «iterable»:
