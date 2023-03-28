@@ -105,7 +105,10 @@ public class JmxTest {
         /*
          * The following are dummy SSL keystore and truststore files required for testing connection
          * using SSL. The clientkeystore was used to create a client certificate
-         * (jmxremoteresources/client.cer) which was then imported into the servertruststore.
+         * (jmxremoteresources/client.cer) which was then imported into the servertruststore. The
+         * client key was created with the following properties: -alias clientkey -validity 99999
+         * -storepass clientpass -keypass clientpass -keyalg rsa (The validity is from March 28
+         * 2023).
          */
         System.setProperty(KEYSTORE_PROPERTY, JMX_REMOTE_RESOURCES + "/clientkeystore");
         System.setProperty(KEYSTORE_PASSWORD_PROPERTY, "clientpass");
