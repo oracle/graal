@@ -147,6 +147,12 @@ public final class EspressoOptions {
                     usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
     public static final OptionKey<List<String>> AddOpens = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
+    @Option(help = "A '" + PATH_SEPARATOR_INSERT + "' separated list of modules that are permitted to perform restricted native operations.\\nEquivalent to '--enable-native-access=<module>'", //
+            category = OptionCategory.USER, //
+            stability = OptionStability.STABLE, //
+            usageSyntax = "<module>" + PATH_SEPARATOR_INSERT + "<module>" + PATH_SEPARATOR_INSERT + "...") //
+    public static final OptionKey<List<String>> EnableNativeAccess = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
+
     @Option(help = "Installation directory for Java Runtime Environment (JRE).", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.STABLE, //

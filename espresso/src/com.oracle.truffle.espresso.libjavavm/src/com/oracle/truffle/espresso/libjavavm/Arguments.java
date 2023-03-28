@@ -156,6 +156,8 @@ public final class Arguments {
                         handler.addOpens(optionString.substring("--add-opens=".length()));
                     } else if (optionString.startsWith("--add-modules=")) {
                         handler.addModules(optionString.substring("--add-modules=".length()));
+                    } else if (optionString.startsWith("--enable-native-access=")) {
+                        handler.enableNativeAccess(optionString.substring("--enable-native-access=".length()));
                     } else if (optionString.startsWith("--module-path=")) {
                         builder.option(JAVA_PROPS + "jdk.module.path", optionString.substring("--module-path=".length()));
                     } else if (optionString.startsWith("--upgrade-module-path=")) {

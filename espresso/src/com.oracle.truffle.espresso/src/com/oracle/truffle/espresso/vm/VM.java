@@ -2429,6 +2429,7 @@ public final class VM extends NativeEnv {
             setNumberedProperty(map, "jdk.module.addexports", options.get(EspressoOptions.AddExports));
             setNumberedProperty(map, "jdk.module.addopens", options.get(EspressoOptions.AddOpens));
             setNumberedProperty(map, "jdk.module.addmods", options.get(EspressoOptions.AddModules));
+            setNumberedProperty(map, "jdk.module.enable.native.access", options.get(EspressoOptions.EnableNativeAccess));
         }
 
         // Applications expect different formats e.g. 1.8 vs. 11

@@ -194,6 +194,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "--add-reads":
                     parseNumberedOption(args, "java.AddReads", "module");
                     break;
+                case "--enable-native-access":
+                    parseNumberedOption(args, "java.EnableNativeAccess", "module");
+                    break;
                 case "-m":
                 case "--module":
                     /* This arguments specifies in which module we find the main class. */

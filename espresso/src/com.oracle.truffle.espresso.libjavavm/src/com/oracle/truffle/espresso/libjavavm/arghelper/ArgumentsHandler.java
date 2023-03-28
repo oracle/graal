@@ -114,6 +114,10 @@ public class ArgumentsHandler {
         modulePropertyCounter.addReads(option);
     }
 
+    public void enableNativeAccess(String option) {
+        modulePropertyCounter.enableNativeAccess(option);
+    }
+
     /**
      * <code>-XX:</code> arguments are handled specially: If there is an espresso option with the
      * same name as the option passed, it will set it for the guest VM. Otherwise, it is forwarded
