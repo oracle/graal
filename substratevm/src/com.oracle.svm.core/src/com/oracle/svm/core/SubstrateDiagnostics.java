@@ -213,15 +213,6 @@ public class SubstrateDiagnostics {
      */
     public static boolean printFatalError(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
         log.newline();
-        /*
-         * Save the state of the initial error so that this state is consistently used, even if
-         * further errors occur while printing diagnostics.
-         */
-        if (!fatalErrorState().trySet(log, sp, ip, registerContext, frameHasCalleeSavedRegisters) && !isFatalErrorHandlingThread()) {
-            log.string("Error: printFatalError already in progress by another thread.").newline();
-            log.newline();
-            return false;
-        }
 
         /*
          * Execute an endless loop if requested. This makes it easier to attach a debugger lazily.
@@ -230,6 +221,16 @@ public class SubstrateDiagnostics {
          */
         while (loopOnFatalError) {
             PauseNode.pause();
+        }
+
+        /*
+         * Save the state of the initial error so that this state is consistently used, even if
+         * further errors occur while printing diagnostics.
+         */
+        if (!fatalErrorState().trySet(log, sp, ip, registerContext, frameHasCalleeSavedRegisters) && !isFatalErrorHandlingThread()) {
+            log.string("Error: printFatalError already in progress by another thread.").newline();
+            log.newline();
+            return false;
         }
 
         printFatalErrorForCurrentState();
