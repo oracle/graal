@@ -154,7 +154,7 @@ public final class NativeImageHeap implements ImageHeap {
         return objects.get(uncompress(constant));
     }
 
-    protected HostedUniverse getUniverse() {
+    public HostedUniverse getUniverse() {
         return universe;
     }
 

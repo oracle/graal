@@ -195,6 +195,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.returnsCEnum = isCEnumType(returnType);
 
         addMainFunction(method);
+
+        // Graph is null when called from createJNITrampolineMethod
+        if (graph != null) {
+            builder.setGraph(graph);
+            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                builder.setDISubProgram();
+            }
+        }
     }
 
     @Override
@@ -256,6 +264,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     private void addMainFunction(ResolvedJavaMethod method) {
         builder.setMainFunction(functionName, getLLVMFunctionType(method, true));
+        builder.setMainMethod(method);
         builder.setFunctionLinkage(LinkageType.External);
         builder.setFunctionAttribute(Attribute.NoInline);
         builder.setFunctionAttribute(Attribute.NoRedZone);
@@ -290,7 +299,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return bitcode;
     }
 
-    private static String getFunctionName(ResolvedJavaMethod method) {
+    public static String getFunctionName(ResolvedJavaMethod method) {
         return ((HostedMethod) method).getUniqueShortName();
     }
 

@@ -52,8 +52,6 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
@@ -165,14 +163,6 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
     }
 
-    // Special constructor for LLVM debug info support
-    private NativeImageDebugInfoProvider(DebugContext debugContext) {
-        super();
-        this.debugContext = debugContext;
-        this.codeCache = null;
-        this.heap = null;
-        this.allOverrides = null;
-    }
 
     private static HashMap<JavaKind, HostedType> initJavaKindToHostedTypes(HostedMetaAccess metaAccess) {
         HashMap<JavaKind, HostedType> map = new HashMap<>();
@@ -378,22 +368,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
              * DebugCodeInfo and DebugLocationInfo records. The former two are derived from a
              * HostedMethod while the latter may be derived from an arbitrary ResolvedJavaMethod.
              */
-            ResolvedJavaType javaType;
-            if (method instanceof HostedMethod) {
-                javaType = getDeclaringClass((HostedMethod) method, false);
-            } else {
-                javaType = method.getDeclaringClass();
-            }
-            Class<?> clazz = null;
-            if (javaType instanceof OriginalClassProvider) {
-                clazz = ((OriginalClassProvider) javaType).getJavaClass();
-            }
-            SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
-            try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", javaType)) {
-                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
-            } catch (Throwable e) {
-                throw debugContext.handle(e);
-            }
+            fullFilePath = DebugInfoProviderHelper.getFullFilePathFromMethod(method, debugContext);
         }
 
         @SuppressWarnings("try")
@@ -411,21 +386,12 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String fileName() {
-            if (fullFilePath != null) {
-                Path filename = fullFilePath.getFileName();
-                if (filename != null) {
-                    return filename.toString();
-                }
-            }
-            return "";
+            return DebugInfoProviderHelper.getFileName(fullFilePath);
         }
 
         @Override
         public Path filePath() {
-            if (fullFilePath != null) {
-                return fullFilePath.getParent();
-            }
-            return null;
+            return DebugInfoProviderHelper.getFilePath(fullFilePath);
         }
 
         @Override
@@ -956,14 +922,6 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
-        // Constructor for LLVM debug info (temporary). Cannot use the default constructor because not sure what
-        // `createParamInfo()` and `isPseudoObjectType()` do
-        NativeImageDebugBaseMethodInfo(ResolvedJavaMethod m, boolean llvmBackend) {
-            super(m);
-            method = promoteAnalysisToHosted(m);
-            this.paramInfo = null;
-            this.thisParamInfo = null;
-        }
 
         private ResolvedJavaMethod promoteAnalysisToHosted(ResolvedJavaMethod m) {
             if (m instanceof AnalysisMethod) {
@@ -977,17 +935,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         private ResolvedJavaMethod originalMethod() {
-            // unwrap to an original method as far as we can
-            ResolvedJavaMethod targetMethod = method;
-            while (targetMethod instanceof WrappedJavaMethod) {
-                targetMethod = ((WrappedJavaMethod) targetMethod).getWrapped();
-            }
-            // if we hit a substitution then we can translate to the original
-            // for identity otherwise we use whatever we unwrapped to.
-            if (targetMethod instanceof SubstitutionMethod) {
-                targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
-            }
-            return targetMethod;
+            return DebugInfoProviderHelper.getOriginalMethod(method);
         }
 
         /**
@@ -1049,25 +997,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String name() {
-            ResolvedJavaMethod targetMethod = originalMethod();
-            String name = targetMethod.getName();
-            if (name.equals("<init>")) {
-                if (method instanceof HostedMethod) {
-                    name = getDeclaringClass((HostedMethod) method, true).toJavaName();
-                    if (name.indexOf('.') >= 0) {
-                        name = name.substring(name.lastIndexOf('.') + 1);
-                    }
-                    if (name.indexOf('$') >= 0) {
-                        name = name.substring(name.lastIndexOf('$') + 1);
-                    }
-                } else {
-                    name = targetMethod.format("%h");
-                    if (name.indexOf('$') >= 0) {
-                        name = name.substring(name.lastIndexOf('$') + 1);
-                    }
-                }
-            }
-            return name;
+            return DebugInfoProviderHelper.getMethodName(method);
         }
 
         @Override
@@ -1693,12 +1623,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    public static class NativeImageDebugLLVMLocationInfo extends NativeImageDebugLocationInfo {
 
-        public NativeImageDebugLLVMLocationInfo(DebugContext debugContext, int bci, ResolvedJavaMethod method) {
-            new NativeImageDebugInfoProvider(debugContext).super(bci, method);
-        }
-    }
     /**
      * Implementation of the DebugLocationInfo API interface that allows line number and local var
      * info to be passed to an ObjectFile when generation of debug info is enabled.
@@ -1723,11 +1648,6 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.localInfoList = initLocalInfoList(bcpos, framesize);
         }
 
-        // Debug info constructor for LLVM backend
-        NativeImageDebugLocationInfo(int bci, ResolvedJavaMethod method) {
-            super(method, true);
-            this.bci = bci;
-        }
 
         // special constructor for synthetic lcoation info added at start of method
         NativeImageDebugLocationInfo(ResolvedJavaMethod method, int hi, ParamLocationProducer locProducer) {
@@ -1878,11 +1798,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public int line() {
-            LineNumberTable lineNumberTable = method.getLineNumberTable();
-            if (lineNumberTable != null && bci >= 0) {
-                return lineNumberTable.getLineNumber(bci);
-            }
-            return -1;
+            return DebugInfoProviderHelper.getLineNumber(method, bci);
         }
 
         @Override
