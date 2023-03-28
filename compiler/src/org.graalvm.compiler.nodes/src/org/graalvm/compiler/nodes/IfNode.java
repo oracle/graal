@@ -1715,7 +1715,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 FrameState stateAfter = oldMerge.stateAfter();
                 if (stateAfter != null) {
                     stateAfter = stateAfter.duplicateWithVirtualState();
-                    stateAfter.applyToNonVirtual(new NodePositionClosure<>() {
+                    stateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
                         @Override
                         public void apply(Node from, Position p) {
                             ValueNode to = (ValueNode) p.get(from);
