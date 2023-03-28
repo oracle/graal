@@ -31,7 +31,6 @@ import java.security.AccessController;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
-import com.oracle.svm.core.hub.DynamicHub;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -42,9 +41,11 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.LoomSupport;
@@ -74,6 +75,10 @@ public class StackTraceUtils {
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
         JavaStackWalker.walkCurrentThread(startSP, endSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
+    }
+
+    public static void visitStackTrace(Pointer startSP, Pointer endSP, StackFrameVisitor visitor) {
+        JavaStackWalker.walkCurrentThread(startSP, endSP, visitor);
     }
 
     /**
