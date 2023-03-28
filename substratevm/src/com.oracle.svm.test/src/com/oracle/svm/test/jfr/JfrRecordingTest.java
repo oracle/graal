@@ -26,20 +26,33 @@
 
 package com.oracle.svm.test.jfr;
 
+import java.util.Map;
+
 import jdk.jfr.Configuration;
 import jdk.jfr.Recording;
 
 /** Base class for JFR unit tests. */
 public abstract class JfrRecordingTest extends AbstractJfrTest {
-    private Recording recording;
+    protected Recording recording;
 
     @Override
-    public void startRecording(Configuration config) throws Throwable {
+    public void startRecording() throws Throwable {
         /* Enable a lot of events by default to increase the test coverage. */
+        Configuration config = getDefaultConfiguration();
         recording = new Recording(config);
         recording.setDestination(jfrFile);
+
+        Map<String, String> settings = getJfrSettings();
+        if (settings != null) {
+            recording.setSettings(settings);
+        }
+
         enableEvents();
         recording.start();
+    }
+
+    protected Map<String, String> getJfrSettings() {
+        return null;
     }
 
     @Override

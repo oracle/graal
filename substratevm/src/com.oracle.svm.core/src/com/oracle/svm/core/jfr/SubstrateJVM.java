@@ -151,6 +151,11 @@ public class SubstrateJVM {
     }
 
     @Fold
+    public static JfrUnlockedChunkWriter getChunkWriter() {
+        return get().unlockedChunkWriter;
+    }
+
+    @Fold
     public static JfrTypeRepository getTypeRepository() {
         return get().typeRepo;
     }
