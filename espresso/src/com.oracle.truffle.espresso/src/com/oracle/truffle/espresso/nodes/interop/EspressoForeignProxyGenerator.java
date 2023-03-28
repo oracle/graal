@@ -313,7 +313,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
     private ModuleTable.ModuleEntry getDynamicModule(StaticObject loader) {
         ClassRegistry classRegistry = context.getRegistries().getClassRegistry(proxyClassLoader);
-        return context.getDynamicModuleForProxyGeneration(classRegistry, (r) -> {
+        return context.getDynamicModuleForProxyGeneration(classRegistry.getProxyDynamicModuleHolder(), (r) -> {
             // call VM helper to get the ModuleDescriptor
             String moduleName = "foreign.proxy";
             String pkgName = PROXY_PACKAGE_PREFIX + "." + moduleName;
