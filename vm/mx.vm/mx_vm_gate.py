@@ -423,7 +423,7 @@ def gate_body(args, tasks):
         if t and mx_sdk_vm_impl.has_component('GraalVM compiler'):
             # 1. the build must be a GraalVM
             # 2. the build must be JVMCI-enabled since the 'GraalVM compiler' component is registered
-            mx_sdk_vm_impl.check_versions(mx_sdk_vm_impl.graalvm_output(), graalvm_version_regex=mx_sdk_vm_impl.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
+            mx_sdk_vm_impl.check_versions(mx_sdk_vm_impl.graalvm_output(), expect_graalvm=True, check_jvmci=True)
 
     libgraal_suite_name = 'substratevm'
     if mx.suite(libgraal_suite_name, fatalIfMissing=False) is not None:

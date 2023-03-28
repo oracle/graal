@@ -100,16 +100,11 @@ _lib_prefix = mx.add_lib_prefix("")
 
 
 _graalvm_base_name = 'GraalVM'
-
+_registered_graalvm_components = {}
+_project_name = 'graal'
 
 default_components = []
 
-graalvm_version_regex = re.compile(r'.*\n.*\n[0-9a-zA-Z()\- ]+GraalVM[a-zA-Z_ ]+(?P<graalvm_version>[0-9a-z_\-.+]+) \(build [0-9a-zA-Z\-.+]+, mixed mode[a-z, ]*\)')
-
-_registered_graalvm_components = {}
-_env_tests = []
-
-_project_name = 'graal'
 
 mx.add_argument('--base-dist-name', help='Sets the name of the GraalVM base image ( for complete, ruby ... images), default to "base"', default='base')
 
@@ -494,7 +489,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
             if stage1:
                 # 1. we do not want a GraalVM to be used as base-JDK
                 # 2. we don't need to check if the base JDK is JVMCI-enabled, since JVMCIVersionCheck takes care of that when the GraalVM compiler is a registered component
-                check_versions(_src_jdk, graalvm_version_regex=graalvm_version_regex, expect_graalvm=False, check_jvmci=False)
+                check_versions(_src_jdk, expect_graalvm=False, check_jvmci=False)
 
             # Add base JDK
             if mx.get_os() == 'darwin':
@@ -3600,10 +3595,9 @@ def _str_to_bool(val):
     return val
 
 
-def check_versions(jdk, graalvm_version_regex, expect_graalvm, check_jvmci):
+def check_versions(jdk, expect_graalvm, check_jvmci):
     """
     :type jdk: mx.JDKConfig | str
-    :type graalvm_version_regex: typing.Pattern
     :type expect_graalvm: bool
     :type check_jvmci: bool
     """
@@ -3623,14 +3617,8 @@ def check_versions(jdk, graalvm_version_regex, expect_graalvm, check_jvmci):
     if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and (jdk_version <= mx.VersionSpec('1.8') or mx.VersionSpec('9') <= jdk_version < mx.VersionSpec('11')):
         mx.abort("GraalVM requires >=JDK11 as base-JDK, while the selected JDK ('{}') is '{}':\n{}\n\n{}.".format(jdk.home, jdk_version, out, check_env))
 
-    if os.environ.get('GRAALVM_VERSION_CHECK', None) != 'ignore':
-        match = graalvm_version_regex.match(out)
-        if expect_graalvm and match is None:
-            mx.abort("'{}' is not a GraalVM. Its version string:\n{}\ndoes not match:\n{}".format(jdk.home, out, graalvm_version_regex.pattern))
-        elif expect_graalvm and match.group('graalvm_version') != _suite.release_version():
-            mx.abort("'{}' has a wrong GraalVM version:\n{}\nexpected:\n{}".format(jdk.home, match.group('graalvm_version'), _suite.release_version()))
-        elif not expect_graalvm and match:
-            mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk.home, check_env))
+    if not expect_graalvm and "GraalVM" in out:
+        mx.abort("GraalVM cannot be built using a GraalVM as base-JDK ('{}').\n{}.".format(jdk.home, check_env))
 
 
 def print_graalvm_vm_name(args):
@@ -3654,9 +3642,7 @@ def graalvm_vendor_version(graalvm_dist):
     :type jdk_home: str
     :rtype str:
     """
-    vendor_version = '{} {}'.format(graalvm_dist.base_name, graalvm_dist.vm_config_name.upper()) if graalvm_dist.vm_config_name else graalvm_dist.base_name
-    vendor_version += ' {}'.format(graalvm_version())
-    return vendor_version
+    return 'Oracle GraalVM' if get_graalvm_edition() == 'ee' else 'GraalVM CE'
 
 
 # GR-37542 current debug info on darwin bloats binary (stripping to a separate .dSYM folder is not implemented) and

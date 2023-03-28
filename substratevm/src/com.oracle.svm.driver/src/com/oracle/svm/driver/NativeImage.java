@@ -112,20 +112,9 @@ public class NativeImage {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
-    static String getNativeImageVersion() {
-        String message;
-        if (IS_AOT) {
-            message = System.getProperty("java.vm.version");
-        } else {
-            message = "native-image " + graalvmVersion + " " + graalvmConfig;
-        }
-        return message;
-    }
-
-    static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
-    static final String graalvmConfig = System.getProperty("org.graalvm.config", "CE");
-    static final String graalvmVendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
+    static final String graalvmVendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
     static final String graalvmVendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+    static final String graalvmVendorVersion = System.getProperty("org.graalvm.vendorversion", "GraalVM CE");
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
@@ -827,12 +816,9 @@ public class NativeImage {
 
         /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
-        addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.vendor=" + graalvmVendor);
         addImageBuilderJavaArgs("-Dorg.graalvm.vendorurl=" + graalvmVendorUrl);
-        if (!NativeImage.IS_AOT) {
-            addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
-        }
+        addImageBuilderJavaArgs("-Dorg.graalvm.vendorversion=" + graalvmVendorVersion);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
 
@@ -1990,6 +1976,10 @@ public class NativeImage {
         show(System.out::println, message);
     }
 
+    void showMessage(String format, Object... args) {
+        showMessage(String.format(format, args));
+    }
+
     void showNewline() {
         System.out.println();
     }
@@ -2010,8 +2000,7 @@ public class NativeImage {
         }
         String maxHeapText = lastMaxHeapValue == null ? "" : " (The maximum heap size of the process was set to '" + lastMaxHeapValue + "'.)";
         String additionalAction = lastMaxHeapValue == null ? "" : " or increase the maximum heap size using the '" + oXmx + "' option";
-        showMessage(String.format("The Native Image build process ran out of memory.%s%nPlease make sure your build system has more memory available%s.",
-                        maxHeapText, additionalAction));
+        showMessage("The Native Image build process ran out of memory.%s%nPlease make sure your build system has more memory available%s.", maxHeapText, additionalAction);
     }
 
     public static void showWarning(String message) {
@@ -2111,21 +2100,18 @@ public class NativeImage {
         return Long.toUnsignedString(memMax);
     }
 
-    private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
-    private static final boolean IS_DUMB_TERM = isDumbTerm();
-
     private static boolean isDumbTerm() {
         String term = System.getenv().getOrDefault("TERM", "");
         return term.isEmpty() || term.equals("dumb") || term.equals("unknown");
     }
 
     private static boolean hasColorSupport() {
-        return !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS &&
+        return !isDumbTerm() && !SubstrateUtil.isRunningInCI() && OS.getCurrent() != OS.WINDOWS &&
                         System.getenv("NO_COLOR") == null /* https://no-color.org/ */;
     }
 
     private static boolean hasProgressSupport(List<String> imageBuilderArgs) {
-        return !IS_DUMB_TERM && !IS_CI &&
+        return !isDumbTerm() && !SubstrateUtil.isRunningInCI() &&
                         /*
                          * When DebugOptions.Log is used, progress cannot be reported as logging
                          * works around NativeImageSystemIOWrappers to access stdio handles.

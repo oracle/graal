@@ -300,7 +300,7 @@ public class EngineAPITest {
         if (name.equals("DefaultCallTarget")) {
             assertEquals(implName, "Interpreted");
         } else if (name.endsWith("OptimizedCallTarget")) {
-            assertTrue(implName, implName.equals("GraalVM EE" + suffix) || implName.equals("GraalVM CE"));
+            assertTrue(implName, implName.equals("Oracle GraalVM" + suffix) || implName.equals("GraalVM CE"));
         }
     }
 
