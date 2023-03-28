@@ -978,9 +978,9 @@ public class SubstrateDiagnostics {
             }
 
             if (CodeInfoAccess.contains(imageCodeInfo, (CodePointer) value)) {
+                log.string("points into AOT compiled code ");
                 FrameInfoQueryResult compilationRoot = getCompilationRoot(imageCodeInfo, (CodePointer) value);
                 if (compilationRoot != null) {
-                    log.string("points into AOT compiled code ");
                     compilationRoot.log(log);
                 }
                 return true;
