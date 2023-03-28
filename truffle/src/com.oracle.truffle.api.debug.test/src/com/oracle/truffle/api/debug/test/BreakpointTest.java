@@ -56,6 +56,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -73,10 +76,6 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
 
 public class BreakpointTest extends AbstractDebugTest {
 
@@ -278,7 +277,7 @@ public class BreakpointTest extends AbstractDebugTest {
 
         try (DebuggerSession session = startSession()) {
             Breakpoint breakpoint = session.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
-            breakpoint.setCondition("ROOT(PRINT(OUT, Hi), CONSTANT(true))");
+            breakpoint.setCondition("ROOT(PRINT(OUT, CONSTANT(\"Hi\")), CONSTANT(true))");
             // Breakpoint only:
             startEval(testSource);
             expectSuspended((SuspendedEvent event) -> {
@@ -323,8 +322,8 @@ public class BreakpointTest extends AbstractDebugTest {
                         "    STATEMENT\n" +
                         "  )\n" +
                         ")\n");
-        String conditionTrue = "ROOT(PRINT(OUT, CT), CONSTANT(true))";
-        String conditionFalse = "ROOT(PRINT(OUT, CF), CONSTANT(false))";
+        String conditionTrue = "ROOT(PRINT(OUT, CONSTANT(\"CT\")), CONSTANT(true))";
+        String conditionFalse = "ROOT(PRINT(OUT, CONSTANT(\"CF\")), CONSTANT(false))";
         boolean isBefore = true;
         String prefix = "";
         do {
@@ -382,12 +381,12 @@ public class BreakpointTest extends AbstractDebugTest {
 
         try (DebuggerSession session1 = startSession()) {
             Breakpoint breakpoint1 = session1.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
-            breakpoint1.setCondition("ROOT(PRINT(OUT, Hi1), CONSTANT(true))");
+            breakpoint1.setCondition("ROOT(PRINT(OUT, CONSTANT(\"Hi1\")), CONSTANT(true))");
             try (DebuggerSession session2 = startSession()) {
                 session2.install(breakpoint1);
                 try (DebuggerSession session3 = startSession()) {
                     Breakpoint breakpoint3 = session3.install(Breakpoint.newBuilder(getSourceImpl(testSource)).lineIs(3).build());
-                    breakpoint3.setCondition("ROOT(PRINT(OUT, Hi3), CONSTANT(true))");
+                    breakpoint3.setCondition("ROOT(PRINT(OUT, CONSTANT(\"Hi3\")), CONSTANT(true))");
                     session3.suspendNextExecution();
                     startEval(testSource);
                     expectSuspended((SuspendedEvent event) -> {

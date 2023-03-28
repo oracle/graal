@@ -186,4 +186,4 @@ With PGO you "train" your application for specific workloads and significantly i
 
 ### Related Documentation
 
-- [Improving performance of GraalVM native images with profile-guided optimizations](https://medium.com/graalvm/improving-performance-of-graalvm-native-images-with-profile-guided-optimizations-9c431a834edb)
+- [Optimize Cloud Native Java Apps with GraalVM Enterprise PGO](https://luna.oracle.com/lab/3f0b7c86-6105-4b7a-9a3b-eb73b251a1aa)

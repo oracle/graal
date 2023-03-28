@@ -27,10 +27,12 @@ package org.graalvm.component.installer;
 import static org.junit.Assert.assertEquals;
 import java.net.URL;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -45,18 +47,28 @@ public final class MemoryFeedback implements Feedback, Iterable<Memory> {
     @Override
     public Iterator<Memory> iterator() {
         return new Iterator<>() {
-            int i = 0;
+            final Queue<Memory> mems = new ArrayDeque<>(mem);
 
             @Override
             public boolean hasNext() {
-                return i < mem.size();
+                return !mems.isEmpty();
             }
 
             @Override
             public Memory next() {
-                return mem.get(i++);
+                return mems.poll();
             }
         };
+    }
+
+    @Override
+    public void addLocalResponseHeadersCache(URL location, Map<String, List<String>> local) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public Map<String, List<String>> getLocalResponseHeadersCache(URL location) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     public enum Case {
@@ -79,10 +91,14 @@ public final class MemoryFeedback implements Feedback, Iterable<Memory> {
 
     }
 
-    final List<Memory> mem = new ArrayList<>();
+    final Queue<Memory> mem = new ArrayDeque<>();
     boolean verb = true;
     boolean silent = false;
-    Function<Boolean, String> lineAccept = null;
+    private Queue<Function<Memory, String>> lineAccept = new ArrayDeque<>();
+
+    public void nextInput(String input) {
+        lineAccept.add((m) -> input);
+    }
 
     public final class Memory {
 
@@ -138,12 +154,13 @@ public final class MemoryFeedback implements Feedback, Iterable<Memory> {
     private static final String KEY = "Feedback type:\"%s\" key.";
     private static final String FEEDBACK = "Feedback type:\"%s\" key:\"%s\"";
 
-    public Memory checkMem(int index, Case cas, String key) {
-        return checkMem(index, cas, key, true);
+    public Memory checkMem(Case cas, String key) {
+        return checkMem(cas, key, true);
     }
 
-    private Memory checkMem(int index, Case cas, String key, boolean paramCheck) {
-        Memory m = mem.get(index);
+    private Memory checkMem(Case cas, String key, boolean paramCheck) {
+        Memory m = mem.poll();
+        assert m != null : "There was no Feedback memory to check.";
         assertEquals(CASE, cas, m.cas);
         assEq(key, m.key, form(KEY, cas));
         if (paramCheck && m.params.length > 0) {
@@ -155,8 +172,8 @@ public final class MemoryFeedback implements Feedback, Iterable<Memory> {
     private static final String PARAMS_LENGTH = FEEDBACK + " parameter count.";
     private static final String PARAM = FEEDBACK + " parameter.";
 
-    public Memory checkMem(int index, Case cas, String key, Object... params) {
-        Memory m = checkMem(index, cas, key, false);
+    public Memory checkMem(Case cas, String key, Object... params) {
+        Memory m = checkMem(cas, key, false);
         assEq(params.length, m.params.length, form(PARAMS_LENGTH, cas, key));
         for (int i = 0; i < params.length; ++i) {
             assEq(params[i], m.params[i], form(PARAM, cas, key));
@@ -243,9 +260,19 @@ public final class MemoryFeedback implements Feedback, Iterable<Memory> {
 
     @Override
     public String acceptLine(boolean autoYes) {
-        String response = autoYes ? AUTO_YES : (lineAccept == null ? null : lineAccept.apply(autoYes));
-        mem.add(new Memory(response));
-        return response;
+        if (autoYes) {
+            return input(AUTO_YES);
+        }
+        Function<Memory, String> fnc = lineAccept.poll();
+        if (fnc == null) {
+            return input(null);
+        }
+        return input(fnc.apply(mem.peek()));
+    }
+
+    private String input(String memObj) {
+        mem.add(new Memory(memObj));
+        return memObj;
     }
 
     @Override

@@ -9,10 +9,10 @@ redirect_from: /$version/reference-manual/native-image/inspect/
 # Native Image Inspection Tool
 
 Native Image Enterprise Edition includes a tool to list the methods included in an executable or shared library created by GraalVM Native Image.
-The tool is available as the command `$GRAALVM_HOME/bin/native-image-inspect <path_to_binary>`. It lists methods as a JSON array in the following format:
+The tool is available as the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>`. It lists methods as a JSON array in the following format:
 
 ```shell
-$GRAALVM_HOME/bin/native-image-inspect helloworld
+$JAVA_HOME/bin/native-image-inspect helloworld
 {
   "methods": [
     {
@@ -52,7 +52,7 @@ The SBOM is also compressed in order to limit the SBOM's impact on the native ex
 Even though the tool is not yet supported on Windows, Windows users can still embed the SBOM with this experimental option. 
 The SBOM is stored in the `gzip` format with the exported `sbom` symbol referencing its start address and the `sbom_length` symbol its size.
 
-After embedding the compressed SBOM into the executable, the tool is able to extract the compressed SBOM using an optional `--sbom` parameter accessible through `$GRAALVM_HOME/bin/native-image-inspect --sbom <path_to_binary>` and outputs the SBOM in the following format:
+After embedding the compressed SBOM into the executable, the tool is able to extract the compressed SBOM using an optional `--sbom` parameter accessible through `$JAVA_HOME/bin/native-image-inspect --sbom <path_to_binary>` and outputs the SBOM in the following format:
 
 ```json
 {
@@ -91,7 +91,7 @@ The tool can extract the SBOM from both executables and shared libraries.
 To scan for any vulnerable libraries, submit the SBOM to a vulnerability scanner. 
 For example, the popular [Anchore software supply chain management platform](https://anchore.com/) makes the `grype` scanner freely available.
 You can check whether the libraries given in your SBOMs have known vulnerabilities documented in Anchore's database. 
-For this purpose, the output of the tool can be fed directly to the `grype` scanner to check for vulnerable libraries, using the command `$GRAALVM_HOME/bin/native-image-inspect --sbom <path_to_binary> | grype` which produces the following output:
+For this purpose, the output of the tool can be fed directly to the `grype` scanner to check for vulnerable libraries, using the command `$JAVA_HOME/bin/native-image-inspect --sbom <path_to_binary> | grype` which produces the following output:
 ```shell
 NAME                 INSTALLED      VULNERABILITY   SEVERITY
 netty-codec-http2    4.1.76.Final   CVE-2022-24823  Medium

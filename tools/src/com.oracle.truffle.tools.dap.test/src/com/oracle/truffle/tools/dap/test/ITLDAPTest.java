@@ -44,19 +44,19 @@ public class ITLDAPTest {
     @Test
     public void testOutput() throws Exception {
         Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(\n" +
-                        "  PRINT(OUT, \"one\ntwo\n\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"one\ntwo\n\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"three,\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"three,\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"four\rfive\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"four\rfive\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"\r\n\"),\n" +
-                        "  PRINT(OUT, \"\r\nsix,\"),\n" +
-                        "  PRINT(OUT, \"seven\n\neight\"),\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\n\")),\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\nsix,\")),\n" +
+                        "  PRINT(OUT, CONSTANT(\"seven\n\neight\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(ERR, \"1err\n2err\r\n\"),\n" +
+                        "  PRINT(ERR, CONSTANT(\"1err\n2err\r\n\")),\n" +
                         "  STATEMENT(),\n" +
-                        "  PRINT(OUT, \"\r\nnine\rten\r\n\")\n" +
+                        "  PRINT(OUT, CONSTANT(\"\r\nnine\rten\r\n\"))\n" +
                         ")\n", "TestOutput.itl").build();
         tester = DAPTester.start(true);
         tester.sendMessage(

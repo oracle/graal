@@ -331,7 +331,10 @@ public final class FileDownloader {
     public void download() throws IOException {
         Path localCache = feedback.getLocalCache(sourceURL);
         if (localCache != null) {
+            feedback.verboseOutput("MSG_Loaded_Cache", sourceURL, localCache);
             localFile = localCache.toFile();
+            Map<String, List<String>> respCache = feedback.getLocalResponseHeadersCache(sourceURL);
+            responseHeader = respCache == null ? Collections.emptyMap() : respCache;
             return;
         }
 
@@ -429,6 +432,7 @@ public final class FileDownloader {
         verifyDigest();
         responseHeader = conn.getHeaderFields();
         feedback.addLocalFileCache(sourceURL, localFile.toPath());
+        feedback.addLocalResponseHeadersCache(sourceURL, responseHeader);
     }
 
     public void setConnectionFactory(URLConnectionFactory connFactory) {

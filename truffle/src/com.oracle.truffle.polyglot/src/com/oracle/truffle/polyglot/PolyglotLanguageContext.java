@@ -1083,17 +1083,26 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
          */
         @ExplodeLoop
         private Object[] fastToGuestValuesUnroll(ToGuestValueNode[] nodes, PolyglotLanguageContext context, Object[] args) {
-            Object[] newArgs = needsCopy ? new Object[nodes.length] : args;
+            Object[] newArgs;
+            boolean wasCopied;
+            if (needsCopy) {
+                newArgs = new Object[nodes.length];
+                wasCopied = true;
+            } else {
+                newArgs = args;
+                wasCopied = false;
+            }
             for (int i = 0; i < nodes.length; i++) {
                 Object arg = args[i];
                 Object newArg = nodes[i].execute(context, arg);
-                if (needsCopy) {
+                if (wasCopied) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     newArgs = new Object[nodes.length];
                     System.arraycopy(args, 0, newArgs, 0, args.length);
                     newArgs[i] = newArg;
+                    wasCopied = true;
                     needsCopy = true;
                 }
             }
@@ -1106,17 +1115,28 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
          */
         private Object[] fastToGuestValues(ToGuestValueNode node, PolyglotLanguageContext context, Object[] args) {
             assert toGuestValue[0] != null;
-            Object[] newArgs = needsCopy ? new Object[args.length] : args;
+
+            Object[] newArgs;
+            boolean wasCopied;
+            if (needsCopy) {
+                newArgs = new Object[args.length];
+                wasCopied = true;
+            } else {
+                newArgs = args;
+                wasCopied = false;
+            }
+
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
                 Object newArg = node.execute(context, arg);
-                if (needsCopy) {
+                if (wasCopied) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     newArgs = new Object[args.length];
                     System.arraycopy(args, 0, newArgs, 0, args.length);
                     newArgs[i] = newArg;
+                    wasCopied = true;
                     needsCopy = true;
                 }
             }

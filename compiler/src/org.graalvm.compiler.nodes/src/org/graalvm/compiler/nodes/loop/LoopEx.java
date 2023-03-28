@@ -54,10 +54,10 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -402,7 +402,9 @@ public class LoopEx {
         Collection<AbstractBeginNode> exits = new LinkedList<>();
         Queue<Block> work = new LinkedList<>();
         ControlFlowGraph cfg = loopsData().getCFG();
-        work.add(cfg.blockFor(branch));
+        NodeBitMap visited = cfg.graph.createNodeBitMap();
+        Block firstSuccBlock = cfg.blockFor(branch);
+        work.add(firstSuccBlock);
         while (!work.isEmpty()) {
             Block b = work.remove();
             if (loop().isLoopExit(b)) {
@@ -411,8 +413,16 @@ public class LoopEx {
             } else if (blocks.add(b.getBeginNode())) {
                 Block d = b.getDominatedSibling();
                 while (d != null) {
-                    if (loop.getBlocks().contains(d)) {
-                        work.add(d);
+                    /*
+                     * if the post dominator is reachable via a branch block it means it was a merge
+                     * of the current split. this is generally not part of the branch, but after the
+                     * branch.
+                     */
+                    if (loop.getBlocks().contains(d) && firstSuccBlock.getPostdominator() != d) {
+                        if (!visited.isMarked(d.getBeginNode())) {
+                            visited.mark(d.getBeginNode());
+                            work.add(d);
+                        }
                     }
                     d = d.getDominatedSibling();
                 }

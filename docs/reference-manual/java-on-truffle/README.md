@@ -44,7 +44,7 @@ Having downloaded the appropriate JAR file in consideration of the operating sys
 gu install -L espresso.jar
 ```
 
-It installs the `jvm` runtime library under the `GRAALVM_HOME/lib/truffle/` location.
+It installs the `jvm` runtime library under the `$JAVA_HOME/lib/truffle/` location.
 
 ## Run Java on Truffle
 
@@ -57,7 +57,7 @@ java -truffle [options] class
 ```
 To execute a JAR file:
 ```shell
-java -truffle [options] --jar jarfile
+java -truffle [options] -jar jarfile
 ```
 
 Using Java 11 based GraalVM distribution, you can also run a Java application from the main class in a module, or run a single source-file program:
