@@ -2445,6 +2445,7 @@ public final class VM extends NativeEnv {
         map.put("java.vm.name", EspressoLanguage.VM_NAME);
         map.put("java.vm.vendor", EspressoLanguage.VM_VENDOR);
         map.put("java.vm.info", EspressoLanguage.VM_INFO);
+        map.put("jdk.debug", "release");
 
         map.put("sun.nio.MaxDirectMemorySize", Long.toString(options.get(EspressoOptions.MaxDirectMemorySize)));
 
