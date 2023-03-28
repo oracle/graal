@@ -47,7 +47,7 @@ The **Download & Install GraalVM** action is recommended as it eliminates the fu
 
 ### Download & Install GraalVM
 
-Follow these steps to download and install GraalVM:
+Follow these steps to download and install GraalVM. 
 
 1. Pick the GraalVM distribution: **Oracle GraalVM** or **GraalVM Community Edition**.
 2. Pick the version: one of the latest stable releases, or the latest development snapshot (if you selected GraalVM Community Edition).
@@ -57,6 +57,8 @@ Follow these steps to download and install GraalVM:
 The installation starts immediately.
 If you are installing Oracle GraalVM, the installation wizard downloads a package from Oracle's storage point and displays progress. 
 If you are installing GraalVM Community Edition, the wizard downloads the package from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) and displays progress.
+
+> Note: This installation option offers the latest verion of GraalVM. If you would like to install an older version, follow [these steps](../../../getting-started/graalvm-community/get-started-graalvm-community.md#install-graalvm).
 
 Once the installation completes, the **Install Optional GraalVM Components** window pops up prompting you to install additional language runtimes and utilities (Java on Truffle, JavaScript, Node.js, LLVM toolchain, Python, etc.):
 
