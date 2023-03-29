@@ -34,7 +34,7 @@ IGV is free to use and has to be built on user's machine with the [`mx` tool](ht
 
 3. Add `mx` to the `PATH` environment variable:
     ```shell
-    export PATH="/path/to/mx/:$PATH"
+    export PATH="/path/to/mx:$PATH"
     ```
     To check whether the installation was successful, run the command:
     ```shell
