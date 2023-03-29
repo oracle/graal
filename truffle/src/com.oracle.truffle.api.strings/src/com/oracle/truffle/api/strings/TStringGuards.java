@@ -99,10 +99,6 @@ final class TStringGuards {
         return TSCodeRange.isBrokenMultiByte(codeRange);
     }
 
-    static boolean isBrokenMultiByte(TruffleStringBuilder sb) {
-        return TSCodeRange.isBrokenMultiByte(sb.getCodeRange());
-    }
-
     public static boolean isValidOrBrokenMultiByte(int codeRange) {
         return TSCodeRange.isValidOrBrokenMultiByte(codeRange);
     }
@@ -180,10 +176,6 @@ final class TStringGuards {
         return enc == Encoding.UTF_16;
     }
 
-    static boolean isUTF16(TruffleStringBuilder sb) {
-        return isUTF16(sb.getEncoding());
-    }
-
     static boolean isUTF32(int enc) {
         return enc == Encoding.UTF_32.id;
     }
@@ -236,18 +228,6 @@ final class TStringGuards {
 
     static boolean isStride2(AbstractTruffleString a) {
         return a.stride() == 2;
-    }
-
-    static boolean isStride0(TruffleStringBuilder sb) {
-        return sb.getStride() == 0;
-    }
-
-    static boolean isStride1(TruffleStringBuilder sb) {
-        return sb.getStride() == 1;
-    }
-
-    static boolean isStride2(TruffleStringBuilder sb) {
-        return sb.getStride() == 2;
     }
 
     static boolean is7BitCompatible(Encoding encoding) {

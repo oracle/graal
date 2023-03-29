@@ -462,6 +462,22 @@ public abstract class AbstractTruffleString {
         return byteIndex >> expectedEncoding.naturalStride;
     }
 
+    static int rawIndexUTF16(int byteIndex) {
+        if ((byteIndex & 1) != 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw InternalErrors.illegalArgument("misaligned byte index on UTF-16 string");
+        }
+        return byteIndex >> Encoding.UTF_16.naturalStride;
+    }
+
+    static int rawIndexUTF32(int byteIndex) {
+        if ((byteIndex & 3) != 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw InternalErrors.illegalArgument("misaligned byte index on UTF-32 string");
+        }
+        return byteIndex >> Encoding.UTF_32.naturalStride;
+    }
+
     static int byteIndex(int rawIndex, TruffleString.Encoding expectedEncoding) {
         assert rawIndex < 0 || (rawIndex << expectedEncoding.naturalStride) >= 0;
         assert rawIndex >= 0 || (rawIndex << expectedEncoding.naturalStride) < 0;
