@@ -82,18 +82,35 @@ public class TestOperationsParserTest {
     private static TestOperations parseNode(OperationParser<TestOperationsGen.Builder> builder) {
         OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
-        System.out.println(op.dump());
         return op;
     }
     private static TestOperations parseNodeWithSource(OperationParser<TestOperationsGen.Builder> builder) {
         OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.WITH_SOURCE, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
-        System.out.println(op.dump());
         return op;
+    }
+
+    private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
+        List<Object> result = new ArrayList<>();
+
+        try {
+            root.call(result);
+            if (expectException) {
+                Assert.fail();
+            }
+        } catch (AbstractTruffleException ex) {
+            if (!expectException) {
+                throw new AssertionError("unexpected", ex);
+            }
+        }
+
+        Assert.assertArrayEquals("expected " + Arrays.toString(order) + " got " + result, order, result.toArray());
     }
 
     @Test
     public void testExampleAdd() {
+        // return arg0 + arg1;
+
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -114,6 +131,12 @@ public class TestOperationsParserTest {
 
     @Test
     public void testExampleMax() {
+        // if (arg0 < arg1) {
+        //   return arg1;
+        // } else {
+        //   return arg0;
+        // }
+
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
             b.beginIfThenElse();
@@ -144,6 +167,11 @@ public class TestOperationsParserTest {
 
     @Test
     public void testIfThen() {
+        // if (arg0 < 0) {
+        //   return 0;
+        // }
+        // return arg0;
+
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
             b.beginIfThen();
@@ -210,9 +238,8 @@ public class TestOperationsParserTest {
 
     @Test
     public void testExampleSumLoop() {
-
-        // i = 0;j = 0;
-        // while ( i < arg0 ) { j = j + i;i = i + 1;}
+        // i = 0; j = 0;
+        // while ( i < arg0 ) { j = j + i; i = i + 1;}
         // return j;
 
         RootCallTarget root = parse(b -> {
@@ -264,6 +291,13 @@ public class TestOperationsParserTest {
 
     @Test
     public void testTryCatch() {
+        // try {
+        //   if (arg0 < 0) throw
+        // } catch {
+        //   return 1;
+        // }
+        // return 0;
+
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -299,6 +333,14 @@ public class TestOperationsParserTest {
 
     @Test
     public void testVariableBoxingElim() {
+        // local0 = 0;
+        // local1 = 0;
+        // while (local0 < 100) {
+        //   local1 = box(local1) + local0;
+        //   local0 = local0 + 1;
+        // }
+        // return local1;
+
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -353,28 +395,13 @@ public class TestOperationsParserTest {
         assertEquals(4950L, root.call());
     }
 
-    private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
-        List<Object> result = new ArrayList<>();
-
-        try {
-            root.call(result);
-            if (expectException) {
-                Assert.fail();
-            }
-        } catch (AbstractTruffleException ex) {
-            if (!expectException) {
-                throw new AssertionError("unexpected", ex);
-            }
-        }
-
-        Assert.assertArrayEquals("expected " + Arrays.toString(order) + " got " + result, order, result.toArray());
-    }
-
     @Test
     public void testFinallyTryBasic() {
-
-        // try { 1;} finally { 2;}
-        // expected 1, 2
+        // try {
+        //   arg0.append(1);
+        // } finally {
+        //   arg0.append(2);
+        // }
 
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);
@@ -403,9 +430,13 @@ public class TestOperationsParserTest {
 
     @Test
     public void testFinallyTryException() {
-
-        // try { 1;throw;2;} finally { 3;}
-        // expected: 1, 3
+        // try {
+        //   arg0.append(1);
+        //   throw;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        // }
 
         RootCallTarget root = parse(b -> {
             b.beginRoot(LANGUAGE);

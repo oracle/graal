@@ -626,7 +626,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTreeBuilder b = ex.getBuilder();
 
         b.declaration("OperationNodesImpl", "nodes", "new OperationNodesImpl(generator)");
-        b.startAssign("Builder builder").startNew(builder.asType());
+        b.startAssign("Builder builder").startNew(builder.getSimpleName().toString());
         b.string("nodes");
         b.string("false");
         b.string("config");
@@ -1810,12 +1810,11 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             switch (operation.kind) {
                 case TRY_CATCH:
-                    b.startBlock();
                     b.statement("Object[] data = (Object[]) operationData[operationSp - 1]");
-                    b.statement("data[0] = bci");
-                    b.statement("data[3] = curStack");
-                    b.statement("data[4] = arg0");
-                    b.end();
+                    b.statement("data[0] = bci"); // tryStart
+                    b.statement("data[3] = new IntRef()"); // catchEnd
+                    b.statement("data[4] = curStack"); // stackHeightOnEntry
+                    b.statement("data[5] = arg0"); // exceptionLocalIndex
                     break;
                 case SOURCE:
                     b.startIf().string("sourceIndexStack.length == sourceIndexSp").end().startBlock();
@@ -1988,7 +1987,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.end();
                     break;
                 case TRY_CATCH:
-                    b.string("new Object[6]");
+                    b.string("new Object[6] /* [tryStart, tryEnd, catchStart, catchEnd, stackHeightOnEntry, exceptionLocalIndex] */");
                     break;
                 default:
                     b.string("null");
@@ -2081,7 +2080,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 b.end().startElseBlock(); // } {
 
-                b.declaration(types.FrameDescriptor, ".Builder fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
+                b.declaration(types.FrameDescriptor_Builder, "fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
 
                 b.startStatement().startCall("fdb.addSlots");
                 b.string("numLocals + maxStack");
@@ -2147,15 +2146,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             switch (operation.kind) {
-                case TRY_CATCH:
-                    b.startBlock();
-                    b.statement("Object[] data = (Object[])operationData[operationSp]");
-                    b.statement("((IntRef) data[5]).value = bci");
-
-                    // todo: ordering is bad, this should be moved to after the first child
-                    b.statement("doCreateExceptionHandler((int) data[0], (int) data[1], (int) data[2], (int) data[3], ((OperationLocalImpl) data[4]).index.value)");
-                    b.end();
-                    break;
                 case CUSTOM_SHORT_CIRCUIT:
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
@@ -2566,12 +2556,15 @@ public class OperationsNodeFactory implements ElementHelpers {
                         }
                         break;
                     case TRY_CATCH:
-                        b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("Object[] dArray = (Object[]) data");
-                        b.statement("dArray[1] = bci");
-                        b.statement("dArray[5] = new IntRef()");
-                        buildEmitInstruction(b, model.branchInstruction, "dArray[5]");
-                        b.statement("dArray[2] = bci");
+                        b.startIf().string("childIndex == 0").end().startBlock();
+                        b.statement("dArray[1] = bci"); // tryEnd
+                        buildEmitInstruction(b, model.branchInstruction, "dArray[3]");
+                        b.statement("dArray[2] = bci"); // catchStart
+                        b.end();
+                        b.startElseIf().string("childIndex == 1").end().startBlock();
+                        b.statement("((IntRef) dArray[3]).value = bci"); // catchEnd
+                        b.statement("doCreateExceptionHandler((int) dArray[0], (int) dArray[1], (int) dArray[2], (int) dArray[4], ((OperationLocalImpl) dArray[5]).index.value)");
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
