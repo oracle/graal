@@ -337,4 +337,65 @@ Native Image Bundles: Using version: 'GraalVM 23.0.0 Java 20.0.1+8-jvmci-23.0-b0
 
 ## Bundle file format
 
-TODO: Document current state of bundle-file-format.
+A bundle-file is a jar-file with a well-defined internal layout.
+Inside a bundle we can find the following inner structure:
+```text
+[bundle-file.nib]
+├── META-INF
+│   ├── MANIFEST.MF
+│   └── nibundle.properties <- Contains build bundle version info:
+│                              * Bundle format version (BundleFileVersion{Major,Minor})
+│                              * Platform and architecture the bundle was created on 
+│                              * GraalVM / Native-image version used for bundle creation
+├── input <- All information required to rebuild the image
+│   ├── auxiliary <- Contains auxiliary files passed to native-image via arguments
+│   │                (e.g. external `config-*.json` files or PGO `*.iprof`-files)
+│   ├── classes   <- Contains all class-path and module-path entries passed to the builder
+│   │   ├── cp
+│   │   └── p
+│   └── stage
+│       ├── build.json          <- Full native-image command line (minus --bundle options)
+│       ├── environment.json              <- Environment variables used in the image build
+│       ├── path_canonicalizations.json  <- Record of path-canonicalizations that happened
+│       │                                       during bundle creation for the input files  
+│       └── path_substitutions.json          <- Record of path-substitutions that happened
+│                                               during bundle creation for the input files
+└── output
+    ├── default
+    │   ├── myimage         <- Created image and other output created by the image builder 
+    │   ├── myimage.debug
+    |   └── sources
+    └── other      <- Other output created by the builder (not relative to image location)
+```
+### META-INF
+The layout of a bundle file itself is versioned.
+In `META-INF/nibundle.properties` there are two properties that declare which version of the layout a given bundle-file is based on.
+At the time of writing this document, bundles use the following layout version:
+```text
+BundleFileVersionMajor=0
+BundleFileVersionMinor=9
+```
+Future versions of GraalVM might alter or extend the internal structure of bundle files.
+The versioning allows to evolve the bundle format with backwards compatibility in mind.
+
+### input
+
+This directory contains all input data that gets passed to the image builder to perform the build.
+File `input/stage/build.json` holds the original command line that was passed to the `native-image` tool when the bundle was created.
+Parameters that make no sense to get reapplied in a bundle-build are already filtered out.
+These include:
+* `--bundle-{create,apply}`
+* `--verbose`
+* `--dry-run`
+
+The state of environment variables that are relevant for the image build are captured in `input/stage/environment.json`.
+For every `-E` argument that has been seen when the bundle was created, a snapshot of its key-value pair is recorded in the file.
+This ensures that an image-rebuild from the bundle will see the same environment variables as the original build.
+The remaining files `path_canonicalizations.json` and `path_substitutions.json` contain a record of the file-path transformations that have been performed by the `native-image` tool based on the input file paths as specified by the original command line arguments.
+
+### output
+
+If an image got built as part of building the bundle (i.e. `--dry-run` option was not used) we also have an `output` folder in the bundle.
+It contains the image that got built along with any other files that were generated as part of building the image.
+Most output files are located in `output/default` (e.g. the image, its debug-info and debug-sources).
+Builder output files that would have been written to arbitrary absolute paths if the image had not been built in bundle-mode can be found in `output/other`.
