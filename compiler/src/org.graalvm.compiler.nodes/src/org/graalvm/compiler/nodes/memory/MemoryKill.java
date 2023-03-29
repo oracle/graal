@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -116,5 +116,4 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
      * kills under certain, parameterized, conditions. Should be used with caution.
      */
     LocationIdentity[] MULTI_KILL_NO_LOCATION = new LocationIdentity[]{};
-
 }

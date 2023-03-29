@@ -80,6 +80,7 @@
 
   test:: s.base(no_warning_as_error=true),
   test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  test_serialgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseSerialGC"),
 
 
   jacoco_gate_args:: ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
@@ -122,6 +123,17 @@
                   "-Dpolyglot.engine.BackgroundCompilation=false " +
                   "-Dtck.inlineVerifierInstrument=false " +
                   "-XX:+UseZGC",
+    extra_unittest_args="--very-verbose truffle") + {
+      environment+: {"TRACE_COMPILATION": "true"},
+      logs+: ["*/*_compilation.log"]
+    },
+
+  truffle_xcomp_serialgc:: s.base("build,unittest",
+    extra_vm_args="-Dpolyglot.engine.AllowExperimentalOptions=true " +
+                  "-Dpolyglot.engine.CompileImmediately=true " +
+                  "-Dpolyglot.engine.BackgroundCompilation=false " +
+                  "-Dtck.inlineVerifierInstrument=false " +
+                  "-XX:+UseSerialGC",
     extra_unittest_args="--very-verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
       logs+: ["*/*_compilation.log"]
@@ -257,7 +269,15 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test-labsjdk-20Debug-linux-amd64": {}
+    "weekly-compiler-test-labsjdk-20Debug-linux-amd64": {},
+
+    "weekly-compiler-test_serialgc-labsjdk-20-linux-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-20-linux-aarch64": t("1:50:00"),
+    "weekly-compiler-test_serialgc-labsjdk-20-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-20-darwin-aarch64": t("1:00:00"),
+
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-20-linux-amd64": t("1:30:00"),
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-20-linux-aarch64": t("1:30:00"),
   },
 
   # This map defines overrides and field extensions for monthly builds.
@@ -393,6 +413,20 @@
       ]
     ],
 
+  # Run unittests with SerialGC.
+  local all_serialgc_builds = [self.make_build("20", os_arch, task).build
+    for os_arch in [
+      "linux-amd64",
+      "linux-aarch64",
+      "darwin-amd64",
+      "darwin-aarch64"
+    ]
+    for task in [
+      "test_serialgc",
+      "truffle_xcomp_serialgc",
+    ]
+  ],
+
   # Builds run on only on linux-amd64-jdk20
   local linux_amd64_jdk20_builds = [self.make_build("20", "linux-amd64", task).build
     for task in [
@@ -419,6 +453,7 @@
   local all_builds =
     all_platforms_builds +
     all_zgc_builds +
+    all_serialgc_builds +
     linux_amd64_jdk20_builds +
     linux_amd64_jdk20Debug_builds,
 
