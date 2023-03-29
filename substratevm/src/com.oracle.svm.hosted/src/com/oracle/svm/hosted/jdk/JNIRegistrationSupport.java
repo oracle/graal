@@ -24,40 +24,8 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import static com.oracle.svm.core.BuildArtifacts.ArtifactType;
-import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Activation;
-import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
 import com.oracle.svm.core.BuildArtifacts;
+import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -72,8 +40,36 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
-
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Activation;
+import org.graalvm.compiler.debug.DebugContext.Scope;
+import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.InternalPlatform;
 
 /** Registration of native JDK libraries. */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
@@ -157,6 +153,8 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
         shimExports.computeIfAbsent(shimName, s -> new TreeSet<>()).addAll(Arrays.asList(exports));
     }
 
+    private String imageName;
+
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         if (isWindows()) {
@@ -170,6 +168,8 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
                 return linkerInvocation;
             });
         }
+
+        imageName = ((BeforeImageWriteAccessImpl) access).getImageName();
     }
 
     private AfterImageWriteAccessImpl accessImpl;
@@ -283,12 +283,8 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
 
     /** Returns the import library of the native image. */
     private Path getImageImportLib() {
-        Path image = accessImpl.getImagePath();
-        String imageName = String.valueOf(image.getFileName());
-        String importLibName = imageName.substring(0, imageName.lastIndexOf('.')) + ".lib";
-        Path importLib = accessImpl.getImageKind().isExecutable
-                        ? accessImpl.getTempDirectory().resolve(importLibName)
-                        : image.resolveSibling(importLibName);
+        assert isWindows();
+        Path importLib = accessImpl.getTempDirectory().resolve(imageName + ".lib");
         assert Files.exists(importLib);
         return importLib;
     }
