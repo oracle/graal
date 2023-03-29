@@ -38,19 +38,36 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedFrame;
 import jdk.jfr.consumer.RecordedStackTrace;
 import jdk.jfr.consumer.RecordedThread;
 
 public class TestJfrExecutionSampleEvent extends JfrRecordingTest {
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.ExecutionSample.getName()};
+    @Test
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.ExecutionSample.getName()};
+        Recording recording = startRecording(events);
+
+        Worker[] workers = new Worker[8];
+        for (int i = 0; i < workers.length; i++) {
+            workers[i] = new Worker();
+            workers[i].start();
+        }
+
+        for (Worker worker : workers) {
+            try {
+                worker.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        stopRecording(recording, TestJfrExecutionSampleEvent::validateEvents);
     }
 
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
+    private static void validateEvents(List<RecordedEvent> events) {
         assertTrue(events.size() > 0);
 
         Set<Long> seenThreadIds = new HashSet<>();
@@ -75,23 +92,6 @@ public class TestJfrExecutionSampleEvent extends JfrRecordingTest {
         assertTrue(seenThreadIds.size() > 1);
     }
 
-    @Test
-    public void test() throws Exception {
-        Worker[] workers = new Worker[8];
-        for (int i = 0; i < workers.length; i++) {
-            workers[i] = new Worker();
-            workers[i].start();
-        }
-
-        for (int i = 0; i < workers.length; i++) {
-            try {
-                workers[i].join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     private static class Worker extends Thread {
         @Override
         public void run() {
@@ -103,16 +103,12 @@ public class TestJfrExecutionSampleEvent extends JfrRecordingTest {
         @NeverInline("Prevent escape analysis.")
         private static Object allocateObject(int iteration) {
             int action = iteration % 3;
-            switch (action) {
-                case 0:
-                    return new StringBuilder(0);
-                case 1:
-                    return new int[43];
-                case 2:
-                    return new Object[43];
-                default:
-                    throw VMError.shouldNotReachHere();
-            }
+            return switch (action) {
+                case 0 -> new StringBuilder(0);
+                case 1 -> new int[43];
+                case 2 -> new Object[43];
+                default -> throw VMError.shouldNotReachHere();
+            };
         }
     }
 }

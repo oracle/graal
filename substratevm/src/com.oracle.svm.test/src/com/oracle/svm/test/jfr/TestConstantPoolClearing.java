@@ -27,6 +27,7 @@
 package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import java.util.HashMap;
 import java.util.List;
@@ -34,11 +35,11 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.test.jfr.events.ClassEvent;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 
-import jdk.jfr.Configuration;
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 
 /**
@@ -47,51 +48,58 @@ import jdk.jfr.consumer.RecordedEvent;
  * serialized data buffer does not, it will fail constant pool verification in {@link JfrFileParser}
  */
 public class TestConstantPoolClearing extends JfrRecordingTest {
-
-    @Override
-    protected Map<String, String> getJfrSettings() {
+    @Test
+    public void test() throws Throwable {
         /* Turn off flushing so we can control it precisely. */
         Map<String, String> settings = new HashMap<>();
         settings.put("flush-interval", "0");
-        return settings;
+
+        String[] events = new String[]{"com.jfr.Class"};
+        Recording recA = startRecording(events, getDefaultConfiguration(), settings);
+
+        /* Emit an event. */
+        emitEvent();
+
+        /* Flush so that there is no more unflushed data and rotate the chunk (dump). */
+        flushAllThreads();
+        recA.dump(createTempJfrFile());
+
+        /* Emit the same event again - it must not reference data from the previous chunk. */
+        emitEvent();
+
+        /* Flush so that there is no more unflushed data and rotate the chunk (stopRecording). */
+        flushAllThreads();
+        stopRecording(recA, TestConstantPoolClearing::validateFirstRecording);
+
+        /* Start a new recording. */
+        Recording recB = startRecording(events, getDefaultConfiguration(), settings);
+
+        /* Emit the same event again - it must not reference data from the previous recording. */
+        emitEvent();
+
+        stopRecording(recB, TestConstantPoolClearing::validateSecondRecording);
     }
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{"com.jfr.Class"};
+    private static void emitEvent() {
+        ClassEvent eventA = new ClassEvent();
+        eventA.clazz = TestConstantPoolClearing.class;
+        eventA.commit();
     }
 
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
+    private static void validateFirstRecording(List<RecordedEvent> events) {
+        assertEquals(2, events.size());
+        validateEvents(events);
+    }
+
+    private static void validateSecondRecording(List<RecordedEvent> events) {
         assertEquals(1, events.size());
+        validateEvents(events);
     }
 
-    @Test
-    public void test() throws Exception {
-        // Epoch 1 ---------------
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestConstantPoolClearing.class;
-        event.commit();
-        // Force a flush. This clears the constant pool serialized data buffers but not the
-        // deduplication maps.
-        SubstrateJVM.get().flush();
-        // No events should be committed between the previous flush and the below chunk rotation.
-        recording.dump(preTestFile);
-
-        // Epoch 2 ---------------
-        // Force another chunk rotation and end recording.
-        stopRecording();
-        recording.stop();
-        recording.close();
-        // A new recording is started, now we can test if it has completely fresh constant pool
-        // epochData.
-        startRecording(Configuration.getConfiguration("default"), jfrFile);
-
-        // Epoch 1 ---------------
-        // Test for the case where the constant pool epochData starts with residual entries,
-        // but the serialized data buffer does not.
-        ClassEvent eventWithDanglingReference = new ClassEvent();
-        eventWithDanglingReference.clazz = TestConstantPoolClearing.class;
-        eventWithDanglingReference.commit();
+    private static void validateEvents(List<RecordedEvent> events) {
+        for (RecordedEvent event : events) {
+            assertNotNull(event.getThread());
+            assertNotNull(event.<RecordedClass> getValue("clazz"));
+        }
     }
 }
