@@ -46,7 +46,6 @@ import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.log.Log;
@@ -257,8 +256,13 @@ public final class Space {
         accounting.reset();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Must not interact with garbage collections.")
     void appendAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
+        appendAlignedHeapChunk(aChunk, null);
+    }
+
+    @Uninterruptible(reason = "Must not interact with garbage collections.")
+    void appendAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk, Space originalSpace) {
         /*
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
@@ -266,14 +270,26 @@ public final class Space {
         if (SubstrateOptions.MultiThreaded.getValue() && !(SubstrateOptions.UseParallelGC.getValue() && VMOperation.isGCInProgress())) {
             VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
         }
-        appendAlignedHeapChunkUninterruptibly(aChunk);
-        accounting.noteAlignedHeapChunk();
-    }
-
-    @Uninterruptible(reason = "Must not interact with garbage collections.")
-    private void appendAlignedHeapChunkUninterruptibly(AlignedHeapChunk.AlignedHeader aChunk) {
-        AlignedHeapChunk.AlignedHeader oldLast = getLastAlignedHeapChunk();
         HeapChunk.setSpace(aChunk, this);
+
+        if (originalSpace != null) {
+            assert VMOperation.isGCInProgress() : "Should only be called by the collector.";
+            AlignedHeapChunk.AlignedHeader chunkNext = HeapChunk.getNext(aChunk);
+            AlignedHeapChunk.AlignedHeader chunkPrev = HeapChunk.getPrevious(aChunk);
+            if (chunkPrev.isNonNull()) {
+                HeapChunk.setNext(chunkPrev, chunkNext);
+            } else {
+                originalSpace.setFirstAlignedHeapChunk(chunkNext);
+            }
+            if (chunkNext.isNonNull()) {
+                HeapChunk.setPrevious(chunkNext, chunkPrev);
+            } else {
+                originalSpace.setLastAlignedHeapChunk(chunkPrev);
+            }
+            originalSpace.accounting.unnoteAlignedHeapChunk();
+        }
+
+        AlignedHeapChunk.AlignedHeader oldLast = getLastAlignedHeapChunk();
         HeapChunk.setPrevious(aChunk, oldLast);
         HeapChunk.setNext(aChunk, WordFactory.nullPointer());
         if (oldLast.isNonNull()) {
@@ -283,36 +299,16 @@ public final class Space {
         if (getFirstAlignedHeapChunk().isNull()) {
             setFirstAlignedHeapChunk(aChunk);
         }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void extractAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
-        assert VMOperation.isGCInProgress() : "Should only be called by the collector.";
-        extractAlignedHeapChunkUninterruptibly(aChunk);
-        accounting.unnoteAlignedHeapChunk();
+        accounting.noteAlignedHeapChunk();
     }
 
     @Uninterruptible(reason = "Must not interact with garbage collections.")
-    private void extractAlignedHeapChunkUninterruptibly(AlignedHeapChunk.AlignedHeader aChunk) {
-        AlignedHeapChunk.AlignedHeader chunkNext = HeapChunk.getNext(aChunk);
-        AlignedHeapChunk.AlignedHeader chunkPrev = HeapChunk.getPrevious(aChunk);
-        if (chunkPrev.isNonNull()) {
-            HeapChunk.setNext(chunkPrev, chunkNext);
-        } else {
-            setFirstAlignedHeapChunk(chunkNext);
-        }
-        if (chunkNext.isNonNull()) {
-            HeapChunk.setPrevious(chunkNext, chunkPrev);
-        } else {
-            setLastAlignedHeapChunk(chunkPrev);
-        }
-        HeapChunk.setNext(aChunk, WordFactory.nullPointer());
-        HeapChunk.setPrevious(aChunk, WordFactory.nullPointer());
-        HeapChunk.setSpace(aChunk, null);
+    void appendUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
+        appendUnalignedHeapChunk(uChunk, null);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void appendUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
+    @Uninterruptible(reason = "Must not interact with garbage collections.")
+    void appendUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk, Space originalSpace) {
         /*
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
@@ -320,14 +316,26 @@ public final class Space {
         if (SubstrateOptions.MultiThreaded.getValue() && !(SubstrateOptions.UseParallelGC.getValue() && VMOperation.isGCInProgress())) {
             VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
         }
-        appendUnalignedHeapChunkUninterruptibly(uChunk);
-        accounting.noteUnalignedHeapChunk(uChunk);
-    }
-
-    @Uninterruptible(reason = "Must not interact with garbage collections.")
-    private void appendUnalignedHeapChunkUninterruptibly(UnalignedHeapChunk.UnalignedHeader uChunk) {
-        UnalignedHeapChunk.UnalignedHeader oldLast = getLastUnalignedHeapChunk();
         HeapChunk.setSpace(uChunk, this);
+
+        if (originalSpace != null) {
+            assert VMOperation.isGCInProgress() : "Trying to extract an unaligned chunk but not in a VMOperation.";
+            UnalignedHeapChunk.UnalignedHeader chunkNext = HeapChunk.getNext(uChunk);
+            UnalignedHeapChunk.UnalignedHeader chunkPrev = HeapChunk.getPrevious(uChunk);
+            if (chunkPrev.isNonNull()) {
+                HeapChunk.setNext(chunkPrev, chunkNext);
+            } else {
+                originalSpace.setFirstUnalignedHeapChunk(chunkNext);
+            }
+            if (chunkNext.isNonNull()) {
+                HeapChunk.setPrevious(chunkNext, chunkPrev);
+            } else {
+                originalSpace.setLastUnalignedHeapChunk(chunkPrev);
+            }
+            originalSpace.accounting.unnoteUnalignedHeapChunk(uChunk);
+        }
+
+        UnalignedHeapChunk.UnalignedHeader oldLast = getLastUnalignedHeapChunk();
         HeapChunk.setPrevious(uChunk, oldLast);
         HeapChunk.setNext(uChunk, WordFactory.nullPointer());
         if (oldLast.isNonNull()) {
@@ -337,33 +345,7 @@ public final class Space {
         if (getFirstUnalignedHeapChunk().isNull()) {
             setFirstUnalignedHeapChunk(uChunk);
         }
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void extractUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
-        assert VMOperation.isGCInProgress() : "Trying to extract an unaligned chunk but not in a VMOperation.";
-        extractUnalignedHeapChunkUninterruptibly(uChunk);
-        accounting.unnoteUnalignedHeapChunk(uChunk);
-    }
-
-    @Uninterruptible(reason = "Must not interact with garbage collections.")
-    private void extractUnalignedHeapChunkUninterruptibly(UnalignedHeapChunk.UnalignedHeader uChunk) {
-        UnalignedHeapChunk.UnalignedHeader chunkNext = HeapChunk.getNext(uChunk);
-        UnalignedHeapChunk.UnalignedHeader chunkPrev = HeapChunk.getPrevious(uChunk);
-        if (chunkPrev.isNonNull()) {
-            HeapChunk.setNext(chunkPrev, chunkNext);
-        } else {
-            setFirstUnalignedHeapChunk(chunkNext);
-        }
-        if (chunkNext.isNonNull()) {
-            HeapChunk.setPrevious(chunkNext, chunkPrev);
-        } else {
-            setLastUnalignedHeapChunk(chunkPrev);
-        }
-        /* Reset the fields that the result chunk keeps for Space. */
-        HeapChunk.setNext(uChunk, WordFactory.nullPointer());
-        HeapChunk.setPrevious(uChunk, WordFactory.nullPointer());
-        HeapChunk.setSpace(uChunk, null);
+        accounting.noteUnalignedHeapChunk(uChunk);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -547,8 +529,7 @@ public final class Space {
             ParallelGC.mutex.lockNoTransitionUnspecifiedOwner();
         }
         try {
-            originalSpace.extractAlignedHeapChunk(chunk);
-            appendAlignedHeapChunk(chunk);
+            appendAlignedHeapChunk(chunk, originalSpace);
         } finally {
             if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
                 ParallelGC.singleton().push(HeapChunk.asPointer(chunk));
@@ -577,8 +558,7 @@ public final class Space {
             ParallelGC.mutex.lockNoTransitionUnspecifiedOwner();
         }
         try {
-            originalSpace.extractUnalignedHeapChunk(chunk);
-            appendUnalignedHeapChunk(chunk);
+            appendUnalignedHeapChunk(chunk, originalSpace);
         } finally {
             if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
                 ParallelGC.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGC.UNALIGNED_BIT));
@@ -621,15 +601,13 @@ public final class Space {
         AlignedHeapChunk.AlignedHeader aChunk = src.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
             AlignedHeapChunk.AlignedHeader next = HeapChunk.getNext(aChunk);
-            src.extractAlignedHeapChunk(aChunk);
-            appendAlignedHeapChunk(aChunk);
+            appendAlignedHeapChunk(aChunk, src);
             aChunk = next;
         }
         UnalignedHeapChunk.UnalignedHeader uChunk = src.getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
             UnalignedHeapChunk.UnalignedHeader next = HeapChunk.getNext(uChunk);
-            src.extractUnalignedHeapChunk(uChunk);
-            appendUnalignedHeapChunk(uChunk);
+            appendUnalignedHeapChunk(uChunk, src);
             uChunk = next;
         }
     }
