@@ -8,10 +8,10 @@ redirect_from: /$version/reference-manual/native-image/Bundles/
 
 # Native Image Bundles
 
-Native image contains an experimental feature that allows users to build images exclusively from a _Native Image Bundle_.
+Native Image provides a new experimental feature that allows users to build images from a self-contained _Native Image Bundle_.
 
 In contrast to regular image building, this mode of operation only takes a single `*.nib`-file as an input argument that
-contains everything that is needed to build an image. This can be useful when large applications that consist from many
+contains everything that is needed to build an image. This can be useful when large applications consisting of many
 input-files (jar-files, configuration files, auto-generated files, downloaded files) need to be rebuilt at a later point
 in time without worrying that all files needed for building are still available. Often complex builds involve
 downloading many libraries as part of building that are not guaranteed to remain accessible at a later point in time.
@@ -27,7 +27,7 @@ Using bundles is a safe solution to encapsulate all this input required for buil
 
 ## Creating bundles
 
-To create a bundle it is sufficient to simply pass the `--bundle-create` option along with the all the other arguments
+To create a bundle, it is sufficient to simply pass the `--bundle-create` option along with the all the other arguments
 for a specific `native-image` command line invocation. This will cause `native-image` to create a `*.nib`-file in
 addition to the actual image.
 
@@ -41,8 +41,8 @@ addition to the actual image.
                       the bundle operations without any actual image building.
 ```
 
-For example, assuming a micronaut application should be built with Maven we would want to
-make sure the `--bundle-create` option is used. For that the following needs to be added to the plugins section of
+For example, assuming a Micronaut application should be built with Maven, we would want to
+make sure the `--bundle-create` option is used. For that, the following needs to be added to the plugins section of
 `pom.xml`:
 
 ```xml
@@ -57,7 +57,7 @@ make sure the `--bundle-create` option is used. For that the following needs to 
 </plugin>
 ```
 
-Now when `./mvnw package -Dpackaging=native-image` is used we get the following Maven build output after a few minutes.
+Now when `./mvnw package -Dpackaging=native-image` is used, we get the following Maven build output after a few minutes.
 
 ```text
 Finished generating 'micronautguide' in 2m 0s.
@@ -115,7 +115,7 @@ target/micronautguide.output
 
 ### Combining --bundle-create with --dry-run
 
-As mentioned in the option help text of `--bundle-create`, it is also possible to let native-image build a bundle but
+As mentioned in the option help text of `--bundle-create`, it is also possible to let `native-image` build a bundle but
 not actually perform the image build. This might be useful if a user wants to move the bundle to a more powerful machine
 and build the image there. If we modify the above `native-maven-plugin` configuration to also contain
 ```xml
@@ -132,8 +132,8 @@ Native Image Bundles: Bundle written to /home/testuser/micronaut-data-jdbc-repos
 [INFO] Finished at: 2023-03-27T16:33:21+02:00
 [INFO] ------------------------------------------------------------------------
 ```
-Now `micronautguide.nib` is only 20 MB large and looking inside shows that the image (`output/default/micronautguide`)
-is missing:
+Now `micronautguide.nib` is only 20 MB in file size and looking inside shows that the image (`output/default/micronautguide`)
+is not included:
 ```text
 $ jar tf micronautguide.nib
 META-INF/MANIFEST.MF
@@ -150,7 +150,7 @@ in the Maven output. Since no actual image got created, no bundle build output i
 ## Building with bundles
 
 Let's assume that a previously built image is used in production and once in a while an unexpected exception is thrown
-at runtime. Since we still have the bundle that was used to create that image it is trivial to build a variant of that
+at runtime. Since we still have the bundle that was used to create that image, it is trivial to build a variant of that
 image with debugging support. We use `--bundle-apply=micronautguide.nib` like this:
 
 ```text
@@ -169,7 +169,7 @@ Finished generating 'micronautguide' in 2m 16s.
 Native Image Bundles: Bundle build output written to /home/testuser/micronautguide.output
 ```
 
-After running this command the image is rebuilt with the extra option `-g` that was passed after `--bundle-apply`. The
+After running this command, the image is rebuilt with the extra option `-g` that was passed after `--bundle-apply`. The
 output of this build is in directory `micronautguide.output`:
 ```text
 micronautguide.output
@@ -204,15 +204,15 @@ The full option help text of `--bundle-apply` shows a more advanced uses-case th
 
 ## Capturing Environment Variables
 
-Before bundle support was added, all environment variables from the environment the native-image tool was
+Before bundle support was added, all environment variables from the environment the `native-image` tool was
 started in, were visible to the image builder. This approach does not work well with bundles and is even problematic for
 image building without bundles. Consider having an environment variable that holds sensitive information from your build
-machine. Due to native-images ability to run code at image build time that can create data that will be available at
-image-runtime it is very easy to build an image were you accidentally leak the contents of such variables into an image.
+machine. Due to Native Image's ability to run code at image build time that can create data that will be available at
+image-runtime, it is very easy to build an image were you accidentally leak the contents of such variables into an image.
 
-Passing environment variables to native-image now requires explicit native image arguments.
+Passing environment variables to `native-image` now requires explicit arguments.
 
-Suppose a user wants to use environment variable (e.g. `KEY_STORAGE_PATH`) from the environment the native-image tool is
+Suppose a user wants to use environment variable (e.g. `KEY_STORAGE_PATH`) from the environment the `native-image` tool is
 invoked, in the static constructor of a class that is set to be initialized-at-build-time. To allow accessing the
 variable in the static constructor (with `java.lang.System.getenv`) option `-EKEY_STORAGE_PATH` needs to be passed to
 the builder.
@@ -234,12 +234,12 @@ image build-time).
 
 ## Combining --bundle-create and --bundle-apply
 
-As already mentioned [before](#building-with-bundles) it is possible to create new bundles based on existing ones. The
+As already mentioned [before](#building-with-bundles), it is possible to create new bundles based on existing ones. The
 `--bundle-apply` help text has a simple example. A more interesting example arises if an existing bundle is used
 create a bundle that builds a PGO-optimized version of the original application.
 
 Let's again use assume we already built the `micronaut-data-jdbc-repository` example into a bundle named
-`micronautguide.nib`. To produce to a PGO optimized variant of that bundle we first have to build a variant of the image
+`micronautguide.nib`. To produce to a PGO optimized variant of that bundle, we first have to build a variant of the image
 that generates PGO profiling information during image runtime that we can use later:
 
 ```text
@@ -281,15 +281,15 @@ $ /home/testuser/micronautguide.output/default/micronautguide
 14:51:32.071 [main] INFO  i.m.flyway.AbstractFlywayMigration - Running migrations for database with qualifier [default]
 ...
 ```
-Based on the walkthrough in https://guides.micronaut.io/latest/micronaut-data-jdbc-repository.html we now use the
+Based on <a href="https://guides.micronaut.io/latest/micronaut-data-jdbc-repository.html" target="_blank">this walkthrough</a>, we now use the
 running image to add new database entries and query the information in the database afterwards so that we get real-world
-profiling information. Once completed we shut the micronaut application down with `CTRL-C` (`SIGTERM`). Looking into the
+profiling information. Once completed we shut the Micronaut application down with `CTRL-C` (`SIGTERM`). Looking into the
 current working directory we can now find a new file:
 ```text
 $ ls -lh  *.iprof
 -rw------- 1 testuser testuser 19M Mar 28 14:52 default.iprof
 ```
-The file `default.iprof` contains the profiling information that was created because we ran the micronaut application as
+The file `default.iprof` contains the profiling information that was created because we ran the Micronaut application as
 an image that was built with `--pgo-instrument`. Now we have what we need to create a new optimized bundle out of the
 existing one:
 ```text
@@ -326,7 +326,7 @@ and `input/stage/path_canonicalizations.json` will be explained [later](#bundle-
 +  "--pgo"
  ]
 ```
-Unsurprisingly, the new bundle contains the `--pgo` option that we passed to the native-image command line we used
+As expected, the new bundle contains the `--pgo` option that we passed to the `native-image` command line we used
 to build the optimized bundle. Building an image from this new bundle generates a pgo-optimized image out of the box
 (see `PGO: on` in build output):
 ```text
