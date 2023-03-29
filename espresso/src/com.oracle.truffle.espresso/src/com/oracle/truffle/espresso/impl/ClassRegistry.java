@@ -54,7 +54,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  */
 public abstract class ClassRegistry {
 
-    private final Object proxyDynamicModuleHolder = new Object();
+    private final DynamicModuleWrapper dynamicModuleWrapper = new DynamicModuleWrapper();
 
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
@@ -530,7 +530,19 @@ public abstract class ClassRegistry {
         }
     }
 
-    public final Object getProxyDynamicModuleHolder() {
-        return proxyDynamicModuleHolder;
+    public final DynamicModuleWrapper getProxyDynamicModuleWrapper() {
+        return dynamicModuleWrapper;
+    }
+
+    public final class DynamicModuleWrapper {
+        private ModuleEntry dynamicProxyModule;
+
+        public ModuleEntry getDynamicProxyModule() {
+            return dynamicProxyModule;
+        }
+
+        public void setDynamicProxyModule(ModuleEntry module) {
+            dynamicProxyModule = module;
+        }
     }
 }
