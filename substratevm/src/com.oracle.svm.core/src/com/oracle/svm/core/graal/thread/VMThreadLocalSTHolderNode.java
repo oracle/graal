@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.thread;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
@@ -34,9 +35,9 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSTSupport;
 
@@ -63,7 +64,8 @@ public class VMThreadLocalSTHolderNode extends FixedWithNextNode implements LIRL
         } else {
             holder = ImageSingletons.lookup(VMThreadLocalSTSupport.class).primitiveThreadLocals;
         }
+        SnippetReflectionProvider snippetReflection = ((Providers) gen.getLIRGeneratorTool().getProviders()).getSnippetReflection();
         LIRKind kind = gen.getLIRGeneratorTool().getLIRKind(stamp(NodeView.DEFAULT));
-        gen.setResult(this, gen.getLIRGeneratorTool().emitLoadConstant(kind, SubstrateObjectConstant.forObject(holder)));
+        gen.setResult(this, gen.getLIRGeneratorTool().emitLoadConstant(kind, snippetReflection.forObject(holder)));
     }
 }

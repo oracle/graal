@@ -538,15 +538,16 @@ class NativeImageVM(GraalVm):
                 self.failed = True
                 if self.exit_code is not None and self.exit_code != 0:
                     mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
-                    if self.stdout_path:
-                        mx.log(mx.colorize('--------- Standard output:', 'blue'))
-                        with open(self.stdout_path, 'r') as stdout:
-                            mx.log(stdout.read())
 
-                    if self.stderr_path:
-                        mx.log(mx.colorize('--------- Standard error:', 'red'))
-                        with open(self.stderr_path, 'r') as stderr:
-                            mx.log(stderr.read())
+                if self.stdout_path:
+                    mx.log(mx.colorize('--------- Standard output:', 'blue'))
+                    with open(self.stdout_path, 'r') as stdout:
+                        mx.log(stdout.read())
+
+                if self.stderr_path:
+                    mx.log(mx.colorize('--------- Standard error:', 'red'))
+                    with open(self.stderr_path, 'r') as stderr:
+                        mx.log(stderr.read())
 
                 if tb:
                     mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' with ', 'red'))
@@ -863,8 +864,8 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
-        # GR-42738 --pgo-sampling does not work with LLVM
-        if not self.is_llvm:
+        # GR-42738 --pgo-sampling does not work with LLVM. Sampling is disabled when doing JDK profiles collection.
+        if not self.is_llvm and not self.jdk_profiles_collect:
             with open(profile_path) as profile_file:
                 parsed = json.load(profile_file)
                 samples = parsed["samplingProfiles"]

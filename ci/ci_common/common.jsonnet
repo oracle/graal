@@ -6,7 +6,7 @@ local repo_config = import '../repo-configuration.libsonnet';
 common + common.frequencies + {
   build_base:: {
     // holds location of CI resources that can easily be overwritten in an overlay
-    ci_resources:: (import "ci/ci_common/ci-resources.libsonnet"),
+    ci_resources:: (import "ci-resources.libsonnet"),
   },
 
   # Add a guard to `build` that prevents it from running in the gate

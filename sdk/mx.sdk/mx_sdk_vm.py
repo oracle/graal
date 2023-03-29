@@ -77,7 +77,7 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(object, metaclass=ABCMeta):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None, rebuildable=True):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -89,7 +89,6 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         :type home_finder: bool
         :type build_time: int
         :type build_args_enterprise: list[str] | None
-        :param bool rebuildable: Whether the GraalVM should include macros and support files (e.g., profiles) to rebuild
         """
         self.destination = mx_subst.path_substitutions.substitute(destination)
         self.jar_distributions = jar_distributions
@@ -101,13 +100,11 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         self.home_finder = home_finder
         self.build_time = build_time
         self.build_args_enterprise = build_args_enterprise or []
-        self.rebuildable = rebuildable
         self.relative_home_paths = {}
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, (list, types.GeneratorType))
         assert isinstance(self.build_args_enterprise, list)
-        assert isinstance(self.rebuildable, bool)
 
     def __str__(self):
         return self.destination

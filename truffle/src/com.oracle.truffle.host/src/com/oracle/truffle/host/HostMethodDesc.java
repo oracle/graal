@@ -259,6 +259,15 @@ abstract class HostMethodDesc {
                 return GuestToHostRootNode.guestToHostCall(node, target, hostContext, receiver, this, arguments);
             }
 
+            /**
+             * Checks for the JDK-8304585: Duplicated InvocationTargetException when the invocation
+             * of a caller-sensitive method fails.
+             */
+            @TruffleBoundary
+            static boolean checkForDuplicateInvocationTargetException(Executable executable) {
+                return Runtime.version().feature() >= 19 && isCallerSensitive(executable);
+            }
+
         }
 
         private static final class MethodReflectImpl extends ReflectBase {
@@ -280,7 +289,13 @@ abstract class HostMethodDesc {
                 try {
                     return reflectInvoke(reflectionMethod, receiver, arguments);
                 } catch (InvocationTargetException e) {
-                    throw e.getCause();
+                    Throwable cause = e.getCause();
+                    if (cause instanceof InvocationTargetException && checkForDuplicateInvocationTargetException(reflectionMethod)) {
+                        // JDK-8304585: Duplicated InvocationTargetException when the invocation of
+                        // a caller-sensitive method fails.
+                        cause = cause.getCause();
+                    }
+                    throw cause;
                 }
             }
 
@@ -315,7 +330,13 @@ abstract class HostMethodDesc {
                 try {
                     return reflectNewInstance(reflectionConstructor, arguments);
                 } catch (InvocationTargetException e) {
-                    throw e.getCause();
+                    Throwable cause = e.getCause();
+                    if (cause instanceof InvocationTargetException && checkForDuplicateInvocationTargetException(reflectionConstructor)) {
+                        // JDK-8304585: Duplicated InvocationTargetException when the invocation of
+                        // a caller-sensitive method fails.
+                        cause = cause.getCause();
+                    }
+                    throw cause;
                 }
             }
 

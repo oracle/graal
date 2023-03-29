@@ -26,7 +26,6 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.GRAAL_OPTION_PROPERTY_PREFIX;
 import static org.graalvm.compiler.hotspot.HotSpotGraalOptionValues.defaultOptions;
-import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -40,12 +39,11 @@ import org.graalvm.compiler.debug.TTYStreamProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -79,33 +77,24 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
     /**
      * Gets a pointer to a global word initialized to 0.
      */
-    private static Pointer getBarrierPointer() {
-        // Substituted by Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider
-        return WordFactory.nullPointer();
-    }
+    private static final GlobalAtomicLong BARRIER = new GlobalAtomicLong(0L);
 
     /**
-     * Executes {@code action}. If {@code barrier.isNonNull()}, then {@code barrier} is used to
-     * ensure the action is executed exactly once in the process (i.e. synchronized across all
-     * threads and isolates) and that threads will block here until the action is guaranteed to have
-     * been executed. Note that each {@code barrier} is specific to a specific {@code action} and
-     * cannot be used for any other action.
+     * Executes {@code action}. {@link #BARRIER} is used to ensure the action is executed exactly
+     * once in the process (i.e. synchronized across all threads and isolates) and that threads will
+     * block here until the action is guaranteed to have been executed.
      */
-    private static boolean execute(Runnable action, Pointer barrier) {
-        if (barrier.isNull()) {
-            action.run();
-            return true;
-        }
+    private static boolean execute(Runnable action) {
         final long initial = 0L;
         final long executing = 1L;
         final long executed = 2L;
 
         while (true) {
-            long value = barrier.readLong(0);
+            long value = BARRIER.get();
             if (value == initial) {
-                if (barrier.compareAndSwapLong(0, value, executing, ANY_LOCATION) == value) {
+                if (BARRIER.compareAndSet(value, executing)) {
                     action.run();
-                    barrier.writeLong(0, executed);
+                    BARRIER.set(executed);
                     return true;
                 }
             } else {
@@ -116,7 +105,6 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                     Thread.sleep(5);
                 } catch (InterruptedException e) {
                 }
-                value = barrier.readLong(0);
             }
         }
     }
@@ -192,7 +180,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                                                 if (file.exists()) {
                                                     file.delete();
                                                 }
-                                            }, getBarrierPointer());
+                                            });
                                             final boolean enableAutoflush = true;
                                             FileOutputStream result = new FileOutputStream(name, true);
                                             if (executed) {
@@ -209,7 +197,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                                     ps.printf("[Use -D%sLogFile=<path> to redirect Graal log output to a file.]%n", GRAAL_OPTION_PROPERTY_PREFIX);
                                     ps.flush();
 
-                                }, getBarrierPointer());
+                                });
                             } catch (Throwable t) {
                                 /*
                                  * Since this will typically happen on a compiler thread, the

@@ -81,10 +81,10 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     }
 
     @Override
-    public void setAddress(long address, ResolvedJavaMethod method) {
+    public void setAddress(long address, long entryPoint, ResolvedJavaMethod method) {
         assert VMOperation.isInProgressAtSafepoint();
         this.address = address;
-        this.entryPoint = address;
+        this.entryPoint = entryPoint;
     }
 
     @Override

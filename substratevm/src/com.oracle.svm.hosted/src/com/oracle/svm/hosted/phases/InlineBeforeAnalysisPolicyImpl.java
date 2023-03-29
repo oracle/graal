@@ -61,6 +61,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -231,6 +232,14 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
 
         if (node instanceof ConstantNode || node instanceof LogicConstantNode) {
             /* An unlimited number of constants is allowed. We like constants. */
+            return true;
+        }
+
+        if (node instanceof ReachabilityRegistrationNode) {
+            /*
+             * These nodes do not affect compilation and are only used to execute handlers depending
+             * on their reachability.
+             */
             return true;
         }
 

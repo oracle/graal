@@ -113,6 +113,7 @@ import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
@@ -546,8 +547,10 @@ public class MethodTypeFlowBuilder {
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
                         assert type.isInstantiated();
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
-                            JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(node.asJavaConstant());
-                            ConstantTypeFlow constantSource = new ConstantTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type, TypeState.forConstant(this.bb, heapConstant, type));
+                            JavaConstant constantValue = node.asJavaConstant();
+                            BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
+                            JavaConstant heapConstant = bb.getUniverse().getHeapScanner().toImageHeapObject(constantValue, new EmbeddedRootScan(position, constantValue));
+                            ConstantTypeFlow constantSource = new ConstantTypeFlow(position, type, TypeState.forConstant(this.bb, heapConstant, type));
                             flowsGraph.addMiscEntryFlow(constantSource);
                             return constantSource;
                         });

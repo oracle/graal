@@ -2,7 +2,7 @@
 suite = {
     "mxversion": "6.17.0",
     "name": "substratevm",
-    "version" : "23.0.0",
+    "version" : "23.1.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -30,9 +30,6 @@ suite = {
             {
                 "name": "compiler",
                 "subdir": True,
-                "urls" : [
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-                ]
             },
         ]
     },
@@ -621,6 +618,7 @@ suite = {
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "jdk.internal",
                     "jdk.internal.event",
                     "jdk.internal.misc",
                     "jdk.internal.vm.annotation",

@@ -24,14 +24,10 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HOTSPOT_OOP_HANDLE_LOCATION;
-
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.gc.ZBarrierSet;
 import org.graalvm.word.LocationIdentity;
@@ -49,8 +45,7 @@ public class HotSpotZBarrierSet extends ZBarrierSet {
 
     @Override
     protected BarrierType barrierForLocation(BarrierType currentBarrier, LocationIdentity location, JavaKind storageKind) {
-        if (location.equals(HOTSPOT_OOP_HANDLE_LOCATION) || location.equals(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION) || location.equals(HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION) ||
-                        location.equals(HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION)) {
+        if (location instanceof HotSpotReplacementsUtil.OopHandleLocationIdentity) {
             return BarrierType.READ;
         }
         return super.barrierForLocation(currentBarrier, location, storageKind);
@@ -58,8 +53,7 @@ public class HotSpotZBarrierSet extends ZBarrierSet {
 
     @Override
     public BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp) {
-        if (location.equals(HOTSPOT_OOP_HANDLE_LOCATION) || location.equals(HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION) || location.equals(HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION) ||
-                        location.equals(HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION)) {
+        if (location instanceof HotSpotReplacementsUtil.OopHandleLocationIdentity) {
             assert loadStamp instanceof AbstractObjectStamp : loadStamp;
             return BarrierType.READ;
         }

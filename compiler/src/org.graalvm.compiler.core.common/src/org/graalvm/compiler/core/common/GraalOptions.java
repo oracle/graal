@@ -208,9 +208,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Expert)
     public static final OptionKey<Boolean> AlwaysInlineVTableStubs = new OptionKey<>(false);
 
-    @Option(help = "", type = OptionType.Debug)
-    public static final OptionKey<Boolean> CanOmitFrame = new OptionKey<>(true);
-
     // Runtime settings
     @Option(help = "", type = OptionType.Expert)
     public static final OptionKey<Boolean> SupportJsrBytecodes = new OptionKey<>(true);
