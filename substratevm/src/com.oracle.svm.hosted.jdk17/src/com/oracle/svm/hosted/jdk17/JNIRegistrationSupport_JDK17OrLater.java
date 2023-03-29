@@ -51,6 +51,6 @@ final class JNIRegistrationSupport_JDK17OrLater implements InternalFeature {
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        JNIRegistrationSupport.singleton().registerLoadLibraryPlugin(plugins, BootLoader.class);
+        JNIRegistrationSupport.singleton().registerLoadLibraryPlugin(providers, plugins, BootLoader.class);
     }
 }

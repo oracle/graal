@@ -133,10 +133,10 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     @Override
-    public void setAddress(long address, ResolvedJavaMethod method) {
+    public void setAddress(long address, long entryPoint, ResolvedJavaMethod method) {
         assert VMOperation.isInProgressAtSafepoint();
-        this.entryPoint = address;
         this.address = address;
+        this.entryPoint = entryPoint;
         callTarget.onCodeInstalled(this);
     }
 

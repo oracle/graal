@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -96,5 +97,10 @@ public class CoreProvidersDelegate implements CoreProviders {
     @Override
     public WordVerification getWordVerification() {
         return providers.getWordVerification();
+    }
+
+    @Override
+    public SnippetReflectionProvider getSnippetReflection() {
+        return providers.getSnippetReflection();
     }
 }

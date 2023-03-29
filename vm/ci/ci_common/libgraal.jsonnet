@@ -10,6 +10,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local underscore(s) = std.strReplace(s, "-", "_"),
   local os(os_arch) = std.split(os_arch, "-")[0],
   local arch(os_arch) = std.split(os_arch, "-")[1],
+  local t(limit) = {timelimit: limit},
 
   libgraal_build(build_args):: {
     local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else 'build-libgraal-pgo',
@@ -70,7 +71,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "gate-vm-libgraal_truffle-labsjdk-20-linux-amd64": {},
     "gate-vm-libgraal_compiler_zgc-labsjdk-20-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-20-linux-amd64": {},
+    "gate-vm-libgraal_truffle_quickbuild-labsjdk-20-linux-amd64": t("1:10:00"),
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
