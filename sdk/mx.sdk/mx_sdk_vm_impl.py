@@ -3382,7 +3382,11 @@ def _infer_env(graalvm_dist):
     elif isinstance(disableInstallables, bool):
         disableInstallables = [str(disableInstallables)]
 
-    return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), _no_licenses()
+    non_rebuildable_images = _non_rebuildable_images()
+    if isinstance(non_rebuildable_images, bool):
+        non_rebuildable_images = [str(non_rebuildable_images)]
+
+    return sorted(list(dynamicImports)), sorted(components), sorted(excludeComponents), sorted(nativeImages), sorted(disableInstallables), sorted(non_rebuildable_images), _debuginfo_dists(), _no_licenses()
 
 def graalvm_env(out_env=None):
     """
@@ -3393,7 +3397,7 @@ def graalvm_env(out_env=None):
     """
     env = out_env or os.environ.copy()
     graalvm_dist = get_final_graalvm_distribution()
-    dynamicImports, components, exclude_components, nativeImages, disableInstallables, noLicenses = _infer_env(graalvm_dist)
+    dynamicImports, components, exclude_components, nativeImages, disableInstallables, non_rebuildable_images, debuginfo_dists, noLicenses = _infer_env(graalvm_dist)
 
     env['GRAALVM_HOME'] = graalvm_home()
 
@@ -3402,6 +3406,9 @@ def graalvm_env(out_env=None):
     env['NATIVE_IMAGES'] = ','.join(nativeImages)
     env['EXCLUDE_COMPONENTS'] = ','.join(exclude_components)
     env['DISABLE_INSTALLABLES'] = ','.join(disableInstallables)
+    env['NON_REBUILDABLE_IMAGES'] = ','.join(non_rebuildable_images)
+    if debuginfo_dists:
+        env['DEBUGINFO_DISTS'] = 'true'
     if noLicenses:
         env['NO_LICENSES'] = 'true'
     return graalvm_dist, env
@@ -3560,12 +3567,15 @@ def graalvm_show(args, forced_graalvm_dist=None):
                 if val:
                     print(name + '=' + ','.join(val))
             print('Inferred env file:')
-            dynamic_imports, components, exclude_components, native_images, disable_installables, no_licenses = _infer_env(graalvm_dist)
+            dynamic_imports, components, exclude_components, native_images, disable_installables, non_rebuildable_images, debuginfo_dists, no_licenses = _infer_env(graalvm_dist)
             _print_env('DYNAMIC_IMPORTS', dynamic_imports)
             _print_env('COMPONENTS', components)
             _print_env('EXCLUDE_COMPONENTS', exclude_components)
             _print_env('NATIVE_IMAGES', native_images)
             _print_env('DISABLE_INSTALLABLES', disable_installables)
+            _print_env('NON_REBUILDABLE_IMAGES', non_rebuildable_images)
+            if debuginfo_dists:
+                print('DEBUGINFO_DISTS=true')
             if no_licenses:
                 print('NO_LICENSES=true')
 
@@ -3992,6 +4002,10 @@ def _generate_debuginfo(image_config):
         return name in generate_debuginfo
 
 
+def _non_rebuildable_images():
+    return _parse_cmd_arg('non_rebuildable_images', default_value=str(False))
+
+
 def _rebuildable_image(image_config):
     """
     :type image_config: mx_sdk.AbstractNativeImageConfig
@@ -4004,7 +4018,7 @@ def _rebuildable_image(image_config):
     else:
         raise mx.abort('Unknown image config type: {}'.format(type(image_config)))
 
-    non_rebuildable = _parse_cmd_arg('non_rebuildable_images', default_value=str(False))
+    non_rebuildable = _non_rebuildable_images()
     non_rebuildable = _expand_native_images_list(non_rebuildable)
     if isinstance(non_rebuildable, bool):
         return not non_rebuildable
