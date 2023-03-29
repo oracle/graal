@@ -313,30 +313,36 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
     private ModuleTable.ModuleEntry getDynamicModule(StaticObject loader) {
         ClassRegistry classRegistry = context.getRegistries().getClassRegistry(proxyClassLoader);
-        return context.getDynamicModuleForProxyGeneration(classRegistry.getProxyDynamicModuleHolder(), (r) -> {
-            // call VM helper to get the ModuleDescriptor
-            String moduleName = "foreign.proxy";
-            String pkgName = PROXY_PACKAGE_PREFIX + "." + moduleName;
+        ClassRegistry.DynamicModuleWrapper proxyDynamicModuleWrapper = classRegistry.getProxyDynamicModuleWrapper();
+        synchronized (proxyDynamicModuleWrapper) {
+            ModuleTable.ModuleEntry result = proxyDynamicModuleWrapper.getDynamicProxyModule();
+            if (result == null) {
+                // call VM helper to get the ModuleDescriptor
+                String moduleName = "foreign.proxy";
+                String pkgName = PROXY_PACKAGE_PREFIX + "." + moduleName;
 
-            StaticObject moduleDescriptor = (StaticObject) meta.polyglot.VMHelper_getDynamicModuleDescriptor.invokeDirect(null, meta.toGuestString(moduleName), meta.toGuestString(pkgName));
-            // define the module in guest
-            StaticObject module = (StaticObject) meta.jdk_internal_module_Modules_defineModule.invokeDirect(null, loader, moduleDescriptor, StaticObject.NULL);
-            ModuleTable.ModuleEntry moduleEntry = ModulesHelperVM.extractToModuleEntry(module, meta, null);
-            moduleEntry.setCanReadAllUnnamed();
+                StaticObject moduleDescriptor = (StaticObject) meta.polyglot.VMHelper_getDynamicModuleDescriptor.invokeDirect(null, meta.toGuestString(moduleName), meta.toGuestString(pkgName));
+                // define the module in guest
+                StaticObject module = (StaticObject) meta.jdk_internal_module_Modules_defineModule.invokeDirect(null, loader, moduleDescriptor, StaticObject.NULL);
+                ModuleTable.ModuleEntry moduleEntry = ModulesHelperVM.extractToModuleEntry(module, meta, null);
+                moduleEntry.setCanReadAllUnnamed();
 
-            ModuleTable.ModuleEntry javaBaseModule = context.getRegistries().getJavaBaseModule();
-            moduleEntry.addReads(javaBaseModule);
+                ModuleTable.ModuleEntry javaBaseModule = context.getRegistries().getJavaBaseModule();
+                moduleEntry.addReads(javaBaseModule);
 
-            // needed for using Interop API in the proxies
-            ModuleTable.ModuleEntry polyglotAPIModule = context.getRegistries().getPolyglotAPIModule();
-            moduleEntry.addReads(polyglotAPIModule);
+                // needed for using Interop API in the proxies
+                ModuleTable.ModuleEntry polyglotAPIModule = context.getRegistries().getPolyglotAPIModule();
+                moduleEntry.addReads(polyglotAPIModule);
 
-            String pn = PROXY_PACKAGE_PREFIX + "." + moduleEntry.getNameAsString();
+                String pn = PROXY_PACKAGE_PREFIX + "." + moduleEntry.getNameAsString();
 
-            PackageTable.PackageEntry pkgEntry = ModulesHelperVM.extractPackageEntry(pn.replace('.', '/'), moduleEntry, meta, null);
-            pkgEntry.addExports(javaBaseModule);
-            return moduleEntry;
-        });
+                PackageTable.PackageEntry pkgEntry = ModulesHelperVM.extractPackageEntry(pn.replace('.', '/'), moduleEntry, meta, null);
+                pkgEntry.addExports(javaBaseModule);
+                proxyDynamicModuleWrapper.setDynamicProxyModule(moduleEntry);
+                result = moduleEntry;
+            }
+            return result;
+        }
     }
 
     /*

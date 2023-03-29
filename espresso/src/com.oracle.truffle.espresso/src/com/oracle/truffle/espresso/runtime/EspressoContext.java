@@ -40,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -85,7 +84,6 @@ import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
@@ -188,8 +186,6 @@ public final class EspressoContext {
 
     @CompilationFinal private EspressoBindings topBindings;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
-
-    private Map<Object, ModuleTable.ModuleEntry> dynamicModuleForGeneratedProxies = new ConcurrentHashMap<>();
 
     public TruffleLogger getLogger() {
         return logger;
@@ -1123,9 +1119,5 @@ public final class EspressoContext {
 
     public long nextThreadId() {
         return espressoEnv.getThreadRegistry().nextThreadId();
-    }
-
-    public ModuleTable.ModuleEntry getDynamicModuleForProxyGeneration(Object key, Function<Object, ModuleTable.ModuleEntry> function) {
-        return dynamicModuleForGeneratedProxies.computeIfAbsent(key, function);
     }
 }
