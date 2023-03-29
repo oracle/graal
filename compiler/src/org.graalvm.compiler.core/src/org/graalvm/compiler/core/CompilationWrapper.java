@@ -31,6 +31,8 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMCompilationFa
 import static org.graalvm.compiler.core.GraalCompilerOptions.MaxCompilationProblemsPerAction;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
+import static org.graalvm.compiler.debug.DebugOptions.Time;
+import static org.graalvm.compiler.debug.DebugOptions.Count;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import static org.graalvm.compiler.debug.DebugOptions.MethodFilter;
 import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
@@ -336,6 +338,8 @@ public abstract class CompilationWrapper<T> {
             OptionValues retryOptions = new OptionValues(initialOptions,
                             Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
                             MethodFilter, null,
+                            Count, "",
+                            Time, "",
                             DumpPath, dumpPath,
                             PrintBackendCFG, true,
                             TrackNodeSourcePosition, true);
@@ -343,26 +347,38 @@ public abstract class CompilationWrapper<T> {
             ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
             PrintStream ps = new PrintStream(logBaos);
             try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
-                T res = performCompilation(retryDebug);
+                T res;
+                try {
+                    res = performCompilation(retryDebug);
+                } finally {
+                    ps.println("<Metrics>");
+                    retryDebug.printMetrics(initialDebug.getDescription(), ps, true);
+                    ps.println("</Metrics>");
+                }
                 ps.println("There was no exception during retry.");
-                return postRetry(action, retryLogFile, logBaos, ps, res);
+                finalizeRetryLog(retryLogFile, logBaos, ps);
+                return postRetry(action, res);
             } catch (Throwable e) {
                 ps.println("Exception during retry:");
                 e.printStackTrace(ps);
-                return postRetry(action, retryLogFile, logBaos, ps, handleException(cause));
+                finalizeRetryLog(retryLogFile, logBaos, ps);
+                return postRetry(action, handleException(cause));
             }
         }
     }
 
-    private T postRetry(ExceptionAction action, String retryLogFile, ByteArrayOutputStream logBaos, PrintStream ps, T res) {
+    private T postRetry(ExceptionAction action, T res) {
+        maybeExitVM(action);
+        return res;
+    }
+
+    private static void finalizeRetryLog(String retryLogFile, ByteArrayOutputStream logBaos, PrintStream ps) {
         ps.close();
         try (OutputStream fos = PathUtilities.openOutputStream(retryLogFile, true)) {
             fos.write(logBaos.toByteArray());
         } catch (Throwable e) {
             TTY.printf("Error writing to %s: %s%n", retryLogFile, e);
         }
-        maybeExitVM(action);
-        return res;
     }
 
     /**
