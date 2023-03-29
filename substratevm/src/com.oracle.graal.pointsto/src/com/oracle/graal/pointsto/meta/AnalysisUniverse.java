@@ -692,7 +692,6 @@ public class AnalysisUniverse implements Universe {
     }
 
     public void onTypeInstantiated(AnalysisType type, UsageKind usage) {
-        hostVM.onTypeInstantiated(type);
         bb.onTypeInstantiated(type, usage);
     }
 
