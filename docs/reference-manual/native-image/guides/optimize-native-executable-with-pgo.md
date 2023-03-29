@@ -12,7 +12,7 @@ You can optimize this native executable even more for additional performance gai
 
 With PGO you can collect the profiling data in advance and then feed it to the `native-image` tool, which will use this information to optimize the performance of the resulting binary.
 
-> Note: PGO is available with Oracle GraalVM only.
+> Note: PGO is not available in GraalVM Community Edition.
 
 This guide shows how to apply PGO and transform your Java application into an optimized native executable.
 

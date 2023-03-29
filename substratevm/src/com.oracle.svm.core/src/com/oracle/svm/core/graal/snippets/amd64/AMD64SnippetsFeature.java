@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.AMD64.class)
-class AMD64SnippetsFeature implements InternalFeature {
+public class AMD64SnippetsFeature implements InternalFeature {
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,

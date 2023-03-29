@@ -44,11 +44,9 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -56,7 +54,6 @@ import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
@@ -165,9 +162,8 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         if (getOriginal().isSynchronized()) {
             ValueNode monitorObject;
             if (method.isStatic()) {
-                Constant hubConstant = providers.getConstantReflection().asObjectHub(method.getDeclaringClass());
-                DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(hubConstant);
-                monitorObject = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
+                JavaConstant hubConstant = (JavaConstant) providers.getConstantReflection().asObjectHub(method.getDeclaringClass());
+                monitorObject = ConstantNode.forConstant(hubConstant, providers.getMetaAccess(), graph);
             } else {
                 monitorObject = kit.maybeCreateExplicitNullCheck(javaArguments.get(0));
             }

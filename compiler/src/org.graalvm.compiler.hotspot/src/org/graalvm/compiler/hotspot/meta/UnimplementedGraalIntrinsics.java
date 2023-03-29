@@ -510,6 +510,6 @@ public final class UnimplementedGraalIntrinsics {
      * Test if the given intrinsic candidate is documented in this file.
      */
     public boolean isDocumented(String method) {
-        return isIgnored(method) || isImplementedInEnterprise(method) || isMissing(method) || isIgnored(method);
+        return isIgnored(method) || isImplementedInEnterprise(method) || isMissing(method);
     }
 }

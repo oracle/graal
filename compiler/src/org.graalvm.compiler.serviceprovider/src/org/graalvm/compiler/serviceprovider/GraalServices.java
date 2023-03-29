@@ -40,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
-import java.util.concurrent.atomic.AtomicLong;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.VirtualObject;
@@ -324,15 +323,15 @@ public final class GraalServices {
         return Long.toString(ProcessHandle.current().pid());
     }
 
-    private static final AtomicLong globalTimeStamp = new AtomicLong();
+    private static final GlobalAtomicLong globalTimeStamp = new GlobalAtomicLong(0L);
 
     /**
      * Gets a time stamp for the current process. This method will always return the same value for
      * the current VM execution.
      */
     public static long getGlobalTimeStamp() {
-        if (globalTimeStamp.get() == 0) {
-            globalTimeStamp.compareAndSet(0, System.currentTimeMillis());
+        if (globalTimeStamp.get() == 0L) {
+            globalTimeStamp.compareAndSet(0L, System.currentTimeMillis());
         }
         return globalTimeStamp.get();
     }

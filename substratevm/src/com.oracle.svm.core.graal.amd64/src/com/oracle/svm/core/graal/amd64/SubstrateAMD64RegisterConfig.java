@@ -335,4 +335,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
         return new RegisterArray(list);
     }
+
+    public RegisterArray getJavaGeneralParameterRegs() {
+        return javaGeneralParameterRegs;
+    }
 }

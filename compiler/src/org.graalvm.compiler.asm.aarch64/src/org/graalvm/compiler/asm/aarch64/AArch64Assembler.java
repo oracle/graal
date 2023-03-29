@@ -3864,7 +3864,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param uimm16 Arbitrary 16-bit unsigned payload.
      */
-    protected void brk(int uimm16) {
+    public void brk(int uimm16) {
         exceptionInstruction(BRK, uimm16);
     }
 

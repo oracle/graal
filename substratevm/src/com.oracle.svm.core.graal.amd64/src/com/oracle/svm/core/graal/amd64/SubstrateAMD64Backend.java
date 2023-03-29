@@ -39,6 +39,8 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -268,15 +270,18 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         private final boolean destroysCallerSavedRegisters;
         @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
+        private final BiConsumer<CompilationResultBuilder, Integer> offsetRecorder;
 
         public SubstrateAMD64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
-                        LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
+                        LIRFrameState state, Value javaFrameAnchor, Value javaFrameAnchorTemp, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
+                        BiConsumer<CompilationResultBuilder, Integer> offsetRecorder) {
             super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
             this.newThreadStatus = newThreadStatus;
             this.javaFrameAnchor = javaFrameAnchor;
             this.javaFrameAnchorTemp = javaFrameAnchorTemp;
             this.destroysCallerSavedRegisters = destroysCallerSavedRegisters;
             this.exceptionTemp = exceptionTemp;
+            this.offsetRecorder = offsetRecorder;
 
             assert differentRegisters(parameters, temps, targetAddress, javaFrameAnchor, javaFrameAnchorTemp);
         }
@@ -284,7 +289,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
             maybeTransitionToNative(crb, masm, javaFrameAnchor, javaFrameAnchorTemp, state, newThreadStatus);
-            AMD64Call.indirectCall(crb, masm, asRegister(targetAddress), callTarget, state);
+            int offset = AMD64Call.indirectCall(crb, masm, asRegister(targetAddress), callTarget, state);
+            if (offsetRecorder != null) {
+                offsetRecorder.accept(crb, offset);
+            }
         }
 
         @Override
@@ -635,7 +643,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
-                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL, null));
             } else {
                 assert targetAddress == null;
                 append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL,
@@ -662,97 +670,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public void emitInstructionSynchronizationBarrier() {
             throw shouldNotReachHere("AMD64 does not need instruction synchronization");
         }
-
-        // private static LIRKind toStackKind(LIRKind kind) {
-        // if (kind.getPlatformKind() instanceof Kind) {
-        // Kind stackKind = ((Kind) kind.getPlatformKind()).getStackKind();
-        // return kind.changeType(stackKind);
-        // } else {
-        // return kind;
-        // }
-        // }
-        //
-        // @Override
-        // public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
-        // AMD64AddressValue loadAddress = asAddressValue(address);
-        // Variable result = newVariable(toStackKind(kind));
-        // append(new LoadOp((Kind) kind.getPlatformKind(), result, loadAddress, state));
-        // return result;
-        // }
-        //
-        // @Override
-        // public void emitStore(LIRKind kind, Value address, Value inputVal, LIRFrameState state) {
-        // AMD64AddressValue storeAddress = asAddressValue(address);
-        // if (isConstant(inputVal)) {
-        // JavaConstant c = asConstant(inputVal);
-        // if (canStoreConstant(c)) {
-        // append(new StoreConstantOp((Kind) kind.getPlatformKind(), storeAddress, c, state));
-        // return;
-        // }
-        // }
-        // Variable input = load(inputVal);
-        // append(new StoreOp((Kind) kind.getPlatformKind(), storeAddress, input, state));
-        //
-        // }
-        //
-        // @Override
-        // public Value emitCompareAndSwap(Value address, Value expectedValue, Value newValue, Value
-        // trueValue, Value falseValue) {
-        // LIRKind kind = newValue.getLIRKind();
-        // assert kind.equals(expectedValue.getLIRKind());
-        // Kind memKind = (Kind) kind.getPlatformKind();
-        //
-        // AMD64AddressValue addressValue = asAddressValue(address);
-        // RegisterValue raxRes = AMD64.rax.asValue(kind);
-        // emitMove(raxRes, expectedValue);
-        // append(new CompareAndSwapOp(memKind, raxRes, addressValue, raxRes,
-        // asAllocatable(newValue)));
-        //
-        // assert trueValue.getLIRKind().equals(falseValue.getLIRKind());
-        // Variable result = newVariable(trueValue.getLIRKind());
-        // append(new CondMoveOp(result, Condition.EQ, asAllocatable(trueValue), falseValue));
-        // return result;
-        // }
-        //
-        // @Override
-        // public Value emitAtomicReadAndAdd(Value address, Value delta) {
-        // LIRKind kind = delta.getLIRKind();
-        // Kind memKind = (Kind) kind.getPlatformKind();
-        // Variable result = newVariable(kind);
-        // AMD64AddressValue addressValue = asAddressValue(address);
-        // append(new AMD64Move.AtomicReadAndAddOp(memKind, result, addressValue,
-        // asAllocatable(delta)));
-        // return result;
-        // }
-        //
-        // @Override
-        // public Value emitAtomicReadAndWrite(Value address, Value newValue) {
-        // LIRKind kind = newValue.getLIRKind();
-        // Kind memKind = (Kind) kind.getPlatformKind();
-        // Variable result = newVariable(kind);
-        // AMD64AddressValue addressValue = asAddressValue(address);
-        // append(new AMD64Move.AtomicReadAndWriteOp(memKind, result, addressValue,
-        // asAllocatable(newValue)));
-        // return result;
-        // }
-        //
-        // @Override
-        // public void emitNullCheck(Value address, LIRFrameState state) {
-        // if (address.getValueKind().getPlatformKind() == AMD64Kind.DWORD) {
-        // CompressEncoding encoding = compressEncoding;
-        // Value uncompressed;
-        // if (encoding.getShift() <= 3) {
-        // LIRKind wordKind = LIRKind.unknownReference(target().arch.getWordKind());
-        // uncompressed = new AMD64AddressValue(wordKind, getHeapBaseRegister().asValue(wordKind),
-        // asAllocatable(address), AMD64Address.Scale.fromInt(1 << encoding.getShift()), 0);
-        // } else {
-        // uncompressed = emitUncompress(address, encoding, false);
-        // }
-        // append(new AMD64Move.NullCheckOp(asAddressValue(uncompressed), state));
-        // return;
-        // }
-        // super.emitNullCheck(address, state);
-        // }
 
         @Override
         public void emitFarReturn(AllocatableValue result, Value sp, Value ip, boolean fromMethodWithCalleeSavedRegisters) {
@@ -817,8 +734,14 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
     public final class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
+        private Function<IndirectCallTargetNode, BiConsumer<CompilationResultBuilder, Integer>> indirectCallOffsetRecorderFactory = node -> null;
+
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
+        }
+
+        public void setIndirectCallOffsetRecorderFactory(Function<IndirectCallTargetNode, BiConsumer<CompilationResultBuilder, Integer>> indirectCallOffsetRecorderFactory) {
+            this.indirectCallOffsetRecorderFactory = indirectCallOffsetRecorderFactory;
         }
 
         @Override
@@ -943,7 +866,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             vzeroupperBeforeCall((SubstrateAMD64LIRGenerator) getLIRGeneratorTool(), parameters, callState, (SharedMethod) targetMethod);
             append(new SubstrateAMD64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState,
                             setupJavaFrameAnchor(callTarget), setupJavaFrameAnchorTemp(callTarget), getNewThreadStatus(callTarget),
-                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
+                            getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), indirectCallOffsetRecorderFactory.apply(callTarget)));
         }
 
         protected void emitComputedIndirectCall(ComputedIndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
@@ -1102,10 +1025,6 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             crb.recordMark(SubstrateMarkId.EPILOGUE_END);
         }
 
-        @Override
-        public boolean hasFrame() {
-            return true;
-        }
     }
 
     /**

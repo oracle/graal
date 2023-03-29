@@ -1,4 +1,3 @@
-
 ---
 layout: ni-docs
 toc_group: metadata

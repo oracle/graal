@@ -154,7 +154,7 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
         ELFRelocationSection rs = (ELFRelocationSection) getOrCreateRelocationElement(addend);
         assert symbolName != null;
         ELFSymtab.Entry ent = syms.getSymbol(symbolName);
-        assert ent != null;
+        assert ent != null : "Symbol name not defined: " + symbolName;
         rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k), ent, addend);
     }
 }

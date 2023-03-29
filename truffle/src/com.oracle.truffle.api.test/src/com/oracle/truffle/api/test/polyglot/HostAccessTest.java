@@ -136,6 +136,21 @@ public class HostAccessTest extends AbstractHostAccessTest {
     }
 
     @Test
+    public void usefulToStringConstrained() {
+        assertEquals("HostAccess.CONSTRAINED", HostAccess.CONSTRAINED.toString());
+    }
+
+    @Test
+    public void usefulToStringIsolated() {
+        assertEquals("HostAccess.ISOLATED", HostAccess.ISOLATED.toString());
+    }
+
+    @Test
+    public void usefulToStringUntrusted() {
+        assertEquals("HostAccess.UNTRUSTED", HostAccess.UNTRUSTED.toString());
+    }
+
+    @Test
     public void constantsCanBeCopied() {
         verifyObjectImpl(HostAccess.NONE);
         verifyObjectImpl(HostAccess.EXPLICIT);

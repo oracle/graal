@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -3886,7 +3886,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
      * on. This enables that @Cached InlinedBranchProfile inlines by default even if a cached
      * version is generated and no warning is printed.
      */
-    private static boolean forceInlineByDefault(CacheExpression cache) {
+    private boolean forceInlineByDefault(CacheExpression cache) {
         AnnotationMirror cacheAnnotation = cache.getMessageAnnotation();
         TypeElement parameterType = ElementUtils.castTypeElement(cache.getParameter().getType());
         if (parameterType == null) {
@@ -3895,6 +3895,13 @@ public final class NodeParser extends AbstractParser<NodeData> {
         boolean defaultCached = getAnnotationValue(cacheAnnotation, "value", false) == null;
         if (defaultCached && !hasDefaultCreateCacheMethod(parameterType.asType())) {
             return hasInlineMethod(cache);
+        }
+        if (ElementUtils.isAssignable(parameterType.asType(), types.Node)) {
+            AnnotationMirror inlineAnnotation = getGenerateInlineAnnotation(parameterType);
+            if (inlineAnnotation != null) {
+                return getAnnotationValue(Boolean.class, inlineAnnotation, "value") &&
+                                getAnnotationValue(Boolean.class, inlineAnnotation, "inlineByDefault");
+            }
         }
         return false;
     }

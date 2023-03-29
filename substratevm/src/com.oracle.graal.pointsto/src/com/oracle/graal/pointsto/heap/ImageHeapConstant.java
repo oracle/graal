@@ -25,11 +25,15 @@
 package com.oracle.graal.pointsto.heap;
 
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.util.AtomicUtils;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -56,11 +60,24 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     protected final boolean compressed;
 
+    @SuppressWarnings("unused") private volatile Object isReachable;
+
+    private static final AtomicReferenceFieldUpdater<ImageHeapConstant, Object> isReachableUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(ImageHeapConstant.class, Object.class, "isReachable");
+
     ImageHeapConstant(ResolvedJavaType type, JavaConstant object, int identityHashCode, boolean compressed) {
         this.type = type;
         this.hostedObject = object;
         this.identityHashCode = identityHashCode;
         this.compressed = compressed;
+    }
+
+    public boolean markReachable(ObjectScanner.ScanReason reason) {
+        return AtomicUtils.atomicSet(this, reason, isReachableUpdater);
+    }
+
+    public boolean isReachable() {
+        return AtomicUtils.isSet(this, isReachableUpdater);
     }
 
     static int createIdentityHashCode(JavaConstant object) {

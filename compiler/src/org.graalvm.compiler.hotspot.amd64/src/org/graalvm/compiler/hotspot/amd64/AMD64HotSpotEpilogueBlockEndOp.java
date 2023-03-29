@@ -24,20 +24,26 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.rbp;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
+import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.amd64.AMD64BlockEndOp;
+import org.graalvm.compiler.lir.amd64.AMD64FrameMap;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
- * @see AMD64HotSpotEpilogueOp
+ * Superclass for operations that use the value of RBP saved in a method's prologue.
  */
 abstract class AMD64HotSpotEpilogueBlockEndOp extends AMD64BlockEndOp implements AMD64HotSpotRestoreRbpOp {
 
@@ -48,7 +54,19 @@ abstract class AMD64HotSpotEpilogueBlockEndOp extends AMD64BlockEndOp implements
     @Use({REG, STACK, ILLEGAL}) protected AllocatableValue savedRbp = Value.ILLEGAL;
 
     protected void leaveFrameAndRestoreRbp(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        AMD64HotSpotEpilogueOp.leaveFrameAndRestoreRbp(savedRbp, crb, masm);
+        if (Value.ILLEGAL.equals(savedRbp)) {
+            // RBP will be restored in FrameContext.leave(..). Nothing to do here.
+            assert ((AMD64FrameMap) crb.frameMap).preserveFramePointer() : "savedRbp is not initialized.";
+        } else if (isStackSlot(savedRbp)) {
+            // Restoring RBP from the stack must be done before the frame is removed
+            masm.movq(rbp, (AMD64Address) crb.asAddress(savedRbp));
+        } else {
+            Register framePointer = asRegister(savedRbp);
+            if (!framePointer.equals(rbp)) {
+                masm.movq(rbp, framePointer);
+            }
+        }
+        crb.frameContext.leave(crb);
     }
 
     @Override
