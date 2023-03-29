@@ -92,7 +92,7 @@ IGV is developed to view and inspect intermediate representation graphs – a la
     ```
     - Add `mx` to the `PATH` environment variable:
     ```shell
-    export PATH="/path/to/mx/:$PATH"
+    export PATH="/path/to/mx:$PATH"
     ```
     - To check whether the installation was successful, run the command:
     ```shell
