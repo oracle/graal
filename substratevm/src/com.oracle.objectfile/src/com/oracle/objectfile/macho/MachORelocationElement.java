@@ -189,7 +189,7 @@ enum X86_64Reloc implements MachORelocationType {
 enum ARM64Reloc implements MachORelocationType {
     UNSIGNED(0), // for pointers
     SUBTRACTOR(1), // must be followed by a ARM64_RELOC_UNSIGNED
-    BRANCH26(2), // a B/BL instruction with 26-bit displacement
+    BRANCH26(2, true), // a B/BL instruction with 26-bit displacement
     PAGE21(3, true), // pc-rel distance to page of target
     PAGEOFF12(4), // offset within page, scaled by r_length
     GOT_LOAD_PAGE21(5, true), // pc-rel distance to page of GOT slot
