@@ -646,6 +646,8 @@ public class SVMHost extends HostVM {
         for (Node n : graph.getNodes()) {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
+            } else if (n instanceof ReachabilityRegistrationNode node) {
+               bb.postTask(debug -> node.getRegistrationTask().ensureDone());
             }
             checkClassInitializerSideEffect(method, n);
         }

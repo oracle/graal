@@ -148,12 +148,12 @@ import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
@@ -178,6 +178,9 @@ public class SubstrateGraphBuilderPlugins {
     public static class Options {
         @Option(help = "Enable trace logging for dynamic proxy.")//
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
+
+        @Option(help = "Check reachability before automatically registering proxies observed in the code.")//
+        public static final HostedOptionKey<Boolean> StrictProxyAutoRegistration = new HostedOptionKey<>(false);
     }
 
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -190,7 +193,7 @@ public class SubstrateGraphBuilderPlugins {
                     boolean supportsStubBasedPlugins) {
 
         // register the substratevm plugins
-        registerSystemPlugins(metaAccess, plugins);
+        registerSystemPlugins(metaAccess, snippetReflection, plugins);
         registerReflectionPlugins(plugins, replacements);
         registerImageInfoPlugins(metaAccess, plugins);
         registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, parsingReason);
@@ -218,10 +221,16 @@ public class SubstrateGraphBuilderPlugins {
             Registration serializationFilter = new Registration(plugins, ObjectInputFilter.Config.class);
             serializationFilter.register(new RequiredInvocationPlugin("createFilter", String.class) {
                 @Override
+                public boolean isDecorator() {
+                    return true;
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
                     if (nonNullJavaConstants(patternNode)) {
                         String pattern = snippetReflection.asObject(String.class, patternNode.asJavaConstant());
-                        parsePatternAndRegister(pattern);
+                        b.add(new ReachabilityRegistrationNode(() -> parsePatternAndRegister(pattern)));
+                        return true;
                     }
                     return false;
                 }
@@ -230,9 +239,15 @@ public class SubstrateGraphBuilderPlugins {
             Registration customConstructor = new Registration(plugins, ReflectionFactory.class);
             customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class) {
                 @Override
+                public boolean isDecorator() {
+                    return true;
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
                     if (nonNullJavaConstants(receiver.get(), clazz)) {
-                        RuntimeSerialization.register(snippetReflection.asObject(Class.class, clazz.asJavaConstant()));
+                        b.add(new ReachabilityRegistrationNode(() -> RuntimeSerialization.register(snippetReflection.asObject(Class.class, clazz.asJavaConstant()))));
+                        return true;
                     }
                     return false;
                 }
@@ -240,11 +255,17 @@ public class SubstrateGraphBuilderPlugins {
 
             customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class, Constructor.class) {
                 @Override
+                public boolean isDecorator() {
+                    return true;
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode constructor) {
                     if (nonNullJavaConstants(receiver.get(), clazz, constructor)) {
                         var constructorDeclaringClass = snippetReflection.asObject(Constructor.class, constructor.asJavaConstant()).getDeclaringClass();
-                        RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
-                                        constructorDeclaringClass);
+                        b.add(new ReachabilityRegistrationNode(() -> RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
+                                        constructorDeclaringClass)));
+                        return true;
                     }
                     return false;
                 }
@@ -331,14 +352,14 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerSystemPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, System.class);
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
             r.register(new RequiredInvocationPlugin("getSecurityManager") {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     /* System.getSecurityManager() always returns null. */
-                    b.addPush(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(null), metaAccess, b.getGraph()));
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(null), metaAccess, b.getGraph()));
                     return true;
                 }
             });
@@ -399,17 +420,25 @@ public class SubstrateGraphBuilderPlugins {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
             proxyRegistration.register(new RequiredInvocationPlugin("getProxyClass", ClassLoader.class, Class[].class) {
                 @Override
+                public boolean isDecorator() {
+                    return Options.StrictProxyAutoRegistration.getValue();
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode) {
-                    interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
-                    return false;
+                    return interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
                 }
             });
 
             proxyRegistration.register(new RequiredInvocationPlugin("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class) {
                 @Override
+                public boolean isDecorator() {
+                    return Options.StrictProxyAutoRegistration.getValue();
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode, ValueNode invocationHandlerNode) {
-                    interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
-                    return false;
+                    return interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
                 }
             });
         }
@@ -419,25 +448,38 @@ public class SubstrateGraphBuilderPlugins {
      * Try to intercept proxy interfaces passed in as literal constants, and register the interfaces
      * in the {@link DynamicProxyRegistry}.
      */
-    private static void interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
+    private static boolean interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
                     AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode interfacesNode) {
         Class<?>[] interfaces = extractClassArray(b, snippetReflection, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
-            /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-            RuntimeProxyCreation.register(interfaces);
-            if (ImageSingletons.contains(FallbackFeature.class)) {
-                ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(b.getMethod(), b.bci());
+            var caller = b.getGraph().method();
+            var method = b.getMethod();
+            var bci = b.bci();
+            Runnable registerProxy = () -> {
+                /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
+                RuntimeProxyCreation.register(interfaces);
+                if (ImageSingletons.contains(FallbackFeature.class)) {
+                    ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(method, bci);
+                }
+                if (Options.DynamicProxyTracing.getValue()) {
+                    System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
+                                    " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
+                }
+            };
+
+            if (Options.StrictProxyAutoRegistration.getValue()) {
+                b.add(new ReachabilityRegistrationNode(registerProxy));
+                return true;
             }
-            if (Options.DynamicProxyTracing.getValue()) {
-                System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
-                                " reached from " + b.getGraph().method().format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
-            }
-        } else {
-            if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
-                System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
-                                " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
-            }
+
+            registerProxy.run();
+            return false;
         }
+        if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
+            System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
+                            " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
+        }
+        return false;
     }
 
     /**

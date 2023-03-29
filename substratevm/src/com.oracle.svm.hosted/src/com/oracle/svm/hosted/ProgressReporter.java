@@ -78,7 +78,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
@@ -243,14 +242,11 @@ public class ProgressReporter {
 
     public void printInitializeEnd() {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
-        String version = ImageSingletons.lookup(VM.class).version;
-        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, version);
-        l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(version).a("'").println();
-        String javaVersion = System.getProperty("java.runtime.version");
-        recordJsonMetric(GeneralInfo.JAVA_VERSION, javaVersion);
-        if (javaVersion != null) {
-            l().a(" ").doclink("Java version info", "#glossary-java-version-info").a(": '").a(javaVersion).a("'").println();
-        }
+        VM vm = ImageSingletons.lookup(VM.class);
+        recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
+        recordJsonMetric(GeneralInfo.VENDOR, vm.vendor);
+        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion + " " + vm.version); // deprecated
+        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor", "#glossary-java-info").a(": ").a(vm.vendor).println();
         String optimizationLevel = SubstrateOptions.Optimize.getValue();
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
         String march = CPUType.getSelectedOrDefaultMArch();
@@ -513,7 +509,7 @@ public class ProgressReporter {
             heapBreakdown.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
             JavaConstant javaObject = o.getConstant();
             if (reportStringBytes && metaAccess.isInstanceOf(javaObject, String.class)) {
-                stringByteLength += Utils.getInternalByteArrayLength((String) SubstrateObjectConstant.asObject(javaObject));
+                stringByteLength += Utils.getInternalByteArrayLength(metaAccess.getUniverse().getSnippetReflection().asObject(String.class, javaObject));
             }
         }
 
@@ -692,7 +688,7 @@ public class ProgressReporter {
             l().link(NativeImageOptions.getErrorFilePath(parsedHostedOptions)).println();
             l().println();
             l().a("If you are unable to resolve this problem, please file an issue with the error report at:").println();
-            var supportURL = ImageSingletonsSupport.isInstalled() ? ImageSingletons.lookup(VM.class).supportURL : new VM().supportURL;
+            var supportURL = VM.getErrorReportingInstance().supportURL;
             l().link(supportURL, supportURL).println();
         }
     }

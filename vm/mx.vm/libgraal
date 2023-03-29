@@ -1,5 +1,4 @@
-DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/truffle
-COMPONENTS=cmp,dis,gu,gvm,lg,nfi-libffi,poly,polynative,sdk,tfl,tflm
-EXCLUDE_COMPONENTS=libpoly
+DYNAMIC_IMPORTS=/substratevm
+COMPONENTS=lg
 NATIVE_IMAGES=lib:jvmcicompiler
-DISABLE_INSTALLABLES=False
+DISABLE_INSTALLABLES=true

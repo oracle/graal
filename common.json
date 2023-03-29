@@ -4,19 +4,19 @@
     "Jsonnet files should not include this file directly but use ci/common.jsonnet instead."
   ],
 
-  "mx_version": "6.17.0",
+  "mx_version": "6.18.0",
 
   "COMMENT.jdks": "When adding or removing JDKs keep in sync with JDKs in ci/common.jsonnet",
   "jdks": {
     "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
 
     "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.1",  "build_id": "12", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b09", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b09-debug", "platformspecific": true },
-    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b09-sulong", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.7+8-jvmci-23.0-b09", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.7+8-jvmci-23.0-b09-debug", "platformspecific": true },
-    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.7+8-jvmci-23.0-b09-sulong", "platformspecific": true },
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b10", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b10-debug", "platformspecific": true },
+    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b10-sulong", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.7+8-jvmci-23.0-b10", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.7+8-jvmci-23.0-b10-debug", "platformspecific": true },
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.7+8-jvmci-23.0-b10-sulong", "platformspecific": true },
 
     "oraclejdk19":        {"name": "jpg-jdk",   "version": "19",      "build_id": "26", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
     "labsjdk-ce-19":      {"name": "labsjdk",   "version": "ce-19.0.1+10-jvmci-23.0-b04", "platformspecific": true },
@@ -27,12 +27,12 @@
     "labsjdk-ee-19-llvm": {"name": "labsjdk",   "version": "ee-19.0.2+7-jvmci-23.0-b05-sulong", "platformspecific": true },
 
     "oraclejdk20":        {"name": "jpg-jdk",   "version": "20",      "build_id": "24", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+34-jvmci-23.0-b09", "platformspecific": true },
-    "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+34-jvmci-23.0-b09-debug", "platformspecific": true },
-    "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+34-jvmci-23.0-b09-sulong", "platformspecific": true },
-    "labsjdk-ee-20":      {"name": "labsjdk",   "version": "ee-20.0.1+8-jvmci-23.0-b09", "platformspecific": true },
-    "labsjdk-ee-20Debug": {"name": "labsjdk",   "version": "ee-20.0.1+8-jvmci-23.0-b09-debug", "platformspecific": true },
-    "labsjdk-ee-20-llvm": {"name": "labsjdk",   "version": "ee-20.0.1+8-jvmci-23.0-b09-sulong", "platformspecific": true }
+    "labsjdk-ce-20":      {"name": "labsjdk",   "version": "ce-20+34-jvmci-23.0-b10", "platformspecific": true },
+    "labsjdk-ce-20Debug": {"name": "labsjdk",   "version": "ce-20+34-jvmci-23.0-b10-debug", "platformspecific": true },
+    "labsjdk-ce-20-llvm": {"name": "labsjdk",   "version": "ce-20+34-jvmci-23.0-b10-sulong", "platformspecific": true },
+    "labsjdk-ee-20":      {"name": "labsjdk",   "version": "ee-20.0.1+9-jvmci-23.0-b10", "platformspecific": true },
+    "labsjdk-ee-20Debug": {"name": "labsjdk",   "version": "ee-20.0.1+9-jvmci-23.0-b10-debug", "platformspecific": true },
+    "labsjdk-ee-20-llvm": {"name": "labsjdk",   "version": "ee-20.0.1+9-jvmci-23.0-b10-sulong", "platformspecific": true }
   },
 
   "eclipse": {

@@ -44,7 +44,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
@@ -96,18 +95,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected Object unwrapObject(JavaConstant constant) {
-        /*
-         * Unwrap the original object from the constant. Unlike HostedSnippetReflectionProvider this
-         * will just return the wrapped object, without any transformation. This is important during
-         * scanning: when scanning a java.lang.Class it will be replaced by a DynamicHub which is
-         * then actually scanned. The HostedSnippetReflectionProvider returns the original Class for
-         * a DynamicHub, which would lead to a deadlock during scanning.
-         */
-        return SubstrateObjectConstant.asObject(Object.class, constant);
-    }
-
-    @Override
     public boolean isValueAvailable(AnalysisField field) {
         if (field.wrapped instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) field.wrapped;
@@ -146,13 +133,16 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     @Override
     protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         super.onObjectReachable(imageHeapConstant, reason, onAnalysisModified);
-
-        if (metaAccess.isInstanceOf(imageHeapConstant, Field.class)) {
-            reflectionSupport.registerHeapReflectionField((Field) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
-        } else if (metaAccess.isInstanceOf(imageHeapConstant, Executable.class)) {
-            reflectionSupport.registerHeapReflectionExecutable((Executable) SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
-        } else if (metaAccess.isInstanceOf(imageHeapConstant, DynamicHub.class)) {
-            reflectionSupport.registerHeapDynamicHub(SubstrateObjectConstant.asObject(imageHeapConstant.getHostedObject()), reason);
+        JavaConstant hostedObject = imageHeapConstant.getHostedObject();
+        if (hostedObject != null) {
+            Object object = snippetReflection.asObject(Object.class, hostedObject);
+            if (object instanceof Field field) {
+                reflectionSupport.registerHeapReflectionField(field, reason);
+            } else if (object instanceof Executable executable) {
+                reflectionSupport.registerHeapReflectionExecutable(executable, reason);
+            } else if (object instanceof DynamicHub hub) {
+                reflectionSupport.registerHeapDynamicHub(hub, reason);
+            }
         }
     }
 }

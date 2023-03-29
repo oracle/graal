@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,12 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 
 import jdk.vm.ci.code.InstalledCode;
 
@@ -120,6 +120,9 @@ interface CodeInfoImpl extends CodeInfo {
     @RawField
     void setCodeStart(CodePointer codeStart);
 
+    @RawField
+    UnsignedWord getCodeEntryPointOffset();
+
     /** The size of the instructions of this compiled code. */
     @RawField
     UnsignedWord getCodeSize();
@@ -148,6 +151,9 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawField
     void setCodeSize(UnsignedWord codeSize);
+
+    @RawField
+    void setCodeEntryPointOffset(UnsignedWord offset);
 
     @RawField
     void setDataOffset(UnsignedWord dataOffset);

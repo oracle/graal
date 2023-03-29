@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.ameta;
 
 import java.util.function.ObjIntConsumer;
 
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,6 +38,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
@@ -70,6 +72,25 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
         return EmptyMemoryAcessProvider.SINGLETON;
+    }
+
+    @Override
+    public JavaConstant boxPrimitive(JavaConstant source) {
+        if (!source.getJavaKind().isPrimitive()) {
+            return null;
+        }
+        return SubstrateObjectConstant.forObject(source.asBoxedPrimitive());
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        if (!source.getJavaKind().isObject()) {
+            return null;
+        }
+        if (source instanceof ImageHeapConstant heapConstant) {
+            return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(heapConstant.getHostedObject()));
+        }
+        return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
     }
 
     @Override
@@ -125,6 +146,21 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver) {
+        if (!field.isStatic()) {
+            if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
+                /*
+                 * During compiler optimizations, it is possible to see field loads with a constant
+                 * receiver of a wrong type. The code will later be removed as dead code, and in
+                 * most cases the field read would also be rejected as illegal by the HotSpot
+                 * constant reflection provider doing the actual field load. But there are several
+                 * other ways how a field can be accessed, e.g., our ReadableJavaField mechanism or
+                 * fields of classes that are initialized at image run time. To avoid any surprises,
+                 * we abort the field reading here early.
+                 */
+                return null;
+            }
+        }
+
         JavaConstant value;
         if (receiver instanceof ImageHeapConstant) {
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
@@ -243,11 +279,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     @Override
-    public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant instanceof SubstrateObjectConstant) {
-            Object obj = SubstrateObjectConstant.asObject(constant);
-            if (obj instanceof DynamicHub) {
-                return getHostVM().lookupType((DynamicHub) obj);
+    public AnalysisType asJavaType(Constant constant) {
+        if (constant instanceof SubstrateObjectConstant substrateConstant) {
+            Object obj = universe.getSnippetReflection().asObject(Object.class, substrateConstant);
+            if (obj instanceof DynamicHub hub) {
+                return getHostVM().lookupType(hub);
             } else if (obj instanceof Class) {
                 throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
             }

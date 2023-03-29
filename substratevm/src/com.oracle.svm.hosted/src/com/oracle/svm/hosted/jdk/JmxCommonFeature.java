@@ -94,7 +94,6 @@ public class JmxCommonFeature implements InternalFeature {
         rci.initializeAtRunTime("com.sun.jmx.remote.security.JMXPluggableAuthenticator$FileLoginConfig", "JMX support");
         rci.initializeAtRunTime("sun.rmi.transport.DGCImpl", "JMX support");
         rci.initializeAtRunTime("sun.rmi.transport.DGCAckHandler", "JMX support");
-        rci.initializeAtRunTime("sun.rmi.transport.GC", "JMX support");
         rci.initializeAtRunTime("sun.rmi.transport.DGCClient", "JMX support");
         rci.initializeAtRunTime("sun.rmi.transport.ObjectTable", "JMX support");
         rci.initializeAtRunTime("sun.rmi.transport.tcp.TCPEndpoint", "JMX support");

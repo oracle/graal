@@ -2148,7 +2148,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                  * doesn't return a value, it probably throws an exception.
                  */
                 int expectedStackSize = beforeStackSize + resultType.getSlotCount();
-                assert lastInstr == null || expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize,
+                assert lastInstr == null || plugin.isDecorator() || expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d",
+                                expectedStackSize,
                                 frameState.stackSize());
 
                 NodeIterable<Node> newNodes = graph.getNewNodes(mark);
