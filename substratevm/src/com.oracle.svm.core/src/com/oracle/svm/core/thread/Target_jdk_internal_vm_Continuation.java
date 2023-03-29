@@ -203,4 +203,7 @@ public final class Target_jdk_internal_vm_Continuation {
             carrier.cont.pinCount--;
         }
     }
+
+    @Alias
+    static native boolean isPinned(Target_jdk_internal_vm_ContinuationScope scope);
 }

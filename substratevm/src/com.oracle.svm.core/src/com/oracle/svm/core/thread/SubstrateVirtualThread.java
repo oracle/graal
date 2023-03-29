@@ -197,11 +197,7 @@ final class SubstrateVirtualThread extends Thread {
 
     private boolean yieldContinuation() {
         assert this == Thread.currentThread();
-        if (pins > 0) {
-            return false;
-        }
-        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        if (anchor.isNonNull() && cont.getBaseSP().aboveThan(anchor.getLastJavaSP())) {
+        if (isPinned()) {
             return false;
         }
 
@@ -673,6 +669,15 @@ final class SubstrateVirtualThread extends Thread {
             throw new IllegalStateException("Not pinned");
         }
         pins--;
+    }
+
+    boolean isPinned() {
+        assert currentThread() == this;
+        if (pins > 0) {
+            return true;
+        }
+        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
+        return anchor.isNonNull() && cont.getBaseSP().aboveThan(anchor.getLastJavaSP());
     }
 
     @Override
