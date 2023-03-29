@@ -30,35 +30,37 @@ import static org.junit.Assume.assumeTrue;
 
 import java.io.IOException;
 import java.lang.management.ClassLoadingMXBean;
+import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
-import java.lang.management.RuntimeMXBean;
-import java.lang.management.ThreadMXBean;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryManagerMXBean;
-import java.lang.management.OperatingSystemMXBean;
-import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
+import java.lang.management.OperatingSystemMXBean;
+import java.lang.management.RuntimeMXBean;
+import java.lang.management.ThreadMXBean;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.management.jfr.FlightRecorderMXBean;
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import com.oracle.svm.test.AddExports;
-import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
-import com.oracle.svm.core.VMInspectionOptions;
-
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectName;
 import javax.management.MBeanServer;
+import javax.management.MBeanServerConnection;
 import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+
+import org.graalvm.nativeimage.ImageInfo;
 import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.svm.core.VMInspectionOptions;
+import com.oracle.svm.core.jdk.management.ManagementAgentStartupHook;
+import com.oracle.svm.test.AddExports;
+
+import jdk.management.jfr.FlightRecorderMXBean;
 
 @AddExports("jdk.management.agent/jdk.internal.agent")
 public class JmxTest {

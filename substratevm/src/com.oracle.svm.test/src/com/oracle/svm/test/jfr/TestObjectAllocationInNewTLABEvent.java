@@ -35,6 +35,7 @@ import org.junit.Test;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -43,13 +44,29 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
     private static final int K = 1024;
     private static final int DEFAULT_ALIGNED_HEAP_CHUNK_SIZE = 1024 * K;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.ObjectAllocationInNewTLAB.getName()};
+    @Test
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.ObjectAllocationInNewTLAB.getName()};
+        Recording recording = startRecording(events);
+
+        // Allocate large arrays (always need a new TLAB).
+        allocateByteArray(2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE);
+        allocateCharArray(DEFAULT_ALIGNED_HEAP_CHUNK_SIZE);
+
+        // Exhaust TLAB with small arrays.
+        for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE / K; i++) {
+            allocateByteArray(K);
+        }
+
+        // Exhaust TLAB with instances.
+        for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE; i++) {
+            allocateInstance();
+        }
+
+        stopRecording(recording, TestObjectAllocationInNewTLABEvent::validateEvents);
     }
 
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
+    private static void validateEvents(List<RecordedEvent> events) {
         boolean foundBigByteArray = false;
         boolean foundSmallByteArray = false;
         boolean foundBigCharArray = false;
@@ -84,23 +101,6 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
         assertTrue(foundBigByteArray);
         assertTrue(foundSmallByteArray);
         assertTrue(foundInstance);
-    }
-
-    @Test
-    public void test() throws Exception {
-        // Allocate large arrays (always need a new TLAB).
-        allocateByteArray(2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE);
-        allocateCharArray(DEFAULT_ALIGNED_HEAP_CHUNK_SIZE);
-
-        // Exhaust TLAB with small arrays.
-        for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE / K; i++) {
-            allocateByteArray(K);
-        }
-
-        // Exhaust TLAB with instances.
-        for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE; i++) {
-            allocateInstance();
-        }
     }
 
     @NeverInline("Prevent escape analysis.")

@@ -32,9 +32,13 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assert;
 
 import com.oracle.svm.core.jfr.JfrType;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ClassConstantPoolParser extends AbstractRepositoryParser {
+    public ClassConstantPoolParser(JfrFileParser parser) {
+        super(parser);
+    }
 
     @Override
     public void parse(RecordingInput input) throws IOException {
