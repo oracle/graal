@@ -60,7 +60,7 @@ The SimpleLanguage demonstration language is licensed under the [Universal Permi
 The [Truffle framework](../../truffle/docs/README.md) provides language-agnostic infrastructure to realize standard IDE features by providing additional APIs.
 If you would like to experiment with your language and get the benefits of an IDE, consider importing SimpleLanguage as an example.
 
-#### Eclipse
+### Eclipse
 
 The SimpleLanguage teaching project has been tested with Eclipse Neon.2 Release 4.6.2, and Eclipse Oxygen.3A. To import the project folder to the desirable Eclipse environment:
 1. Open Eclipse with a new workspace.
