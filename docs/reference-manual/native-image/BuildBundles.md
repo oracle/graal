@@ -33,7 +33,7 @@ addition to the actual image.
 
 ```text
 --bundle-create[=new-bundle.nib]
-                      in addition to image building, create a native image bundle file (*.nib
+                      in addition to image building, create a Native Image bundle file (*.nib
                       file) that allows rebuilding of that image again at a later point. If a
                       bundle-file gets passed, the bundle will be created with the given
                       name. Otherwise, the bundle-file name is derived from the image name.
