@@ -455,8 +455,8 @@ public final class ResourcesFeature implements InternalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 try {
                     if (!sealed && receiver.isConstant() && arg.isJavaConstant() && !arg.isNullConstant()) {
-                        String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
                         Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
+                        String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
                         String resourceName = (String) resolveResourceName.invoke(clazz, resource);
                         b.add(new ReachabilityRegistrationNode(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName)));
                         return true;

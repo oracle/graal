@@ -110,6 +110,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -117,6 +118,7 @@ import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
@@ -175,9 +177,6 @@ public class SubstrateGraphBuilderPlugins {
     public static class Options {
         @Option(help = "Enable trace logging for dynamic proxy.")//
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
-
-        @Option(help = "Check reachability before automatically registering proxies observed in the code.")//
-        public static final HostedOptionKey<Boolean> StrictProxyAutoRegistration = new HostedOptionKey<>(false);
     }
 
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -415,44 +414,52 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
         if (SubstrateOptions.parseOnce() || reason.duringAnalysis()) {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
-            proxyRegistration.register(new RequiredInvocationPlugin("getProxyClass", ClassLoader.class, Class[].class) {
-                @Override
-                public boolean isDecorator() {
-                    return Options.StrictProxyAutoRegistration.getValue();
-                }
-
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode) {
-                    return interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
-                }
-            });
-
-            proxyRegistration.register(new RequiredInvocationPlugin("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class) {
-                @Override
-                public boolean isDecorator() {
-                    return Options.StrictProxyAutoRegistration.getValue();
-                }
-
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode, ValueNode invocationHandlerNode) {
-                    return interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
-                }
-            });
+            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, "getProxyClass", ClassLoader.class, Class[].class);
+            registerProxyPlugin(proxyRegistration, snippetReflection, annotationSubstitutions, "newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class);
         }
+    }
+
+    private static void registerProxyPlugin(Registration proxyRegistration, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, String name,
+                    Class<?>... parameterTypes) {
+        proxyRegistration.register(new RequiredInvocationPlugin(name, parameterTypes) {
+            @Override
+            public boolean isDecorator() {
+                return true;
+            }
+
+            @Override
+            public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
+                Runnable proxyRegistrationRunnable = interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, args[1]);
+                if (proxyRegistrationRunnable != null) {
+                    Class<?> callerClass = OriginalClassProvider.getJavaClass(b.getMethod().getDeclaringClass());
+                    boolean callerInScope = MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(callerClass.getModule().getName(), callerClass.getPackageName(),
+                                    callerClass.getName());
+                    if (callerInScope) {
+                        b.add(new ReachabilityRegistrationNode(proxyRegistrationRunnable));
+                        return true;
+                    }
+
+                    proxyRegistrationRunnable.run();
+                    return false;
+                }
+                return false;
+            }
+        });
     }
 
     /**
      * Try to intercept proxy interfaces passed in as literal constants, and register the interfaces
      * in the {@link DynamicProxyRegistry}.
      */
-    private static boolean interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
+    private static Runnable interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
                     AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode interfacesNode) {
         Class<?>[] interfaces = extractClassArray(b, snippetReflection, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
             var caller = b.getGraph().method();
             var method = b.getMethod();
             var bci = b.bci();
-            Runnable registerProxy = () -> {
+
+            return () -> {
                 /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
                 RuntimeProxyCreation.register(interfaces);
                 if (ImageSingletons.contains(FallbackFeature.class)) {
@@ -463,20 +470,12 @@ public class SubstrateGraphBuilderPlugins {
                                     " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
                 }
             };
-
-            if (Options.StrictProxyAutoRegistration.getValue()) {
-                b.add(new ReachabilityRegistrationNode(registerProxy));
-                return true;
-            }
-
-            registerProxy.run();
-            return false;
         }
         if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
             System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
                             " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
         }
-        return false;
+        return null;
     }
 
     /**

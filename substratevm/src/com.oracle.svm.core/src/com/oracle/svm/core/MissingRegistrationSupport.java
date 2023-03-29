@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.option.OptionClassFilter;
 
 public class MissingRegistrationSupport {
-
     private final OptionClassFilter classFilter;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -46,7 +45,11 @@ public class MissingRegistrationSupport {
     }
 
     public boolean reportMissingRegistrationErrors(StackTraceElement responsibleClass) {
-        return classFilter.isIncluded(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName()) != null;
+        return reportMissingRegistrationErrors(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName());
+    }
+
+    public boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
+        return classFilter.isIncluded(moduleName, packageName, className) != null;
     }
 
     private static String getPackageName(String className) {
