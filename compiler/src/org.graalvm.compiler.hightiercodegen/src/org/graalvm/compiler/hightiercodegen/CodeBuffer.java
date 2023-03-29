@@ -293,7 +293,7 @@ public abstract class CodeBuffer {
         emitWhiteSpace();
     }
 
-    public void emitDeclPrefix(ResolvedJavaType type, String name) {
+    public void emitDeclPrefix(String name, ResolvedJavaType type) {
         emitDeclarationPrefix(type);
         emitDeclarationName(name);
         emitWhiteSpace();

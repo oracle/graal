@@ -301,12 +301,12 @@ public abstract class CodeGenTool {
         codeBuffer.emitDeclPrefix(name);
     }
 
-    public void genResolvedVarDeclPrefix(String name, Stamp stamp) {
-        genResolvedVarDeclPrefix(name, stamp.javaType(getProviders().getMetaAccess()));
+    public void genResolvedVarDeclPrefix(String name, ValueNode node) {
+        genResolvedVarDeclPrefix(name);
     }
 
     public void genResolvedVarDeclPrefix(String name, ResolvedJavaType javaType) {
-        codeBuffer.emitDeclPrefix(javaType, name);
+        codeBuffer.emitDeclPrefix(name, javaType);
     }
 
     public abstract void genResolvedVarDeclPostfix(String comment);
