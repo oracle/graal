@@ -88,6 +88,7 @@ final class BundleSupport {
     Map<Path, Path> pathCanonicalizations = new HashMap<>();
     Map<Path, Path> pathSubstitutions = new HashMap<>();
 
+    private final boolean forceBuilderOnClasspath;
     private final List<String> nativeImageArgs;
     private List<String> updatedNativeImageArgs;
 
@@ -97,7 +98,7 @@ final class BundleSupport {
     private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 0;
     private static final int BUNDLE_FILE_FORMAT_VERSION_MINOR = 9;
 
-    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "GraalVM Native Image Bundle Support: ";
+    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
     private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
     private static final String ORIGINAL_DIR_EXTENSION = ".orig";
 
@@ -105,9 +106,6 @@ final class BundleSupport {
     private String bundleName;
 
     private final BundleProperties bundleProperties;
-
-    static boolean allowBundleSupport;
-    static final String UNLOCK_BUNDLE_SUPPORT_OPTION = "--enable-experimental-bundle-support";
 
     static final String BUNDLE_OPTION = "--bundle";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
@@ -122,11 +120,6 @@ final class BundleSupport {
     }
 
     static BundleSupport create(NativeImage nativeImage, String bundleArg, NativeImage.ArgumentQueue args) {
-        if (!allowBundleSupport) {
-            throw NativeImage.showError(
-                            "Bundle support is still experimental and needs to be unlocked with '" + UNLOCK_BUNDLE_SUPPORT_OPTION + "'. The unlock option must precede '" + bundleArg + "'.");
-        }
-
         try {
             String variant = bundleArg.substring(BUNDLE_OPTION.length() + 1);
             String bundleFilename = null;
@@ -211,7 +204,8 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
-        this.nativeImageArgs = nativeImage.getNativeImageArgs();
+        forceBuilderOnClasspath = !nativeImage.config.modulePathBuild;
+        nativeImageArgs = nativeImage.getNativeImageArgs();
     }
 
     private BundleSupport(NativeImage nativeImage, String bundleFilenameArg) {
@@ -262,6 +256,8 @@ final class BundleSupport {
         }
 
         bundleProperties.loadAndVerify();
+        forceBuilderOnClasspath = bundleProperties.forceBuilderOnClasspath();
+        nativeImage.config.modulePathBuild = !forceBuilderOnClasspath;
 
         try {
             Path inputDir = rootDir.resolve("input");
@@ -615,7 +611,7 @@ final class BundleSupport {
 
         Path buildArgsFile = stageDir.resolve("build.json");
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
-            List<String> equalsNonBundleOptions = List.of(UNLOCK_BUNDLE_SUPPORT_OPTION, CmdLineOptionHandler.VERBOSE_OPTION, CmdLineOptionHandler.DRY_RUN_OPTION);
+            List<String> equalsNonBundleOptions = List.of(CmdLineOptionHandler.VERBOSE_OPTION, CmdLineOptionHandler.DRY_RUN_OPTION);
             List<String> startsWithNonBundleOptions = List.of(BUNDLE_OPTION, DefaultOptionHandler.ADD_ENV_VAR_OPTION, nativeImage.oHPath);
             ArrayList<String> bundleArgs = new ArrayList<>(updatedNativeImageArgs != null ? updatedNativeImageArgs : nativeImageArgs);
             ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
@@ -772,6 +768,7 @@ final class BundleSupport {
         private static final String PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR = "BundleFileVersionMajor";
         private static final String PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR = "BundleFileVersionMinor";
         private static final String PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP = "BundleFileCreationTimestamp";
+        private static final String PROPERTY_KEY_BUILDER_ON_CLASSPATH = "BuilderOnClasspath";
         private static final String PROPERTY_KEY_IMAGE_BUILT = "ImageBuilt";
         private static final String PROPERTY_KEY_BUILT_WITH_CONTAINER = "BuiltWithContainer";
         private static final String PROPERTY_KEY_NATIVE_IMAGE_PLATFORM = "NativeImagePlatform";
@@ -840,10 +837,16 @@ final class BundleSupport {
                             bundlePlatform, currentPlatform);
         }
 
+        private boolean forceBuilderOnClasspath() {
+            assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
+            return Boolean.parseBoolean(properties.getOrDefault(PROPERTY_KEY_BUILDER_ON_CLASSPATH, Boolean.FALSE.toString()));
+        }
+
         private void write() {
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MAJOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MINOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, ZonedDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+            properties.put(PROPERTY_KEY_BUILDER_ON_CLASSPATH, String.valueOf(forceBuilderOnClasspath));
             boolean imageBuilt = !nativeImage.isDryRun();
             properties.put(PROPERTY_KEY_IMAGE_BUILT, String.valueOf(imageBuilt));
             if (imageBuilt) {
