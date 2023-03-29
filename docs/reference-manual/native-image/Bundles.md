@@ -76,8 +76,9 @@ Native Image Bundles: Bundle written to /home/testuser/micronaut-data-jdbc-repos
 This output indicates that we have in fact built a bundle as part of building with Maven. This file resides in
 `target/micronautguide.nib`. It should be copied away to some safe place where it will be found if this image needs to
 be rebuilt anytime later. Obviously a bundle file can be large, because it contains all input files needed to rebuild
-the image as well as the built image itself. In the case of the `micronaut-data-jdbc-repository` example the bundle is
-60.7 MB (the image is 103.4 MB, but it's compressed within the bundle). To see what's inside a bundle we can use:
+the image as well as the built image itself. Having the image inside the bundle allows comparing an image rebuilt from
+the bundle against the original one. In the case of the `micronaut-data-jdbc-repository` example the bundle is 60.7 MB
+(the image is 103.4 MB, but it's compressed within the bundle). To see what's inside a bundle we can use:
 ```text
 $ jar tf micronautguide.nib
 META-INF/MANIFEST.MF
