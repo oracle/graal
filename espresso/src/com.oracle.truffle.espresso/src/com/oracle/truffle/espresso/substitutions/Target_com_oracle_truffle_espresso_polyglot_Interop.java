@@ -2018,46 +2018,41 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     @Substitution
     @Throws(others = {
-            @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
-            @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnknownIdentifierException;"),
-            @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ArityException;"),
-            @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedTypeException;")
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnknownIdentifierException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ArityException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedTypeException;")
     })
     abstract static class InvokeMemberWithCast extends SubstitutionNode {
         static final int LIMIT = 2;
 
-        static ToEspressoNode createToEspressoNode(@JavaType(Class.class) StaticObject targetClass, Meta meta) {
-            return ToEspressoNode.create(targetClass.getMirrorKlass(meta), meta);
-        }
-
         abstract @JavaType(Object.class) StaticObject execute(
-                @JavaType(Class.class) StaticObject targetClass,
-                @JavaType(Object.class) StaticObject receiver,
-                @JavaType(String.class) StaticObject member,
-                @JavaType(Object[].class) StaticObject arguments);
+                        @JavaType(Class.class) StaticObject targetClass,
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(String.class) StaticObject member,
+                        @JavaType(Object[].class) StaticObject arguments);
 
-        @Specialization(guards = "cachedTargetClass == targetClass")
+        @Specialization
         @JavaType(Object.class)
         StaticObject doCached(
-                @SuppressWarnings("unused") @JavaType(Class.class) StaticObject targetClass,
-                @JavaType(Object.class) StaticObject receiver,
-                @JavaType(String.class) StaticObject member,
-                @JavaType(Object[].class) StaticObject arguments,
-                @SuppressWarnings("unused") @Cached("targetClass") StaticObject cachedTargetClass,
-                @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
-                @Bind("getMeta()") Meta meta,
-                @Cached("createToEspressoNode(cachedTargetClass, meta)") ToEspressoNode toEspressoNode,
-                @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
-                @Cached ToHostArguments toHostArguments,
-                @Cached LookupTypeConverterNode lookupTypeConverterNode,
-                @Cached BranchProfile exceptionProfile) {
+                        @SuppressWarnings("unused") @JavaType(Class.class) StaticObject targetClass,
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(String.class) StaticObject member,
+                        @JavaType(Object[].class) StaticObject arguments,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
+                        @Bind("getMeta()") Meta meta,
+                        @Cached ToEspressoNode.Dynamic toEspressoNode,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached ToHostArguments toHostArguments,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached BranchProfile exceptionProfile) {
             assert InteropLibrary.getUncached().isString(member);
             String hostMember = getMeta().toHostString(member);
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
                 Object result = interop.invokeMember(InteropUtils.unwrapForeign(getLanguage(), receiver), hostMember, hostArguments);
-                return toEspressoNode.execute(result);
+                return toEspressoNode.execute(result, targetClass.getMirrorKlass(meta));
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);

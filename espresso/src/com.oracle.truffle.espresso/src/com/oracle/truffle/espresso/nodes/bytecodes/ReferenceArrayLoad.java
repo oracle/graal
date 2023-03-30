@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -76,6 +77,7 @@ public abstract class ReferenceArrayLoad extends EspressoNode {
 
         public abstract StaticObject execute(StaticObject receiver, int index);
 
+        @TruffleBoundary
         ToEspressoNode createToEspressoNode(Klass klass) {
             return ToEspressoNodeFactory.ToArrayNodeGen.create((ArrayKlass) klass);
         }
@@ -105,8 +107,8 @@ public abstract class ReferenceArrayLoad extends EspressoNode {
 
         @Specialization(replaces = "doForeign", guards = {"array.isForeignObject()"})
         StaticObject doUncachedForeign(StaticObject array, int index,
-                               @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                               @Cached BranchProfile exceptionProfile) {
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached BranchProfile exceptionProfile) {
             assert !StaticObject.isNull(array);
             Meta meta = getContext().getMeta();
             Object result = ForeignArrayUtils.readForeignArrayElement(array, index, getLanguage(), meta, interop, exceptionProfile);

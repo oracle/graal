@@ -23,7 +23,9 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,6 +54,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
+        @TruffleBoundary
         protected static ToPrimitive createToPrimitiveNode(Klass targetType) {
             if (!targetType.isPrimitive()) {
                 throw new IllegalStateException("ToPrimitive.Dynamic can only be used for primitives");
@@ -88,8 +91,8 @@ public abstract class ToPrimitive extends EspressoNode {
 
         @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
         public Object doCached(Object value, Klass targetType,
-                                     @Cached("targetType") Klass cachedTargetType,
-                                     @Cached("createToPrimitiveNode(cachedTargetType)") ToPrimitive toPrimitive) throws UnsupportedTypeException {
+                        @Cached("targetType") Klass cachedTargetType,
+                        @Cached("createToPrimitiveNode(cachedTargetType)") ToPrimitive toPrimitive) throws UnsupportedTypeException {
             return toPrimitive.execute(value);
         }
 
@@ -100,7 +103,6 @@ public abstract class ToPrimitive extends EspressoNode {
             return createToPrimitiveNode(targetType).execute(value);
         }
     }
-
 
     @NodeInfo(shortName = "To boolean")
     @GenerateUncached
@@ -117,7 +119,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         @Specialization
         boolean doEspresso(StaticObject value,
-                           @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+                        @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
             if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Boolean) {
                 return (boolean) getMeta().java_lang_Boolean_value.get(value);
             }
@@ -126,18 +128,23 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = {
-                "!isStaticObject(value)",
-                "!isHostBoolean(value)",
-                "interop.isBoolean(value)"
+                        "!isStaticObject(value)",
+                        "!isHostBoolean(value)",
+                        "interop.isBoolean(value)"
         })
-        boolean doforeign(Object value,
-                          @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        boolean doForeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             try {
                 return interop.asBoolean(value);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isBoolean returns true, asBoolean must succeed.");
             }
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "boolean");
         }
 
         static boolean isStaticObject(Object value) {
@@ -164,7 +171,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         @Specialization
         int doEspresso(StaticObject value,
-                           @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+                        @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
             if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Integer) {
                 return (int) getMeta().java_lang_Integer_value.get(value);
             }
@@ -173,18 +180,23 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = {
-                "!isStaticObject(value)",
-                "!isHostInteger(value)",
-                "interop.fitsInInt(value)"
+                        "!isStaticObject(value)",
+                        "!isHostInteger(value)",
+                        "interop.fitsInInt(value)"
         })
-        int doforeign(Object value,
-                          @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        int doForeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             try {
                 return interop.asInt(value);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if fitsInInt returns true, asInt must succeed.");
             }
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "int");
         }
 
         static boolean isStaticObject(Object value) {
@@ -211,7 +223,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         @Specialization
         byte doEspresso(StaticObject value,
-                       @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+                        @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
             if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Byte) {
                 return (byte) getMeta().java_lang_Byte_value.get(value);
             }
@@ -220,18 +232,23 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = {
-                "!isStaticObject(value)",
-                "!isHostByte(value)",
-                "interop.fitsInByte(value)"
+                        "!isStaticObject(value)",
+                        "!isHostByte(value)",
+                        "interop.fitsInByte(value)"
         })
-        byte doforeign(Object value,
-                      @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        byte doForeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             try {
                 return interop.asByte(value);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if fitsInByte returns true, asByte must succeed.");
             }
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "byte");
         }
 
         static boolean isStaticObject(Object value) {
@@ -258,7 +275,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         @Specialization
         short doEspresso(StaticObject value,
-                       @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+                        @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
             if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Short) {
                 return (short) getMeta().java_lang_Short_value.get(value);
             }
@@ -267,18 +284,23 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = {
-                "!isStaticObject(value)",
-                "!isHostShort(value)",
-                "interop.fitsInShort(value)"
+                        "!isStaticObject(value)",
+                        "!isHostShort(value)",
+                        "interop.fitsInShort(value)"
         })
-        short doforeign(Object value,
-                      @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        short doForeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             try {
                 return interop.asShort(value);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if fitsInShort returns true, asShort must succeed.");
             }
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "short");
         }
 
         static boolean isStaticObject(Object value) {
@@ -305,7 +327,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         @Specialization
         char doEspresso(StaticObject value,
-                       @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+                        @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
             if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Character) {
                 return (char) getMeta().java_lang_Character_value.get(value);
             }
@@ -314,13 +336,13 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = {
-                "!isStaticObject(value)",
-                "!isHostCharacter(value)",
-                "interop.isString(value)"
+                        "!isStaticObject(value)",
+                        "!isHostCharacter(value)",
+                        "interop.isString(value)"
         })
-        char doforeign(Object value,
-                      @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                       @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+        char doForeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
             try {
                 String s = interop.asString(value);
                 if (s.length() == 1) {
@@ -332,6 +354,11 @@ public abstract class ToPrimitive extends EspressoNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if fitsInInt returns true, asInt must succeed.");
             }
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "char");
         }
 
         static boolean isStaticObject(Object value) {
@@ -358,7 +385,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         @Specialization
         long doEspresso(StaticObject value,
-                         @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
+                        @Cached BranchProfile exceptionProfile) throws UnsupportedTypeException {
             if (value != null && !StaticObject.isNull(value) && value.getKlass() == getMeta().java_lang_Long) {
                 return (long) getMeta().java_lang_Long_value.get(value);
             }
@@ -367,11 +394,11 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = {
-                "!isStaticObject(value)",
-                "!isHostLong(value)",
-                "interop.fitsInLong(value)"
+                        "!isStaticObject(value)",
+                        "!isHostLong(value)",
+                        "interop.fitsInLong(value)"
         })
-        long doforeign(Object value,
+        long doForeign(Object value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             try {
                 return interop.asLong(value);
@@ -379,6 +406,11 @@ public abstract class ToPrimitive extends EspressoNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if fitsInLong returns true, asLong must succeed.");
             }
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "long");
         }
 
         static boolean isHostLong(Object value) {
@@ -414,18 +446,23 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = {
-                "!isStaticObject(value)",
-                "!isHostFloat(value)",
-                "interop.fitsInFloat(value)"
+                        "!isStaticObject(value)",
+                        "!isHostFloat(value)",
+                        "interop.fitsInFloat(value)"
         })
-        float doforeign(Object value,
-                       @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        float doForeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             try {
                 return interop.asFloat(value);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if fitsInFloat returns true, asFloat must succeed.");
             }
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "float");
         }
 
         static boolean isStaticObject(Object value) {
@@ -461,18 +498,23 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = {
-                "!isStaticObject(value)",
-                "!isHostDouble(value)",
-                "interop.fitsInDouble(value)"
+                        "!isStaticObject(value)",
+                        "!isHostDouble(value)",
+                        "interop.fitsInDouble(value)"
         })
-        double doforeign(Object value,
-                       @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        double doForeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             try {
                 return interop.asDouble(value);
             } catch (UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if fitsInDouble returns true, asDouble must succeed.");
             }
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "double");
         }
 
         static boolean isStaticObject(Object value) {

@@ -30,8 +30,6 @@ import java.lang.reflect.Modifier;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
-import com.oracle.truffle.espresso.nodes.interop.ToPrimitiveFactory;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -85,6 +83,8 @@ import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitiveFactory;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -226,7 +226,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                     @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
                     @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached ToEspressoNode.Dynamic toEspressoNode)
+                    @Cached ToEspressoNode.Dynamic toEspressoNode,
+                    @Cached ToPrimitive.Dynamic toPrimitive)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(this, member, true, true, arguments.length);
         try {
@@ -239,9 +240,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                         assert method.getParameterCount() == arguments.length;
                         return invoke.execute(method, null, arguments);
                     } else {
-                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
+                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode, toPrimitive);
                         if (matched != null) {
-                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode, toPrimitive);
                             if (matched != null) {
                                 return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
                             }
@@ -373,19 +374,20 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isArray();
         }
 
+        @TruffleBoundary
         protected static ToPrimitive.ToInt getLengthToEspressoNode() {
             return ToPrimitiveFactory.ToIntNodeGen.create();
         }
 
         @Specialization(guards = "isPrimitiveArray(receiver)")
         static StaticObject doPrimitiveArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached("getLengthToEspressoNode()") ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
+                        @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             return doPrimitive(receiver, arguments, toInt);
         }
 
         @Specialization(guards = "isPrimitiveArray(receiver)", replaces = "doPrimitiveArray")
-        static StaticObject doPrimitiveArrayUncached(Klass receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
-            return doPrimitive(receiver, arguments, getLengthToEspressoNode());
+        static StaticObject doPrimitiveArrayUncached(Klass receiver, Object[] arguments, @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
+            return doPrimitive(receiver, arguments, toInt);
         }
 
         private static StaticObject doPrimitive(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException  {
@@ -399,13 +401,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isReferenceArray(receiver)")
         static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached("getLengthToEspressoNode()") ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
+                        @Cached("getLengthToEspressoNode()") ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
             return doReference(receiver, arguments, toInt);
         }
 
         @Specialization(guards = "isReferenceArray(receiver)", replaces = "doReferenceArray")
-        static StaticObject doReferenceArrayUncached(Klass receiver, Object[] arguments) throws UnsupportedTypeException, ArityException {
-            return doReference(receiver, arguments, getLengthToEspressoNode());
+        static StaticObject doReferenceArrayUncached(Klass receiver, Object[] arguments, @Cached ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
+            return doReference(receiver, arguments, toInt);
         }
 
         private static StaticObject doReference(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt)  throws UnsupportedTypeException, ArityException {
@@ -418,13 +420,13 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isMultidimensionalArray(receiver)")
         static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
-                        @Shared("lengthConversion") @Cached("getLengthToEspressoNode()") ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
+                        @Cached("getLengthToEspressoNode()") ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             return doMulti(receiver, arguments, toInt);
         }
 
         @Specialization(guards = "isMultidimensionalArray(receiver)", replaces = "doMultidimensionalArray")
-        static StaticObject doMultidimensionalArrayUncached(Klass receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
-            return doMulti(receiver, arguments, getLengthToEspressoNode());
+        static StaticObject doMultidimensionalArrayUncached(Klass receiver, Object[] arguments, @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
+            return doMulti(receiver, arguments, toInt);
         }
 
         private static StaticObject doMulti(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {

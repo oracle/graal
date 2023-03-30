@@ -59,8 +59,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
-import com.oracle.truffle.espresso.nodes.interop.ToPrimitiveFactory;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -130,6 +128,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitiveFactory;
 import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
@@ -635,7 +635,7 @@ public final class VM extends NativeEnv {
     }
 
     private static StaticObject cloneForeignArray(StaticObject array, EspressoLanguage language, Meta meta, InteropLibrary interop, ToPrimitive.Dynamic toPrimitive, SubstitutionProfiler profiler,
-                                                  char exceptionBranch) {
+                    char exceptionBranch) {
         assert array.isForeignObject();
         assert array.isArray();
         int length;
@@ -751,7 +751,7 @@ public final class VM extends NativeEnv {
         if (self.isArray()) {
             // Arrays are always cloneable.
             if (self.isForeignObject()) {
-                return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToPrimitiveFactory.DynamicNodeGen.create(), profiler, exceptionBranch);
+                return cloneForeignArray(self, language, meta, InteropLibrary.getUncached(self.rawForeignObject(language)), ToPrimitiveFactory.DynamicNodeGen.getUncached(), profiler, exceptionBranch);
             }
             return self.copy(meta.getContext());
         }

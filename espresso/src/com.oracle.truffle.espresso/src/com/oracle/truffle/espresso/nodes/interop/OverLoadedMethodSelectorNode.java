@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,20 +49,25 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
                     Object[] arguments,
                     @SuppressWarnings("unused") @Cached(value = "candidates", dimensions = 1) Method[] cachedCandidates,
                     @Cached(value = "resolveParameterKlasses(candidates)", dimensions = 2) Klass[][] parameterKlasses,
-                    @Cached ToEspressoNode.Dynamic toEspressoNode) {
-        return selectMatchingOverloads(candidates, arguments, parameterKlasses, toEspressoNode);
+                    @Cached ToEspressoNode.Dynamic toEspressoNode,
+                    @Cached ToPrimitive.Dynamic toPrimitive) {
+        return selectMatchingOverloads(candidates, arguments, parameterKlasses, toEspressoNode, toPrimitive);
     }
 
     @Specialization(replaces = "doCached")
-    CandidateMethodWithArgs doGeneric(Method[] candidates, Object[] arguments) {
-        return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), ToEspressoNodeFactory.DynamicNodeGen.create());
+    CandidateMethodWithArgs doGeneric(Method[] candidates,
+                    Object[] arguments,
+                    @Cached ToEspressoNode.Dynamic toEspressoNode,
+                    @Cached ToPrimitive.Dynamic toPrimitive) {
+        return selectMatchingOverloads(candidates, arguments, resolveParameterKlasses(candidates), toEspressoNode, toPrimitive);
     }
 
     @TruffleBoundary
-    private static CandidateMethodWithArgs selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode.Dynamic toEspressoNode) {
+    private static CandidateMethodWithArgs selectMatchingOverloads(Method[] candidates, Object[] arguments, Klass[][] parameterKlasses, ToEspressoNode.Dynamic toEspressoNode,
+                    ToPrimitive.Dynamic toPrimitive) {
         ArrayList<CandidateMethodWithArgs> fitByType = new ArrayList<>(candidates.length);
         for (int i = 0; i < candidates.length; i++) {
-            CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(candidates[i], arguments, parameterKlasses[i], toEspressoNode);
+            CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(candidates[i], arguments, parameterKlasses[i], toEspressoNode, toPrimitive);
             if (matched != null) {
                 fitByType.add(matched);
             }
@@ -73,14 +78,14 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         if (fitByType.size() == 1) {
             CandidateMethodWithArgs matched = fitByType.get(0);
             if (matched.getMethod().isVarargs()) {
-                return MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                return MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode, toPrimitive);
             }
             return matched;
         }
         // still multiple candidates, so try to select the best one
         CandidateMethodWithArgs mostSpecificOverload = findMostSpecificOverload(fitByType, arguments);
         if (mostSpecificOverload != null && mostSpecificOverload.getMethod().isVarargs()) {
-            return MethodArgsUtils.ensureVarArgsArrayCreated(mostSpecificOverload, toEspressoNode);
+            return MethodArgsUtils.ensureVarArgsArrayCreated(mostSpecificOverload, toEspressoNode, toPrimitive);
         }
         return mostSpecificOverload;
     }

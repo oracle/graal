@@ -77,6 +77,7 @@ import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
@@ -999,7 +1000,8 @@ public class EspressoInterop extends BaseInterop {
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
                     @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
                     @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached ToEspressoNode.Dynamic toEspressoNode)
+                    @Cached ToEspressoNode.Dynamic toEspressoNode,
+                    @Cached ToPrimitive.Dynamic toPrimitive)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
         try {
@@ -1013,9 +1015,9 @@ public class EspressoInterop extends BaseInterop {
                         assert m.getParameterCount() == arguments.length;
                         return invoke.execute(m, receiver, arguments);
                     } else {
-                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
+                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode, toPrimitive);
                         if (matched != null) {
-                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode, toPrimitive);
                             if (matched != null) {
                                 return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
                             }
