@@ -90,8 +90,8 @@ public abstract class ToPrimitive extends EspressoNode {
         }
 
         @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
-        public Object doCached(Object value, Klass targetType,
-                        @Cached("targetType") Klass cachedTargetType,
+        public Object doCached(Object value, @SuppressWarnings("unused") Klass targetType,
+                        @SuppressWarnings("unused") @Cached("targetType") Klass cachedTargetType,
                         @Cached("createToPrimitiveNode(cachedTargetType)") ToPrimitive toPrimitive) throws UnsupportedTypeException {
             return toPrimitive.execute(value);
         }
@@ -110,6 +110,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
+        @Override
         public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
@@ -162,6 +163,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
+        @Override
         public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
@@ -214,6 +216,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
+        @Override
         public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
@@ -266,6 +269,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
+        @Override
         public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
@@ -318,6 +322,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
+        @Override
         public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
@@ -376,6 +381,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
+        @Override
         public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
@@ -428,6 +434,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
+        @Override
         public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
@@ -480,6 +487,7 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
+        @Override
         public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization

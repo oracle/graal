@@ -90,7 +90,7 @@ public abstract class ReferenceArrayLoad extends EspressoNode {
 
         @Specialization(guards = {"array.isForeignObject()", "cachedArrayKlass == array.getKlass()"})
         StaticObject doForeign(StaticObject array, int index,
-                        @Cached("array.getKlass()") Klass cachedArrayKlass,
+                        @SuppressWarnings("unused") @Cached("array.getKlass()") Klass cachedArrayKlass,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached("createToEspressoNode(cachedArrayKlass)") ToEspressoNode toEspressoNode,
                         @Cached BranchProfile exceptionProfile) {

@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -289,8 +290,8 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
 
         @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
-        public StaticObject doCached(Object value, Klass targetType,
-                        @Cached("targetType") Klass cachedTargetType,
+        public StaticObject doCached(Object value, @SuppressWarnings("unused") Klass targetType,
+                        @SuppressWarnings("unused") @Cached("targetType") Klass cachedTargetType,
                         @Cached("createToEspressoNode(cachedTargetType)") ToEspressoNode toEspressoNode) throws UnsupportedTypeException {
             return toEspressoNode.execute(value);
         }
@@ -758,7 +759,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
 
         @Specialization(guards = "isEspressoString(value, meta)")
-        StaticObject doEspressoString(StaticObject value, @Bind("getMeta()") Meta meta) {
+        StaticObject doEspressoString(StaticObject value, @Bind("getMeta()") @SuppressWarnings("unused") Meta meta) {
             return value;
         }
 
@@ -784,7 +785,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!interop.isString(value)"
         })
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @Shared("value") @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_lang_String.getTypeAsString());
         }
     }
@@ -990,7 +991,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization(guards = "!interop.isDate(value)")
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_time_LocalDate.getTypeAsString());
         }
     }
@@ -1015,7 +1016,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization(guards = "!interop.isTime(value)")
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_time_LocalTime.getTypeAsString());
         }
     }
@@ -1050,7 +1051,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!interop.isDate(value)"
         })
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_time_LocalDateTime.getTypeAsString());
         }
     }
@@ -1084,7 +1085,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!interop.isTimeZone(value)"
         })
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_time_ZonedDateTime.getTypeAsString());
         }
     }
@@ -1109,7 +1110,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization(guards = "!interop.isInstant(value)")
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_time_Instant.getTypeAsString());
         }
     }
@@ -1137,7 +1138,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization(guards = "!interop.isDuration(value)")
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_time_Duration.getTypeAsString());
         }
     }
@@ -1161,7 +1162,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization(guards = "!interop.isTimeZone(value)")
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_time_ZoneId.getTypeAsString());
         }
     }
@@ -1187,7 +1188,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization(guards = "!interop.isInstant(value)")
         StaticObject doUnsupported(Object value,
-                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_util_Date.getTypeAsString());
         }
     }
@@ -1237,6 +1238,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         return context.getPolyglotInterfaceMappings().hasMappings() && context.getPolyglotInterfaceMappings().mapTypeConversion(klass) != null;
     }
 
+    @Idempotent
     static boolean isTypeMappingEnabled(EspressoContext context) {
         return context.getPolyglotInterfaceMappings().hasMappings();
     }
