@@ -692,7 +692,7 @@ public final class VMOperationControl {
 
         private void assertIsLocked() {
             if (mutex != null) {
-                mutex.assertIsOwner("must be locked");
+                assert mutex.isOwner() : "must be locked";
             }
         }
 

@@ -139,28 +139,11 @@ public class VMMutex {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void assertIsOwner(String message) {
-        assert isOwner() : message;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void assertIsOwner(String message, boolean allowUnspecifiedOwner) {
-        assert isOwner() || (allowUnspecifiedOwner && hasUnspecifiedOwner()) : message;
-    }
-
+    /* Legacy code, see GR-44619. */
+    @Deprecated(forRemoval = true)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void assertNotOwner(String message) {
         assert !isOwner() : message;
-    }
-
-    /**
-     * This method is potentially racy and must only be called in places where we can guarantee that
-     * no incorrect {@link AssertionError}s are thrown because of potential races.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void assertIsNotLocked(String message) {
-        assert owner.isNull() : message;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -170,7 +153,7 @@ public class VMMutex {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void guaranteeIsOwner(String message, boolean allowUnspecifiedOwner) {
-        VMError.guarantee(isOwner() || (allowUnspecifiedOwner && hasUnspecifiedOwner()), message);
+        VMError.guarantee(isOwner(allowUnspecifiedOwner), message);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -180,26 +163,31 @@ public class VMMutex {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final boolean isOwner() {
-        assert CurrentIsolate.getCurrentThread().isNonNull() : "current thread must not be null - otherwise use an unspecified owner";
+        assert CurrentIsolate.getCurrentThread().isNonNull() : "current thread must not be null - otherwise allow unspecified owners";
         return owner == CurrentIsolate.getCurrentThread();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final boolean isOwner(boolean allowUnspecifiedOwner) {
+        return owner == CurrentIsolate.getCurrentThread() || (allowUnspecifiedOwner && hasUnspecifiedOwner());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setOwnerToCurrentThread() {
-        assertIsNotLocked("The owner can only be set if no other thread holds the mutex.");
+        assert !hasOwner() : "The owner can only be set if no other thread holds the mutex.";
         assert CurrentIsolate.getCurrentThread().isNonNull() : "current thread must not be null - otherwise use an unspecified owner";
         owner = CurrentIsolate.getCurrentThread();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setOwnerToUnspecified() {
-        assertIsNotLocked("The owner can only be set if no other thread holds the mutex.");
+        assert !hasOwner() : "The owner can only be set if no other thread holds the mutex.";
         owner = (IsolateThread) UNSPECIFIED_OWNER;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearCurrentThreadOwner() {
-        assertIsOwner("Only the thread that holds the mutex can clear the owner.");
+        assert isOwner() : "Only the thread that holds the mutex can clear the owner.";
         owner = WordFactory.nullPointer();
     }
 
@@ -209,11 +197,19 @@ public class VMMutex {
         owner = WordFactory.nullPointer();
     }
 
+    /**
+     * This method is potentially racy and must only be called in places where we can guarantee that
+     * no incorrect {@link AssertionError}s are thrown because of potential races.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean hasOwner() {
         return owner.isNonNull();
     }
 
+    /**
+     * This method is potentially racy and must only be called in places where we can guarantee that
+     * no incorrect {@link AssertionError}s are thrown because of potential races.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean hasUnspecifiedOwner() {
         return owner == (IsolateThread) UNSPECIFIED_OWNER;
