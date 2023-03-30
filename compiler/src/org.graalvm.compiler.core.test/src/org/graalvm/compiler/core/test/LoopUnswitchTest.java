@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,14 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
+
 import org.junit.Test;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
@@ -91,7 +93,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     @SuppressWarnings("fallthrough")
     public static int test2Snippet(int a) {
         int sum = 0;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); i++) {
             switch (a) {
                 case 0:
                     sum += System.currentTimeMillis();
@@ -139,5 +141,90 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    public static int manySwitch(int limit, int foo) {
+        int result = 0;
+        for (int i = 0; i < limit; i++) {
+            switch (foo) {
+                case -1:
+                    result += -1;
+                    break;
+                case 0:
+                    result += 0;
+                    break;
+                case 1:
+                    result += 1;
+                    break;
+                case 2:
+                    result += 2;
+                    break;
+                case 3:
+                    result += 3;
+                    break;
+                case 4:
+                    result += 4;
+                    break;
+                case 5:
+                    result += 5;
+                    break;
+                case 6:
+                    result += 6;
+                    break;
+                case 7:
+                    result += 7;
+                    break;
+                case 8:
+                    result += 8;
+                    break;
+                case 9:
+                    result += 9;
+                    break;
+                case 10:
+                    result += 10;
+                    break;
+                case 11:
+                    result += 11;
+                    break;
+                case 12:
+                    result += 12;
+                    break;
+                case 13:
+                    result += 13;
+                    break;
+                case 14:
+                    result += 14;
+                    break;
+                case 15:
+                    result += 15;
+                    break;
+                case 16:
+                    result += 16;
+                    break;
+                case 17:
+                    result += 17;
+                    break;
+                case 18:
+                    result += 18;
+                    break;
+                case 19:
+                    result += 19;
+                    break;
+                case 20:
+                    result += 20;
+                    break;
+                default:
+                    break;
+            }
+
+            result++;
+        }
+        return result;
+    }
+
+    @Test
+    public void test05() {
+        final StructuredGraph graph = parseEager("manySwitch", AllowAssumptions.NO);
+        new LoopUnswitchingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
     }
 }
