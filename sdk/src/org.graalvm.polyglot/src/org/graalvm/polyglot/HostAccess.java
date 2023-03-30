@@ -263,7 +263,8 @@ public final class HostAccess {
      * @since 23.0
      */
     public static final HostAccess ISOLATED = HostAccess.newBuilder(CONSTRAINED).//
-                    methodScoping(true).build();
+                    methodScoping(true).//
+                    name("HostAccess.ISOLATED").build();
 
     /**
      * Predefined host access policy used by Context with an {@link SandboxPolicy#UNTRUSTED} sandbox
@@ -273,13 +274,20 @@ public final class HostAccess {
      *
      * <pre>
      * <code>
-     * HostAccess.newBuilder(ISOLATED).build();
+     * HostAccess.newBuilder().
+     *           allowAccessAnnotatedBy(Export.class).
+     *           allowMutableTargetMappings().
+     *           methodScoping(true).build();
      * </code>
      * </pre>
      *
      * @since 23.0
      */
-    public static final HostAccess UNTRUSTED = HostAccess.newBuilder(ISOLATED).build();
+    public static final HostAccess UNTRUSTED = HostAccess.newBuilder().//
+                    allowAccessAnnotatedBy(Export.class).//
+                    allowMutableTargetMappings().//
+                    methodScoping(true).//
+                    name("HostAccess.UNTRUSTED").build();
 
     /**
      * List of default host object mappings of mutable target types available in
