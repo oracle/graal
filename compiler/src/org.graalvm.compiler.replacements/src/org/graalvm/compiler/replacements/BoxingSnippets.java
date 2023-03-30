@@ -230,19 +230,24 @@ public class BoxingSnippets implements Snippets {
             valueCounter = new SnippetCounter(group, "<kind>Value", "unbox intrinsification");
         }
 
-        private static LocationIdentity getCacheLocation(CoreProviders providers, JavaKind kind) {
+        static Class<?> getCacheClass(JavaKind kind) {
             Class<?>[] innerClasses = null;
+            innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+            for (Class<?> innerClass : innerClasses) {
+                if (innerClass.getSimpleName().equals(kind.toBoxedJavaClass().getSimpleName() + "Cache")) {
+                    return innerClass;
+                }
+            }
+            return null;
+        }
+
+        private static LocationIdentity getCacheLocation(CoreProviders providers, JavaKind kind) {
+            Class<?> cacheClass = getCacheClass(kind);
+            if (cacheClass == null) {
+                throw GraalError.shouldNotReachHere(String.format("Cache class for %s not found", kind)); // ExcludeFromJacocoGeneratedReport
+            }
             try {
-                innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
-                if (innerClasses == null || innerClasses.length == 0) {
-                    throw GraalError.shouldNotReachHere("Inner classes must exist"); // ExcludeFromJacocoGeneratedReport
-                }
-                for (Class<?> innerClass : innerClasses) {
-                    if (innerClass.getName().endsWith("Cache")) {
-                        return new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(innerClass.getDeclaredField("cache")));
-                    }
-                }
-                throw GraalError.shouldNotReachHere("No cache inner class found"); // ExcludeFromJacocoGeneratedReport
+                return new FieldLocationIdentity(providers.getMetaAccess().lookupJavaField(cacheClass.getDeclaredField("cache")));
             } catch (Throwable e) {
                 throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
             }
