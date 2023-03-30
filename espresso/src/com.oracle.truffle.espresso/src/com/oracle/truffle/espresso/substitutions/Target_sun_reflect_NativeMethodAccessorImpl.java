@@ -243,12 +243,12 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         @Specialization
         public @JavaType(Object.class) StaticObject invoke(
-                @JavaType(java.lang.reflect.Method.class) StaticObject guestMethod,
-                @JavaType(Object.class) StaticObject receiver,
-                @JavaType(Object[].class) StaticObject args,
-                @Inject EspressoLanguage language,
-                @Inject Meta meta,
-                @Cached ToEspressoNode.Dynamic toEspressoNode) {
+                        @JavaType(java.lang.reflect.Method.class) StaticObject guestMethod,
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object[].class) StaticObject args,
+                        @Inject EspressoLanguage language,
+                        @Inject Meta meta,
+                        @Cached ToEspressoNode.Dynamic toEspressoNode) {
             return invoke0(guestMethod, receiver, args, language, meta, toEspressoNode);
         }
     }

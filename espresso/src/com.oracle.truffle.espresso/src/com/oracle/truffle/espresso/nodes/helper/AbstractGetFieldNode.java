@@ -575,7 +575,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     StaticObject doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached("createToEspressoNode()")  ToEspressoNode toEspressoNode,
+                    @Cached("createToEspressoNode()") ToEspressoNode toEspressoNode,
                     @Cached BranchProfile error) {
         Meta meta = getMeta();
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);

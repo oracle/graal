@@ -390,7 +390,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return doPrimitive(receiver, arguments, toInt);
         }
 
-        private static StaticObject doPrimitive(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException  {
+        private static StaticObject doPrimitive(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
             EspressoContext context = EspressoContext.get(toInt);
@@ -410,7 +410,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return doReference(receiver, arguments, toInt);
         }
 
-        private static StaticObject doReference(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt)  throws UnsupportedTypeException, ArityException {
+        private static StaticObject doReference(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             EspressoContext context = EspressoContext.get(toInt);
             int length = getLength(arguments, toInt);

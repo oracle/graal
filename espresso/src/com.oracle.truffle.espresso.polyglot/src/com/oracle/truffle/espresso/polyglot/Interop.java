@@ -124,10 +124,10 @@ public final class Interop {
     /**
      * Returns the Java string value if the receiver represents a {@link #isString(Object) string}
      * like value.
-     * 
+     *
      * <p>
      * There's no guarantee about preserving or not the identity of foreign objects.
-     * 
+     *
      * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #isString(Object)
@@ -354,7 +354,7 @@ public final class Interop {
      * Foreign exceptions thrown with this method can be caught as {@link ForeignException}. Note
      * that {@link ForeignException} can only catch foreign exceptions. Native guest Java exceptions
      * can also be thrown with this method.
-     * 
+     *
      * <pre>
      * assert Interop.isException(foreignException);
      * try {
@@ -526,16 +526,16 @@ public final class Interop {
      * <p>
      * The identity of the returned value is guaranteed to be preserved but it cannot be assumed
      * that the returned value will have a specific Java type.
-     * 
+     *
      * <p>
      * The user must convert the result to the expected type:
-     * 
+     *
      * <pre>
      * Object value = Interop.readArrayElement(new int[]{42}, 0);
      * assert Interop.fitsInInt(value);
      * int intValue = Interop.asInt(value);
      * </pre>
-     * 
+     *
      * @throws UnsupportedMessageException when the receiver does not support reading at all. An
      *             empty receiver with no readable array elements supports the read operation (even
      *             though there is nothing to read), therefore it throws
@@ -750,7 +750,7 @@ public final class Interop {
      * assert Interop.isString(maybeForeign);
      * String displayString = Interop.asString(maybeForeign);
      * </pre>
-     * 
+     *
      * @param allowSideEffects whether side-effects are allowed in the production of the string.
      * @since 21.0
      */
@@ -809,7 +809,7 @@ public final class Interop {
      * assert Interop.isString(maybeForeign);
      * String metaQualifiedName = Interop.asString(maybeForeign);
      * </pre>
-     * 
+     *
      * @throws UnsupportedMessageException if and only if {@link #isMetaObject(Object)} returns
      *             <code>false</code> for the same receiver.
      *
@@ -1135,7 +1135,7 @@ public final class Interop {
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
 
     public static native <T> T invokeMemberWithCast(Class<T> targetType, Object receiver, String member, Object... arguments)
-            throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
+                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
 
     /**
      * Returns true if the member is {@link #isMemberModifiable(Object, String) modifiable} or
@@ -1317,7 +1317,7 @@ public final class Interop {
      * Returns executable name of the receiver. Throws {@code UnsupportedMessageException} when the
      * receiver is has no {@link #hasExecutableName(Object) executable name}. The return value is an
      * interop value that is guaranteed to return <code>true</code> for {@link #isString(Object)}.
-     * 
+     *
      * <p>
      * The identity of the returned object is preserved, but its Java type is not necessarily
      * {@link String}. The returned value could be a string originated in a foreign language,
@@ -1325,7 +1325,7 @@ public final class Interop {
      *
      * <p>
      * To correctly convert to a Java {@link String} use {@link #asString(Object) Interop.asString}:
-     * 
+     *
      * <pre>
      * Object maybeForeign = Interop.getExecutableName(foreignObject);
      * assert Interop.isString(maybeForeign);
