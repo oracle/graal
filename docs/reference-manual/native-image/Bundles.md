@@ -23,7 +23,7 @@ Using bundles is a safe solution to encapsulate all this input required for buil
 * [Creating new Bundles from existing Bundles](#combining---bundle-create-and---bundle-apply)
 * [Bundle file format](#bundle-file-format)
 
-## Creating bundles
+## Creating Bundles
 
 To create a bundle, it is sufficient to simply pass the `--bundle-create` option along with the all the other arguments for a specific `native-image` command line invocation.
 This will cause `native-image` to create a `*.nib`-file in addition to the actual image.
