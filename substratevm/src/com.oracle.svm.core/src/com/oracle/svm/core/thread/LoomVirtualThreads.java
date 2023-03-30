@@ -63,7 +63,7 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isVirtual(Thread thread) {
         return Target_java_lang_VirtualThread.class.isInstance(thread);
     }
@@ -129,6 +129,13 @@ final class LoomVirtualThreads implements VirtualThreads {
     @Override
     public void unpinCurrent() {
         Target_jdk_internal_vm_Continuation.unpin();
+    }
+
+    @Override
+    public boolean isCurrentPinned() {
+        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
+        Target_jdk_internal_vm_ContinuationScope scope = carrier.cont.getScope();
+        return Target_jdk_internal_vm_Continuation.isPinned(scope);
     }
 
     @Override

@@ -49,11 +49,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -74,16 +73,14 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.ImageDetailKey;
@@ -96,6 +93,7 @@ import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
+import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -108,7 +106,7 @@ public class ProgressReporter {
     private static final String HEADLINE_SEPARATOR;
     private static final String LINE_SEPARATOR;
     private static final int MAX_NUM_BREAKDOWN = 10;
-    private static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
+    public static final String STAGE_DOCS_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
     private static final double EXCESSIVE_GC_RATIO = 0.5;
     private static final String BREAKDOWN_BYTE_ARRAY_PREFIX = "byte[] for ";
@@ -150,7 +148,7 @@ public class ProgressReporter {
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
         LAYOUTING("Layouting methods", true, true),
-        CREATING("Creating image");
+        CREATING("Creating image", true, true);
 
         private static final int NUM_STAGES = values().length;
 
@@ -248,14 +246,18 @@ public class ProgressReporter {
 
     public void printInitializeEnd() {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
-        String version = ImageSingletons.lookup(VM.class).version;
-        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, version);
-        l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(version).a("'").println();
-        String javaVersion = System.getProperty("java.runtime.version");
-        recordJsonMetric(GeneralInfo.JAVA_VERSION, javaVersion);
-        if (javaVersion != null) {
-            l().a(" ").doclink("Java version info", "#glossary-java-version-info").a(": '").a(javaVersion).a("'").println();
-        }
+        VM vm = ImageSingletons.lookup(VM.class);
+        recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
+        recordJsonMetric(GeneralInfo.VENDOR, vm.vendor);
+        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion + " " + vm.version); // deprecated
+        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor", "#glossary-java-info").a(": ").a(vm.vendor).println();
+        String optimizationLevel = SubstrateOptions.Optimize.getValue();
+        recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
+        String march = CPUType.getSelectedOrDefaultMArch();
+        recordJsonMetric(GeneralInfo.GRAAL_COMPILER_MARCH, march);
+        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: '%s', target machine: '%s'", optimizationLevel, march);
+        ImageSingletons.lookup(ProgressReporterFeature.class).appendGraalSuffix(graalLine);
+        graalLine.println();
         String cCompilerShort = null;
         if (ImageSingletons.contains(CCompilerInvoker.class)) {
             cCompilerShort = ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription();
@@ -265,7 +267,7 @@ public class ProgressReporter {
         String gcName = Heap.getHeap().getGC().getName();
         recordJsonMetric(GeneralInfo.GC, gcName);
         long maxHeapSize = SubstrateGCOptions.MaxHeapSize.getValue();
-        String maxHeapValue = maxHeapSize == 0 ? "unlimited" : ByteFormattingUtil.bytesToHuman(maxHeapSize);
+        String maxHeapValue = maxHeapSize == 0 ? Heap.getHeap().getGC().getDefaultMaxHeapSize() : ByteFormattingUtil.bytesToHuman(maxHeapSize);
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
     }
 
@@ -414,8 +416,7 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, ByteFormattingUtil.bytesToHuman(codeAreaSize), codeAreaSize / (double) imageFileSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
-        EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = Resources.singleton().resources();
-        int numResources = resources.size();
+        int numResources = Resources.singleton().count();
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageFileSize * 100)
                         .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", numHeapObjects, numResources).println();
@@ -438,6 +439,7 @@ public class ProgressReporter {
                         .doclink("other data", "#glossary-other-data").println();
         l().a("%9s in total", ByteFormattingUtil.bytesToHuman(imageFileSize)).println();
         printBreakdowns();
+        printRecommendations();
     }
 
     public void ensureCreationStageEndCompleted() {
@@ -496,12 +498,22 @@ public class ProgressReporter {
     }
 
     private void calculateHeapBreakdown(HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+        calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, this::recordJsonMetric);
+    }
+
+    public void calculateHeapBreakdown(Map<String, Long> breakdown, LinkStrategy strategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
+        calculateHeapBreakdown(breakdown, strategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, (k, v) -> {
+        });
+    }
+
+    public static void calculateHeapBreakdown(Map<String, Long> heapBreakdown, LinkStrategy linkStrategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects,
+                    boolean reportStringBytes, long graphEncodingByteLength, BiConsumer<JsonMetric, Object> jsonMetricAction) {
         long stringByteLength = 0;
         for (ObjectInfo o : heapObjects) {
             heapBreakdown.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
             JavaConstant javaObject = o.getConstant();
             if (reportStringBytes && metaAccess.isInstanceOf(javaObject, String.class)) {
-                stringByteLength += Utils.getInternalByteArrayLength((String) SubstrateObjectConstant.asObject(javaObject));
+                stringByteLength += Utils.getInternalByteArrayLength(metaAccess.getUniverse().getSnippetReflection().asObject(String.class, javaObject));
             }
         }
 
@@ -523,18 +535,18 @@ public class ProgressReporter {
                 remainingBytes -= metadataByteLength;
             }
             long resourcesByteLength = 0;
-            for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
+            for (ResourceStorageEntry resourceList : Resources.singleton().resources()) {
                 for (byte[] resource : resourceList.getData()) {
                     resourcesByteLength += resource.length;
                 }
             }
-            recordJsonMetric(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
+            jsonMetricAction.accept(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
             if (resourcesByteLength > 0) {
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("embedded resources", "#glossary-embedded-resources"), resourcesByteLength);
                 remainingBytes -= resourcesByteLength;
             }
             if (graphEncodingByteLength >= 0) {
-                recordJsonMetric(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
+                jsonMetricAction.accept(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
                 heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
                 remainingBytes -= graphEncodingByteLength;
             }
@@ -600,6 +612,23 @@ public class ProgressReporter {
                         .a(String.format("%9s for %s more object types", ByteFormattingUtil.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
     }
 
+    private void printRecommendations() {
+        if (!SubstrateOptions.BuildOutputRecommendations.getValue()) {
+            return;
+        }
+        l().printLineSeparator();
+        List<UserRecommendation> recommendations = ImageSingletons.lookup(ProgressReporterFeature.class).getRecommendations();
+        List<UserRecommendation> topApplicableRecommendations = recommendations.stream().filter(r -> r.isApplicable().get()).limit(5).toList();
+        if (topApplicableRecommendations.isEmpty()) {
+            return;
+        }
+        l().yellowBold().a("Recommendations:").reset().println();
+        for (UserRecommendation r : topApplicableRecommendations) {
+            String alignment = Utils.stringFilledWith(Math.max(1, 5 - r.id().length()), " ");
+            l().a(" ").doclink(r.id(), "#recommendation-" + r.id().toLowerCase()).a(":").a(alignment).a(r.description()).println();
+        }
+    }
+
     public void printEpilog(Optional<String> optionalImageName, Optional<NativeImageGenerator> optionalGenerator, ImageClassLoader classLoader, Optional<Throwable> optionalError,
                     OptionValues parsedHostedOptions) {
         executor.shutdown();
@@ -663,7 +692,7 @@ public class ProgressReporter {
             l().link(NativeImageOptions.getErrorFilePath(parsedHostedOptions)).println();
             l().println();
             l().a("If you are unable to resolve this problem, please file an issue with the error report at:").println();
-            var supportURL = ImageSingletonsSupport.isInstalled() ? ImageSingletons.lookup(VM.class).supportURL : new VM().supportURL;
+            var supportURL = VM.getErrorReportingInstance().supportURL;
             l().link(supportURL, supportURL).println();
         }
     }
@@ -746,7 +775,7 @@ public class ProgressReporter {
         lastGCStats = currentGCStats;
     }
 
-    private void recordJsonMetric(JsonMetric metric, Object value) {
+    public void recordJsonMetric(JsonMetric metric, Object value) {
         if (jsonHelper != null) {
             metric.record(jsonHelper, value);
         }
@@ -881,10 +910,10 @@ public class ProgressReporter {
      * PRINTERS
      */
 
-    abstract class AbstractPrinter<T extends AbstractPrinter<T>> {
+    public abstract class AbstractPrinter<T extends AbstractPrinter<T>> {
         abstract T getThis();
 
-        abstract T a(String text);
+        public abstract T a(String text);
 
         final T a(String text, Object... args) {
             return a(String.format(text, args));
@@ -948,25 +977,27 @@ public class ProgressReporter {
             return getThis();
         }
 
-        final T doclink(String text, String htmlAnchor) {
+        public final T doclink(String text, String htmlAnchor) {
             linkStrategy.doclink(this, text, htmlAnchor);
             return getThis();
         }
     }
 
-    /** Start printing a new line. */
+    /**
+     * Start printing a new line.
+     */
     private DirectPrinter l() {
         return linePrinter.a(outputPrefix);
     }
 
-    final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
+    public final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
         @Override
         DirectPrinter getThis() {
             return this;
         }
 
         @Override
-        DirectPrinter a(String text) {
+        public DirectPrinter a(String text) {
             print(text);
             return this;
         }
@@ -988,7 +1019,7 @@ public class ProgressReporter {
         protected final List<String> lineParts = new ArrayList<>();
 
         @Override
-        T a(String value) {
+        public T a(String value) {
             lineParts.add(value);
             return getThis();
         }
@@ -1143,7 +1174,7 @@ public class ProgressReporter {
          * re-printed.
          */
         @Override
-        CharacterwiseStagePrinter a(String value) {
+        public CharacterwiseStagePrinter a(String value) {
             print(value);
             return super.a(value);
         }
@@ -1208,7 +1239,7 @@ public class ProgressReporter {
         }
 
         @Override
-        TwoColumnPrinter a(String value) {
+        public TwoColumnPrinter a(String value) {
             super.a(value);
             return this;
         }
@@ -1323,7 +1354,7 @@ public class ProgressReporter {
         }
     }
 
-    private interface LinkStrategy {
+    public interface LinkStrategy {
         void link(AbstractPrinter<?> printer, String text, String url);
 
         String asDocLink(String text, String htmlAnchor);
@@ -1338,7 +1369,7 @@ public class ProgressReporter {
         }
     }
 
-    final class LinklessStrategy implements LinkStrategy {
+    static final class LinklessStrategy implements LinkStrategy {
         @Override
         public void link(AbstractPrinter<?> printer, String text, String url) {
             printer.a(text);
@@ -1350,8 +1381,10 @@ public class ProgressReporter {
         }
     }
 
-    final class LinkyStrategy implements LinkStrategy {
-        /** Adding link part individually for {@link LinePrinter#getCurrentTextLength()}. */
+    static final class LinkyStrategy implements LinkStrategy {
+        /**
+         * Adding link part individually for {@link LinePrinter#getCurrentTextLength()}.
+         */
         @Override
         public void link(AbstractPrinter<?> printer, String text, String url) {
             printer.a(ANSI.LINK_START + url).a(ANSI.LINK_TEXT).a(text).a(ANSI.LINK_END);
@@ -1387,15 +1420,5 @@ public class ProgressReporter {
         public static String strip(String string) {
             return string.replaceAll(STRIP_COLORS, "").replaceAll(STRIP_LINKS, "$1");
         }
-    }
-}
-
-@AutomaticallyRegisteredFeature
-class ProgressReporterFeature implements InternalFeature {
-    private final ProgressReporter reporter = ProgressReporter.singleton();
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        reporter.reportStageProgress();
     }
 }

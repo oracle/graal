@@ -24,20 +24,27 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.annotate.KeepOriginal;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.util.Set;
+import java.util.stream.Stream;
+
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 
 /**
- * The purpose of the target class is to support debugging and monitoring of threads. Because we
- * currently don't provide/expose means for doing so, we replace it with an almost empty
- * implementation.
+ * We currently don't provide/expose means for debugging and monitoring of threads, so we replace
+ * these methods with an empty implementation.
  */
 @TargetClass(className = "jdk.internal.vm.ThreadContainers", onlyWith = JDK19OrLater.class)
-@Substitute
 @SuppressWarnings("unused")
 final class Target_jdk_internal_vm_ThreadContainers {
+    // Checkstyle: stop
+    @Delete static Set<WeakReference<Target_jdk_internal_vm_ThreadContainer>> CONTAINER_REGISTRY;
+    @Delete static ReferenceQueue<Object> QUEUE;
+    // Checkstyle: resume
 
     @Substitute
     public static Object registerContainer(Target_jdk_internal_vm_ThreadContainer container) {
@@ -48,8 +55,10 @@ final class Target_jdk_internal_vm_ThreadContainers {
     public static void deregisterContainer(Object key) {
     }
 
-    @KeepOriginal
-    public static native Target_jdk_internal_vm_ThreadContainer root();
+    @Substitute
+    static Stream<Target_jdk_internal_vm_ThreadContainer> children(Target_jdk_internal_vm_ThreadContainer container) {
+        return Stream.empty();
+    }
 }
 
 @TargetClass(className = "jdk.internal.vm.ThreadContainer", onlyWith = JDK19OrLater.class)

@@ -64,7 +64,7 @@ public class TStringUTF16Tests extends TStringTestBase {
         Assert.assertTrue(utf16.codeRangeEqualsUncached(TruffleString.CodeRange.BROKEN));
 
         Assert.assertEquals(4, utf16.codePointLengthUncached(TruffleString.Encoding.UTF_16));
-        if (utf16.isCompatibleTo(TruffleString.Encoding.UTF_16LE)) {
+        if (TruffleString.Encoding.UTF_16 == TruffleString.Encoding.UTF_16LE) {
             Assert.assertArrayEquals(new byte[]{91, 0, -1, -37, -1, -33, -128, -36, 93, 0}, utf16.copyToByteArrayUncached(TruffleString.Encoding.UTF_16LE));
         }
         Assert.assertEquals('[', utf16.codePointAtIndexUncached(0, TruffleString.Encoding.UTF_16));

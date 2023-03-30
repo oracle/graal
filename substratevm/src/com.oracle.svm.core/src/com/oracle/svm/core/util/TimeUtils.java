@@ -67,11 +67,6 @@ public class TimeUtils {
         return (System.nanoTime() - startNanos);
     }
 
-    /** Milliseconds since a previous {@link System#currentTimeMillis()} call. */
-    public static long milliSecondsSince(long startMillis) {
-        return (System.currentTimeMillis() - startMillis);
-    }
-
     /**
      * Compare two nanosecond times.
      *
@@ -79,20 +74,6 @@ public class TimeUtils {
      */
     public static boolean nanoTimeLessThan(long leftNanos, long rightNanos) {
         return ((leftNanos - rightNanos) < 0L);
-    }
-
-    /**
-     * Turn an absolute deadline in milliseconds, or a relative duration in nanoseconds, into a
-     * relative duration in nanoseconds.
-     */
-    public static long durationNanos(boolean isAbsolute, long time) {
-        if (isAbsolute) {
-            /* Absolute deadline, in milliseconds. */
-            return millisToNanos(time - System.currentTimeMillis());
-        } else {
-            /* Relative duration, in nanoseconds. */
-            return time;
-        }
     }
 
     /** Return the number of seconds in the given number of nanoseconds. */
@@ -112,6 +93,7 @@ public class TimeUtils {
     }
 
     /** Return the number of milliseconds in the given number of nanoseconds. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long divideNanosToMillis(long nanos) {
         return (nanos / nanosPerMilli);
     }

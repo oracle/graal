@@ -56,6 +56,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
@@ -81,7 +82,8 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
-    public Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess, PolyglotAccess polyglotAccess,
+    public Context createContext(Object receiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess,
+                    PolyglotAccess polyglotAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, IOAccess ioAccess, LogHandler logHandler,
                     boolean allowCreateProcess, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl,
@@ -90,11 +92,11 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         Engine localEngine = engine.localEngine;
         AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
         Object engineReceiver = api.getReceiver(localEngine);
-        Context localContext = dispatch.createContext(engineReceiver, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread,
+        Context localContext = dispatch.createContext(engineReceiver, sandboxPolicy, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread,
                         allowHostClassLoading,
                         allowInnerContextOptions, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, ioAccess, logHandler, allowCreateProcess, processHandler,
                         environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, hostClassLoader, true, useSystemExit);
-        long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine);
+        long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine, sandboxPolicy);
         HostContext context = new HostContext(engine, guestContextId, localContext);
         hostToGuest.registerHostContext(guestContextId, context);
         return polyglot.getAPIAccess().newContext(remoteContext, context, engine.api);
@@ -169,5 +171,14 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
         Object engineReceiver = api.getReceiver(localEngine);
         return dispatch.hostToGuestException(engineReceiver, throwable);
+    }
+
+    @Override
+    public SandboxPolicy getSandboxPolicy(Object receiver) {
+        HostEngine engine = (HostEngine) receiver;
+        Engine localEngine = engine.localEngine;
+        AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
+        Object engineReceiver = api.getReceiver(localEngine);
+        return dispatch.getSandboxPolicy(engineReceiver);
     }
 }

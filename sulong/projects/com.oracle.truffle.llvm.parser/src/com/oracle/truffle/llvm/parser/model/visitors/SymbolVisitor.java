@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.ArrayCon
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.StructureConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.aggregate.VectorConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.DoubleConstant;
+import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FP128Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.X86FP80Constant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
@@ -147,6 +148,10 @@ public interface SymbolVisitor extends ValueList.ValueVisitor<SymbolImpl> {
     }
 
     default void visit(X86FP80Constant constant) {
+        defaultAction(constant);
+    }
+
+    default void visit(FP128Constant constant) {
         defaultAction(constant);
     }
 

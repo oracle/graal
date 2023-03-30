@@ -44,8 +44,6 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-
 public class SubstrateGraalCompilerSetup {
 
     protected final SubstrateMetaAccess sMetaAccess;
@@ -68,10 +66,10 @@ public class SubstrateGraalCompilerSetup {
     }
 
     public SharedRuntimeConfigurationBuilder createRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, UniverseMetaAccess metaAccess,
-                    ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
+                    Function<Providers, SubstrateBackend> backendProvider,
                     ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider,
                     SubstratePlatformConfigurationProvider platformConfig) {
-        return new SubstrateRuntimeConfigurationBuilder(options, hostVM, aUniverse, metaAccess, originalReflectionProvider, backendProvider, classInitializationSupport,
+        return new SubstrateRuntimeConfigurationBuilder(options, hostVM, aUniverse, metaAccess, backendProvider, classInitializationSupport,
                         loopsDataProvider, platformConfig);
     }
 }

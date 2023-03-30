@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## Version 23.1.0
+* (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.
+
 ## Version 23.0.0
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.
 * (GR-41196) Provide `.debug.svm.imagebuild.*` sections that contain build options and properties used in the build of the image.
@@ -10,7 +13,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-41100) Add support for `-XX:HeapDumpPath` to control where heap dumps are created.
 * (GR-42148) Adjust build output to report types (primitives, classes, interfaces, and arrays) instead of classes and revise the output schema of `-H:BuildOutputJSONFile`.
 * (GR-42375) Add `-H:±GenerateBuildArtifactsFile` option, which generates a `build-artifacts.json` file with a list of all artifacts produced by Native Image. `.build_artifacts.txt` files are now deprecated, disabled (can be re-enabled with env setting `NATIVE_IMAGE_DEPRECATED_BUILD_ARTIFACTS_TXT=true`), and will be removed in a future release.
-* (GR-34179) Improved debugging support on Windows: Debug information now includes information about Java types (contributed by Red Hat).
+* (GR-34179) Red Hat improved debugging support on Windows: Debug information now includes information about Java types.
 * (GR-41096) Support services loaded through the `java.util.ServiceLoader.ModuleServicesLookupIterator`. An example of such service is the `com.sun.jndi.rmi.registry.RegistryContextFactory`.
 * (GR-41912) The builder now generated reports for internal errors, which users can share when creating issues. By default, error reports follow the `svm_err_b_<timestamp>_pid<pid>.md` pattern and are created in the working directory. Use `-H:ErrorFile` to adjust the path or filename.
 * (GR-36951) Add [RISC-V support](https://medium.com/p/899be38eddd9) for Native Image through the LLVM backend.
@@ -22,6 +25,14 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-44216) Native Image is now shipped as part of the GraalVM JDK and thus no longer needs to be installed via `gu install native-image`.
 * (GR-44105) A warning is displayed when trying to generate debug info on macOS since that is not supported. It is now an error to use `-H:+StripDebugInfo` on macOS or `-H:-StripDebugInfo` on Windows since those values are not supported.
 * (GR-43966) Remove analysis options -H:AnalysisStatisticsFile and -H:ImageBuildStatisticsFile. Output files are now written to fixed subdirectories relative to image location (reports/image_build_statistics.json). 
+* (GR-38414) BellSoft implemented the `MemoryPoolMXBean` for the serial and epsilon GCs.
+* (GR-40641) Dynamic linking of AWT libraries on Linux.
+* (GR-40463) Red Hat added experimental support for JMX, which can be enabled with the `--enable-monitoring` option (e.g. `--enable-monitoring=jmxclient,jmxserver`).
+* (GR-42740) Together with Red Hat, we added experimental support for JFR event streaming.
+* (GR-44110) Native Image now targets `x86-64-v3` by default on AMD64 and supports a new `-march` option. Use `-march=compatibility` for best compatibility (previous default) or `-march=native` for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
+* (GR-43971) Add native-image option `-E<env-var-key>[=<env-var-value>]` and support environment variable capturing in bundles. Previously almost all environment variables were available in the builder. To temporarily revert back to the old behaviour, env setting `NATIVE_IMAGE_DEPRECATED_BUILDER_SANITATION=true` can be used. The old behaviour will be removed in a future release.
+* (GR-43382) The build output now includes a section with recommendations that help you get the best out of Native Image.
+* (GR-44722) The output of `native-image --version` and various Java properties (e.g. `java.vm.version`) have been aligned with the OpenJDK. To distinguish between GraalVM CE, Oracle GraalVM, and GraalVM distributions from other vendors, please refer to `java.vm.vendor`.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.

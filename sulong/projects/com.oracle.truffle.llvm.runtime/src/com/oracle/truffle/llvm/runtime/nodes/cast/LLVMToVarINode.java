@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBitLarge;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBitSmall;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -128,6 +129,11 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         @Specialization
         protected LLVMIVarBit do80BitFloat(LLVM80BitFloat from) {
             return LLVMIVarBit.create(getBits(), from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, true);
+        }
+
+        @Specialization
+        protected LLVMIVarBit do128BitFloat(LLVM128BitFloat from) {
+            return LLVMIVarBit.create(getBits(), from.getBytesBigEndian(), LLVM128BitFloat.BIT_WIDTH, true);
         }
     }
 
@@ -239,6 +245,12 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         protected LLVMIVarBit do80BitFloat(LLVM80BitFloat from) {
             assert getBits() == LLVM80BitFloat.BIT_WIDTH;
             return LLVMIVarBit.create(getBits(), from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, true);
+        }
+
+        @Specialization
+        protected LLVMIVarBit do128BitFloat(LLVM128BitFloat from) {
+            assert getBits() == LLVM128BitFloat.BIT_WIDTH;
+            return LLVMIVarBit.create(getBits(), from.getBytesBigEndian(), LLVM128BitFloat.BIT_WIDTH, true);
         }
 
         @Specialization

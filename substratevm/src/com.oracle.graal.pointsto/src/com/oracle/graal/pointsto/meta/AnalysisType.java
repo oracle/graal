@@ -654,6 +654,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (dimension > 0 && !elementalType.isPrimitive() && !elementalType.isJavaLangObject()) {
             forAllSuperTypes(universe.objectType(), dimension, true, superTypeConsumer);
         }
+        if (this.isInterface()) {
+            superTypeConsumer.accept(universe.objectType());
+        }
     }
 
     private static void forAllSuperTypes(AnalysisType elementType, int arrayDimension, boolean processType, Consumer<AnalysisType> superTypeConsumer) {
@@ -894,7 +897,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     public void initialize() {
         if (!wrapped.isInitialized()) {
-            throw GraalError.shouldNotReachHere("Classes can only be initialized using methods in ClassInitializationFeature: " + toClassName());
+            throw GraalError.shouldNotReachHere("Classes can only be initialized using methods in ClassInitializationFeature: " + toClassName()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1040,7 +1043,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * available to implement it for JIT compilation at image run time. So we want to make sure
          * that Graal is not using this method, and only resolveConcreteMethod instead.
          */
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

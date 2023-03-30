@@ -32,11 +32,12 @@ import org.junit.Assert;
 
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-public class MonitorInflationCauseConstantPoolParser extends ConstantPoolParser {
+public class MonitorInflationCauseConstantPoolParser extends AbstractSerializerParser {
 
     @Override
     public void parse(RecordingInput input) throws IOException {
         int count = input.readInt();
+        Assert.assertTrue(count > 0);
         for (int i = 0; i < count; i++) {
             addFoundId(input.readInt());
             Assert.assertFalse("Inflate cause is empty!", input.readUTF().isEmpty());

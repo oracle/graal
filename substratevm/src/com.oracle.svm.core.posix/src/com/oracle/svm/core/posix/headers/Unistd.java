@@ -134,5 +134,10 @@ public class Unistd {
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int getpagesize();
 
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int ftruncate(int fd, SignedWord offset);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int getpid();
     }
 }

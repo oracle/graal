@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nodes.nfa;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 
@@ -85,7 +86,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     private boolean resultPushed = false;
     private final boolean trackLastGroup;
 
-    public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates, boolean trackLastGroup) {
+    public TRegexNFAExecutorLocals(TruffleString input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates, boolean trackLastGroup) {
         super(input, fromIndex, maxIndex, index);
         this.frameSize = 1 + nCaptureGroups * 2 + (trackLastGroup ? 1 : 0);
         this.nCaptureGroups = nCaptureGroups;

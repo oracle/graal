@@ -112,7 +112,7 @@ public final class AVXKind {
             case 64:
                 return ZMM;
             default:
-                throw GraalError.shouldNotReachHere("unsupported kind: " + kind);
+                throw GraalError.shouldNotReachHere("unsupported kind: " + kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -149,7 +149,7 @@ public final class AVXKind {
                 return ret;
             }
         }
-        throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %s x %s", size, base));
+        throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %s x %s", size, base)); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -176,7 +176,7 @@ public final class AVXKind {
             }
         }
         if (toReturn == null) {
-            throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %d x %s", length, base));
+            throw GraalError.shouldNotReachHere(String.format("unsupported vector kind: %d x %s", length, base)); // ExcludeFromJacocoGeneratedReport
         }
         return toReturn;
     }

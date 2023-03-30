@@ -34,6 +34,7 @@ import javax.management.MBeanServerConnection;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
 /** See {@link ManagementSupport} for documentation. */
 @TargetClass(java.lang.management.ManagementFactory.class)
@@ -60,21 +61,20 @@ final class Target_java_lang_management_ManagementFactory {
         return ManagementSupport.getSingleton().getPlatformMXBeans(mxbeanInterface);
     }
 
-    /*
-     * Connections to remote MBean servers are not yet supported.
-     */
-
     @Substitute
+    @TargetElement(onlyWith = JmxClientNotIncluded.class)
     private static <T extends PlatformManagedObject> T getPlatformMXBean(MBeanServerConnection connection, Class<T> mxbeanInterface) throws java.io.IOException {
         return null;
     }
 
     @Substitute
+    @TargetElement(onlyWith = JmxClientNotIncluded.class)
     private static <T extends PlatformManagedObject> List<T> getPlatformMXBeans(MBeanServerConnection connection, Class<T> mxbeanInterface) throws java.io.IOException {
         return Collections.emptyList();
     }
 
     @Substitute
+    @TargetElement(onlyWith = JmxClientNotIncluded.class)
     private static <T> T newPlatformMXBeanProxy(MBeanServerConnection connection, String mxbeanName, Class<T> mxbeanInterface) throws java.io.IOException {
         return null;
     }

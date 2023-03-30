@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,11 @@
 package org.graalvm.compiler.nodes.calc;
 
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -44,6 +44,10 @@ public final class IntegerNormalizeCompareNode extends AbstractNormalizeCompareN
     public IntegerNormalizeCompareNode(ValueNode x, ValueNode y, JavaKind kind, boolean unsigned) {
         super(TYPE, kind, x, y);
         this.unsigned = unsigned;
+    }
+
+    public boolean isUnsigned() {
+        return unsigned;
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, boolean unsigned, JavaKind kind, ConstantReflectionProvider constantReflection) {

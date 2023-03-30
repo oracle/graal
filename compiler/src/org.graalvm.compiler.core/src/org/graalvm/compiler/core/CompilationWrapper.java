@@ -27,7 +27,7 @@ package org.graalvm.compiler.core;
 import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAsFailure;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
-import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
+import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMCompilationFailureRate;
 import static org.graalvm.compiler.core.GraalCompilerOptions.MaxCompilationProblemsPerAction;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
@@ -48,6 +48,7 @@ import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
@@ -128,29 +129,22 @@ public abstract class CompilationWrapper<T> {
 
     /**
      * Gets the action to take based on the value of
-     * {@link GraalCompilerOptions#CompilationBailoutAsFailure},
-     * {@link GraalCompilerOptions#CompilationFailureAction} and
-     * {@link GraalCompilerOptions#ExitVMOnException} in {@code options}.
+     * {@link GraalCompilerOptions#CompilationBailoutAsFailure} and
+     * {@link GraalCompilerOptions#CompilationFailureAction} in {@code options}.
      *
      * Subclasses can override this to choose a different action.
      *
      * @param cause the cause of the bailout or failure
      */
     protected ExceptionAction lookupAction(OptionValues options, Throwable cause) {
-        if (cause instanceof BailoutException && !CompilationBailoutAsFailure.getValue(options)) {
+        if (isNonFailureBailout(options, cause)) {
             return ExceptionAction.Silent;
         }
-        if (ExitVMOnException.getValue(options)) {
-            assert CompilationFailureAction.getDefaultValue() != ExceptionAction.ExitVM;
-            assert ExitVMOnException.getDefaultValue() != true;
-            if (CompilationFailureAction.hasBeenSet(options) && CompilationFailureAction.getValue(options) != ExceptionAction.ExitVM) {
-                TTY.printf("WARNING: Ignoring %s=%s since %s=true has been explicitly specified.%n",
-                                CompilationFailureAction.getName(), CompilationFailureAction.getValue(options),
-                                ExitVMOnException.getName());
-            }
-            return ExceptionAction.ExitVM;
-        }
         return CompilationFailureAction.getValue(options);
+    }
+
+    private static boolean isNonFailureBailout(OptionValues options, Throwable cause) {
+        return cause instanceof BailoutException && !CompilationBailoutAsFailure.getValue(options);
     }
 
     /**
@@ -221,6 +215,7 @@ public abstract class CompilationWrapper<T> {
     @SuppressWarnings("try")
     public final T run(DebugContext initialDebug) {
         try {
+            totalCompilations.incrementAndGet();
             return performCompilation(initialDebug);
         } catch (Throwable cause) {
             return onCompilationFailure(new Failure(cause, initialDebug));
@@ -272,7 +267,7 @@ public abstract class CompilationWrapper<T> {
 
             ExceptionAction action = lookupAction(initialOptions, cause);
 
-            action = adjustAction(initialOptions, action);
+            action = adjustAction(initialOptions, action, cause);
 
             if (action == ExceptionAction.Silent) {
                 return handleException(cause);
@@ -383,14 +378,90 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
+    // Global counters used to measure compilation failure rate over a
+    // period of COMPILATION_FAILURE_DETECTION_PERIOD_MS
+    private static final GlobalAtomicLong totalCompilations = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong failedCompilations = new GlobalAtomicLong(0L);
+    private static final GlobalAtomicLong compilationPeriodStart = new GlobalAtomicLong(0L);
+    private static final int COMPILATION_FAILURE_DETECTION_PERIOD_MS = 2000;
+    private static final int MIN_COMPILATIONS_FOR_FAILURE_DETECTION = 100;
+
+    /**
+     * Gets the start of the current compilation period, initializing it to {@code initialValue} if
+     * this is the first period.
+     */
+    private static long getCompilationPeriodStart(long initialValue) {
+        long start = compilationPeriodStart.get();
+        if (start == 0) {
+            // Lazy initialization of compilationPeriodStart
+            if (compilationPeriodStart.compareAndSet(start, initialValue)) {
+                start = initialValue;
+            } else {
+                start = compilationPeriodStart.get();
+            }
+        }
+        return start;
+    }
+
+    /**
+     * Does the current compilation failure rate exceed the limit specified by
+     * {@link GraalCompilerOptions#ExitVMCompilationFailureRate}?
+     */
+    private static boolean isCompilationFailureRateTooHigh(OptionValues options, Throwable cause) {
+        if (isNonFailureBailout(options, cause)) {
+            return false;
+        }
+
+        long failed = failedCompilations.incrementAndGet();
+        long total = totalCompilations.get();
+        if (total == 0) {
+            return false;
+        }
+
+        int rate = (int) (failed * 100 / total);
+        int maxRate = ExitVMCompilationFailureRate.getValue(options);
+        if (maxRate == 0) {
+            // Systemic compilation failure detection is disabled.
+            return false;
+        }
+
+        long now = System.currentTimeMillis();
+        long start = getCompilationPeriodStart(now);
+
+        long period = now - start;
+        boolean periodExpired = period > COMPILATION_FAILURE_DETECTION_PERIOD_MS;
+
+        // Wait for period to expire or some minimum amount of compilations
+        // before detecting systemic failure.
+        if (rate > maxRate && (periodExpired || total > MIN_COMPILATIONS_FOR_FAILURE_DETECTION)) {
+            TTY.printf("Warning: Systemic Graal compilation failure detected: %d of %d (%d%%) of compilations failed during last %d ms [max rate set by %s is %d%%]%n",
+                            failed, total, rate, period, ExitVMCompilationFailureRate.getName(), maxRate);
+            return true;
+        }
+
+        if (periodExpired) {
+
+            if (compilationPeriodStart.compareAndSet(start, now)) {
+                // Reset compilation counters for new period
+                failedCompilations.set(0);
+                totalCompilations.set(0);
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Adjusts {@code initialAction} if necessary based on
      * {@link GraalCompilerOptions#MaxCompilationProblemsPerAction}.
      */
-    private ExceptionAction adjustAction(OptionValues initialOptions, ExceptionAction initialAction) {
+    private ExceptionAction adjustAction(OptionValues initialOptions, ExceptionAction initialAction, Throwable cause) {
         ExceptionAction action = initialAction;
         int maxProblems = MaxCompilationProblemsPerAction.getValue(initialOptions);
         if (action != ExceptionAction.ExitVM) {
+            if (isCompilationFailureRateTooHigh(initialOptions, cause)) {
+                return ExceptionAction.ExitVM;
+            }
             synchronized (problemsHandledPerAction) {
                 while (action != ExceptionAction.Silent) {
                     int problems = problemsHandledPerAction.getOrDefault(action, 0);

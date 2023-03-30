@@ -87,6 +87,7 @@ public class TruffleTypes {
     public static final String OptionKey_Name = "org.graalvm.options.OptionKey";
     public static final String OptionMap_Name = "org.graalvm.options.OptionMap";
     public static final String OptionStability_Name = "org.graalvm.options.OptionStability";
+    public static final String SandboxPolicy_Name = "org.graalvm.polyglot.SandboxPolicy";
 
     public final DeclaredType Option = c.getDeclaredType(Option_Name);
     public final DeclaredType Option_Group = c.getDeclaredType(Option_Group_Name);
@@ -96,6 +97,7 @@ public class TruffleTypes {
     public final DeclaredType OptionKey = c.getDeclaredType(OptionKey_Name);
     public final DeclaredType OptionMap = c.getDeclaredType(OptionMap_Name);
     public final DeclaredType OptionStability = c.getDeclaredType(OptionStability_Name);
+    public final DeclaredType SandboxPolicy = c.getDeclaredType(SandboxPolicy_Name);
 
     // Truffle API
     public static final String Assumption_Name = "com.oracle.truffle.api.Assumption";
@@ -134,6 +136,7 @@ public class TruffleTypes {
     public static final String TruffleLanguage_Provider_Name = "com.oracle.truffle.api.TruffleLanguage.Provider";
     public static final String TruffleLanguage_Registration_Name = "com.oracle.truffle.api.TruffleLanguage.Registration";
     public static final String TruffleOptions_Name = "com.oracle.truffle.api.TruffleOptions";
+    public static final String TruffleOptionDescriptors_Name = "com.oracle.truffle.api.TruffleOptionDescriptors";
     public static final String UnexpectedResultException_Name = "com.oracle.truffle.api.nodes.UnexpectedResultException";
     public static final String VirtualFrame_Name = "com.oracle.truffle.api.frame.VirtualFrame";
     public static final String HostLanguage_Name = "com.oracle.truffle.polyglot.HostLanguage";
@@ -172,6 +175,7 @@ public class TruffleTypes {
     public final DeclaredType TruffleLanguage_Provider = c.getDeclaredType(TruffleLanguage_Provider_Name);
     public final DeclaredType TruffleLanguage_Registration = c.getDeclaredType(TruffleLanguage_Registration_Name);
     public final DeclaredType TruffleOptions = c.getDeclaredType(TruffleOptions_Name);
+    public final DeclaredType TruffleOptionDescriptors = c.getDeclaredType(TruffleOptionDescriptors_Name);
     public final DeclaredType UnexpectedResultException = c.getDeclaredType(UnexpectedResultException_Name);
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
     public final DeclaredType HostLanguage = c.getDeclaredTypeOptional(HostLanguage_Name);

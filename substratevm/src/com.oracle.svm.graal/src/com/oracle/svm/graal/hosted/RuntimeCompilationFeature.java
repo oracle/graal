@@ -41,6 +41,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
@@ -61,6 +62,7 @@ import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -374,7 +376,7 @@ public abstract class RuntimeCompilationFeature {
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(ImageSingletons.lookup(BarrierSetProvider.class).createBarrierSet(config.getMetaAccess()));
         RuntimeConfiguration runtimeConfig = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
-                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(), originalProviders.getConstantReflection(),
+                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
                                         backendProvider, classInitializationSupport, originalProviders.getLoopsDataProvider(), platformConfig)
                         .build();
 
@@ -387,11 +389,13 @@ public abstract class RuntimeCompilationFeature {
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         final boolean supportsStubBasedPlugins = !SubstrateOptions.useLLVMBackend();
+
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), ConfigurationValues.getTarget(), supportsStubBasedPlugins);
 
         NativeImageGenerator.registerReplacements(DebugContext.forCurrentThread(), featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
+
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
@@ -499,6 +503,8 @@ public abstract class RuntimeCompilationFeature {
     public SubstrateMethod prepareMethodForRuntimeCompilation(Executable method, BeforeAnalysisAccessImpl config) {
         return prepareMethodForRuntimeCompilation(config.getMetaAccess().lookupJavaMethod(method), config);
     }
+
+    public abstract void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator);
 
     public abstract SubstrateMethod prepareMethodForRuntimeCompilation(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config);
 

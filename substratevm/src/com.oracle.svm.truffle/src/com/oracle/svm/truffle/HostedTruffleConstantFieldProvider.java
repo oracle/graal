@@ -30,7 +30,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node.Child;
+import com.oracle.truffle.api.nodes.Node.Children;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -43,23 +46,37 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
     }
 
     /**
-     * The {@link CompilationFinal} annotation allows to mark arrays as stable so that array
-     * elements can be constant folded. However, this constant folding must not happen during native
-     * image generation: that would be too early since the array can still be modified before
-     * compilation. So we disable the constant folding of such fields when preparing graphs, so that
-     * during partial evaluation the {@link TruffleConstantFieldProvider} can do the correct
-     * constant folding that takes stable array dimensions into account.
+     * The {@link CompilationFinal} annotation allows one to mark arrays as stable so that array
+     * elements can be constant folded.
+     * <p>
+     * However, the "stableness" of the array can be a dynamic property guarded by assumptions in
+     * the runtime execution. In other words, it is possible for the array to be considered stable
+     * in a runtime compilation, and for the compilation to be invalided when the array is changed.
+     * Therefore, this constant folding must not happen during native image generation, as
+     * invalidation of such code is impossible.
+     * <p>
+     * We disable the constant folding of such fields when preparing runtime graphs, so that during
+     * partial evaluation the {@link TruffleConstantFieldProvider} can do the correct constant
+     * folding that takes stable array dimensions into account.
+     * <p>
+     * Similar restrictions are needed for the Node's {@link Child} and {@link Children}
+     * annotations.
      */
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        if (field.getAnnotation(CompilationFinal.class) != null) {
-            if (field instanceof AnalysisField) {
+        boolean hasTruffleFoldedAnnotation = field.isAnnotationPresent(CompilationFinal.class) || field.isAnnotationPresent(Child.class) || field.isAnnotationPresent(Children.class);
+        if (hasTruffleFoldedAnnotation) {
+            if ((!SubstrateOptions.parseOnce()) && field instanceof AnalysisField) {
                 /*
-                 * If this is a final field, it might be constant folded in AOT compilation and also
-                 * during static analysis. So the runtime graph can be the only place where a read
-                 * occurs, therefore we explicitly mark the field as read.
+                 * Without ParseOnce, this field might only be read within runtime graphs (it might
+                 * be folded during static analysis and also in AOT compilation).
+                 *
+                 * Therefore, we explicitly mark the field as read.
+                 *
+                 * When using ParseOnce, this precaution is unnecessary, as runtime graphs are
+                 * properly integrated into analysis.
                  */
-                ((AnalysisField) field).registerAsRead("it is annotated with " + CompilationFinal.class.getName());
+                ((AnalysisField) field).registerAsRead("it is annotated with a Truffle folded annotation (@CompilationFinal, @Children, or @Child)");
             }
             return null;
         }

@@ -120,7 +120,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -854,7 +854,7 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements org.graalvm.compiler.api.replacements.SnippetTemplateCache {
 
         protected final OptionValues options;
-        private final SnippetReflectionProvider snippetReflection;
+        protected final SnippetReflectionProvider snippetReflection;
         private final Map<CacheKey, SnippetTemplate> templates;
 
         private final boolean shouldTrackNodeSourcePosition;
@@ -1149,7 +1149,7 @@ public class SnippetTemplate {
             if (unwindNodes.size() == 0) {
                 unwindPath = null;
             } else if (unwindNodes.size() > 1) {
-                throw GraalError.shouldNotReachHere("Graph has more than one UnwindNode");
+                throw GraalError.shouldNotReachHere("Graph has more than one UnwindNode"); // ExcludeFromJacocoGeneratedReport
             } else {
                 unwindPath = unwindNodes.get(0);
             }
@@ -1158,7 +1158,7 @@ public class SnippetTemplate {
             if (fallbackInvokes.size() == 0) {
                 fallbackInvoke = null;
             } else if (fallbackInvokes.size() > 1) {
-                throw GraalError.shouldNotReachHere("Graph has more than one " + FallbackInvokeWithExceptionNode.class.getSimpleName());
+                throw GraalError.shouldNotReachHere("Graph has more than one " + FallbackInvokeWithExceptionNode.class.getSimpleName()); // ExcludeFromJacocoGeneratedReport
             } else {
                 fallbackInvoke = fallbackInvokes.get(0);
             }
@@ -1680,10 +1680,6 @@ public class SnippetTemplate {
         return replacements;
     }
 
-    public boolean hasSideEffects() {
-        return !sideEffectNodes.isEmpty();
-    }
-
     /**
      * Converts a Java boxed value to a {@link JavaConstant} of the right kind. This adjusts for the
      * limitation that a {@link Local}'s kind is a {@linkplain JavaKind#getStackKind() stack kind}
@@ -1835,7 +1831,7 @@ public class SnippetTemplate {
             if (lastLocationAccess == memoryAnchor) {
                 return super.getLastLocationAccess(locationIdentity);
             } else {
-                return (MemoryKill) duplicates.get(ValueNodeUtil.asNode(lastLocationAccess));
+                return (MemoryKill) duplicates.get(ValueNodeInterface.asNode(lastLocationAccess));
             }
         }
 
@@ -1928,7 +1924,7 @@ public class SnippetTemplate {
                                 "Kill locations do not match: %s (%s) vs %s (%s)", withExceptionKill, withExceptionKill.getKilledLocationIdentities(), exceptionEdgeKill,
                                 exceptionEdgeKill.getKilledLocationIdentities());
             } else {
-                GraalError.shouldNotReachHere("Unexpected exception edge: " + exceptionEdge);
+                GraalError.shouldNotReachHere("Unexpected exception edge: " + exceptionEdge); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -2133,7 +2129,7 @@ public class SnippetTemplate {
                     if (MemoryKill.isSingleMemoryKill(replacee)) {
                         loc = ((SingleMemoryKill) replacee).getKilledLocationIdentity();
                     } else if (MemoryKill.isMultiMemoryKill(replacee)) {
-                        GraalError.unimplemented("Cannot use placeholder with exception with a multi memory node " + replacee);
+                        GraalError.unimplemented("Cannot use placeholder with exception with a multi memory node " + replacee); // ExcludeFromJacocoGeneratedReport
                     }
 
                     WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode(loc));
@@ -2477,7 +2473,7 @@ public class SnippetTemplate {
                         MergeNode mergeNode = (MergeNode) duplicates.get(nodeRequiringState);
                         rewireExceptionFrameState(exceptionObject, getExceptionValueFromMerge(mergeNode), mergeNode);
                     } else {
-                        GraalError.shouldNotReachHere("Unexpected exception state node: " + nodeRequiringState);
+                        GraalError.shouldNotReachHere("Unexpected exception state node: " + nodeRequiringState); // ExcludeFromJacocoGeneratedReport
                     }
                     break;
                 case BEFORE_BCI:
@@ -2489,9 +2485,9 @@ public class SnippetTemplate {
                      * We cannot assign a proper frame state for this snippet's node since there are
                      * effects which cannot be represented by a single state at the node
                      */
-                    throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before frame state assignment with node " + nodeRequiringState + " for replacee " + replacee);
+                    throw GraalError.shouldNotReachHere("Invalid snippet replacing a node before frame state assignment with node " + nodeRequiringState + " for replacee " + replacee); // ExcludeFromJacocoGeneratedReport
                 default:
-                    throw GraalError.shouldNotReachHere("Unknown StateAssigment:" + assignment);
+                    throw GraalError.shouldNotReachHere("Unknown StateAssigment:" + assignment); // ExcludeFromJacocoGeneratedReport
             }
             replacee.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, replacee.graph(), "After duplicating after state for node %s in snippet", duplicates.get(nodeRequiringState));
         }
@@ -2704,7 +2700,7 @@ public class SnippetTemplate {
                                         deoptDupDuring);
                         deoptDupDuring.setStateDuring(stateBefore);
                     } else {
-                        throw GraalError.shouldNotReachHere("No stateDuring assigned.");
+                        throw GraalError.shouldNotReachHere("No stateDuring assigned."); // ExcludeFromJacocoGeneratedReport
                     }
                 }
                 if (deoptDup instanceof DeoptimizingNode.DeoptAfter) {

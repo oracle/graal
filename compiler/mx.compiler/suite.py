@@ -1,10 +1,10 @@
 suite = {
-  "mxversion": "6.15.3",
+  "mxversion": "6.17.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -24,9 +24,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir": True,
-        "urls" : [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-         ]
       },
       {
         "name" : "regex",
@@ -703,6 +700,28 @@ suite = {
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
+      "workingSets" : "Graal,HotSpot,Test",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk20.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot.test",
+        "org.graalvm.compiler.jtt",
+      ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+        ],
+      },
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "20+",
+      "javaPreviewNeeded": "20+",
       "workingSets" : "Graal,HotSpot,Test",
     },
 
@@ -1508,6 +1527,19 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.compiler.hightiercodegen": {
+        "subDir": "src",
+        "sourceDirs": ["src"],
+        "dependencies": [
+            "org.graalvm.compiler.replacements",
+        ],
+        "javaCompliance": "17+",
+        "workingSets": "Graal",
+        "annotationProcessors": ["GRAAL_PROCESSOR"],
+        "checkstyle" : "org.graalvm.compiler.graph",
+        "spotbugsIgnoresGenerated": True,
+    },
+
     # ------------- GraalTruffle -------------
 
     "org.graalvm.compiler.truffle.common" : {
@@ -1928,6 +1960,7 @@ suite = {
         "org.graalvm.compiler.hotspot.aarch64.test",
         "org.graalvm.compiler.hotspot.amd64.test",
         "org.graalvm.compiler.hotspot.lir.test",
+        "org.graalvm.compiler.hotspot.jdk20.test",
         "org.graalvm.compiler.options.test",
         "org.graalvm.compiler.jtt",
         "org.graalvm.compiler.lir.jtt",
@@ -2085,6 +2118,7 @@ suite = {
         "org.graalvm.compiler.runtime",
         "org.graalvm.compiler.code",
         "org.graalvm.compiler.printer",
+        "org.graalvm.compiler.hightiercodegen",
         "org.graalvm.compiler.core.aarch64",
         "org.graalvm.compiler.replacements.aarch64",
         "org.graalvm.compiler.core.amd64",

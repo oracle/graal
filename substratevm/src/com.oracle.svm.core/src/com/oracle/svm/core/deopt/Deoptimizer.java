@@ -244,7 +244,7 @@ public final class Deoptimizer {
         return null;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    @Uninterruptible(reason = "Switch to interruptible code and report a fatal error.", calleeMustBe = false)
     private static RuntimeException checkDeoptimizedError(Pointer sourceSp) {
         throw checkDeoptimizedError0(sourceSp);
     }
@@ -832,11 +832,11 @@ public final class Deoptimizer {
                         targetFrame.getVirtualObjects().length == 0 &&
                         sourceFrame.getValueInfos().length >= targetFrame.getValueInfos().length;
         if (!compatibleState) {
-            String message = "Deoptimization is not possible. Please report this error.\n" +
-                            String.format("Target Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s, virtual objects length-%s\n", targetFrame.getNumLocals(),
-                                            targetFrame.getNumStack(), targetFrame.getNumLocks(), targetFrame.getValueInfos().length, targetFrame.getVirtualObjects().length) +
-                            String.format("Source Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s\n", sourceFrame.getNumLocals(), sourceFrame.getNumStack(),
-                                            sourceFrame.getNumLocks(), sourceFrame.getValueInfos().length);
+            String message = String.format("Deoptimization is not possible. Please report this error.%n" +
+                            "Target Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s, virtual objects length-%s%n" +
+                            "Source Frame: numLocals-%s, numStack-%s, numLocks-%s, getValueInfos length-%s%n",
+                            targetFrame.getNumLocals(), targetFrame.getNumStack(), targetFrame.getNumLocks(), targetFrame.getValueInfos().length, targetFrame.getVirtualObjects().length, //
+                            sourceFrame.getNumLocals(), sourceFrame.getNumStack(), sourceFrame.getNumLocks(), sourceFrame.getValueInfos().length);
             throw fatalDeoptimizationError(message, targetFrame);
         }
 
@@ -967,7 +967,7 @@ public final class Deoptimizer {
             equal = source.equals(target);
         }
         if (!equal) {
-            throw fatalDeoptimizationError(String.format("Constants do not match.\nSource: %s\nTarget: %s", source, target), targetFrame);
+            throw fatalDeoptimizationError(String.format("Constants do not match.%nSource: %s%nTarget: %s", source, target), targetFrame);
         }
     }
 
@@ -1235,7 +1235,7 @@ public final class Deoptimizer {
         private static final ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException = new ArrayIndexOutOfBoundsException("TargetContent.offsetCheck");
 
         /* Check that an offset is in range. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private void offsetCheck(int offset, int size) {
             if (!((0 <= offset) && (offset <= (frameBuffer.length - size)))) {
                 throw arrayIndexOutOfBoundsException;
@@ -1254,13 +1254,13 @@ public final class Deoptimizer {
         }
 
         /** The size of the frame. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected int getSize() {
             return frameBuffer.length;
         }
 
         /** Copy the bytes to the memory at the given Pointer. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void copyToPointer(Pointer p) {
             for (int idx = 0; idx < frameBuffer.length; idx++) {
                 p.writeByte(idx, frameBuffer[idx]);
@@ -1268,21 +1268,21 @@ public final class Deoptimizer {
         }
 
         /** Write an int-sized constant to the frame buffer. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void writeInt(int offset, int value) {
             offsetCheck(offset, sizeofInt);
             addressOfFrameArray0().writeInt(offset, value);
         }
 
         /** Write a long-sized constant to the frame buffer. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void writeLong(int offset, long value) {
             offsetCheck(offset, sizeofLong);
             addressOfFrameArray0().writeLong(offset, value);
         }
 
         /** Write a word-sized constant to the frame buffer. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void writeWord(int offset, WordBase value) {
             if (FrameAccess.wordSize() == 8) {
                 writeLong(offset, value.rawValue());
@@ -1294,7 +1294,7 @@ public final class Deoptimizer {
         }
 
         /** An Object can be written to the frame buffer. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void writeObject(int offset, Object value, boolean compressed) {
             offsetCheck(offset, compressed ? sizeofCompressedReference : sizeofUncompressedReference);
             Word address = (Word) addressOfFrameArray0();
@@ -1303,7 +1303,7 @@ public final class Deoptimizer {
         }
 
         /* Return &contentArray[0] as a Pointer. */
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private Pointer addressOfFrameArray0() {
             return Word.objectToUntrackedPointer(frameBuffer).add(arrayBaseOffset);
         }
@@ -1311,7 +1311,7 @@ public final class Deoptimizer {
 
     static RuntimeException fatalDeoptimizationError(String originalMessage, FrameInfoQueryResult frameInfo) {
         long encodedBci = frameInfo.getEncodedBci();
-        String message = String.format("%s\nencodedBci: %s (bci %s)\nMethod info: %s", originalMessage, encodedBci, FrameInfoDecoder.readableBci(encodedBci), frameInfo.getSourceReference());
+        String message = String.format("%s%nencodedBci: %s (bci %s)%nMethod info: %s", originalMessage, encodedBci, FrameInfoDecoder.readableBci(encodedBci), frameInfo.getSourceReference());
         throw VMError.shouldNotReachHere(message);
     }
 }

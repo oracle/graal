@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -204,7 +204,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
      * @param exceptionObject The node that needs an exception state.
      */
     protected void setExceptionState(StateSplit exceptionObject) {
-        throw GraalError.shouldNotReachHere("unsupported by this IntrinsicGraphBuilder");
+        throw GraalError.shouldNotReachHere("unsupported by this IntrinsicGraphBuilder"); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -216,7 +216,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
      */
     protected void mergeUnwinds() {
         if (getGraph().getNodes(UnwindNode.TYPE).snapshot().size() > 1) {
-            throw GraalError.shouldNotReachHere("mergeUnwinds unsupported by this IntrinsicGraphBuilder");
+            throw GraalError.shouldNotReachHere("mergeUnwinds unsupported by this IntrinsicGraphBuilder"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -249,12 +249,12 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -319,12 +319,12 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public IntrinsicContext getIntrinsic() {
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public BailoutException bailout(String string) {
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

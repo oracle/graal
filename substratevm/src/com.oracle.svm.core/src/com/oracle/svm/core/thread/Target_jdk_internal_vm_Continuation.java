@@ -26,12 +26,13 @@ package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
-import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
@@ -123,12 +124,27 @@ public final class Target_jdk_internal_vm_Continuation {
     @Alias
     public static native Target_jdk_internal_vm_Continuation getCurrentContinuation(Target_jdk_internal_vm_ContinuationScope scope);
 
+    /* GR-44975 Needs to be removed and reverted to a method reference */
+    @InternalVMMethod
+    private static class ContinuationEnter0 implements Runnable {
+        private final Target_jdk_internal_vm_Continuation continuation;
+
+        ContinuationEnter0(Target_jdk_internal_vm_Continuation c) {
+            this.continuation = c;
+        }
+
+        @Override
+        public void run() {
+            continuation.enter0();
+        }
+    }
+
     @Substitute
     static void enterSpecial(Target_jdk_internal_vm_Continuation c, boolean isContinue, boolean isVirtualThread) {
         assert isVirtualThread;
         if (!isContinue) {
             assert c.internal == null;
-            c.internal = new Continuation(c::enter0);
+            c.internal = new Continuation(new ContinuationEnter0(c));
         }
         c.internal.enter();
     }
@@ -187,4 +203,7 @@ public final class Target_jdk_internal_vm_Continuation {
             carrier.cont.pinCount--;
         }
     }
+
+    @Alias
+    static native boolean isPinned(Target_jdk_internal_vm_ContinuationScope scope);
 }

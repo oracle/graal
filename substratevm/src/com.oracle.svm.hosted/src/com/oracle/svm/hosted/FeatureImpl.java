@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -588,10 +587,10 @@ public class FeatureImpl {
                         addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
                     }
                 } else {
-                    JavaConstant constant = SubstrateObjectConstant.forObject(cur);
+                    JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
                     for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
                         if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
-                            Object fieldValue = SubstrateObjectConstant.asObject(field.readValue(constant));
+                            Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, field.readValue(constant));
                             addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
                         }
                     }
@@ -730,10 +729,6 @@ public class FeatureImpl {
 
         public HostedUniverse getHostedUniverse() {
             return hUniverse;
-        }
-
-        public HostedOptionProvider getHostedOptionProvider() {
-            return optionProvider;
         }
 
         public HostedMetaAccess getHostedMetaAccess() {

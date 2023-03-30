@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,12 @@
  * questions.
  */
 package com.oracle.truffle.espresso.nodes.interop;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -58,6 +64,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @GenerateUncached
 public abstract class ToEspressoNode extends EspressoNode {
 
+    public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
+
     public static final int LIMIT = 2;
 
     // region Specialization predicates
@@ -79,6 +87,38 @@ public abstract class ToEspressoNode extends EspressoNode {
         return klass.isAssignableFrom(meta.java_lang_String);
     }
 
+    static boolean isZonedDateTime(Meta meta, Klass klass) {
+        return meta.java_time_ZonedDateTime.equals(klass);
+    }
+
+    static boolean isLocalDate(Meta meta, Klass klass) {
+        return meta.java_time_LocalDate.equals(klass);
+    }
+
+    static boolean isLocalTime(Meta meta, Klass klass) {
+        return meta.java_time_LocalTime.equals(klass);
+    }
+
+    static boolean isLocalDateTime(Meta meta, Klass klass) {
+        return meta.java_time_LocalDateTime.equals(klass);
+    }
+
+    static boolean isInstant(Meta meta, Klass klass) {
+        return meta.java_time_Instant.equals(klass);
+    }
+
+    static boolean isDate(Meta meta, Klass klass) {
+        return meta.java_util_Date.equals(klass);
+    }
+
+    static boolean isZoneId(Meta meta, Klass klass) {
+        return meta.java_time_ZoneId.equals(klass);
+    }
+
+    static boolean isDuration(Meta meta, Klass klass) {
+        return meta.java_time_Duration.equals(klass);
+    }
+
     static boolean isByteArray(Meta meta, Klass klass) {
         return meta._byte_array.equals(klass);
     }
@@ -97,11 +137,6 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     static boolean isBoxedPrimitive(Object obj) {
         return obj instanceof Number || obj instanceof Character || obj instanceof Boolean;
-    }
-
-    static boolean isForeignException(Klass klass) {
-        Meta meta = klass.getMeta();
-        return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
     }
 
     static boolean isIntegerCompatible(Klass klass) {
@@ -149,8 +184,6 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     // endregion Specialization predicates
-
-    public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
     @Specialization(guards = "!isPrimitiveKlass(klass)")
     Object doEspresso(StaticObject value, Klass klass,
@@ -235,6 +268,134 @@ public abstract class ToEspressoNode extends EspressoNode {
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isZonedDateTime(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isInstant(value)",
+                    "interop.isTimeZone(value)",
+    })
+    Object doForeignDateTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        StaticObject guestInstant = (StaticObject) doForeignInstant(value, meta.java_time_Instant, interop, meta);
+        StaticObject guestZoneID = (StaticObject) doForeignZoneId(value, meta.java_time_ZoneId, interop, meta);
+
+        return meta.java_time_ZonedDateTime_ofInstant.invokeDirect(null, guestInstant, guestZoneID);
+    }
+
+    @Specialization(guards = {
+                    "isLocalDate(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isDate(value)",
+    })
+    Object doForeignLocalDate(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        try {
+            LocalDate localDate = interop.asDate(value);
+            return meta.java_time_LocalDate_of.invokeDirect(null, localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth());
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isLocalDate returns true, asDate must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isLocalTime(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isTime(value)",
+    })
+    Object doForeignLocalTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        try {
+            LocalTime localTime = interop.asTime(value);
+            return meta.java_time_LocalTime_of.invokeDirect(null, localTime.getHour(), localTime.getMinute(), localTime.getSecond(), localTime.getNano());
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isLocalTime returns true, asTime must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isLocalDateTime(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isTime(value)",
+                    "interop.isDate(value)",
+    })
+    Object doForeignLocalDateTime(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        return meta.java_time_LocalDateTime_of.invokeDirect(null,
+                        doForeignLocalDate(value, meta.java_time_LocalDate, interop, meta),
+                        doForeignLocalTime(value, meta.java_time_LocalTime, interop, meta));
+    }
+
+    @Specialization(guards = {
+                    "isInstant(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isInstant(value)",
+    })
+    Object doForeignInstant(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        try {
+            Instant instant = interop.asInstant(value);
+            return meta.java_time_Instant_ofEpochSecond.invokeDirect(null, instant.getEpochSecond(), (long) instant.getNano());
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isInstant returns true, asInstant must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isDate(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isInstant(value)",
+    })
+    Object doForeignDate(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        return meta.java_util_Date_from.invokeDirect(null, doForeignInstant(value, meta.java_time_Instant, interop, meta));
+    }
+
+    @Specialization(guards = {
+                    "isZoneId(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isTimeZone(value)",
+    })
+    Object doForeignZoneId(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        try {
+            ZoneId zoneId = interop.asTimeZone(value);
+            return meta.java_time_ZoneId_of.invokeDirect(null, meta.toGuestString(zoneId.getId()));
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isZoneId returns true, asTimeZone must succeed.");
+        }
+    }
+
+    @Specialization(guards = {
+                    "isDuration(meta, klass)",
+                    "!isStaticObject(value)",
+                    "interop.isDuration(value)",
+    })
+    Object doForeignDuration(Object value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
+        try {
+            Duration duration = interop.asDuration(value);
+            StaticObject guestDuration = meta.getAllocator().createNew(meta.java_time_Duration);
+            meta.java_time_Duration_seconds.setLong(guestDuration, duration.getSeconds());
+            meta.java_time_Duration_nanos.setInt(guestDuration, duration.getNano());
+            return guestDuration;
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Contract violation: if isDuration returns true, asDuration must succeed.");
         }
     }
 
@@ -379,6 +540,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                 }
             } else {
                 if (klass == meta.java_lang_Object) {
+                    // check if foreign exception
+                    if (interop.isException(value)) {
+                        return StaticObject.createForeignException(klass.getContext(), value, interop);
+                    }
                     // see if a generated proxy can be used for interface mapped types
                     ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, metaName, klass);
                     if (proxyKlass != null) {

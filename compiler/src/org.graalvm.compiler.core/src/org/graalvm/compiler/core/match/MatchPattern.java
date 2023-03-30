@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.match;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -31,6 +32,7 @@ import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 
 /**
  * A simple recursive pattern matcher for a DAG of nodes.
@@ -47,6 +49,7 @@ public class MatchPattern {
         NOT_SAFE,
         ALREADY_USED,
         TOO_LATE,
+        BARRIER,
     }
 
     /**
@@ -73,6 +76,7 @@ public class MatchPattern {
         private static final CounterKey MatchResult_NOT_SAFE = DebugContext.counter("MatchResult_NOT_SAFE");
         private static final CounterKey MatchResult_ALREADY_USED = DebugContext.counter("MatchResult_ALREADY_USED");
         private static final CounterKey MatchResult_TOO_LATE = DebugContext.counter("MatchResult_TOO_LATE");
+        private static final CounterKey MatchResult_BARRIER = DebugContext.counter("MatchResult_BARRIER");
 
         static final Result OK = new Result(MatchResultCode.OK, null, null);
         private static final Result CACHED_WRONG_CLASS = new Result(MatchResultCode.WRONG_CLASS, null, null);
@@ -82,6 +86,7 @@ public class MatchPattern {
         private static final Result CACHED_NOT_SAFE = new Result(MatchResultCode.NOT_SAFE, null, null);
         private static final Result CACHED_ALREADY_USED = new Result(MatchResultCode.ALREADY_USED, null, null);
         private static final Result CACHED_TOO_LATE = new Result(MatchResultCode.TOO_LATE, null, null);
+        private static final Result CACHED_BARRIER = new Result(MatchResultCode.BARRIER, null, null);
 
         static Result wrongClass(Node node, MatchPattern matcher) {
             MatchResult_WRONG_CLASS.increment(node.getDebug());
@@ -116,6 +121,11 @@ public class MatchPattern {
         static Result tooLate(Node node, MatchPattern matcher) {
             MatchResult_TOO_LATE.increment(node.getDebug());
             return node.getDebug().isLogEnabled() ? new Result(MatchResultCode.TOO_LATE, node, matcher) : CACHED_TOO_LATE;
+        }
+
+        static Result barrier(Node node, MatchPattern matcher) {
+            MatchResult_BARRIER.increment(node.getDebug());
+            return node.getDebug().isLogEnabled() ? new Result(MatchResultCode.BARRIER, node, matcher) : CACHED_BARRIER;
         }
 
         @Override
@@ -238,6 +248,11 @@ public class MatchPattern {
     }
 
     private Result matchUsage(Node node, MatchContext context, boolean atRoot) {
+        // Barriers can't be folded into other operations
+        if (node instanceof OnHeapMemoryAccess && ((OnHeapMemoryAccess) node).getBarrierType() != BarrierType.NONE) {
+            return Result.barrier(node, context.getRule().getPattern());
+        }
+
         Result result = matchType(node);
         if (result != Result.OK) {
             return result;

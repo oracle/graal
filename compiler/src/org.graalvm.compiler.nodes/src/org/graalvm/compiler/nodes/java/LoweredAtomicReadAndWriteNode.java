@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -91,7 +92,7 @@ public final class LoweredAtomicReadAndWriteNode extends FixedAccessNode impleme
             accessKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
         }
 
-        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(accessKind, gen.operand(getAddress()), emitted);
+        Value result = gen.getLIRGeneratorTool().emitAtomicReadAndWrite(accessKind, gen.operand(getAddress()), emitted, getBarrierType());
         gen.setResult(this, result);
     }
 

@@ -97,8 +97,9 @@ public class TStringByteIndexOfStringTest extends TStringTestBase {
         TruffleString.Encoding[] encodings = {TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_32};
         for (int i = 0; i < encodings.length; i++) {
             TruffleString.Encoding encoding = encodings[i];
-            byte[] arr = new byte[strA.byteLength(encoding)];
-            strA.switchEncodingUncached(encoding).copyToByteArrayUncached(0, arr, 0, arr.length, encoding);
+            TruffleString strASwitched = strA.switchEncodingUncached(encoding);
+            byte[] arr = new byte[strASwitched.byteLength(encoding)];
+            strASwitched.copyToByteArrayUncached(0, arr, 0, arr.length, encoding);
             int iFinal = i;
             checkStringVariants(arr, TruffleString.CodeRange.ASCII, true, encoding, codepointsA, null, (a, array, codeRange, isValid, enc, codepoints, byteIndices) -> {
                 Assert.assertEquals(a.byteLength(encoding) - strB.switchEncodingUncached(encoding).byteLength(encoding), node.execute(a, withMask[iFinal], 0, array.length, encoding));

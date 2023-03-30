@@ -156,6 +156,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
             if (!phasesIterator.hasNext()) {
                 currAttempt += 1;
                 if (currAttempt > maxAttempts) {
+                    // ExcludeFromJacocoGeneratedReport:start
                     EnumSet<StageFlag> unreachedStages = EnumSet.copyOf(mandatoryStages);
                     unreachedStages.removeAll(graphStateCopy.getStageFlags());
                     Formatter errorMsg = new Formatter();
@@ -171,6 +172,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
                     errorMsg.format("Mandatory stages that are not reached:%n");
                     errorMsg.format("%s%n", unreachedStages);
                     GraalError.shouldNotReachHere(errorMsg.toString());
+                    // ExcludeFromJacocoGeneratedReport:end
                 }
                 Collections.shuffle(minimalPhases, random);
                 phasesIterator = minimalPhases.listIterator();

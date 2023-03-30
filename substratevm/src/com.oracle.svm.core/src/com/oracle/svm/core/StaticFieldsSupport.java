@@ -47,11 +47,10 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -159,7 +158,7 @@ public final class StaticFieldsSupport {
                 return;
             }
 
-            JavaConstant constant = SubstrateObjectConstant.forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
+            JavaConstant constant = tool.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
             assert constant.isNonNull();
             replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
         }

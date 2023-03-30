@@ -53,10 +53,10 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 5485,
-          lineEnd   = 5596,
-          commit    = "db483a38a815f85bd9668749674b5f0f6e4b27b4",
-          sha1      = "1cedae5438e352f0572eb8ffbe1dd379feeb8ba0")
+          lineStart = 5547,
+          lineEnd   = 5658,
+          commit    = "c6de66c03f691469ff26c14923bf21bdefd5ae72",
+          sha1      = "cc047926c7a2f0dda07e6480ba61e23b3f460638")
 // @formatter:on
 @Opcode("AArch64_ENCODE_ARRAY")
 public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {

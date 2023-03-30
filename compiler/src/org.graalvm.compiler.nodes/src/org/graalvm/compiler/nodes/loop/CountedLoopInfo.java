@@ -574,7 +574,7 @@ public class CountedLoopInfo {
                     speculation = speculationLog.speculate(speculationReason);
                     LoopBeginNode.overflowSpeculationTaken.increment(graph.getDebug());
                 } else {
-                    GraalError.shouldNotReachHere("Must not create overflow guard for loop " + loop.loopBegin() + " where the speculation guard already failed, this can create deopt loops");
+                    GraalError.shouldNotReachHere("Must not create overflow guard for loop " + loop.loopBegin() + " where the speculation guard already failed, this can create deopt loops"); // ExcludeFromJacocoGeneratedReport
                 }
             }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
@@ -69,7 +70,6 @@ public class CompletionExecutor {
     private final BigBang bb;
     private Timing timing;
     private Object vmConfig;
-    private final Thread startingThread;
 
     public interface Timing {
         long getPrintIntervalNanos();
@@ -90,7 +90,6 @@ public class CompletionExecutor {
         state = new AtomicReference<>(State.UNUSED);
         postedOperations = new LongAdder();
         completedOperations = new LongAdder();
-        startingThread = Thread.currentThread();
     }
 
     public void init() {
@@ -102,7 +101,7 @@ public class CompletionExecutor {
         setState(State.BEFORE_START);
         postedOperations.reset();
         completedOperations.reset();
-        postedBeforeStart = new ArrayList<>();
+        postedBeforeStart = Collections.synchronizedList(new ArrayList<>());
         vmConfig = bb.getHostVM().getConfiguration();
     }
 
@@ -142,11 +141,6 @@ public class CompletionExecutor {
             case UNUSED:
                 throw JVMCIError.shouldNotReachHere();
             case BEFORE_START:
-                /*
-                 * The postedBeforeStart list is not thread safe. Make sure that it is only updated
-                 * from the same thread that created the executor.
-                 */
-                assert Thread.currentThread() == startingThread;
                 postedBeforeStart.add(command);
                 break;
             case STARTED:
@@ -290,13 +284,6 @@ public class CompletionExecutor {
     public int parallelism() {
         if (executorService instanceof ForkJoinPool) {
             return ((ForkJoinPool) executorService).getParallelism();
-        }
-        return 1;
-    }
-
-    public int poolSize() {
-        if (executorService instanceof ForkJoinPool) {
-            return ((ForkJoinPool) executorService).getPoolSize();
         }
         return 1;
     }

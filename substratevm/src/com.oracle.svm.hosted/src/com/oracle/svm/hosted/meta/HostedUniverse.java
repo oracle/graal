@@ -321,7 +321,7 @@ public class HostedUniverse implements Universe {
 
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
-        return bb.getProviders().getSnippetReflection();
+        return bb.getSnippetReflectionProvider();
     }
 
     @Override
@@ -346,6 +346,17 @@ public class HostedUniverse implements Universe {
 
     public HostedType optionalLookup(JavaType type) {
         return types.get(type);
+    }
+
+    public HostedType[] optionalLookup(JavaType... javaTypes) {
+        HostedType[] result = new HostedType[javaTypes.length];
+        for (int i = 0; i < javaTypes.length; ++i) {
+            result[i] = optionalLookup(javaTypes[i]);
+            if (result[i] == null) {
+                return null;
+            }
+        }
+        return result;
     }
 
     @Override

@@ -45,7 +45,7 @@ public abstract class NativeVMOperation extends VMOperation {
     }
 
     public void enqueue(NativeVMOperationData data) {
-        assert data.getNativeVMOperation() == this;
+        data.setNativeVMOperation(this);
         VMOperationControl.get().enqueue(data);
     }
 

@@ -32,7 +32,7 @@ import org.junit.Test;
 
 /**
  * This class tests some specific patterns the stamp system should be able to canonicalize away
- * using {@link IntegerStamp#upMask()}.
+ * using {@link IntegerStamp#mayBeSet()}.
  */
 public class StampCanonicalizerTest extends GraalCompilerTest {
 

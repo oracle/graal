@@ -109,7 +109,7 @@ abstract class CVTypeRecord {
         pos = alignPadded4(buffer, pos);
         int length = pos - initialPos - Short.BYTES;
         if (length > CV_TYPE_RECORD_MAX_SIZE) {
-            throw GraalError.shouldNotReachHere(String.format("Type record too large: %d (maximum %d) bytes: %s", length, CV_TYPE_RECORD_MAX_SIZE, this));
+            throw GraalError.shouldNotReachHere(String.format("Type record too large: %d (maximum %d) bytes: %s", length, CV_TYPE_RECORD_MAX_SIZE, this)); // ExcludeFromJacocoGeneratedReport
         }
         CVUtil.putShort((short) length, buffer, initialPos);
         return pos;
@@ -168,17 +168,17 @@ abstract class CVTypeRecord {
 
         @Override
         public int computeSize(int initialPos) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         protected int computeContents(byte[] buffer, int initialPos) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public int hashCode() {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

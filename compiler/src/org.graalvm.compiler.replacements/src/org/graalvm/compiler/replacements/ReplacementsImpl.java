@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -156,7 +156,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         if (capability.isAssignableFrom(WordTypes.class)) {
             return (T) getProviders().getWordTypes();
         }
-        throw GraalError.shouldNotReachHere(capability.toString());
+        throw GraalError.shouldNotReachHere(capability.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -515,7 +515,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             @Override
             public boolean isDeferredInvoke(StateSplit stateSplit) {
                 if (IS_IN_NATIVE_IMAGE) {
-                    throw GraalError.shouldNotReachHere("unused in libgraal");
+                    throw GraalError.shouldNotReachHere("unused in libgraal"); // ExcludeFromJacocoGeneratedReport
                 }
                 if (stateSplit instanceof Invoke) {
                     Invoke invoke = (Invoke) stateSplit;

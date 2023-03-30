@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,11 +31,16 @@ import static org.junit.Assert.assertTrue;
 import java.util.Random;
 
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public class ConditionTest {
+
+    private static final Stamp INT_STAMP = StampFactory.forKind(JavaKind.Int);
 
     @Test
     public void testImplies() {
@@ -47,8 +52,8 @@ public class ConditionTest {
                     for (int i = 0; i < 1000; i++) {
                         JavaConstant a = JavaConstant.forInt(rand.nextInt());
                         JavaConstant b = JavaConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
-                        boolean result1 = c1.foldCondition(a, b, null, false);
-                        boolean result2 = c2.foldCondition(a, b, null, false);
+                        boolean result1 = c1.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
+                        boolean result2 = c2.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
                         if (result1) {
                             assertTrue(result2);
                         }
@@ -69,9 +74,9 @@ public class ConditionTest {
                     for (int i = 0; i < 1000; i++) {
                         JavaConstant a = JavaConstant.forInt(rand.nextInt());
                         JavaConstant b = JavaConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
-                        boolean result1 = c1.foldCondition(a, b, null, false);
-                        boolean result2 = c2.foldCondition(a, b, null, false);
-                        boolean resultJoin = join.foldCondition(a, b, null, false);
+                        boolean result1 = c1.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
+                        boolean result2 = c2.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
+                        boolean resultJoin = join.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
                         if (result1 && result2) {
                             assertTrue(resultJoin);
                         } else {
@@ -94,9 +99,9 @@ public class ConditionTest {
                     for (int i = 0; i < 1000; i++) {
                         JavaConstant a = JavaConstant.forInt(rand.nextInt());
                         JavaConstant b = JavaConstant.forInt(i < 100 ? a.asInt() : rand.nextInt());
-                        boolean result1 = c1.foldCondition(a, b, null, false);
-                        boolean result2 = c2.foldCondition(a, b, null, false);
-                        boolean resultMeet = meet.foldCondition(a, b, null, false);
+                        boolean result1 = c1.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
+                        boolean result2 = c2.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
+                        boolean resultMeet = meet.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
                         if (result1 || result2) {
                             assertTrue(resultMeet);
                         } else {
@@ -119,8 +124,8 @@ public class ConditionTest {
                         for (int v2 : intBoundaryValues) {
                             JavaConstant a = JavaConstant.forInt(v1);
                             JavaConstant b = JavaConstant.forInt(v2);
-                            boolean result1 = c1.foldCondition(a, b, null, false);
-                            boolean result2 = c2.foldCondition(a, b, null, false);
+                            boolean result1 = c1.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
+                            boolean result2 = c2.foldCondition(INT_STAMP, a, b, null, false).toBoolean();
                             // If these conditions are disjoint then both conditions can't evaluate
                             // to true for the same inputs.
                             assertFalse(String.format("%s %s %s (%s) is not disjoint from %s %s %s (%s)", a, c1, b, result1, a, c2, b, result2), result1 && result2);

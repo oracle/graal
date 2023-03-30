@@ -41,6 +41,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugConfig;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Scope;
@@ -310,5 +311,30 @@ public class DebugContextTest {
         }
         String logged = baos.toString();
         Assert.assertEquals("Exception should not have been intercepted", "", logged);
+    }
+
+    @Test
+    public void testDebugConfig() {
+        TimerKeyTest.assumeManagementLibraryIsLoadable();
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
+        // Configure with an option that enables scopes
+        map.put(DebugOptions.DumpOnError, true);
+        map.put(DebugOptions.MethodFilter, "test");
+        OptionValues options = new OptionValues(map);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        DebugContext debug = new Builder(options).globalMetrics(NO_GLOBAL_METRIC_VALUES).description(NO_DESCRIPTION).logStream(new PrintStream(baos)).build();
+
+        DebugConfig config = debug.getConfig();
+        String str = config.toString();
+        Assert.assertTrue(str.contains("Debug config"));
+        Assert.assertTrue(str.contains("MethodFilter=MethodFilter[methodName=\\Qtest\\E]"));
+
+        try (Scope s1 = debug.scope("InnerScopeInheritsDisabledIntercept")) {
+            Assert.assertFalse(config.methodFilterMatchesCurrentMethod(s1));
+        }
+
+        OptionValues options2 = debug.getOptions();
+        Assert.assertTrue(options2.toString().contains("MethodFilter=test"));
+        Assert.assertTrue(options2.toString().contains("DumpOnError=true"));
     }
 }

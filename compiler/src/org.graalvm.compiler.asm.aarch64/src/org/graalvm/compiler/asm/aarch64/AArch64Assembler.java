@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -60,7 +60,6 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySi
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizeAndRegistersZZ;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizeAndRegistersZZZ;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizeRegistersZPZ;
-import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizesAndRegistersFF;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizesAndRegistersFZ;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Asserts.verifySizesAndRegistersRF;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.ADC;
@@ -98,8 +97,11 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCCM
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCMP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCMPZERO;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCSEL;
-import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTDS;
-import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTSD;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVT2D;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVT2H;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVT2S;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTAS;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTMS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FCVTZS;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FDIV;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.FMADD;
@@ -394,6 +396,11 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * </ul>
      */
     static class Asserts {
+
+        static boolean checkSize16or32Or64(int size) {
+            assert size == 16 || size == 32 || size == 64 : String.format("Expected size 16/32/64: %s", size);
+            return true;
+        }
 
         static boolean checkSize32Or64(int size) {
             assert size == 32 || size == 64 : String.format("Expected size 32 or 64: %s", size);
@@ -772,12 +779,13 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
 
     /**
      * Enumeration of all different instruction kinds: General32/64 are the general instructions
-     * (integer, branch, etc.), for 32-, respectively 64-bit operands. FP32/64 is the encoding for
-     * the 32/64bit float operations.
+     * (integer, branch, etc.), for 32-, respectively 64-bit operands. FP16/32/64 is the encoding
+     * for the 16/32/64bit float operations.
      */
     protected enum InstructionType {
         General32(0b00 << 30, 32, true),
         General64(0b10 << 30, 64, true),
+        FP16(0x00C00000, 16, false),
         FP32(0x00000000, 32, false),
         FP64(0x00400000, 64, false);
 
@@ -797,8 +805,16 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         }
 
         public static InstructionType floatFromSize(int size) {
-            assert size == 32 || size == 64;
-            return size == 32 ? FP32 : FP64;
+            switch (size) {
+                case 16:
+                    return FP16;
+                case 32:
+                    return FP32;
+                case 64:
+                    return FP64;
+                default:
+                    throw GraalError.shouldNotReachHere("Expected size 16/32/64: " + size);
+            }
         }
     }
 
@@ -993,8 +1009,13 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
         FMOVCPU2FPU(0x00070000),
         FMOVFPU2CPU(0x00060000),
 
-        FCVTDS(0x00028000),
-        FCVTSD(0x00020000),
+        FCVT2D(0x00028000),
+        FCVT2S(0x00020000),
+        FCVT2H(0x00038000),
+
+        FCVTAS(0x00040000),
+
+        FCVTMS(0x00100000),
 
         FCVTZS(0x00180000),
         SCVTF(0x00020000),
@@ -1239,7 +1260,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 case AL:
                 case NV:
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -1552,7 +1573,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
             case 128:
                 return 4;
         }
-        throw GraalError.shouldNotReachHere("Unexpected transfer size.");
+        throw GraalError.shouldNotReachHere("Unexpected transfer size."); // ExcludeFromJacocoGeneratedReport
     }
 
     /* Load-Store Single Register (5.3.1) */
@@ -1722,7 +1743,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 break;
             default:
                 /* Invalid addressing mode provided. */
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         /* The prefetch mode is encoded within rt. */
@@ -1791,7 +1812,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
                 emitInt(memOp | LoadStorePreIndexedOp | rs1(address.getBase()) | address.getImmediate() << LoadStoreIndexedImmOffset);
                 break;
             default:
-                throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode());
+                throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1849,7 +1870,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
             case IMMEDIATE_PAIR_PRE_INDEXED:
                 return (memOp | LoadStorePairPreIndexOp);
             default:
-                throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode());
+                throw GraalError.shouldNotReachHere("Unhandled addressing mode: " + address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -3375,7 +3396,8 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
     /* Converts float to double and vice-versa */
 
     /**
-     * C7.2.69 Convert float to double and vice-versa.
+     * C7.2.69 Convert half-precision, single-precision, or double-precision float to other
+     * precision.
      *
      * @param dstSize size of target register in bits.
      * @param srcSize size of source register in bits.
@@ -3383,17 +3405,56 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      * @param src floating point register. May not be null.
      */
     public void fcvt(int dstSize, int srcSize, Register dst, Register src) {
-        assert verifySizesAndRegistersFF(dstSize, srcSize, dst, src);
+        assert verifyRegistersFF(dst, src);
         assert dstSize != srcSize;
 
-        if (srcSize == 32) {
-            fpDataProcessing1Source(FCVTDS, dst, src, floatFromSize(srcSize));
-        } else {
-            fpDataProcessing1Source(FCVTSD, dst, src, floatFromSize(srcSize));
+        switch (dstSize) {
+            case 16:
+                assert srcSize == 32 || srcSize == 64;
+                fpDataProcessing1Source(FCVT2H, dst, src, floatFromSize(srcSize));
+                break;
+            case 32:
+                assert srcSize == 16 || srcSize == 64;
+                fpDataProcessing1Source(FCVT2S, dst, src, floatFromSize(srcSize));
+                break;
+            case 64:
+                assert srcSize == 16 || srcSize == 32;
+                fpDataProcessing1Source(FCVT2D, dst, src, floatFromSize(srcSize));
+                break;
+            default:
+                throw GraalError.shouldNotReachHere("Expected dstSize 16/32/64: " + dstSize);
         }
     }
 
     /* Convert to Integer (5.7.4.2) */
+
+    /**
+     * C7.2.71 Floating-point Convert to Signed integer, rounding to nearest with ties to Away.
+     *
+     * @param dstSize size of integer register. 32 or 64.
+     * @param srcSize size of floating point register. 32 or 64.
+     * @param dst general purpose register. May not be null, the zero-register or the stackpointer.
+     * @param src floating point register. May not be null.
+     */
+    public void fcvtas(int dstSize, int srcSize, Register dst, Register src) {
+        assert verifySizesAndRegistersRF(dstSize, srcSize, dst, src);
+
+        fcvtCpuFpuInstruction(FCVTAS, dst, src, generalFromSize(dstSize), floatFromSize(srcSize));
+    }
+
+    /**
+     * C7.2.76 Floating-point Convert to Signed integer, rounding toward Minus infinity.
+     *
+     * @param dstSize size of integer register. 32 or 64.
+     * @param srcSize size of floating point register. 32 or 64.
+     * @param dst general purpose register. May not be null, the zero-register or the stackpointer.
+     * @param src floating point register. May not be null.
+     */
+    public void fcvtms(int dstSize, int srcSize, Register dst, Register src) {
+        assert verifySizesAndRegistersRF(dstSize, srcSize, dst, src);
+
+        fcvtCpuFpuInstruction(FCVTMS, dst, src, generalFromSize(dstSize), floatFromSize(srcSize));
+    }
 
     /**
      * C7.2.92 Floating-point Convert to Signed integer, rounding toward Zero.
@@ -3803,7 +3864,7 @@ public abstract class AArch64Assembler extends Assembler<CPUFeature> {
      *
      * @param uimm16 Arbitrary 16-bit unsigned payload.
      */
-    protected void brk(int uimm16) {
+    public void brk(int uimm16) {
         exceptionInstruction(BRK, uimm16);
     }
 

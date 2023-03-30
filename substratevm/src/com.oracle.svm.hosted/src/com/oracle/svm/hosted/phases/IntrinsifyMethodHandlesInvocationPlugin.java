@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -121,7 +121,6 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -332,7 +331,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * initialization has happened. We force initialization by invoking the method
                  * VarHandle.vform.getMethodType_V(0).
                  */
-                VarHandle varHandle = (VarHandle) SubstrateObjectConstant.asObject(args[0].asJavaConstant());
+                VarHandle varHandle = aUniverse.getSnippetReflection().asObject(VarHandle.class, args[0].asJavaConstant());
                 Object varForm = varHandleVFormField.get(varHandle);
                 varFormInitMethod.invoke(varForm, 0);
 
@@ -501,7 +500,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 return field;
             }
         }
-        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
+        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type); // ExcludeFromJacocoGeneratedReport
     }
 
     private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -603,7 +602,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         /* We do all the word type rewriting because parameters to the lambda can be word types. */
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()));
+        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()),
+                        parsingProviders.getPlatformConfigurationProvider().getBarrierSet());
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(new TrustedInterfaceTypePlugin());

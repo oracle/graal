@@ -69,4 +69,55 @@ public class PythonByteTests extends RegexTestBase {
     public void asciiNonWhitespace() {
         test("\\S", "", " \t\n\r\f\u000B", 0, false);
     }
+
+    @Test
+    public void localeSensitive() {
+        // in ISO-8859-2:
+        // f8 = lowercase r with caron
+        // d8 = uppercase R with caron
+        // ed = lowercase i with acute accent
+        // cd = uppercase I with acute accent
+        // b9 = lowercase s with caron
+        // a9 = uppercase S with caron
+
+        // in ISO-8859-1:
+        // b9 = superscript one
+        // a9 = copyright symbol
+
+        // case-folding
+        test("ji\u00f8\u00ed mar\u00b9\u00edk", "Li", "PythonLocale=cs_CZ.ISO-8859-2", "JI\u00d8\u00cd MAR\u00a9\u00cdK", 0, true, 0, 11, -1);
+        test("ji\u00f8\u00ed mar\u00b9\u00edk", "Li", "PythonLocale=en_US.ISO-8859-1", "JI\u00d8\u00cd MAR\u00a9\u00cdK", 0, false);
+        test("ji\u00f8\u00ed mar\u00b9\u00edk", "i", "JI\u00d8\u00cd MAR\u00a9\u00cdK", 0, false);
+
+        // word characters
+        test("\\w+", "L", "PythonLocale=cs_CZ.ISO-8859-2", "A\u00b9", 0, true, 0, 2, -1);
+        test("\\w+", "L", "PythonLocale=en_US.ISO-8859-1", "A\u00b9", 0, true, 0, 1, -1);
+        test("\\w+", "", "A\u00b9", 0, true, 0, 1, -1);
+
+        // word boundaries
+        test("\\b", "L", "PythonLocale=cs_CZ.ISO-8859-2", "\u00a9", 0, true, 0, 0, -1);
+        test("\\b", "L", "PythonLocale=en_US.ISO-8859-1", "\u00a9", 0, false);
+        test("\\b", "", "\u00a9", 0, false);
+
+        // turkish I
+        // in ISO-8859-9:
+        // dd = uppercase dotted I
+        // fd = lowercase dotless i
+        test("i", "iL", "PythonLocale=tr_TR.ISO-8859-9", "I", 0, false);
+        test("i", "iL", "PythonLocale=tr_TR.ISO-8859-9", "\u00dd", 0, true, 0, 1, -1);
+        test("I", "iL", "PythonLocale=tr_TR.ISO-8859-9", "i", 0, false);
+        test("I", "iL", "PythonLocale=tr_TR.ISO-8859-9", "\u00fd", 0, true, 0, 1, -1);
+        test("\u00dd", "iL", "PythonLocale=tr_TR.ISO-8859-9", "\u00fd", 0, false);
+        test("\u00dd", "iL", "PythonLocale=tr_TR.ISO-8859-9", "i", 0, true, 0, 1, -1);
+        test("\u00fd", "iL", "PythonLocale=tr_TR.ISO-8859-9", "\u00dd", 0, false);
+        test("\u00fd", "iL", "PythonLocale=tr_TR.ISO-8859-9", "I", 0, true, 0, 1, -1);
+    }
+
+    @Test
+    public void unsupportedLocale() {
+        expectUnsupported("foo", "iL", "PythonLocale=foo");
+        expectUnsupported("foo", "iL", "PythonLocale=foo.");
+        expectUnsupported("foo", "iL", "PythonLocale=foo.!");
+        expectUnsupported("foo", "iL", "PythonLocale=ab_XY.ISO-8859-42");
+    }
 }

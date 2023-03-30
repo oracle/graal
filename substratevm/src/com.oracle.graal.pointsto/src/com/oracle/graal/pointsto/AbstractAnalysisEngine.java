@@ -38,9 +38,9 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.HostVM;
@@ -57,6 +57,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -84,9 +85,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private final List<DebugHandlersFactory> debugHandlerFactories;
 
     protected final HostVM hostVM;
-    protected final HostedProviders providers;
     protected final UnsupportedFeatures unsupportedFeatures;
-    private final Replacements replacements;
+    private final SnippetReflectionProvider snippetReflectionProvider;
+    private final ConstantReflectionProvider constantReflectionProvider;
+    private final WordTypes wordTypes;
 
     /**
      * Processing queue.
@@ -98,20 +100,19 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final Timer analysisTimer;
     protected final Timer verifyHeapTimer;
 
-    public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
+    public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {
         this.options = options;
         this.universe = universe;
-        this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
+        this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflectionProvider));
         this.debug = new Builder(options, debugHandlerFactories).build();
-        this.metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
+        this.metaAccess = metaAccess;
         this.analysisPolicy = universe.analysisPolicy();
-        this.providers = providers;
         this.hostVM = hostVM;
         this.executor = new CompletionExecutor(this, executorService, heartbeatCallback);
         this.heartbeatCallback = heartbeatCallback;
         this.unsupportedFeatures = unsupportedFeatures;
-        this.replacements = providers.getReplacements();
 
         this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);
         this.verifyHeapTimer = timerCollection.get(TimerCollection.Registry.VERIFY_HEAP);
@@ -125,6 +126,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
                         : HeapScanningPolicy.skipTypes(skippedHeapTypes());
+
+        this.snippetReflectionProvider = snippetReflectionProvider;
+        this.constantReflectionProvider = constantReflectionProvider;
+        this.wordTypes = wordTypes;
     }
 
     /**
@@ -282,8 +287,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public HostedProviders getProviders() {
-        return providers;
+    public final HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
+        return getHostVM().getProviders(key);
     }
 
     @Override
@@ -298,12 +303,17 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     @Override
     public final SnippetReflectionProvider getSnippetReflectionProvider() {
-        return providers.getSnippetReflection();
+        return snippetReflectionProvider;
     }
 
     @Override
     public final ConstantReflectionProvider getConstantReflectionProvider() {
-        return providers.getConstantReflection();
+        return constantReflectionProvider;
+    }
+
+    @Override
+    public WordTypes getWordTypes() {
+        return wordTypes;
     }
 
     @Override
@@ -328,11 +338,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public final boolean executorIsStarted() {
         return executor.isStarted();
-    }
-
-    @Override
-    public Replacements getReplacements() {
-        return replacements;
     }
 
     /**

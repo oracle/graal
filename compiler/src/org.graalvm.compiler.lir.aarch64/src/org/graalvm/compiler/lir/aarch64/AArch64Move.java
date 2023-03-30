@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -362,7 +362,7 @@ public class AArch64Move {
                         masm.ldrs(Integer.max(dstBitSize, 32), srcBitSize, dst, address);
                         break;
                     default:
-                        throw GraalError.shouldNotReachHere();
+                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
                 }
             } else {
                 // floating point or vector access
@@ -394,7 +394,7 @@ public class AArch64Move {
             try (ScratchRegister scratch1 = masm.getScratchRegister()) {
                 AArch64Address address = addressValue.toAddress();
                 final Register addrReg;
-                if (address.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY) {
+                if (address.isBaseRegisterOnly()) {
                     // Can directly use the base register as the address
                     addrReg = address.getBase();
                 } else {
@@ -500,7 +500,7 @@ public class AArch64Move {
                 try (ScratchRegister scratch1 = masm.getScratchRegister()) {
                     AArch64Address address = addressValue.toAddress();
                     final Register addrReg;
-                    if (address.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY) {
+                    if (address.isBaseRegisterOnly()) {
                         // Can directly use the base register as the address
                         addrReg = address.getBase();
                     } else {
@@ -578,7 +578,7 @@ public class AArch64Move {
             } else if (isStackSlot(result)) {
                 reg2stack(moveKind, crb, masm, asStackSlot(result), src);
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         } else if (isStackSlot(input)) {
             StackSlot src = asStackSlot(input);
@@ -587,16 +587,16 @@ public class AArch64Move {
             } else if (isStackSlot(result)) {
                 stack2stack(moveKind, crb, masm, asStackSlot(result), src);
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         } else if (isJavaConstant(input)) {
             if (isRegister(result)) {
                 const2reg(moveKind, crb, masm, asRegister(result), asJavaConstant(input));
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -713,7 +713,7 @@ public class AArch64Move {
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere("kind=" + input.getJavaKind().getStackKind());
+                throw GraalError.shouldNotReachHere("kind=" + input.getJavaKind().getStackKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 

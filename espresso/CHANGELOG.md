@@ -1,5 +1,9 @@
 # Espresso Changelog
 
+## Version 23.0.0
+### User-visible changes
+* The Truffle InteropLibrary has/getMetaParents API is now fully implemented.
+
 ## Version 22.3.0
 ### User-visible changes
 * Interop invokable members of espresso objects can now also be read.

@@ -606,7 +606,7 @@ void determineCPUFeatures(CPUFeatures *features)
 #elif defined(__aarch64__)
 
 /*
- * The corresponding HotSpot code can be found in vm_version_bsd_aarch64.
+ * The corresponding HotSpot code can be found in vm_version_bsd_aarch64.cpp (218223e4a31d485935655cb3f186a752defd8fa8).
  */
 #if defined(__APPLE__)
 
@@ -623,29 +623,31 @@ static uint32_t cpu_has(const char* optional) {
 }
 
 void determineCPUFeatures(CPUFeatures* features) {
-  /*
-   * Note that Apple HW detection code is not accurate on older processors.
-   * All Apple devices have FP and ASIMD.
-   */
+  // All Apple devices have FP and ASIMD.
   features->fFP = 1;
   features->fASIMD = 1;
-  features->fEVTSTRM = 0;
-  features->fAES = 0;
-  features->fPMULL = 0;
-  features->fSHA1 = 0;
-  features->fSHA2 = 0;
-  features->fCRC32 = !!(cpu_has("hw.optional.armv8_crc32"));
-  features->fLSE = !!(cpu_has("hw.optional.armv8_1_atomics"));
+  // All Apple-darwin Arm processors have AES, PMULL, SHA1, and SHA2.
+  // For backward compatibility, do not check these CPU features as the
+  // corresponding string names are not available before xnu-8019.
+  features->fAES = 1;
+  features->fPMULL = 1;
+  features->fSHA1 = 1;
+  features->fSHA2 = 1;
+  // Checked in the Hotspot code.
+  features->fCRC32 =  !!(cpu_has("hw.optional.armv8_crc32"));
+  features->fLSE =    !!(cpu_has("hw.optional.arm.FEAT_LSE"))    | !!(cpu_has("hw.optional.armv8_1_atomics"));
+  features->fSHA512 = !!(cpu_has("hw.optional.arm.FEAT_SHA512")) | !!(cpu_has("hw.optional.armv8_2_sha512"));
+  features->fSHA3 =   !!(cpu_has("hw.optional.arm.FEAT_SHA3"))   | !!(cpu_has("hw.optional.armv8_2_sha3"));
+  // Not (yet) checked in the Hotspot code.
   features->fDCPOP = 0;
-  features->fSHA3 = 0;
-  features->fSHA512 = 0;
   features->fSVE = 0;
+  features->fSVEBITPERM = 0;
   features->fSVE2 = 0;
+  features->fEVTSTRM = 0;
   features->fSTXR_PREFETCH = 0;
   features->fA53MAC = 0;
   features->fDMB_ATOMICS = 0;
   features->fPACA = 0;
-  features->fSVEBITPERM = 0;
 }
 
 /*

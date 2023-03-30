@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
+import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
@@ -32,22 +33,23 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BASE64_ENCODE_BLOCK;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_LEFT_SHIFT_WORKER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.BIGINTEGER_RIGHT_SHIFT_WORKER;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.CONTINUATION_DO_YIELD;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.CHACHA20Block;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.GALOIS_COUNTER_MODE_CRYPT;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.IC_MISS_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MD5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_MULTIPLY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.MONTGOMERY_SQUARE;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.MUL_ADD;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_INSTANCE;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.POLY1305_PROCESSBLOCKS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA3_IMPL_COMPRESS;
@@ -56,7 +58,6 @@ import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
-import static org.graalvm.compiler.hotspot.HotSpotBackend.SQUARE_TO_LEN;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_ADLER32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
@@ -68,6 +69,7 @@ import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNCOMMO
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNPACK;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNPACK_WITH_EXCEPTION_IN_TLS;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.ENABLE_STACK_RESERVED_ZONE;
+import static org.graalvm.compiler.hotspot.HotSpotHostBackend.POLLING_PAGE_RETURN_HANDLER;
 import static org.graalvm.compiler.hotspot.HotSpotHostBackend.THROW_DELAYED_STACKOVERFLOW_ERROR;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
@@ -138,7 +140,9 @@ import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsWithMaskForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
@@ -170,6 +174,25 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     public static final HotSpotForeignCallDescriptor INVOKE_STATIC_METHOD_ONE_ARG = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS,
                     "JVMCIRuntime::invoke_static_method_one_arg", long.class, Word.class, Word.class, long.class);
+
+    public static final HotSpotForeignCallDescriptor NMETHOD_ENTRY_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NO_LOCATIONS, "nmethod_entry_barrier", void.class);
+
+    /*
+     * Functions from ZBarrierSetRuntime. The weak_ prefix refers to AS_NO_KEEPALIVE while the extra
+     * word before oop_field part refers to java.lang.Reference subclass and corresponds to
+     * ON_WEAK_OOP_REF/ON_PHANTOM_OOP_REF in HotSpot decorator terminology.
+     */
+    public static final HotSpotForeignCallDescriptor Z_FIELD_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NO_LOCATIONS, "load_barrier_on_oop_field_preloaded",
+                    long.class, long.class, long.class);
+    public static final HotSpotForeignCallDescriptor Z_REFERENCE_GET_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NO_LOCATIONS,
+                    "load_barrier_on_weak_oop_field_preloaded",
+                    long.class, long.class, long.class);
+    public static final HotSpotForeignCallDescriptor Z_WEAK_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NO_LOCATIONS,
+                    "weak_load_barrier_on_weak_oop_field_preloaded", long.class, long.class, long.class);
+    public static final HotSpotForeignCallDescriptor Z_PHANTOM_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NO_LOCATIONS,
+                    "weak_load_barrier_on_phantom_oop_field_preloaded", long.class, long.class, long.class);
+    public static final HotSpotForeignCallDescriptor Z_ARRAY_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NO_LOCATIONS, "load_barrier_on_oop_array",
+                    void.class, long.class, long.class);
 
     /**
      * Signature of an unsafe {@link System#arraycopy} stub.
@@ -409,6 +432,9 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.deoptBlobUnpackWithExceptionInTLS != 0) {
             registerForeignCall(DEOPT_BLOB_UNPACK_WITH_EXCEPTION_IN_TLS, c.deoptBlobUnpackWithExceptionInTLS, NativeCall);
         }
+        if (c.pollingPageReturnHandler != 0) {
+            registerForeignCall(POLLING_PAGE_RETURN_HANDLER, c.pollingPageReturnHandler, NativeCall);
+        }
         registerForeignCall(DEOPT_BLOB_UNCOMMON_TRAP, c.deoptBlobUncommonTrap, NativeCall);
         registerForeignCall(IC_MISS_HANDLER, c.inlineCacheMissStub, NativeCall);
 
@@ -484,6 +510,29 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, NOTIFY, c.notifyAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, NOTIFY_ALL, c.notifyAllAddress, PREPEND_THREAD);
+
+        if (c.nmethodEntryBarrier != 0) {
+            registerForeignCall(NMETHOD_ENTRY_BARRIER, c.nmethodEntryBarrier, NativeCall);
+        } else if (IS_BUILDING_NATIVE_IMAGE) {
+            // Ensure this is known to libgraal
+            register(NMETHOD_ENTRY_BARRIER.getSignature());
+        }
+
+        if (c.zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded != 0) {
+            linkStackOnlyForeignCall(options, providers, Z_FIELD_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnOopFieldPreloaded, DONT_PREPEND_THREAD);
+            linkStackOnlyForeignCall(options, providers, Z_REFERENCE_GET_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
+            linkStackOnlyForeignCall(options, providers, Z_WEAK_REFERS_TO_BARRIER, c.zBarrierSetRuntimeWeakLoadBarrierOnWeakOopFieldPreloaded, DONT_PREPEND_THREAD);
+            linkStackOnlyForeignCall(options, providers, Z_PHANTOM_REFERS_TO_BARRIER, c.zBarrierSetRuntimeWeakLoadBarrierOnPhantomOopFieldPreloaded, DONT_PREPEND_THREAD);
+            linkStackOnlyForeignCall(options, providers, Z_ARRAY_BARRIER, c.zBarrierSetRuntimeLoadBarrierOnOopArray, DONT_PREPEND_THREAD);
+        } else if (IS_BUILDING_NATIVE_IMAGE) {
+            // Ensure these are known to libgraal
+            register(Z_FIELD_BARRIER.getSignature());
+            register(Z_REFERENCE_GET_BARRIER.getSignature());
+            register(Z_WEAK_REFERS_TO_BARRIER.getSignature());
+            register(Z_PHANTOM_REFERS_TO_BARRIER.getSignature());
+            register(Z_ARRAY_BARRIER.getSignature());
+        }
+
         linkForeignCall(options, providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD);
@@ -542,17 +591,11 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.base64DecodeBlock != 0L) {
             registerForeignCall(BASE64_DECODE_BLOCK, c.base64DecodeBlock, NativeCall);
         }
-        if (c.useMulAddIntrinsic()) {
-            registerForeignCall(MUL_ADD, c.mulAdd, NativeCall);
-        }
         if (c.useMontgomeryMultiplyIntrinsic()) {
             registerForeignCall(MONTGOMERY_MULTIPLY, c.montgomeryMultiply, NativeCall);
         }
         if (c.useMontgomerySquareIntrinsic()) {
             registerForeignCall(MONTGOMERY_SQUARE, c.montgomerySquare, NativeCall);
-        }
-        if (c.useSquareToLenIntrinsic()) {
-            registerForeignCall(SQUARE_TO_LEN, c.squareToLen, NativeCall);
         }
         if (c.useCRC32Intrinsics) {
             // This stub does callee saving
@@ -576,8 +619,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         if (c.electronicCodeBookDecrypt != 0L) {
             registerForeignCall(ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT, c.electronicCodeBookDecrypt, NativeCall);
         }
-        if (c.contDoYield != 0) {
-            registerForeignCall(CONTINUATION_DO_YIELD, c.contDoYield, NativeCall);
+        if (c.galoisCounterModeCrypt != 0L) {
+            registerForeignCall(GALOIS_COUNTER_MODE_CRYPT, c.galoisCounterModeCrypt, NativeCall);
+        }
+        if (c.poly1305ProcessBlocks != 0) {
+            registerForeignCall(POLY1305_PROCESSBLOCKS, c.poly1305ProcessBlocks, NativeCall);
+        }
+        if (c.chacha20Block != 0) {
+            registerForeignCall(CHACHA20Block, c.chacha20Block, NativeCall);
         }
 
         TargetDescription target = providers.getCodeCache().getTarget();
@@ -624,6 +673,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, HasNegativesNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, VectorizedMismatchForeignCalls.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMultiplyToLenNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMulAddNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerSquareToLenNode.STUB);
     }
 
     @FunctionalInterface

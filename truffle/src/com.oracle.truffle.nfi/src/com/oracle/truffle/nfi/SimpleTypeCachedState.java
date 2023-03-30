@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromFP128Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromFP80Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromUInt16Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromUInt32Factory;
@@ -64,12 +65,13 @@ import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.NothingFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.NullableToNativeFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.PointerFromNativeFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToDoubleFactory;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFP128Factory;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFP80Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFloatFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt16Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt32Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt64Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt8Factory;
-import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFP80Factory;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
 import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
@@ -105,7 +107,7 @@ final class SimpleTypeCachedState {
         c[NativeSimpleType.FLOAT.ordinal()] = new TypeCachedState(1, ToFloatFactory.getInstance(), NopConvertFactory.getInstance());
         c[NativeSimpleType.DOUBLE.ordinal()] = new TypeCachedState(1, ToDoubleFactory.getInstance(), NopConvertFactory.getInstance());
         c[NativeSimpleType.FP80.ordinal()] = new TypeCachedState(1, ToFP80Factory.getInstance(), FromFP80Factory.getInstance());
-
+        c[NativeSimpleType.FP128.ordinal()] = new TypeCachedState(1, ToFP128Factory.getInstance(), FromFP128Factory.getInstance());
         c[NativeSimpleType.POINTER.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance());
         c[NativeSimpleType.NULLABLE.ordinal()] = new TypeCachedState(1, NullableToNativeFactory.getInstance(), PointerFromNativeFactory.getInstance());
         c[NativeSimpleType.STRING.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance());
@@ -628,6 +630,50 @@ final class SimpleTypeCachedState {
                         @CachedLibrary("arg") InteropLibrary interop) {
             assert interop.hasBufferElements(arg);
             return LongDoubleUtil.fp80ToNumber(arg);
+        }
+
+        @Fallback
+        Object doOther(@SuppressWarnings("unused") NFIType type, Object arg) {
+            return arg;
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
+    abstract static class ToFP128 extends ConvertTypeNode {
+
+        @Specialization(limit = "3", guards = "interop.isNumber(arg)")
+        @GenerateAOT.Exclude
+        Object doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) {
+            assert interop.fitsInLong(arg) || interop.fitsInDouble(arg);
+            return LongDoubleUtil.interopToFP128(arg);
+        }
+
+        @Specialization(limit = "3", guards = "serialize.isSerializable(arg)")
+        Object doSerializable(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") SerializableLibrary serialize) {
+            assert serialize.isSerializable(arg);
+            return arg;
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        byte doFail(NFIType type, Object arg) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{arg});
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
+    abstract static class FromFP128 extends ConvertTypeNode {
+
+        @Specialization(limit = "1", guards = {"interop.hasBufferElements(arg)", "!interop.isNumber(arg)"})
+        @GenerateAOT.Exclude
+        Object doBuffer(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) {
+            assert interop.hasBufferElements(arg);
+            return LongDoubleUtil.fp128ToNumber(arg);
         }
 
         @Fallback

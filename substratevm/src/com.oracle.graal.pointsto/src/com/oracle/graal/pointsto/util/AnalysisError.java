@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,10 +42,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class AnalysisError extends Error {
 
     private static final long serialVersionUID = -4489048906003856416L;
-
-    AnalysisError() {
-        super();
-    }
 
     AnalysisError(String msg) {
         super(msg);
@@ -97,7 +93,7 @@ public class AnalysisError extends Error {
             return method;
         }
 
-        private static String message(AnalysisMethod method) {
+        public static String message(AnalysisMethod method) {
             String msg = String.format("Error encountered while parsing %s %n", method.asStackTraceElement(0));
             msg += "Parsing context:" + ReportUtils.parsingContext(method);
             return msg;

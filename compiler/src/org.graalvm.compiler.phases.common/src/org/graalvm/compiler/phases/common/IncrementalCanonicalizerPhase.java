@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,12 +46,13 @@ public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
     private final StructuredGraph initialGraph;
     private final Tool theTool;
 
-    IncrementalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features, StructuredGraph graph, CoreProviders context, Graph.Mark newNodesMark) {
-        this(features, graph, context, graph.getNewNodes(newNodesMark));
+    IncrementalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features, CustomSimplification customSimplification, StructuredGraph graph, CoreProviders context, Graph.Mark newNodesMark) {
+        this(features, customSimplification, graph, context, graph.getNewNodes(newNodesMark));
     }
 
-    IncrementalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features, StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-        super(features);
+    IncrementalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features, CustomSimplification customSimplification, StructuredGraph graph, CoreProviders context,
+                    Iterable<? extends Node> workingSet) {
+        super(customSimplification, features);
         this.initialGraph = graph;
         NodeWorkList workList = graph.createIterativeNodeWorkList(false, MAX_ITERATION_PER_NODE);
         workList.addAll(workingSet);

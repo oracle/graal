@@ -1,14 +1,14 @@
 ---
 layout: docs
 toc_group: embedding
-link_title: Enterprise Sandbox Resource Limits
+link_title: Sandbox Resource Limits
 permalink: /reference-manual/embed-languages/sandbox-resource-limits/
 ---
 
-## Enterprise Sandbox Resource Limits
+## Oracle GraalVM Sandbox Resource Limits
 
-GraalVM Enterprise provides the experimental Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
-These resource limits are not available in the Community Edition of GraalVM.
+Oracle GraalVM provides the Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
+These resource limits are not available in GraalVM Community Edition.
 The following document describes how to configure sandbox resource limits using options in GraalVM Polyglot API.
 
 In general all resource limit options are prefixed with `sandbox` option group and they can be listed using the help of any language launcher provided in GraalVM, e.g., `js --help:tools`.
@@ -21,13 +21,14 @@ The options are a best effort approach to limiting resource usage of guest appli
 The resource limits may be configured using the following options:
 
 <!-- BEGIN: sandbox-options -->
-- `--sandbox.AllocatedBytesCheckEnabled=true|false` : Specifies whether checking of allocated bytes for an execution context is enabled. Is set to 'true' by default.
 - `--sandbox.AllocatedBytesCheckFactor=[0.0, inf)` : Specifies a factor of MaxHeapMemory the allocation of which triggers retained heap memory computation. When allocated bytes for an execution context reach the specified factor, computation of bytes retained in the heap by the context is initiated. Is set to '1.0' by default.
 - `--sandbox.AllocatedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check allocated bytes for an execution context. Exceeding certain number of allocated bytes triggers computation of bytes retained in the heap by the context. Is set to '10ms' by default. Maximum interval is 1h.
 - `--sandbox.MaxASTDepth=[1, inf)` : Maximum AST depth of a function (default: no limit).
 - `--sandbox.MaxCPUTime=[1, inf)ms|s|m|h|d` : Limits the total maximum CPU time that was spent running the application. No limit is set by default. Example value: '100ms'.
 - `--sandbox.MaxCPUTimeCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check the active CPU time for an execution context. Is set to '10ms' by default. Maximum interval is 1h.
-- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
+- `--sandbox.MaxErrorStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stderr. No limit is set by default. Example value: '10MB'.
+- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. Includes only data retained by the guest application, runtime allocated data is not included. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
+- `--sandbox.MaxOutputStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stdout. No limit is set by default. Example value: '10MB'.
 - `--sandbox.MaxStackFrames=[1, inf)` : Limits the maximum number of guest stack frames (default: no limit).
 - `--sandbox.MaxStatements=[1, inf)` : Limits the maximum number of guest language statements executed. The execution is cancelled with an resource exhausted error when it is exceeded.
 - `--sandbox.MaxStatementsIncludeInternal` : Configures whether to include internal sources in the max statements computation.
@@ -252,6 +253,42 @@ Available units to specify sizes are `B` for bytes, `KB` for kilobytes, `MB` for
 It is not allowed to specify negative values or no size unit with max heap memory options.
 
 Resetting resource limits using `Context.resetLimits` does not affect the heap memory limit.
+
+## Limiting the size of the output written to stdout/stderr
+
+Limits the size of the output that the application writes to standard output or standard error output during runtime.
+If the limit is exceeded, evaluation of the code fails and the context is canceled.
+Limiting the size of the output can serve as protection against denial-of-service attacks that flood the output.
+
+#### Example Usage
+```java
+try (Context context = Context.newBuilder("js")
+                           .option("sandbox.MaxOutputStreamSize", "100KB")
+                       .build()) {
+    context.eval("js", "while(true) { console.log('Log message') };");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after writing more than 100KB to stdout
+    // context is closed and can no longer be used
+    // error message: Maximum output stream size of 102400 exceeded. Bytes written 102408.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
+}
+```
+```java
+try (Context context = Context.newBuilder("js")
+                           .option("sandbox.MaxErrorStreamSize", "100KB")
+                       .build()) {
+    context.eval("js", "while(true) { console.error('Error message') };");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after writing more than 100KB to stderr
+    // context is closed and can no longer be used
+    // error message: Maximum error stream size of 102400 exceeded. Bytes written 102410.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
+}
+```
 
 ## Determining Sandbox Resource Limits
 

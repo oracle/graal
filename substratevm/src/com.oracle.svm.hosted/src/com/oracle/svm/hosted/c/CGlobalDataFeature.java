@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -63,7 +64,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.phases.util.Providers;
@@ -79,8 +79,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -96,7 +96,7 @@ public class CGlobalDataFeature implements InternalFeature {
     private final Field isSymbolReferenceField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "isSymbolReference");
 
     private final CGlobalDataNonConstantRegistry nonConstantRegistry = new CGlobalDataNonConstantRegistry();
-    private final JavaConstant nonConstantRegistryJavaConstant = SubstrateObjectConstant.forObject(nonConstantRegistry);
+    private JavaConstant nonConstantRegistryJavaConstant;
 
     private final Map<CGlobalDataImpl<?>, CGlobalDataInfo> map = new ConcurrentHashMap<>();
     private CGlobalDataInfo cGlobalDataBaseAddress;
@@ -111,9 +111,11 @@ public class CGlobalDataFeature implements InternalFeature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
-        access.registerObjectReplacer(this::replaceObject);
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        a.registerObjectReplacer(this::replaceObject);
         cGlobalDataBaseAddress = registerAsAccessedOrGet(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS);
+        nonConstantRegistryJavaConstant = access.getMetaAccess().getUniverse().getSnippetReflection().forObject(nonConstantRegistry);
     }
 
     @Override
@@ -129,7 +131,7 @@ public class CGlobalDataFeature implements InternalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode cGlobalDataNode = receiver.get();
                 if (cGlobalDataNode.isConstant()) {
-                    CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) SubstrateObjectConstant.asObject(cGlobalDataNode.asConstant());
+                    CGlobalDataImpl<?> data = providers.getSnippetReflection().asObject(CGlobalDataImpl.class, cGlobalDataNode.asJavaConstant());
                     CGlobalDataInfo info = CGlobalDataFeature.this.map.get(data);
                     b.addPush(targetMethod.getSignature().getReturnKind(), new CGlobalDataLoadAddressNode(info));
                 } else {
@@ -156,7 +158,7 @@ public class CGlobalDataFeature implements InternalFeature {
                     ValueNode isSymbolReference = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(isSymbolReferenceField)));
                     LogicNode condition = IntegerEqualsNode.create(isSymbolReference, ConstantNode.forBoolean(false, b.getGraph()), NodeView.DEFAULT);
                     ReadNode readValue = b.add(new ReadNode(b.add(OffsetAddressNode.create(address)), NamedLocationIdentity.ANY_LOCATION,
-                                    baseAddress.stamp(NodeView.DEFAULT), OnHeapMemoryAccess.BarrierType.NONE, MemoryOrderMode.PLAIN));
+                                    baseAddress.stamp(NodeView.DEFAULT), BarrierType.NONE, MemoryOrderMode.PLAIN));
 
                     AbstractBeginNode trueBegin = b.add(new BeginNode());
                     FixedWithNextNode predecessor = (FixedWithNextNode) trueBegin.predecessor();

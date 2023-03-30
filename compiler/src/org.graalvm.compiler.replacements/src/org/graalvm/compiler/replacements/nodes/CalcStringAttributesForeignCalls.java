@@ -69,7 +69,7 @@ public final class CalcStringAttributesForeignCalls {
             case UTF_32:
                 return STUB_CALC_STRING_ATTRIBUTES_UTF32;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

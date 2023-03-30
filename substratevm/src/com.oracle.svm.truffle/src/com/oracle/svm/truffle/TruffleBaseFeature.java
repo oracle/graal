@@ -79,7 +79,6 @@ import org.graalvm.home.HomeFinder;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -382,6 +381,8 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
         access.registerObjectReplacer(this::processInlinedField);
 
+        StaticObjectSupport.duringSetup(access);
+
         HomeFinder hf = HomeFinder.getInstance();
         if (Options.CopyLanguageResources.getValue()) {
             if (!(hf instanceof DefaultHomeFinder)) {
@@ -455,14 +456,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         if (needsAllEncodings) {
             ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
         }
-
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "byteArrayOffset"),
-                        new ArrayBasedShapeGeneratorOffsetTransformer("primitive"));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "objectArrayOffset"),
-                        new ArrayBasedShapeGeneratorOffsetTransformer("object"));
-        access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "shapeOffset"),
-                        new ArrayBasedShapeGeneratorOffsetTransformer("shape"));
-
     }
 
     @Override
@@ -732,8 +725,12 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
     }
 
-    private static final class StaticObjectSupport {
+    static final class StaticObjectSupport {
         private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
+
+        static void duringSetup(DuringSetupAccess access) {
+            StaticObjectArrayBasedSupport.duringSetup(access);
+        }
 
         static void beforeAnalysis(BeforeAnalysisAccess access) {
             StaticObjectArrayBasedSupport.beforeAnalysis(access);
@@ -780,27 +777,138 @@ public final class TruffleBaseFeature implements InternalFeature {
             }
         }
 
-        private static final class StaticObjectArrayBasedSupport {
+        static final class StaticObjectArrayBasedSupport {
             private static final Method STORAGE_CLASS_NAME = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "storageClassName");
 
-            private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader");
-            private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
+            private static final Class<?> GENERATOR_CLASS_LOADERS_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoaders");
+            private static final Constructor<?> GENERATOR_CLASS_LOADERS_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADERS_CLASS, Class.class);
 
+            private static final Class<?> ARRAY_BASED_STATIC_SHAPE = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedStaticShape");
             private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
             private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR, "getShapeGenerator", TruffleLanguage.class,
-                            GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
+                            GENERATOR_CLASS_LOADERS_CLASS, Class.class, Class.class, String.class);
 
-            private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
+            private static final Map<Class<?>, Object> GENERATOR_CLASS_LOADERS_MAP = new ConcurrentHashMap<>();
+            private static final int ALIGNMENT_CORRECTION;
             private static BeforeAnalysisAccess beforeAnalysisAccess;
 
             private static final IdentityHashMap<Object, Object> registeredShapeGenerators = new IdentityHashMap<>();
 
+            static volatile ConcurrentHashMap<Object, Object> replacements;
+            private static final Class<?> FACTORY_CLASS_LOADER;
+
+            static {
+                // ArrayBasedShapeGenerator$ArrayBasedPropertyLayout makes sure that primitives are
+                // stored in a byte[] at offsets that are long-aligned. When using the Static Object
+                // Model during context pre-init, these offsets are computed using values that are
+                // correct for the base JDK but might differ from those of Native Image. When this
+                // happens, we allocate a larger byte[] and copy over the contents of the original
+                // one at a base offset that keeps the other offsets long-aligned.
+                int longIndexScale = ConfigurationValues.getObjectLayout().getArrayIndexScale(JavaKind.Long);
+                int misalignment = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte) % longIndexScale;
+                ALIGNMENT_CORRECTION = misalignment == 0 ? 0 : longIndexScale - misalignment;
+
+                if (ALIGNMENT_CORRECTION != 0) {
+                    // Can be an equality-based map because factory classes do not override
+                    // `hashCode()` and `equals()`.
+                    replacements = new ConcurrentHashMap<>();
+                    // `ArrayBasedStaticShape.replacements` must be initialized only when there is
+                    // an alignment correction, else some factories will not be replaced and will
+                    // continue to register replacement candidates.
+                    ReflectionUtil.writeStaticField(ARRAY_BASED_STATIC_SHAPE, "replacements", replacements);
+                    FACTORY_CLASS_LOADER = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoaders$FactoryClassLoader");
+                } else {
+                    replacements = null;
+                    FACTORY_CLASS_LOADER = null;
+                }
+            }
+
+            static void duringSetup(DuringSetupAccess access) {
+                if (ALIGNMENT_CORRECTION != 0) {
+                    access.registerObjectReplacer(obj -> {
+                        if (!replacements.isEmpty()) {
+                            boolean isByteArray = obj instanceof byte[];
+                            if (isByteArray || FACTORY_CLASS_LOADER.isInstance(obj.getClass().getClassLoader())) {
+                                Object replacement = replacements.get(obj);
+                                if (replacement != null) {
+                                    // The `replacements` map is populated by the generated
+                                    // factories. The keys of this map are the primitive byte arrays
+                                    // and the factory instances that must be replaced, and the
+                                    // values are their replacements. Before a replacement is
+                                    // computed, the value is identical to the key.
+                                    if (replacement == obj) {
+                                        // on first access: generate the replacement and register it
+                                        if (isByteArray) {
+                                            // primitive storage array
+                                            byte[] oldArray = (byte[]) obj;
+                                            byte[] newArray = new byte[oldArray.length + ALIGNMENT_CORRECTION];
+                                            System.arraycopy(oldArray, 0, newArray, ALIGNMENT_CORRECTION, oldArray.length);
+                                            replacement = newArray;
+                                        } else {
+                                            // factory instance
+                                            Class<?> factoryClass = obj.getClass();
+                                            StaticShape<?> shape = ReflectionUtil.readField(factoryClass, "shape", obj);
+                                            int primitiveArraySize = ReflectionUtil.readField(factoryClass, "primitiveArraySize", obj);
+                                            int objectArraySize = ReflectionUtil.readField(factoryClass, "objectArraySize", obj);
+
+                                            Constructor<?> constructor = ReflectionUtil.lookupConstructor(factoryClass,
+                                                            shape.getClass(),
+                                                            int.class,
+                                                            int.class,
+                                                            boolean.class);
+
+                                            Object newFactory = ReflectionUtil.newInstance(constructor,
+                                                            shape,
+                                                            primitiveArraySize + ALIGNMENT_CORRECTION,
+                                                            objectArraySize,
+                                                            // do not register patched factories,
+                                                            // else we end up patching them again
+                                                            false);
+
+                                            replacement = newFactory;
+                                        }
+                                        if (!replacements.replace(obj, obj, replacement)) {
+                                            // another thread already registered a replacement in
+                                            // the meanwhile. Use that one.
+                                            replacement = replacements.get(obj);
+                                        }
+                                    }
+                                    return replacement;
+                                }
+                            }
+                        }
+                        return obj;
+                    });
+                }
+            }
+
             static void beforeAnalysis(BeforeAnalysisAccess access) {
                 beforeAnalysisAccess = access;
+
+                access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "byteArrayOffset"),
+                                new ArrayBasedShapeGeneratorOffsetTransformer("primitive"));
+                access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "objectArrayOffset"),
+                                new ArrayBasedShapeGeneratorOffsetTransformer("object"));
+                access.registerFieldValueTransformer(ReflectionUtil.lookupField(ArrayBasedShapeGeneratorOffsetTransformer.SHAPE_GENERATOR, "shapeOffset"),
+                                new ArrayBasedShapeGeneratorOffsetTransformer("shape"));
+
+                access.registerFieldValueTransformer(ReflectionUtil.lookupField(StaticProperty.class, "offset"),
+                                new StaticPropertyOffsetTransformer(ALIGNMENT_CORRECTION));
             }
 
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
-                generateArrayBasedStorage(storageSuperClass, factoryInterface, beforeAnalysisAccess);
+                try {
+                    /*
+                     * Trigger code generation also for those (storageSuperClass; factoryInterface)
+                     * pairs that are not encountered during context pre-initialization. Since
+                     * ArrayBasedShapeGenerator caches generated classes, there won't be code
+                     * generation at run time.
+                     */
+                    Object gcls = getGeneratorClassLoaders(factoryInterface);
+                    getGetShapeGenerator(gcls, storageSuperClass, factoryInterface);
+                } catch (ReflectiveOperationException e) {
+                    throw VMError.shouldNotReachHere(e);
+                }
             }
 
             static void duringAnalysis(DuringAnalysisAccess access) {
@@ -835,34 +943,21 @@ public final class TruffleBaseFeature implements InternalFeature {
                 }
             }
 
-            @SuppressWarnings("unused")
-            private static void generateArrayBasedStorage(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
-                try {
-                    ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-                    getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
-                } catch (ReflectiveOperationException e) {
-                    throw VMError.shouldNotReachHere(e);
-                }
-            }
-
-            private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
-                ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
-                if (cl == null) {
-                    ClassLoader newCL = (ClassLoader) GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface);
-                    cl = CLASS_LOADERS.putIfAbsent(factoryInterface, newCL);
-                    if (cl == null) {
-                        cl = newCL;
+            private static Object getGeneratorClassLoaders(Class<?> factoryInterface) throws ReflectiveOperationException {
+                Object gcls = GENERATOR_CLASS_LOADERS_MAP.get(factoryInterface);
+                if (gcls == null) {
+                    Object newGCLs = GENERATOR_CLASS_LOADERS_CONSTRUCTOR.newInstance(factoryInterface);
+                    gcls = GENERATOR_CLASS_LOADERS_MAP.putIfAbsent(factoryInterface, newGCLs);
+                    if (gcls == null) {
+                        gcls = newGCLs;
                     }
                 }
-                return cl;
+                return gcls;
             }
 
-            /*
-             * Triggers shape generation.
-             */
-            private static void getGetShapeGenerator(ClassLoader generatorCL, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
+            private static void getGetShapeGenerator(Object gcls, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
                 String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
-                GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
+                GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, gcls, storageSuperClass, factoryInterface, storageClassName);
             }
 
             private static Class<?> loadClass(String name) {
@@ -1009,80 +1104,115 @@ final class Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> {
     static native <T> Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> create(Class<?> generatedStorageClass, T factory, boolean safetyChecks, Object pod);
 }
 
+@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedStaticShape", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_ArrayBasedStaticShape {
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = MapCleaner.class, isFinal = true) //
+    static ConcurrentHashMap<Object, Object> replacements;
+
+    private static class MapCleaner implements FieldValueTransformerWithAvailability {
+        @Override
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.AfterCompilation;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Object transform(Object receiver, Object originalValue) {
+            if (originalValue != null) {
+                ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
+                // Copied so that the object replacer can continue replacing references, even after
+                // compilation.
+                TruffleBaseFeature.StaticObjectSupport.StaticObjectArrayBasedSupport.replacements = new ConcurrentHashMap<>(originalMap);
+                // Cleared so that factory instances that hold a reference to it do not leak
+                // objects.
+                originalMap.clear();
+                // Return null so that new factory instances do not register replacements. See
+                // `ArrayBasedStaticShape.create()`.
+            }
+            return null;
+        }
+    }
+}
+
 @TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
-
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
-    int offset;
-
     @Alias //
     native Class<?> getPropertyType();
 
     @Alias
     native void initOffset(int o);
+}
 
-    public static final class OffsetTransformer implements FieldValueTransformer {
+final class StaticPropertyOffsetTransformer implements FieldValueTransformerWithAvailability {
+    /*
+     * We have to use reflection to access private members instead of aliasing them in the
+     * substitution class since substitutions are present only at runtime
+     */
+    private static final Method GET_PROPERTY_TYPE = ReflectionUtil.lookupMethod(StaticProperty.class, "getPropertyType");
+    private final int primitiveAlignmentCorrection;
+
+    StaticPropertyOffsetTransformer(int primitiveAlignmentCorrection) {
+        this.primitiveAlignmentCorrection = primitiveAlignmentCorrection;
+    }
+
+    @Override
+    public ValueAvailability valueAvailability() {
+        return ValueAvailability.AfterAnalysis;
+    }
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        int offset = (int) originalValue;
+        if (offset == 0) {
+            /*
+             * The offset is not yet initialized, probably because no shape was built for the
+             * receiver static property
+             */
+            return offset;
+        }
+
+        StaticProperty receiverStaticProperty = (StaticProperty) receiver;
+
+        Class<?> propertyType;
+        try {
+            propertyType = (Class<?>) GET_PROPERTY_TYPE.invoke(receiverStaticProperty);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+
+        JavaKind javaKind;
+        int baseOffset;
+        int indexScale;
+        int svmAlignmentCorrection;
+        if (propertyType.isPrimitive()) {
+            javaKind = JavaKind.Byte;
+            baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
+            indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
+            svmAlignmentCorrection = primitiveAlignmentCorrection;
+        } else {
+            javaKind = JavaKind.Object;
+            baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
+            indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
+            svmAlignmentCorrection = 0;
+        }
+
+        assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;
+
         /*
-         * We have to use reflection to access private members instead of aliasing them in the
-         * substitution class since substitutions are present only at runtime
+         * Reverse the offset computation to find the index
          */
+        int index = (offset - baseOffset) / indexScale;
 
-        private static final Method GET_PROPERTY_TYPE;
-        static {
-            GET_PROPERTY_TYPE = ReflectionUtil.lookupMethod(StaticProperty.class, "getPropertyType");
-        }
+        /*
+         * Find SVM array base offset and array index scale for this JavaKind
+         */
+        int svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
+        int svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
 
-        @Override
-        public Object transform(Object receiver, Object originalValue) {
-            int offset = (int) originalValue;
-            if (offset == 0) {
-                /*
-                 * The offset is not yet initialized, probably because no shape was built for the
-                 * receiver static property
-                 */
-                return offset;
-            }
-
-            StaticProperty receiverStaticProperty = (StaticProperty) receiver;
-
-            Class<?> propertyType;
-            try {
-                propertyType = (Class<?>) GET_PROPERTY_TYPE.invoke(receiverStaticProperty);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-
-            int baseOffset;
-            int indexScale;
-            JavaKind javaKind;
-            if (propertyType.isPrimitive()) {
-                javaKind = JavaKind.Byte;
-                baseOffset = Unsafe.ARRAY_BYTE_BASE_OFFSET;
-                indexScale = Unsafe.ARRAY_BYTE_INDEX_SCALE;
-            } else {
-                javaKind = JavaKind.Object;
-                baseOffset = Unsafe.ARRAY_OBJECT_BASE_OFFSET;
-                indexScale = Unsafe.ARRAY_OBJECT_INDEX_SCALE;
-            }
-
-            assert offset >= baseOffset && (offset - baseOffset) % indexScale == 0;
-
-            /*
-             * Reverse the offset computation to find the index
-             */
-            int index = (offset - baseOffset) / indexScale;
-
-            /*
-             * Find SVM array base offset and array index scale for this JavaKind
-             */
-            int svmArrayBaseOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(javaKind);
-            int svmArrayIndexScaleOffset = ConfigurationValues.getObjectLayout().getArrayIndexScale(javaKind);
-
-            /*
-             * Redo the offset computation with the SVM array base offset and array index scale
-             */
-            return svmArrayBaseOffset + svmArrayIndexScaleOffset * index;
-        }
+        /*
+         * Redo the offset computation with the SVM array base offset and array index scale
+         */
+        return svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index;
     }
 }
 
@@ -1219,7 +1349,7 @@ final class Target_com_oracle_truffle_api_nodes_NodeClassImpl_NodeFieldData {
     }
 }
 
-@TargetClass(className = "com.oracle.truffle.api.dsl.InlineSupport$UnsafeField", onlyWith = TruffleFeature.IsEnabled.class)
+@TargetClass(className = "com.oracle.truffle.api.dsl.InlineSupport$UnsafeField", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //

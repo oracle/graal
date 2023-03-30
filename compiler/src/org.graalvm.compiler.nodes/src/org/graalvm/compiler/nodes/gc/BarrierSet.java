@@ -25,29 +25,36 @@
  */
 package org.graalvm.compiler.nodes.gc;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface BarrierSet {
+
+    boolean hasWriteBarrier();
+
+    boolean hasReadBarrier();
+
     void addBarriers(FixedAccessNode n);
 
-    BarrierType fieldLoadBarrierType(ResolvedJavaField field, JavaKind storageKind);
+    BarrierType fieldReadBarrierType(ResolvedJavaField field, JavaKind storageKind);
 
-    BarrierType fieldStoreBarrierType(ResolvedJavaField field, JavaKind storageKind);
+    BarrierType fieldWriteBarrierType(ResolvedJavaField field, JavaKind storageKind);
 
-    BarrierType readBarrierType(RawLoadNode load);
+    BarrierType readBarrierType(LocationIdentity location, ValueNode address, Stamp loadStamp);
 
-    BarrierType storeBarrierType(RawStoreNode store);
+    BarrierType writeBarrierType(RawStoreNode store);
 
-    BarrierType arrayStoreBarrierType(JavaKind storageKind);
+    BarrierType arrayWriteBarrierType(JavaKind storageKind);
 
-    BarrierType guessStoreBarrierType(ValueNode object, ValueNode value);
+    BarrierType guessReadWriteBarrier(ValueNode object, ValueNode value);
 
     /**
      * Determine whether writes of the given {@code storageKind} may ever need a pre-write barrier.
@@ -57,4 +64,12 @@ public interface BarrierSet {
      *         under certain circumstances.
      */
     boolean mayNeedPreWriteBarrier(JavaKind storageKind);
+
+    /**
+     * Perform verification of inserted or missing barriers.
+     *
+     * @param graph the grraph to verify.
+     */
+    default void verifyBarriers(StructuredGraph graph) {
+    }
 }

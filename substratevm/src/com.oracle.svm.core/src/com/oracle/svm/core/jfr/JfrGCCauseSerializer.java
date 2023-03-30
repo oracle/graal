@@ -29,13 +29,13 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.heap.GCCause;
 
-public class JfrGCCauseSerializer implements JfrConstantPool {
+public class JfrGCCauseSerializer implements JfrSerializer {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrGCCauseSerializer() {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
+    public void write(JfrChunkWriter writer) {
         // GCCauses has null entries
         GCCause[] causes = GCCause.getGCCauses();
         int nonNullItems = 0;
@@ -55,6 +55,5 @@ public class JfrGCCauseSerializer implements JfrConstantPool {
                 writer.writeString(cause.getName());
             }
         }
-        return NON_EMPTY;
     }
 }

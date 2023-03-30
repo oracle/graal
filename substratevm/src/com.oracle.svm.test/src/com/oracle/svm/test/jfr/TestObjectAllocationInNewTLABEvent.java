@@ -28,18 +28,21 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestObjectAllocationInNewTLABEvent extends JfrTest {
+public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
     private static final int K = 1024;
-    private static final int DEFAULT_ALIGNED_HEAP_CHUNK_SIZE = 1024 * K;
 
     @Override
     public String[] getTestedEvents() {
@@ -47,13 +50,15 @@ public class TestObjectAllocationInNewTLABEvent extends JfrTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
+        final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+
         boolean foundBigByteArray = false;
         boolean foundSmallByteArray = false;
         boolean foundBigCharArray = false;
         boolean foundInstance = false;
 
-        for (RecordedEvent event : getEvents()) {
+        for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             if (!eventThread.equals("main")) {
                 continue;
@@ -64,16 +69,16 @@ public class TestObjectAllocationInNewTLABEvent extends JfrTest {
             String className = event.<RecordedClass> getValue("objectClass").getName();
 
             // >= To account for size of reference
-            if (allocationSize >= 2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE && tlabSize >= 2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE) {
+            if (allocationSize >= 2 * alignedHeapChunkSize && tlabSize >= 2 * alignedHeapChunkSize) {
                 // verify previous owner
                 if (className.equals(char[].class.getName())) {
                     foundBigCharArray = true;
                 } else if (className.equals(byte[].class.getName())) {
                     foundBigByteArray = true;
                 }
-            } else if (allocationSize >= K && tlabSize == DEFAULT_ALIGNED_HEAP_CHUNK_SIZE && className.equals(byte[].class.getName())) {
+            } else if (allocationSize >= K && tlabSize == alignedHeapChunkSize && className.equals(byte[].class.getName())) {
                 foundSmallByteArray = true;
-            } else if (tlabSize == DEFAULT_ALIGNED_HEAP_CHUNK_SIZE && className.equals(Helper.class.getName())) {
+            } else if (tlabSize == alignedHeapChunkSize && className.equals(Helper.class.getName())) {
                 foundInstance = true;
             }
         }
@@ -86,17 +91,19 @@ public class TestObjectAllocationInNewTLABEvent extends JfrTest {
 
     @Test
     public void test() throws Exception {
+        final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+
         // Allocate large arrays (always need a new TLAB).
-        allocateByteArray(2 * DEFAULT_ALIGNED_HEAP_CHUNK_SIZE);
-        allocateCharArray(DEFAULT_ALIGNED_HEAP_CHUNK_SIZE);
+        allocateByteArray(2 * alignedHeapChunkSize);
+        allocateCharArray(alignedHeapChunkSize);
 
         // Exhaust TLAB with small arrays.
-        for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE / K; i++) {
+        for (int i = 0; i < alignedHeapChunkSize / K; i++) {
             allocateByteArray(K);
         }
 
         // Exhaust TLAB with instances.
-        for (int i = 0; i < DEFAULT_ALIGNED_HEAP_CHUNK_SIZE; i++) {
+        for (int i = 0; i < alignedHeapChunkSize; i++) {
             allocateInstance();
         }
     }

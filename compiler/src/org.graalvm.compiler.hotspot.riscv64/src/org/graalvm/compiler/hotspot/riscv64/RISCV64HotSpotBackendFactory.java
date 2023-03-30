@@ -50,6 +50,8 @@ import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.java.DefaultSuitesCreator;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
@@ -87,7 +89,7 @@ public class RISCV64HotSpotBackendFactory extends HotSpotBackendFactory {
     @Override
     protected Plugins createGraphBuilderPlugins(HotSpotGraalRuntimeProvider graalRuntime, CompilerConfiguration compilerConfiguration, GraalHotSpotVMConfig config, TargetDescription target,
                     HotSpotConstantReflectionProvider constantReflection, HotSpotHostForeignCallsProvider foreignCalls, MetaAccessProvider metaAccess,
-                    HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options) {
+                    HotSpotSnippetReflectionProvider snippetReflection, HotSpotReplacementsImpl replacements, HotSpotWordTypes wordTypes, OptionValues options, BarrierSet barrierSet) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(graalRuntime,
                         compilerConfiguration,
                         config,
@@ -98,7 +100,8 @@ public class RISCV64HotSpotBackendFactory extends HotSpotBackendFactory {
                         foreignCalls,
                         replacements,
                         options,
-                        target);
+                        target,
+                        barrierSet);
         return plugins;
     }
 
@@ -132,11 +135,19 @@ public class RISCV64HotSpotBackendFactory extends HotSpotBackendFactory {
         return new RISCV64HotSpotForeignCallsProvider(jvmciRuntime, graalRuntime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
     }
 
+    public static class EmptyAddressLoweringPhase extends AddressLoweringPhase {
+
+        @Override
+        protected void run(StructuredGraph graph, CoreProviders context) {
+            // Do nothing
+        }
+    }
+
     @Override
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options) {
         DefaultSuitesCreator suitesCreator = new DefaultSuitesCreator(compilerConfiguration, plugins);
-        BasePhase<CoreProviders> addressLoweringPhase = new AddressLoweringPhase(null);
+        BasePhase<CoreProviders> addressLoweringPhase = new EmptyAddressLoweringPhase();
         return new AddressLoweringHotSpotSuitesProvider(suitesCreator, config, runtime, addressLoweringPhase);
     }
 

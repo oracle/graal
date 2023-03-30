@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -65,6 +65,11 @@ public abstract class SubstrateBackend extends Backend {
     private static final LocationIdentity JIT_VTABLE_IDENTITY = NamedLocationIdentity.mutable("DynamicHub.vtable@jit");
 
     public enum SubstrateMarkId implements CompilationResult.MarkId {
+        /**
+         * Marks the start of the prologue in case the prologue instructions are not the first
+         * instructions in the compilation.
+         */
+        PROLOGUE_START(true),
         PROLOGUE_DECD_RSP(true),
         PROLOGUE_SAVED_REGS(true),
         PROLOGUE_END(true),
@@ -81,11 +86,6 @@ public abstract class SubstrateBackend extends Backend {
         @Override
         public String getName() {
             return name();
-        }
-
-        @Override
-        public boolean isMarkAfter() {
-            return isMarkAfter;
         }
     }
 

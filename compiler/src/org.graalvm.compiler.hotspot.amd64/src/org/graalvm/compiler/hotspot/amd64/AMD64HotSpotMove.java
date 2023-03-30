@@ -78,7 +78,7 @@ public class AMD64HotSpotMove {
                     if (compressed) {
                         masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
                     } else {
-                        throw GraalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                        throw GraalError.shouldNotReachHere("Cannot store 64-bit constants to memory"); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             } else {
@@ -90,7 +90,7 @@ public class AMD64HotSpotMove {
                         masm.movq(asRegister(result), address);
                     }
                 } else {
-                    throw GraalError.shouldNotReachHere("Cannot directly store data patch to memory");
+                    throw GraalError.shouldNotReachHere("Cannot directly store data patch to memory"); // ExcludeFromJacocoGeneratedReport
                 }
             }
         }
@@ -153,7 +153,7 @@ public class AMD64HotSpotMove {
                     crb.recordInlineDataInCode(input);
                     masm.movl((AMD64Address) crb.asAddress(result), 0xDEADDEAD);
                 } else {
-                    throw GraalError.shouldNotReachHere("Cannot store 64-bit constants to memory");
+                    throw GraalError.shouldNotReachHere("Cannot store 64-bit constants to memory"); // ExcludeFromJacocoGeneratedReport
                 }
             }
         }

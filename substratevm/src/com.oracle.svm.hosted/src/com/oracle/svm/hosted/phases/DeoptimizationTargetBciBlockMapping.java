@@ -108,7 +108,7 @@ final class DeoptimizationTargetBciBlockMapping extends BciBlockMapping {
 
         @Override
         public void setEndBci(int bci) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

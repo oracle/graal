@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-import java.lang.annotation.Annotation;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -75,15 +74,13 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
-import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.ValueBased;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class HostedConfiguration {
-    @SuppressWarnings("unchecked") private static final Class<? extends Annotation> VALUE_BASED_ANNOTATION = //
-                    (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "jdk.internal.ValueBased");
 
     public HostedConfiguration() {
     }
@@ -269,7 +266,7 @@ public class HostedConfiguration {
      * Types that must be immutable cannot have a monitor field.
      */
     protected static void maybeSetMonitorField(HostedUniverse hUniverse, Set<AnalysisType> immutableTypes, AnalysisType type) {
-        if (!type.isArray() && !immutableTypes.contains(type) && !type.isAnnotationPresent(VALUE_BASED_ANNOTATION)) {
+        if (!type.isArray() && !immutableTypes.contains(type) && !type.isAnnotationPresent(ValueBased.class)) {
             setMonitorField(hUniverse, type);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,7 +123,7 @@ public abstract class SubstrateSegfaultHandler {
     protected abstract void printSignalInfo(Log log, PointerBase signalInfo);
 
     /** Called from the platform dependent segfault handler to enter the isolate. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Thread state not set up yet.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
         // Check if we have sufficient information to enter the correct isolate.
@@ -178,8 +178,10 @@ public abstract class SubstrateSegfaultHandler {
             PointerBase ip = RegisterDumper.singleton().getIP(context);
             boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, (Pointer) sp, (CodePointer) ip, context, false);
             if (printedDiagnostics) {
-                log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-                log.newline();
+                log.string("Segfault detected, aborting process. ")
+                                .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ")
+                                .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
+                                .newline().newline();
             }
         }
         logHandler.fatalError();

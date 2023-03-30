@@ -92,7 +92,7 @@ public final class CompositeValueClass<T> extends FieldIntrospection<T> {
             if (field.isAnnotationPresent(CompositeValue.Component.class)) {
                 result.addAll(Arrays.asList(field.getAnnotation(CompositeValue.Component.class).value()));
             } else {
-                GraalError.shouldNotReachHere();
+                GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
             return result;
         }

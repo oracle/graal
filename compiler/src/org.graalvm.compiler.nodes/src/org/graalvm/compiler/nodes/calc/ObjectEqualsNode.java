@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -98,13 +97,6 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
         if (value != null) {
             return value;
         }
-        // A new object can never equal a parameter. Similar to the constant case in
-        // canonicalizeSymmetricConstant below.
-        if ((forX instanceof ParameterNode && (forY instanceof AbstractNewObjectNode || forY instanceof AllocatedObjectNode)) ||
-                        (forY instanceof ParameterNode && (forX instanceof AbstractNewObjectNode || forX instanceof AllocatedObjectNode))) {
-            assert !(forX instanceof BoxNode) && !(forY instanceof BoxNode);
-            return LogicConstantNode.forBoolean(false);
-        }
         return this;
     }
 
@@ -138,7 +130,7 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             } else if (newX.stamp(view) instanceof AbstractPointerStamp && newY.stamp(view) instanceof AbstractPointerStamp) {
                 return new PointerEqualsNode(newX, newY);
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

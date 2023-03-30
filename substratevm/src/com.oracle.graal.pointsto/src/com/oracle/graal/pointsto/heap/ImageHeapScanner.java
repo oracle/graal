@@ -48,6 +48,7 @@ import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -75,8 +76,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * subtypes) are re-scanned.
  */
 public abstract class ImageHeapScanner {
-
-    private static final JavaConstant[] emptyConstantArray = new JavaConstant[0];
 
     protected final BigBang bb;
     protected final ImageHeap imageHeap;
@@ -110,10 +109,9 @@ public abstract class ImageHeapScanner {
 
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         if (isNonNullObjectConstant(root)) {
-            AnalysisType type = metaAccess.lookupJavaType(root);
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
-            type.registerAsReachable(reason);
-            getOrCreateConstantReachableTask(root, reason, null);
+            ImageHeapConstant value = getOrCreateImageHeapConstant(root, reason);
+            markReachable(value, reason);
         }
     }
 
@@ -121,24 +119,30 @@ public abstract class ImageHeapScanner {
         assert field.isRead();
         /* Check if the value is available before accessing it. */
         if (isValueAvailable(field)) {
+            FieldScan reason = new FieldScan(field);
             AnalysisType declaringClass = field.getDeclaringClass();
             if (field.isStatic()) {
-                snapshotFieldValue(field, declaringClass.getOrComputeData().getFieldValue(field));
+                JavaConstant fieldValue = declaringClass.getOrComputeData().readFieldValue(field);
+                markReachable(fieldValue, reason);
+                notifyAnalysis(field, null, fieldValue, reason);
             } else {
                 /* Trigger field scanning for the already processed objects. */
-                postTask(() -> onInstanceFieldRead(field, declaringClass));
+                postTask(() -> onInstanceFieldRead(field, declaringClass, reason));
             }
         }
     }
 
-    private void onInstanceFieldRead(AnalysisField field, AnalysisType type) {
+    private void onInstanceFieldRead(AnalysisField field, AnalysisType type, FieldScan reason) {
         for (AnalysisType subtype : type.getSubTypes()) {
-            for (ImageHeapConstant imageHeapConstant : imageHeap.getObjects(subtype)) {
-                snapshotFieldValue(field, ((ImageHeapInstance) imageHeapConstant).getFieldValue(field));
+            for (ImageHeapConstant imageHeapConstant : imageHeap.getReachableObjects(subtype)) {
+                ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapConstant;
+                JavaConstant fieldValue = imageHeapInstance.readFieldValue(field);
+                markReachable(fieldValue, reason);
+                notifyAnalysis(field, imageHeapInstance, fieldValue, reason);
             }
             /* Subtypes include this type itself. */
             if (!subtype.equals(type)) {
-                onInstanceFieldRead(field, subtype);
+                onInstanceFieldRead(field, subtype, reason);
             }
         }
     }
@@ -161,7 +165,7 @@ public abstract class ImageHeapScanner {
             AnalysisField field = (AnalysisField) javaField;
             ValueSupplier<JavaConstant> rawFieldValue = readHostedFieldValue(field, null);
             data.setFieldTask(field, new AnalysisFuture<>(() -> {
-                JavaConstant value = onFieldValueReachable(field, rawFieldValue, new FieldScan(field));
+                JavaConstant value = createFieldValue(field, rawFieldValue, new FieldScan(field));
                 data.setFieldValue(field, value);
                 return value;
             }));
@@ -177,52 +181,40 @@ public abstract class ImageHeapScanner {
         universe.getBigbang().registerTypeAsInHeap(type, reason);
     }
 
-    JavaConstant markConstantReachable(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+    JavaConstant createImageHeapConstant(JavaConstant constant, ScanReason reason) {
         if (isNonNullObjectConstant(constant)) {
-            return getOrCreateConstantReachableTask(constant, reason, onAnalysisModified);
+            return getOrCreateImageHeapConstant(constant, reason);
         }
         return constant;
     }
 
-    public ImageHeapConstant toImageHeapObject(JavaConstant constant) {
-        return toImageHeapObject(constant, OtherReason.RESCAN, null);
-    }
-
-    protected ImageHeapConstant toImageHeapObject(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+    public ImageHeapConstant toImageHeapObject(JavaConstant constant, ScanReason reason) {
         assert constant != null && isNonNullObjectConstant(constant);
-        return getOrCreateConstantReachableTask(constant, reason, onAnalysisModified);
+        return markReachable(getOrCreateImageHeapConstant(constant, reason), reason, null);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    protected ImageHeapConstant getOrCreateConstantReachableTask(JavaConstant javaConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+    protected ImageHeapConstant getOrCreateImageHeapConstant(JavaConstant javaConstant, ScanReason reason) {
         ScanReason nonNullReason = Objects.requireNonNull(reason);
-        Object existingTask = imageHeap.getTask(javaConstant);
+        Object existingTask = imageHeap.getSnapshot(javaConstant);
         if (existingTask == null) {
             if (universe.sealed()) {
                 throw AnalysisError.shouldNotReachHere("Universe is sealed. New constant reachable: " + javaConstant.toValueString());
             }
-            if (javaConstant instanceof ImageHeapConstant) {
-                /* This is already an ImageHeapObject. */
-                ImageHeapConstant imageHeapConstant = (ImageHeapConstant) javaConstant;
+            if (javaConstant instanceof ImageHeapConstant imageHeapConstant) {
+                /* This must be a simulated constant. */
+                assert imageHeapConstant.getHostedObject() == null;
                 imageHeap.setValue(javaConstant, imageHeapConstant);
-                imageHeap.add((AnalysisType) imageHeapConstant.getType(metaAccess), imageHeapConstant);
-                /* Ensure all the referenced objects are scanned. */
-                scanImageHeapObject(imageHeapConstant, nonNullReason, onAnalysisModified);
                 existingTask = javaConstant;
             } else {
                 AnalysisFuture<ImageHeapConstant> newTask = new AnalysisFuture<>(() -> {
-                    ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason, onAnalysisModified);
+                    ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
                     /* When the image heap object is created replace the future in the map. */
                     imageHeap.setValue(javaConstant, imageHeapConstant);
                     return imageHeapConstant;
                 });
                 existingTask = imageHeap.setTask(javaConstant, newTask);
                 if (existingTask == null) {
-                    /*
-                     * Immediately schedule the new task. There is no need to have not-yet-reachable
-                     * ImageHeapObject.
-                     */
-                    postTask(newTask);
                     return newTask.ensureDone();
                 }
             }
@@ -231,89 +223,10 @@ public abstract class ImageHeapScanner {
     }
 
     /**
-     * Scan injected heap objects, i.e., heap objects that do not originate from scanning underlying
-     * hosted constants.
+     * Create the ImageHeapConstant object wrapper, capture the hosted state of fields and arrays,
+     * and install a future that can process them.
      */
-    protected void scanImageHeapObject(ImageHeapConstant object, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        assert object.getJavaKind() == JavaKind.Object && !object.isNull();
-
-        /*
-         * Access the constant type after the replacement. Some constants may have types that should
-         * not be reachable at run time and thus are replaced.
-         */
-        AnalysisType type = (AnalysisType) object.getType(metaAccess);
-
-        if (type.isArray()) {
-            if (!type.getComponentType().isPrimitive()) {
-                ImageHeapArray array = (ImageHeapArray) object;
-                ScanReason arrayReason = new ArrayScan(type, object, reason);
-                for (int idx = 0; idx < array.getLength(); idx++) {
-                    final JavaConstant elementValue = array.getElement(idx);
-                    onArrayElementReachable(array, type, elementValue, idx, arrayReason, onAnalysisModified);
-                }
-            }
-            markTypeInstantiated(type, reason);
-        } else {
-            ImageHeapInstance instance = (ImageHeapInstance) object;
-            /* We are about to query the type's fields, the type must be marked as reachable. */
-            markTypeInstantiated(type, reason);
-            for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
-                AnalysisField field = (AnalysisField) javaField;
-                if (field.isRead() && isValueAvailable(field)) {
-                    final JavaConstant fieldValue = instance.readFieldValue(field);
-                    /* If field is read scan its value immediately. */
-                    final ScanReason fieldReason = new FieldScan(field, object, reason);
-                    onFieldValueReachable(field, instance, fieldValue, fieldReason, onAnalysisModified);
-                } else {
-                    /*
-                     * If field is not read replace the constant value a future that will scan it
-                     * when the field is marked as reachable.
-                     */
-                    final JavaConstant originalFieldValue = (JavaConstant) instance.getFieldValue(field);
-                    instance.setFieldTask(field, new AnalysisFuture<>(() -> {
-                        /*
-                         * After scanning a field of an injected ImageHeapInstance that references a
-                         * regular JavaConstant object, should the field value be replaced with the
-                         * snapshot version, i.e., an ImageHeapInstance, or should it keep pointing
-                         * to the original value? In the long term it should be replaced, but that's
-                         * not yet generally possible. First ImageHeapInstance needs to have
-                         * complete support for all use cases, it needs to be a complete replacement
-                         * for JavaConstant. For example, it needs to be able to efficiently
-                         * represent string values and be able to extract the String object.
-                         *
-                         * So for now we just reinstall the original JavaConstant value when the
-                         * future is completed.
-                         *
-                         * More specifically, the long term plan is that after scanning
-                         * instance.field will refer to the `scannedFieldValue`, so any future read
-                         * of `instance.field` will return an ImageHeapInstance. Moreover,
-                         * `instance` is also reached when scanning from roots for verification. In
-                         * that case, if we do set the field to the scannedFieldValue returned by
-                         * `onFieldValueReachable()`, i.e., an ImageHeapInstance, then we also need
-                         * to register a mapping in the heap for the snapshot: scannedFieldValue ->
-                         * scannedFieldValue. Otherwise, we only have the originalFieldValue ->
-                         * scannedFieldValue mapping and a lookup of scannedFieldValue will fail
-                         * during verification. See the snippet below for details.
-                         */
-                        // @formatter:off
-                        // JavaConstant scannedFieldValue = onFieldValueReachable(field, instance, fieldValue, fieldReason, onAnalysisModified);
-                        // instance.setFieldValue(field, scannedFieldValue);
-                        // imageHeap.setValue(value, (ImageHeapObject) scannedFieldValue);
-                        // @formatter:on
-
-                        final ScanReason fieldReason = new FieldScan(field, object, reason);
-                        onFieldValueReachable(field, instance, originalFieldValue, fieldReason, onAnalysisModified);
-                        /* Re-install the original constant value. */
-                        instance.setFieldValue(field, originalFieldValue);
-
-                        return originalFieldValue;
-                    }));
-                }
-            }
-        }
-    }
-
-    protected ImageHeapConstant createImageHeapObject(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+    protected ImageHeapConstant createImageHeapObject(JavaConstant constant, ScanReason reason) {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull();
 
         Optional<JavaConstant> replaced = maybeReplace(constant, reason);
@@ -327,7 +240,7 @@ public abstract class ImageHeapScanner {
              * object. As a side effect, this runs all object transformer again on the replaced
              * constant.
              */
-            return toImageHeapObject(replaced.get(), reason, onAnalysisModified);
+            return getOrCreateImageHeapConstant(replaced.get(), reason);
         }
 
         /*
@@ -338,71 +251,67 @@ public abstract class ImageHeapScanner {
 
         ImageHeapConstant newImageHeapConstant;
         if (type.isArray()) {
+            Integer length = constantReflection.readArrayLength(constant);
             if (type.getComponentType().isPrimitive()) {
-                /*
-                 * The shadow heap is only used for points-to analysis currently, we don't need to
-                 * track individual elements for primitive arrays.
-                 */
-                newImageHeapConstant = new ImageHeapArray(type, constant, emptyConstantArray);
+                newImageHeapConstant = new ImageHeapPrimitiveArray(type, constant, asObject(constant), length);
             } else {
-                int length = constantReflection.readArrayLength(constant);
-                newImageHeapConstant = new ImageHeapArray(type, constant, length);
-                ScanReason arrayReason = new ArrayScan(type, constant, reason);
-                ImageHeapArray array = (ImageHeapArray) newImageHeapConstant;
-                for (int idx = 0; idx < length; idx++) {
-                    final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
-                    JavaConstant arrayElement = onArrayElementReachable(array, type, rawElementValue, idx, arrayReason, onAnalysisModified);
-                    array.setElement(idx, arrayElement);
-                }
+                newImageHeapConstant = createImageHeapObjectArray(constant, type, length, reason);
             }
-            markTypeInstantiated(type, reason);
         } else {
-            /*
-             * We need to have the new ImageHeapInstance early so that we can reference it in the
-             * lambda when the field value gets reachable. But it must not be published to any other
-             * thread before all instanceFieldValues are filled in.
-             */
-            /* We are about to query the type's fields, the type must be marked as reachable. */
-            markTypeInstantiated(type, reason);
-            ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
-            newImageHeapConstant = new ImageHeapInstance(type, constant, instanceFields.length);
-            for (ResolvedJavaField javaField : instanceFields) {
-                AnalysisField field = (AnalysisField) javaField;
-                ValueSupplier<JavaConstant> rawFieldValue;
-                try {
-                    rawFieldValue = readHostedFieldValue(field, universe.toHosted(constant));
-                } catch (InternalError | TypeNotPresentException | LinkageError e) {
-                    /* Ignore missing type errors. */
-                    continue;
-                }
-                ImageHeapInstance finalObject = (ImageHeapInstance) newImageHeapConstant;
-                finalObject.setFieldTask(field, new AnalysisFuture<>(() -> {
-                    ScanReason fieldReason = new FieldScan(field, constant, reason);
-                    JavaConstant value = onFieldValueReachable(field, finalObject, rawFieldValue, fieldReason, onAnalysisModified);
-                    finalObject.setFieldValue(field, value);
-                    return value;
-                }));
-            }
-
+            newImageHeapConstant = createImageHeapInstance(constant, type, reason);
             AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
             if (typeFromClassConstant != null) {
                 typeFromClassConstant.registerAsReachable(reason);
             }
         }
-
-        /*
-         * Following all the array elements and reachable field values can be done asynchronously.
-         */
-        postTask(() -> onObjectReachable(newImageHeapConstant, reason));
         return newImageHeapConstant;
     }
 
+    private ImageHeapArray createImageHeapObjectArray(JavaConstant constant, AnalysisType type, int length, ScanReason reason) {
+        ImageHeapObjectArray array = new ImageHeapObjectArray(type, constant, length);
+        ScanReason arrayReason = new ArrayScan(type, constant, reason);
+        for (int idx = 0; idx < length; idx++) {
+            final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
+            int finalIdx = idx;
+            array.setElementTask(idx, new AnalysisFuture<>(() -> {
+                JavaConstant arrayElement = createImageHeapConstant(rawElementValue, arrayReason);
+                array.setElement(finalIdx, arrayElement);
+                return arrayElement;
+            }));
+        }
+        return array;
+    }
+
+    private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
+        /* We are about to query the type's fields, the type must be marked as reachable. */
+        type.registerAsReachable(reason);
+        ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
+        ImageHeapInstance instance = new ImageHeapInstance(type, constant, instanceFields.length);
+        for (ResolvedJavaField javaField : instanceFields) {
+            AnalysisField field = (AnalysisField) javaField;
+            ValueSupplier<JavaConstant> rawFieldValue;
+            try {
+                rawFieldValue = readHostedFieldValue(field, universe.toHosted(constant));
+            } catch (InternalError | TypeNotPresentException | LinkageError e) {
+                /* Ignore missing type errors. */
+                continue;
+            }
+            instance.setFieldTask(field, new AnalysisFuture<>(() -> {
+                ScanReason fieldReason = new FieldScan(field, constant, reason);
+                JavaConstant value = createFieldValue(field, instance, rawFieldValue, fieldReason);
+                instance.setFieldValue(field, value);
+                return value;
+            }));
+        }
+        return instance;
+    }
+
     private Optional<JavaConstant> maybeReplace(JavaConstant constant, ScanReason reason) {
-        Object unwrapped = unwrapObject(constant);
+        Object unwrapped = snippetReflection.asObject(Object.class, constant);
         if (unwrapped == null) {
-            throw GraalError.shouldNotReachHere(formatReason("Could not unwrap constant", reason));
+            throw GraalError.shouldNotReachHere(formatReason("Could not unwrap constant", reason)); // ExcludeFromJacocoGeneratedReport
         } else if (unwrapped instanceof ImageHeapConstant) {
-            throw GraalError.shouldNotReachHere(formatReason("Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable.", reason));
+            throw GraalError.shouldNotReachHere(formatReason("Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable.", reason)); // ExcludeFromJacocoGeneratedReport
         }
 
         /* Run all registered object replacers. */
@@ -422,14 +331,6 @@ public abstract class ImageHeapScanner {
         return Optional.empty();
     }
 
-    protected Object unwrapObject(JavaConstant constant) {
-        return snippetReflection.asObject(Object.class, constant);
-    }
-
-    JavaConstant onFieldValueReachable(AnalysisField field, ValueSupplier<JavaConstant> rawValue, ScanReason reason) {
-        return onFieldValueReachable(field, null, rawValue, reason, null);
-    }
-
     JavaConstant onFieldValueReachable(AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         return onFieldValueReachable(field, null, ValueSupplier.eagerValue(fieldValue), reason, onAnalysisModified);
     }
@@ -440,7 +341,17 @@ public abstract class ImageHeapScanner {
 
     JavaConstant onFieldValueReachable(AnalysisField field, ImageHeapInstance receiver, ValueSupplier<JavaConstant> rawValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         AnalysisError.guarantee(field.isReachable(), "Field value is only reachable when field is reachable: %s", field);
+        JavaConstant fieldValue = createFieldValue(field, receiver, rawValue, reason);
+        markReachable(fieldValue, reason, onAnalysisModified);
+        notifyAnalysis(field, receiver, fieldValue, reason, onAnalysisModified);
+        return fieldValue;
+    }
 
+    protected JavaConstant createFieldValue(AnalysisField field, ValueSupplier<JavaConstant> rawValue, ScanReason reason) {
+        return createFieldValue(field, null, rawValue, reason);
+    }
+
+    protected JavaConstant createFieldValue(AnalysisField field, ImageHeapInstance receiver, ValueSupplier<JavaConstant> rawValue, ScanReason reason) {
         /*
          * Check if the field value is available. If not, trying to access it is an error. This
          * forces the callers to only trigger the execution of the future task when the value is
@@ -455,20 +366,25 @@ public abstract class ImageHeapScanner {
             ObjectScanner.unsupportedFeatureDuringFieldScan(universe.getBigbang(), field, receiver, e, reason);
             transformedValue = JavaConstant.NULL_POINTER;
         }
-        /* Add the transformed value to the image heap. */
-        JavaConstant fieldValue = markConstantReachable(transformedValue, reason, onAnalysisModified);
 
+        return createImageHeapConstant(transformedValue, reason);
+    }
+
+    private void notifyAnalysis(AnalysisField field, ImageHeapInstance receiver, JavaConstant fieldValue, ScanReason reason) {
+        notifyAnalysis(field, receiver, fieldValue, reason, null);
+    }
+
+    private void notifyAnalysis(AnalysisField field, ImageHeapInstance receiver, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         if (scanningObserver != null) {
             /* Notify the points-to analysis of the scan. */
-            boolean analysisModified = notifyAnalysis(field, receiver, fieldValue, reason);
+            boolean analysisModified = doNotifyAnalysis(field, receiver, fieldValue, reason);
             if (analysisModified && onAnalysisModified != null) {
                 onAnalysisModified.accept(reason);
             }
         }
-        return fieldValue;
     }
 
-    private boolean notifyAnalysis(AnalysisField field, JavaConstant receiver, JavaConstant fieldValue, ScanReason reason) {
+    private boolean doNotifyAnalysis(AnalysisField field, JavaConstant receiver, JavaConstant fieldValue, ScanReason reason) {
         boolean analysisModified = false;
         if (fieldValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(metaAccess, fieldValue)) {
             analysisModified = scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
@@ -487,7 +403,13 @@ public abstract class ImageHeapScanner {
 
     protected JavaConstant onArrayElementReachable(ImageHeapArray array, AnalysisType arrayType, JavaConstant rawElementValue, int elementIndex, ScanReason reason,
                     Consumer<ScanReason> onAnalysisModified) {
-        JavaConstant elementValue = markConstantReachable(rawElementValue, reason, onAnalysisModified);
+        JavaConstant elementValue = createImageHeapConstant(rawElementValue, reason);
+        markReachable(elementValue, reason, onAnalysisModified);
+        notifyAnalysis(array, arrayType, elementIndex, reason, onAnalysisModified, elementValue);
+        return elementValue;
+    }
+
+    private void notifyAnalysis(ImageHeapArray array, AnalysisType arrayType, int elementIndex, ScanReason reason, Consumer<ScanReason> onAnalysisModified, JavaConstant elementValue) {
         if (scanningObserver != null && arrayType.getComponentType().getJavaKind() == JavaKind.Object) {
             /* Notify the points-to analysis of the scan. */
             boolean analysisModified = notifyAnalysis(array, arrayType, elementValue, elementIndex, reason);
@@ -495,14 +417,13 @@ public abstract class ImageHeapScanner {
                 onAnalysisModified.accept(reason);
             }
         }
-        return elementValue;
     }
 
     private boolean isNonNullObjectConstant(JavaConstant constant) {
-        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !isWordType(constant);
+        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !isWordType(constant, metaAccess);
     }
 
-    private boolean isWordType(JavaConstant rawElementValue) {
+    public static boolean isWordType(JavaConstant rawElementValue, UniverseMetaAccess metaAccess) {
         return metaAccess.isInstanceOf(rawElementValue, WordBase.class);
     }
 
@@ -511,7 +432,7 @@ public abstract class ImageHeapScanner {
         if (elementValue.isNull()) {
             analysisModified = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
         } else {
-            if (isWordType(elementValue)) {
+            if (isWordType(elementValue, metaAccess)) {
                 return false;
             }
             AnalysisType elementType = metaAccess.lookupJavaType(elementValue);
@@ -520,18 +441,43 @@ public abstract class ImageHeapScanner {
         return analysisModified;
     }
 
-    protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason) {
+    private JavaConstant markReachable(JavaConstant constant, ScanReason reason) {
+        return markReachable(constant, reason, null);
+    }
+
+    private JavaConstant markReachable(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+        if (isNonNullObjectConstant(constant)) {
+            return markReachable((ImageHeapConstant) constant, reason, onAnalysisModified);
+        }
+        return constant;
+    }
+
+    private ImageHeapConstant markReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+        if (imageHeapConstant.markReachable(reason)) {
+            /* Follow all the array elements and reachable field values asynchronously. */
+            postTask(() -> onObjectReachable(imageHeapConstant, reason, onAnalysisModified));
+        }
+        return imageHeapConstant;
+    }
+
+    protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
-        imageHeap.add(objectType, imageHeapConstant);
+        imageHeap.addReachableObject(objectType, imageHeapConstant);
 
         markTypeInstantiated(objectType, reason);
-
-        if (imageHeapConstant instanceof ImageHeapInstance) {
-            ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapConstant;
+        if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
+            for (int idx = 0; idx < imageHeapArray.getLength(); idx++) {
+                JavaConstant elementValue = imageHeapArray.readElementValue(idx);
+                markReachable(elementValue, reason, onAnalysisModified);
+                notifyAnalysis(imageHeapArray, (AnalysisType) imageHeapArray.getType(metaAccess), idx, reason, onAnalysisModified, elementValue);
+            }
+        } else if (imageHeapConstant instanceof ImageHeapInstance imageHeapInstance) {
             for (ResolvedJavaField javaField : objectType.getInstanceFields(true)) {
                 AnalysisField field = (AnalysisField) javaField;
                 if (field.isRead() && isValueAvailable(field)) {
-                    snapshotFieldValue(field, imageHeapInstance.getFieldValue(field));
+                    JavaConstant fieldValue = imageHeapInstance.readFieldValue(field);
+                    markReachable(fieldValue, reason, onAnalysisModified);
+                    notifyAnalysis(field, imageHeapInstance, fieldValue, reason, onAnalysisModified);
                 }
             }
         }
@@ -539,19 +485,6 @@ public abstract class ImageHeapScanner {
 
     public boolean isValueAvailable(@SuppressWarnings("unused") AnalysisField field) {
         return true;
-    }
-
-    /**
-     * Trigger execution of the field task, if not yet executed. Note that if the task is already
-     * executed there is nothing to do since on execution the task replaces itself with its result
-     * in the corresponding map.
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private void snapshotFieldValue(AnalysisField field, Object fieldTask) {
-        if (fieldTask instanceof AnalysisFuture<?>) {
-            AnalysisError.guarantee(field.isReachable(), "Field value snapshot computed for field not reachable: %s", field);
-            postTask((AnalysisFuture<JavaConstant>) fieldTask);
-        }
     }
 
     protected String formatReason(String message, ScanReason reason) {
@@ -575,7 +508,7 @@ public abstract class ImageHeapScanner {
      * triggered the re-scanning.
      *
      * In the (legacy) Feature.duringAnalysis state, the executor is not running and we must not
-     * schedule new tasks, because that would be treated as "the analysis has not finsihed yet". So
+     * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
      * in that case we execute the task directly.
      */
     private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
@@ -625,7 +558,7 @@ public abstract class ImageHeapScanner {
                 }
                 JavaConstant fieldValue = readHostedFieldValue(field, universe.toHosted(receiverConstant)).get();
                 if (fieldValue != null) {
-                    ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant);
+                    ImageHeapInstance receiverObject = (ImageHeapInstance) toImageHeapObject(receiverConstant, OtherReason.RESCAN);
                     AnalysisFuture<JavaConstant> fieldTask = patchInstanceField(receiverObject, field, fieldValue, OtherReason.RESCAN, null);
                     if (field.isRead() || field.isFolded()) {
                         rescanCollectionElements(fieldTask.ensureDone());
@@ -653,6 +586,17 @@ public abstract class ImageHeapScanner {
             return value;
         });
         receiverObject.setFieldTask(field, task);
+        return task;
+    }
+
+    protected AnalysisFuture<JavaConstant> patchArrayElement(ImageHeapObjectArray arrayObject, int index, JavaConstant elementValue, ScanReason reason,
+                    Consumer<ScanReason> onAnalysisModified) {
+        AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> {
+            JavaConstant value = onArrayElementReachable(arrayObject, (AnalysisType) arrayObject.getType(metaAccess), elementValue, index, reason, onAnalysisModified);
+            arrayObject.setElement(index, value);
+            return value;
+        });
+        arrayObject.setElementTask(index, task);
         return task;
     }
 
@@ -719,7 +663,8 @@ public abstract class ImageHeapScanner {
     }
 
     void doScan(JavaConstant constant, ScanReason reason) {
-        markConstantReachable(constant, reason, null);
+        JavaConstant value = createImageHeapConstant(constant, reason);
+        markReachable(value, reason, null);
     }
 
     protected Object asObject(JavaConstant constant) {

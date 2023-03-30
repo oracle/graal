@@ -81,7 +81,6 @@ They are useful to users and language and tool implementers.
 - `--engine.Splitting=true|false` : Enable automatic duplication of compilation profiles (splitting) (default: true).
 - `--engine.TraceCompilation` : Print information for compilation results.
 - `--engine.HostCallStackHeadRoom=[1, inf)<B>|<KB>|<MB>|<GB>` : Stack space headroom for calls to the host.
-- `--engine.IsolateLibrary=<path>` : Path to the isolate library.
 - `--engine.IsolateMemoryProtection=true|false` : Enable memory protection for the isolate.
 - `--engine.IsolateOption.<key>=<value>` : Isolate VM options.
 <!-- END: expert-engine-options -->
@@ -212,4 +211,5 @@ Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
 - `--engine.TraversingQueueFirstTierPriority` : Traversing queue gives first tier compilations priority.
 - `--engine.TraversingQueueWeightingBothTiers=true|false` : Traversing queue uses rate as priority for both tier. (default: true)
 - `--engine.TreatPerformanceWarningsAsErrors=none|all|<perfWarning>,<perfWarning>,...` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial.
+- `--engine.IsolateLibrary=<path>` : Path to the isolate library.
 <!-- END: internal-engine-options -->

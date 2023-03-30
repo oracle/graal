@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -43,6 +44,7 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -64,7 +66,6 @@ import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -72,6 +73,7 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
@@ -159,7 +161,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
      */
     public void emitSave(AMD64MacroAssembler asm, int frameSize, CompilationResultBuilder crb) {
         if (!SubstrateUtil.HOSTED) {
-            GraalError.shouldNotReachHere();
+            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             return;
         }
         for (Register register : calleeSavedRegisters) {
@@ -182,7 +184,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
     public void emitRestore(AMD64MacroAssembler asm, int frameSize, Register excludedRegister, CompilationResultBuilder crb) {
         if (!SubstrateUtil.HOSTED) {
-            GraalError.shouldNotReachHere();
+            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             return;
         }
         for (Register register : calleeSavedRegisters) {
@@ -431,7 +433,8 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         private AMD64Address getFeatureMapAddress() {
-            SubstrateObjectConstant object = (SubstrateObjectConstant) SubstrateObjectConstant.forObject(RuntimeCPUFeatureCheckImpl.instance());
+            SnippetReflectionProvider snippetReflection = ((Providers) crb.providers).getSnippetReflection();
+            JavaConstant object = snippetReflection.forObject(RuntimeCPUFeatureCheckImpl.instance());
             int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.providers.getMetaAccess()));
             GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
             Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();
@@ -448,7 +451,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        private Object displacementAnnotation(SubstrateObjectConstant constant) {
+        private Object displacementAnnotation(JavaConstant constant) {
             if (SubstrateUtil.HOSTED) {
                 /*
                  * AOT compilation during image generation happens before the image heap objects are
@@ -463,7 +466,7 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        private int displacement(SubstrateObjectConstant constant, SharedConstantReflectionProvider constantReflection) {
+        private int displacement(JavaConstant constant, SharedConstantReflectionProvider constantReflection) {
             if (SubstrateUtil.HOSTED) {
                 return 0;
             } else {

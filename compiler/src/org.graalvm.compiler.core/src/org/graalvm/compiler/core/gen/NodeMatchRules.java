@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
 import org.graalvm.compiler.nodes.calc.FloatLessThanNode;
@@ -103,6 +104,7 @@ import jdk.vm.ci.meta.Value;
 @MatchableNode(nodeClass = ValueCompareAndSwapNode.class, inputs = {"address", "expectedValue", "newValue"})
 @MatchableNode(nodeClass = RightShiftNode.class, inputs = {"x", "y"}, ignoresSideEffects = true)
 @MatchableNode(nodeClass = SqrtNode.class, inputs = {"value"}, ignoresSideEffects = true)
+@MatchableNode(nodeClass = ConditionalNode.class, inputs = {"condition", "trueValue", "falseValue"}, ignoresSideEffects = true)
 public abstract class NodeMatchRules {
 
     NodeLIRBuilder lirBuilder;

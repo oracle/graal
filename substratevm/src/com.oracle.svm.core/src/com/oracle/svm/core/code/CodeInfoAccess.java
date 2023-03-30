@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,7 +95,7 @@ public final class CodeInfoAccess {
         return tether;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     @NeverInline("Prevent elimination of object reference in caller.")
     public static void releaseTether(UntetheredCodeInfo info, Object tether) {
         assert VMOperation.isGCInProgress() || UntetheredCodeInfoAccess.getTetherUnsafe(info) == null || UntetheredCodeInfoAccess.getTetherUnsafe(info) == tether;
@@ -122,7 +122,7 @@ public final class CodeInfoAccess {
      * Try to avoid using this method. It is similar to {@link #convert(UntetheredCodeInfo, Object)}
      * but with less verification.
      */
-    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodeInfo convert(UntetheredCodeInfo untetheredInfo) {
         assert isValid(untetheredInfo);
         return (CodeInfo) untetheredInfo;
@@ -134,13 +134,13 @@ public final class CodeInfoAccess {
                         ((CodeInfoTether) UntetheredCodeInfoAccess.getTetherUnsafe(info)).getCount() > 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setState(CodeInfo info, int state) {
         assert getState(info) < state;
         cast(info).setState(state);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getState(CodeInfo info) {
         return cast(info).getState();
     }
@@ -180,6 +180,11 @@ public final class CodeInfoAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static CodePointer getCodeStart(CodeInfo info) {
         return cast(info).getCodeStart();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord getCodeEntryPointOffset(CodeInfo info) {
+        return cast(info).getCodeEntryPointOffset();
     }
 
     /** @see CodeInfoImpl#getCodeSize */
@@ -365,7 +370,7 @@ public final class CodeInfoAccess {
         return cast(info).getFrameInfoSourceMethodNames();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static CodeInfoImpl cast(UntetheredCodeInfo info) {
         assert isValid(info);
         return (CodeInfoImpl) info;

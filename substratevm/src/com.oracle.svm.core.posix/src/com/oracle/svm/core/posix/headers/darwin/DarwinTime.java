@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
+import com.oracle.svm.core.posix.headers.Time;
 
 // Checkstyle: stop
 
@@ -47,9 +48,14 @@ public class DarwinTime {
         int getdenom();
     }
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native long mach_absolute_time();
+    public static class NoTransitions {
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int clock_gettime(int clock_id, Time.timespec tp);
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int mach_timebase_info(MachTimebaseInfo timeBaseInfo);
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native long mach_absolute_time();
+
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int mach_timebase_info(MachTimebaseInfo timeBaseInfo);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -417,7 +417,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
                 break;
             default:
-                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented");
+                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
         vectorCheckZero(asm, v(0), v(0));
     }
@@ -592,7 +592,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 asm.neon.orrVVV(FullReg, v(0), v(0), v(2));
                 break;
             default:
-                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented");
+                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
         vectorCheckZero(asm, v(0), v(0));
         asm.jmp(end);
@@ -652,7 +652,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 // 1 -> 4 byte comparison
                 break;
             default:
-                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented");
+                throw GraalError.unimplemented("comparison of " + strideMin + " to " + strideMax + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
         if (withMask()) {
             asm.neon.orrVVV(FullReg, vecArrayA1, vecArrayA1, vecArrayM1);
@@ -783,7 +783,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 asm.neon.uxtlVV(fromStride(stride).expand(), vecArray, vecArray);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

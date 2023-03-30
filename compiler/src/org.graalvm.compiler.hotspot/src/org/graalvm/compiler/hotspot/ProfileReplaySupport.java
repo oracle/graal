@@ -186,7 +186,7 @@ public final class ProfileReplaySupport {
                         }
                     }
                     if (Options.StrictProfiles.getValue(debug.getOptions()) && !foundOne) {
-                        throw GraalError.shouldNotReachHere(String.format("No file for method %s found in %s, strict profiles, abort", s, loadDir));
+                        throw GraalError.shouldNotReachHere(String.format("No file for method %s found in %s, strict profiles, abort", s, loadDir)); // ExcludeFromJacocoGeneratedReport
                     }
                 } catch (IOException e) {
                     e.printStackTrace();

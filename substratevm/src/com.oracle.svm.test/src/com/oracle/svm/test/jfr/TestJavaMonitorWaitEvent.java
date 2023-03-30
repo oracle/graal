@@ -30,14 +30,17 @@ import static java.lang.Math.abs;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.svm.core.jfr.JfrEvent;
+import java.util.List;
+
 import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorWaitEvent extends JfrTest {
+public class TestJavaMonitorWaitEvent extends JfrRecordingTest {
     private static final int MILLIS = 50;
     private static final int COUNT = 10;
 
@@ -51,11 +54,11 @@ public class TestJavaMonitorWaitEvent extends JfrTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
+    public void validateEvents(List<RecordedEvent> events) throws Throwable {
         int prodCount = 0;
         int consCount = 0;
         String lastEventThreadName = null; // should alternate if buffer is 1
-        for (RecordedEvent event : getEvents()) {
+        for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
             assertTrue("No event thread", eventThread != null);

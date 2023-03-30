@@ -73,8 +73,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * <p>
  * Annotated methods usually say that methods they call must be annotated with
  * {@link Uninterruptible}, though they can use {@link #calleeMustBe "calleeMustBe = false"} to
- * indicate that the callee need not be so annotated. I use that to avoid having to annotate the
- * whole stack printing mechanism when I am about to exit the virtual machine.
+ * indicate that the callee does not need to be uninterruptible. I use that to avoid having to
+ * annotate the whole stack printing mechanism when I am about to exit the virtual machine.
  * <p>
  * Annotated methods can use {@link #callerMustBe "callerMustBe = true"} to indicate that their
  * caller must also be annotated with {@link Uninterruptible}. I use that, for example when a method
@@ -100,6 +100,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
 public @interface Uninterruptible {
+    /**
+     * If a method is only uninterruptible because it is called by other uninterruptible code, then
+     * this string value must be used for the reason, together with {@code mayBeInlined = true}.
+     */
+    String CALLED_FROM_UNINTERRUPTIBLE_CODE = "Called from uninterruptible code.";
 
     /**
      * Documents the reason why the annotated code must not be interruptible.
@@ -119,13 +124,15 @@ public @interface Uninterruptible {
     boolean calleeMustBe() default true;
 
     /**
-     * When true, this method may be <b>inlined into interruptible code</b>. When false (the
-     * default), this method may only be inlined into other uninterruptible code. If inlining of a
-     * specific method is undesirable in general, refer to {@link NeverInline}.
+     * When true, this method may be inlined into <b>interruptible</b> code. During inlining, the
+     * compiler will treat the inlined method as if it was not annotated with
+     * {@link Uninterruptible}. For the inlined copy, this therefore voids all properties that
+     * uninterruptible code normally guarantees. Therefore, this flag may only be enabled for
+     * methods that don't have an inherent reason for being uninterruptible, besides being called by
+     * other uninterruptible code (see {@link #CALLED_FROM_UNINTERRUPTIBLE_CODE}).
      * <p>
-     * The concern is that if an uninterruptible method is inlined, interruptible code such as
-     * allocation could be hoisted between the operations of the uninterruptible code. Simple
-     * uninterruptible methods like field accesses can be annotated to allow them to be inlined.
+     * If false, the compiler may still inline this method into uninterruptible code. If inlining of
+     * a specific method is undesirable in general, refer to {@link NeverInline}.
      */
     boolean mayBeInlined() default false;
 

@@ -60,7 +60,7 @@ public final class ExceptionDispatch extends ContextAccessImpl {
     private StaticObject fastPath(ObjectKlass klass, StaticObject message, StaticObject cause) {
         StaticObject ex = allocateException(klass);
         // TODO: Remove this when truffle exceptions are reworked.
-        InterpreterToVM.fillInStackTrace(ex, false, meta);
+        InterpreterToVM.fillInStackTrace(ex, meta);
 
         if (message != null) {
             meta.java_lang_Throwable_detailMessage.setObject(ex, message);

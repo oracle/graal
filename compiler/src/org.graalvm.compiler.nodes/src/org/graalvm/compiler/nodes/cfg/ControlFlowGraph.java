@@ -516,7 +516,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     if (!lv.allEndsVisited()) {
                         throw GraalError.shouldNotReachHere(
                                         "Loop ends should be visited before exits. This is a major error in the reverse post order of the control " +
-                                                        "flow graph of this method. This typically means wrongly specified control-split nodes have been processed in ReversePostOrder.java.");
+                                                        "flow graph of this method. This typically means wrongly specified control-split nodes have been processed in ReversePostOrder.java."); // ExcludeFromJacocoGeneratedReport
                     }
                     lv.exitsVisited++;
                     if (lv.loopFullyProcessed()) {
@@ -912,7 +912,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     if (succFrequency < selfFrequency - delta) {
                         String format = "Successors must add up for block %s with begin %s, selfF=%f succF=%f";
                         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, format, loopBlock, loopBlock.getBeginNode(), selfFrequency, succFrequency);
-                        throw GraalError.shouldNotReachHere(String.format(format, loopBlock, loopBlock.getBeginNode(), selfFrequency, succFrequency));
+                        throw GraalError.shouldNotReachHere(String.format(format, loopBlock, loopBlock.getBeginNode(), selfFrequency, succFrequency)); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }
@@ -939,7 +939,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     final double frequencyDifference = Math.abs(predFrequency - otherLoopExitFrequencySum);
                     if (frequencyDifference > delta) {
                         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Frequencies diverge too much");
-                        throw GraalError.shouldNotReachHere("Frequencies diverge too much");
+                        throw GraalError.shouldNotReachHere("Frequencies diverge too much"); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }

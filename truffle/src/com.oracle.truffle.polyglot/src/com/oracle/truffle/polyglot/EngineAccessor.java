@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,6 +84,7 @@ import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
@@ -1037,7 +1038,7 @@ final class EngineAccessor extends Accessor {
                 useArguments = arguments;
             }
 
-            PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, sharingEnabled, useOut, useErr, useIn,
+            PolyglotContextConfig innerConfig = new PolyglotContextConfig(engine, creatorConfig.sandboxPolicy, sharingEnabled, useOut, useErr, useIn,
                             useAllowHostLookup, usePolyglotAccess, useAllowNativeAccess, useAllowCreateThread, useAllowHostClassLoading,
                             useAllowInnerContextOptions, creatorConfig.allowExperimentalOptions,
                             useClassFilter, useArguments, allowedLanguages, useOptions, fileSystemConfig, creatorConfig.logHandler,
@@ -1726,11 +1727,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public <T, G> Iterator<T> mergeHostGuestFrames(Object instrumentEnv, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
-                        Function<StackTraceElement, T> hostFrameConvertor,
-                        Function<G, T> guestFrameConvertor) {
-            PolyglotInstrument instrument = (PolyglotInstrument) INSTRUMENT.getPolyglotInstrument(instrumentEnv);
-            return new PolyglotExceptionImpl.MergedHostGuestIterator<>(instrument.engine, hostStack, guestFrames, inHostLanguage, hostFrameConvertor, guestFrameConvertor);
+        public <T, G> Iterator<T> mergeHostGuestFrames(Object polyglotEngine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        boolean includeHostFrames, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor) {
+            PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;
+            return new PolyglotExceptionImpl.MergedHostGuestIterator<>(engine, hostStack, guestFrames, inHostLanguage, includeHostFrames,
+                            hostFrameConvertor, guestFrameConvertor);
+        }
+
+        @Override
+        public boolean isHostToGuestRootNode(RootNode root) {
+            return root instanceof HostToGuestRootNode;
         }
 
         @Override
@@ -1764,13 +1770,13 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public ClassLoader getStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass) {
+        public Object getStaticObjectClassLoaders(Object polyglotLanguageInstance, Class<?> referenceClass) {
             return ((PolyglotLanguageInstance) polyglotLanguageInstance).staticObjectClassLoaders.get(referenceClass);
         }
 
         @Override
-        public void setStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl) {
-            ((PolyglotLanguageInstance) polyglotLanguageInstance).staticObjectClassLoaders.put(referenceClass, cl);
+        public void setStaticObjectClassLoaders(Object polyglotLanguageInstance, Class<?> referenceClass, Object value) {
+            ((PolyglotLanguageInstance) polyglotLanguageInstance).staticObjectClassLoaders.put(referenceClass, value);
         }
 
         @Override
@@ -1992,6 +1998,27 @@ final class EngineAccessor extends Accessor {
                 throw new IllegalStateException("Not entered in an Env's context.");
             }
             return new LanguageSystemThread(languageContext, runnable, threadGroup);
+        }
+
+        @Override
+        public Object getEngineFromPolyglotObject(Object polyglotObject) {
+            return getEngine(polyglotObject);
+        }
+
+        @Override
+        public SandboxPolicy getContextSandboxPolicy(Object polyglotLanguageContext) {
+            return ((PolyglotLanguageContext) polyglotLanguageContext).context.config.sandboxPolicy;
+        }
+
+        @Override
+        public SandboxPolicy getEngineSandboxPolicy(Object polyglotInstrument) {
+            return ((PolyglotInstrument) polyglotInstrument).engine.sandboxPolicy;
+        }
+
+        @Override
+        public void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId) {
+            PolyglotInstrument polyglotInstrument = ((PolyglotContextImpl) polyglotContextImpl).engine.idToInstrument.get(instrumentId);
+            polyglotInstrument.ensureCreated();
         }
     }
 

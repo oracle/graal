@@ -39,10 +39,10 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.15.3",
+  "mxversion": "6.17.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/",
   "developer" : {
@@ -63,9 +63,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "urls": [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-        ],
       },
     ],
   },

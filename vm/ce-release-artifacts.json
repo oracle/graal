@@ -197,7 +197,7 @@
         ]
     },
     {
-        "name": "llvm-toolchain-installable-java17",
+        "name": "llvm-toolchain-installable-ce-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
@@ -224,7 +224,7 @@
         ]
     },
     {
-        "name": "llvm-toolchain-installable-java20",
+        "name": "llvm-toolchain-installable-ce-java20",
         "core": false,
         "jdk": "jdk_20",
         "artifacts": [
@@ -335,7 +335,7 @@
         ]
     },
     {
-        "name": "r-installable-java17",
+        "name": "r-installable-ce-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
@@ -350,7 +350,7 @@
         ]
     },
     {
-        "name": "r-installable-java20",
+        "name": "r-installable-ce-java20",
         "core": false,
         "jdk": "jdk_20",
         "artifacts": [
@@ -428,6 +428,10 @@
                 "arch": "amd64"
             },
             {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
                 "os": "windows",
                 "arch": "amd64"
             }
@@ -449,6 +453,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             },
             {
                 "os": "windows",
@@ -623,6 +631,114 @@
     },
     {
         "name": "js-installable-svm-java20",
+        "core": false,
+        "jdk": "jdk_20",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "icu4j-installable-ce-java17",
+        "core": false,
+        "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "icu4j-installable-ce-java20",
+        "core": false,
+        "jdk": "jdk_20",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "regex-installable-ce-java17",
+        "core": false,
+        "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "regex-installable-ce-java20",
         "core": false,
         "jdk": "jdk_20",
         "artifacts": [

@@ -21,9 +21,9 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.15.3",
+    "mxversion": "6.17.0",
     "name": "espresso",
-    "version" : "23.0.0",
+    "version" : "23.1.0",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
@@ -60,23 +60,14 @@ suite = {
             {
                 "name": "truffle",
                 "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
             },
             {
                 "name": "tools",
                 "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
             },
             {
                 "name": "sulong",
                 "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ],
                 "os_arch": {
                     "windows": {
                         "<others>": {
@@ -93,9 +84,6 @@ suite = {
             {
                 "name" : "java-benchmarks",
                 "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
             },
         ],
     },
@@ -387,27 +375,10 @@ suite = {
             "platformDependent": True,
             "os_arch": {
                 "linux": {
-                    "amd64": {
+                    "<others>": {
                         "layout": {
                             "./": ["file:mx.espresso/reflectconfig.json"],
                             "./native-image.properties": ["file:mx.espresso/native-image-preinit.properties"],
-                            "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
-                            "lib/": [
-                                "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
-                                "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
-                                # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
-                                "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
-                                "dependency:espresso:POLYGLOT/*",
-                                "dependency:espresso:HOTSWAP/*",
-                            ],
-                        },
-                    },
-                    "<others>": {
-                        "layout": {
-                            "./": [
-                                "file:mx.espresso/reflectconfig.json",
-                                "file:mx.espresso/native-image.properties",
-                            ],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
@@ -442,8 +413,8 @@ suite = {
                     "<others>": {
                         "layout": {
                             "./": [
-                                "file:mx.espresso/reflectconfig.json",
                                 "file:mx.espresso/native-image.properties",
+                                "file:mx.espresso/reflectconfig.json",
                             ],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [

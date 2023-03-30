@@ -168,7 +168,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNumber((float) Short.MIN_VALUE, false, true, true, true, true, true, true);
         assertNumber((float) Byte.MIN_VALUE - 1, false, true, true, true, true, true, true);
         assertNumber((float) Byte.MIN_VALUE, true, true, true, true, true, true, true);
-        assertNumber(-0.0f, false, false, false, false, true, true, true);
+        assertNumber(-0.0f, false, false, false, false, false, true, true);
         assertNumber(0.0f, true, true, true, true, true, true, true);
         assertNumber((float) Byte.MAX_VALUE, true, true, true, true, true, true, true);
         assertNumber((float) Byte.MAX_VALUE + 1, false, true, true, true, true, true, true);
@@ -193,7 +193,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNumber((double) Short.MIN_VALUE, false, true, true, true, true, true, true);
         assertNumber((double) Byte.MIN_VALUE - 1, false, true, true, true, true, true, true);
         assertNumber((double) Byte.MIN_VALUE, true, true, true, true, true, true, true);
-        assertNumber(-0.0d, false, false, false, false, true, true, true);
+        assertNumber(-0.0d, false, false, false, false, false, true, true);
         assertNumber(0.0d, true, true, true, true, true, true, true);
         assertNumber((double) Byte.MAX_VALUE, true, true, true, true, true, true, true);
         assertNumber((double) Byte.MAX_VALUE + 1, false, true, true, true, true, true, true);
@@ -464,9 +464,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNoDuration(v);
         assertNoSourceLocation(v);
         assertNoLanguage(v);
-        if (!(v instanceof BigInteger)) {
-            assertNoIdentity(v);
-        }
+        assertNoIdentity(v);
     }
 
     @Test

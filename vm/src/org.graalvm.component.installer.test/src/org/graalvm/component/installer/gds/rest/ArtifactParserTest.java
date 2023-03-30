@@ -37,6 +37,8 @@ import org.graalvm.component.installer.model.DistributionType;
 import org.graalvm.component.installer.model.StabilityLevel;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Test;
 import java.util.Collections;
@@ -60,6 +62,7 @@ public class ArtifactParserTest extends TestBase {
     static final String JSON_VAL_LIC_ID = "mockLicenseId";
     static final String JSON_KEY_LIC_NAME = "licenseName";
     static final String JSON_VAL_LIC_NAME = "mockLicenseName";
+    static final String JSON_KEY_IMPL_ACC = "isLicenseImplicitlyAccepted";
     static final String JSON_META_KEY = "key";
     static final String JSON_META_VAL = "value";
     static final String JSON_META_KEY_ARCH = "arch";
@@ -221,9 +224,12 @@ public class ArtifactParserTest extends TestBase {
                         REQ_VER, JSON_META_VAL_VERSION), ci.getRequiredGraalValues());
         assertEquals(Collections.singleton(JSON_META_VAL_SYMBOLIC_NAME), ci.getDependencies());
         assertEquals(StabilityLevel.fromName(JSON_META_VAL_STAB_EXPERIMENTAL), ci.getStability());
+        assertFalse(ci.isImplicitlyAccepted());
         setMeta(jo, JSON_META_KEY_STABILITY_LEVEL, JSON_META_VAL_STAB_SUPPORTED);
+        jo.put(JSON_KEY_IMPL_ACC, true);
         ci = ap.asComponentInfo(conn, this);
         assertEquals(StabilityLevel.fromName(JSON_META_VAL_STAB_SUPPORTED), ci.getStability());
+        assertTrue(ci.isImplicitlyAccepted());
     }
 
     JSONObject setMeta(JSONObject jo, String key, String val) {

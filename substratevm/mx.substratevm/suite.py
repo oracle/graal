@@ -1,8 +1,8 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "6.15.3",
+    "mxversion": "6.17.0",
     "name": "substratevm",
-    "version" : "23.0.0",
+    "version" : "23.1.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -30,9 +30,6 @@ suite = {
             {
                 "name": "compiler",
                 "subdir": True,
-                "urls" : [
-                    {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-                ]
             },
         ]
     },
@@ -252,6 +249,7 @@ suite = {
                 "jdk.httpserver",
                 "jdk.jfr",
                 "jdk.management",
+                "jdk.management.jfr",
                 "jdk.unsupported",
             ],
             "requiresConcealed" : {
@@ -280,11 +278,8 @@ suite = {
                     "jdk.internal.perf",
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
+                    "jdk.internal.vm",
                     "jdk.internal.util",
-                ],
-                "java.desktop": [
-                    "sun.java2d",
-                    "sun.java2d.pipe",
                 ],
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
@@ -292,6 +287,9 @@ suite = {
                 ],
                 "jdk.management": [
                     "com.sun.management.internal"
+                ],
+                "jdk.management.agent": [
+                    "jdk.internal.agent",
                 ],
                 "jdk.httpserver@19+": [
                     "sun.net.httpserver.simpleserver",
@@ -610,16 +608,17 @@ suite = {
                 "com.oracle.graal.reachability"
             ],
             "requires" : [
-                "java.desktop",
                 "java.instrument",
                 "java.security.sasl",
                 "java.smartcardio",
                 "java.xml.crypto",
                 "jdk.jfr",
                 "jdk.management",
+                "jdk.unsupported",
             ],
             "requiresConcealed" : {
                 "java.base" : [
+                    "jdk.internal",
                     "jdk.internal.event",
                     "jdk.internal.misc",
                     "jdk.internal.vm.annotation",
@@ -651,6 +650,9 @@ suite = {
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
                 ],
+                "jdk.unsupported": [
+                    "sun.reflect",
+                ]
             },
             "javaCompliance" : "17+",
             "checkstyleVersion": "10.7.0",
@@ -858,6 +860,9 @@ suite = {
             "requires": [
                 "java.compiler",
                 "jdk.jfr",
+                "java.management",
+                "jdk.management.jfr",
+                "java.rmi",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -1342,12 +1347,13 @@ suite = {
                     "java.management",
                     "jdk.management",
                     "java.xml.crypto",
-                    "java.desktop",
                     "java.security.sasl",
                     "java.smartcardio",
                     "java.net.http",
                     "jdk.sctp",
                     "jdk.scripting.nashorn@11..14",
+                    "jdk.management.agent",
+                    "jdk.management.jfr",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
@@ -1660,7 +1666,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.base",
                 "exports" : [
-                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport",
+                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport",
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver",
                 ],

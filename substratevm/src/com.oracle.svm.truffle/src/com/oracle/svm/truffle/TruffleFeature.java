@@ -264,6 +264,10 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return isInConfiguration();
+    }
+
+    public static boolean isInConfiguration() {
         return Truffle.getRuntime() instanceof SubstrateTruffleRuntime;
     }
 
@@ -389,6 +393,7 @@ public class TruffleFeature implements InternalFeature {
         for (ResolvedJavaMethod method : partialEvaluator.getCompilationRootMethods()) {
             runtimeCompilationFeature.prepareMethodForRuntimeCompilation(method, config);
         }
+        runtimeCompilationFeature.initializeAnalysisProviders(config.getBigBang(), HostedTruffleConstantFieldProvider::new);
 
         initializeMethodBlocklist(config.getMetaAccess(), access);
 
@@ -803,7 +808,7 @@ public class TruffleFeature implements InternalFeature {
                 System.out.println();
                 for (RuntimeCompilationCandidate violation : blocklistViolations) {
                     System.out.println("Blocklisted method");
-                    System.out.format("   %s (target: %s)\n", violation.getImplementationMethod().format("%H.%n(%p)"), violation.getTargetMethod().format("%H.%n(%p)"));
+                    System.out.format("   %s (target: %s)%n", violation.getImplementationMethod().format("%H.%n(%p)"), violation.getTargetMethod().format("%H.%n(%p)"));
                     System.out.println("trace:");
                     RuntimeCompilationFeature.singleton().getCallTrace(violation).forEach(item -> System.out.println("  " + item));
                 }

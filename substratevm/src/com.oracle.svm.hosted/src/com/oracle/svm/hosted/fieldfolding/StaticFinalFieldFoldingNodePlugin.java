@@ -42,7 +42,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.hosted.ameta.ReadableJavaField;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;

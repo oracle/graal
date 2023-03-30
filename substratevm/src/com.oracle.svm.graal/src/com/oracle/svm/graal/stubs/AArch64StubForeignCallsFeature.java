@@ -37,7 +37,9 @@ import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsWithMaskForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.BigIntegerMulAddNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
@@ -74,6 +76,8 @@ public class AArch64StubForeignCallsFeature extends StubForeignCallsFeatureBase 
                         new StubDescriptor(CipherBlockChainingAESNode.STUBS, CipherBlockChainingAESNode.minFeaturesAARCH64(), AES_CPU_FEATURES_AARCH64),
                         new StubDescriptor(GHASHProcessBlocksNode.STUB, GHASHProcessBlocksNode.minFeaturesAARCH64(), GHASH_CPU_FEATURES_AARCH64),
                         new StubDescriptor(BigIntegerMultiplyToLenNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(BigIntegerMulAddNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
+                        new StubDescriptor(BigIntegerSquareToLenNode.STUB, EMPTY_CPU_FEATURES_AARCH64, EMPTY_CPU_FEATURES_AARCH64),
         });
     }
 }

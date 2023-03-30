@@ -42,8 +42,8 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 
 import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
-import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -54,27 +54,17 @@ public abstract class InputEqualsNode extends Node {
         return InputEqualsNodeGen.create();
     }
 
-    public abstract boolean execute(Object input, Object string, Object mask, Encoding encoding);
+    public abstract boolean execute(TruffleString input, TruffleString string, TruffleString.WithMask mask, Encoding encoding);
 
     @Specialization(guards = "mask == null")
-    public boolean doString(String input, String string, @SuppressWarnings("unused") Object mask, @SuppressWarnings("unused") Encoding encoding) {
-        return input.equals(string);
-    }
-
-    @Specialization(guards = "mask != null")
-    public boolean doStringMask(String input, String string, String mask, @SuppressWarnings("unused") Encoding encoding) {
-        return input.length() == string.length() && ArrayUtils.regionEqualsWithOrMask(input, 0, string, 0, mask.length(), mask);
-    }
-
-    @Specialization(guards = "mask == null")
-    public boolean doTString(TruffleString input, TruffleString string, @SuppressWarnings("unused") Object mask, Encoding encoding,
+    public boolean doTString(TruffleString input, TruffleString string, @SuppressWarnings("unused") TruffleString.WithMask mask, Encoding encoding,
                     @Cached TruffleString.RegionEqualByteIndexNode equalsNode) {
         int len1 = input.byteLength(encoding.getTStringEncoding());
         int len2 = string.byteLength(encoding.getTStringEncoding());
         return len1 == len2 && equalsNode.execute(input, 0, string, 0, len2, encoding.getTStringEncoding());
     }
 
-    @Specialization(guards = "mask != null")
+    @Fallback
     public boolean doTStringMask(TruffleString input, TruffleString string, TruffleString.WithMask mask, Encoding encoding,
                     @Cached TruffleString.RegionEqualByteIndexNode equalsNode) {
         int len1 = input.byteLength(encoding.getTStringEncoding());

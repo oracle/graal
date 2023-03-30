@@ -136,9 +136,9 @@ public final class ObjectGroupHistogram {
         System.out.println();
         System.out.println("=== Summary ===");
         for (Map.Entry<String, HeapHistogram> entry : groupHistograms.entrySet()) {
-            System.out.format("%s; %d; %d\n", entry.getKey(), entry.getValue().getTotalCount(), entry.getValue().getTotalSize());
+            System.out.format("%s; %d; %d%n", entry.getKey(), entry.getValue().getTotalCount(), entry.getValue().getTotalSize());
         }
-        System.out.format("%s; %d; %d\n", "Total", totalHistogram.getTotalCount(), totalHistogram.getTotalSize());
+        System.out.format("%s; %d; %d%n", "Total", totalHistogram.getTotalCount(), totalHistogram.getTotalSize());
     }
 
     private static Object readGraalSupportField(String name) {
@@ -177,7 +177,7 @@ public final class ObjectGroupHistogram {
             }
         }
         if (info.getClazz().isInstanceClass()) {
-            JavaConstant con = SubstrateObjectConstant.forObject(info.getObject());
+            JavaConstant con = heap.getUniverse().getSnippetReflection().forObject(info.getObject());
             for (HostedField field : info.getClazz().getInstanceFields(true)) {
                 if (field.getType().getStorageKind() == JavaKind.Object && !HybridLayout.isHybridField(field) && field.isAccessed()) {
                     if (fieldFilter == null || fieldFilter.test(info, field)) {

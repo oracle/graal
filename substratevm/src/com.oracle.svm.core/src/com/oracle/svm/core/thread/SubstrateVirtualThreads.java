@@ -152,7 +152,7 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isVirtual(Thread thread) {
         return thread instanceof SubstrateVirtualThread;
     }
@@ -215,6 +215,11 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
     @Override
     public void unpinCurrent() {
         current().unpin();
+    }
+
+    @Override
+    public boolean isCurrentPinned() {
+        return current().isPinned();
     }
 
     @Override

@@ -127,6 +127,9 @@ _graal_variants = [
     ('economy', [], 0, 'economy'),
     ('economy-no-tiered-comp', ['-XX:-TieredCompilation'], 0, 'economy'),
     ('g1gc', ['-XX:+UseG1GC'], 12),
+    ('zgc', ['-XX:+UseZGC'], 12),
+    ('zgc-avx2', ['-XX:+UseZGC', '-XX:UseAVX=2'], 12),
+    ('zgc-avx3', ['-XX:+UseZGC', '-XX:UseAVX=3'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-profile-info', ['-Djvmci.UseProfilingInformation=false'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
@@ -148,6 +151,7 @@ mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+Enable
 
 
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-zgc', ['-server', '-XX:-EnableJVMCI', '-XX:+UseZGC']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-no-tiered-comp', ['-server', '-XX:-EnableJVMCI', '-XX:-TieredCompilation']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
@@ -416,9 +420,9 @@ class JMHNativeImageBenchmarkMixin(mx_sdk_benchmark.NativeImageBenchmarkMixin):
         user_args = super(JMHNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args, image_run_args)
         return ['-f0', '-wi', '1', '-i1'] + mx_sdk_benchmark.strip_args_with_number(['-f', '-wi', '-i'], user_args)
 
-    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         # Don't waste time profiling the same code but still wait for compilation on HotSpot.
-        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        user_args = super(JMHNativeImageBenchmarkMixin, self).extra_profile_run_arg(benchmark, args, image_run_args, should_strip_run_args)
         return ['-f0', '-wi', '1', '-i5'] + mx_sdk_benchmark.strip_args_with_number(['-f', '-wi', '-i'], user_args)
 
     def benchmarkName(self):

@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "23.0.0",
-    "mxversion": "6.15.3",
+    "version" : "23.1.0",
+    "mxversion": "6.17.0",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -23,63 +23,52 @@ suite = {
             {
                 "name": "sdk",
                 "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
             },
             {
                 "name": "truffle",
                 "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
             },
             # Dynamic imports for components:
             {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "110c602e472824d750977bde11d71b0dcc1dacba",
+                "version": "a314832c8fc1e7f06244d9afb0553900f4d5a638",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "110c602e472824d750977bde11d71b0dcc1dacba",
+                "version": "a314832c8fc1e7f06244d9afb0553900f4d5a638",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "7d2592e6c49f0663190a0f972412adb08decb56f",
+                "version": "b60c98de2069aefee9f161a6219958ca6184fc67",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "fastr",
-                "version": "2379475fa7fb0c3f43a7c9a48c6102a6aaa276a5",
+                "version": "4e696f96c64eb1e533ae1286e713b1a90c46844a",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {
                 "name": "graalpython",
-                "version": "353ead4346ec5909151b8e59813ead5b7fb8ebd1",
+                "version": "f2fe40d6f89c89885270678a264e7dbfa918d433",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
             {

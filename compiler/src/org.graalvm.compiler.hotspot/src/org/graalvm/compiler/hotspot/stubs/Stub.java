@@ -60,6 +60,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.Speculative;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -128,7 +129,7 @@ public abstract class Stub {
     }
 
     public boolean shouldSaveRegistersAroundCalls() {
-        return linkage.getEffect() == HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
+        return linkage.getEffect() != HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
     }
 
     protected final OptionValues options;
@@ -241,7 +242,7 @@ public abstract class Stub {
             Suites suites = createSuites();
             emitFrontEnd(providers, backend, graph, providers.getSuites().getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL, DefaultProfilingInfo.get(TriState.UNKNOWN), suites);
             LIRSuites lirSuites = createLIRSuites();
-            backend.emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), compResult, CompilationResultBuilderFactory.Default, getRegisterConfig(), lirSuites);
+            backend.emitBackEnd(graph, Stub.this, getInstalledCodeOwner(), compResult, CompilationResultBuilderFactory.Default, null, getRegisterConfig(), lirSuites);
             assert checkStubInvariants(compResult);
         } catch (Throwable e) {
             throw debug.handle(e);
@@ -313,10 +314,13 @@ public abstract class Stub {
     }
 
     protected Suites createSuites() {
-        Suites defaultSuites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch);
+        Suites defaultSuites = providers.getSuites().getDefaultSuites(options, providers.getLowerer().getTarget().arch).copy();
 
         PhaseSuite<HighTierContext> emptyHighTier = new PhaseSuite<>();
         emptyHighTier.appendPhase(new EmptyHighTier());
+
+        defaultSuites.getMidTier().removeSubTypePhases(Speculative.class);
+        defaultSuites.getLowTier().removeSubTypePhases(Speculative.class);
 
         return new Suites(emptyHighTier, defaultSuites.getMidTier(), defaultSuites.getLowTier());
     }

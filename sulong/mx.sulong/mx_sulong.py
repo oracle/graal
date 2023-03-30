@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -500,6 +500,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_GRAALVM_LICENSES',
     ],
     installable=True,
+    standalone=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=0,  # this is the main component of the llvm installable
 ))
@@ -519,6 +520,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),
     installable=True,
+    standalone=False,
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
 
@@ -546,5 +548,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         ),
     ],
     installable=True,
+    standalone=False,
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))

@@ -26,18 +26,54 @@ package com.oracle.svm.core.posix;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.SignedWord;
-import org.graalvm.word.WordFactory;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Errno;
+import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.darwin.DarwinStat;
 import com.oracle.svm.core.posix.headers.linux.LinuxStat;
 import com.oracle.svm.core.util.VMError;
 
+// Checkstyle: stop
+@CContext(PosixDirectives.class)
 public final class PosixStat {
+    @CConstant
+    public static native int S_IFLNK();
+
+    @CConstant
+    public static native int S_IFDIR();
+
+    @CConstant
+    public static native int S_IRUSR();
+
+    @CConstant
+    public static native int S_IRGRP();
+
+    @CConstant
+    public static native int S_IROTH();
+
+    @CConstant
+    public static native int S_IWUSR();
+
+    @CConstant
+    public static native int S_IWGRP();
+
+    @CConstant
+    public static native int S_IWOTH();
+
+    @CConstant
+    public static native int S_IRWXU();
+
+    @CConstant
+    public static native int S_IXGRP();
+
+    @CConstant
+    public static native int S_IXOTH();
+
     public static boolean isOpen(int fd) {
         int result;
         if (Platform.includedIn(Platform.LINUX.class)) {
@@ -54,7 +90,7 @@ public final class PosixStat {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static SignedWord getSize(int fd) {
+    public static long getSize(int fd) {
         long size = -1;
         if (Platform.includedIn(Platform.LINUX.class)) {
             LinuxStat.stat64 stat = UnsafeStackValue.get(LinuxStat.stat64.class);
@@ -67,7 +103,7 @@ public final class PosixStat {
                 size = stat.st_size();
             }
         }
-        return WordFactory.signed(size);
+        return size;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

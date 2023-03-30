@@ -68,9 +68,9 @@ public class BitCountNode extends UnaryNode implements ArithmeticLIRLowerable {
     static Stamp computeStamp(Stamp newStamp, ValueNode theValue) {
         assert newStamp.isCompatible(theValue.stamp(NodeView.DEFAULT));
         IntegerStamp valueStamp = (IntegerStamp) newStamp;
-        assert (valueStamp.downMask() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.downMask();
-        assert (valueStamp.upMask() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.upMask();
-        return StampFactory.forInteger(JavaKind.Int, Long.bitCount(valueStamp.downMask()), Long.bitCount(valueStamp.upMask()));
+        assert (valueStamp.mustBeSet() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.mustBeSet();
+        assert (valueStamp.mayBeSet() & CodeUtil.mask(valueStamp.getBits())) == valueStamp.mayBeSet();
+        return StampFactory.forInteger(JavaKind.Int, Long.bitCount(valueStamp.mustBeSet()), Long.bitCount(valueStamp.mayBeSet()));
     }
 
     @Override

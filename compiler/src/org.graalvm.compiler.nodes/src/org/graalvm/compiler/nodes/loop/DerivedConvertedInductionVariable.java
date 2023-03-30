@@ -126,8 +126,12 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     }
 
     @Override
-    public String toString() {
-        return String.format("DerivedConvertedInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), stamp);
+    public String toString(IVToStringVerbosity verbosity) {
+        if (verbosity == IVToStringVerbosity.FULL) {
+            return String.format("DerivedConvertedInductionVariable base (%s) %s %s", base, value.getNodeClass().shortName(), stamp);
+        } else {
+            return String.format("(%s) %s %s", base, value.getNodeClass().shortName(), stamp);
+        }
     }
 
     @Override

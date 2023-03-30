@@ -768,17 +768,20 @@ public final class Meta extends ContextAccessImpl {
         java_time_Instant_nanos = java_time_Instant.requireDeclaredField(Name.nanos, Type._int);
         java_time_Instant_atZone = java_time_Instant.requireDeclaredMethod(Name.atZone, Signature.ZonedDateTime_ZoneId);
         assert java_time_Instant_atZone.isFinalFlagSet() || java_time_Instant.isFinalFlagSet();
+        java_time_Instant_ofEpochSecond = java_time_Instant.requireDeclaredMethod(Name.ofEpochSecond, Signature.Instant_long_long);
 
         java_time_LocalTime = knownKlass(Type.java_time_LocalTime);
         java_time_LocalTime_hour = java_time_LocalTime.requireDeclaredField(Name.hour, Type._byte);
         java_time_LocalTime_minute = java_time_LocalTime.requireDeclaredField(Name.minute, Type._byte);
         java_time_LocalTime_second = java_time_LocalTime.requireDeclaredField(Name.second, Type._byte);
         java_time_LocalTime_nano = java_time_LocalTime.requireDeclaredField(Name.nano, Type._int);
+        java_time_LocalTime_of = java_time_LocalTime.requireDeclaredMethod(Name.of, Signature.LocalTime_int_int_int_int);
 
         java_time_LocalDateTime = knownKlass(Type.java_time_LocalDateTime);
         java_time_LocalDateTime_toLocalDate = java_time_LocalDateTime.requireDeclaredMethod(Name.toLocalDate, Signature.LocalDate);
         java_time_LocalDateTime_toLocalTime = java_time_LocalDateTime.requireDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
         assert java_time_LocalDateTime_toLocalTime.isFinalFlagSet() || java_time_LocalDateTime.isFinalFlagSet();
+        java_time_LocalDateTime_of = java_time_LocalDateTime.requireDeclaredMethod(Name.of, Signature.LocalDateTime_LocalDate_LocalTime);
 
         java_time_LocalDate = knownKlass(Type.java_time_LocalDate);
         java_time_LocalDate_year = java_time_LocalDate.requireDeclaredField(Name.year, Type._int);
@@ -787,6 +790,7 @@ public final class Meta extends ContextAccessImpl {
         assert java_time_LocalDate_month.getKind() == JavaKind.Short;
         java_time_LocalDate_day = java_time_LocalDate.requireDeclaredField(Name.day, Type._short);
         assert java_time_LocalDate_day.getKind() == JavaKind.Short;
+        java_time_LocalDate_of = java_time_LocalDate.requireDeclaredMethod(Name.of, Signature.LocalDate_int_int_int);
 
         java_time_ZonedDateTime = knownKlass(Type.java_time_ZonedDateTime);
         java_time_ZonedDateTime_toLocalTime = java_time_ZonedDateTime.requireDeclaredMethod(Name.toLocalTime, Signature.LocalTime);
@@ -799,9 +803,11 @@ public final class Meta extends ContextAccessImpl {
         assert java_time_ZonedDateTime_getZone.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
         java_time_ZonedDateTime_toInstant = java_time_ZonedDateTime.requireMethod(Name.toInstant, Signature.Instant); // default
         assert java_time_ZonedDateTime_toInstant.isFinalFlagSet() || java_time_ZonedDateTime.isFinalFlagSet();
+        java_time_ZonedDateTime_ofInstant = java_time_ZonedDateTime.requireDeclaredMethod(Name.ofInstant, Signature.ZonedDateTime_Instant_ZoneId);
 
         java_util_Date = knownKlass(Type.java_util_Date);
         java_util_Date_toInstant = java_util_Date.requireDeclaredMethod(Name.toInstant, Signature.Instant);
+        java_util_Date_from = java_util_Date.requireDeclaredMethod(Name.from, Signature.Date_Instant);
         java_time_ZoneId = knownKlass(Type.java_time_ZoneId);
         java_time_ZoneId_getId = java_time_ZoneId.requireDeclaredMethod(Name.getId, Signature.String);
         java_time_ZoneId_of = java_time_ZoneId.requireDeclaredMethod(Name.of, Signature.ZoneId_String);
@@ -870,6 +876,8 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_module_ModulePath_of = jdk_internal_module_ModulePath.requireDeclaredMethod(Name.of, Signature.ModuleFinder_Path_array);
             java_lang_module_ModuleFinder = knownKlass(Type.java_lang_module_ModuleFinder);
             java_lang_module_ModuleFinder_compose = java_lang_module_ModuleFinder.requireDeclaredMethod(Name.compose, Signature.ModuleFinder_ModuleFinder_array);
+            jdk_internal_module_Modules = knownKlass(Type.jdk_internal_module_Modules);
+            jdk_internal_module_Modules_defineModule = jdk_internal_module_Modules.requireDeclaredMethod(Name.defineModule, Signature.Module_ClassLoader_ModuleDescriptor_URI);
         } else {
             jdk_internal_module_ModuleLoaderMap = null;
             jdk_internal_module_ModuleLoaderMap_bootModules = null;
@@ -880,6 +888,8 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_module_ModulePath_of = null;
             java_lang_module_ModuleFinder = null;
             java_lang_module_ModuleFinder_compose = null;
+            jdk_internal_module_Modules = null;
+            jdk_internal_module_Modules_defineModule = null;
         }
 
         jdk_internal_module_ModuleLoaderMap_Modules = diff() //
@@ -1415,6 +1425,8 @@ public final class Meta extends ContextAccessImpl {
     public final Method jdk_internal_module_ModulePath_of;
     public final ObjectKlass java_lang_module_ModuleFinder;
     public final Method java_lang_module_ModuleFinder_compose;
+    public final ObjectKlass jdk_internal_module_Modules;
+    public final Method jdk_internal_module_Modules_defineModule;
 
     // Interop conversions.
     public final ObjectKlass java_time_Duration;
@@ -1425,29 +1437,35 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_time_Instant_seconds;
     public final Field java_time_Instant_nanos;
     public final Method java_time_Instant_atZone;
+    public final Method java_time_Instant_ofEpochSecond;
 
     public final ObjectKlass java_time_LocalTime;
     public final Field java_time_LocalTime_hour;
     public final Field java_time_LocalTime_minute;
     public final Field java_time_LocalTime_second;
     public final Field java_time_LocalTime_nano;
+    public final Method java_time_LocalTime_of;
 
     public final ObjectKlass java_time_LocalDate;
     public final Field java_time_LocalDate_year;
     public final Field java_time_LocalDate_month;
     public final Field java_time_LocalDate_day;
+    public final Method java_time_LocalDate_of;
 
     public final ObjectKlass java_time_LocalDateTime;
     public final Method java_time_LocalDateTime_toLocalTime;
     public final Method java_time_LocalDateTime_toLocalDate;
+    public final Method java_time_LocalDateTime_of;
     public final ObjectKlass java_time_ZonedDateTime;
     public final Method java_time_ZonedDateTime_toLocalTime;
     public final Method java_time_ZonedDateTime_toLocalDate;
     public final Method java_time_ZonedDateTime_getZone;
     public final Method java_time_ZonedDateTime_toInstant;
+    public final Method java_time_ZonedDateTime_ofInstant;
 
     public final ObjectKlass java_util_Date;
     public final Method java_util_Date_toInstant;
+    public final Method java_util_Date_from;
     public final ObjectKlass java_time_ZoneId;
     public final Method java_time_ZoneId_getId;
     public final Method java_time_ZoneId_of;
@@ -1550,6 +1568,9 @@ public final class Meta extends ContextAccessImpl {
         public final Field ExceptionType_RUNTIME_ERROR;
         public final Field ExceptionType_PARSE_ERROR;
 
+        public final ObjectKlass VMHelper;
+        public final Method VMHelper_getDynamicModuleDescriptor;
+
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
@@ -1607,6 +1628,9 @@ public final class Meta extends ContextAccessImpl {
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
             ExceptionType_PARSE_ERROR = ExceptionType.requireDeclaredField(Name.PARSE_ERROR,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+
+            VMHelper = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_VMHelper);
+            VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
         }
     }
 

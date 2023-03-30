@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.15.3",
+  "mxversion": "6.17.0",
   "name" : "sdk",
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -123,14 +123,6 @@ suite = {
             "optional": True,
           }
         }
-      }
-    },
-    "JLINE" : {
-      "digest" : "sha512:27f6e2523e539383cede51d8eae7e97d49038c5a66cb4a94a9ce85165f16e7382b937a238cdb0c92e1136af56c5f57bcc6c04435a370c5d49f7e4bd32f0d9194",
-      "maven" : {
-        "groupId" : "jline",
-        "artifactId" : "jline",
-        "version" : "2.14.6",
       }
     },
     "JLINE3" : {
@@ -303,7 +295,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.polyglot",
-        "JLINE",
         "JLINE3",
       ],
       "requires" : [

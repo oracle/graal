@@ -35,7 +35,6 @@ public interface JsonPrinter<T> {
 
     static <T> void printCollection(JsonWriter writer, Collection<T> collection, Comparator<T> comparator, JsonPrinter<T> elementPrinter) throws IOException {
         writer.append('[');
-        writer.indent();
         String prefix = "";
         Collection<T> ordered = collection;
         if (comparator != null) {
@@ -44,15 +43,8 @@ public interface JsonPrinter<T> {
         }
         for (T t : ordered) {
             writer.append(prefix);
-            if (collection.size() > 1) {
-                writer.newline();
-            }
             elementPrinter.print(t, writer);
             prefix = ", ";
-        }
-        writer.unindent();
-        if (collection.size() > 1) {
-            writer.newline();
         }
         writer.append("]");
     }

@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot.meta;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
@@ -214,6 +215,22 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         register(targetLinkage);
     }
 
+    public void linkStackOnlyForeignCall(OptionValues options,
+                    HotSpotProviders providers,
+                    HotSpotForeignCallDescriptor descriptor,
+                    long address,
+                    boolean prependThread) {
+        if (address == 0) {
+            throw new IllegalArgumentException("Can't link foreign call with zero address");
+        }
+        ForeignCallStub stub = new ForeignCallStub(options, jvmciRuntime, providers, address, descriptor, prependThread, KILLS_NO_REGISTERS);
+        HotSpotForeignCallLinkage linkage = stub.getLinkage();
+        HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
+        linkage.setCompiledStub(stub);
+        register(linkage);
+        register(targetLinkage);
+    }
+
     public void invokeJavaMethodStub(OptionValues options,
                     HotSpotProviders providers,
                     HotSpotForeignCallDescriptor descriptor,
@@ -240,7 +257,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         GraalError.guarantee(foreignCalls != null, "%s", signature);
         HotSpotForeignCallLinkage callTarget = foreignCalls.get(signature);
         if (callTarget == null) {
-            throw GraalError.shouldNotReachHere("Missing implementation for runtime call: " + signature);
+            throw GraalError.shouldNotReachHere("Missing implementation for runtime call: " + signature); // ExcludeFromJacocoGeneratedReport
         }
         callTarget.finalizeAddress(runtime.getHostBackend());
         return callTarget;

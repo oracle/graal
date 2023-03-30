@@ -28,6 +28,8 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -37,10 +39,10 @@ import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
-public class TestJavaMonitorInflateEvent extends JfrTest {
-    private static final EnterHelper ENTER_HELPER = new EnterHelper();
-    private static Thread firstThread;
-    private static Thread secondThread;
+public class TestJavaMonitorInflateEvent extends JfrRecordingTest {
+    private final EnterHelper enterHelper = new EnterHelper();
+    private Thread firstThread;
+    private Thread secondThread;
 
     @Override
     public String[] getTestedEvents() {
@@ -48,9 +50,9 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
     }
 
     @Override
-    public void validateEvents() throws Throwable {
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
         boolean foundCauseEnter = false;
-        for (RecordedEvent event : getEvents()) {
+        for (RecordedEvent event : events) {
             String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
             String monitorClass = event.<RecordedClass> getValue("monitorClass").getName();
             String cause = event.getValue("cause");
@@ -67,7 +69,7 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
     public void test() throws Exception {
         Runnable first = () -> {
             try {
-                ENTER_HELPER.doWork();
+                enterHelper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -75,8 +77,8 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
 
         Runnable second = () -> {
             try {
-                EnterHelper.passedCheckpoint = true;
-                ENTER_HELPER.doWork();
+                enterHelper.passedCheckpoint = true;
+                enterHelper.doWork();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -92,8 +94,8 @@ public class TestJavaMonitorInflateEvent extends JfrTest {
         secondThread.join();
     }
 
-    private static class EnterHelper {
-        static volatile boolean passedCheckpoint = false;
+    private class EnterHelper {
+        volatile boolean passedCheckpoint = false;
 
         synchronized void doWork() throws InterruptedException {
             if (Thread.currentThread().equals(secondThread)) {

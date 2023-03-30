@@ -10,6 +10,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local underscore(s) = std.strReplace(s, "-", "_"),
   local os(os_arch) = std.split(os_arch, "-")[0],
   local arch(os_arch) = std.split(os_arch, "-")[1],
+  local t(limit) = {timelimit: limit},
 
   libgraal_build(build_args):: {
     local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else 'build-libgraal-pgo',
@@ -19,9 +20,9 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   },
 
   # enable asserts in the JVM building the image and enable asserts in the resulting native image
-  libgraal_compiler_base(quickbuild_args=[]):: self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
+  libgraal_compiler_base(quickbuild_args=[], extra_vm_args=[]):: self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     run+: [
-      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
+      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler', '--extra-vm-argument=' + std.join(" ", extra_vm_args)],
     ],
     logs+: [
       '*/graal-compiler.log',
@@ -32,16 +33,18 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # enable asserts in the JVM building the image and enable asserts in the resulting native image
   libgraal_compiler:: self.libgraal_compiler_base(),
+  libgraal_compiler_zgc:: self.libgraal_compiler_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
-  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(['-Ob']),
+  libgraal_compiler_quickbuild:: self.libgraal_compiler_base(quickbuild_args=['-Ob']),
 
-  libgraal_truffle_base(quickbuild_args=[], coverage=false): self.libgraal_build(['-J-ea', '-ea'] + quickbuild_args) + {
+  libgraal_truffle_base(quickbuild_args=[], extra_vm_args=[], coverage=false): self.libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea'] + quickbuild_args) + {
     environment+: {
       # The Truffle TCK tests run as a part of Truffle TCK gate, tools tests run as a part of tools gate
       TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.* com.oracle.truffle.tools.*'
     },
     run+: [
-      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [],
+      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'] + if coverage then g.jacoco_gate_args else [] +
+        if extra_vm_args != [] then ['--extra-vm-argument=' + std.join(" ", extra_vm_args)] else [],
     ],
     logs+: [
       '*/graal-compiler.log',
@@ -55,6 +58,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # -ea assertions are enough to keep execution time reasonable
   libgraal_truffle: self.libgraal_truffle_base(),
+  libgraal_truffle_zgc: self.libgraal_truffle_base(extra_vm_args=['-XX:+UseZGC']),
   # enable economy mode building with the -Ob flag
   libgraal_truffle_quickbuild: self.libgraal_truffle_base(['-Ob']),
 
@@ -65,14 +69,18 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local gates = {
     "gate-vm-libgraal_compiler-labsjdk-20-linux-amd64": {},
     "gate-vm-libgraal_truffle-labsjdk-20-linux-amd64": {},
+    "gate-vm-libgraal_compiler_zgc-labsjdk-20-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-20-linux-amd64": {},
-    "gate-vm-libgraal_truffle_quickbuild-labsjdk-20-linux-amd64": {},
+    "gate-vm-libgraal_truffle_quickbuild-labsjdk-20-linux-amd64": t("1:10:00"),
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
     "daily-vm-libgraal_compiler-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
+    "daily-vm-libgraal_compiler_zgc-labsjdk-17-linux-amd64": {},
+    "daily-vm-libgraal_truffle_zgc-labsjdk-17-linux-amd64": {},
+    "daily-vm-libgraal_truffle_zgc-labsjdk-20-linux-amd64": {},
     "daily-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": {},
   },
@@ -109,12 +117,13 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
       "linux-amd64",
       "linux-aarch64",
       "darwin-amd64",
-      "darwin-aarch64",
-      "windows-amd64"
+      "darwin-aarch64"
     ]
     for task in [
       "libgraal_compiler",
       "libgraal_truffle",
+      "libgraal_compiler_zgc",
+      "libgraal_truffle_zgc",
       "libgraal_compiler_quickbuild",
       "libgraal_truffle_quickbuild"
     ]

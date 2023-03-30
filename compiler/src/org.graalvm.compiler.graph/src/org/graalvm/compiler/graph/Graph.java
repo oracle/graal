@@ -1171,7 +1171,7 @@ public class Graph {
         if (currentNodeSourcePosition != null && trackNodeSourcePosition()) {
             node.setNodeSourcePosition(currentNodeSourcePosition);
         }
-        if (TrackNodeInsertion.getValue(getOptions())) {
+        if (TrackNodeInsertion.getValue(getOptions()) && node.getInsertionPosition() == null) {
             node.setInsertionPosition(new NodeInsertionStackTrace());
         }
 

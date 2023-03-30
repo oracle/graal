@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.regex;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.runtime.nodes.ExpectStringNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputLengthNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputReadNode;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -50,6 +53,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 public abstract class RegexExecNode extends RegexBodyNode {
 
     private final boolean mustCheckUTF16Surrogates;
+    private @Child ExpectStringNode expectStringNode = ExpectStringNode.create();
     private @Child InputLengthNode lengthNode;
     private @Child InputReadNode charAtNode;
 
@@ -62,10 +66,12 @@ public abstract class RegexExecNode extends RegexBodyNode {
     public final RegexResult execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         assert args.length == 2;
-        return adjustIndexAndRun(frame, args[0], (int) args[1]);
+        TruffleString.Encoding encoding = getEncoding().getTStringEncoding();
+        CompilerAsserts.partialEvaluationConstant(encoding);
+        return adjustIndexAndRun(frame, expectStringNode.execute(args[0], encoding), (int) args[1]);
     }
 
-    private int adjustFromIndex(int fromIndex, Object input) {
+    private int adjustFromIndex(int fromIndex, TruffleString input) {
         if (mustCheckUTF16Surrogates && fromIndex > 0 && fromIndex < inputLength(input)) {
             assert getEncoding() == Encodings.UTF_16;
             if (Character.isLowSurrogate((char) inputRead(input, fromIndex)) && Character.isHighSurrogate((char) inputRead(input, fromIndex - 1))) {
@@ -75,7 +81,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return fromIndex;
     }
 
-    public int inputLength(Object input) {
+    public final int inputLength(TruffleString input) {
         if (lengthNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             lengthNode = insert(InputLengthNode.create());
@@ -83,7 +89,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return lengthNode.execute(input, getEncoding());
     }
 
-    public int inputRead(Object input, int i) {
+    public final int inputRead(TruffleString input, int i) {
         if (charAtNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             charAtNode = insert(InputReadNode.create());
@@ -91,7 +97,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return charAtNode.execute(input, i, getEncoding());
     }
 
-    private RegexResult adjustIndexAndRun(VirtualFrame frame, Object input, int fromIndex) {
+    private RegexResult adjustIndexAndRun(VirtualFrame frame, TruffleString input, int fromIndex) {
         if (fromIndex < 0 || fromIndex > inputLength(input)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));
@@ -103,5 +109,5 @@ public abstract class RegexExecNode extends RegexBodyNode {
         return false;
     }
 
-    protected abstract RegexResult execute(VirtualFrame frame, Object input, int fromIndex);
+    protected abstract RegexResult execute(VirtualFrame frame, TruffleString input, int fromIndex);
 }

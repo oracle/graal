@@ -86,6 +86,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
@@ -501,6 +502,18 @@ public abstract class TruffleLanguage<C> {
          * @return URL for language website.
          */
         String website() default "";
+
+        /**
+         * Specifies the most strict sandbox policy in which the language can be used. The language
+         * can be used in a context with the specified sandbox policy or a weaker one. For example,
+         * if a language specifies {@code ISOLATED} policy, it can be used in a context configured
+         * with sandbox policy {@code TRUSTED}, {@code CONSTRAINED} or {@code ISOLATED}. But it
+         * cannot be used in a context configured with the {@code UNTRUSTED} sandbox policy.
+         *
+         * @see SandboxPolicy
+         * @since 23.0
+         */
+        SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
     }
 
     /**
@@ -3500,6 +3513,20 @@ public abstract class TruffleLanguage<C> {
          */
         public void registerOnDispose(Closeable closeable) {
             LanguageAccessor.engineAccess().registerOnDispose(polyglotLanguageContext, closeable);
+        }
+
+        /**
+         * Returns the context's {@link SandboxPolicy}. A language can use the returned sandbox
+         * policy to make language-specific verifications that the sandbox requirements are met.
+         * These verifications should be made as early as possible in the
+         * {@link TruffleLanguage#createContext(Env)} method.
+         *
+         * @see SandboxPolicy
+         * @see TruffleLanguage#createContext(Env)
+         * @since 23.0
+         */
+        public SandboxPolicy getSandboxPolicy() {
+            return LanguageAccessor.engineAccess().getContextSandboxPolicy(this.polyglotLanguageContext);
         }
 
         /*

@@ -87,6 +87,7 @@ class GraalWasmDefaultTags:
     wasmconstantspolicyextratest = "wasmconstantspolicyextratest"
     wasmextratest = "wasmextratest"
     wasmbenchtest = "wasmbenchtest"
+    coverage = "coverage"
 
 
 def wat2wasm_binary():
@@ -97,19 +98,22 @@ def graal_wasm_gate_runner(args, tasks):
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
         if t:
             mx.build(["--all"])
-    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest], report=True) as t:
+
+    with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
             unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()), "WasmTestSuite"], test_report_tags={'task': t.title})
     with Task("ConstantsPolicyUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicytest], report=True) as t:
         if t:
             unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()),
                       "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"], test_report_tags={'task': t.title})
-    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest], report=True) as t:
+
+    with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(["CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(["--suite", "wasm", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
     with Task("ConstantsPolicyExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicyextratest], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+            unittest(["--suite", "wasm", "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "CSuite", "WatSuite"], test_report_tags={'task': t.title})
+
     # This is a gate used to test that all the benchmarks return the correct results. It does not upload anything,
     # and does not run on a dedicated machine.
     with Task("BenchTest", tasks, tags=[GraalWasmDefaultTags.wasmbenchtest]) as t:

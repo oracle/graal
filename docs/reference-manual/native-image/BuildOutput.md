@@ -20,50 +20,55 @@ Below is the example output when building a native executable of the `HelloWorld
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
-[1/8] Initializing...                                            (3.3s @ 0.25GB)
- Version info: 'GraalVM dev Java 19+36-jvmci-23.0-b01 CE'
- Java version info: '19+36-jvmci-23.0-b01'
- C compiler: gcc (linux, x86_64, 11.3.0)
- Garbage collector: Serial GC (max heap size: unlimited)
-[2/8] Performing analysis...  [****]                             (6.2s @ 0.47GB)
-   2,880 (71.50%) of  4,028 types reachable
-   3,519 (51.06%) of  6,892 fields reachable
-  13,339 (45.11%) of 29,570 methods reachable
-     879 types,     0 fields, and   356 methods registered for reflection
-      57 types,    56 fields, and    52 methods registered for JNI access
+[1/8] Initializing...                                            (3.3s @ 0.15GB)
+ Java version: 17.0.7+4, vendor: GraalVM Community
+ Graal compiler: optimization level: '2', target machine: 'x86-64-v3'
+ C compiler: gcc (linux, x86_64, 12.2.0)
+ Garbage collector: Serial GC (max heap size: 80% of RAM)
+[2/8] Performing analysis...  [***]                              (6.4s @ 0.83GB)
+   2,905 (71.75%) of  4,049 types reachable
+   3,534 (51.13%) of  6,912 fields reachable
+  13,234 (43.97%) of 30,095 methods reachable
+     901 types,     0 fields, and   344 methods registered for reflection
+      58 types,    58 fields, and    52 methods registered for JNI access
        4 native libraries: dl, pthread, rt, z
-[3/8] Building universe...                                       (1.1s @ 2.26GB)
-[4/8] Parsing methods...      [*]                                (1.0s @ 2.76GB)
-[5/8] Inlining methods...     [***]                              (0.8s @ 0.99GB)
-[6/8] Compiling methods...    [***]                              (6.4s @ 4.86GB)
-[7/8] Layouting methods...    [**]                               (4.2s @ 3.98GB)
-[8/8] Creating image...                                          (4.0s @ 2.04GB)
-   4.52MB (22.97%) for code area:     7,470 compilation units
-   7.06MB (35.87%) for image heap:  101,764 objects and 5 resources
-   7.52MB (38.24%) for debug info generated in 1.8s
- 590.19KB ( 2.93%) for other data
-  19.68MB in total
+[3/8] Building universe...                                       (1.2s @ 0.34GB)
+[4/8] Parsing methods...      [*]                                (0.8s @ 0.84GB)
+[5/8] Inlining methods...     [***]                              (0.5s @ 1.19GB)
+[6/8] Compiling methods...    [***]                              (5.6s @ 0.84GB)
+[7/8] Layouting methods...    [*]                                (1.1s @ 1.03GB)
+[8/8] Creating image...       [**]                               (3.9s @ 2.14GB)
+   4.42MB (23.20%) for code area:     7,526 compilation units
+   8.18MB (42.92%) for image heap:  107,049 objects and 5 resources
+   5.87MB (30.78%) for debug info generated in 1.2s
+ 605.20KB ( 3.10%) for other data
+  19.06MB in total
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
-   3.43MB java.base                        1.01MB byte[] for code metadata
- 760.98KB svm.jar (Native Image)        1000.72KB java.lang.String
- 102.06KB java.logging                   884.18KB byte[] for general heap data
-  48.03KB org.graalvm.nativeimage.base   686.91KB byte[] for java.lang.String
-  40.49KB jdk.proxy1                     659.87KB java.lang.Class
-  38.23KB jdk.proxy3                     247.50KB c.o.s.c.h.DynamicHubCompanion
-  25.73KB jdk.internal.vm.ci             239.25KB java.lang.Object[]
-  23.55KB org.graalvm.sdk                226.08KB java.util.HashMap$Node
-  11.10KB jdk.proxy2                     173.15KB java.lang.String[]
-   8.10KB jdk.internal.vm.compiler       163.22KB j.u.c.ConcurrentHashMap$Node
-   1.39KB for 2 more origins               1.70MB for 808 more object types
+   3.37MB java.base                     1008.75KB byte[] for code metadata
+ 792.12KB svm.jar (Native Image)         995.63KB java.lang.String
+ 112.32KB java.logging                   887.47KB byte[] for general heap data
+  62.07KB org.graalvm.nativeimage.base   685.47KB byte[] for java.lang.String
+  24.15KB jdk.internal.vm.ci             670.38KB java.lang.Class
+  23.14KB org.graalvm.sdk                490.13KB java.util.HashMap$Node
+   6.11KB jdk.internal.vm.compiler       297.43KB byte[] for embedded resources
+   1.35KB jdk.proxy1                     249.65KB c.o.s.c.h.DynamicHubCompanion
+   1.27KB jdk.proxy3                     195.52KB java.util.HashMap$Node[]
+   1.18KB jdk.localedata                 171.84KB java.lang.String[]
+  594.00B for 2 more packages              1.68MB for 824 more object types
 --------------------------------------------------------------------------------
-    0.5s (1.8% of total time) in 24 GCs | Peak RSS: 5.62GB | CPU load: 8.92
+Recommendations:
+ HEAP: Set max heap for improved and more predictable memory usage.
+ CPU:  Enable more CPU features with '-march=native' for improved performance.
+--------------------------------------------------------------------------------
+    0.5s (2.0% of total time) in 17 GCs | Peak RSS: 3.29GB | CPU load: 10.97
 --------------------------------------------------------------------------------
 Produced artifacts:
- /home/janedoe/helloworld/helloworld (executable, debug_info)
+ /home/janedoe/helloworld/helloworld (executable)
+ /home/janedoe/helloworld/helloworld.debug (debug_info)
  /home/janedoe/helloworld/sources (debug_info)
 ================================================================================
-Finished generating 'helloworld' in 27.4s.
+Finished generating 'helloworld' in 23.3s.
 ```
 
 ## Build Stages
@@ -74,14 +79,19 @@ In this stage, the Native Image build process is set up and [`Features`](https:/
 #### <a name="glossary-imagekind"></a>Native Image Kind
 By default, Native Image generates *executables* but it can also generate [*native shared libraries*](InteropWithNativeCode.md) and [*static executables*](guides/build-static-and-mostly-static-executable.md).
 
-#### <a name="glossary-version-info"></a>Version Info
-The version info of the Native Image process.
-This string is also used for the `java.vm.version` property within the generated native binary.
-Please report this version info when you [file issues](https://github.com/oracle/graal/issues/new).
+#### <a name="glossary-java-info"></a>Java Version Info
+The Java version and vendor of the Native Image process.
+Both are also used for the `java.vm.version` and `java.vm.vendor` properties within the generated native binary.
+Please report version and vendor when you [file issues](https://github.com/oracle/graal/issues/new).
 
-#### <a name="glossary-java-version-info"></a>Java Version Info
-The Java version info (`java.runtime.version` property) of the Native Image build process.
-Please report this version info when you [file issues](https://github.com/oracle/graal/issues/new).
+#### <a name="glossary-graal-compiler"></a>Graal Compiler
+The selected optimization level and targeted machine type used by the Graal compiler.
+The optimization level can be controlled with the `-O` option and defaults to `2`, which enables aggressive optimizations.
+Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#stage-compiling) during development.
+The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
+See [here](#recommendation-cpu) for recommendations on how to use this option.
+
+On Oracle GraalVM, the line also shows whether [Profile-Guided Optimizations](#recommendation-pgo) are *on* or *off*.
 
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.
@@ -89,13 +99,13 @@ The C compiler executable, vendor, target architecture, and version info used by
 #### <a name="glossary-gc"></a>Garbage Collector
 The garbage collector used within the generated executable:
 - The *Serial GC* is the default GC and optimized for low memory footprint and small Java heap sizes.
-- The *G1 GC* (only available with GraalVM Enterprise Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
+- The *G1 GC* (not available in GraalVM Community Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
 - The *Epsilon GC* does not perform any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
 
-For more information see the [docs on Memory Management at Image Run Time](MemoryManagement.md).
+For more information see the [docs on Memory Management](MemoryManagement.md).
 
 #### <a name="glossary-gc-max-heap-size"></a>Maximum Heap Size
-By default, the heap size is *unlimited*, allowing the garbage collector to freely allocate memory according to its policy.
+By default, the heap size is limited to a certain percentage of your system memory, allowing the garbage collector to freely allocate memory according to its policy.
 Use the `-Xmx` option when invoking your native executable (for example `./myapp -Xmx64m` for 64MB) to limit the maximum heap size for a lower and more predictable memory footprint.
 This can also improve latency in some cases.
 Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure the maximum heap size.
@@ -190,6 +200,49 @@ The total size of generated debug information (if enabled).
 #### <a name="glossary-other-data"></a>Other Data
 The amount of data in the binary that is neither in the [code area](#glossary-code-area), nor in the [heap](#glossary-image-heap), nor [debug info](#glossary-debug-info).
 This data typically contains internal information for Native Image and should not be dominating.
+
+## Recommendations
+
+The build output may contain one or more of the following recommendations that help you get the best out of Native Image.
+
+#### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
+
+The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/17/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
+Use the [tracing agent](AutomaticMetadataCollection.md) to collect such metadata for your application.
+Otherwise, your application is unlikely to work properly.
+If your application is not a desktop application (for example using Swing or AWT directly), you may want to re-evaluate whether the dependency on AWT is actually needed.
+
+#### <a name="recommendation-cpu"></a>`CPU`: Enable More CPU Features for Improved Performance
+
+The Native Image build process has determined that your CPU supports more features, such as AES or LSE, than currently enabled.
+If you deploy your application on the same machine or a similar machine with support for the same CPU features, consider using `-march=native` at build time.
+This option allows the Graal compiler to use all CPU features available, which in turn can significantly improve the performance of your application.
+Use `-march=list` to list all available machine types that can be targeted explicitly.
+
+#### <a name="recommendation-g1gc"></a>`G1GC`: Use G1 Garbage Collector for Improved Latency and Throughput
+
+The G1 garbage collector is available for your platform.
+Consider enabling it using `--gc=G1` at build time to improve the latency and throughput of your application.
+For more information see the [docs on Memory Management](MemoryManagement.md).
+For best peak performance, also consider using [Profile-Guided Optimizations](#recommendation-pgo).
+
+#### <a name="recommendation-heap"></a>`HEAP`: Specify a Maximum Heap Size
+
+Please refer to [Maximum Heap Size](#glossary-gc-max-heap-size).
+
+#### <a name="recommendation-pgo"></a>`PGO`: Use Profile-Guided Optimizations for Improved Throughput
+
+Consider using Profile-Guided Optimizations to optimize your application for improved throughput.
+These optimizations allow the Graal compiler to leverage profiling information, similar to when it is running as a JIT compiler, when AOT-compiling your application.
+For this, perform the following steps:
+
+1. Build your application with `--pgo-instrument`.
+2. Run your instrumented application with a representative workload to generate profiling information in the form of an `.iprof` file.
+3. Re-build your application and pass in the profiling information with `--pgo=<your>.iprof` to generate an optimized version of your application.
+
+Relevant guide: [Optimize a Native Executable with Profile-Guided Optimizations](guides/optimize-native-executable-with-pgo.md).
+
+For best peak performance, also consider using the [G1 garbage collector](#recommendation-g1gc).
 
 ## Resource Usage Statistics
 

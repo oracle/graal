@@ -36,6 +36,7 @@ import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
+import com.oracle.svm.core.util.TimeUtils;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
@@ -73,9 +74,9 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTimeImpl(int clockId) {
         timespec time = UnsafeStackValue.get(timespec.class);
-        if (LinuxTime.clock_gettime(clockId, time) != 0) {
+        if (LinuxTime.NoTransitions.clock_gettime(clockId, time) != 0) {
             return -1;
         }
-        return time.tv_sec() * 1_000_000_000 + time.tv_nsec();
+        return time.tv_sec() * TimeUtils.nanosPerSecond + time.tv_nsec();
     }
 }

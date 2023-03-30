@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,11 +35,11 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
+import com.oracle.svm.core.heap.UnknownObjectField;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.util.VMError;
 
 public class ImageCodeInfo {
@@ -52,6 +52,7 @@ public class ImageCodeInfo {
     private final HostedImageCodeInfo hostedImageCodeInfo = new HostedImageCodeInfo();
 
     @UnknownPrimitiveField private CodePointer codeStart;
+    @UnknownPrimitiveField private UnsignedWord entryPointOffset;
     @UnknownPrimitiveField private UnsignedWord codeSize;
     @UnknownPrimitiveField private UnsignedWord dataOffset;
     @UnknownPrimitiveField private UnsignedWord dataSize;
@@ -175,8 +176,18 @@ public class ImageCodeInfo {
         }
 
         @Override
+        public UnsignedWord getCodeEntryPointOffset() {
+            return entryPointOffset;
+        }
+
+        @Override
         public void setCodeSize(UnsignedWord value) {
             codeSize = value;
+        }
+
+        @Override
+        public void setCodeEntryPointOffset(UnsignedWord offset) {
+            entryPointOffset = offset;
         }
 
         @Override

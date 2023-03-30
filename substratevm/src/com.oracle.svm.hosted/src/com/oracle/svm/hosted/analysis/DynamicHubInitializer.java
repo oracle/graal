@@ -46,7 +46,6 @@ import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.util.ReflectionUtil;
@@ -157,7 +156,7 @@ public class DynamicHubInitializer {
              */
             enumConstants = (Enum<?>[]) javaClass.getEnumConstants();
         } else {
-            enumConstants = (Enum<?>[]) SubstrateObjectConstant.asObject(constantReflection.readFieldValue(found, null));
+            enumConstants = metaAccess.getUniverse().getSnippetReflection().asObject(Enum[].class, constantReflection.readFieldValue(found, null));
             assert enumConstants != null;
         }
         return enumConstants;
@@ -222,7 +221,7 @@ public class DynamicHubInitializer {
         try {
             signature = (String) getSignature.invoke(javaClass);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
         hub.setSignature(signature);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,7 @@ public interface MemoryAccess extends ValueNodeInterface {
      *         for the {@linkplain LocationIdentity} returned by {@linkplain #getLocationIdentity()}
      */
     default MemoryKill getLastLocationAccess() {
-        throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this);
+        throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -50,7 +50,7 @@ public interface MemoryAccess extends ValueNodeInterface {
      *            {@linkplain LocationIdentity} returned by {@linkplain #getLocationIdentity()}
      */
     default void setLastLocationAccess(MemoryKill lla) {
-        throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this);
+        throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this); // ExcludeFromJacocoGeneratedReport
     }
 
 }

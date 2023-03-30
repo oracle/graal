@@ -26,9 +26,9 @@
 
 package org.graalvm.compiler.nodes.calc;
 
-import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.NumUtil.Signedness;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -99,7 +99,7 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         } else if (this instanceof UnsignedMinNode) {
             nodeValueMap.setResult(this, gen.emitMathUnsignedMin(op1, op2));
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -139,7 +139,7 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
             long upper = NumUtil.maxUnsigned(xStamp.unsignedUpperBound(), yStamp.unsignedUpperBound());
             return Long.compareUnsigned(upper, NumUtil.maxValueUnsigned(resultBits)) <= 0;
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -280,7 +280,7 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
     protected static ValueNode maybeExtendForCompare(ValueNode value, LoweringProvider lowerer, Signedness signedness) {
         Stamp fromStamp = value.stamp(NodeView.DEFAULT);
         if (fromStamp instanceof PrimitiveStamp && PrimitiveStamp.getBits(fromStamp) < lowerer.smallestCompareWidth()) {
-            Stamp toStamp = StampFactory.forInteger(lowerer.smallestCompareWidth());
+            Stamp toStamp = IntegerStamp.create(lowerer.smallestCompareWidth());
             boolean zeroExtend = (signedness == Signedness.UNSIGNED);
             return IntegerConvertNode.convert(value, toStamp, zeroExtend, NodeView.DEFAULT);
         }

@@ -24,25 +24,20 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
+
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.ExitStatus;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton
 public final class ClassForNameSupport {
-
-    public static class Options {
-        @Option(help = "Enable termination caused by missing metadata.")//
-        public static final HostedOptionKey<Boolean> ExitOnUnknownClassLoadingFailure = new HostedOptionKey<>(false);
-    }
 
     static ClassForNameSupport singleton() {
         return ImageSingletons.lookup(ClassForNameSupport.class);
@@ -51,6 +46,8 @@ public final class ClassForNameSupport {
     /** The map used to collect registered classes. */
     private final EconomicMap<String, Object> knownClasses = ImageHeapMap.create();
 
+    private static final Object NEGATIVE_QUERY = new Object();
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
         assert !clazz.isPrimitive() : "primitive classes cannot be looked up by name";
@@ -58,13 +55,24 @@ public final class ClassForNameSupport {
             return; // must be defined at runtime before it can be looked up
         }
         String name = clazz.getName();
-        VMError.guarantee(!singleton().knownClasses.containsKey(name) || singleton().knownClasses.get(name) == clazz);
-        singleton().knownClasses.put(name, clazz);
+        if (!singleton().knownClasses.containsKey(name) || !(singleton().knownClasses.get(name) instanceof Throwable)) {
+            /*
+             * If the class has already been seen as throwing an error, we don't overwrite this
+             * error
+             */
+            VMError.guarantee(!singleton().knownClasses.containsKey(name) || singleton().knownClasses.get(name) == clazz);
+            singleton().knownClasses.put(name, clazz);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerExceptionForClass(String className, Throwable t) {
         singleton().knownClasses.put(className, t);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerNegativeQuery(String className) {
+        singleton().knownClasses.put(className, NEGATIVE_QUERY);
     }
 
     public static Class<?> forNameOrNull(String className, ClassLoader classLoader) {
@@ -84,6 +92,9 @@ public final class ClassForNameSupport {
             return null;
         }
         Object result = singleton().knownClasses.get(className);
+        if (result == NEGATIVE_QUERY) {
+            result = new ClassNotFoundException(className);
+        }
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
         }
@@ -91,29 +102,31 @@ public final class ClassForNameSupport {
         // TODO rewrite stack traces (GR-42813)
         if (result instanceof Class<?>) {
             return (Class<?>) result;
-        } else if (returnNullOnException && (result instanceof Throwable || result == null)) {
-            return null;
-        } else if (result == null) {
-            if (ClassForNameSupport.Options.ExitOnUnknownClassLoadingFailure.getValue()) {
-                terminateUnconfigured(className);
+        } else if (result instanceof Throwable) {
+            if (returnNullOnException) {
+                return null;
             }
-            throw new ClassNotFoundException(className);
-        } else if (result instanceof Error) {
-            throw (Error) result;
-        } else if (result instanceof ClassNotFoundException) {
-            throw (ClassNotFoundException) result;
-        } else {
-            throw VMError.shouldNotReachHere("Class.forName result should be Class, ClassNotFoundException or Error: " + result);
+
+            if (result instanceof Error) {
+                throw (Error) result;
+            } else if (result instanceof ClassNotFoundException) {
+                throw (ClassNotFoundException) result;
+            }
+        } else if (result == null) {
+            if (throwMissingRegistrationErrors()) {
+                throw MissingReflectionRegistrationUtils.forClass(className);
+            }
+
+            if (returnNullOnException) {
+                return null;
+            } else {
+                throw new ClassNotFoundException(className);
+            }
         }
+        throw VMError.shouldNotReachHere("Class.forName result should be Class, ClassNotFoundException or Error: " + result);
     }
 
     public static int count() {
         return singleton().knownClasses.size();
-    }
-
-    private static void terminateUnconfigured(String className) {
-        System.out.println("Missing metadata error: Unable to process Class.forName invocation for class name " + className);
-        new ClassNotFoundException(className).printStackTrace(System.out);
-        System.exit(ExitStatus.MISSING_METADATA.getValue());
     }
 }

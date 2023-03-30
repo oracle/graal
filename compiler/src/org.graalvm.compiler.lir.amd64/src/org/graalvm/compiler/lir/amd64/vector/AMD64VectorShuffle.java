@@ -63,7 +63,6 @@ import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
-import jdk.vm.ci.code.Register;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp;
@@ -76,11 +75,12 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 public class AMD64VectorShuffle {
 
@@ -164,10 +164,6 @@ public class AMD64VectorShuffle {
         @Temp({REG}) protected AllocatableValue selector;
 
         byte[] selectorData;
-
-        public ConstPermuteBytesUsingTableOp(LIRGeneratorTool tool, AllocatableValue result, AllocatableValue source, byte[] selectorData) {
-            this(tool, result, source, selectorData, null);
-        }
 
         public ConstPermuteBytesUsingTableOp(LIRGeneratorTool tool, AllocatableValue result, AllocatableValue source, byte[] selectorData, AllocatableValue mask) {
             super(TYPE);
@@ -311,7 +307,7 @@ public class AMD64VectorShuffle {
                     op = VSHUFPD;
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isRegister(source2)) {
@@ -374,7 +370,7 @@ public class AMD64VectorShuffle {
                     }
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("Unexpected vector size for extract-128-bits op" + size);
+                    throw GraalError.shouldNotReachHere("Unexpected vector size for extract-128-bits op" + size); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isRegister(result)) {
@@ -489,7 +485,7 @@ public class AMD64VectorShuffle {
                     }
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere("Unexpected vector size for extract-128-bits op" + size);
+                    throw GraalError.shouldNotReachHere("Unexpected vector size for extract-128-bits op" + size); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isRegister(source2)) {

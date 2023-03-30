@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -174,8 +174,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     private final LoopNodeFactory loopNodeFactory;
     private final EngineCacheSupport engineCacheSupport;
     private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
-    private final OptionDescriptors engineOptions;
     private final FloodControlHandler floodControlHandler;
+    private final OptionDescriptors[] runtimeOptionDescriptors;
+    private volatile OptionDescriptors engineOptions;
 
     public GraalTruffleRuntime(Iterable<Class<?>> extraLookupTypes) {
         this.lookupTypes = initLookupTypes(extraLookupTypes);
@@ -184,7 +185,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         EngineCacheSupport support = loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
         options.add(PolyglotCompilerOptions.getDescriptors());
-        this.engineOptions = OptionDescriptors.createUnion(options.toArray(new OptionDescriptors[options.size()]));
+        this.runtimeOptionDescriptors = options.toArray(new OptionDescriptors[options.size()]);
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
@@ -196,20 +197,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public String getName() {
-        String compilerConfigurationName = getCompilerConfigurationName();
-        assert compilerConfigurationName != null;
-        String suffix;
-        if (compilerConfigurationName == null) {
-            suffix = "Unknown";
-        } else if (compilerConfigurationName.equals("community")) {
-            suffix = "CE";
-        } else if (compilerConfigurationName.equals("enterprise")) {
-            suffix = "EE";
-        } else {
-            assert false : "unexpected compiler configuration name: " + compilerConfigurationName;
-            suffix = compilerConfigurationName;
-        }
-        return "GraalVM " + suffix;
+        String compilerConfigurationName = String.valueOf(getCompilerConfigurationName());
+        return switch (compilerConfigurationName) {
+            case "community" -> "GraalVM CE";
+            case "enterprise" -> "Oracle GraalVM";
+            default -> {
+                assert false : "unexpected compiler configuration name: " + compilerConfigurationName;
+                yield "GraalVM " + compilerConfigurationName;
+            }
+        };
     }
 
     /**
@@ -1240,7 +1236,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     final OptionDescriptors getEngineOptionDescriptors() {
-        return engineOptions;
+        // The engineOptions field needs to be initialized lazily because the GraalRuntimeAccessor
+        // cannot be used in the GraalTruffleRuntime constructor. The GraalTruffleRuntime must be
+        // fully initialized before using the accessor otherwise a NullPointerException will be
+        // thrown from the Accessor.Constants static initializer because the Truffle#getRuntime
+        // still returns null.
+        OptionDescriptors res = engineOptions;
+        if (res == null) {
+            res = GraalRuntimeAccessor.LANGUAGE.createOptionDescriptorsUnion(runtimeOptionDescriptors);
+            engineOptions = res;
+        }
+        return res;
     }
 
     /**

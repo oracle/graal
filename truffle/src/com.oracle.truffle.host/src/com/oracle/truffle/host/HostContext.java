@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,7 +96,7 @@ final class HostContext {
     final TruffleLanguage.Env env;
     final AbstractHostAccess access;
 
-    @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
+    @SuppressWarnings("serial") final HostException stackoverflowError = HostException.wrap(new StackOverflowError() {
         @SuppressWarnings("sync-override")
         @Override
         public Throwable fillInStackTrace() {
@@ -299,7 +299,7 @@ final class HostContext {
      * is why this coercion should only be used in the catch block at the outermost API call.
      */
     @TruffleBoundary
-    <T extends Throwable> RuntimeException hostToGuestException(T e) {
+    <T extends Throwable> RuntimeException hostToGuestException(T e, Node location) {
         assert !(e instanceof HostException) : "host exceptions not expected here";
 
         if (e instanceof ThreadDeath) {
@@ -311,13 +311,18 @@ final class HostContext {
             // fall-through and treat it as any other host exception
         }
         try {
-            return new HostException(e, this);
+            return HostException.wrap(e, this, location);
         } catch (StackOverflowError stack) {
             /*
              * Cannot create a new host exception. Use a readily prepared instance.
              */
             return stackoverflowError;
         }
+    }
+
+    @TruffleBoundary
+    <T extends Throwable> RuntimeException hostToGuestException(T e) {
+        return hostToGuestException(e, null);
     }
 
     Value asValue(Node node, Object value) {

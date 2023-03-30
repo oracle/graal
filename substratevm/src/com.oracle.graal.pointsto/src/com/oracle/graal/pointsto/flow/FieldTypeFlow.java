@@ -113,7 +113,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
 
     @Override
     public String toString() {
-        return "FieldFlow<" + source.format("%h.%n") + "\n" + getState() + ">";
+        return "FieldFlow<" + source.format("%h.%n") + System.lineSeparator() + getState() + ">";
     }
 
 }

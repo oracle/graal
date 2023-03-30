@@ -574,7 +574,7 @@ local devkits = graal_common.devkits;
       $.upload_file_sizes,
     ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "windows", "amd64", java_version),
     notify_groups:: ['deploy'],
-    timelimit: '1:30:00',
+    timelimit: '1:45:00',
   },
 
   deploy_graalvm_ruby(os, arch, java_version): {

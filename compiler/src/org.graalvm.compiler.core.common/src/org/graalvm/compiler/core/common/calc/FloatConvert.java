@@ -73,7 +73,7 @@ public enum FloatConvert {
             case L2F:
                 return F2L;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

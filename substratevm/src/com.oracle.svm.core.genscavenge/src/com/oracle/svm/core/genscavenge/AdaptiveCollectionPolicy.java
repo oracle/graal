@@ -270,7 +270,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         assert isAligned(desiredEdenSize);
         desiredEdenSize = minSpaceSize(desiredEdenSize);
 
-        UnsignedWord edenLimit = maxEdenSize();
+        UnsignedWord edenLimit = getMaximumEdenSize();
         if (desiredEdenSize.aboveThan(edenLimit)) {
             /*
              * If the policy says to get a larger eden but is hitting the limit, don't decrease

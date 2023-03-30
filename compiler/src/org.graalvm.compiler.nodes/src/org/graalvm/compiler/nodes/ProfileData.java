@@ -57,9 +57,20 @@ public abstract class ProfileData {
          */
         INJECTED,
         /**
-         * The profiling information comes from mature profiling information.
+         * The profiling information comes from a profiling execution of the current program.
          */
         PROFILED,
+        /**
+         * The profiling information was collected from a profiling execution of a different
+         * program. For example, profiles of JDK methods collected from all benchmark runs and
+         * aggregated. These profiles are then applied to JDK methods without a {@link #PROFILED}
+         * profile.
+         */
+        ADOPTED,
+        /**
+         * The profiling information comes from the ML model.
+         */
+        INFERRED,
         /**
          * The profiling information comes from immature profiling information or some unknown
          * source.
@@ -84,9 +95,28 @@ public abstract class ProfileData {
         }
 
         public static boolean isTrusted(ProfileSource source) {
-            return source == INJECTED || source == PROFILED;
+            return source == INJECTED || source == PROFILED || source == ADOPTED || source == INFERRED;
         }
 
+        public boolean isInjected() {
+            return this == INJECTED;
+        }
+
+        public boolean isProfiled() {
+            return this == PROFILED;
+        }
+
+        public boolean isAdopted() {
+            return this == ADOPTED;
+        }
+
+        public boolean isInferred() {
+            return this == INFERRED;
+        }
+
+        public boolean isUnknown() {
+            return this == UNKNOWN;
+        }
     }
 
     public ProfileSource getProfileSource() {
@@ -152,6 +182,14 @@ public abstract class ProfileData {
 
         public static BranchProbabilityData profiled(double probability) {
             return BranchProbabilityData.create(probability, ProfileSource.PROFILED);
+        }
+
+        public static BranchProbabilityData adopted(double probability) {
+            return BranchProbabilityData.create(probability, ProfileSource.ADOPTED);
+        }
+
+        public static BranchProbabilityData inferred(double probability) {
+            return BranchProbabilityData.create(probability, ProfileSource.INFERRED);
         }
 
         /**

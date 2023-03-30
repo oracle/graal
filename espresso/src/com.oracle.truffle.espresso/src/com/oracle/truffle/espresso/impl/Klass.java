@@ -295,7 +295,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
 
-        return new KeysArray(members.toArray(new String[members.size()]));
+        return new KeysArray<>(members.toArray(new String[members.size()]));
     }
 
     protected static boolean isObjectKlass(Klass receiver) {
@@ -463,6 +463,44 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     boolean isMetaInstance(Object instance) {
         return instance instanceof StaticObject && instanceOf((StaticObject) instance, this);
+    }
+
+    @ExportMessage
+    boolean hasMetaParents() {
+        if (isPrimitive()) {
+            return false;
+        }
+        if (isInterface()) {
+            return getSuperInterfaces().length > 0;
+        }
+        return this != getMeta().java_lang_Object;
+    }
+
+    @ExportMessage
+    Object getMetaParents() throws UnsupportedMessageException {
+        if (hasMetaParents()) {
+            Klass[] result;
+            if (isInterface()) {
+                ObjectKlass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length];
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i] = superInterfaces[i];
+                }
+            } else {
+                Klass superKlass = getSuperKlass();
+                Klass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length + 1];
+                // put the super class first in array
+                result[0] = superKlass;
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i + 1] = superInterfaces[i];
+                }
+            }
+            return new KeysArray<>(result);
+        }
+        throw UnsupportedMessageException.create();
     }
 
     // endregion ### Meta-objects

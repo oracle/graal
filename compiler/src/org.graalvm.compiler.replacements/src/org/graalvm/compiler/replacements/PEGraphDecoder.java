@@ -404,37 +404,37 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public <T extends ValueNode> T append(T value) {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public void push(JavaKind kind, ValueNode value) {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public void setStateAfter(StateSplit stateSplit) {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public GraphBuilderContext getParent() {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public Bytecode getCode() {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -458,12 +458,12 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public InvokeKind getInvokeKind() {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public JavaType getInvokeReturnType() {
-            throw unimplemented();
+            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -517,7 +517,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public void push(JavaKind kind, ValueNode value) {
             if (pushedNode != null) {
-                throw unimplemented("Only one push is supported");
+                throw unimplemented("Only one push is supported"); // ExcludeFromJacocoGeneratedReport
             }
             pushedNode = value;
         }
@@ -559,7 +559,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (v instanceof FixedNode) {
                 FixedNode fixedNode = (FixedNode) v;
                 if (lastInstr != null) {
+                    FixedNode oldNext = lastInstr.next();
                     lastInstr.setNext(fixedNode);
+                    if (oldNext != null) {
+                        /*
+                         * For now, we only need to handle the case where the new instruction ends
+                         * the control flow, in which case we can just delete oldNext after it is
+                         * unliked from the graph. If we need more complete support in the future,
+                         * we would need to append oldNext again after determining the value of
+                         * lastInstr below.
+                         */
+                        GraalError.guarantee(fixedNode instanceof ControlSinkNode, "deleting the old next instruction is only implemented when the new instruction ends the control flow.");
+                        oldNext.safeDelete();
+                    }
                 }
 
                 if (fixedNode instanceof FixedWithNextNode) {
@@ -571,7 +583,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     }
                 } else if (fixedNode instanceof WithExceptionNode) {
                     if (exceptionEdgeConsumed) {
-                        throw GraalError.unimplemented("Only one node can consume the exception edge");
+                        throw GraalError.unimplemented("Only one node can consume the exception edge"); // ExcludeFromJacocoGeneratedReport
                     }
                     exceptionEdgeConsumed = true;
                     WithExceptionNode withExceptionNode = (WithExceptionNode) fixedNode;
@@ -612,7 +624,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
             if (invokeConsumed || exceptionEdgeConsumed) {
-                throw GraalError.unimplemented("handleReplacedInvoke can be called only once, and also consumes the exception edge");
+                throw GraalError.unimplemented("handleReplacedInvoke can be called only once, and also consumes the exception edge"); // ExcludeFromJacocoGeneratedReport
             }
             invokeConsumed = true;
             exceptionEdgeConsumed = true;
@@ -646,7 +658,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 exceptionNode.setStateAfter(methodScope.exceptionState);
 
                 if (exceptionEdgeConsumed) {
-                    throw GraalError.unimplemented("Only one node can consume the exception edge");
+                    throw GraalError.unimplemented("Only one node can consume the exception edge"); // ExcludeFromJacocoGeneratedReport
                 }
                 exceptionEdgeConsumed = true;
 
@@ -677,7 +689,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         @Override
         public void push(JavaKind kind, ValueNode value) {
             if (pushedNode != null) {
-                throw unimplemented("Only one push is supported");
+                throw unimplemented("Only one push is supported"); // ExcludeFromJacocoGeneratedReport
             }
             pushedNode = value;
         }
@@ -733,7 +745,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 }
             } else if (value instanceof FixedNode) {
                 // Block terminating fixed nodes shouldn't be inserted
-                throw GraalError.shouldNotReachHere(String.format("value: %s, insertBefore: %s", value, insertBefore));
+                throw GraalError.shouldNotReachHere(String.format("value: %s, insertBefore: %s", value, insertBefore)); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -853,7 +865,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             /* Check that the control flow graph can be computed, to catch problems early. */
             assert CFGVerifier.verify(ControlFlowGraph.compute(graph, true, true, true, true));
         } catch (Throwable ex) {
-            throw GraalError.shouldNotReachHere(ex, "Control flow graph not valid after partial evaluation");
+            throw GraalError.shouldNotReachHere(ex, "Control flow graph not valid after partial evaluation"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1093,6 +1105,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
 
             if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
+                if (invocationPlugin.isDecorator()) {
+                    graphBuilderContext.lastInstr.setNext(invoke.asFixedNode());
+                    return false;
+                }
 
                 if (graphBuilderContext.invokeConsumed) {
                     /* Nothing to do. */
@@ -1115,7 +1131,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     deleteInvoke(invoke);
                 }
                 return true;
-
             } else {
                 /* Intrinsification failed, restore original state: invoke is in Graph. */
                 invokePredecessor.setNext(invoke.asFixedNode());
@@ -1126,7 +1141,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     protected InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
         Object invocationPlugin = invocationPluginCache.computeIfAbsent(targetMethod, method -> {
-            Object plugin = invocationPlugins.lookupInvocation(targetMethod, options);
+            Object plugin = invocationPlugins.lookupInvocation(targetMethod, true, true, options);
             if (plugin == null) {
                 plugin = CACHED_NULL_VALUE;
             }
@@ -1397,7 +1412,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return (T) node;
             }
         }
-        throw GraalError.shouldNotReachHere();
+        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unchecked")
@@ -1608,7 +1623,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         if (node instanceof ParameterNode) {
             ParameterNode param = (ParameterNode) node;
             if (methodScope.isInlinedMethod()) {
-                throw GraalError.shouldNotReachHere("Parameter nodes are already registered when the inlined scope is created");
+                throw GraalError.shouldNotReachHere("Parameter nodes are already registered when the inlined scope is created"); // ExcludeFromJacocoGeneratedReport
 
             } else if (parameterPlugin != null) {
                 assert !methodScope.isInlinedMethod();

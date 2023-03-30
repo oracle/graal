@@ -82,7 +82,7 @@ public class HotSpotSnippetReflectionProvider implements SnippetReflectionProvid
                  * mode and not in libgraal mode. But that affects only OpenJDK 11, and we no longer
                  * support JDK 11 at all. OpenJDK 17 already has the necessary methods.
                  */
-                throw GraalError.shouldNotReachHere(ex);
+                throw GraalError.shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

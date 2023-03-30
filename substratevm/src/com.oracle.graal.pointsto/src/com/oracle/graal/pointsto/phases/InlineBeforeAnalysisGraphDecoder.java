@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import org.graalvm.compiler.replacements.PEGraphDecoder;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.HostedProviders;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -85,9 +86,9 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
     protected final BigBang bb;
     protected final InlineBeforeAnalysisPolicy<S> policy;
 
-    protected InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph) {
-        super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, bb.getProviders(), null,
-                        bb.getProviders().getGraphBuilderPlugins().getInvocationPlugins(),
+    protected InlineBeforeAnalysisGraphDecoder(BigBang bb, InlineBeforeAnalysisPolicy<S> policy, StructuredGraph graph, HostedProviders providers) {
+        super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, null,
+                        providers.getGraphBuilderPlugins().getInvocationPlugins(),
                         new InlineInvokePlugin[]{new InlineBeforeAnalysisInlineInvokePlugin(policy)},
                         null, policy.nodePlugins, null, null,
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true, false);
@@ -265,7 +266,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
             } else if (cur instanceof ControlSinkNode) {
                 /* End of this control flow path. */
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
             }
 
             if (cur instanceof AbstractMergeNode) {

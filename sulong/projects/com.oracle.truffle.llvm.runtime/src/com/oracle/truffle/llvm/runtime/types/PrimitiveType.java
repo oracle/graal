@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -226,6 +226,8 @@ public final class PrimitiveType extends Type {
             case DOUBLE:
                 return CommonNodeFactory.createSimpleConstantNoArray(0.0d, this);
             case X86_FP80:
+                return CommonNodeFactory.createSimpleConstantNoArray(null, this);
+            case F128:
                 return CommonNodeFactory.createSimpleConstantNoArray(null, this);
             default:
                 throw new LLVMParserException("Unsupported Type for Zero Constant: " + this);

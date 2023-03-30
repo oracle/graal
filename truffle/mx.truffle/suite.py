@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.15.3",
+  "mxversion": "6.17.0",
   "name" : "truffle",
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -63,9 +63,6 @@ suite = {
       {
         "name" : "sdk",
         "subdir": True,
-        "urls" : [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-         ]
       },
     ]
   },
@@ -108,8 +105,8 @@ suite = {
     },
 
     "TRUFFLE_JCODINGS": {
-      "digest" : "sha512:49ab9ee3a2d2e7cdc4780252f6f796de1837e8b6dde3480b840faea711d16cbb9ea2c3d945e3cc8916b996a46164f866d3ed2cfdc6eeffb93087131b59e53ec0",
-      "version" : "1.0.56.7",
+      "digest" : "sha512:455f3dc287181c185ab87c03e88cc89615f3da262358f44ea01bb3cc9f04d8e3cee7911f8a14a6403d3285d9b54812aaa48ade093a0b3ec4e594adbbda1d5387",
+      "version" : "1.0.58.1",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/graalvm-shadowed-jcodings-{version}.jar"],
       "exports" : [],
       "license": ["MIT"],
@@ -1028,7 +1025,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.api.impl to org.graalvm.locator",
           "com.oracle.truffle.api to org.graalvm.locator, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",

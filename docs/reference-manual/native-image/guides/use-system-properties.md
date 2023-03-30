@@ -27,7 +27,12 @@ In other words:
 ## Reading System Properties at Build Time
 You can read system properties at build time and incorporate them into the resulting executable file, as shown in the following example.
 
-1. Save the following Java code into a file named _ReadProperties.java_, then compile it using `javac`:
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``
+
+2. Save the following Java code into a file named _ReadProperties.java_, then compile it using `javac`:
 
     ```java
     public class ReadProperties {
@@ -57,15 +62,15 @@ You can read system properties at build time and incorporate them into the resul
     }
     ```
 
-2. Build the native executable, passing a system property as a command-line argument. Then run the native executable, passing a different system property on the command line.
-
+3. Build the native executable, passing a system property as a command-line argument. Then run the native executable, passing a different system property on the command line.
     ```shell
     native-image -Dstatic_key=STATIC_VALUE ReadProperties
+    ```
+    ```shell
     ./readproperties -Dinstance_key=INSTANCE_VALUE
     ```
 
-    You should see the following output
-
+    You should see the following output:
     ```
     Getting value of static property with key: static_key
     Value of static property: null
@@ -75,22 +80,19 @@ You can read system properties at build time and incorporate them into the resul
 
     This indicates that the class static initializer was not run at **build time**, but at **runtime**.
 
-3. To force the class static initializer to run at build time, use the `--initialize-at-build-time` flag, as follows:
+4. To force the class static initializer to run at build time, use the `--initialize-at-build-time` flag, as follows:
 
     ```shell
     native-image --initialize-at-build-time=ReadProperties -Dstatic_key=STATIC_VALUE ReadProperties
     ```
-
-    In the output from the `native-image` tool you should see output similar to the following
-
+    In the output from the `native-image` tool you should see output similar to the following:
     ```
     ...
     [1/7] Initializing...                                            (7.7s @ 0.07GB)
     Getting value of static property with key: static_key
     ...
     ```
-    Run the executable again, as follows
-
+    Run the executable again, as follows:
     ```shell
     ./readproperties -Dinstance_key=INSTANCE_VALUE
     ```

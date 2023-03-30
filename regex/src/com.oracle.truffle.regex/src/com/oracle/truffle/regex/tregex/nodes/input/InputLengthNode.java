@@ -53,12 +53,7 @@ public abstract class InputLengthNode extends Node {
         return InputLengthNodeGen.create();
     }
 
-    public abstract int execute(Object input, Encodings.Encoding encoding);
-
-    @Specialization
-    static int doString(String input, @SuppressWarnings("unused") Encodings.Encoding encoding) {
-        return input.length();
-    }
+    public abstract int execute(TruffleString input, Encodings.Encoding encoding);
 
     @Specialization
     static int doTString(TruffleString input, Encodings.Encoding encoding) {

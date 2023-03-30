@@ -26,17 +26,28 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.svm.test.jfr.events.ThreadEvent;
 
+import jdk.jfr.consumer.RecordedEvent;
+
 /**
  * Test if event ({@link ThreadEvent}) with {@link Thread} payload is working.
  */
-public class TestThreadEvent extends JfrTest {
+public class TestThreadEvent extends JfrRecordingTest {
     @Override
     public String[] getTestedEvents() {
         return new String[]{ThreadEvent.class.getName()};
+    }
+
+    @Override
+    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
+        assertEquals(1, events.size());
     }
 
     @Test

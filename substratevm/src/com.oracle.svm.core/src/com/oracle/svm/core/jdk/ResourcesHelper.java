@@ -73,8 +73,8 @@ public class ResourcesHelper {
         return Resources.createURL(resourceName);
     }
 
-    public static URL nameToResourceURL(String moduleName, String resourceName) {
-        return Resources.createURL(moduleName, resourceName);
+    public static URL nameToResourceURL(Module module, String resourceName) {
+        return Resources.createURL(module, resourceName);
     }
 
     public static InputStream nameToResourceInputStream(String resourceName) throws IOException {

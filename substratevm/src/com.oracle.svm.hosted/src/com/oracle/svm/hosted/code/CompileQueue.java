@@ -62,6 +62,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.StableMethodNameFormatter;
+import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -88,6 +89,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -477,6 +479,15 @@ public class CompileQueue {
     protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
     }
 
+    /**
+     * Get suites for the compilation of {@code graph}. Parameter {@code suites} can be used to
+     * create new suites, they must not be modified directly as this code is called concurrently by
+     * multiple threads. Rather implementors can copy suites and modify them.
+     */
+    protected Suites createSuitesForRegularCompile(@SuppressWarnings("unused") StructuredGraph graph, Suites originalSuites) {
+        return originalSuites;
+    }
+
     protected PhaseSuite<HighTierContext> afterParseCanonicalization() {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
         phaseSuite.appendPhase(new ImplicitAssertionsPhase());
@@ -736,6 +747,27 @@ public class CompileQueue {
         }
     }
 
+    // Wrapper to clearly identify phase
+    class TrivialInlinePhase extends Phase {
+        final InliningGraphDecoder decoder;
+        final HostedMethod method;
+
+        TrivialInlinePhase(InliningGraphDecoder decoder, HostedMethod method) {
+            this.decoder = decoder;
+            this.method = method;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            decoder.decode(method);
+        }
+
+        @Override
+        public CharSequence getName() {
+            return "TrivialInline";
+        }
+    }
+
     @SuppressWarnings("try")
     private void doInlineTrivial(DebugContext debug, HostedMethod method) {
         /*
@@ -760,18 +792,34 @@ public class CompileQueue {
         try (var s = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
-            decoder.decode(method);
+            new TrivialInlinePhase(decoder, method).apply(graph);
 
             if (inliningPlugin.inlinedDuringDecoding) {
                 CanonicalizerPhase.create().apply(graph, providers);
-                /*
-                 * Publish the new graph, it can be picked up immediately by other threads trying to
-                 * inline this method. This can be a minor source of non-determinism in inlining
-                 * decisions.
-                 */
-                method.compilationInfo.encodeGraph(graph);
-                if (checkTrivial(method, graph)) {
+
+                if (!method.compilationInfo.isTrivialInliningDisabled() && graph.getNodeCount() > SubstrateOptions.MaxNodesAfterTrivialInlining.getValue()) {
+                    /*
+                     * The method is too larger after inlining. There is no good way of just
+                     * inlining some but not all trivial callees, because inlining is done during
+                     * graph decoding so the total graph size is not known until the whole graph is
+                     * decoded. We therefore disable all trivial inlining for the method. Except
+                     * callees that are annotated as "always inline" - therefore we need to pretend
+                     * that there was inlining progress, which triggers another round of inlining
+                     * where only "always inline" methods are inlined.
+                     */
+                    method.compilationInfo.setTrivialInliningDisabled(true);
                     inliningProgress = true;
+
+                } else {
+                    /*
+                     * Publish the new graph, it can be picked up immediately by other threads
+                     * trying to inline this method. This can be a minor source of non-determinism
+                     * in inlining decisions.
+                     */
+                    method.compilationInfo.encodeGraph(graph);
+                    if (checkTrivial(method, graph)) {
+                        inliningProgress = true;
+                    }
                 }
             }
         } catch (Throwable ex) {
@@ -786,7 +834,7 @@ public class CompileQueue {
         if (callee.shouldBeInlined()) {
             return true;
         }
-        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod()) {
+        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod() && !method.compilationInfo.isTrivialInliningDisabled()) {
             return true;
         }
         return false;
@@ -1153,7 +1201,8 @@ public class CompileQueue {
                         OptionValues options,
                         DebugContext debug,
                         CompilationResult compilationResult,
-                        Register uncompressedNullRegister) {
+                        Register uncompressedNullRegister,
+                        LIR lir) {
             return new CompilationResultBuilder(providers,
                             frameMap,
                             asm,
@@ -1164,7 +1213,8 @@ public class CompileQueue {
                             compilationResult,
                             uncompressedNullRegister,
                             EconomicMap.wrapMap(dataCache),
-                            CompilationResultBuilder.NO_VERIFIERS);
+                            CompilationResultBuilder.NO_VERIFIERS,
+                            lir);
         }
     }
 
@@ -1188,7 +1238,7 @@ public class CompileQueue {
 
             VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: %s", method);
             StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
-            customizeGraph(graph);
+            customizeGraph(graph, reason);
 
             GraalError.guarantee(graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS,
                             "Hosted compilations must have explicit exceptions [guard stage] %s=%s", graph, graph.getGraphState().getGuardsStage());
@@ -1219,7 +1269,7 @@ public class CompileQueue {
                 method.compilationInfo.numDuringCallEntryPoints = graph.getNodes(MethodCallTargetNode.TYPE).snapshot().stream().map(MethodCallTargetNode::invoke).filter(
                                 invoke -> method.compilationInfo.isDeoptEntry(invoke.bci(), true, false)).count();
 
-                Suites suites = method.isDeoptTarget() ? deoptTargetSuites : regularSuites;
+                Suites suites = method.isDeoptTarget() ? deoptTargetSuites : createSuitesForRegularCompile(graph, regularSuites);
                 LIRSuites lirSuites = method.isDeoptTarget() ? deoptTargetLIRSuites : regularLIRSuites;
 
                 CompilationResult result = backend.newCompilationResult(compilationIdentifier, method.getQualifiedName());
@@ -1255,17 +1305,21 @@ public class CompileQueue {
      *
      * @param graph A newly created {@link StructuredGraph graph} for one particular compilation
      *            unit.
+     * @param reason The reason for compiling this compilation unit.
      */
-    protected void customizeGraph(StructuredGraph graph) {
+    protected void customizeGraph(StructuredGraph graph, CompileReason reason) {
         // Hook for subclasses
+    }
+
+    protected boolean isDynamicallyResolvedCall(@SuppressWarnings("unused") CompilationResult result, @SuppressWarnings("unused") Call call) {
+        return false;
     }
 
     protected void ensureCalleesCompiled(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (Infopoint infopoint : result.getInfopoints()) {
-            if (infopoint instanceof Call) {
-                Call call = (Call) infopoint;
+            if (infopoint instanceof Call call) {
                 HostedMethod callTarget = (HostedMethod) call.target;
-                if (call.direct) {
+                if (call.direct || isDynamicallyResolvedCall(result, call)) {
                     ensureCompiled(callTarget, new DirectCallReason(method, reason));
                 } else if (callTarget != null && callTarget.getImplementations() != null) {
                     for (HostedMethod impl : callTarget.getImplementations()) {

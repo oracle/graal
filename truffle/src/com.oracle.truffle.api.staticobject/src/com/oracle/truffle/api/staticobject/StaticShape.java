@@ -154,11 +154,17 @@ public abstract class StaticShape<T> {
         return factory;
     }
 
-    final Class<?> getStorageClass() {
-        return storageClass;
+    @SuppressWarnings("unchecked")
+    final Class<T> getFactoryInterface() {
+        assert factory.getClass().getInterfaces().length == 1;
+        return (Class<T>) factory.getClass().getInterfaces()[0];
     }
 
     abstract Object getStorage(Object obj, boolean primitive);
+
+    final Class<?> getStorageClass() {
+        return storageClass;
+    }
 
     final <U> U cast(Object obj, Class<U> type, boolean checkCondition) {
         if (safetyChecks) {
@@ -167,13 +173,6 @@ public abstract class StaticShape<T> {
             assert checkedCast(obj, type) != null;
             return SomAccessor.RUNTIME.unsafeCast(obj, type, !checkCondition || type.isInstance(obj), false, false);
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    final Class<T> getFactoryInterface() {
-        // Builder.validate() makes sure that the factory class implements a single interface
-        assert factory.getClass().getInterfaces().length == 1;
-        return (Class<T>) factory.getClass().getInterfaces()[0];
     }
 
     private static <U> U checkedCast(Object obj, Class<U> type) {
@@ -303,8 +302,8 @@ public abstract class StaticShape<T> {
          */
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
             Objects.requireNonNull(parentShape);
-            GeneratorClassLoader gcl = getOrCreateClassLoader(parentShape.getFactoryInterface());
-            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcl, parentShape, getStorageStrategy(), storageClassName);
+            GeneratorClassLoaders gcls = getOrCreateClassLoader(parentShape.getFactoryInterface());
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcls, parentShape, getStorageStrategy(), storageClassName);
             return build(sg, parentShape);
         }
 
@@ -348,8 +347,8 @@ public abstract class StaticShape<T> {
          */
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
             validateClasses(superClass, factoryInterface);
-            GeneratorClassLoader gcl = getOrCreateClassLoader(factoryInterface);
-            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcl, superClass, factoryInterface, getStorageStrategy(), storageClassName);
+            GeneratorClassLoaders gcls = getOrCreateClassLoader(factoryInterface);
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcls, superClass, factoryInterface, getStorageStrategy(), storageClassName);
             return build(sg, null);
         }
 
@@ -376,16 +375,17 @@ public abstract class StaticShape<T> {
             isActive = false;
         }
 
-        private GeneratorClassLoader getOrCreateClassLoader(Class<?> referenceClass) {
-            ClassLoader cl = SomAccessor.ENGINE.getStaticObjectClassLoader(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language), referenceClass);
-            if (cl == null) {
-                cl = new GeneratorClassLoader(referenceClass);
-                SomAccessor.ENGINE.setStaticObjectClassLoader(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language), referenceClass, cl);
+        private GeneratorClassLoaders getOrCreateClassLoader(Class<?> referenceClass) {
+            Object gcls = SomAccessor.ENGINE.getStaticObjectClassLoaders(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language), referenceClass);
+            if (gcls == null) {
+                gcls = new GeneratorClassLoaders(referenceClass);
+                SomAccessor.ENGINE.setStaticObjectClassLoaders(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language), referenceClass, gcls);
+            } else {
+                if (!GeneratorClassLoaders.class.isInstance(gcls)) {
+                    throw new RuntimeException("The Truffle language instance associated to this Builder returned an unexpected class loader");
+                }
             }
-            if (!GeneratorClassLoader.class.isInstance(cl)) {
-                throw new RuntimeException("The Truffle language instance associated to this Builder returned an unexpected class loader");
-            }
-            return (GeneratorClassLoader) cl;
+            return (GeneratorClassLoaders) gcls;
         }
 
         private String validateAndGetId(StaticProperty property) {

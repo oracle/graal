@@ -70,23 +70,6 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         TestProgram.class.getName()));
     }
 
-    /**
-     * Tests that {@code -Dgraal.ExitVMOnException=true} works as an alias for
-     * {@code -Dgraal.CompilationFailureAction=ExitVM}.
-     */
-    @Test
-    public void testVMCompilation2() throws IOException, InterruptedException {
-        assumeManagementLibraryIsLoadable();
-        testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
-                        "-XX:+UseJVMCICompiler",
-                        "-XX:JVMCIThreads=1",
-                        "-Dgraal.ExitVMOnException=true",
-                        "-Dgraal.CrashAt=TestProgram.*",
-                        "-Xcomp",
-                        "-XX:CompileCommand=compileonly,*/TestProgram.print*",
-                        TestProgram.class.getName()));
-    }
-
     static class Probe {
         final String substring;
         final int expectedOccurrences;
@@ -151,6 +134,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
                         "-XX:JVMCIThreads=1",
+                        "-Dgraal.ExitVMCompilationFailureRate=0",
                         "-Dgraal.CompilationFailureAction=Diagnose",
                         "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
                         "-Dgraal.CrashAt=TestProgram.*",

@@ -88,6 +88,7 @@ public final class NFAGenerator {
     private final NFAStateTransition[] unAnchoredEntries;
     private final NFAStateTransition anchoredReverseEntry;
     private final NFAStateTransition unAnchoredReverseEntry;
+    private NFAStateTransition initialLoopBack;
     private final Deque<NFAState> expansionQueue = new ArrayDeque<>();
     private final Map<NFAStateID, NFAState> nfaStates = new HashMap<>();
     private final List<NFAState> hardPrefixStates = new ArrayList<>();
@@ -129,6 +130,8 @@ public final class NFAGenerator {
         if (ast.getReachableCarets().isEmpty()) {
             anchoredInitialStates = initialStates;
             anchoredEntries = unAnchoredEntries;
+            NFAStateTransition[] dummyInitNext = Arrays.copyOf(anchoredEntries, nEntries);
+            dummyInitialState.setSuccessors(dummyInitNext, false);
         } else {
             anchoredInitialStates = new NFAState[nEntries];
             anchoredEntries = new NFAStateTransition[nEntries];
@@ -140,11 +143,11 @@ public final class NFAGenerator {
                 }
                 anchoredEntries[i] = createTransition(dummyInitialState, anchoredInitialStates[i], ast.getEncoding().getFullSet(), -1);
             }
+            NFAStateTransition[] dummyInitNext = Arrays.copyOf(anchoredEntries, nEntries * 2);
+            System.arraycopy(unAnchoredEntries, 0, dummyInitNext, nEntries, nEntries);
+            dummyInitialState.setSuccessors(dummyInitNext, false);
         }
-        NFAStateTransition[] dummyInitNext = Arrays.copyOf(anchoredEntries, nEntries * 2);
-        System.arraycopy(unAnchoredEntries, 0, dummyInitNext, nEntries, nEntries);
         NFAStateTransition[] dummyInitPrev = new NFAStateTransition[]{anchoredReverseEntry, unAnchoredReverseEntry};
-        dummyInitialState.setSuccessors(dummyInitNext, false);
         dummyInitialState.setPredecessors(dummyInitPrev);
     }
 
@@ -165,7 +168,6 @@ public final class NFAGenerator {
             expandNFAState(expansionQueue.pop());
         }
 
-        NFAStateTransition initialLoopBack;
         assert transitionGBUpdateIndices.isEmpty() && transitionGBClearIndices.isEmpty();
         for (int i = 1; i < initialStates.length; i++) {
             addNewLoopBackTransition(initialStates[i], initialStates[i - 1]);
@@ -205,6 +207,19 @@ public final class NFAGenerator {
                 }
                 for (NFAState initialState : anchoredInitialStates) {
                     initialState.removeSuccessor(state);
+                }
+                for (int i = 0; i < unAnchoredEntries.length; i++) {
+                    if (unAnchoredEntries[i] != null && unAnchoredEntries[i].getTarget() == state) {
+                        unAnchoredEntries[i] = null;
+                    }
+                }
+                for (int i = 0; i < anchoredEntries.length; i++) {
+                    if (anchoredEntries[i] != null && anchoredEntries[i].getTarget() == state) {
+                        anchoredEntries[i] = null;
+                    }
+                }
+                if (initialLoopBack != null && initialLoopBack.getTarget() == state) {
+                    initialLoopBack = null;
                 }
                 if (ast.getOptions().isMustAdvance()) {
                     advancedInitialState.removeSuccessor(state);

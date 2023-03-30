@@ -41,9 +41,9 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_16BIT;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_7BIT;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_8BIT;
-import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_FIXED_WIDTH;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_BROKEN_MULTIBYTE;
-import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_FIXED_WIDTH;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID;
 import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CalcStringAttributesEncoding.CR_VALID_MULTIBYTE;
 
 import java.util.Arrays;
@@ -161,7 +161,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             case UTF_32:
                 return 8;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -227,7 +227,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
                 emitUTF32(crb, asm, arr, len, off, ret, vec1);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1322,7 +1322,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
         asm.jmpb(returnBMP);
 
-        emitExit(asm, ret, returnBroken, end, CR_BROKEN_FIXED_WIDTH, false);
+        emitExit(asm, ret, returnBroken, end, CR_BROKEN, false);
         emitExit(asm, ret, returnBMP, end, CR_16BIT, false);
 
         // astral loop: check if any codepoints are in the forbidden UTF-16 surrogate range;
@@ -1372,7 +1372,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         asm.ptest(vectorSize, vecArray, vecMaskBMP);
         asm.jcc(Zero, returnBMP);
 
-        emitExit(asm, ret, returnAstral, end, CR_VALID_FIXED_WIDTH);
+        emitExit(asm, ret, returnAstral, end, CR_VALID);
 
         emitExit(asm, ret, returnLatin1, end, CR_8BIT);
         emitExitAtEnd(asm, ret, returnAscii, end, CR_7BIT);

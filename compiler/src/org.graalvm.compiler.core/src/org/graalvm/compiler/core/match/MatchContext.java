@@ -167,6 +167,10 @@ public class MatchContext {
         return root;
     }
 
+    public MatchStatement getRule() {
+        return rule;
+    }
+
     public Result captureNamedValue(String name, Class<? extends Node> type, Node value) {
         if (namedNodes == null) {
             namedNodes = EconomicMap.create(Equivalence.DEFAULT);

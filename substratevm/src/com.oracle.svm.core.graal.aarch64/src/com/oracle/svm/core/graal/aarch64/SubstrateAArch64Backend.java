@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import static com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.f
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.aarch64.AArch64.lr;
 import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
@@ -89,6 +88,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
@@ -489,7 +489,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     protected class SubstrateAArch64LIRGenerator extends AArch64LIRGenerator implements SubstrateLIRGenerator {
 
         public SubstrateAArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
-            super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
+            super(lirKindTool, arithmeticLIRGen, null, moveFactory, providers, lirGenRes);
         }
 
         @Override
@@ -601,11 +601,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             boolean nonNull = useLinearPointerCompression() || isNonNull;
             append(new AArch64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
             return result;
-        }
-
-        @Override
-        public void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args) {
-            throw unimplemented();
         }
 
         @Override
@@ -918,10 +913,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             crb.recordMark(SubstrateMarkId.EPILOGUE_END);
         }
 
-        @Override
-        public boolean hasFrame() {
-            return true;
-        }
     }
 
     /**
@@ -1170,7 +1161,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         DebugContext debug = lir.getDebug();
         Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
-                        uncompressedNullRegister);
+                        uncompressedNullRegister, lir);
         crb.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
         return crb;
     }
@@ -1263,18 +1254,17 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
+    public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         try {
-            crb.buildLabelOffsets(lir);
-            crb.emit(lir);
+            crb.buildLabelOffsets();
+            crb.emitLIR();
         } catch (BranchTargetOutOfBoundsException e) {
             // A branch estimation was wrong, now retry with conservative label ranges, this
             // should always work
             resetForEmittingCode(crb);
             crb.setConservativeLabelRanges();
             crb.resetForEmittingCode();
-            lir.resetLabels();
-            crb.emit(lir);
+            crb.emitLIR();
         }
     }
 

@@ -79,7 +79,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         return value;
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord getAllocationGranularity() {
         UnsignedWord value = CACHED_ALLOC_GRAN.get().read();
         if (value.equal(WordFactory.zero())) {
@@ -90,18 +90,18 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Override
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getGranularity() {
         return getPageSize();
     }
 
     @Override
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getAlignment() {
         return getAllocationGranularity();
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int accessAsProt(int access) {
         if ((access & Access.EXECUTE) != 0) {
             if ((access & Access.WRITE) != 0) {
@@ -124,7 +124,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private static final UnsignedWord UNALIGNED = WordFactory.zero();
 
     @Override
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
@@ -166,7 +166,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private static final int MEM_RESERVE_PLACEHOLDER = 0x00040000;
 
     /** Reserves a placeholder, which is a type of reserved memory region. */
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer reservePlaceholder(UnsignedWord size, UnsignedWord alignment) {
         int allocationType = MemoryAPI.MEM_RESERVE() | MEM_RESERVE_PLACEHOLDER;
         return invokeVirtualAlloc2(WordFactory.nullPointer(), size, allocationType, MemoryAPI.PAGE_NOACCESS(), alignment);
@@ -176,7 +176,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private static final CGlobalData<CCharPointer> REPLACE_PLACEHOLDER_ERROR_MESSAGE = CGlobalDataFactory.createCString("Failed to replace a placeholder.");
 
     /** Replaces a placeholder with a normal private allocation. */
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void replacePlaceholder(PointerBase placeholder, UnsignedWord size) {
         int allocationType = MemoryAPI.MEM_RESERVE() | MEM_REPLACE_PLACEHOLDER;
         if (invokeVirtualAlloc2(placeholder, size, allocationType, MemoryAPI.PAGE_NOACCESS(), WordFactory.zero()).isNull()) {
@@ -196,7 +196,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
      *
      * If the OS does not provide VirtualAlloc2, the null pointer is returned.
      */
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer invokeVirtualAlloc2(PointerBase baseAddress, UnsignedWord size, int allocationType, int pageProtection, UnsignedWord alignment) {
         VirtualAlloc2 virtualAlloc2 = WindowsUtils.getAndCacheFunctionPointer(VIRTUAL_ALLOC_2_POINTER.get(), KERNELBASE_DLL.get(), VIRTUAL_ALLOC_2.get());
         if (virtualAlloc2.isNull()) {
@@ -215,7 +215,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     /** Specifies the alignment for the new memory allocation. */
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void specifyAlignment(MEM_EXTENDED_PARAMETER extendedParameter, MEM_ADDRESS_REQUIREMENTS addressRequirements, UnsignedWord alignment) {
         /*
          * Alignment is specified using two structures: MEM_EXTENDED_PARAMETER and
@@ -228,11 +228,11 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
          * the memory layout that the native code expects, it is sufficient to ensure the correct
          * order of the fields, which is easily done by prefixing the field names.
          */
-        extendedParameter.f1Type(MemExtendedParameterAddressRequirements);
-        extendedParameter.f2Pointer(addressRequirements.rawValue());
-        addressRequirements.f1LowestStartingAddress(WordFactory.nullPointer());
-        addressRequirements.f2HighestEndingAddress(WordFactory.nullPointer());
-        addressRequirements.f3Alignment(alignment);
+        extendedParameter.setF1Type(MemExtendedParameterAddressRequirements);
+        extendedParameter.setF2Pointer(addressRequirements.rawValue());
+        addressRequirements.setF1LowestStartingAddress(WordFactory.nullPointer());
+        addressRequirements.setF2HighestEndingAddress(WordFactory.nullPointer());
+        addressRequirements.setF3Alignment(alignment);
     }
 
     /** Represents an extended parameter for a function that manages virtual memory. */
@@ -240,10 +240,16 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private interface MEM_EXTENDED_PARAMETER extends PointerBase {
         /* This structure must exactly match the memory layout expected by the native code. */
         @RawField
-        void f1Type(long value);
+        void setF1Type(long value);
 
         @RawField
-        void f2Pointer(long value);
+        long getF1Type();
+
+        @RawField
+        void setF2Pointer(long value);
+
+        @RawField
+        long getF2Pointer();
     }
 
     /** MEM_EXTENDED_PARAMETER_TYPE enumeration Constants. */
@@ -257,17 +263,26 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private interface MEM_ADDRESS_REQUIREMENTS extends PointerBase {
         /* This structure must exactly match the memory layout expected by the native code. */
         @RawField
-        void f1LowestStartingAddress(PointerBase value);
+        void setF1LowestStartingAddress(PointerBase value);
 
         @RawField
-        void f2HighestEndingAddress(PointerBase value);
+        PointerBase getF1LowestStartingAddress();
 
         @RawField
-        void f3Alignment(UnsignedWord value);
+        void setF2HighestEndingAddress(PointerBase value);
+
+        @RawField
+        PointerBase getF2HighestEndingAddress();
+
+        @RawField
+        void setF3Alignment(UnsignedWord value);
+
+        @RawField
+        UnsignedWord getF3Alignment();
     }
 
     @Override
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
@@ -304,7 +319,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     private static final int MEM_PRESERVE_PLACEHOLDER = 0x00000002;
 
     /** Splits off a placeholder from the existing one. */
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean splitPlaceholder(PointerBase start, UnsignedWord size) {
         return MemoryAPI.VirtualFree(start, size, MemoryAPI.MEM_RELEASE() | MEM_PRESERVE_PLACEHOLDER) != 0;
     }
@@ -317,7 +332,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
      *
      * If the OS does not provide MapViewOfFile3, the null pointer is returned.
      */
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer invokeMapViewOfFile3(HANDLE fileMapping, PointerBase baseAddress, long offset, UnsignedWord viewSize, int pageProtection) {
         MapViewOfFile3 mapViewOfFile3 = WindowsUtils.getAndCacheFunctionPointer(MAP_VIEW_OF_FILE_3_POINTER.get(), KERNELBASE_DLL.get(), MAP_VIEW_OF_FILE_3.get());
         if (mapViewOfFile3.isNull()) {
@@ -335,7 +350,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Override
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
         if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
             return WordFactory.nullPointer();
@@ -349,7 +364,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Override
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int protect(PointerBase start, UnsignedWord nbytes, int access) {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
@@ -361,7 +376,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Override
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int uncommit(PointerBase start, UnsignedWord nbytes) {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
@@ -372,7 +387,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     }
 
     @Override
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
         if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
             return -1;
@@ -397,7 +412,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         return 0;
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean free(PointerBase allocationBase, boolean isMemoryMapped) {
         if (isMemoryMapped) {
             return MemoryAPI.UnmapViewOfFile(allocationBase) != 0;
@@ -406,7 +421,7 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
         }
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean isAligned(PointerBase ptr) {
         return ptr.isNonNull() && UnsignedUtils.isAMultiple((UnsignedWord) ptr, getGranularity());
     }

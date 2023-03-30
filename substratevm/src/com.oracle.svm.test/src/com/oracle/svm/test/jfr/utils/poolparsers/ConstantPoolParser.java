@@ -30,25 +30,30 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.junit.Assert;
+
 import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
-import org.junit.Assert;
 
 public abstract class ConstantPoolParser {
 
     /**
      * Set of ids found during parsing of current constant pool.
      */
-    private final Set<Long> foundIds = new HashSet<>();
+    protected final Set<Long> foundIds = new HashSet<>();
 
     /**
      * List of ids found during parsing of other constant pools that are referencing this one.
      */
-    private final Set<Long> expectedIds = new HashSet<>();
+    protected final Set<Long> expectedIds = new HashSet<>();
 
     protected ConstantPoolParser() {
         foundIds.add(0L);
+    }
+
+    public boolean isEmpty() {
+        return foundIds.isEmpty();
     }
 
     protected final void addFoundId(long id) {
@@ -63,7 +68,12 @@ public abstract class ConstantPoolParser {
     public void compareFoundAndExpectedIds() {
         Assert.assertTrue("Error during parsing " + this + " constant pool!" +
                         " Expected IDs: " + expectedIds +
-                        ". Found IDs: " + foundIds, foundIds.size() == 0 || foundIds.containsAll(expectedIds));
+                        ". Found IDs: " + foundIds, foundIds.containsAll(expectedIds));
+    }
+
+    public void reset() {
+        foundIds.clear();
+        expectedIds.clear();
     }
 
     public abstract void parse(RecordingInput input) throws IOException;

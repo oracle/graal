@@ -85,11 +85,11 @@ public enum PECoffMachine/* implements Integral */ {
     }
 
     public static PECoffMachine getSystemNativeValue() {
-        String archStr = System.getProperty("os.arch").toLowerCase();
-        if (archStr.equals("amd64") || archStr.equals("x86_64")) {
-            return X86_64;
-        }
-        throw new IllegalStateException("unknown PECoff machine type");
+        String arch = System.getProperty("os.arch");
+        return switch (arch) {
+            case "amd64", "x86_64" -> X86_64;
+            default -> throw new IllegalArgumentException("Unsupported PECoff machine type: " + arch);
+        };
     }
 }
 

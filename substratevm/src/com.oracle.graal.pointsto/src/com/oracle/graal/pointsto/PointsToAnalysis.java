@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,12 +43,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -65,10 +66,10 @@ import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTyp
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
@@ -82,6 +83,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -104,9 +106,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     private final boolean strengthenGraalGraphs;
 
-    public PointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
+    public PointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection, boolean strengthenGraalGraphs) {
-        super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
 
         this.strengthenGraalGraphs = strengthenGraalGraphs;
@@ -430,7 +433,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         throw shouldNotReachHere("field not found: " + fieldName);
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "unused"})
     public AnalysisType addRootStaticField(Class<?> clazz, String fieldName) {
         addRootClass(clazz, false, false);
         Field reflectField;
@@ -441,13 +444,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             TypeFlow<?> fieldFlow = field.getType().getTypeFlow(this, true);
             fieldFlow.addUse(this, field.getStaticFieldFlow());
             return field.getType();
+
         } catch (NoSuchFieldException e) {
             throw shouldNotReachHere("field not found: " + fieldName);
         }
-    }
-
-    public ConstantFieldProvider getConstantFieldProvider() {
-        return providers.getConstantFieldProvider();
     }
 
     @Override

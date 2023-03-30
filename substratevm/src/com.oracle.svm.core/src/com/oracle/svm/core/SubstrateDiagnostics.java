@@ -28,8 +28,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 
 import java.util.Arrays;
 
-import com.oracle.svm.core.code.CodeInfoDecoder;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -57,7 +55,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.RuntimeCodeInfoHistory;
 import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
@@ -534,7 +534,7 @@ public class SubstrateDiagnostics {
                 log.string("General purpose register values:").indent(true);
                 RegisterDumper.singleton().dumpRegisters(log, context.getRegisterContext(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
                 log.indent(false);
-            } else if (CalleeSavedRegisters.supportedByPlatform() && context.frameHasCalleeSavedRegisters()) {
+            } else if (CalleeSavedRegisters.supportedByPlatform() && context.getFrameHasCalleeSavedRegisters()) {
                 CalleeSavedRegisters.singleton().dumpRegisters(log, context.getStackPointer(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
             }
         }
@@ -1037,7 +1037,7 @@ public class SubstrateDiagnostics {
         void setRegisterContext(RegisterDumper.Context value);
 
         @RawField
-        boolean frameHasCalleeSavedRegisters();
+        boolean getFrameHasCalleeSavedRegisters();
 
         @RawField
         void setFrameHasCalleeSavedRegisters(boolean value);

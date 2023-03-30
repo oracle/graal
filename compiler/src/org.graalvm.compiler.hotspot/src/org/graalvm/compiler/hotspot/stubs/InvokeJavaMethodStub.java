@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
@@ -74,7 +75,7 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
                     long address,
                     HotSpotForeignCallDescriptor descriptor,
                     ResolvedJavaMethod staticMethod) {
-        super(options, runtime, providers, address, descriptor, true);
+        super(options, runtime, providers, address, descriptor, HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED, true);
         this.javaMethod = staticMethod;
         // This stub is compiled to kill no registers which interferes with returning float and
         // double through a long. For simplicity disallow that case until it's required.

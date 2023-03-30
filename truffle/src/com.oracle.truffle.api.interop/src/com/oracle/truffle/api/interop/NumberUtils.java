@@ -42,33 +42,8 @@ package com.oracle.truffle.api.interop;
 
 final class NumberUtils {
 
-    private static final double DOUBLE_MAX_SAFE_INTEGER = 9007199254740991d; // 2 ** 53 - 1
-    static final long LONG_MAX_SAFE_DOUBLE = 9007199254740991L; // 2 ** 53 - 1
-    private static final float FLOAT_MAX_SAFE_INTEGER = 16777215f; // 2 ** 24 - 1
-    static final int INT_MAX_SAFE_FLOAT = 16777215; // 2 ** 24 - 1
-
     private NumberUtils() {
         /* No instances */
-    }
-
-    static boolean inSafeIntegerRange(double d) {
-        return d >= -DOUBLE_MAX_SAFE_INTEGER && d <= DOUBLE_MAX_SAFE_INTEGER;
-    }
-
-    static boolean inSafeDoubleRange(long l) {
-        return l >= -LONG_MAX_SAFE_DOUBLE && l <= LONG_MAX_SAFE_DOUBLE;
-    }
-
-    static boolean inSafeFloatRange(int i) {
-        return i >= -INT_MAX_SAFE_FLOAT && i <= INT_MAX_SAFE_FLOAT;
-    }
-
-    static boolean inSafeIntegerRange(float f) {
-        return f >= -FLOAT_MAX_SAFE_INTEGER && f <= FLOAT_MAX_SAFE_INTEGER;
-    }
-
-    static boolean inSafeFloatRange(long l) {
-        return l >= -INT_MAX_SAFE_FLOAT && l <= INT_MAX_SAFE_FLOAT;
     }
 
     static boolean isNegativeZero(double d) {

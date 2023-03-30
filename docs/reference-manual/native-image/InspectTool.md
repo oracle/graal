@@ -8,41 +8,21 @@ redirect_from: /$version/reference-manual/native-image/inspect/
 
 # Native Image Inspection Tool
 
-Native Image Enterprise Edition includes a tool to list the methods included in an executable or shared library created by GraalVM Native Image.
-The tool is available as the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>`. It lists methods as a JSON array in the following format:
+Native Image provides the inspection tool to list all methods included in a native executable or a native shared library. Run the command `$JAVA_HOME/bin/native-image-inspect <path_to_binary>` to list classes, methods, fields, and constructors in the JSON format that validates against the JSON schema defined in [`native-image-inspect-schema-v0.2.0.json`](../assets/native-image-inspect-schema-v0.2.0.json).
 
-```shell
-$JAVA_HOME/bin/native-image-inspect helloworld
-{
-  "methods": [
-    {
-      "declaringClass": "java.lang.Object",
-      "name": "equals",
-      "paramTypes": [
-        "java.lang.Object"
-      ]
-    },
-    {
-      "declaringClass": "java.lang.Object",
-      "name": "toString",
-      "paramTypes": []
-    },
-    ...
-  ]
-}
-```
+> Note: The inspection tool is not available in GraalVM Community Edition.
 
-The Native Image tool, by default, includes metadata in the native executable which then enables the inspection tool to list the included methods.
+The `native-image` builder, by default, includes metadata in the native executable which then enables the inspection tool to list the included methods.
 
 The amount of data included is fairly minimal compared to the overall image size, however you can set the `-H:-IncludeMethodsData` option to disable the metadata emission.
 Images compiled with this option will not be able to be inspected by the tool.
 
 ## Software Bill of Materials (SBOM)
 
-GraalVM Enterprise Native Image can embed a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
+Native Image can embed a Software Bill of Materials (SBOM) at build time to detect any libraries that may be susceptible to known security vulnerabilities.
 Native Image provides the `--enable-sbom` option to embed an SBOM into a native executable. 
 
-> Note: Embedding a Software Bill of Materials (SBOM) is available with GraalVM Enterprise Native Image. The feature is currently experimental.
+> Note: Embedding a Software Bill of Materials (SBOM) is not available in GraalVM Community Edition. The feature is currently experimental.
 
 The CycloneDX format is supported and the default. 
 To embed a CycloneDX SBOM into a native executable, pass the `--enable-sbom` option to the `native-image` command. 

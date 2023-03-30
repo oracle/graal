@@ -109,14 +109,18 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     private LIRGenerationResult res;
 
     protected final ArithmeticLIRGenerator arithmeticLIRGen;
+    protected final BarrierSetLIRGeneratorTool barrierSetLIRGen;
+
     private final MoveFactory moveFactory;
 
     private final boolean printIrWithLir;
     private final int traceLIRGeneratorLevel;
 
-    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, CodeGenProviders providers, LIRGenerationResult res) {
+    public LIRGenerator(LIRKindTool lirKindTool, ArithmeticLIRGenerator arithmeticLIRGen, BarrierSetLIRGenerator barrierSetLIRGen, MoveFactory moveFactory, CodeGenProviders providers,
+                    LIRGenerationResult res) {
         this.lirKindTool = lirKindTool;
         this.arithmeticLIRGen = arithmeticLIRGen;
+        this.barrierSetLIRGen = barrierSetLIRGen;
         this.res = res;
         this.providers = providers;
         OptionValues options = res.getLIR().getOptions();
@@ -126,12 +130,22 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
         assert arithmeticLIRGen.lirGen == null;
         arithmeticLIRGen.lirGen = this;
+        if (barrierSetLIRGen != null) {
+            assert barrierSetLIRGen.lirGen == null;
+            barrierSetLIRGen.lirGen = this;
+        }
+
         this.moveFactory = moveFactory;
     }
 
     @Override
     public ArithmeticLIRGeneratorTool getArithmetic() {
         return arithmeticLIRGen;
+    }
+
+    @Override
+    public BarrierSetLIRGeneratorTool getBarrierSet() {
+        return barrierSetLIRGen;
     }
 
     @Override
@@ -350,7 +364,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
             // set up the list of LIR instructions
             assert res.getLIR().getLIRforBlock(currentBlock) == null : "LIR list already computed for this block";
-            res.getLIR().setLIRforBlock(currentBlock, new ArrayList<LIRInstruction>());
+            res.getLIR().setLIRforBlock(currentBlock, new ArrayList<>());
 
             append(new LabelOp(new Label(currentBlock.getId()), currentBlock.isAligned() ? loopHeaderAlignment : 0));
 
@@ -585,12 +599,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     @Override
     public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

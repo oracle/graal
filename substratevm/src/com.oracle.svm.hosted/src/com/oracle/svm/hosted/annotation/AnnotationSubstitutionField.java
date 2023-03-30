@@ -33,6 +33,7 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -84,7 +85,7 @@ public class AnnotationSubstitutionField extends CustomSubstitutionField {
     }
 
     @Override
-    public JavaConstant readValue(MetaAccessProvider suppliedMetaAccess, JavaConstant receiver) {
+    public JavaConstant readValue(MetaAccessProvider suppliedMetaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
         JavaConstant result = valueCache.get(receiver);
         if (result == null) {
             Object annotationFieldValue;

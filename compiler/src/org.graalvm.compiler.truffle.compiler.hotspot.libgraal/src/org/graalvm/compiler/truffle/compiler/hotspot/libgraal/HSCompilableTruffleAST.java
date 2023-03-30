@@ -252,6 +252,6 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
 
     @Override
     public boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
-        throw GraalError.shouldNotReachHere("Should not be reachable.");
+        throw GraalError.shouldNotReachHere("Should not be reachable."); // ExcludeFromJacocoGeneratedReport
     }
 }

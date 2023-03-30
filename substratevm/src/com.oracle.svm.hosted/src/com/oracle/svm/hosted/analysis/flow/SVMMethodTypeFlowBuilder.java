@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
@@ -91,11 +90,11 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                          * object replacers really see all objects that are embedded into compiled
                          * code.
                          */
-                        Object value = SubstrateObjectConstant.asObject(constant);
+                        Object value = bb.getSnippetReflectionProvider().asObject(Object.class, constant);
                         Object replaced = bb.getUniverse().replaceObject(value);
                         if (value != replaced) {
                             throw GraalError.shouldNotReachHere("Missed object replacement during graph building: " +
-                                            value + " (" + value.getClass() + ") != " + replaced + " (" + replaced.getClass() + ")");
+                                            value + " (" + value.getClass() + ") != " + replaced + " (" + replaced.getClass() + ")"); // ExcludeFromJacocoGeneratedReport
                         }
                     }
                 }

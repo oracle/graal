@@ -212,6 +212,9 @@ public class PathUtilities {
             String result = getPath(dumpDir, fileName);
             try {
                 if (createMissingDirectory) {
+                    if (exists(result)) {
+                        throw new FileAlreadyExistsException(result);
+                    }
                     return createDirectories(result);
                 } else {
                     try {

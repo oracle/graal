@@ -28,4 +28,6 @@ import org.graalvm.collections.LockFreePrefixTree;
 
 public interface ProfilingSampler {
     LockFreePrefixTree prefixTree();
+
+    void reset();
 }

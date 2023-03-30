@@ -70,7 +70,7 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
+import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
 import com.oracle.svm.core.jni.JNIThreadLocalPinnedObjects;
@@ -104,6 +104,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.jni.headers.JNIVersionJDK19OrLater;
+import com.oracle.svm.core.jni.headers.JNIVersionJDK20OrLater;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -154,7 +155,9 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        return JavaVersionUtil.JAVA_SPEC <= 17 ? JNIVersion.JNI_VERSION_10() : JNIVersionJDK19OrLater.JNI_VERSION_19();
+        return (JavaVersionUtil.JAVA_SPEC >= 20) ? JNIVersionJDK20OrLater.JNI_VERSION_20()
+                        : ((JavaVersionUtil.JAVA_SPEC >= 19) ? JNIVersionJDK19OrLater.JNI_VERSION_19()
+                                        : JNIVersion.JNI_VERSION_10());
     }
 
     /*
@@ -611,7 +614,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewDirectByteBuffer(JNIEnvironment env, WordPointer address, long capacity) {
-        Target_java_nio_DirectByteBuffer bb = new Target_java_nio_DirectByteBuffer(address.rawValue(), (int) capacity);
+        ByteBuffer bb = DirectByteBufferUtil.allocate(address.rawValue(), capacity);
         return JNIObjectHandles.createLocal(bb);
     }
 
@@ -1137,7 +1140,7 @@ public final class JNIFunctions {
         }
 
         static class ReturnMinusOneLong implements CEntryPointOptions.PrologueBailout {
-            @Uninterruptible(reason = "Thread state not set up yet.")
+            @Uninterruptible(reason = "prologue")
             public static long bailout(int prologueResult) {
                 return -1L;
             }
