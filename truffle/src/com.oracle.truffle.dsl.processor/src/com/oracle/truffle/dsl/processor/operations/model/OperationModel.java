@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor.operations.model;
 
 import java.util.Arrays;
-import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
@@ -81,66 +80,6 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
         CUSTOM_SHORT_CIRCUIT
     }
 
-    // todo: this is wrongly here, it is only relevant to instructions
-    // operations have no concept of signatures (yet)
-    public static class CustomSignature {
-        public int valueCount;
-        public boolean isVariadic;
-
-        public boolean[] valueBoxingElimination;
-        public boolean resultBoxingElimination;
-        public Set<TypeMirror> possibleBoxingResults;
-        public boolean isVoid;
-        public TypeMirror[] valueTypes;
-
-        public int localSetterCount;
-        public int localSetterRangeCount;
-
-        @Override
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-
-            if (isVoid) {
-                sb.append("void ");
-            } else if (resultBoxingElimination) {
-                if (possibleBoxingResults != null) {
-                    sb.append(possibleBoxingResults).append(" ");
-                } else {
-                    sb.append("box ");
-                }
-            } else {
-                sb.append("obj ");
-            }
-
-            sb.append("(");
-
-            for (int i = 0; i < valueCount; i++) {
-                sb.append(valueBoxingElimination[i] ? "box" : "obj");
-                sb.append(", ");
-            }
-
-            if (isVariadic) {
-                sb.append("obj..., ");
-            }
-
-            for (int i = 0; i < localSetterCount; i++) {
-                sb.append("local, ");
-            }
-
-            for (int i = 0; i < localSetterRangeCount; i++) {
-                sb.append("localRange, ");
-            }
-
-            if (sb.charAt(sb.length() - 1) == ' ') {
-                sb.delete(sb.length() - 2, sb.length());
-            }
-
-            sb.append(')');
-
-            return sb.toString();
-        }
-    }
-
     private static final TypeMirror[] EMPTY_ARGUMENTS = new TypeMirror[0];
 
     public final OperationsModel parent;
@@ -160,8 +99,6 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
 
     public InstructionModel instruction;
     public TypeMirror[] operationArguments = EMPTY_ARGUMENTS;
-
-    public CustomSignature signature;
 
     public OperationModel(OperationsModel parent, TypeElement templateType, int id, OperationKind kind, String name) {
         this.parent = parent;
@@ -214,11 +151,6 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
 
     public OperationModel setOperationArguments(TypeMirror... operationArguments) {
         this.operationArguments = operationArguments;
-        return this;
-    }
-
-    public OperationModel setSignature(CustomSignature signature) {
-        this.signature = signature;
         return this;
     }
 

@@ -42,13 +42,15 @@ package com.oracle.truffle.dsl.processor.operations.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.NodeData;
-import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSignature;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
 
 public class InstructionModel implements InfoDumpable {
     public enum InstructionKind {
@@ -92,11 +94,77 @@ public class InstructionModel implements InfoDumpable {
         }
     }
 
+    public static final class Signature {
+        private final ProcessorContext context = ProcessorContext.getInstance();
+        // Number of value parameters (includes the variadic parameter, if it exists).
+        public int valueCount;
+        public boolean isVariadic;
+        public int localSetterCount;
+        public int localSetterRangeCount;
+
+        public boolean[] valueBoxingElimination;
+        public boolean resultBoxingElimination;
+        public Set<TypeMirror> possibleBoxingResults;
+        public boolean isVoid;
+
+        public TypeMirror getParameterType(int i) {
+            assert i > 0 && i < valueCount;
+            if (isVariadic && i == valueCount - 1) {
+                return context.getType(Object[].class);
+            }
+            return context.getType(Object.class);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+
+            if (isVoid) {
+                sb.append("void ");
+            } else if (resultBoxingElimination) {
+                if (possibleBoxingResults != null) {
+                    sb.append(possibleBoxingResults).append(" ");
+                } else {
+                    sb.append("box ");
+                }
+            } else {
+                sb.append("obj ");
+            }
+
+            sb.append("(");
+
+            for (int i = 0; i < valueCount; i++) {
+                sb.append(valueBoxingElimination[i] ? "box" : "obj");
+                sb.append(", ");
+            }
+
+            if (isVariadic) {
+                sb.append("obj..., ");
+            }
+
+            for (int i = 0; i < localSetterCount; i++) {
+                sb.append("local, ");
+            }
+
+            for (int i = 0; i < localSetterRangeCount; i++) {
+                sb.append("localRange, ");
+            }
+
+            if (sb.charAt(sb.length() - 1) == ' ') {
+                sb.delete(sb.length() - 2, sb.length());
+            }
+
+            sb.append(')');
+
+            return sb.toString();
+        }
+    }
+
     public final int id;
     public final InstructionKind kind;
     public final String name;
     public CodeTypeElement nodeType;
-    public CustomSignature signature;
+    public Signature signature;
     public NodeData nodeData;
     public int variadicPopCount = -1;
 

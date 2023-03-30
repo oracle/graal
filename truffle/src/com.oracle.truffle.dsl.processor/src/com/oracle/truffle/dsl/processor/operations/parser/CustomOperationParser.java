@@ -82,9 +82,9 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
-import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSignature;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
@@ -202,7 +202,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         nodeType.setEnclosingElement(null);
 
-        CustomSignature signature = determineSignature(data, nodeType);
+        Signature signature = determineSignature(data, nodeType);
         if (data.hasErrors()) {
             return data;
         }
@@ -227,7 +227,6 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             nodeType.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
         }
 
-        data.signature = signature;
         data.numChildren = signature.valueCount;
         data.isVariadic = signature.isVariadic || isShortCircuit;
         data.isVoid = signature.isVoid;
@@ -250,13 +249,13 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         return data;
     }
 
-    private List<AnnotationMirror> createNodeChildAnnotations(CustomSignature signature) {
+    private List<AnnotationMirror> createNodeChildAnnotations(Signature signature) {
         List<AnnotationMirror> result = new ArrayList<>();
 
         TypeMirror[] boxingEliminated = parent.boxingEliminatedTypes.toArray(new TypeMirror[0]);
 
         for (int i = 0; i < signature.valueCount; i++) {
-            result.add(createNodeChildAnnotation("child" + i, signature.valueTypes[i], boxingEliminated));
+            result.add(createNodeChildAnnotation("child" + i, signature.getParameterType(i), boxingEliminated));
         }
         for (int i = 0; i < signature.localSetterCount; i++) {
             result.add(createNodeChildAnnotation("localSetter" + i, types.LocalSetter));
@@ -298,7 +297,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         return ex;
     }
 
-    private List<CodeExecutableElement> createExecuteMethods(CustomSignature signature) {
+    private List<CodeExecutableElement> createExecuteMethods(Signature signature) {
         List<CodeExecutableElement> result = new ArrayList<>();
 
         if (signature.isVoid) {
@@ -335,7 +334,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         return result;
     }
 
-    private CodeExecutableElement createExecuteMethod(CustomSignature signature, String name, TypeMirror type, boolean withUnexpected, boolean uncached) {
+    private CodeExecutableElement createExecuteMethod(Signature signature, String name, TypeMirror type, boolean withUnexpected, boolean uncached) {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, ABSTRACT), type, name);
         if (withUnexpected) {
             ex.addThrownType(types.UnexpectedResultException);
@@ -345,7 +344,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         if (uncached) {
             for (int i = 0; i < signature.valueCount; i++) {
-                ex.addParameter(new CodeVariableElement(signature.valueTypes[i], "child" + i + "Value"));
+                ex.addParameter(new CodeVariableElement(signature.getParameterType(i), "child" + i + "Value"));
             }
             for (int i = 0; i < signature.localSetterCount; i++) {
                 ex.addParameter(new CodeVariableElement(types.LocalSetter, "localSetter" + i + "Value"));
@@ -358,7 +357,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         return ex;
     }
 
-    private InstructionModel createCustomInstruction(OperationModel data, CodeTypeElement nodeType, CustomSignature signature, String nameSuffix) {
+    private InstructionModel createCustomInstruction(OperationModel data, CodeTypeElement nodeType, Signature signature, String nameSuffix) {
         InstructionKind kind = !isShortCircuit ? InstructionKind.CUSTOM : InstructionKind.CUSTOM_SHORT_CIRCUIT;
         String namePrefix = !isShortCircuit ? "c." : "sc.";
 
@@ -415,7 +414,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         return instr;
     }
 
-    private CustomSignature determineSignature(OperationModel data, CodeTypeElement nodeType) {
+    private Signature determineSignature(OperationModel data, CodeTypeElement nodeType) {
         List<ExecutableElement> specializations = findSpecializations(nodeType);
 
         if (specializations.size() == 0) {
@@ -424,10 +423,10 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         }
 
         boolean isValid = true;
-        CustomSignature signature = null;
+        Signature signature = null;
 
         for (ExecutableElement spec : specializations) {
-            CustomSignature other = determineSignature(data, spec);
+            Signature other = determineSignature(data, spec);
             if (signature == null) {
                 // first (valid) signature
                 signature = other;
@@ -454,7 +453,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         return signature;
     }
 
-    private boolean mergeSignatures(OperationModel data, CustomSignature a, CustomSignature b, Element el) {
+    private boolean mergeSignatures(OperationModel data, Signature a, Signature b, Element el) {
         boolean isValid = true;
         if (a.isVariadic != b.isVariadic) {
             data.addError(el, "Error calculating operation signature: either all or none of the specialization must be variadic (have a @%s annotated parameter)",
@@ -497,39 +496,42 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         return true;
     }
 
-    private CustomSignature determineSignature(OperationModel data, ExecutableElement spec) {
+    private Signature determineSignature(OperationModel data, ExecutableElement spec) {
 
         boolean isValid = true;
 
         List<Boolean> canBeBoxingEliminated = new ArrayList<>();
 
-        List<TypeMirror> genericTypes = new ArrayList<>();
         int numValues = 0;
         boolean hasVariadic = false;
 
         int numLocalSetters = 0;
         int numLocalSetterRanges = 0;
 
+        // Each specialization should have parameters in the following order:
+        // frame, value*, variadic, localSetter*, localSetterRange*
+        // All parameters are optional, and the ones with * can be repeated multiple times.
         for (VariableElement param : spec.getParameters()) {
-            if (isAssignable(param.asType(), types.Frame) || isDSLParameter(param)) {
+            if (isAssignable(param.asType(), types.Frame)) {
                 // nothing, we ignore these
                 continue;
             } else if (isAssignable(param.asType(), types.LocalSetter)) {
                 if (isDSLParameter(param)) {
-                    data.addError(param, "%s arguments must not be annotated with @%s or @%s.",
+                    data.addError(param, "%s parameters must not be annotated with @%s or @%s.",
                                     getSimpleName(types.LocalSetter),
                                     getSimpleName(types.Cached),
                                     getSimpleName(types.Bind));
                     isValid = false;
                 }
                 if (numLocalSetterRanges > 0) {
-                    data.addError(param, "%s arguments must be ordered before %s arguments.", getSimpleName(types.LocalSetter), getSimpleName(types.LocalSetterRange));
+                    data.addError(param, "%s parameters must precede %s parameters.",
+                                    getSimpleName(types.LocalSetter), getSimpleName(types.LocalSetterRange));
                     isValid = false;
                 }
                 numLocalSetters++;
             } else if (isAssignable(param.asType(), types.LocalSetterRange)) {
                 if (isDSLParameter(param)) {
-                    data.addError(param, "%s arguments must not be annotated with @%s or @%s.",
+                    data.addError(param, "%s parameters must not be annotated with @%s or @%s.",
                                     getSimpleName(types.LocalSetterRange),
                                     getSimpleName(types.Cached),
                                     getSimpleName(types.Bind));
@@ -538,14 +540,14 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 numLocalSetterRanges++;
             } else if (ElementUtils.findAnnotationMirror(param, types.Variadic) != null) {
                 if (isDSLParameter(param)) {
-                    data.addError(param, "@%s arguments must not be annotated with @%s or @%s.",
+                    data.addError(param, "@%s parameters must not be annotated with @%s or @%s.",
                                     getSimpleName(types.Variadic),
                                     getSimpleName(types.Cached),
                                     getSimpleName(types.Bind));
                     isValid = false;
                 }
                 if (hasVariadic) {
-                    data.addError(param, "Multiple variadic arguments not allowed to an operation. Split up the operation if such behaviour is required.");
+                    data.addError(param, "Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.");
                     isValid = false;
                 }
                 if (numLocalSetterRanges > 0 || numLocalSetters > 0) {
@@ -554,20 +556,20 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                                     getSimpleName(types.LocalSetterRange));
                     isValid = false;
                 }
-                genericTypes.add(context.getType(Object[].class));
                 canBeBoxingEliminated.add(false);
                 numValues++;
                 hasVariadic = true;
+            } else if (isDSLParameter(param)) {
+                // nothing, we ignore these
             } else {
                 if (hasVariadic) {
-                    data.addError(param, "Non-variadic value parameters must precede variadic ones.");
+                    data.addError(param, "Non-variadic value parameters must precede variadic parameters.");
                     isValid = false;
                 }
                 if (numLocalSetterRanges > 0 || numLocalSetters > 0) {
                     data.addError(param, "Value parameters must precede LocalSetter and LocalSetterRange parameters.");
                     isValid = false;
                 }
-                genericTypes.add(context.getType(Object.class));
                 canBeBoxingEliminated.add(parent.isBoxingEliminated(param.asType()));
                 numValues++;
             }
@@ -577,13 +579,12 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             return null;
         }
 
-        CustomSignature signature = new CustomSignature();
+        Signature signature = new Signature();
         signature.valueCount = numValues;
         signature.isVariadic = hasVariadic;
         signature.localSetterCount = numLocalSetters;
         signature.localSetterRangeCount = numLocalSetterRanges;
         signature.valueBoxingElimination = new boolean[numValues];
-        signature.valueTypes = genericTypes.toArray(new TypeMirror[genericTypes.size()]);
 
         for (int i = 0; i < numValues; i++) {
             signature.valueBoxingElimination[i] = canBeBoxingEliminated.get(i);
