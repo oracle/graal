@@ -245,7 +245,7 @@ public abstract class PlatformThreads {
             while (isolateThread.isNonNull()) {
                 Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
                 if (javaThread != null && JavaThreads.getThreadId(javaThread) == javaThreadId) {
-                    return ThreadCpuTimeSupport.getInstance().getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+                    return ThreadCpuTimeSupport.getInstance().getThreadCpuTime(isolateThread, includeSystemTime);
                 }
                 isolateThread = VMThreads.nextThread(isolateThread);
             }
@@ -829,6 +829,8 @@ public abstract class PlatformThreads {
                  */
                 currentThread.get().interrupt();
             }
+
+            ThreadCpuTimeSupport.getInstance().init(toTarget(thread).isolateThread);
 
             ThreadListenerSupport.get().beforeThreadRun();
             thread.run();

@@ -28,6 +28,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 
 /**
  * Support for getting thread execution time.
@@ -54,6 +55,21 @@ public interface ThreadCpuTimeSupport {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime);
+
+    /**
+     * Returns the {@code isolateThread} thread CPU time.
+     *
+     * @param isolateThread existing context for the current thread.
+     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
+     *            returns user time.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    default long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
+        return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+    }
+
+    default void init(IsolateThread isolateThread) {
+    }
 
     @Fold
     static ThreadCpuTimeSupport getInstance() {
