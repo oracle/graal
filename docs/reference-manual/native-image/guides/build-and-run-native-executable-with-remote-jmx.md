@@ -80,12 +80,9 @@ This creates `SimpleJmx.class`, `SimpleJmx$Simple.class`, and `SimpleJmx$SimpleM
 
 ## Step 3: Make a Dynamic Proxy Configuration
 
-Remote management of MBeans can use dynamic proxies to simplify the client's interaction with MBeans on the server (in a different application). 
-Using proxies makes the sending and receiving of data transparent. 
-Specifically, the connection, request, and return type conversion are all taken care of in the process of forwarding to the MBean server and back.
-
-To register a custom MBean `SimpleJmx$SimpleMBean` and be able to interact with it, provide the dynamic proxy configuration for the MBean interface in a JSON file.
-Later you will pass this JSON file to the `native-image` builder.
+JMX uses dynamic proxies, a [dynamic feature](../DynamicFeatures.md) of Java, to access MBeans.
+To be able to interact with the custom `SimpleMBean` at run time, you need to provide Native Image with additional [dynamic proxy configuration](../DynamicProxy.md) for the MBean interface.
+For this, create a JSON file named `proxy-config.json` with the following contents:
 
 ```json
 [
@@ -93,12 +90,14 @@ Later you will pass this JSON file to the `native-image` builder.
 ]
 ```
 
+In the next step, you will pass this JSON file to the `native-image` builder.
+
 ## Step 4: Build a Native Executable with JMX Support
 
 Build a native executable with VM monitoring enabled:
 
 ```shell
-$JAVA_HOME/bin/native-image --enable-monitoring=jmxserver,jvmstat  -H:DynamicProxyConfigurationFiles=/path/to/proxyconfig.json SimpleJmx
+$JAVA_HOME/bin/native-image --enable-monitoring=jmxserver,jvmstat  -H:DynamicProxyConfigurationFiles=proxy-config.json SimpleJmx
 ```
 
 The `--enable-monitoring=jmxserver` option enables the JMX Server feature which allows accepting incoming connections.
@@ -122,11 +121,11 @@ You can configure JMX to apply all the usual properties as shown in [this guide]
    Note that VisualVM is shipped separately and should be first added to GraalVM using `gu`, and then started:
 
     ```shell
-    gu install visualvm
+    $JAVA_HOME/bin/gu install visualvm
     $JAVA_HOME/bin/visualvm
     ```
 
-2. Make sure you have the "VisualVM-MBeans" plugin installed (*Tools* > *Plugins* > *Available Plugins* > select "VisualVM-MBeans" and click *Install*).
+2. Make sure you have the **VisualVM-MBeans plugin** installed (go to Tools, then Plugins, under Available Plugins, select "VisualVM-MBeans", and click Install).
 
 3. Go to the **Applications** tab and select the **SimpleJmx** process.
    From there you can select the **MBeans** tab.
@@ -145,3 +144,4 @@ Users can enable the JMX agent in a native executable to monitor a client applic
 ### Related Documentation
 - [Enabling and disabling JMX](https://docs.oracle.com/javadb/10.10.1.2/adminguide/radminjmxenabledisable.html)
 - [Create Heap Dumps with VisualVM](create-heap-dump-from-native-executable.md)
+- [Dynamic Proxy](../DynamicProxy.md)
