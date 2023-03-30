@@ -85,13 +85,13 @@ public class ThreadCpuTimeTest {
         if (checkCurrentThread) {
             assertTrue("Current thread CPU time is less or equal to zero",
                     threadMXBean.getCurrentThreadCpuTime() > 0);
-            assertTrue("Current Thread User time is is less or equal to zero",
+            assertTrue("Current thread user time is less or equal to zero",
                     threadMXBean.getCurrentThreadUserTime() > 0);
         }
 
-        assertTrue("Thread CPU time is is less or equal to zero",
+        assertTrue("Thread CPU time is less or equal to zero",
                 threadMXBean.getThreadCpuTime(tid) > 0);
-        assertTrue("Thread User time is is less or equal to zero",
+        assertTrue("Thread user time is less or equal to zero",
                 threadMXBean.getThreadUserTime(tid) > 0);
     }
 
