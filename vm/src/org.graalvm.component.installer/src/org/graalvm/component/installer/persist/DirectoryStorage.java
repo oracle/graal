@@ -346,7 +346,7 @@ public class DirectoryStorage implements ManagementStorage {
             }
         }
         Set<String> deps = new LinkedHashSet<>();
-        for (String s : loaded.getProperty(BundleConstants.BUNDLE_DEPENDENCY, "").split(",")) {
+        for (String s : loaded.getProperty(BundleConstants.BUNDLE_DEPENDENCY, "").split(":")) {
             String p = s.trim();
             if (!p.isEmpty()) {
                 deps.add(s.trim());
