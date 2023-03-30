@@ -153,7 +153,7 @@ public abstract class NodeLowerer {
      * {@link #lowerStatement(Node)}.
      */
     public final void lowerValue(ValueNode node) {
-        assert isActiveValueNode(node);
+        assert isActiveValueNode(node) : "Attempted to lower " + node + " which is not an active value node";
         ResolvedVar resolvedVar = codeGenTool.getAllocatedVariable(node);
         if (resolvedVar != null) {
             assert resolvedVar.isDefinitionLowered() : "Variable definition for node " + node + " was not lowered before use";

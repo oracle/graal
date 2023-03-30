@@ -170,9 +170,13 @@ public abstract class CodeGenTool {
     public abstract void genMethodHeader(StructuredGraph graph, ResolvedJavaMethod method, List<ParameterNode> parameters);
 
     public void genArrayLoad(ValueNode index, ValueNode array) {
-        nodeLowerer().lowerValue(array);
+        genArrayLoad(Emitter.of(index), Emitter.of(array));
+    }
+
+    public void genArrayLoad(IEmitter index, IEmitter array) {
+        lower(array);
         genArrayAccessPrefix();
-        nodeLowerer().lowerValue(index);
+        lower(index);
         genArrayAccessPostfix();
     }
 
