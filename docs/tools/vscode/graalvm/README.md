@@ -228,7 +228,7 @@ For more documentation, go to:
 * [Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html)
 * [Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html)
 
-If you use the Micronaut framework to create your Java project, you can build a native executable of a Micronaut application using VS Code quick actions. Go [here](../micronaut/README.md#generate-native-images-of-micronaut-projects) to learn how.
+If you use the Micronaut framework to create your Java project, you can build a native executable of a Micronaut application using VS Code quick actions. Go [here](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) to learn how.
 
 ### Building Native Images on Windows
 
