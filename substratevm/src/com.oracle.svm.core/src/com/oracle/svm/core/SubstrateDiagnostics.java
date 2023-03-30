@@ -657,8 +657,8 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 3;
-            boolean allowUnsafeOperations = DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel) && invocationCount < 2;
+            boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 2;
+            boolean allowUnsafeOperations = DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel) && invocationCount < 3;
             /*
              * If we are not at a safepoint, then it is unsafe to access the thread locals of
              * another thread as the IsolateThread could be freed at any time.
@@ -680,9 +680,13 @@ public class SubstrateDiagnostics {
 
                     if (allowJavaHeapAccess) {
                         Thread threadObj = PlatformThreads.fromVMThread(thread);
-                        log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
-                        if (threadObj != null && threadObj.isDaemon()) {
-                            log.string(", daemon");
+                        if (threadObj == null) {
+                            log.string(" null");
+                        } else {
+                            log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
+                            if (threadObj.isDaemon()) {
+                                log.string(", daemon");
+                            }
                         }
                     }
                     log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
