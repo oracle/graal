@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.vm.VM;
 @NodeInfo(language = EspressoLanguage.NAME, description = "The abstract base node for all " + EspressoLanguage.IMPLEMENTATION_NAME + " nodes")
 public abstract class EspressoNode extends Node implements ContextAccess {
     @Override
+    @Idempotent
     public final EspressoContext getContext() {
         return EspressoContext.get(this);
     }
