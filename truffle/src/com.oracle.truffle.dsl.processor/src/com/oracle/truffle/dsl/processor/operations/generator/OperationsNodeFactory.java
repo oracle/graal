@@ -100,10 +100,10 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionField;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
-import com.oracle.truffle.dsl.processor.operations.model.OperationModel.CustomSignature;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 
@@ -2053,15 +2053,23 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.tree(createOperationConstant(operation));
             b.end(2);
 
-            if (operation.isVariadic && operation.numChildren > 1) {
+            if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                // Short-circuiting operations should have at least one child.
+                b.startIf().string("operationChildCount[operationSp] == 0").end().startBlock();
+                buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(1) +
+                                ", but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
+                b.end();
+            } else if (operation.isVariadic && operation.numChildren > 1) {
+                // The variadic child is included in numChildren, so the operation requires
+                // numChildren - 1 children at minimum.
                 b.startIf().string("operationChildCount[operationSp] < " + (operation.numChildren - 1)).end().startBlock();
-                buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + (operation.numChildren - 1) +
-                                " children, but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
+                buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(operation.numChildren - 1) +
+                                ", but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             } else if (!operation.isVariadic) {
                 b.startIf().string("operationChildCount[operationSp] != " + operation.numChildren).end().startBlock();
-                buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + operation.numChildren +
-                                " children, but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
+                buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numChildren) +
+                                ", but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             }
 
@@ -2496,7 +2504,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         if (op.childrenMustBeValues[i]) {
                             b.startIf().string("!producedValue").end().startBlock();
                             b.startThrow().startNew(context.getType(IllegalStateException.class));
-                            b.doubleQuote("Operation " + op.name + " expected a value-producing child at position " + i + ", but a void one was provided. This likely indicates a bug in the parser.");
+                            b.string("\"Operation " + op.name + " expected a value-producing child at position \"",
+                                            "+ childIndex + ",
+                                            "\", but a void one was provided. This likely indicates a bug in the parser.\"");
                             b.end(2);
                             b.end();
                         } else {
@@ -3613,7 +3623,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private void buildCustomInstructionExecute(CodeTreeBuilder b, InstructionModel instr, boolean doPush) {
             TypeMirror genType = new GeneratedTypeMirror("", instr.getInternalName() + "Gen");
             TypeMirror uncachedType = new GeneratedTypeMirror("", instr.getInternalName() + "Gen_UncachedData");
-            CustomSignature signature = instr.signature;
+            Signature signature = instr.signature;
 
             if (!isUncached && model.enableTracing) {
                 b.startBlock();
@@ -3662,7 +3672,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.string("frame");
 
                 for (int i = 0; i < instr.signature.valueCount; i++) {
-                    TypeMirror targetType = instr.signature.valueTypes[i];
+                    TypeMirror targetType = instr.signature.getParameterType(i);
                     b.startGroup();
                     if (!ElementUtils.isObject(targetType)) {
                         b.cast(targetType);
@@ -4165,5 +4175,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeTree createOperationConstant(OperationModel op) {
         return CodeTreeBuilder.createBuilder().staticReference(operationsElement.asType(), op.getConstantName()).build();
+    }
+
+    private static String childString(int numChildren) {
+        return numChildren + ((numChildren == 1) ? " child" : " children");
     }
 }

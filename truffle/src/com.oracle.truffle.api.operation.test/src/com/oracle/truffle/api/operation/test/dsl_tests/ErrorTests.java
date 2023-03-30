@@ -155,10 +155,7 @@ public class ErrorTests {
     @OperationProxy(PrivateOperationProxy.class)
     @OperationProxy(CloneableOperationProxy.class)
     @OperationProxy(NonStaticMemberOperationProxy.class)
-    @OperationProxy(MultiVariadicOperationProxy.class)
-    @OperationProxy(ValueParamAfterSetterOperationProxy.class)
-    @OperationProxy(ValueParamAfterVariadicOperationProxy.class)
-    @OperationProxy(ValueParamAfterSetterRangeOperationProxy.class)
+    @OperationProxy(BadSignatureOperationProxy.class)
     @OperationProxy(Underscored_Operation_Proxy.class)
     public abstract static class OperationErrorTests extends RootNode implements OperationRootNode {
         protected OperationErrorTests(TruffleLanguage<?> language, FrameDescriptor builder) {
@@ -196,31 +193,37 @@ public class ErrorTests {
         }
 
         @Operation
-        public static final class MultiVariadicOperation {
+        public static final class BadSignatureOperation {
             @Specialization
-            public static void spec(@Variadic Object[] a,
-                            @ExpectError("Multiple variadic arguments not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
+            public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic parameters.") Object b) {
             }
-        }
 
-        @Operation
-        public static final class ValueParamAfterSetterOperation {
             @Specialization
-            public static void spec(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+            public static void valueAfterSetter(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
-        }
 
-        @Operation
-        public static final class ValueParamAfterVariadicOperation {
             @Specialization
-            public static void spec(@Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic ones.") Object b) {
+            public static void valueAfterSetterRange(LocalSetterRange a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
             }
-        }
 
-        @Operation
-        public static final class ValueParamAfterSetterRangeOperation {
             @Specialization
-            public static void spec(LocalSetterRange a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+            public static void variadicAfterSetter(LocalSetter a,
+                            @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
+            }
+
+            @Specialization
+            public static void variadicAfterSetterRange(LocalSetterRange a,
+                            @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
+            }
+
+            @Specialization
+            public static void multipleVariadic(@Variadic Object[] a,
+                            @ExpectError("Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
+            }
+
+            @Specialization
+            public static void setterAfterSetterRange(LocalSetterRange a,
+                            @ExpectError("LocalSetter parameters must precede LocalSetterRange parameters.") LocalSetter b) {
             }
         }
 
@@ -260,28 +263,38 @@ public class ErrorTests {
         }
     }
 
-    public static final class MultiVariadicOperationProxy {
+    @Operation
+    public static final class BadSignatureOperationProxy {
         @Specialization
-        public static void spec(@Variadic Object[] a,
-                        @ExpectError("Multiple variadic arguments not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
+        public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic parameters.") Object b) {
         }
-    }
 
-    public static final class ValueParamAfterSetterOperationProxy {
         @Specialization
-        public static void spec(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+        public static void valueAfterSetter(LocalSetter a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
         }
-    }
 
-    public static final class ValueParamAfterVariadicOperationProxy {
         @Specialization
-        public static void spec(@Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic ones.") Object b) {
+        public static void valueAfterSetterRange(LocalSetterRange a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
         }
-    }
 
-    public static final class ValueParamAfterSetterRangeOperationProxy {
         @Specialization
-        public static void spec(LocalSetterRange a, @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") Object b) {
+        public static void variadicAfterSetter(LocalSetter a,
+                        @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
+        }
+
+        @Specialization
+        public static void variadicAfterSetterRange(LocalSetterRange a,
+                        @ExpectError("Value parameters must precede LocalSetter and LocalSetterRange parameters.") @Variadic Object[] b) {
+        }
+
+        @Specialization
+        public static void multipleVariadic(@Variadic Object[] a,
+                        @ExpectError("Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.") @Variadic Object[] b) {
+        }
+
+        @Specialization
+        public static void setterAfterSetterRange(LocalSetterRange a,
+                        @ExpectError("LocalSetter parameters must precede LocalSetterRange parameters.") LocalSetter b) {
         }
     }
 

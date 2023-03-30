@@ -127,7 +127,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
                 return canThrow;
             } else {
-                TypeMirror targetType = instr.signature.valueTypes[index];
+                TypeMirror targetType = instr.signature.getParameterType(index);
                 if (!ElementUtils.isObject(targetType)) {
                     b.cast(targetType);
                 }
