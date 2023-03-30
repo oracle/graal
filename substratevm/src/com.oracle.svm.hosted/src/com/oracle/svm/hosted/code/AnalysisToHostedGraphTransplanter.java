@@ -333,10 +333,7 @@ public class AnalysisToHostedGraphTransplanter {
             SnippetTemplate.EagerSnippetInfo info = (SnippetTemplate.EagerSnippetInfo) obj;
             newReplacement = info.copyWith((ResolvedJavaMethod) replaceAnalysisObjects(info.getMethod(), node, replacements, hUniverse));
         } else if (obj instanceof ImageHeapConstant) {
-            ImageHeapConstant imageObj = (ImageHeapConstant) obj;
-            ResolvedJavaType type = imageObj.getType(null);
-            imageObj.setType(type instanceof AnalysisType ? hUniverse.lookup(type) : type);
-            newReplacement = imageObj;
+            newReplacement = obj;
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
             assert !obj.getClass().getName().toLowerCase().contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;

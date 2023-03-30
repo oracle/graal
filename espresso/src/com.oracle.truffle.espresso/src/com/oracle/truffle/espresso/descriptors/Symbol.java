@@ -549,6 +549,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> create = StaticSymbols.putName("create");
         public static final Symbol<Name> toGuest = StaticSymbols.putName("toGuest");
 
+        public static final Symbol<Name> getDynamicModuleDescriptor = StaticSymbols.putName("getDynamicModuleDescriptor");
+
         // Class redefinition plugin helpers
         public static final Symbol<Name> flushFromCaches = StaticSymbols.putName("flushFromCaches");
         public static final Symbol<Name> generateProxyClass = StaticSymbols.putName("generateProxyClass");
@@ -558,6 +560,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> bootModules = StaticSymbols.putName("bootModules");
         public static final Symbol<Name> descriptor = StaticSymbols.putName("descriptor");
         public static final Symbol<Name> ofSystem = StaticSymbols.putName("ofSystem");
+        public static final Symbol<Name> defineModule = StaticSymbols.putName("defineModule");
     }
 
     /**
@@ -621,10 +624,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_module_ModuleFinder = StaticSymbols.putType("Ljava/lang/module/ModuleFinder;");
         public static final Symbol<Type> java_lang_module_ModuleFinder_array = StaticSymbols.putType("[Ljava/lang/module/ModuleFinder;");
         public static final Symbol<Type> jdk_internal_module_ModulePath = StaticSymbols.putType("Ljdk/internal/module/ModulePath;");
+        public static final Symbol<Type> jdk_internal_module_Modules = StaticSymbols.putType("Ljdk/internal/module/Modules;");
+        public static final Symbol<Type> java_lang_module_ModuleDescriptor = StaticSymbols.putType("Ljava/lang/module/ModuleDescriptor;");
 
         // URL class loader
         public static final Symbol<Type> java_net_URLClassLoader = StaticSymbols.putType("Ljava/net/URLClassLoader;");
         public static final Symbol<Type> java_net_URL = StaticSymbols.putType("Ljava/net/URL;");
+        public static final Symbol<Type> java_net_URI = StaticSymbols.putType("Ljava/net/URI;");
         public static final Symbol<Type> java_net_URL_array = StaticSymbols.putType("[Ljava/net/URL;");
 
         public static final Symbol<Type> java_beans_Introspector = StaticSymbols.putType("Ljava/beans/Introspector;");
@@ -884,6 +890,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_UnknownKeyException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/UnknownKeyException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ForeignException = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ForeignException;");
         public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_ExceptionType = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/ExceptionType;");
+        public static final Symbol<Type> com_oracle_truffle_espresso_polyglot_VMHelper = StaticSymbols.putType("Lcom/oracle/truffle/espresso/polyglot/VMHelper;");
     }
 
     /**
@@ -1121,5 +1128,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> ModuleFinder_SystemModules = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.jdk_internal_module_SystemModules);
         public static final Symbol<Signature> ModuleFinder_Path_array = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.java_nio_file_Path_array);
         public static final Symbol<Signature> ModuleFinder_ModuleFinder_array = StaticSymbols.putSignature(Type.java_lang_module_ModuleFinder, Type.java_lang_module_ModuleFinder_array);
+        public static final Symbol<Signature> Module_ClassLoader_ModuleDescriptor_URI = StaticSymbols.putSignature(Type.java_lang_Module, Type.java_lang_ClassLoader,
+                        Type.java_lang_module_ModuleDescriptor, Type.java_net_URI);
+        public static final Symbol<Signature> ModuleDescriptor_String_String = StaticSymbols.putSignature(Type.java_lang_module_ModuleDescriptor, Type.java_lang_String, Type.java_lang_String);
     }
 }

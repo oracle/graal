@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -197,20 +197,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     @Override
     public String getName() {
-        String compilerConfigurationName = getCompilerConfigurationName();
-        assert compilerConfigurationName != null;
-        String suffix;
-        if (compilerConfigurationName == null) {
-            suffix = "Unknown";
-        } else if (compilerConfigurationName.equals("community")) {
-            suffix = "CE";
-        } else if (compilerConfigurationName.equals("enterprise")) {
-            suffix = "EE";
-        } else {
-            assert false : "unexpected compiler configuration name: " + compilerConfigurationName;
-            suffix = compilerConfigurationName;
-        }
-        return "GraalVM " + suffix;
+        String compilerConfigurationName = String.valueOf(getCompilerConfigurationName());
+        return switch (compilerConfigurationName) {
+            case "community" -> "GraalVM CE";
+            case "enterprise" -> "Oracle GraalVM";
+            default -> {
+                assert false : "unexpected compiler configuration name: " + compilerConfigurationName;
+                yield "GraalVM " + compilerConfigurationName;
+            }
+        };
     }
 
     /**

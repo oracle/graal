@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,7 +54,21 @@ public class VMFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(VM.class, new VM());
+        ImageSingletons.add(VM.class, new VM(determineVMInfo()));
+    }
+
+    protected String determineVMInfo() {
+        return getSelectedGCName();
+    }
+
+    protected static final String getSelectedGCName() {
+        if (SubstrateOptions.UseSerialGC.getValue()) {
+            return "serial gc";
+        } else if (SubstrateOptions.UseEpsilonGC.getValue()) {
+            return "epsilon gc";
+        } else {
+            return "unknown gc";
+        }
     }
 
     @Override

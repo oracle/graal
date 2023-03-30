@@ -30,6 +30,9 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -91,5 +94,15 @@ public class Mman {
 
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int mprotect(PointerBase addr, UnsignedWord len, int prot);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        @Platforms(Platform.LINUX.class)
+        @CLibrary("rt")
+        public static native int shm_open(@CConst CCharPointer name, int oflag, int mode);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        @Platforms(Platform.LINUX.class)
+        @CLibrary("rt")
+        public static native int shm_unlink(@CConst CCharPointer name);
     }
 }

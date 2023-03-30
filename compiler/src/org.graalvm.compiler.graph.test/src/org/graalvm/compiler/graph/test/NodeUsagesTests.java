@@ -484,13 +484,14 @@ public class NodeUsagesTests extends GraphTest {
         graph.add(new TestVerifyNode(b));
 
         graph.verify();
+        Object booleanTrue = Boolean.TRUE;
 
         for (Position p : a.successorPositions()) {
             Assert.assertEquals(p.hashCode(), p.hashCode());
             Assert.assertTrue(p.equals(p));
 
             Assert.assertFalse(p.equals(null));
-            Assert.assertFalse(p.equals(Boolean.TRUE));
+            Assert.assertFalse(p.equals(booleanTrue));
 
             Assert.assertFalse(p.equals(new Position(null, p.getIndex(), p.getSubIndex())));
             Assert.assertFalse(p.equals(new Position(null, p.getIndex() + 1, p.getSubIndex())));

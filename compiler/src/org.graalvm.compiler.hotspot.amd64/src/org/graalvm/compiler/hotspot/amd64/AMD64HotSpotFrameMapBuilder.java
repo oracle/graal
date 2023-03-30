@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package org.graalvm.compiler.hotspot.amd64;
 
-import static java.lang.Character.toLowerCase;
+import org.graalvm.compiler.lir.amd64.AMD64FrameMapBuilder;
+import org.graalvm.compiler.lir.framemap.FrameMap;
 
-import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
+import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
 
-public class ValueNodeUtil {
-
-    /**
-     * Converts a given instruction to a value string. The representation of an node as a value is
-     * formed by concatenating the {@linkplain jdk.vm.ci.meta.JavaKind#getTypeChar character}
-     * denoting its {@linkplain ValueNode#getStackKind kind} and its id. For example, {@code "i13"}.
-     *
-     * @param value the instruction to convert to a value string. If {@code value == null}, then "-"
-     *            is returned.
-     * @return the instruction representation as a string
-     */
-    public static String valueString(ValueNode value) {
-        return (value == null) ? "-" : ("" + toLowerCase(value.getStackKind().getTypeChar()) + value.toString(Verbosity.Id));
+public class AMD64HotSpotFrameMapBuilder extends AMD64FrameMapBuilder {
+    public AMD64HotSpotFrameMapBuilder(FrameMap frameMap, CodeCacheProvider codeCache, RegisterConfig registerConfig) {
+        super(frameMap, codeCache, registerConfig);
     }
 
-    public static ValueNode asNode(MemoryKill node) {
-        if (node == null) {
-            return null;
-        } else {
-            return node.asNode();
-        }
+    @Override
+    public AMD64HotSpotFrameMap getFrameMap() {
+        return (AMD64HotSpotFrameMap) super.getFrameMap();
+    }
+
+    /**
+     * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
+     * runtime for walking/inspecting frames of such methods.
+     */
+    public StackSlot getRBPSpillSlot() {
+        return getFrameMap().getRBPSpillSlot();
+    }
+
+    public StackSlot getDeoptimizationRescueSlot() {
+        return getFrameMap().getDeoptimizationRescueSlot();
     }
 }

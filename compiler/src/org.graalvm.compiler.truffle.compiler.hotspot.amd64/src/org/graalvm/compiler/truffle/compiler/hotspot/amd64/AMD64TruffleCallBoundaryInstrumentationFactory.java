@@ -38,7 +38,6 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.amd64.AMD64HotSpotBackend;
 import org.graalvm.compiler.hotspot.amd64.AMD64HotSpotZBarrierSetLIRGenerator;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
-import org.graalvm.compiler.lir.amd64.AMD64FrameMap;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.EntryPointDecorator;
@@ -81,8 +80,8 @@ public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallB
                     assert masm.position() - pos >= AMD64HotSpotBackend.PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
                     if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
                         ForeignCallLinkage callTarget = crb.providers.getForeignCalls().lookupForeignCall(Z_FIELD_BARRIER);
-                        AMD64FrameMap frameMap = (AMD64FrameMap) crb.frameMap;
-                        AMD64HotSpotZBarrierSetLIRGenerator.emitBarrier(crb, masm, null, spillRegister, config, callTarget, address, null, frameMap);
+                        AMD64HotSpotZBarrierSetLIRGenerator.emitBarrier(crb, masm, null, spillRegister, config, callTarget, address, null,
+                                        (AMD64HotSpotBackend.HotSpotFrameContext) crb.frameContext);
                     }
                 }
                 masm.movq(spillRegister, new AMD64Address(spillRegister, entryPointOffset));

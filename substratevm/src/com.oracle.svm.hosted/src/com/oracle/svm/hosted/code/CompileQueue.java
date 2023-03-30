@@ -796,14 +796,30 @@ public class CompileQueue {
 
             if (inliningPlugin.inlinedDuringDecoding) {
                 CanonicalizerPhase.create().apply(graph, providers);
-                /*
-                 * Publish the new graph, it can be picked up immediately by other threads trying to
-                 * inline this method. This can be a minor source of non-determinism in inlining
-                 * decisions.
-                 */
-                method.compilationInfo.encodeGraph(graph);
-                if (checkTrivial(method, graph)) {
+
+                if (!method.compilationInfo.isTrivialInliningDisabled() && graph.getNodeCount() > SubstrateOptions.MaxNodesAfterTrivialInlining.getValue()) {
+                    /*
+                     * The method is too larger after inlining. There is no good way of just
+                     * inlining some but not all trivial callees, because inlining is done during
+                     * graph decoding so the total graph size is not known until the whole graph is
+                     * decoded. We therefore disable all trivial inlining for the method. Except
+                     * callees that are annotated as "always inline" - therefore we need to pretend
+                     * that there was inlining progress, which triggers another round of inlining
+                     * where only "always inline" methods are inlined.
+                     */
+                    method.compilationInfo.setTrivialInliningDisabled(true);
                     inliningProgress = true;
+
+                } else {
+                    /*
+                     * Publish the new graph, it can be picked up immediately by other threads
+                     * trying to inline this method. This can be a minor source of non-determinism
+                     * in inlining decisions.
+                     */
+                    method.compilationInfo.encodeGraph(graph);
+                    if (checkTrivial(method, graph)) {
+                        inliningProgress = true;
+                    }
                 }
             }
         } catch (Throwable ex) {
@@ -818,7 +834,7 @@ public class CompileQueue {
         if (callee.shouldBeInlined()) {
             return true;
         }
-        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod()) {
+        if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod() && !method.compilationInfo.isTrivialInliningDisabled()) {
             return true;
         }
         return false;
@@ -1295,12 +1311,15 @@ public class CompileQueue {
         // Hook for subclasses
     }
 
+    protected boolean isDynamicallyResolvedCall(@SuppressWarnings("unused") CompilationResult result, @SuppressWarnings("unused") Call call) {
+        return false;
+    }
+
     protected void ensureCalleesCompiled(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (Infopoint infopoint : result.getInfopoints()) {
-            if (infopoint instanceof Call) {
-                Call call = (Call) infopoint;
+            if (infopoint instanceof Call call) {
                 HostedMethod callTarget = (HostedMethod) call.target;
-                if (call.direct) {
+                if (call.direct || isDynamicallyResolvedCall(result, call)) {
                     ensureCompiled(callTarget, new DirectCallReason(method, reason));
                 } else if (callTarget != null && callTarget.getImplementations() != null) {
                     for (HostedMethod impl : callTarget.getImplementations()) {

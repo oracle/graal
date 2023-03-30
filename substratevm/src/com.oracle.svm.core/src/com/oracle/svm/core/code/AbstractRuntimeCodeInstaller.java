@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,8 +99,8 @@ public class AbstractRuntimeCodeInstaller {
             try {
                 assert !installedCode.isValid() && !installedCode.isAlive();
                 CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-                installedCode.setAddress(codeStart.rawValue(), method);
-
+                UnsignedWord offset = CodeInfoAccess.getCodeEntryPointOffset(codeInfo);
+                installedCode.setAddress(codeStart.rawValue(), codeStart.rawValue() + offset.rawValue(), method);
                 CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
                 platformHelper().performCodeSynchronization(codeInfo);
                 VMError.guarantee(CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_CODE_CONSTANTS_LIVE && installedCode.isValid(), "The code can't be invalidated before the VM operation finishes");

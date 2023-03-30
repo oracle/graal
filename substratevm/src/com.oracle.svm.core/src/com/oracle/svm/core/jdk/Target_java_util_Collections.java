@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.meta;
+package com.oracle.svm.core.jdk;
 
-public enum HotSpotConstantLoadAction {
-    RESOLVE(0),
-    INITIALIZE(1),
-    MAKE_NOT_ENTRANT(2),
-    LOAD_COUNTERS(3);
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-    private int value;
+import java.util.Collections;
+import java.util.Random;
 
-    HotSpotConstantLoadAction(int value) {
-        this.value = value;
-    }
-
-    public int value() {
-        return value;
-    }
+@TargetClass(Collections.class)
+public final class Target_java_util_Collections {
+    /* This field is lazily initialized and cached by the Collections.shuffle method. */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) static Random r;
 }

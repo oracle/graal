@@ -120,7 +120,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -854,7 +854,7 @@ public class SnippetTemplate {
     public abstract static class AbstractTemplates implements org.graalvm.compiler.api.replacements.SnippetTemplateCache {
 
         protected final OptionValues options;
-        private final SnippetReflectionProvider snippetReflection;
+        protected final SnippetReflectionProvider snippetReflection;
         private final Map<CacheKey, SnippetTemplate> templates;
 
         private final boolean shouldTrackNodeSourcePosition;
@@ -1680,10 +1680,6 @@ public class SnippetTemplate {
         return replacements;
     }
 
-    public boolean hasSideEffects() {
-        return !sideEffectNodes.isEmpty();
-    }
-
     /**
      * Converts a Java boxed value to a {@link JavaConstant} of the right kind. This adjusts for the
      * limitation that a {@link Local}'s kind is a {@linkplain JavaKind#getStackKind() stack kind}
@@ -1835,7 +1831,7 @@ public class SnippetTemplate {
             if (lastLocationAccess == memoryAnchor) {
                 return super.getLastLocationAccess(locationIdentity);
             } else {
-                return (MemoryKill) duplicates.get(ValueNodeUtil.asNode(lastLocationAccess));
+                return (MemoryKill) duplicates.get(ValueNodeInterface.asNode(lastLocationAccess));
             }
         }
 

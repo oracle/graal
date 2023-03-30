@@ -33,7 +33,6 @@ import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JavaLangSubstitutions;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 
@@ -375,15 +374,6 @@ public class FrameInfoQueryResult {
 
     public boolean isNativeMethod() {
         return sourceLineNumber == -2;
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public int hashCode() {
-        int result = 31 * sourceClass.hashCode() + JavaLangSubstitutions.StringUtil.hashCode(sourceMethodName);
-        result = 31 * result + JavaLangSubstitutions.StringUtil.hashCode(getSourceFileName());
-        result = 31 * result + sourceLineNumber;
-        return result;
     }
 
     public Log log(Log log) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,6 +60,7 @@ import com.oracle.svm.core.code.RuntimeCodeInfoAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.heap.CodeReferenceMapEncoder;
@@ -224,8 +225,18 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
                             (SubstrateObjectConstant) constant);
         });
 
+        int entryPointOffset = 0;
+
+        /* If the code starts after an offset, adjust the entry point accordingly */
+        for (CompilationResult.CodeMark mark : compilation.getMarks()) {
+            if (mark.id == SubstrateBackend.SubstrateMarkId.PROLOGUE_START) {
+                assert entryPointOffset == 0;
+                entryPointOffset = mark.pcOffset;
+            }
+        }
+
         NonmovableArray<InstalledCodeObserverHandle> observerHandles = InstalledCodeObserverSupport.installObservers(codeObservers);
-        RuntimeCodeInfoAccess.initialize(codeInfo, code, codeSize, dataOffset, dataSize, codeAndDataMemorySize, tier, observerHandles, false);
+        RuntimeCodeInfoAccess.initialize(codeInfo, code, entryPointOffset, codeSize, dataOffset, dataSize, codeAndDataMemorySize, tier, observerHandles, false);
 
         CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
         encoder.add(objectConstants.referenceMap);

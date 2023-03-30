@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## 23.1.0
+
+* GR-45123 Added `GenerateInline#inlineByDefault` to force usage of inlined node variant even when the node has also a cached variant (`@GenerateCached(true)`).
 
 ## Version 23.0.0
 
@@ -61,6 +64,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44053 (change of behavior) The default implementation of `InteropLibrary.getExceptionStackTrace()` will now include host stack trace elements if [public host access is allowed](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowPublicAccess-boolean-).
 * GR-44053 (change of behavior) Truffle stack trace information is now attached to host and internal exceptions via suppressed exceptions. The cause of an exception is never modified anymore.
 * GR-44053 (change of behavior) A `StackOverflowError` or `OutOfMemoryError` crossing a Truffle call boundary will not be injected guest stack trace information anymore.
+* GR-44723 `Truffle.getRuntime().getName()` and consequently `Engine.getImplementationName()` have been adjusted to return "Oracle GraalVM" instead of "GraalVM EE".
 
 ## Version 22.3.0
 
