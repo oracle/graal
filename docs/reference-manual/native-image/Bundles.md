@@ -21,7 +21,7 @@ Using bundles is a safe solution to encapsulate all this input required for buil
 * [Building from Bundles](#building-with-bundles)
 * [Environment Variables](#capturing-environment-variables)
 * [Creating new Bundles from existing Bundles](#combining---bundle-create-and---bundle-apply)
-* [Bundle file format](#bundle-file-format)
+* [Bundle File Format](#bundle-file-format)
 
 ## Creating Bundles
 
