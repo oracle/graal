@@ -535,7 +535,7 @@ public abstract class PlatformThreads {
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     public static void detachThread(IsolateThread vmThread) {
-        VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the THREAD_MUTEX.");
+        VMThreads.THREAD_MUTEX.assertIsOwner("Current thread must hold the THREAD_MUTEX.", true);
 
         Thread thread = currentThread.get(vmThread);
         if (thread != null) {

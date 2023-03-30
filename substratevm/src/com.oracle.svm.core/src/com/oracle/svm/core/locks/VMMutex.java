@@ -145,6 +145,11 @@ public class VMMutex {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void assertIsOwner(String message, boolean allowUnspecifiedOwner) {
+        assert isOwner() || (allowUnspecifiedOwner && hasUnspecifiedOwner()) : message;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void assertNotOwner(String message) {
         assert !isOwner() : message;
     }
@@ -161,6 +166,11 @@ public class VMMutex {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void guaranteeIsOwner(String message) {
         VMError.guarantee(isOwner(), message);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void guaranteeIsOwner(String message, boolean allowUnspecifiedOwner) {
+        VMError.guarantee(isOwner() || (allowUnspecifiedOwner && hasUnspecifiedOwner()), message);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -195,12 +205,17 @@ public class VMMutex {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void clearUnspecifiedOwner() {
-        assert owner == (IsolateThread) UNSPECIFIED_OWNER;
+        assert hasUnspecifiedOwner();
         owner = WordFactory.nullPointer();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean hasOwner() {
         return owner.isNonNull();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private boolean hasUnspecifiedOwner() {
+        return owner == (IsolateThread) UNSPECIFIED_OWNER;
     }
 }
