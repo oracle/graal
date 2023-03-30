@@ -36,6 +36,7 @@ import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
+import static com.oracle.svm.driver.NativeImage.IS_AOT;
 
 class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -208,7 +209,7 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         String javaRuntimeName = System.getProperty("java.runtime.name");
-        String vendorVersion = System.getProperty("java.vendor.version");
+        String vendorVersion = (IS_AOT ? System.getProperty("java.vendor.version") : System.getProperty("org.graalvm.vendorversion"));
         nativeImage.showMessage("%s %s (%sbuild %s)", javaRuntimeName, vendorVersion, jdkDebugLevel, javaRuntimeVersion);
 
         /* Third line: VM information. */

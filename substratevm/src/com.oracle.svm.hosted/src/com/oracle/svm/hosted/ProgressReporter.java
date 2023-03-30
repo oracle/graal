@@ -250,7 +250,9 @@ public class ProgressReporter {
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
         recordJsonMetric(GeneralInfo.VENDOR, vm.vendor);
         recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion + " " + vm.version); // deprecated
-        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor", "#glossary-java-info").a(": ").a(vm.vendor).println();
+        l().a(" ").doclink("Java version", "#glossary-java-info")
+                        .a(": ").a(vm.version).a(", ").doclink("vendor", "#glossary-java-info").a(": ").a(vm.vendor)
+                        .a(" - ").a(vm.vendorVersion).println();
         String optimizationLevel = SubstrateOptions.Optimize.getValue();
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
         String march = CPUType.getSelectedOrDefaultMArch();
