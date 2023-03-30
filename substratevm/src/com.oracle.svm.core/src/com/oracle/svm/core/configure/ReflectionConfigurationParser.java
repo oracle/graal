@@ -84,7 +84,11 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         }
         ConfigurationCondition condition = conditionResult.get();
 
-        TypeResult<T> result = delegate.resolveType(condition, className, false);
+        /*
+         * Even if primitives cannot be queried through Class.forName, they can be registered to
+         * allow getDeclaredMethods() and similar bulk queries at run time.
+         */
+        TypeResult<T> result = delegate.resolveType(condition, className, true);
         if (!result.isPresent()) {
             handleError("Could not resolve class " + className + " for reflection configuration.", result.getException());
             return;

@@ -175,14 +175,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerAllClassesQuery(ConfigurationCondition condition, Class<?> clazz) {
         checkNotSealed();
         registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_CLASSES_FLAG));
-        register(condition, clazz.getClasses());
+        try {
+            register(condition, clazz.getClasses());
+        } catch (LinkageError e) {
+            /* Ignore the error */
+        }
     }
 
     @Override
     public void registerAllDeclaredClassesQuery(ConfigurationCondition condition, Class<?> clazz) {
         checkNotSealed();
         registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_DECLARED_CLASSES_FLAG));
-        register(condition, clazz.getDeclaredClasses());
+        try {
+            register(condition, clazz.getDeclaredClasses());
+        } catch (LinkageError e) {
+            /* Ignore the error */
+        }
     }
 
     private void registerClass(Class<?> clazz, boolean unsafeInstantiated) {
@@ -217,7 +225,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerClassLookup(ConfigurationCondition condition, String typeName) {
         checkNotSealed();
         try {
-            register(condition, Class.forName(typeName));
+            register(condition, Class.forName(typeName, false, null));
         } catch (ClassNotFoundException e) {
             registerConditionalConfiguration(condition, () -> ClassForNameSupport.registerNegativeQuery(typeName));
         } catch (Throwable t) {
@@ -276,14 +284,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             final Class<?> currentLambda = current;
             registerConditionalConfiguration(condition, () -> setQueryFlag(currentLambda, ALL_METHODS_FLAG));
         }
-        register(condition, queriedOnly, clazz.getMethods());
+        try {
+            register(condition, queriedOnly, clazz.getMethods());
+        } catch (LinkageError e) {
+            /* Ignore the error */
+        }
     }
 
     @Override
     public void registerAllDeclaredMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
         checkNotSealed();
         registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_DECLARED_METHODS_FLAG));
-        register(condition, queriedOnly, clazz.getDeclaredMethods());
+        try {
+            register(condition, queriedOnly, clazz.getDeclaredMethods());
+        } catch (LinkageError e) {
+            /* Ignore the error */
+        }
     }
 
     @Override
@@ -293,14 +309,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             final Class<?> currentLambda = current;
             registerConditionalConfiguration(condition, () -> setQueryFlag(currentLambda, ALL_CONSTRUCTORS_FLAG));
         }
-        register(condition, queriedOnly, clazz.getConstructors());
+        try {
+            register(condition, queriedOnly, clazz.getConstructors());
+        } catch (LinkageError e) {
+            /* Ignore the error */
+        }
     }
 
     @Override
     public void registerAllDeclaredConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz) {
         checkNotSealed();
         registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_DECLARED_CONSTRUCTORS_FLAG));
-        register(condition, queriedOnly, clazz.getDeclaredConstructors());
+        try {
+            register(condition, queriedOnly, clazz.getDeclaredConstructors());
+        } catch (LinkageError e) {
+            /* Ignore the error */
+        }
     }
 
     private void registerMethod(boolean queriedOnly, Executable reflectExecutable) {
@@ -392,14 +416,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             final Class<?> currentLambda = current;
             registerConditionalConfiguration(condition, () -> setQueryFlag(currentLambda, ALL_FIELDS_FLAG));
         }
-        registerInternal(condition, clazz.getFields());
+        try {
+            registerInternal(condition, clazz.getFields());
+        } catch (LinkageError e) {
+            /* Ignore the error */
+        }
     }
 
     @Override
     public void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz) {
         checkNotSealed();
         registerConditionalConfiguration(condition, () -> setQueryFlag(clazz, ALL_DECLARED_FIELDS_FLAG));
-        registerInternal(condition, clazz.getDeclaredFields());
+        try {
+            registerInternal(condition, clazz.getDeclaredFields());
+        } catch (LinkageError e) {
+            /* Ignore the error */
+        }
     }
 
     private void registerField(Field reflectField) {
@@ -719,7 +751,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 for (AnnotationValue annotation : annotationExtractor.getDeclaredAnnotationData(annotatedElement)) {
                     if (includeAnnotation(annotation)) {
                         includedAnnotations.add(annotation);
-                        registerTypes(annotation.getTypes());
+                        registerTypesForAnnotation(annotation);
                     }
                 }
                 filteredAnnotations.put(annotatedElement, includedAnnotations.toArray(new AnnotationValue[0]));
@@ -738,7 +770,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     for (AnnotationValue annotation : annotations) {
                         if (includeAnnotation(annotation)) {
                             includedAnnotations.add(annotation);
-                            registerTypes(annotation.getTypes());
+                            registerTypesForAnnotation(annotation);
                         }
                     }
                     includedParameterAnnotations[i] = includedAnnotations.toArray(new AnnotationValue[0]);
@@ -755,7 +787,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 for (TypeAnnotationValue typeAnnotation : annotationExtractor.getTypeAnnotationData(annotatedElement)) {
                     if (includeAnnotation(typeAnnotation.getAnnotationData())) {
                         includedTypeAnnotations.add(typeAnnotation);
-                        registerTypes(typeAnnotation.getAnnotationData().getTypes());
+                        registerTypesForAnnotation(typeAnnotation.getAnnotationData());
                     }
                 }
                 filteredTypeAnnotations.put(annotatedElement, includedTypeAnnotations.toArray(new TypeAnnotationValue[0]));
@@ -780,6 +812,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
         }
         return true;
+    }
+
+    private void registerTypesForAnnotation(AnnotationValue annotationValue) {
+        registerTypes(annotationValue.getTypes());
+        Class<?> annotationType = annotationValue.getType();
+        if (annotationType != null) {
+            RuntimeReflection.registerAllDeclaredMethods(annotationType);
+        }
     }
 
     @SuppressWarnings("cast")
