@@ -111,6 +111,7 @@ public class PerfMemory {
         buffer = b;
         capacity = b.capacity();
         rawMemory = WordFactory.pointer(SubstrateUtil.cast(b, Target_java_nio_Buffer.class).address);
+
         assert verifyRawMemoryAccess();
 
         return true;

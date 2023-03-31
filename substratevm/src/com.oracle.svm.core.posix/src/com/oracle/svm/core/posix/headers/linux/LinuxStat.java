@@ -24,11 +24,17 @@
  */
 package com.oracle.svm.core.posix.headers.linux;
 
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
@@ -46,14 +52,25 @@ public class LinuxStat {
         long st_ino();
 
         @CField
+        @AllowWideningCast
+        UnsignedWord st_mode();
+
+        @CField
+        int st_uid();
+
+        @CField
         long st_size();
+
+        @CField
+        @AllowWideningCast
+        UnsignedWord st_nlink();
     }
 
-    @CFunction
-    public static native int fstat64(int fd, stat64 buf);
-
     public static class NoTransitions {
-        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        @CFunction(transition = NO_TRANSITION)
         public static native int fstat64(int fd, stat64 buf);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int lstat64(@CConst CCharPointer path, stat64 buf);
     }
 }
