@@ -144,7 +144,6 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
-import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -887,7 +886,7 @@ public class SubstrateGraphBuilderPlugins {
             return false;
         }
         if (isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17 &&
-                        (RecordSupport.singleton().isRecord(targetField.getDeclaringClass()) || SubstrateUtil.isHiddenClass(targetField.getDeclaringClass()))) {
+                        (targetField.getDeclaringClass().isRecord() || SubstrateUtil.isHiddenClass(targetField.getDeclaringClass()))) {
             /*
              * After JDK 11, sun.misc.Unsafe performs a few more checks than
              * jdk.internal.misc.Unsafe to explicitly disallow hidden classes and records.
