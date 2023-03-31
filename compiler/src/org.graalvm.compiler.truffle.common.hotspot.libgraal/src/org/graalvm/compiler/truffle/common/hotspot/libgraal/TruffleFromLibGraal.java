@@ -29,7 +29,6 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -53,118 +52,58 @@ public @interface TruffleFromLibGraal {
     Id value();
 
     /**
-     * Specifies the signature (return and parameter types) of a call from Truffle to libgraal.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
-    @interface Signature {
-        /**
-         * An array of types where the first element is the return type and the remaining elements
-         * are the parameter types of the signature.
-         */
-        Class<?>[] value();
-    }
-
-    /**
      * Identifier for a call to HotSpot from libgraal.
      */
     // Please keep sorted
     enum Id implements FromLibGraalId {
         // @formatter:off
-        @Signature({void.class, Object.class, Object.class})
-        AddTargetToDequeue,
-        @Signature({void.class, Object.class, Object.class})
-        AddInlinedTarget,
-        @Signature({Object.class, Object.class, long.class})
-        AsCompilableTruffleAST,
-        @Signature({long.class, Object.class})
-        AsJavaConstant,
-        @Signature({boolean.class, Object.class, String.class})
-        CancelCompilation,
-        @Signature({String.class, Object.class})
-        CompilableToString,
-        @Signature({void.class, Consumer.class, Object.class, long.class})
-        ConsumeOptimizedAssumptionDependency,
-        @Signature({Supplier.class, long.class})
-        CreateStringSupplier,
-        @Signature({int.class, Object.class})
-        CountDirectCallNodes,
-        @Signature({long.class, Object.class, long.class})
-        GetCallTargetForCallNode,
-        @Signature({int.class, Object.class})
-        GetCompilableCallCount,
-        @Signature({String.class, Object.class})
-        GetCompilableName,
-        @Signature({int.class, Object.class, long.class, boolean.class, int.class})
-        GetConstantFieldInfo,
-        @Signature({String.class, Object.class})
-        GetDescription,
-        @Signature({long.class, Object.class})
-        GetFailedSpeculationsAddress,
-        @Signature({int.class, Object.class})
-        GetKnownCallSiteCount,
-        @Signature({String.class, Object.class})
-        GetLanguage,
-        @Signature({int.class, Object.class})
-        GetLineNumber,
-        @Signature({void.class, Object.class})
-        PrepareForCompilation,
-        @Signature({int.class, Object.class})
-        GetNodeId,
-        @Signature({String.class, Object.class})
-        GetNodeClassName,
-        @Signature({byte[].class, Object.class, long.class})
-        GetDebugProperties,
-        @Signature({int.class, Object.class})
-        GetNonTrivialNodeCount,
-        @Signature({int.class, Object.class})
-        GetOffsetEnd,
-        @Signature({int.class, Object.class})
-        GetOffsetStart,
-        @Signature({Object.class, Object.class, long.class})
-        GetPosition,
-        @Signature({String.class, Supplier.class})
-        GetSuppliedString,
-        @Signature({String.class, Object.class})
-        GetURI,
-        @Signature({boolean.class, Object.class})
-        IsCancelled,
-        @Signature({boolean.class, Object.class})
-        IsLastTier,
-        @Signature({boolean.class, Object.class})
-        HasNextTier,
-        @Signature({boolean.class, Object.class, Object.class})
-        IsSameOrSplit,
-        @Signature({boolean.class, Object.class, long.class})
-        IsSpecializationMethod,
-        @Signature({boolean.class, Object.class, Object.class, Supplier.class})
-        IsSuppressedFailure,
-        @Signature({boolean.class, Object.class})
-        IsTrivial,
-        @Signature({boolean.class, Object.class, long.class})
-        IsValueType,
-        @Signature({void.class, Object.class, String.class, Object.class, String.class})
-        Log,
-        @Signature({void.class, Object.class, Object.class, long.class})
-        OnCodeInstallation,
-        @Signature({void.class, Object.class, Supplier.class, boolean.class, boolean.class, boolean.class, boolean.class})
-        OnCompilationFailed,
-        @Signature({void.class, Object.class, Object.class, Object.class})
-        OnCompilationRetry,
-        @Signature({void.class, Object.class, Object.class, String.class, boolean.class, boolean.class, int.class})
-        OnFailure,
-        @Signature({void.class, Object.class, Object.class, long.class})
-        OnGraalTierFinished,
-        @Signature({void.class, Object.class, Object.class, Object.class, long.class, long.class, int.class})
-        OnSuccess,
-        @Signature({void.class, Object.class, Object.class, Object.class, long.class})
-        OnTruffleTierFinished,
-        @Signature({Object.class, Object.class, long.class})
-        ReadMethodCache,
-        @Signature({Consumer.class, Object.class, long.class})
-        RegisterOptimizedAssumptionDependency,
-        @Signature({void.class, Object.class, int.class, int.class})
-        SetCallCounts;
+        AddTargetToDequeue(void.class, Object.class, Object.class),
+        AddInlinedTarget(void.class, Object.class, Object.class),
+        AsCompilableTruffleAST(Object.class, Object.class, long.class),
+        AsJavaConstant(long.class, Object.class),
+        CancelCompilation(boolean.class, Object.class, String.class),
+        CompilableToString(String.class, Object.class),
+        ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class, long.class),
+        CreateStringSupplier(Supplier.class, long.class),
+        CountDirectCallNodes(int.class, Object.class),
+        GetCallTargetForCallNode(long.class, Object.class, long.class),
+        GetCompilableCallCount(int.class, Object.class),
+        GetCompilableName(String.class, Object.class),
+        GetConstantFieldInfo(int.class, Object.class, long.class, boolean.class, int.class),
+        GetDescription(String.class, Object.class),
+        GetFailedSpeculationsAddress(long.class, Object.class),
+        GetKnownCallSiteCount(int.class, Object.class),
+        GetLanguage(String.class, Object.class),
+        GetLineNumber(int.class, Object.class),
+        PrepareForCompilation(void.class, Object.class),
+        GetNodeId(int.class, Object.class),
+        GetNodeClassName(String.class, Object.class),
+        GetDebugProperties(byte[].class, Object.class, long.class),
+        GetNonTrivialNodeCount(int.class, Object.class),
+        GetOffsetEnd(int.class, Object.class),
+        GetOffsetStart(int.class, Object.class),
+        GetPosition(Object.class, Object.class, long.class),
+        GetSuppliedString(String.class, Supplier.class),
+        GetURI(String.class, Object.class),
+        IsCancelled(boolean.class, Object.class),
+        IsLastTier(boolean.class, Object.class),
+        HasNextTier(boolean.class, Object.class),
+        IsSameOrSplit(boolean.class, Object.class, Object.class),
+        IsSpecializationMethod(boolean.class, Object.class, long.class),
+        IsSuppressedFailure(boolean.class, Object.class, Object.class, Supplier.class),
+        IsTrivial(boolean.class, Object.class),
+        IsValueType(boolean.class, Object.class, long.class),
+        Log(void.class, Object.class, String.class, Object.class, String.class),
+        OnCodeInstallation(void.class, Object.class, Object.class, long.class),
+        OnCompilationFailed(void.class, Object.class, Supplier.class, boolean.class, boolean.class, boolean.class, boolean.class),
+        OnCompilationRetry(void.class, Object.class, Object.class, Object.class),
+        OnFailure(void.class, Object.class, Object.class, String.class, boolean.class, boolean.class, int.class),
+        OnGraalTierFinished(void.class, Object.class, Object.class, long.class),
+        OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class, int.class),
+        OnTruffleTierFinished(void.class, Object.class, Object.class, Object.class, long.class),
+        ReadMethodCache(Object.class, Object.class, long.class),
+        RegisterOptimizedAssumptionDependency(Consumer.class, Object.class, long.class),
+        SetCallCounts(void.class, Object.class, int.class, int.class);
         // @formatter:on
 
         private final String signature;
@@ -202,17 +141,11 @@ public @interface TruffleFromLibGraal {
             return methodName + signature;
         }
 
-        Id() {
-            try {
-                Signature sig = Id.class.getDeclaredField(name()).getAnnotation(Signature.class);
-                Class<?>[] sigTypes = sig.value();
-                this.returnType = sigTypes[0];
-                this.parameterTypes = Arrays.copyOfRange(sigTypes, 1, sigTypes.length);
-                signature = FromLibGraalId.encodeMethodSignature(returnType, parameterTypes);
-                methodName = Character.toLowerCase(name().charAt(0)) + name().substring(1);
-            } catch (NoSuchFieldException e) {
-                throw new InternalError(e);
-            }
+        Id(Class<?> returnType, Class<?>... parameterTypes) {
+            this.returnType = returnType;
+            this.parameterTypes = parameterTypes;
+            signature = FromLibGraalId.encodeMethodSignature(returnType, parameterTypes);
+            methodName = Character.toLowerCase(name().charAt(0)) + name().substring(1);
         }
     }
 }

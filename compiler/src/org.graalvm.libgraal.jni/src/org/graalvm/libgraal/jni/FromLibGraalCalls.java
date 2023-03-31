@@ -64,7 +64,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
     }
 
     /**
-     * Returns a {@link JClass} for the entry points from LibGraal.
+     * Returns a {@link JClass} for the from LibGraal entry points.
      */
     protected abstract JClass resolvePeer(JNIEnv env);
 
