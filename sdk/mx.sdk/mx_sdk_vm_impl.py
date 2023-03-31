@@ -433,9 +433,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                         found_el = True
                     elif found_el:
                         assert el.tag == 'string'
-                        graalvm_bundle_name = '{} {}'.format(self.base_name, self.vm_config_name.upper()) if self.vm_config_name is not None else name.lower()
-                        graalvm_bundle_name += ' ' + graalvm_version()
-                        el.text = graalvm_bundle_name
+                        el.text = graalvm_vendor_version()
                         bio = io.BytesIO()
                         root.write(bio)  # When porting to Python 3, we can use root.write(StringIO(), encoding="unicode")
                         plist_src = {
@@ -918,6 +916,20 @@ def _components_set(components=None, stage1=False):
 _graal_vm_configs_cache = {}
 
 
+def _graalvm_jdk_version(base_jdk):
+    """
+    :type base_jdk: mx.JDKConfig
+    :rtype: str
+    """
+    # Example:
+    # 17.0.1+4.1
+    return '{jdk_version}{jdk_build}.{release_build}'.format(
+        jdk_version=base_jdk.version.versionString,
+        jdk_build='+' + base_jdk.build_id if base_jdk.build_id else '',
+        release_build=_suite._get_early_suite_dict_property('releaseBuild')
+    )
+
+
 def _get_graalvm_configuration(base_name, components=None, stage1=False):
     key = base_name, stage1
     if key not in _graal_vm_configs_cache:
@@ -933,8 +945,18 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
                 vm_config_name = config_name.replace('-', '_')
                 break
 
-        if vm_dist_name:
-            base_dir = '{base_name}_{vm_dist_name}_java{jdk_version}'.format(base_name=base_name, vm_dist_name=vm_dist_name, jdk_version=_src_jdk_version)
+        if vm_dist_name is not None:
+            base_jdk = mx_sdk_vm.base_jdk()
+            # Examples (later we call `.lower().replace('_', '-')`):
+            # GraalVM_community_openjdk_17.0.7+4.1
+            # GraalVM_jdk_17.0.7+4.1
+            # GraalVM_jit_jdk_17.0.7+4.1
+            base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{graalvm_jdk_version}'.format(
+                base_name=base_name,
+                vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
+                jdk_type='jdk' if mx_sdk_vm.ee_implementor(base_jdk.home) else 'openjdk',
+                graalvm_jdk_version=_graalvm_jdk_version(base_jdk)
+            )
             name = base_dir
         else:
             components_sorted_set = sorted(components_set)
@@ -950,8 +972,9 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
             short_sha1_digest = m.hexdigest()[:10]  # to keep paths short
             base_dir = '{base_name}_{hash}_java{jdk_version}'.format(base_name=base_name, hash=short_sha1_digest, jdk_version=_src_jdk_version)
             name = '{base_dir}{stage_suffix}'.format(base_dir=base_dir, stage_suffix='_stage1' if stage1 else '')
+            base_dir += '_' + _suite.release_version()
         name = name.upper()
-        base_dir = base_dir.lower().replace('_', '-') + '-' + _suite.release_version()
+        base_dir = base_dir.lower().replace('_', '-')
 
         _graal_vm_configs_cache[key] = name, base_dir, vm_config_name
     return _graal_vm_configs_cache[key]
@@ -1599,7 +1622,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def build(self):
         def with_source(dep):
             return not isinstance(dep, mx.Dependency) or (_include_sources(dep.qualifiedName()) and dep.isJARDistribution() and not dep.is_stripped())
-        vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
+        vendor_info = {'vendor-version': graalvm_vendor_version()}
         out_dir = self.subject.output_directory()
 
         if _jlink_libraries():
@@ -1668,7 +1691,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             'components: {}'.format(', '.join(sorted(_components_set()))),
             'include sources: {}'.format(_include_sources_str()),
             'strip jars: {}'.format(mx.get_opts().strip_jars),
-            'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
+            'vendor-version: {}'.format(graalvm_vendor_version()),
             'source jimage: {}'.format(src_jimage),
             'use_upgrade_module_path: {}'.format(mx.get_env('GRAALVM_JIMAGE_USE_UPGRADE_MODULE_PATH', None))
         ]
@@ -3645,14 +3668,20 @@ def graalvm_vm_name(graalvm_dist, jdk):
     out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
     match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit Server VM )', out.split('\n')[-1])
     vm_name = match.group('base_vm_name') if match else ''
-    return vm_name + graalvm_vendor_version(graalvm_dist)
+    return vm_name + graalvm_vendor_version()
 
-def graalvm_vendor_version(graalvm_dist):
+def graalvm_vendor_version():
     """
-    :type jdk_home: str
     :rtype str:
     """
-    return 'Oracle GraalVM' if get_graalvm_edition() == 'ee' else 'GraalVM CE'
+    # Examples:
+    # GraalVM CE 17.0.1+4.1
+    # Oracle GraalVM 17.0.1+4.1
+    base_jdk = mx_sdk_vm.base_jdk()
+    return '{vendor} {version}'.format(
+        vendor=('Oracle ' + _graalvm_base_name) if mx_sdk_vm.ee_implementor(base_jdk.home) else (_graalvm_base_name + ' CE'),
+        version=_graalvm_jdk_version(base_jdk)
+    )
 
 
 # GR-37542 current debug info on darwin bloats binary (stripping to a separate .dSYM folder is not implemented) and
