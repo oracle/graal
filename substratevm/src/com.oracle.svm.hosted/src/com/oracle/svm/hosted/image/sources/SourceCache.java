@@ -297,7 +297,13 @@ public class SourceCache {
         if (moduleName != null) {
             for (String specialRootModule : SourceRoots.specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
-                    for (Path srcRoot : SourceRoots.specialSrcRoots.get(specialRootModule)) {
+                    // handle this module specially as it has intermediate dirs
+                    List<Path>  specialModulePathList =  SourceRoots.specialSrcRoots.get(specialRootModule);
+                    // if we have no src.zip then there will be no entry in the hash table
+                    if (specialModulePathList == null) {
+                        break;
+                    }
+                    for (Path srcRoot : specialModulePathList) {
                         String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
                         if (filePath.toString().startsWith(srcRootGroup)) {
                             Path sourcePath = extendPath(srcRoot, filePath);
@@ -362,7 +368,12 @@ public class SourceCache {
             for (String specialRootModule : SourceRoots.specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
                     // handle this module specially as it has intermediate dirs
-                    for (Path srcRoot : SourceRoots.specialSrcRoots.get(specialRootModule)) {
+                    List<Path>  specialModulePathList =  SourceRoots.specialSrcRoots.get(specialRootModule);
+                    // if we have no src.zip then there will be no entry in the hash table
+                    if (specialModulePathList == null) {
+                        break;
+                    }
+                    for (Path srcRoot : specialModulePathList) {
                         String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
                         if (filePath.toString().startsWith(srcRootGroup)) {
                             Path sourcePath = extendPath(srcRoot, filePath);
