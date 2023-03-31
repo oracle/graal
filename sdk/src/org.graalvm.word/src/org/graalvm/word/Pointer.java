@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,18 @@ public interface Pointer extends UnsignedWord, PointerBase {
      * @since 19.0
      */
     Object toObject();
+
+    /**
+     * Convert pointer to the type specified by the clazz argument.
+     * 
+     * @param clazz the type to which to cast the pointer
+     * @param nonNull true if the value cannot be null
+     *
+     * @return this Pointer cast to type T
+     * 
+     * @since 23.1
+     */
+    <T> T toObject(Class<T> clazz, boolean nonNull);
 
     /**
      * Unsafe conversion of this Pointer to a Java language object. No correctness checks or type

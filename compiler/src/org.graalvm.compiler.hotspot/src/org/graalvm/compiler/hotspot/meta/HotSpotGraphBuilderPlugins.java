@@ -194,7 +194,7 @@ public class HotSpotGraphBuilderPlugins {
         StandardGraphBuilderPlugins.registerConstantFieldLoadPlugin(plugins);
         if (!IS_IN_NATIVE_IMAGE) {
             // In libgraal all word related operations have been fully processed so this is unneeded
-            HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes, barrierSet);
+            HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, constantReflection, wordTypes, barrierSet);
             HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin);
 
             plugins.appendTypePlugin(nodePlugin);

@@ -60,6 +60,7 @@ import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -69,8 +70,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * operations}.
  */
 public class HotSpotWordOperationPlugin extends WordOperationPlugin {
-    HotSpotWordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes, BarrierSet barrierSet) {
-        super(snippetReflection, wordTypes, barrierSet);
+    HotSpotWordOperationPlugin(SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, WordTypes wordTypes, BarrierSet barrierSet) {
+        super(snippetReflection, constantReflection, wordTypes, barrierSet);
     }
 
     @Override
