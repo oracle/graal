@@ -73,6 +73,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
+import jdk.internal.loader.BootLoader;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Registration of native JDK libraries. */
@@ -108,6 +109,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         registerLoadLibraryPlugin(providers, plugins, System.class);
+        registerLoadLibraryPlugin(providers, plugins, BootLoader.class);
     }
 
     public void registerLoadLibraryPlugin(Providers providers, Plugins plugins, Class<?> clazz) {
