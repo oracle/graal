@@ -357,7 +357,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @SuppressWarnings("unused")
-        protected void handleNoSuchFieldError(NoSuchFieldError error, JavaMethod javaMethod) {
+        protected void handleIncompatibleClassChangeError(IncompatibleClassChangeError error, JavaMethod javaMethod) {
             replaceWithThrowingAtRuntime(this, error);
         }
 
