@@ -133,11 +133,20 @@ public abstract class ToEspressoNode extends EspressoNode {
             if (isTypeMappingEnabled(targetType)) {
                 return ToEspressoNodeFactory.ToMappedInterfaceNodeGen.create((ObjectKlass) targetType);
             } else {
-                return ToEspressoNodeFactory.ToUnknownNodeGen.create();
+                return ToEspressoNodeFactory.ToUnknownNodeGen.create((ObjectKlass) targetType);
             }
         }
         if (isForeignException(targetType, meta)) {
             return ToEspressoNodeFactory.ToForeignExceptionNodeGen.create();
+        }
+        if (targetType == meta.java_lang_Throwable) {
+            return ToEspressoNodeFactory.ToThrowableNodeGen.create();
+        }
+        if (targetType == meta.java_lang_Exception) {
+            return ToEspressoNodeFactory.ToExceptionNodeGen.create();
+        }
+        if (targetType == meta.java_lang_RuntimeException) {
+            return ToEspressoNodeFactory.ToRuntimeExceptionNodeGen.create();
         }
         if (targetType == meta.java_time_LocalDate) {
             return ToEspressoNodeFactory.ToLocalDateNodeGen.create();
@@ -166,7 +175,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         if (isTypeConverterEnabled(targetType)) {
             return ToEspressoNodeFactory.ToMappedTypeNodeGen.create((ObjectKlass) targetType);
         } else {
-            return ToEspressoNodeFactory.ToUnknownNodeGen.create();
+            return ToEspressoNodeFactory.ToUnknownNodeGen.create((ObjectKlass) targetType);
         }
     }
 
@@ -236,11 +245,20 @@ public abstract class ToEspressoNode extends EspressoNode {
             if (isTypeMappingEnabled(targetType)) {
                 throw new IllegalStateException("Interface type mappings must be handled separately!");
             } else {
-                return ToEspressoNodeFactory.ToUnknownNodeGen.getUncached();
+                throw new IllegalStateException("unknown types must be handled separately!");
             }
         }
         if (isForeignException(targetType, meta)) {
             return ToEspressoNodeFactory.ToForeignExceptionNodeGen.getUncached();
+        }
+        if (targetType == meta.java_lang_Throwable) {
+            return ToEspressoNodeFactory.ToThrowableNodeGen.getUncached();
+        }
+        if (targetType == meta.java_lang_Exception) {
+            return ToEspressoNodeFactory.ToExceptionNodeGen.getUncached();
+        }
+        if (targetType == meta.java_lang_RuntimeException) {
+            return ToEspressoNodeFactory.ToRuntimeExceptionNodeGen.getUncached();
         }
         if (targetType == meta.java_time_LocalDate) {
             return ToEspressoNodeFactory.ToLocalDateNodeGen.getUncached();
@@ -266,11 +284,10 @@ public abstract class ToEspressoNode extends EspressoNode {
         if (targetType == meta.java_util_Date) {
             return ToEspressoNodeFactory.ToDateNodeGen.getUncached();
         }
-
-        return ToEspressoNodeFactory.ToUnknownNodeGen.create();
+        throw new IllegalStateException("unknown types must be handled separately!");
     }
 
-    static boolean isForeignException(Klass klass, Meta meta) {
+    private static boolean isForeignException(Klass klass, Meta meta) {
         return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
     }
 
@@ -353,7 +370,20 @@ public abstract class ToEspressoNode extends EspressoNode {
                     throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getNameAsString(), e.getMessage()));
                 }
             }
-            return createUncachedToEspressoNode(targetType).execute(value);
+            try {
+                return createUncachedToEspressoNode(targetType).execute(value);
+            } catch (IllegalStateException ex) {
+                // hit the unknown type case, so inline generic handling for that here
+                if (targetType instanceof ObjectKlass) {
+                    try {
+                        checkHasAllFieldsOrThrow(value, (ObjectKlass) targetType, interop, getMeta());
+                        return StaticObject.createForeign(getLanguage(), targetType, value, interop);
+                    } catch (ClassCastException e) {
+                        throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+                    }
+                }
+                throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+            }
         }
     }
 
@@ -971,6 +1001,122 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
     }
 
+    @NodeInfo(shortName = "throwable type mapping")
+    @GenerateUncached
+    public abstract static class ToThrowable extends ToEspressoNode {
+        protected static final int LIMIT = 4;
+
+        @Specialization
+        public StaticObject doEspresso(StaticObject value,
+                        @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            if (StaticObject.isNull(value) || meta.java_lang_Throwable.isAssignableFrom(value.getKlass())) {
+                return value;
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, meta.java_lang_Throwable.getTypeAsString());
+        }
+
+        @Specialization
+        public StaticObject doEspressoException(EspressoException value) {
+            return value.getGuestException();
+        }
+
+        @Specialization(guards = {
+                        "!isStaticObject(value)",
+                        "interop.isException(value)",
+                        "!isEspressoException(value)"
+        })
+        StaticObject doforeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Bind("getContext()") EspressoContext context) {
+            return StaticObject.createForeignException(context, value, interop);
+        }
+
+        @Fallback
+        public StaticObject doUnsupported(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_lang_Throwable.getTypeAsString());
+        }
+    }
+
+    @NodeInfo(shortName = "exception type mapping")
+    @GenerateUncached
+    public abstract static class ToException extends ToEspressoNode {
+        protected static final int LIMIT = 4;
+
+        @Specialization
+        public StaticObject doEspresso(StaticObject value,
+                        @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            if (StaticObject.isNull(value) || meta.java_lang_Exception.isAssignableFrom(value.getKlass())) {
+                return value;
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, meta.java_lang_Exception.getTypeAsString());
+        }
+
+        @Specialization
+        public StaticObject doEspressoException(EspressoException value, @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            StaticObject guestException = value.getGuestException();
+            if (meta.java_lang_Exception.isAssignableFrom(guestException.getKlass())) {
+                return guestException;
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, meta.java_lang_Exception.getTypeAsString());
+        }
+
+        @Specialization(guards = {
+                        "!isStaticObject(value)",
+                        "interop.isException(value)",
+                        "!isEspressoException(value)"
+        })
+        StaticObject doforeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Bind("getContext()") EspressoContext context) {
+            return StaticObject.createForeignException(context, value, interop);
+        }
+
+        @Fallback
+        public StaticObject doUnsupported(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_lang_Exception.getTypeAsString());
+        }
+    }
+
+    @NodeInfo(shortName = "runtime exception type mapping")
+    @GenerateUncached
+    public abstract static class ToRuntimeException extends ToEspressoNode {
+        protected static final int LIMIT = 4;
+
+        @Specialization
+        public StaticObject doEspresso(StaticObject value,
+                        @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            if (StaticObject.isNull(value) || meta.java_lang_RuntimeException.isAssignableFrom(value.getKlass())) {
+                return value;
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, meta.java_lang_RuntimeException.getTypeAsString());
+        }
+
+        @Specialization
+        public StaticObject doEspressoException(EspressoException value, @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            StaticObject guestException = value.getGuestException();
+            if (meta.java_lang_RuntimeException.isAssignableFrom(guestException.getKlass())) {
+                return guestException;
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, meta.java_lang_RuntimeException.getTypeAsString());
+        }
+
+        @Specialization(guards = {
+                        "!isStaticObject(value)",
+                        "interop.isException(value)",
+                        "!isEspressoException(value)"
+        })
+        StaticObject doforeign(Object value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Bind("getContext()") EspressoContext context) {
+            return StaticObject.createForeignException(context, value, interop);
+        }
+
+        @Fallback
+        public StaticObject doUnsupported(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, getMeta().java_lang_RuntimeException.getTypeAsString());
+        }
+    }
+
     @NodeInfo(shortName = "LocalDate type mapping")
     @GenerateUncached
     public abstract static class ToLocalDate extends ToEspressoNode {
@@ -1194,13 +1340,51 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @NodeInfo(shortName = "unknown type mapping")
-    @GenerateUncached
     public abstract static class ToUnknown extends ToEspressoNode {
         protected static final int LIMIT = 4;
 
+        private final ObjectKlass targetType;
+
+        ToUnknown(ObjectKlass targetType) {
+            this.targetType = targetType;
+        }
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        StaticObject doForeignNull(Object value,
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
+        }
+
+        @Specialization
+        public StaticObject doEspresso(StaticObject value) throws UnsupportedTypeException {
+            if (StaticObject.isNull(value) || targetType.isAssignableFrom(value.getKlass())) {
+                return value;
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+        }
+
+        @Specialization(guards = {
+                        "!interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        StaticObject doForeignWrapper(Object value,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
+                        @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            try {
+                checkHasAllFieldsOrThrow(value, targetType, interop, meta);
+                return StaticObject.createForeign(getLanguage(), targetType, value, interop);
+            } catch (ClassCastException ex) {
+                throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+            }
+        }
+
         @Specialization
         public StaticObject doUnknown(Object value) throws UnsupportedTypeException {
-            throw UnsupportedTypeException.create(new Object[]{value}, "target type not supported!");
+            throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
         }
     }
 
