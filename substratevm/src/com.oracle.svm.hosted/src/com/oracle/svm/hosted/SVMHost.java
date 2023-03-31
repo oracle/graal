@@ -109,7 +109,6 @@ import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Continuation;
@@ -413,7 +412,7 @@ public class SVMHost extends HostVM {
         boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
         boolean isRecord = javaClass.isRecord();
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
-        boolean isSealed = SealedClassSupport.singleton().isSealed(javaClass);
+        boolean isSealed = javaClass.isSealed();
         boolean isVMInternal = type.isAnnotationPresent(InternalVMMethod.class);
         boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
 
