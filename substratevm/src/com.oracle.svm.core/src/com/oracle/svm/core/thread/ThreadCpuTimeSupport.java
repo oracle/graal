@@ -68,7 +68,7 @@ public interface ThreadCpuTimeSupport {
         return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
     }
 
-    default void init(IsolateThread isolateThread) {
+    default void init(@SuppressWarnings("unused") IsolateThread isolateThread) {
     }
 
     @Fold
