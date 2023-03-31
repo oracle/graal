@@ -346,7 +346,7 @@ public class DirectoryStorage implements ManagementStorage {
             }
         }
         Set<String> deps = new LinkedHashSet<>();
-        for (String s : loaded.getProperty(BundleConstants.BUNDLE_DEPENDENCY, "").split(":")) {
+        for (String s : loaded.getProperty(BundleConstants.BUNDLE_DEPENDENCY, "").split(",")) {
             String p = s.trim();
             if (!p.isEmpty()) {
                 deps.add(s.trim());
@@ -615,7 +615,7 @@ public class DirectoryStorage implements ManagementStorage {
             p.setProperty(BUNDLE_PROVIDED_PREFIX + k, t + o.toString());
         }
         if (!info.getDependencies().isEmpty()) {
-            p.setProperty(BundleConstants.BUNDLE_DEPENDENCY, info.getDependencies().stream().sequential().collect(Collectors.joining(":")));
+            p.setProperty(BundleConstants.BUNDLE_DEPENDENCY, info.getDependencies().stream().sequential().collect(Collectors.joining(",")));
         }
         if (info.getPostinstMessage() != null) {
             p.setProperty(BundleConstants.BUNDLE_MESSAGE_POSTINST, info.getPostinstMessage());
