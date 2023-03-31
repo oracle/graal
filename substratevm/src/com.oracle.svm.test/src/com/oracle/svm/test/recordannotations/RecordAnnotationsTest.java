@@ -23,12 +23,13 @@
  * questions.
  */
 
-package com.oracle.svm.test.jdk17.recordannotations;
+package com.oracle.svm.test.recordannotations;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 

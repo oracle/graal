@@ -23,15 +23,9 @@
  * questions.
  */
 
-package com.oracle.svm.test.jdk17.recordannotations;
+package com.oracle.svm.test.recordannotations;
 
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-import java.lang.annotation.ElementType;
-
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.RECORD_COMPONENT, ElementType.FIELD})
-@interface RCA {
-    // empty
+// Main record under test. See Main.
+@RCA2
+record F(@RCA @RCA2 String name, @RCA2 int i) {
 }
