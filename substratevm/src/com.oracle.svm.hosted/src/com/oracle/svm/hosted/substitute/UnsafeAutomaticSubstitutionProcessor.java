@@ -80,7 +80,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -488,7 +487,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a record.");
                 valid = false;
             }
-            if (SubstrateUtil.isHiddenClass(declaringClass)) {
+            if (declaringClass.isHidden()) {
                 unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a hidden class.");
                 valid = false;
             }

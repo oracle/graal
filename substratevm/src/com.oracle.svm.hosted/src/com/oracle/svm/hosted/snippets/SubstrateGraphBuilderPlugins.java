@@ -93,7 +93,6 @@ import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
@@ -123,7 +122,6 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
@@ -885,11 +883,10 @@ public class SubstrateGraphBuilderPlugins {
             /* A NullPointerException will be thrown at run time for this call. */
             return false;
         }
-        if (isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17 &&
-                        (targetField.getDeclaringClass().isRecord() || SubstrateUtil.isHiddenClass(targetField.getDeclaringClass()))) {
+        if (isSunMiscUnsafe && (targetField.getDeclaringClass().isRecord() || targetField.getDeclaringClass().isHidden())) {
             /*
-             * After JDK 11, sun.misc.Unsafe performs a few more checks than
-             * jdk.internal.misc.Unsafe to explicitly disallow hidden classes and records.
+             * sun.misc.Unsafe performs a few more checks than jdk.internal.misc.Unsafe to
+             * explicitly disallow hidden classes and records.
              */
             return false;
         }

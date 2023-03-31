@@ -92,7 +92,6 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -409,7 +408,7 @@ public class SVMHost extends HostVM {
         String simpleBinaryName = stringTable.deduplicate(getSimpleBinaryName(javaClass), true);
 
         Class<?> nestHost = javaClass.getNestHost();
-        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
+        boolean isHidden = javaClass.isHidden();
         boolean isRecord = javaClass.isRecord();
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
         boolean isSealed = javaClass.isSealed();
