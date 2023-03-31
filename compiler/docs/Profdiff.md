@@ -191,26 +191,27 @@ The algorithm to mark hot methods works as follows:
 
 ## Node source positions
 
-Optimizations are associated with a node source position via a node that took part in the transformation. A node source
-position contains a bytecode index (bci) in the method. This bci is the position of an optimization that is displayed
-by default when `--long-bci` is not enabled.
+Optimizations are associated with node source positions via nodes that took part in the transformation. Profdiff
+displays the positions either as bytecode indexes relative to the root method (short form) or as lists of method names
+and bcis (long form). Short-form positions are the default.
 
-However, in the presence of inlining, the bci is relative to the inlined method. When `--long-bci` is enabled,
-the path from an inlined method to the root including bytecode indices of callsites is displayed.
-
-For example, in the compilation of `String#equals`, we might have the following optimization:
+An example of an optimization with a short-form position is:
 
 ```
-Canonicalizer UnusedNodeRemoval at bci 9
+Canonicalizer UnusedNodeRemoval at bci 44
 ```
 
-We can run the program with `--long-bci=true` to see that the bci 9 is relative to the inlined `StringLatin1#equals`
-method, which is invoked by the root method at bci 44.
+We can run profdiff with `--long-bci=true` to print long-form positions.
 
 ```
 Canonicalizer UnusedNodeRemoval at bci {java.lang.StringLatin1.equals(byte[], byte[]): 9,
                                         java.lang.String.equals(Object): 44}
 ```
+
+The output above says that the optimization was performed in method `java.lang.StringLatin1.equals(byte[], byte[])` at
+bci 9, which was inlined in the root method `java.lang.String.equals(Object)` at bci 44. Note that the short-form
+output reported the bci as 44, because it is relative to the root method (`java.lang.String.equals(Object)` in this
+case).
 
 Perhaps a better way to visualize the position of an optimization is to enable the optimization-context tree. Read the
 section about the optimization-context tree to learn more.
