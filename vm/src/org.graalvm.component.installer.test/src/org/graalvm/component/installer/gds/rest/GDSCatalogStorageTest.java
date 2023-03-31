@@ -42,6 +42,7 @@ import java.util.Set;
  *
  * @author odouda
  */
+@SuppressWarnings("this-escape")
 public class GDSCatalogStorageTest extends CommandTestBase {
     static final String MOCK_URL = "https://mock.url/";
     static final String ID1 = "id1";

@@ -561,6 +561,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         private final SnippetInfo verifyHeap;
         private final SnippetInfo threadBeingInitializedCheck;
 
+        @SuppressWarnings("this-escape")
         public Templates(HotSpotAllocationSnippets receiver, OptionValues options, SnippetCounter.Group.Factory groupFactory, HotSpotProviders providers,
                         GraalHotSpotVMConfig config) {
             super(options, providers);

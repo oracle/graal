@@ -3146,6 +3146,7 @@ public class ContextPreInitializationTest {
         private static final ContextReference<CountingContext> CONTEXT_REF = ContextReference.create(ContextPreInitializationTestSharedLanguage.class);
     }
 
+    @SuppressWarnings("this-escape")
     public abstract static class BaseInstrument extends TruffleInstrument implements ContextsListener {
 
         private Env environment;

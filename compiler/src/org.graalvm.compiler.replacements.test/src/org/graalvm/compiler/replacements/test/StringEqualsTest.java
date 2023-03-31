@@ -32,6 +32,7 @@ import org.junit.Test;
  */
 public class StringEqualsTest extends StringSubstitutionTestBase {
 
+    @SuppressWarnings("this-escape")
     public StringEqualsTest() {
         initSubstitution(
                         getResolvedJavaMethod(String.class, "equals"),

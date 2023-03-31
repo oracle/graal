@@ -30,6 +30,7 @@ import org.graalvm.compiler.options.OptionValues;
 
 public class FinalCodeAnalysisStage extends LIRPhaseSuite<FinalCodeAnalysisContext> {
 
+    @SuppressWarnings("this-escape")
     public FinalCodeAnalysisStage(@SuppressWarnings("unused") OptionValues options) {
         appendPhase(new LocationMarkerPhase());
     }

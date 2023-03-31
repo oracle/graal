@@ -47,6 +47,7 @@ public class ObjectCloneSnippets implements Snippets {
 
         final EnumMap<JavaKind, SnippetInfo> arrayCloneMethods = new EnumMap<>(JavaKind.class);
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
             arrayCloneMethods.put(JavaKind.Boolean, snippet(providers, ObjectCloneSnippets.class, "booleanArrayClone"));

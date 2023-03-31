@@ -650,9 +650,6 @@ suite = {
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
                 ],
-                "jdk.unsupported": [
-                    "sun.reflect",
-                ]
             },
             "javaCompliance" : "17+",
             "checkstyleVersion": "10.7.0",

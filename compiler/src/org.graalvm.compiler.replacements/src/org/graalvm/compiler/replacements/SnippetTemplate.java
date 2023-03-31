@@ -600,7 +600,7 @@ public class SnippetTemplate {
      * {@link SnippetTemplate#instantiate instantiated}
      * </ul>
      */
-    public static class Arguments implements Formattable {
+    public static final class Arguments implements Formattable {
 
         protected final SnippetInfo info;
         protected final CacheKey cacheKey;

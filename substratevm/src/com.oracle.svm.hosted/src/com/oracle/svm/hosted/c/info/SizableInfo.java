@@ -77,6 +77,7 @@ public abstract class SizableInfo extends ElementInfo {
     private final PropertyInfo<Integer> sizeInfo;
     private final PropertyInfo<SignednessValue> signednessInfo;
 
+    @SuppressWarnings("this-escape")
     public SizableInfo(String name, ElementKind kind) {
         super(name);
         this.kind = kind;

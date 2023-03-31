@@ -259,6 +259,7 @@ public class InstanceOfSnippets implements Snippets {
 
         private final Counters counters;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers) {
             super(options, providers);
 

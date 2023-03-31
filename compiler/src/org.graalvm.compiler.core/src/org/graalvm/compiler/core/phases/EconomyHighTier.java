@@ -30,6 +30,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 public class EconomyHighTier extends BaseTier<HighTierContext> {
 
+    @SuppressWarnings("this-escape")
     public EconomyHighTier() {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);

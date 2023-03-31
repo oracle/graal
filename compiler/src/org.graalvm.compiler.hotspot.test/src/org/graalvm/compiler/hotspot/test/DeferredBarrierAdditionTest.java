@@ -58,6 +58,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * mark. By creating references between objects only one write can skip the card mark and the other
  * must emit a card mark.
  */
+@SuppressWarnings("this-escape")
 public class DeferredBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     private final GraalHotSpotVMConfig config = runtime().getVMConfig();

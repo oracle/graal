@@ -610,6 +610,7 @@ public final class CodeInfoDecoder {
         int firstValue;
         int successorIndex;
 
+        @SuppressWarnings("this-escape")
         public FrameInfoState() {
             reset();
         }

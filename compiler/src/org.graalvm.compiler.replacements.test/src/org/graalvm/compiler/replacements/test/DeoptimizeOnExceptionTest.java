@@ -51,6 +51,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
 
+    @SuppressWarnings("this-escape")
     public DeoptimizeOnExceptionTest() {
         createSuites(getInitialOptions()).getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }

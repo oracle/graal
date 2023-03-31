@@ -38,6 +38,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class AnalysisMetaAccess extends UniverseMetaAccess {
 
+    @SuppressWarnings("this-escape")
     public AnalysisMetaAccess(AnalysisUniverse analysisUniverse, MetaAccessProvider originalMetaAccess) {
         super(analysisUniverse, originalMetaAccess);
 

@@ -62,6 +62,7 @@ public class ForeignCallSnippets implements Snippets {
         final SnippetInfo getAndClearObjectResult;
         final SnippetInfo verifyObject;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 

@@ -193,6 +193,7 @@ public class LinearScan {
     public final boolean detailedAsserts;
     private final LIRGenerationResult res;
 
+    @SuppressWarnings("this-escape")
     protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, char[] sortedBlocks,
                     boolean neverSpillConstants) {
         this.ir = res.getLIR();

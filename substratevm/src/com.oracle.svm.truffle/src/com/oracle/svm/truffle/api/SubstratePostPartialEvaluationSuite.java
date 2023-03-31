@@ -30,6 +30,7 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 
 public class SubstratePostPartialEvaluationSuite extends PostPartialEvaluationSuite {
 
+    @SuppressWarnings("this-escape")
     public SubstratePostPartialEvaluationSuite(boolean iterativePartialEscape) {
         super(iterativePartialEscape);
         appendPhase(new DeadStoreRemovalPhase());

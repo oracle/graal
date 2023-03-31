@@ -72,6 +72,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     private final TargetDescription target;
 
+    @SuppressWarnings("this-escape")
     public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
         super(compilations, imageHeap);
         target = ConfigurationValues.getTarget();

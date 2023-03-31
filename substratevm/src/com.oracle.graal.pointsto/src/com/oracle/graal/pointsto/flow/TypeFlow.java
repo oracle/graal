@@ -153,6 +153,7 @@ public abstract class TypeFlow<T> {
         this(original, graphRef, TypeState.forEmpty());
     }
 
+    @SuppressWarnings("this-escape")
     public TypeFlow(TypeFlow<T> original, MethodFlowsGraph graphRef, TypeState cloneState) {
         this(original.getSource(), original.getDeclaredType(), cloneState, original.getSlot(), true, graphRef);
         PointsToStats.registerTypeFlowRetainReason(this, original);

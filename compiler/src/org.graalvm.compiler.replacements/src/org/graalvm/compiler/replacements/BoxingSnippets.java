@@ -148,7 +148,7 @@ public class BoxingSnippets implements Snippets {
         return value.shortValue();
     }
 
-    public static class Templates extends AbstractTemplates {
+    public static final class Templates extends AbstractTemplates {
 
         private final EnumMap<JavaKind, SnippetInfo> boxSnippets = new EnumMap<>(JavaKind.class);
         private final EnumMap<JavaKind, SnippetInfo> unboxSnippets = new EnumMap<>(JavaKind.class);

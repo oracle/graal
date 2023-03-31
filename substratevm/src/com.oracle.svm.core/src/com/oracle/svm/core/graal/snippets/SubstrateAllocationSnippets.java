@@ -551,6 +551,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         private final SnippetInfo allocateStoredContinuation;
         private final SnippetInfo allocatePod;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets receiver) {
             super(options, providers);
             snippetCounters = new AllocationSnippetCounters(SnippetCounter.Group.NullFactory);

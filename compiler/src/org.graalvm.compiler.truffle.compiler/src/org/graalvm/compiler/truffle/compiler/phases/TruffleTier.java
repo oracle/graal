@@ -35,6 +35,7 @@ import org.graalvm.options.OptionValues;
 
 public class TruffleTier extends BaseTier<TruffleTierContext> {
 
+    @SuppressWarnings("this-escape")
     public TruffleTier(OptionValues options, PartialEvaluator partialEvaluator, InstrumentationSuite instrumentationSuite, PostPartialEvaluationSuite postPartialEvaluationSuite) {
         appendPhase(new AgnosticInliningPhase(partialEvaluator, postPartialEvaluationSuite));
         appendPhase(instrumentationSuite);

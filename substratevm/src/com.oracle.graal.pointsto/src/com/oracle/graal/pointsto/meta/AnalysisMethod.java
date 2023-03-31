@@ -150,6 +150,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     protected AnalysisMethod[] implementations;
 
+    @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
         id = universe.nextMethodId.getAndIncrement();
@@ -197,6 +198,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
     }
 
+    @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         wrapped = original.wrapped;
         id = original.id;

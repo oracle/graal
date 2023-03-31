@@ -94,7 +94,7 @@ public class ArtifactParserTest extends TestBase {
     static final String JSON_META_KEY_WORK_DIR = "workingDirectories";
     static final String JSON_META_VAL_WORK_DIR = "languages/python";
 
-    GDSRESTConnector conn = new GDSRESTConnector(MOCK_URL, this, JSON_VAL_ID, Version.fromString(JSON_META_VAL_VERSION));
+    @SuppressWarnings("this-escape") GDSRESTConnector conn = new GDSRESTConnector(MOCK_URL, this, JSON_VAL_ID, Version.fromString(JSON_META_VAL_VERSION));
 
     @Test
     public void testConstruct() {

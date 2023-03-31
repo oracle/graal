@@ -218,6 +218,7 @@ public class FlatNodeGenFactory {
         this(context, mode, node, Arrays.asList(node), node.getSharedCaches(), constants, nodeConstants);
     }
 
+    @SuppressWarnings("this-escape")
     public FlatNodeGenFactory(ProcessorContext context, GeneratorMode mode, NodeData node,
                     Collection<NodeData> stateSharingNodes,
                     Map<CacheExpression, String> sharedCaches,

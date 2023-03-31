@@ -120,6 +120,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     protected final AnalysisType declaringClass;
     protected final AnalysisType fieldType;
 
+    @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         assert !wrappedField.isInternal();
 

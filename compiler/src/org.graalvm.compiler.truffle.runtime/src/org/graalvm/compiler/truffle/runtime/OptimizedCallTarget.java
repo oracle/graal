@@ -339,6 +339,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final int id;
     private static final AtomicInteger idCounter = new AtomicInteger(0);
 
+    @SuppressWarnings("this-escape")
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
         this.sourceCallTarget = sourceCallTarget;

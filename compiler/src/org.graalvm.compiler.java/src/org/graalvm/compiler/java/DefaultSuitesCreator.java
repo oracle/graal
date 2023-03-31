@@ -39,6 +39,7 @@ public class DefaultSuitesCreator extends SuitesProviderBase {
 
     private final CompilerConfiguration compilerConfiguration;
 
+    @SuppressWarnings("this-escape")
     public DefaultSuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
         this(compilerConfiguration);
         this.defaultGraphBuilderSuite = createGraphBuilderSuite(plugins);

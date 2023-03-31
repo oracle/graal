@@ -77,6 +77,7 @@ public class InstanceOfNode extends UnaryOpLogicNode implements Lowerable {
         this(TYPE, checkedStamp, object, profile, anchor);
     }
 
+    @SuppressWarnings("this-escape")
     protected InstanceOfNode(NodeClass<? extends InstanceOfNode> c, ObjectStamp checkedStamp, ValueNode object, JavaTypeProfile profile, AnchoringNode anchor) {
         super(c, object);
         this.checkedStamp = checkedStamp;

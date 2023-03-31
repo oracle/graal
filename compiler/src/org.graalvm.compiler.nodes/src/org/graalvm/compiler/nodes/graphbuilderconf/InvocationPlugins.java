@@ -157,6 +157,7 @@ public class InvocationPlugins {
         private final String name;
         private Class<?> resolved;
 
+        @SuppressWarnings("this-escape")
         public OptionalLazySymbol(String name) {
             this.name = name;
             if (IS_BUILDING_NATIVE_IMAGE) {

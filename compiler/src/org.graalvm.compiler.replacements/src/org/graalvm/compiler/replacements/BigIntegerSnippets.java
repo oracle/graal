@@ -43,6 +43,7 @@ public class BigIntegerSnippets implements Snippets {
 
         public final SnippetTemplate.SnippetInfo implMultiplyToLen;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 

@@ -110,6 +110,7 @@ public class LogStream {
      *
      * @param sink the {@link Consumer} to which prints are sent
      */
+    @SuppressWarnings("this-escape")
     public LogStream(Consumer<? super String> sink) {
         this.consumer = new ForwardingConsumer(this, sink);
         lineBuffer = new StringBuilder(100);
@@ -501,6 +502,7 @@ public class LogStream {
         private final Consumer<? super String> delegate;
         private final AtomicReference<PrintStream> printStreamRef;
 
+        @SuppressWarnings("this-escape")
         ForwardingConsumer(LogStream owner, Consumer<? super String> delegate) {
             this.owner = Objects.requireNonNull(owner, "Owner must be non null.");
             this.delegate = Objects.requireNonNull(delegate, "Delegate must be non null.");

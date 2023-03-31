@@ -240,6 +240,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     // it is stable across VM executions (in support of replay compilation).
     private final EconomicMap<String, SnippetTemplateCache> snippetTemplateCache;
 
+    @SuppressWarnings("this-escape")
     public ReplacementsImpl(DebugHandlersFactory debugHandlersFactory, Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider,
                     TargetDescription target) {
         this.providers = providers.copyWith(this);

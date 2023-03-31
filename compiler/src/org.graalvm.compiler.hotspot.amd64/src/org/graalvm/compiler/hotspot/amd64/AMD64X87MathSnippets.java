@@ -81,6 +81,7 @@ public class AMD64X87MathSnippets implements Snippets {
         private final SnippetInfo cos;
         private final SnippetInfo tan;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 

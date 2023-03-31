@@ -68,6 +68,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
      */
     protected volatile boolean allOriginalCallees = true;
 
+    @SuppressWarnings("this-escape")
     protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
         super(invokeLocation, null);

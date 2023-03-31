@@ -54,6 +54,7 @@ public class StringTable {
         this(ByteBuffer.wrap(bytes));
     }
 
+    @SuppressWarnings("this-escape")
     public StringTable(ByteBuffer buffer) {
         read(buffer);
     }

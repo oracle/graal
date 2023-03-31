@@ -209,6 +209,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
     private final SnippetInfo uirem;
     private final SnippetInfo ulrem;
 
+    @SuppressWarnings("this-escape")
     protected ArithmeticSnippets(OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean divRemNeedsSignedBoundsCheck) {
         super(options, providers);

@@ -122,6 +122,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
     private final IndexNode lookupKey = new IndexNode(null, true);
     private final LinkedHashMap<IndexNode, IndexNode> inodes = new LinkedHashMap<>(10);
 
+    @SuppressWarnings("this-escape")
     public NativeImageResourceFileSystem(NativeImageResourceFileSystemProvider provider, Path resourcePath, Map<String, ?> env) {
         this.provider = provider;
         this.resourcePath = resourcePath;

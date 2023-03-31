@@ -31,6 +31,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+@SuppressWarnings("this-escape")
 public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     public final ResolvedJavaType classFrameClass = lookupType("com.oracle.truffle.api.impl.FrameWithoutBoxing");

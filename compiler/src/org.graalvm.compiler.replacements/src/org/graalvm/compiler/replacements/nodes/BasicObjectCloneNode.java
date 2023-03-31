@@ -37,6 +37,7 @@ public abstract class BasicObjectCloneNode extends MacroNode implements ObjectCl
 
     public static final NodeClass<BasicObjectCloneNode> TYPE = NodeClass.create(BasicObjectCloneNode.class);
 
+    @SuppressWarnings("this-escape")
     public BasicObjectCloneNode(NodeClass<? extends MacroNode> c, MacroParams p) {
         super(c, p);
         updateStamp(computeStamp(getObject()));
