@@ -351,6 +351,11 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
+        @Override
+        protected void handleIllegalArgumentException(IllegalArgumentException error, JavaMethod javaMethod) {
+            replaceWithThrowingAtRuntime(this, error);
+        }
+
         /**
          * This method is used to delay errors from image build-time to run-time. It does so by
          * invoking a synthesized method that throws an instance like the one given as throwable in

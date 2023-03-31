@@ -3974,9 +3974,16 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             } else {
                 throw new Error("lookupConstant returned an object of incorrect type: " + con);
             }
+        } catch (IllegalArgumentException err) {
+            handleIllegalArgumentException(err, method);
         } catch (BootstrapMethodError error) {
             handleBootstrapMethodError(error, method);
         }
+    }
+
+    @SuppressWarnings("unused")
+    protected void handleIllegalArgumentException(IllegalArgumentException error, JavaMethod javaMethod) {
+        throw error;
     }
 
     @SuppressWarnings("unused")
