@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +28,11 @@ package com.oracle.svm.core.jfr;
 
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 /**
- * A {@link Buffer} is a block of native memory into which the results of stack walks are
- * written.
+ * A {@link Buffer} may be associated with a {@link BufferNode}.
  */
 @RawStructure
 public interface Buffer extends PointerBase {
@@ -52,8 +51,8 @@ public interface Buffer extends PointerBase {
     void setSize(UnsignedWord value);
 
     /**
-     * Returns the {@link BufferNode} that references this {@link com.oracle.svm.core.jfr.Buffer}. This field is only
-     * set when a {@link com.oracle.svm.core.jfr.Buffer} was added to a {@link BufferList}
+     * Returns the {@link BufferNode} that references this {@link Buffer}. This field is only set
+     * when a {@link Buffer} was added to a {@link BufferList}
      */
     @RawField
     BufferNode getNode();

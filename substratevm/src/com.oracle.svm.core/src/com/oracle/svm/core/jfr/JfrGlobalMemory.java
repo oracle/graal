@@ -32,8 +32,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.jfr.BufferNodeAccess;
-import com.oracle.svm.core.jfr.BufferNode;
 
 /**
  * Manages the global JFR buffers (see {@link JfrBufferType#GLOBAL_MEMORY}). The memory has a very
@@ -76,7 +74,7 @@ public class JfrGlobalMemory {
 
         BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+            JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
             JfrBufferAccess.reinitialize(buffer);
             node = node.getNext();
         }
@@ -96,7 +94,7 @@ public class JfrGlobalMemory {
         while (node.isNonNull()) {
             BufferNodeAccess.lockNoTransition(node);
             try {
-                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                 JfrBufferAccess.free(buffer);
                 node.setBuffer(WordFactory.nullPointer());
             } finally {
@@ -131,7 +129,7 @@ public class JfrGlobalMemory {
         boolean shouldSignal;
         try {
             /* Copy all committed but not yet flushed memory to the promotion buffer. */
-            JfrBuffer promotionBuffer = JfrBufferNodeAccess.getBuffer(promotionNode);
+            JfrBuffer promotionBuffer = BufferNodeAccess.getJfrBuffer(promotionNode);
             assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
             UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(buffer), promotionBuffer.getCommittedPos(), unflushedSize);
             JfrBufferAccess.increaseCommittedPos(promotionBuffer, unflushedSize);
@@ -159,7 +157,7 @@ public class JfrGlobalMemory {
             BufferNode node = buffers.getHead();
             while (node.isNonNull()) {
                 if (BufferNodeAccess.tryLock(node)) {
-                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                    JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                     if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
                         /* Recheck the available size after acquiring the buffer. */
                         if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {

@@ -65,10 +65,6 @@ public class JfrSymbolRepository implements JfrRepository {
         epochData0.teardown();
         epochData1.teardown();
     }
-    public void clear() {
-        epochData0.clear(false);
-        epochData1.clear(false);
-    }
 
     @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getSymbolId(String imageHeapString, boolean previousEpoch) {
@@ -134,21 +130,19 @@ public class JfrSymbolRepository implements JfrRepository {
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flushpoint) {
+        int result = EMPTY;
         mutex.lockNoTransition();
         try {
             JfrSymbolEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
-            if (count == 0) {
-                epochData.clear(flushpoint);
-                return EMPTY;
+            if (count != 0) {
+                writer.writeCompressedLong(JfrType.Symbol.getId());
+                writer.writeCompressedLong(count);
+                writer.write(epochData.buffer);
+                result = NON_EMPTY;
             }
-
-            writer.writeCompressedLong(JfrType.Symbol.getId());
-            writer.writeCompressedLong(count);
-            writer.write(epochData.buffer);
-
             epochData.clear(flushpoint);
-            return NON_EMPTY;
+            return result;
         } finally {
             mutex.unlock();
         }

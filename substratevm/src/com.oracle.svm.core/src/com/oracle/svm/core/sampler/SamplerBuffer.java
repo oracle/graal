@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import com.oracle.svm.core.jfr.Buffer;
-import org.graalvm.word.UnsignedWord;
 
 /**
  * A {@link SamplerBuffer} is a block of native memory into which the results of stack walks are

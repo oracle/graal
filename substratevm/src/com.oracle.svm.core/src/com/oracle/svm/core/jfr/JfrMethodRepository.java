@@ -55,10 +55,7 @@ public class JfrMethodRepository implements JfrRepository {
         epochData0.teardown();
         epochData1.teardown();
     }
-    public void clear() {
-        epochData0.clear(false);
-        epochData1.clear(false);
-    }
+
     @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
     public long getMethodId(Class<?> clazz, String methodName, int methodId) {
         assert clazz != null;
@@ -86,23 +83,16 @@ public class JfrMethodRepository implements JfrRepository {
 
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
-            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             JfrNativeEventWriter.putLong(data, methodId);
-            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
-            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
-            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             /* Dummy value for signature. */
             JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
-            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             /* Dummy value for modifiers. */
             JfrNativeEventWriter.putShort(data, (short) 0);
             /* Dummy value for isHidden. */
-            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             JfrNativeEventWriter.putBoolean(data, false);
             if (!JfrNativeEventWriter.commit(data)) {
-                com.oracle.svm.core.util.VMError.guarantee(false);
                 return methodId;
             }
 
@@ -118,22 +108,19 @@ public class JfrMethodRepository implements JfrRepository {
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flushpoint) {
+        int result = EMPTY;
         mutex.lockNoTransition();
         try {
             JfrMethodEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
-            if (count == 0) {
-//                com.oracle.svm.core.util.VMError.guarantee(epochData.table.getSize() <1); //only possble if a prior flushpoint reset unflushedEntries but not the table.
-                epochData.clear(flushpoint);
-                return EMPTY;
+            if (count != 0) {
+                writer.writeCompressedLong(JfrType.Method.getId());
+                writer.writeCompressedInt(count);
+                writer.write(epochData.buffer);
+                result = NON_EMPTY;
             }
-
-            writer.writeCompressedLong(JfrType.Method.getId());
-            writer.writeCompressedInt(count);
-            writer.write(epochData.buffer);
-
             epochData.clear(flushpoint);
-            return NON_EMPTY;
+            return result;
         } finally {
             mutex.unlock();
         }

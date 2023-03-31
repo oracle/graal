@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,8 @@
 
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -37,8 +35,10 @@ import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
-import com.oracle.svm.core.jfr.BufferNode;
 
+/**
+ * Singly linked list that stores {@link BufferNode}s.
+ */
 public abstract class BufferList {
     private static final Unsafe U = Unsafe.getUnsafe();
     private static final long LOCK_OFFSET = U.objectFieldOffset(BufferList.class, "lock");
@@ -49,8 +49,6 @@ public abstract class BufferList {
     @Platforms(Platform.HOSTED_ONLY.class)
     public BufferList() {
     }
-
-
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public BufferNode getHead() {
@@ -63,7 +61,13 @@ public abstract class BufferList {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public BufferNode addNode(Buffer buffer, BufferNode node) {
+    public BufferNode addNode(Buffer buffer) {
+        assert buffer.isNonNull();
+
+        BufferNode node = BufferNodeAccess.allocate(buffer);
+        if (node.isNull()) {
+            return WordFactory.nullPointer();
+        }
         lockNoTransition();
         try {
             assert buffer.getNode().isNull();
@@ -79,7 +83,7 @@ public abstract class BufferList {
 
     /**
      * Removes a node from the list. The buffer that is referenced by the node must have already
-     * been freed by the caller.
+     * been dissociated by the caller.
      */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void removeNode(BufferNode node, BufferNode prev) {

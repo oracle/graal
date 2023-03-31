@@ -162,7 +162,7 @@ public final class SamplerSampleWriter {
                 return false;
             }
         }
-        com.oracle.svm.core.util.VMError.guarantee( getAvailableSize(data).aboveOrEqual(totalRequested));
+        assert getAvailableSize(data).aboveOrEqual(totalRequested);
         return true;
     }
 
@@ -185,31 +185,31 @@ public final class SamplerSampleWriter {
         }
         SamplerBuffer oldBuffer = data.getSamplerBuffer();
         BufferNode oldNode = oldBuffer.getNode();
-        /* *** must lock here to avoid conflict with flushing thread which might be processing the buffer
-        * */
+
+        // Lock here to avoid race with flushing thread which might be processing
         BufferNodeAccess.lockNoTransition(oldNode);
         try {
             // Signal to thread iterating list that this node can be removed
-            oldNode.setBuffer(WordFactory.nullPointer()); // *** wont actually be removed until we release the lock
+            oldNode.setBuffer(WordFactory.nullPointer());
 
             JfrThreadLocal.setSamplerBuffer(newBuffer);
             UnsignedWord uncommitted = getUncommittedSize(data);
 
-            /* Copy the uncommitted content of old buffer into new one. */
+            // Copy the uncommitted content of old buffer into new one.
             UnmanagedMemoryUtil.copy(data.getStartPos(), SamplerBufferAccess.getDataStart(newBuffer), uncommitted);
 
-            /* Put in the stack with other unprocessed buffers and send a signal to the JFR recorder. */
+            // Put in the stack with other unprocessed buffers and send a signal to the JFR
+            // recorder.
+            assert SamplerBufferAccess.verify(oldBuffer);
             SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
             SubstrateJVM.getRecorderThread().signal();
 
-            /* Reinitialize data structure. */
+            // Reinitialize data structure.
             data.setSamplerBuffer(newBuffer);
             reset(data);
             increaseCurrentPos(data, uncommitted);
-            // *** do this lastly
+            assert SamplerBufferAccess.verify(newBuffer);
             JfrThreadLocal.getSamplerBufferList().addNode(newBuffer);
-            com.oracle.svm.core.util.VMError.guarantee( SamplerBufferAccess.verify(oldBuffer)); // *** TODO REMOVE
-            com.oracle.svm.core.util.VMError.guarantee( SamplerBufferAccess.verify(newBuffer)); // *** TODO REMOVE
             return true;
         } finally {
             BufferNodeAccess.unlock(oldNode);

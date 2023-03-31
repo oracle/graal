@@ -32,12 +32,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.BufferNode;
-import jdk.internal.misc.Unsafe;
+
+import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Singly linked list that stores {@link JfrBuffer}s. Multiple instances of this data structure are
@@ -51,7 +48,7 @@ import jdk.internal.misc.Unsafe;
  * list.</li>
  * </ul>
  */
-public class JfrBufferList extends com.oracle.svm.core.jfr.BufferList {
+public class JfrBufferList extends BufferList {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrBufferList() {
@@ -62,35 +59,24 @@ public class JfrBufferList extends com.oracle.svm.core.jfr.BufferList {
     public void teardown() {
         assert VMOperation.isInProgressAtSafepoint();
 
-        com.oracle.svm.core.jfr.BufferNode node = head;
+        BufferNode node = head;
         while (node.isNonNull()) {
             /* If the buffer is still alive, then mark it as removed from the list. */
-            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+            JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
             if (buffer.isNonNull()) {
                 buffer.setNode(WordFactory.nullPointer());
             }
 
-            com.oracle.svm.core.jfr.BufferNode next = node.getNext();
+            BufferNode next = node.getNext();
             ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
             node = next;
         }
         head = WordFactory.nullPointer();
     }
 
-
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public com.oracle.svm.core.jfr.BufferNode addNode(JfrBuffer buffer) {
-        assert buffer.isNonNull();
+    public BufferNode addNode(JfrBuffer buffer) {
         assert buffer.getBufferType() != null && buffer.getBufferType() != JfrBufferType.C_HEAP;
-
-        BufferNode node = JfrBufferNodeAccess.allocate(buffer);
-        if (node.isNull()) {
-            return WordFactory.nullPointer();
-        }
-
-        return addNode(buffer, node);
+        return super.addNode(buffer);
     }
-
-
-
 }

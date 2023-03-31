@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,52 +26,51 @@
 
 package com.oracle.svm.core.sampler;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.thread.JavaSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.jfr.BufferNodeAccess;
-import jdk.internal.misc.Unsafe;
 import com.oracle.svm.core.jfr.BufferNode;
+import com.oracle.svm.core.jfr.BufferList;
 
-/** Nodes should only be removed from this list by {@link com.oracle.svm.core.sampler.SamplerBuffersAccess#processSamplerBuffers()}
- * Nodes are marked for removal if their buffer field is null. This means that the buffer has been put on the full
- * buffer queue because it is full or the owning thread has exited.*/
-public class SamplerBufferList extends com.oracle.svm.core.jfr.BufferList {
+/**
+ * Singly linked list that stores {@link SamplerBuffer}s. When entering a safepoint, it is
+ * guaranteed that none of the blocked Java threads holds the list's lock.
+ *
+ * Nodes should only be removed from this list by
+ * {@link SamplerBuffersAccess#processSamplerBuffers()} Nodes are marked for removal if their buffer
+ * field is null. This means that the buffer has been put on the full buffer queue because it is
+ * full or the owning thread has exited.
+ *
+ * The following invariants are crucial if the list is used for thread-local buffers:
+ * <ul>
+ * <li>Each thread shall only have one active node on the list at a time. An inactive node is one
+ * that does not have a buffer.</li>
+ * <li>Only threads executing at a safepoint or that hold the {@link JfrChunkWriter#lock()} may
+ * iterate or remove nodes from the list.</li>
+ * </ul>
+ */
+public class SamplerBufferList extends BufferList {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SamplerBufferList() {
     }
-    public void teardown() {
-        com.oracle.svm.core.util.VMError.guarantee( VMOperation.isInProgressAtSafepoint());
 
-        com.oracle.svm.core.jfr.BufferNode node = head;
+    public void teardown() {
+        assert VMOperation.isInProgressAtSafepoint();
+
+        BufferNode node = head;
         while (node.isNonNull()) {
-            /* If the buffer is still alive, then mark it as removed from the list. */
-            SamplerBuffer buffer = SamplerBufferNodeAccess.getBuffer(node);
+            // If the buffer is still alive, then mark it as removed from the list.
+            SamplerBuffer buffer = BufferNodeAccess.getSamplerBuffer(node);
             // Buffer should have been removed and put on full list in stopRecording.
-            com.oracle.svm.core.util.VMError.guarantee(buffer.isNull());
-            com.oracle.svm.core.jfr.BufferNode next = node.getNext();
+            assert buffer.isNull();
+            BufferNode next = node.getNext();
             BufferNodeAccess.free(node);
             node = next;
         }
         head = WordFactory.nullPointer();
-    }
-
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public com.oracle.svm.core.jfr.BufferNode addNode(SamplerBuffer buffer) {
-        VMError.guarantee( buffer.isNonNull());
-
-        BufferNode node = SamplerBufferNodeAccess.allocate(buffer);
-        if (node.isNull()) {
-            return WordFactory.nullPointer();
-        }
-        return addNode(buffer, node);
     }
 }

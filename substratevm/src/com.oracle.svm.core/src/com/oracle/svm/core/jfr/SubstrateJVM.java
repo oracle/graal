@@ -180,7 +180,6 @@ public class SubstrateJVM {
         return get().jfrLogging;
     }
 
-    public static com.oracle.svm.core.jfr.JfrUnlockedChunkWriter getUnlockedChunkWriter() { return get().unlockedChunkWriter;}
     public static Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
         try {
             Field f = eventClass.getDeclaredField("eventHandler");

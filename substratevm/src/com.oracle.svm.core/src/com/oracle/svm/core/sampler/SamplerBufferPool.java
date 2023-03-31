@@ -59,7 +59,7 @@ public class SamplerBufferPool {
     public void teardown() {
         clear(availableBuffers);
         clear(fullBuffers);
-        com.oracle.svm.core.util.VMError.guarantee( bufferCount == 0);
+        com.oracle.svm.core.util.VMError.guarantee(bufferCount == 0);
     }
 
     private void clear(SamplerBufferStack stack) {

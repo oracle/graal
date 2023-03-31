@@ -37,17 +37,28 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.jfr.BufferNode;
+import com.oracle.svm.core.sampler.SamplerBuffer;
 
 public abstract class BufferNodeAccess {
     protected BufferNodeAccess() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static BufferNode allocate(Buffer buffer) {
+        BufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(BufferNode.class));
+        if (node.isNonNull()) {
+            node.setBuffer(buffer);
+            node.setNext(WordFactory.nullPointer());
+            node.setLockOwner(WordFactory.nullPointer());
+            NativeSpinLockUtils.initialize(ptrToLock(node));
+        }
+        return node;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void free(BufferNode node) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
     }
-
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
     public static boolean tryLock(BufferNode node) {
@@ -89,5 +100,18 @@ public abstract class BufferNodeAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static CIntPointer ptrToLock(BufferNode node) {
         return (CIntPointer) ((Pointer) node).add(BufferNode.offsetOfLock());
+    }
+
+    /** Should be used instead of {@link com.oracle.svm.core.jfr.BufferNode#getBuffer}. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static JfrBuffer getJfrBuffer(BufferNode node) {
+        assert isLockedByCurrentThread(node) || VMOperation.isInProgressAtSafepoint();
+        return (JfrBuffer) node.getBuffer();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static SamplerBuffer getSamplerBuffer(BufferNode node) {
+        assert isLockedByCurrentThread(node) || VMOperation.isInProgressAtSafepoint();
+        return (SamplerBuffer) node.getBuffer();
     }
 }

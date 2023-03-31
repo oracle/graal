@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,19 +31,17 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
-import com.oracle.svm.core.jfr.Buffer;
 
 import com.oracle.svm.core.util.VMError;
 
-// TODO ** update javadoc
 /**
- * {@link JfrBufferNode}s are added to {@link JfrBufferList}s and may have a longer lifetime than
- * the {@link JfrBuffer} that they reference. With this concept and the provided locking mechanism,
- * threads can iterate over the thread-local JFR buffers of other threads, which enables use cases
- * such as JFR event streaming.
+ * {@link BufferNode}s are added to {@link BufferList}s and may have a longer lifetime than the
+ * {@link Buffer} that they reference. With this concept and the provided locking mechanism, threads
+ * can iterate over the thread-local JFR buffers or sampler buffers of other threads, which enables
+ * use cases such as JFR event streaming.
  *
- * Note that {@link JfrBufferNode}s may be freed at safepoints. Code that accesses
- * {@link JfrBufferNode}s must therefore be fully uninterruptible.
+ * Note that {@link BufferNode}s may be freed at safepoints. Code that accesses {@link BufferNode}s
+ * must therefore be fully uninterruptible.
  */
 @RawStructure
 public interface BufferNode extends PointerBase {

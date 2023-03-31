@@ -43,27 +43,28 @@ public final class SamplerBuffersAccess {
 
     @Uninterruptible(reason = "Locking no transition.")
     public static void processActiveBuffers(boolean flushpoint) {
-        SamplerBufferList samplerBufferList =  JfrThreadLocal.getSamplerBufferList();
+        SamplerBufferList samplerBufferList = JfrThreadLocal.getSamplerBufferList();
         BufferNode node = samplerBufferList.getHead();
         BufferNode prev = WordFactory.nullPointer();
 
         while (node.isNonNull()) {
             BufferNode next = node.getNext();
-            com.oracle.svm.core.util.VMError.guarantee(flushpoint || node.getLock()==0, "*** if safepoint, must be unlocked");
-            // Must block because if nodes are skipped, then flushed events may be missing stack trace data
+            assert flushpoint || node.getLock() == 0;
+            // Must block because if nodes are skipped, then flushed events may be missing
+            // stacktrace data
             BufferNodeAccess.lockNoTransition(node);
-            SamplerBuffer buffer = SamplerBufferNodeAccess.getBuffer(node);
-            /* Try to remove old nodes. If a node's buffer is null, it means it's no longer needed.*/
+            SamplerBuffer buffer = BufferNodeAccess.getSamplerBuffer(node);
+            // Try to remove old nodes. If a node's buffer is null, it means it's no longer needed.
             if (buffer.isNull()) {
                 samplerBufferList.removeNode(node, prev);
                 BufferNodeAccess.free(node);
                 node = next;
                 continue;
             }
-            com.oracle.svm.core.util.VMError.guarantee( SamplerBufferAccess.verify(buffer));
+            assert SamplerBufferAccess.verify(buffer);
             try {
                 // serialize active buffers
-                    SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint);
+                SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint);
             } finally {
                 BufferNodeAccess.unlock(node);
             }

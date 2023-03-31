@@ -49,6 +49,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.sampler.SamplerBufferAccess;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -103,6 +104,7 @@ public class JfrThreadLocal implements ThreadListener {
     public static JfrBufferList getJavaBufferList() {
         return javaBufferList;
     }
+
     @Fold
     public static SamplerBufferList getSamplerBufferList() {
         return samplerBufferList;
@@ -178,13 +180,13 @@ public class JfrThreadLocal implements ThreadListener {
 
         if (buffer.isNonNull()) {
             BufferNode node = buffer.getNode();
-            // *** must lock in case flushing thread is in the middle of processing the buffer
+            // Must lock here to avoid races with a flushing thread processing buffers
             BufferNodeAccess.lockNoTransition(node);
             try {
                 // Signal to thread iterating list that this node can be removed
                 node.setBuffer(WordFactory.nullPointer());
                 SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
-                com.oracle.svm.core.util.VMError.guarantee( com.oracle.svm.core.sampler.SamplerBufferAccess.verify(buffer));
+                assert SamplerBufferAccess.verify(buffer);
                 samplerBuffer.set(isolateThread, WordFactory.nullPointer());
             } finally {
                 BufferNodeAccess.unlock(node);
@@ -430,7 +432,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)
     public static SamplerBuffer getSamplerBuffer(IsolateThread thread) {
-        com.oracle.svm.core.util.VMError.guarantee( CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint());
+        assert CurrentIsolate.getCurrentThread() == thread || VMOperation.isInProgressAtSafepoint();
         return samplerBuffer.get(thread);
     }
 
@@ -461,7 +463,7 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setSamplerWriterData(SamplerSampleWriterData data) {
-        com.oracle.svm.core.util.VMError.guarantee( samplerWriterData.get().isNull() || data.isNull());
+        assert samplerWriterData.get().isNull() || data.isNull();
         samplerWriterData.set(data);
     }
 

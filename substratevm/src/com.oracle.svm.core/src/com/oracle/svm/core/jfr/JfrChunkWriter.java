@@ -29,6 +29,7 @@ import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
 import java.nio.charset.StandardCharsets;
 
+import com.oracle.svm.core.sampler.SamplerBuffer;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.IsolateThread;
@@ -39,8 +40,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
-import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
-import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.os.RawFileOperationSupport;
@@ -49,7 +48,6 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -95,7 +93,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrChunkWriter(JfrGlobalMemory globalMemory, JfrStackTraceRepository stackTraceRepo, JfrMethodRepository methodRepo, JfrTypeRepository typeRepo, JfrSymbolRepository symbolRepo,
-                          JfrThreadRepository threadRepo) {
+                    JfrThreadRepository threadRepo) {
         this.lock = new VMMutex("jfrChunkWriter");
         this.globalMemory = globalMemory;
         this.metadata = new JfrMetadata(null);
@@ -208,7 +206,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
          * consistent data, even if multiple threads have JFR events in progress.
          */
-        JfrChangeEpochOperation op = new JfrChangeEpochOperation(); // *** i think this blocks until operation is done.
+        JfrChangeEpochOperation op = new JfrChangeEpochOperation();
         op.enqueue();
 
         /*
@@ -300,6 +298,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         /* The code below is only atomic enough because the epoch can't change while flushing. */
         if (SubstrateJVM.getThreadRepo().hasUnflushedData()) {
             writeCheckpointEvent(JfrCheckpointType.Threads, threadCheckpointRepos, false, flushpoint);
+        } else if (!flushpoint) {
+            /*
+             * After an epoch change, the previous epoch data must be completely clear. It's safe to
+             * clear the previous epoch data without holding the JfrThreadRepository mutex, because
+             * this is at a chunk rotation and the JfrChunkWriter lock is held.
+             */
+            SubstrateJVM.getThreadRepo().clearPreviousEpoch();
         }
     }
 
@@ -504,38 +509,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     /**
-     * The VM is at a safepoint, so all other threads have a native state. However, execution
-     * sampling could still be executed. For the {@link JfrRecurringCallbackExecutionSampler},
-     * it is sufficient to mark this method as uninterruptible to prevent execution of the
-     * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still
-     * be executed at any time for any thread (including the current thread). To prevent races,
-     * we need to ensure that there are no threads that execute the SIGPROF handler while we are
-     * accessing the currently active buffers of other threads.
-     // ***  TODO Is this still an issue now that there's flushedPos pointer?
-     The problem was that we could reset the samplerbuffer while the sigrpof handler was writing data to it.
-     Is there a race btw writing data and promoting to fullBuffer list? [no bc they are both done by the owning thread]
-     Is there a race btw writing data and processing serialization? [no bc we only move the serializedPos ptr]
-     Is there a race btw promotion to full buffer and processing serializaion? [no because we do locking]
+     * While serializing the stack trace data from the active buffers of other threads, we need to
+     * ensure there is no race with threads that execute the SIGPROF handler or recurring callback
+     * execution. This is accomplished by using a serialized position pointer.
+     * ({@link SamplerBuffer#getSerializedPos()}), similar to the {@link JfrBuffer#getFlushedPos()}.
      */
-
     @Uninterruptible(reason = "Prevent JFR recording.")
     private static void processSamplerBuffers(boolean flushpoint) {
-//        if (flushpoint) { // *** Expects recurring callbacks to be paused at a safepoint
-//            ThreadingSupportImpl.pauseRecurringCallback("processing sampler buffers outside safepoint potentially.");
-//        }
-//        JfrExecutionSampler.singleton().disallowThreadsInSamplerCode(); // *** waits for threads to leave sampler code
-//        try {
-            processSamplerBuffers0(flushpoint);
-//        } finally {
-//            JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
-//        }
-//        if (flushpoint) {
-//            ThreadingSupportImpl.resumeRecurringCallback();
-//        }
-    }
-
-    @Uninterruptible(reason = "Prevent JFR recording.")
-    private static void processSamplerBuffers0(boolean flushpoint) {
         SamplerBuffersAccess.processActiveBuffers(flushpoint);
         SamplerBuffersAccess.processFullBuffers(false, flushpoint);
     }
@@ -559,7 +539,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             BufferNode next = node.getNext();
             boolean lockAcquired = BufferNodeAccess.tryLock(node);
             if (lockAcquired) {
-                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                 if (buffer.isNull()) {
                     list.removeNode(node, prev);
                     BufferNodeAccess.free(node);
@@ -602,7 +582,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             boolean lockAcquired = BufferNodeAccess.tryLock(node);
             if (lockAcquired) {
                 try {
-                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                    JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
                     write(buffer);
                     JfrBufferAccess.reinitialize(buffer);
                 } finally {
@@ -657,7 +637,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void changeEpoch() {
-            com.oracle.svm.core.util.VMError.guarantee(com.oracle.svm.core.jfr.SubstrateJVM.get().isRecording());
             flushStorage(false);
 
             /* Notify all event writers that the epoch changed. */
@@ -669,7 +648,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
             // Now that the epoch changed, re-register all running threads for the new epoch.
             SubstrateJVM.getThreadRepo().registerRunningThreads();
-            com.oracle.svm.core.util.VMError.guarantee(com.oracle.svm.core.jfr.SubstrateJVM.get().isRecording());
         }
     }
 }

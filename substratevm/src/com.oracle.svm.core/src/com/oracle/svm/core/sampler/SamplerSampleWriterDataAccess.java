@@ -65,7 +65,7 @@ public final class SamplerSampleWriterDataAccess {
      */
     @Uninterruptible(reason = "Accesses a sampler buffer", callerMustBe = true)
     private static void initialize0(SamplerSampleWriterData data, SamplerBuffer buffer, int skipCount, int maxDepth, boolean allowBufferAllocation) {
-        com.oracle.svm.core.util.VMError.guarantee( SamplerBufferAccess.verify(buffer));
+        assert SamplerBufferAccess.verify(buffer);
 
         data.setSamplerBuffer(buffer);
         data.setStartPos(buffer.getPos());
