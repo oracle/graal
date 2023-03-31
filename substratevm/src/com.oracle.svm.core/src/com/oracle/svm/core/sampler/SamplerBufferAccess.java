@@ -53,7 +53,7 @@ public final class SamplerBufferAccess {
         assert buffer.isNonNull();
         Pointer dataStart = getDataStart(buffer);
         buffer.setPos(dataStart);
-        buffer.setFlushedPos(dataStart);
+        buffer.setSerializedPos(dataStart);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -82,6 +82,7 @@ public final class SamplerBufferAccess {
 
         Pointer start = getDataStart(buffer);
         Pointer end = getDataEnd(buffer);
-        return buffer.getPos().aboveOrEqual(start) && buffer.getPos().belowOrEqual(end) && buffer.getFlushedPos().belowOrEqual(buffer.getPos());
+        return buffer.getPos().aboveOrEqual(start) && buffer.getPos().belowOrEqual(end) && buffer.getSerializedPos().belowOrEqual(buffer.getPos()) &&
+                buffer.getSerializedPos().aboveOrEqual(start);
     }
 }

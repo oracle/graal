@@ -28,7 +28,7 @@ package com.oracle.svm.core.sampler;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
+import com.oracle.svm.core.jfr.Buffer;
 import org.graalvm.word.UnsignedWord;
 
 /**
@@ -36,7 +36,7 @@ import org.graalvm.word.UnsignedWord;
  * written.
  */
 @RawStructure
-public interface SamplerBuffer extends PointerBase {
+public interface SamplerBuffer extends Buffer {
 
     /**
      * Returns the buffer that is next in the {@link SamplerBufferStack}, otherwise null.
@@ -63,33 +63,14 @@ public interface SamplerBuffer extends PointerBase {
     void setPos(Pointer pos);
 
     /**
-     * Returns the position up to which data has been flushed.
+     * Returns the position up to which data has been serialized.
      */
     @RawField
-    Pointer getFlushedPos();
+    Pointer getSerializedPos();
 
     /**
-     * Sets the position up to which data has been flushed.
+     * Sets the position up to which data has been serialized.
      */
     @RawField
-    void setFlushedPos(Pointer pos);
-
-    /**
-     * Returns the size of the buffer. This excludes the header of the buffer.
-     */
-    @RawField
-    UnsignedWord getSize();
-
-    /**
-     * Sets the size of the buffer.
-     */
-    @RawField
-    void setSize(UnsignedWord value);
-
-    @RawField
-    SamplerBufferNode getNode();
-
-    @RawField
-    void setNode(SamplerBufferNode value);
-
+    void setSerializedPos(Pointer pos);
 }

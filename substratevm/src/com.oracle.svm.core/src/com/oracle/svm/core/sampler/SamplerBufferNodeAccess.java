@@ -37,17 +37,20 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.jfr.BufferNodeAccess;
+import com.oracle.svm.core.jfr.BufferNode;
 
 /**
- * Used to access the raw memory of a {@link SamplerBufferNode}.
+ * Used to access the raw memory of a {@link BufferNode}.
  */
-public final class SamplerBufferNodeAccess {
+public final class SamplerBufferNodeAccess extends BufferNodeAccess {
     private SamplerBufferNodeAccess() {
+        super();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static SamplerBufferNode allocate(SamplerBuffer buffer) {
-        SamplerBufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(SamplerBufferNode.class));
+    public static BufferNode allocate(SamplerBuffer buffer) {
+        BufferNode node = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(BufferNode.class));
         if (node.isNonNull()) {
             node.setBuffer(buffer);
             node.setNext(WordFactory.nullPointer());
@@ -57,57 +60,10 @@ public final class SamplerBufferNodeAccess {
         return node;
     }
 
+    /** Should be used instead of {@link BufferNode#getBuffer}. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void free(SamplerBufferNode node) {
-        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(node);
-    }
-
-    /** Should be used instead of {@link SamplerBufferNode#getBuffer}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static SamplerBuffer getBuffer(SamplerBufferNode node) {
+    public static SamplerBuffer getBuffer(BufferNode node) {
         com.oracle.svm.core.util.VMError.guarantee( isLockedByCurrentThread(node) || VMOperation.isInProgressAtSafepoint());
-        return node.getBuffer();
-    }
-
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
-    public static boolean tryLock(SamplerBufferNode node) {
-        com.oracle.svm.core.util.VMError.guarantee( node.isNonNull());
-        if (NativeSpinLockUtils.tryLock(ptrToLock(node))) {
-            setLockOwner(node);
-            return true;
-        }
-        return false;
-    }
-
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
-    public static void lockNoTransition(SamplerBufferNode node) {
-        com.oracle.svm.core.util.VMError.guarantee( node.isNonNull());
-        NativeSpinLockUtils.lockNoTransition(ptrToLock(node));
-        setLockOwner(node);
-    }
-
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
-    public static void unlock(SamplerBufferNode node) {
-        com.oracle.svm.core.util.VMError.guarantee( node.isNonNull());
-        com.oracle.svm.core.util.VMError.guarantee( isLockedByCurrentThread(node));
-        node.setLockOwner(WordFactory.nullPointer());
-        NativeSpinLockUtils.unlock(ptrToLock(node));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isLockedByCurrentThread(SamplerBufferNode node) {
-        com.oracle.svm.core.util.VMError.guarantee( CurrentIsolate.getCurrentThread().isNonNull());
-        return node.isNonNull() && node.getLockOwner() == CurrentIsolate.getCurrentThread();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void setLockOwner(SamplerBufferNode node) {
-        com.oracle.svm.core.util.VMError.guarantee( node.getLockOwner().isNull());
-        node.setLockOwner(CurrentIsolate.getCurrentThread());
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static CIntPointer ptrToLock(SamplerBufferNode node) {
-        return (CIntPointer) ((Pointer) node).add(SamplerBufferNode.offsetOfLock());
+        return (SamplerBuffer) node.getBuffer();
     }
 }

@@ -94,7 +94,7 @@ public class SamplerBufferPool {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void pushFullBuffer(SamplerBuffer buffer) {
-        buffer.setNode(WordFactory.nullPointer()); // *** have to break ties in both direction
+        buffer.setNode(WordFactory.nullPointer());
         fullBuffers.pushBuffer(buffer);
     }
 
@@ -158,7 +158,6 @@ public class SamplerBufferPool {
             result.setSize(dataSize);
             result.setNext(WordFactory.nullPointer());
             result.setNode(WordFactory.nullPointer());
-            result.setFlushedPos(com.oracle.svm.core.sampler.SamplerBufferAccess.getDataStart(result)); // *** not needed see below
             SamplerBufferAccess.reinitialize(result);
         }
         return result;

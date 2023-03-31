@@ -76,20 +76,7 @@ import com.oracle.svm.core.util.VMError;
  * position.</li>
  */
 @RawStructure
-public interface JfrBuffer extends PointerBase {
-
-    /**
-     * Returns the size of the buffer. This excludes the header of the buffer. This field is
-     * effectively final.
-     */
-    @RawField
-    UnsignedWord getSize();
-
-    /**
-     * Sets the size of the buffer.
-     */
-    @RawField
-    void setSize(UnsignedWord value);
+public interface JfrBuffer extends Buffer {
 
     /**
      * Any data before this position was committed and is therefore valid event data.
@@ -135,19 +122,6 @@ public interface JfrBuffer extends PointerBase {
     @PinnedObjectField
     void setBufferType(JfrBufferType value);
 
-    /**
-     * Returns the {@link JfrBufferNode} that references this {@link JfrBuffer}. This field is only
-     * set when a {@link JfrBuffer} was added to a {@link JfrBufferList} (i.e., for
-     * {@link JfrBufferType#C_HEAP} buffers, this field is usually null).
-     */
-    @RawField
-    JfrBufferNode getNode();
-
-    /**
-     * Sets the {@link JfrBufferNode}.
-     */
-    @RawField
-    void setNode(JfrBufferNode value);
 
     @RawField
     byte getFlags();

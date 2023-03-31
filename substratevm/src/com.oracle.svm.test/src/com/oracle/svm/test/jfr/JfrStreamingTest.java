@@ -94,10 +94,11 @@ abstract class JfrStreamingTest extends AbstractJfrTest {
     }
 
     private void enableEvents() {
-        /* Additionally, enable all events that the test case wants to test explicitly. */
+        /* Additionally, enable all events that the test case wants to test explicitly.
+        * They are enabled with stack traces to test if stack trace data is serialized correctly at flushes.*/
         String[] events = getTestedEvents();
         for (String event : events) {
-            stream.enable(event);
+            stream.enable(event).withStackTrace();
         }
     }
 

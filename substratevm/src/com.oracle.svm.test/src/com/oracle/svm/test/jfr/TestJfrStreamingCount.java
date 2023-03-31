@@ -37,6 +37,8 @@ import com.oracle.svm.test.jfr.events.StringEvent;
 
 import jdk.jfr.consumer.RecordedEvent;
 
+import static org.junit.Assert.assertTrue;
+
 /**
  * Check to make sure 1. All events are accounted for when using streaming (even when there are very
  * many events generated). This test also reduces the maximum JFR file size to force chunk
@@ -67,12 +69,15 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
     @Test
     public void test() throws Exception {
         stream.onEvent("com.jfr.Class", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
             classEvents.incrementAndGet();
         });
         stream.onEvent("com.jfr.Integer", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
             integerEvents.incrementAndGet();
         });
         stream.onEvent("com.jfr.String", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
             stringEvents.incrementAndGet();
         });
 

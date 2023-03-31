@@ -24,29 +24,40 @@
  * questions.
  */
 
-package com.oracle.svm.core.sampler;
+package com.oracle.svm.core.jfr;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
+import com.oracle.svm.core.jfr.Buffer;
 
 import com.oracle.svm.core.util.VMError;
 
+// TODO ** update javadoc
+/**
+ * {@link JfrBufferNode}s are added to {@link JfrBufferList}s and may have a longer lifetime than
+ * the {@link JfrBuffer} that they reference. With this concept and the provided locking mechanism,
+ * threads can iterate over the thread-local JFR buffers of other threads, which enables use cases
+ * such as JFR event streaming.
+ *
+ * Note that {@link JfrBufferNode}s may be freed at safepoints. Code that accesses
+ * {@link JfrBufferNode}s must therefore be fully uninterruptible.
+ */
 @RawStructure
-public interface SamplerBufferNode extends PointerBase {
+public interface BufferNode extends PointerBase {
     @RawField
-    SamplerBufferNode getNext();
+    BufferNode getNext();
 
     @RawField
-    void setNext(SamplerBufferNode value);
+    void setNext(BufferNode value);
 
     @RawField
-    SamplerBuffer getBuffer();
+    Buffer getBuffer();
 
     @RawField
-    void setBuffer(SamplerBuffer value);
+    void setBuffer(Buffer value);
 
     @RawField
     int getLock();

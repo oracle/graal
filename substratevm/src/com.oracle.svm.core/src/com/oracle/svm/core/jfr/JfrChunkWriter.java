@@ -93,9 +93,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private long metadataPosition;
     private long lastCheckpointOffset;
 
-    public static volatile int flushCount = 0; // *** TODO remove later
-    public static volatile int rotationCount = 0; // *** TODO remove later
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrChunkWriter(JfrGlobalMemory globalMemory, JfrStackTraceRepository stackTraceRepo, JfrMethodRepository methodRepo, JfrTypeRepository typeRepo, JfrSymbolRepository symbolRepo,
                           JfrThreadRepository threadRepo) {
@@ -172,7 +169,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     public void write(JfrBuffer buffer) {
         assert lock.isOwner();
         assert buffer.isNonNull();
-        assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
+        assert buffer.getBufferType() == JfrBufferType.C_HEAP || VMOperation.isInProgressAtSafepoint() || BufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
@@ -187,9 +184,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     public void flush() {
         assert lock.isOwner();
-        System.out.println("-----1-----");
         flushStorage(true);
-        System.out.println("-----2-----");
 
         writeThreadCheckpoint(true);
         writeFlushCheckpoint(true);
@@ -197,10 +192,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         patchFileHeader(true);
 
         newChunk = false;
-        System.out.println("-----3----");
-        flushCount++;
-        System.out.println("-----Flush count-----" + JfrChunkWriter.flushCount + "--Rotation count "+ com.oracle.svm.core.jfr.JfrChunkWriter.rotationCount) ;
-
     }
 
     public void markChunkFinal() {
@@ -212,8 +203,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
      * Write all the in-memory data to the file.
      */
     public void closeFile() {
-        System.out.println("-----Closefile----");
-
         assert lock.isOwner();
         /*
          * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
@@ -236,7 +225,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         getFileSupport().close(fd);
         filename = null;
         fd = WordFactory.nullPointer();
-        System.out.println("-----Flush count-----" + JfrChunkWriter.flushCount + "--Rotation count "+ com.oracle.svm.core.jfr.JfrChunkWriter.rotationCount) ;
     }
 
     private void writeFileHeader() {
@@ -519,33 +507,36 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
      * The VM is at a safepoint, so all other threads have a native state. However, execution
      * sampling could still be executed. For the {@link JfrRecurringCallbackExecutionSampler},
      * it is sufficient to mark this method as uninterruptible to prevent execution of the
-     * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still // *** Is this still an issue now that there's flushedPos pointer?
+     * recurring callbacks. If the SIGPROF-based sampler is used, the signal handler may still
      * be executed at any time for any thread (including the current thread). To prevent races,
      * we need to ensure that there are no threads that execute the SIGPROF handler while we are
      * accessing the currently active buffers of other threads.
+     // ***  TODO Is this still an issue now that there's flushedPos pointer?
+     The problem was that we could reset the samplerbuffer while the sigrpof handler was writing data to it.
+     Is there a race btw writing data and promoting to fullBuffer list? [no bc they are both done by the owning thread]
+     Is there a race btw writing data and processing serialization? [no bc we only move the serializedPos ptr]
+     Is there a race btw promotion to full buffer and processing serializaion? [no because we do locking]
      */
+
     @Uninterruptible(reason = "Prevent JFR recording.")
     private static void processSamplerBuffers(boolean flushpoint) {
-//        assert VMOperation.isInProgressAtSafepoint();
-        if (flushpoint) { // *** Expects recurring callbacks to be paused at a safepoint
-            ThreadingSupportImpl.pauseRecurringCallback("processing sampler buffers outside safepoint potentially.");
-        }
-        JfrExecutionSampler.singleton().disallowThreadsInSamplerCode(); // *** waits for threads to leave sampler code
-        try {
+//        if (flushpoint) { // *** Expects recurring callbacks to be paused at a safepoint
+//            ThreadingSupportImpl.pauseRecurringCallback("processing sampler buffers outside safepoint potentially.");
+//        }
+//        JfrExecutionSampler.singleton().disallowThreadsInSamplerCode(); // *** waits for threads to leave sampler code
+//        try {
             processSamplerBuffers0(flushpoint);
-        } finally {
-            JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
-        }
-        if (flushpoint) {
-            ThreadingSupportImpl.resumeRecurringCallback();
-        }
+//        } finally {
+//            JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
+//        }
+//        if (flushpoint) {
+//            ThreadingSupportImpl.resumeRecurringCallback();
+//        }
     }
 
     @Uninterruptible(reason = "Prevent JFR recording.")
     private static void processSamplerBuffers0(boolean flushpoint) {
-//        if (!flushpoint) {
-            SamplerBuffersAccess.processActiveBuffers(flushpoint);
-//        }
+        SamplerBuffersAccess.processActiveBuffers(flushpoint);
         SamplerBuffersAccess.processFullBuffers(false, flushpoint);
     }
 
@@ -561,17 +552,17 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private void traverseThreadLocalBuffers(JfrBufferList list, boolean flushpoint) {
-        JfrBufferNode node = list.getHead();
-        JfrBufferNode prev = WordFactory.nullPointer();
+        BufferNode node = list.getHead();
+        BufferNode prev = WordFactory.nullPointer();
 
         while (node.isNonNull()) {
-            JfrBufferNode next = node.getNext();
-            boolean lockAcquired = JfrBufferNodeAccess.tryLock(node);
+            BufferNode next = node.getNext();
+            boolean lockAcquired = BufferNodeAccess.tryLock(node);
             if (lockAcquired) {
                 JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                 if (buffer.isNull()) {
                     list.removeNode(node, prev);
-                    JfrBufferNodeAccess.free(node);
+                    BufferNodeAccess.free(node);
                     node = next;
                     continue;
                 }
@@ -593,7 +584,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                      * reclamation on their own time.
                      */
                 } finally {
-                    JfrBufferNodeAccess.unlock(node);
+                    BufferNodeAccess.unlock(node);
                 }
             }
 
@@ -606,16 +597,16 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private void flushGlobalMemory(boolean flushpoint) {
         JfrBufferList buffers = globalMemory.getBuffers();
-        JfrBufferNode node = buffers.getHead();
+        BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            boolean lockAcquired = JfrBufferNodeAccess.tryLock(node);
+            boolean lockAcquired = BufferNodeAccess.tryLock(node);
             if (lockAcquired) {
                 try {
                     JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                     write(buffer);
                     JfrBufferAccess.reinitialize(buffer);
                 } finally {
-                    JfrBufferNodeAccess.unlock(node);
+                    BufferNodeAccess.unlock(node);
                 }
             }
             assert lockAcquired || flushpoint;
@@ -679,7 +670,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
             // Now that the epoch changed, re-register all running threads for the new epoch.
             SubstrateJVM.getThreadRepo().registerRunningThreads();
             com.oracle.svm.core.util.VMError.guarantee(com.oracle.svm.core.jfr.SubstrateJVM.get().isRecording());
-            rotationCount++;
         }
     }
 }

@@ -32,6 +32,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.jfr.BufferNodeAccess;
+import com.oracle.svm.core.jfr.BufferNode;
 
 /**
  * Manages the global JFR buffers (see {@link JfrBufferType#GLOBAL_MEMORY}). The memory has a very
@@ -62,7 +64,7 @@ public class JfrGlobalMemory {
                 throw new OutOfMemoryError("Could not allocate JFR buffer.");
             }
 
-            JfrBufferNode node = buffers.addNode(buffer);
+            BufferNode node = buffers.addNode(buffer);
             if (node.isNull()) {
                 throw new OutOfMemoryError("Could not allocate JFR buffer node.");
             }
@@ -72,7 +74,7 @@ public class JfrGlobalMemory {
     public void clear() {
         assert VMOperation.isInProgressAtSafepoint();
 
-        JfrBufferNode node = buffers.getHead();
+        BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
             JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
             JfrBufferAccess.reinitialize(buffer);
@@ -90,15 +92,15 @@ public class JfrGlobalMemory {
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private void freeBuffers() {
         /* Free the buffers. */
-        JfrBufferNode node = buffers.getHead();
+        BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
-            JfrBufferNodeAccess.lockNoTransition(node);
+            BufferNodeAccess.lockNoTransition(node);
             try {
                 JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                 JfrBufferAccess.free(buffer);
                 node.setBuffer(WordFactory.nullPointer());
             } finally {
-                JfrBufferNodeAccess.unlock(node);
+                BufferNodeAccess.unlock(node);
             }
             node = node.getNext();
         }
@@ -121,7 +123,7 @@ public class JfrGlobalMemory {
             return true;
         }
 
-        JfrBufferNode promotionNode = tryAcquirePromotionBuffer(unflushedSize);
+        BufferNode promotionNode = tryAcquirePromotionBuffer(unflushedSize);
         if (promotionNode.isNull()) {
             return false;
         }
@@ -135,7 +137,7 @@ public class JfrGlobalMemory {
             JfrBufferAccess.increaseCommittedPos(promotionBuffer, unflushedSize);
             shouldSignal = SubstrateJVM.getRecorderThread().shouldSignal(promotionBuffer);
         } finally {
-            JfrBufferNodeAccess.unlock(promotionNode);
+            BufferNodeAccess.unlock(promotionNode);
         }
 
         JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
@@ -151,12 +153,12 @@ public class JfrGlobalMemory {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private JfrBufferNode tryAcquirePromotionBuffer(UnsignedWord size) {
+    private BufferNode tryAcquirePromotionBuffer(UnsignedWord size) {
         assert size.belowOrEqual(WordFactory.unsigned(bufferSize));
         for (int retry = 0; retry < PROMOTION_RETRY_COUNT; retry++) {
-            JfrBufferNode node = buffers.getHead();
+            BufferNode node = buffers.getHead();
             while (node.isNonNull()) {
-                if (JfrBufferNodeAccess.tryLock(node)) {
+                if (BufferNodeAccess.tryLock(node)) {
                     JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                     if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
                         /* Recheck the available size after acquiring the buffer. */
@@ -164,7 +166,7 @@ public class JfrGlobalMemory {
                             return node;
                         }
                     }
-                    JfrBufferNodeAccess.unlock(node);
+                    BufferNodeAccess.unlock(node);
                 }
                 node = node.getNext();
             }

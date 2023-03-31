@@ -59,39 +59,15 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 
 
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
-
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoCursor;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.jfr.JfrBuffer;
-import com.oracle.svm.core.jfr.JfrFrameType;
-import com.oracle.svm.core.jfr.JfrNativeEventWriter;
-import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
-import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
-import com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntry;
-import com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntryStatus;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
-import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.sampler.SamplerBufferNode;
-import com.oracle.svm.core.sampler.SamplerBufferList;
 import com.oracle.svm.core.sampler.SamplerBuffer;
-import com.oracle.svm.core.sampler.SamplerBufferAccess;
 
 /**
  * Repository that collects all metadata about stacktraces.
@@ -133,7 +109,7 @@ public class JfrStackTraceRepository implements JfrRepository {
         epochData1.clear(false);
     }
     @NeverInline("Starting a stack walk in the caller frame.")
-    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)  // *** events call this one during emission. Calls getOrPutStackTrace0
     public long getStackTraceId(int skipCount) {
         if (DeoptimizationSupport.enabled()) {
             /* Stack traces are not supported if JIT compilation is used (GR-43686). */
@@ -252,16 +228,11 @@ public class JfrStackTraceRepository implements JfrRepository {
         }
     }
 
-//    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
-//    public void commitSerializedStackTrace(JfrStackTraceTableEntry entry) {
-//        mutex.lockNoTransition();
-//        try {
-//            entry.setSerialized(true);
-//            getEpochData(false).unflushedEntries++;
-//        } finally {
-//            mutex.unlock();
-//        }
-//    }
+    @Uninterruptible(reason = "Locking without transition and result is only valid until epoch changes.", callerMustBe = true)
+    private void commitSerializedStackTrace(JfrStackTraceTableEntry entry) {
+        entry.setSerialized(true);
+        getEpochData(false).unflushedEntries++;   // *** This is always false. Even in safepoint we are concerned with CURRENT epoch!
+    }
 
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
@@ -279,6 +250,7 @@ public class JfrStackTraceRepository implements JfrRepository {
             JfrStackTraceEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
             if (count == 0) {
+                epochData.clear(flushpoint);
                 return EMPTY;
             }
 
@@ -420,13 +392,14 @@ public class JfrStackTraceRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
     public void serializeStackTraces(SamplerBuffer rawStackTraceBuffer, boolean flushpoint) {
+
         mutex.lockNoTransition(); // *** TODO this can probably be moved in a bit
         try {
             com.oracle.svm.core.util.VMError.guarantee( rawStackTraceBuffer.isNonNull());
 
             Pointer end = rawStackTraceBuffer.getPos();
-            // *** start at the flush pos, so you don't double flush
-            Pointer current = rawStackTraceBuffer.getFlushedPos();//SamplerBufferAccess.getDataStart(rawStackTraceBuffer);
+
+            Pointer current = rawStackTraceBuffer.getSerializedPos();
             com.oracle.svm.core.util.VMError.guarantee(current.belowOrEqual(end));
             while (current.belowThan(end)) {
                 Pointer entryStart = current;
@@ -466,14 +439,13 @@ public class JfrStackTraceRepository implements JfrRepository {
                 long stackTraceId = entry.isNull() ? 0 : entry.getId();
 
                 int status = statusPtr.read();
-                if (status == JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceTableEntryStatus.EXISTING_RAW) {
+                if (status == JfrStackTraceTableEntryStatus.INSERTED || status == JfrStackTraceTableEntryStatus.EXISTING_RAW) { // **from events will be of type EXISTING_RAW, from sampler will be of type INSERTED
                     /* Walk the IPs and serialize the stacktrace. */
                     com.oracle.svm.core.util.VMError.guarantee( current.add(sampleSize).belowThan(end));
                     boolean serialized = serializeStackTrace(current, sampleSize, isTruncated, stackTraceId); //  *** This is also in the critical section.
                     if (serialized) {
-//                        commitSerializedStackTrace(entry);
-                        entry.setSerialized(true);
-                        getEpochData(false).unflushedEntries++; // *** end of crit sec.   // This is always false. Even in safepoint we are concerned with CURRENT epoch!
+                        commitSerializedStackTrace(entry);
+                        // *** end of crit sec.
                     }
                 } else {
                     /* Processing is not needed: skip the rest of the data. */
@@ -488,7 +460,7 @@ public class JfrStackTraceRepository implements JfrRepository {
                 long endMarker = current.readLong(0);
                 if (endMarker == SamplerSampleWriter.EXECUTION_SAMPLE_END) {
                     if (stackTraceId != 0) {
-                        ExecutionSampleEvent.writeExecutionSample(sampleTick, threadId, stackTraceId, threadState); // TODO *** uncomment. I guess the event will show up in the next flush
+                        ExecutionSampleEvent.writeExecutionSample(sampleTick, threadId, stackTraceId, threadState);
                     } else {
                         JfrThreadLocal.increaseMissedSamples();
                     }
@@ -497,11 +469,7 @@ public class JfrStackTraceRepository implements JfrRepository {
                 }
                 current = current.add(SamplerSampleWriter.END_MARKER_SIZE);
             }
-//            if (!flushpoint) { // *** TODO:  Remove this later
-//                SamplerBufferAccess.reinitialize(rawStackTraceBuffer);
-//            } else {
-                rawStackTraceBuffer.setFlushedPos(end);
-//            }
+            rawStackTraceBuffer.setSerializedPos(end);
         } finally {
             mutex.unlock();
         }
@@ -586,6 +554,7 @@ public class JfrStackTraceRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
     private void serializeStackTraceElement(JfrNativeEventWriterData data, FrameInfoQueryResult stackTraceElement) {
+//        VMError.guarantee(false,"Should not be here!!!!!!");
         long methodId = SubstrateJVM.getMethodRepo().getMethodId(stackTraceElement.getSourceClass(), stackTraceElement.getSourceMethodName(), stackTraceElement.getMethodId());
         JfrNativeEventWriter.putLong(data, methodId);
         JfrNativeEventWriter.putInt(data, stackTraceElement.getSourceLineNumber());

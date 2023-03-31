@@ -36,6 +36,8 @@ import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.JfrThreadState;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.BufferNode;
+import com.oracle.svm.core.jfr.BufferNodeAccess;
 
 public final class SamplerSampleWriter {
     public static final long JFR_STACK_TRACE_END = -1;
@@ -182,8 +184,10 @@ public final class SamplerSampleWriter {
             return false;
         }
         SamplerBuffer oldBuffer = data.getSamplerBuffer();
-        SamplerBufferNode oldNode = oldBuffer.getNode();
-        SamplerBufferNodeAccess.lockNoTransition(oldNode);
+        BufferNode oldNode = oldBuffer.getNode();
+        /* *** must lock here to avoid conflict with flushing thread which might be processing the buffer
+        * */
+        BufferNodeAccess.lockNoTransition(oldNode);
         try {
             // Signal to thread iterating list that this node can be removed
             oldNode.setBuffer(WordFactory.nullPointer()); // *** wont actually be removed until we release the lock
@@ -204,9 +208,11 @@ public final class SamplerSampleWriter {
             increaseCurrentPos(data, uncommitted);
             // *** do this lastly
             JfrThreadLocal.getSamplerBufferList().addNode(newBuffer);
+            com.oracle.svm.core.util.VMError.guarantee( SamplerBufferAccess.verify(oldBuffer)); // *** TODO REMOVE
+            com.oracle.svm.core.util.VMError.guarantee( SamplerBufferAccess.verify(newBuffer)); // *** TODO REMOVE
             return true;
         } finally {
-            SamplerBufferNodeAccess.unlock(oldNode);
+            BufferNodeAccess.unlock(oldNode);
         }
     }
 

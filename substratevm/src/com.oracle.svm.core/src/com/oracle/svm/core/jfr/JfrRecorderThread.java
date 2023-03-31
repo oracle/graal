@@ -112,8 +112,7 @@ public class JfrRecorderThread extends Thread {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         // *** C.H. Threads that serialize stack traces into the epoch-specific buffer in JfrStackTraceRepository, need to hold the JfrChunkWriter lock.
         // Why? Otherwise a flush could destroy in progress work.
-//        System.out.println("Recorder thread processing full buffers");
-        SamplerBuffersAccess.processFullBuffers(true, false); // TODO uncomment ***
+        SamplerBuffersAccess.processFullBuffers(true, false);
         try {
             if (chunkWriter.hasOpenFile()) {
                 persistBuffers(chunkWriter);
@@ -126,7 +125,7 @@ public class JfrRecorderThread extends Thread {
     @SuppressFBWarnings(value = "NN_NAKED_NOTIFY", justification = "state change is in native buffer")
     private void persistBuffers(JfrChunkWriter chunkWriter) {
         JfrBufferList buffers = globalMemory.getBuffers();
-        JfrBufferNode node = buffers.getHead();
+        BufferNode node = buffers.getHead();
         while (node.isNonNull()) {
             tryPersistBuffer(chunkWriter, node);
             node = node.getNext();
@@ -149,8 +148,8 @@ public class JfrRecorderThread extends Thread {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private static void tryPersistBuffer(JfrChunkWriter chunkWriter, JfrBufferNode node) {
-        if (JfrBufferNodeAccess.tryLock(node)) {
+    private static void tryPersistBuffer(JfrChunkWriter chunkWriter, BufferNode node) {
+        if (BufferNodeAccess.tryLock(node)) {
             try {
                 JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                 if (isFullEnough(buffer)) {
@@ -158,7 +157,7 @@ public class JfrRecorderThread extends Thread {
                     JfrBufferAccess.reinitialize(buffer);
                 }
             } finally {
-                JfrBufferNodeAccess.unlock(node);
+                BufferNodeAccess.unlock(node);
             }
         }
     }

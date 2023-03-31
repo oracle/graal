@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,48 +25,43 @@
 
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-
-import com.oracle.svm.core.util.VMError;
+import org.graalvm.word.UnsignedWord;
 
 /**
- * {@link JfrBufferNode}s are added to {@link JfrBufferList}s and may have a longer lifetime than
- * the {@link JfrBuffer} that they reference. With this concept and the provided locking mechanism,
- * threads can iterate over the thread-local JFR buffers of other threads, which enables use cases
- * such as JFR event streaming.
- *
- * Note that {@link JfrBufferNode}s may be freed at safepoints. Code that accesses
- * {@link JfrBufferNode}s must therefore be fully uninterruptible.
+ * A {@link Buffer} is a block of native memory into which the results of stack walks are
+ * written.
  */
 @RawStructure
-public interface JfrBufferNode extends PointerBase {
-    @RawField
-    JfrBufferNode getNext();
+public interface Buffer extends PointerBase {
 
+    /**
+     * Returns the size of the buffer. This excludes the header of the buffer. This field is
+     * effectively final.
+     */
     @RawField
-    void setNext(JfrBufferNode value);
+    UnsignedWord getSize();
 
+    /**
+     * Sets the size of the buffer.
+     */
     @RawField
-    JfrBuffer getBuffer();
+    void setSize(UnsignedWord value);
 
+    /**
+     * Returns the {@link BufferNode} that references this {@link com.oracle.svm.core.jfr.Buffer}. This field is only
+     * set when a {@link com.oracle.svm.core.jfr.Buffer} was added to a {@link BufferList}
+     */
     @RawField
-    void setBuffer(JfrBuffer value);
+    BufferNode getNode();
 
+    /**
+     * Sets the {@link BufferNode}.
+     */
     @RawField
-    int getLock();
+    void setNode(BufferNode value);
 
-    @RawFieldOffset
-    static int offsetOfLock() {
-        throw VMError.unimplemented(); // replaced
-    }
-
-    @RawField
-    IsolateThread getLockOwner();
-
-    @RawField
-    void setLockOwner(IsolateThread value);
 }

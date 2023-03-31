@@ -86,16 +86,23 @@ public class JfrMethodRepository implements JfrRepository {
 
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
+            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             JfrNativeEventWriter.putLong(data, methodId);
+            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             JfrNativeEventWriter.putLong(data, typeRepo.getClassId(clazz));
+            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId(methodName, false));
+            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             /* Dummy value for signature. */
             JfrNativeEventWriter.putLong(data, symbolRepo.getSymbolId("()V", false));
+            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             /* Dummy value for modifiers. */
             JfrNativeEventWriter.putShort(data, (short) 0);
             /* Dummy value for isHidden. */
+            com.oracle.svm.core.util.VMError.guarantee(data.getEndPos().isNonNull());
             JfrNativeEventWriter.putBoolean(data, false);
             if (!JfrNativeEventWriter.commit(data)) {
+                com.oracle.svm.core.util.VMError.guarantee(false);
                 return methodId;
             }
 
@@ -116,6 +123,8 @@ public class JfrMethodRepository implements JfrRepository {
             JfrMethodEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
             if (count == 0) {
+//                com.oracle.svm.core.util.VMError.guarantee(epochData.table.getSize() <1); //only possble if a prior flushpoint reset unflushedEntries but not the table.
+                epochData.clear(flushpoint);
                 return EMPTY;
             }
 

@@ -41,8 +41,6 @@ import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
 import com.oracle.svm.core.sampler.SamplerBufferList;
-import  com.oracle.svm.core.sampler.SamplerBufferNode;
-import  com.oracle.svm.core.sampler.SamplerBufferNodeAccess;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
@@ -179,16 +177,17 @@ public class JfrThreadLocal implements ThreadListener {
         SamplerBuffer buffer = samplerBuffer.get(isolateThread);
 
         if (buffer.isNonNull()) {
-            SamplerBufferNode node = buffer.getNode();
+            BufferNode node = buffer.getNode();
             // *** must lock in case flushing thread is in the middle of processing the buffer
-            SamplerBufferNodeAccess.lockNoTransition(node);
+            BufferNodeAccess.lockNoTransition(node);
             try {
                 // Signal to thread iterating list that this node can be removed
                 node.setBuffer(WordFactory.nullPointer());
                 SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
+                com.oracle.svm.core.util.VMError.guarantee( com.oracle.svm.core.sampler.SamplerBufferAccess.verify(buffer));
                 samplerBuffer.set(isolateThread, WordFactory.nullPointer());
             } finally {
-                SamplerBufferNodeAccess.unlock(node);
+                BufferNodeAccess.unlock(node);
             }
         }
     }
@@ -200,7 +199,7 @@ public class JfrThreadLocal implements ThreadListener {
         }
 
         /* Retired buffers can be freed right away. */
-        JfrBufferNode node = buffer.getNode();
+        BufferNode node = buffer.getNode();
         if (node.isNull()) {
             assert JfrBufferAccess.isRetired(buffer);
             JfrBufferAccess.free(buffer);
@@ -208,13 +207,13 @@ public class JfrThreadLocal implements ThreadListener {
         }
 
         /* Free the buffer but leave the node alive as it may still be needed. */
-        JfrBufferNodeAccess.lockNoTransition(node);
+        BufferNodeAccess.lockNoTransition(node);
         try {
             flushToGlobalMemory0(buffer, WordFactory.unsigned(0), 0);
             node.setBuffer(WordFactory.nullPointer());
             JfrBufferAccess.free(buffer);
         } finally {
-            JfrBufferNodeAccess.unlock(node);
+            BufferNodeAccess.unlock(node);
         }
     }
 
@@ -225,13 +224,13 @@ public class JfrThreadLocal implements ThreadListener {
             return;
         }
 
-        JfrBufferNode node = buffer.getNode();
-        JfrBufferNodeAccess.lockNoTransition(node);
+        BufferNode node = buffer.getNode();
+        BufferNodeAccess.lockNoTransition(node);
         try {
             flushToGlobalMemory0(buffer, WordFactory.unsigned(0), 0);
             JfrBufferAccess.setRetired(buffer);
         } finally {
-            JfrBufferNodeAccess.unlock(node);
+            BufferNodeAccess.unlock(node);
         }
     }
 
@@ -291,7 +290,7 @@ public class JfrThreadLocal implements ThreadListener {
             return WordFactory.nullPointer();
         }
 
-        JfrBufferNode node = buffer.getNode();
+        BufferNode node = buffer.getNode();
         if (node.isNull()) {
             assert JfrBufferAccess.isRetired(buffer);
             JfrBufferAccess.reinitialize(buffer);
@@ -315,7 +314,7 @@ public class JfrThreadLocal implements ThreadListener {
                 return WordFactory.nullPointer();
             }
 
-            JfrBufferNode node = javaBufferList.addNode(buffer);
+            BufferNode node = javaBufferList.addNode(buffer);
             if (node.isNull()) {
                 JfrBufferAccess.free(buffer);
                 return WordFactory.nullPointer();
@@ -334,7 +333,7 @@ public class JfrThreadLocal implements ThreadListener {
                 return WordFactory.nullPointer();
             }
 
-            JfrBufferNode node = nativeBufferList.addNode(buffer);
+            BufferNode node = nativeBufferList.addNode(buffer);
             if (node.isNull()) {
                 JfrBufferAccess.free(buffer);
                 return WordFactory.nullPointer();
@@ -361,24 +360,24 @@ public class JfrThreadLocal implements ThreadListener {
         assert JfrBufferAccess.isThreadLocal(buffer);
 
         /* Skip retired buffers. */
-        JfrBufferNode node = buffer.getNode();
+        BufferNode node = buffer.getNode();
         if (node.isNull()) {
             assert JfrBufferAccess.isRetired(buffer);
             return WordFactory.nullPointer();
         }
 
-        JfrBufferNodeAccess.lockNoTransition(node);
+        BufferNodeAccess.lockNoTransition(node);
         try {
             return flushToGlobalMemory0(buffer, uncommitted, requested);
         } finally {
-            JfrBufferNodeAccess.unlock(node);
+            BufferNodeAccess.unlock(node);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static JfrBuffer flushToGlobalMemory0(JfrBuffer buffer, UnsignedWord uncommitted, int requested) {
         assert buffer.isNonNull();
-        assert JfrBufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
+        assert BufferNodeAccess.isLockedByCurrentThread(buffer.getNode());
 
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (!SubstrateJVM.getGlobalMemory().write(buffer, unflushedSize, false)) {

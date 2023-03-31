@@ -25,41 +25,17 @@
 
 package com.oracle.svm.core.sampler;
 
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoCursor;
-import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.jfr.JfrBuffer;
-import com.oracle.svm.core.jfr.JfrFrameType;
-import com.oracle.svm.core.jfr.JfrNativeEventWriter;
-import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
-import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
-import com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntry;
-import com.oracle.svm.core.jfr.JfrStackTraceRepository.JfrStackTraceTableEntryStatus;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
-import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.sampler.SamplerBufferNode;
-import com.oracle.svm.core.sampler.SamplerBufferList;
+import com.oracle.svm.core.jfr.BufferNodeAccess;
+import com.oracle.svm.core.jfr.BufferNode;
 
 public final class SamplerBuffersAccess {
-    /** This value is used by multiple threads but only by a single thread at a time. */
-    private static final FrameInfoCursor FRAME_INFO_CURSOR = new FrameInfoCursor();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private SamplerBuffersAccess() {
@@ -68,27 +44,28 @@ public final class SamplerBuffersAccess {
     @Uninterruptible(reason = "Locking no transition.")
     public static void processActiveBuffers(boolean flushpoint) {
         SamplerBufferList samplerBufferList =  JfrThreadLocal.getSamplerBufferList();
-        SamplerBufferNode node = samplerBufferList.getHead();
-        SamplerBufferNode prev = WordFactory.nullPointer();
+        BufferNode node = samplerBufferList.getHead();
+        BufferNode prev = WordFactory.nullPointer();
 
         while (node.isNonNull()) {
-            SamplerBufferNode next = node.getNext();
+            BufferNode next = node.getNext();
             com.oracle.svm.core.util.VMError.guarantee(flushpoint || node.getLock()==0, "*** if safepoint, must be unlocked");
             // Must block because if nodes are skipped, then flushed events may be missing stack trace data
-            SamplerBufferNodeAccess.lockNoTransition(node);
+            BufferNodeAccess.lockNoTransition(node);
             SamplerBuffer buffer = SamplerBufferNodeAccess.getBuffer(node);
             /* Try to remove old nodes. If a node's buffer is null, it means it's no longer needed.*/
             if (buffer.isNull()) {
                 samplerBufferList.removeNode(node, prev);
-                SamplerBufferNodeAccess.free(node);
+                BufferNodeAccess.free(node);
                 node = next;
                 continue;
             }
+            com.oracle.svm.core.util.VMError.guarantee( SamplerBufferAccess.verify(buffer));
             try {
                 // serialize active buffers
-                    SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint); // *** works when this is only done when !flushpoint
+                    SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint);
             } finally {
-                SamplerBufferNodeAccess.unlock(node);
+                BufferNodeAccess.unlock(node);
             }
             prev = node;
             node = next;

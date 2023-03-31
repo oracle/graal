@@ -116,7 +116,6 @@ public class JfrSymbolRepository implements JfrRepository {
             CharReplacer charReplacer = newEntry.getReplaceDotWithSlash() ? dotWithSlash : null;
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, epochData.buffer);
-
             JfrNativeEventWriter.putLong(data, newEntry.getId());
             JfrNativeEventWriter.putString(data, newEntry.getValue(), charReplacer);
             if (!JfrNativeEventWriter.commit(data)) {
@@ -140,6 +139,7 @@ public class JfrSymbolRepository implements JfrRepository {
             JfrSymbolEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
             if (count == 0) {
+                epochData.clear(flushpoint);
                 return EMPTY;
             }
 
