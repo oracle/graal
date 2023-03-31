@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk17;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "sun.nio.ch.UnixDomainSockets")
-final class Target_sun_nio_ch_UnixDomainSockets {
-    /*
-     * UninitializedStaticFieldValueReader captures the value from the image builder by mistake, so
-     * until we have a proper JVMCI API to capture the value of ConstantValue attributes (GR-41856),
-     * we reset the field as a workaround.
-     */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    static String tempDir;
+@TargetClass(value = jdk.internal.loader.NativeLibrary.class, onlyWith = JDK19OrLater.class)
+final class Target_jdk_internal_loader_NativeLibrary {
+    @Delete
+    private static native long findEntry0(long handle, String name);
 }

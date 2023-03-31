@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk17;
+package com.oracle.svm.core.jdk;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.ModuleUtil;
 
-@SuppressWarnings("unused")
-@TargetClass(value = java.lang.Module.class, onlyWith = JDK17OrLater.class)
-public final class Target_java_lang_Module_JDK17OrLater {
-
-    @Substitute
-    private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
-        if (Arrays.stream(pns).anyMatch(Objects::isNull)) {
-            throw new IllegalArgumentException("Bad package name");
-        }
-        List<String> packages = Arrays.stream(pns).map(Object::toString).collect(Collectors.toUnmodifiableList());
-        ModuleUtil.defineModule(module, isOpen, packages);
-    }
+@TargetClass(className = "sun.nio.ch.UnixDomainSockets")
+final class Target_sun_nio_ch_UnixDomainSockets {
+    /*
+     * UninitializedStaticFieldValueReader captures the value from the image builder by mistake, so
+     * until we have a proper JVMCI API to capture the value of ConstantValue attributes (GR-41856),
+     * we reset the field as a workaround.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static String tempDir;
 }

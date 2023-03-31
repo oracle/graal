@@ -22,14 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk17;
+package com.oracle.svm.core.jdk;
 
 import java.io.FileDescriptor;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 
 @TargetClass(className = "java.lang.foreign.MemorySegment", onlyWith = JDK19OrLater.class)
 @SuppressWarnings("unused")
@@ -59,7 +58,7 @@ final class Target_java_nio_DirectByteBufferR_JDK19OrLater {
 }
 
 @TargetClass(className = "sun.nio.ch.Util", onlyWith = JDK19OrLater.class)
-final class Target_sun_nio_ch_Util_JDK17OrLater {
+final class Target_sun_nio_ch_Util_JDK19OrLater {
 
     @Substitute
     private static Target_java_nio_DirectByteBuffer_JDK19OrLater newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {

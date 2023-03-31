@@ -776,6 +776,12 @@ final class Target_jdk_internal_loader_BootLoader {
         return ClassForNameSupport.forNameOrNull(name, null);
     }
 
+    @SuppressWarnings("unused")
+    @Substitute
+    private static void loadLibrary(String name) {
+        System.loadLibrary(name);
+    }
+
     @Substitute
     private static boolean hasClassPath() {
         return true;

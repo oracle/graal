@@ -22,15 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk17;
+package com.oracle.svm.core.jdk;
 
 import java.io.FileDescriptor;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
+
+/*
+ * GR-43733: All substitutions in this file are for JDK 17 only, i.e., are no longer necessary for
+ * later JDK versions. This file can be removed when removing JDK 17 support.
+ */
 
 @TargetClass(className = "jdk.internal.access.foreign.MemorySegmentProxy", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
 @SuppressWarnings("unused")

@@ -22,9 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk17;
+package com.oracle.svm.core.jdk;
 
-import java.io.File;
 import java.util.Deque;
 import java.util.Map;
 import java.util.Set;
@@ -33,35 +32,11 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.JDK19OrLater;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
 
 import jdk.internal.loader.NativeLibraries;
-import jdk.internal.loader.NativeLibrary;
 
-@TargetClass(value = ClassLoader.class, onlyWith = JDK17OrLater.class)
-@SuppressWarnings({"static-method", "unused"})
-final class Target_java_lang_ClassLoader_JDK17OrLater {
-
-    @Substitute
-    static NativeLibrary loadLibrary(Class<?> fromClass, String name) {
-        NativeLibrarySupport.singleton().loadLibraryRelative(name);
-        // We don't use the JDK's NativeLibraries or NativeLibrary implementations
-        return null;
-    }
-
-    @Substitute
-    static NativeLibrary loadLibrary(Class<?> fromClass, File file) {
-        NativeLibrarySupport.singleton().loadLibraryAbsolute(file);
-        // We don't use the JDK's NativeLibraries or NativeLibrary implementations
-        return null;
-    }
-}
-
-@TargetClass(value = jdk.internal.loader.NativeLibraries.class, onlyWith = JDK17OrLater.class)
-final class Target_jdk_internal_loader_NativeLibraries_JDK17OrLater {
+@TargetClass(value = jdk.internal.loader.NativeLibraries.class)
+final class Target_jdk_internal_loader_NativeLibraries {
 
     /**
      * The NativeLibraries is only used by the `loadLibrary` methods that are substituted, so we do
@@ -117,20 +92,9 @@ final class Target_jdk_internal_loader_NativeLibraries_JDK17OrLater {
 
     @Delete//
     @TargetElement(onlyWith = JDK17OrEarlier.class)
-    private static native long findEntry0(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK17OrLater lib, String name);
+    private static native long findEntry0(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl lib, String name);
 }
 
-@TargetClass(value = jdk.internal.loader.NativeLibrary.class, onlyWith = JDK19OrLater.class)
-final class Target_jdk_internal_loader_NativeLibrary_JDK19OrLater {
-    @Delete
-    private static native long findEntry0(long handle, String name);
-}
-
-@TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryImpl", onlyWith = JDK17OrLater.class)
-final class Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK17OrLater {
-}
-
-@Delete//
-@TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryContext", onlyWith = JDK19OrLater.class)
-final class Target_jdk_internal_loader_NativeLibraries_NativeLibraryContext_JDK19OrLater {
+@TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryImpl")
+final class Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl {
 }

@@ -36,7 +36,6 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import jdk.internal.loader.ClassLoaderValue;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -51,6 +50,9 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.loader.NativeLibrary;
 
 @TargetClass(className = "jdk.internal.loader.Resource")
 @SuppressWarnings("unused")
@@ -117,15 +119,17 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute
-    @SuppressWarnings("unused")
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    /* Substitution for JDK 17 and later is in Target_java_lang_ClassLoader_JDK17OrLater. */
-    static void loadLibrary(Class<?> fromClass, String name, boolean isAbsolute) {
-        if (isAbsolute) {
-            NativeLibrarySupport.singleton().loadLibraryAbsolute(new File(name));
-        } else {
-            NativeLibrarySupport.singleton().loadLibraryRelative(name);
-        }
+    static NativeLibrary loadLibrary(Class<?> fromClass, String name) {
+        NativeLibrarySupport.singleton().loadLibraryRelative(name);
+        // We don't use the JDK's NativeLibraries or NativeLibrary implementations
+        return null;
+    }
+
+    @Substitute
+    static NativeLibrary loadLibrary(Class<?> fromClass, File file) {
+        NativeLibrarySupport.singleton().loadLibraryAbsolute(file);
+        // We don't use the JDK's NativeLibraries or NativeLibrary implementations
+        return null;
     }
 
     @Substitute
