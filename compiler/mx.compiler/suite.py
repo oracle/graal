@@ -1560,7 +1560,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JVMCI_API",
-        "org.graalvm.graphio",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [

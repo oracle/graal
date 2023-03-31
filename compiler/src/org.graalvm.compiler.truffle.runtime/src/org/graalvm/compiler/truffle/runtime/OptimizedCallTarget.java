@@ -37,7 +37,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import org.graalvm.options.OptionKey;
@@ -67,7 +66,6 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -307,15 +305,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     protected volatile SpeculationLog speculationLog;
 
     /**
-     * When this call target is inlined, the inlining {@link InstalledCode} registers this
-     * assumption. It gets invalidated when a node rewrite in this call target is performed. This
-     * ensures that all compiled methods that inline this call target are properly invalidated.
+     * When this call target is inlined, the inlining InstalledCode registers this assumption. It
+     * gets invalidated when a node rewrite in this call target is performed. This ensures that all
+     * compiled methods that inline this call target are properly invalidated.
+     */
+    /*
+     * Accessed reflectively by the Truffle compiler. See KnownTruffleTypes.
      */
     private volatile Assumption nodeRewritingAssumption;
 
     /**
-     * When this call target is compiled, the resulting {@link InstalledCode} registers this
-     * assumption. It gets invalidated when this call target is invalidated.
+     * When this call target is compiled, the resulting InstalledCode registers this assumption. It
+     * gets invalidated when this call target is invalidated.
+     */
+    /*
+     * Accessed reflectively by the Truffle compiler. See KnownTruffleTypes.
      */
     private volatile Assumption validRootAssumption;
 
@@ -362,6 +366,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return size > 0 ? size : childrenCount;
     }
 
+    @Override
+    public final void prepareForCompilation() {
+        if (nodeRewritingAssumption == null) {
+            initializeNodeRewritingAssumption();
+        }
+        if (validRootAssumption == null) {
+            initializeValidRootAssumption();
+        }
+    }
+
     final Assumption getNodeRewritingAssumption() {
         Assumption assumption = nodeRewritingAssumption;
         if (assumption == null) {
@@ -370,22 +384,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return assumption;
     }
 
-    @Override
-    public JavaConstant getNodeRewritingAssumptionConstant() {
-        return runtime().forObject(getNodeRewritingAssumption());
-    }
-
     final Assumption getValidRootAssumption() {
         Assumption assumption = validRootAssumption;
         if (assumption == null) {
             assumption = initializeValidRootAssumption();
         }
         return assumption;
-    }
-
-    @Override
-    public JavaConstant getValidRootAssumptionConstant() {
-        return runtime().forObject(getValidRootAssumption());
     }
 
     @Override
@@ -400,8 +404,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * We intentionally do not synchronize here since as it's not worth the sync costs.
      */
-    @Override
-    public void dequeueInlined() {
+    public final void dequeueInlined() {
         if (!dequeueInlined) {
             dequeueInlined = true;
             cancelCompilation("Target inlined into only caller");
@@ -1182,19 +1185,25 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return properties;
     }
 
-    @Override
-    public final TruffleCallNode[] getCallNodes() {
-        final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
-        getRootNode().accept(new NodeVisitor() {
-            @Override
-            public boolean visit(Node node) {
-                if (node instanceof OptimizedDirectCallNode) {
-                    callNodes.add((OptimizedDirectCallNode) node);
-                }
-                return true;
+    private static final class DirectCallCounter implements NodeVisitor {
+
+        int count = 0;
+
+        @Override
+        public boolean visit(Node node) {
+            if (node instanceof OptimizedDirectCallNode) {
+                count++;
             }
-        });
-        return callNodes.toArray(new TruffleCallNode[0]);
+            return true;
+        }
+
+    }
+
+    @Override
+    public int countDirectCallNodes() {
+        DirectCallCounter counter = new DirectCallCounter();
+        getRootNode().accept(counter);
+        return counter.count;
     }
 
     /*
@@ -1691,7 +1700,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } else {
             logPolymorphicEvent(depth, "Set needs split to true");
             needsSplit = true;
-            maybeDump(toDump);
         }
 
         logPolymorphicEvent(depth, "Return:", needsSplit);
@@ -1713,17 +1721,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             final String indent = new String(new char[depth]).replace("\0", "  ");
             final String argString = (arg == null) ? "" : " " + arg;
             log(String.format(SPLIT_LOG_FORMAT, indent + message + argString, this.toString()));
-        }
-    }
-
-    private void maybeDump(List<Node> toDump) {
-        if (engine.splittingDumpDecisions) {
-            final List<OptimizedDirectCallNode> callers = new ArrayList<>();
-            OptimizedDirectCallNode callNode = getSingleCallNode();
-            if (callNode != null) {
-                callers.add(callNode);
-            }
-            PolymorphicSpecializeDump.dumpPolymorphicSpecialize(this, toDump);
         }
     }
 
@@ -1804,4 +1801,5 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     boolean isOSR() {
         return rootNode instanceof BaseOSRRootNode;
     }
+
 }

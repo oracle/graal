@@ -34,6 +34,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.JavaConstant;
+
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
 /**
@@ -73,7 +75,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
     @Override
     protected void instrumentGraph(StructuredGraph graph, TruffleTierContext context, JavaConstant tableConstant) {
-        TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
+        TruffleCompilerRuntime runtime = TruffleCompilerEnvironment.get().runtime();
         MethodFilter methodFilter = methodFilter(context);
         for (Node n : graph.getNodes()) {
             if (n instanceof Invoke && runtime.isTruffleBoundary(((Invoke) n).callTarget().targetMethod())) {

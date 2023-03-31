@@ -136,7 +136,7 @@ public class GetRootNodeCompilationTest extends PartialEvaluationTest {
         RootNode rootNode = rootNodeFactory.get();
         RootCallTarget target = rootNode.getCallTarget();
         Object[] arguments = {};
-        StructuredGraph graph = partialEval((OptimizedCallTarget) target, arguments, getCompilationId(target));
+        StructuredGraph graph = partialEval((OptimizedCallTarget) target, arguments);
 
         int liveLimit = 50;
         int deletedLimit = 100 + nodeLimit;

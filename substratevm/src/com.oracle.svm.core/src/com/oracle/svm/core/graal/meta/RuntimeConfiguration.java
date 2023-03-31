@@ -25,13 +25,11 @@
 package com.oracle.svm.core.graal.meta;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -54,11 +52,12 @@ public final class RuntimeConfiguration {
     private final WordTypes wordTypes;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, SubstrateBackend> backends, WordTypes wordTypes) {
+    public RuntimeConfiguration(Providers providers, SnippetReflectionProvider snippetReflection, EnumMap<ConfigKind, SubstrateBackend> backends, WordTypes wordTypes,
+                    Iterable<DebugHandlersFactory> debugHandlersFactories) {
         this.providers = providers;
         this.snippetReflection = snippetReflection;
         this.backends = backends;
-        this.debugHandlersFactories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
+        this.debugHandlersFactories = debugHandlersFactories;
         this.wordTypes = wordTypes;
 
         for (SubstrateBackend backend : backends.values()) {

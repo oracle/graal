@@ -22,7 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common;
+package org.graalvm.compiler.truffle.compiler;
+
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
@@ -34,14 +37,49 @@ import jdk.vm.ci.meta.Signature;
  * Enables a Truffle compilable to masquerade as a {@link JavaMethod} for use as a context value in
  * debug scopes.
  */
-public class TruffleDebugJavaMethod implements JavaMethod {
+public final class TruffleDebugJavaMethod implements JavaMethod {
     private final CompilableTruffleAST compilable;
+    private final TruffleCompilationTask task;
 
-    private static final JavaType declaringClass = new JavaType() {
+    private static final int NUMBER_OF_TIERS = 3;
+    private static final TruffleJavaType[] TIERS;
+
+    static {
+        TIERS = new TruffleJavaType[NUMBER_OF_TIERS];
+        for (int i = 0; i < NUMBER_OF_TIERS; i++) {
+            TIERS[i] = new TruffleJavaType(i);
+        }
+    }
+
+    private static class TruffleJavaType implements JavaType {
+
+        private final String name;
+
+        final Signature signature = new Signature() {
+
+            @Override
+            public JavaType getReturnType(ResolvedJavaType accessingClass) {
+                return TruffleJavaType.this;
+            }
+
+            @Override
+            public int getParameterCount(boolean receiver) {
+                return 0;
+            }
+
+            @Override
+            public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
+                throw new IndexOutOfBoundsException();
+            }
+        };
+
+        TruffleJavaType(int tier) {
+            this.name = "LTruffleIR/Tier" + tier + ";";
+        }
 
         @Override
         public String getName() {
-            return "LTruffleGraal;";
+            return name;
         }
 
         @Override
@@ -66,35 +104,22 @@ public class TruffleDebugJavaMethod implements JavaMethod {
 
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof TruffleDebugJavaMethod;
+            if (obj instanceof TruffleJavaType t) {
+                return this.getName().equals(t.getName());
+            }
+            return false;
         }
 
         @Override
         public int hashCode() {
             return getName().hashCode();
         }
-    };
 
-    private static final Signature signature = new Signature() {
+    }
 
-        @Override
-        public JavaType getReturnType(ResolvedJavaType accessingClass) {
-            return declaringClass;
-        }
-
-        @Override
-        public int getParameterCount(boolean receiver) {
-            return 0;
-        }
-
-        @Override
-        public JavaType getParameterType(int index, ResolvedJavaType accessingClass) {
-            throw new IndexOutOfBoundsException();
-        }
-    };
-
-    public TruffleDebugJavaMethod(CompilableTruffleAST compilable) {
+    public TruffleDebugJavaMethod(TruffleCompilationTask task, CompilableTruffleAST compilable) {
         this.compilable = compilable;
+        this.task = task;
     }
 
     public CompilableTruffleAST getCompilable() {
@@ -103,9 +128,8 @@ public class TruffleDebugJavaMethod implements JavaMethod {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof TruffleDebugJavaMethod) {
-            TruffleDebugJavaMethod other = (TruffleDebugJavaMethod) obj;
-            return other.compilable.equals(compilable);
+        if (obj instanceof TruffleDebugJavaMethod other) {
+            return compilable.equals(other.compilable);
         }
         return false;
     }
@@ -117,7 +141,7 @@ public class TruffleDebugJavaMethod implements JavaMethod {
 
     @Override
     public Signature getSignature() {
-        return signature;
+        return TIERS[task.tier()].signature;
     }
 
     @Override
@@ -126,8 +150,8 @@ public class TruffleDebugJavaMethod implements JavaMethod {
     }
 
     @Override
-    public JavaType getDeclaringClass() {
-        return declaringClass;
+    public TruffleJavaType getDeclaringClass() {
+        return TIERS[task.tier()];
     }
 
     @Override

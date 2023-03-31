@@ -38,7 +38,6 @@ import java.util.Map;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.phases.HighTier;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -90,7 +89,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Please keep this test in sync with SubstrateTruffleHostInliningTest.
  */
 @RunWith(Parameterized.class)
-public class HostInliningTest extends GraalCompilerTest {
+public class HostInliningTest extends TruffleCompilerImplTest {
 
     static final int NODE_COST_LIMIT = 1000;
 
@@ -181,6 +180,9 @@ public class HostInliningTest extends GraalCompilerTest {
             if (run == TestRun.WITH_CONVERT_TO_GUARD) {
                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context);
             }
+            // initialize the compiler such that the truffle compiler environment is initialized.
+            getTruffleCompiler();
+
             new TruffleHostInliningPhase(canonicalizer).apply(graph, context);
 
             ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);

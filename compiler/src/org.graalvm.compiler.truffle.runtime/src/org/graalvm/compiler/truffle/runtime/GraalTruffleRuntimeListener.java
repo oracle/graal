@@ -74,29 +74,12 @@ public interface GraalTruffleRuntimeListener {
     }
 
     /**
-     * @deprecated Use {@link #onCompilationQueued(OptimizedCallTarget, int)}
-     */
-    @Deprecated(since = "21.0")
-    default void onCompilationQueued(OptimizedCallTarget target) {
-        onCompilationQueued(target, 0);
-    }
-
-    /**
      * Notifies this object after {@code target} is added to the compilation queue.
      *
      * @param target the call target that has just been enqueued for compilation
      * @param tier Which compilation tier is in question.
      */
     default void onCompilationQueued(OptimizedCallTarget target, int tier) {
-    }
-
-    /**
-     * @deprecated Use
-     *             {@link #onCompilationDequeued(OptimizedCallTarget, Object, CharSequence, int)}
-     */
-    @Deprecated(since = "21.0")
-    default void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
-        onCompilationDequeued(target, source, reason, 0);
     }
 
     /**
@@ -116,7 +99,8 @@ public interface GraalTruffleRuntimeListener {
      * @param target the call target about to be compiled
      * @param tier Which compilation tier is in question.
      *
-     * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, int)}
+     * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, AbstractCompilationTask)}
+     *             instead
      */
     @Deprecated(since = "21.0")
     @SuppressWarnings("unused")
@@ -128,10 +112,25 @@ public interface GraalTruffleRuntimeListener {
      *
      * @param target the call target about to be compiled
      * @param task which compilation task is in question.
+     *
+     * @deprecated Use {@link #onCompilationStarted(OptimizedCallTarget, AbstractCompilationTask)}
+     *             instead
      */
-    @SuppressWarnings({"unused", "deprecated"})
+    @Deprecated(since = "23.0")
+    @SuppressWarnings({"unused", "deprecation"})
     default void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
         onCompilationStarted(target, task.tier());
+    }
+
+    /**
+     * Notifies this object when compilation of {@code target} is about to start.
+     *
+     * @param target the call target about to be compiled
+     * @param task which compilation task is in question.
+     */
+    @SuppressWarnings({"unused", "deprecation"})
+    default void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
+        onCompilationStarted(target, (TruffleCompilationTask) task);
     }
 
     /**
@@ -141,8 +140,26 @@ public interface GraalTruffleRuntimeListener {
      * @param target the call target being compiled
      * @param inliningDecision the inlining plan used during partial evaluation
      * @param graph access to compiler graph info
+     * @deprecated use
+     *             {@link #onCompilationTruffleTierFinished(OptimizedCallTarget, AbstractCompilationTask, GraphInfo)}
+     *             instead
      */
+    @Deprecated
+    @SuppressWarnings("deprecation")
     default void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
+    }
+
+    /**
+     * Notifies this object when compilation of {@code target} has completed partial evaluation and
+     * is about to perform compilation of the graph produced by partial evaluation.
+     *
+     * @param target the call target being compiled
+     * @param task the compilation task
+     * @param graph access to compiler graph info
+     */
+    @SuppressWarnings("deprecation")
+    default void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph) {
+        onCompilationTruffleTierFinished(target, task.getInlining(), graph);
     }
 
     /**
@@ -157,23 +174,34 @@ public interface GraalTruffleRuntimeListener {
 
     /**
      * @deprecated Use
-     *             {@link #onCompilationSuccess(OptimizedCallTarget, TruffleInlining, GraphInfo, CompilationResultInfo)}
+     *             {@link #onCompilationSuccess(OptimizedCallTarget, AbstractCompilationTask, GraphInfo, CompilationResultInfo)}
      */
     @Deprecated(since = "21.0")
+    @SuppressWarnings("deprecation")
     default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
         onCompilationSuccess(target, inliningDecision, graph, result, 0);
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link #onCompilationSuccess(OptimizedCallTarget, AbstractCompilationTask, GraphInfo, CompilationResultInfo)}
+     */
+    @Deprecated(since = "23.0")
+    @SuppressWarnings({"unused", "deprecation"})
+    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
     }
 
     /**
      * Notifies this object when compilation of {@code target} succeeds.
      *
      * @param target the call target whose compilation succeeded
-     * @param inliningDecision the inlining plan used during the compilation
+     * @param task the task
      * @param graph access to compiler graph info
      * @param result access to compilation result info
-     * @param tier Which compilation tier is in question.
      */
-    default void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
+    @SuppressWarnings("deprecation")
+    default void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph, CompilationResultInfo result) {
+        onCompilationSuccess(target, task.getInlining(), graph, result);
     }
 
     /**

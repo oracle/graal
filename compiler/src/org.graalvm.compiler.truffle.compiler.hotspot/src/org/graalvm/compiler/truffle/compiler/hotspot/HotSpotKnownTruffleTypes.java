@@ -24,24 +24,41 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class HotSpotKnownTruffleTypes extends KnownTruffleTypes {
 
-    public final ResolvedJavaType classWeakReference = lookupType(WeakReference.class);
-    public final ResolvedJavaType classSoftReference = lookupType(SoftReference.class);
-    public final ResolvedJavaField referenceReferent = findField(lookupType(Reference.class), "referent");
+    // Checkstyle: stop field name check
 
-    public HotSpotKnownTruffleTypes(MetaAccessProvider metaAccess) {
-        super(metaAccess);
+    // java.base
+    public final ResolvedJavaType WeakReference = lookupType(WeakReference.class);
+    public final ResolvedJavaType SoftReference = lookupType(SoftReference.class);
+
+    // jvmci
+    public final ResolvedJavaType InstalledCode = lookupTypeCached("jdk.vm.ci.code.InstalledCode");
+    public final ResolvedJavaField InstalledCode_entryPoint = findField(InstalledCode, "entryPoint");
+
+    // truffle.runtime.hotspot
+    public final ResolvedJavaType HotSpotThreadLocalHandshake = lookupTypeCached("org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
+    public final ResolvedJavaMethod HotSpotThreadLocalHandshake_doHandshake = findMethod(HotSpotThreadLocalHandshake, "doHandshake", java_lang_Object);
+
+    public final ResolvedJavaType HotSpotOptimizedCallTarget = lookupTypeCached("org.graalvm.compiler.truffle.runtime.hotspot.HotSpotOptimizedCallTarget");
+    public final ResolvedJavaField HotSpotOptimizedCallTarget_installedCode = findField(HotSpotOptimizedCallTarget, "installedCode");
+
+    public HotSpotKnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        super(runtime, metaAccess, constantReflection);
     }
+
+    // Checkstyle: resume field name check
 
 }

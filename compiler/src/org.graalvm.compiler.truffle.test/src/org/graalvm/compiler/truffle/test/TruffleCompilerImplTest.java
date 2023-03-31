@@ -29,6 +29,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -64,6 +66,16 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
         }
     }
 
+    public KnownTruffleTypes getTypes() {
+        TruffleCompilerImpl compiler = getTruffleCompiler();
+        return compiler.getConfig().types();
+    }
+
+    protected final TruffleCompilerImpl getTruffleCompiler() {
+        TruffleCompilerImpl compiler = getTruffleCompiler((OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget());
+        return compiler;
+    }
+
     protected final TruffleCompilerImpl getTruffleCompiler(OptimizedCallTarget callTarget) {
         if (compilerInitialized.compareAndSet(false, true)) {
             truffleCompiler.initialize(GraalTruffleRuntime.getOptionsForCompiler(callTarget), callTarget, true);
@@ -74,7 +86,10 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
     @Override
     protected CompilationIdentifier createCompilationId() {
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
-        return getTruffleCompiler(target).createCompilationIdentifier(target);
+        TruffleCompilerImpl compiler = getTruffleCompiler(target);
+        try (TruffleCompilation compilation = compiler.openCompilation(PartialEvaluationTest.newTask(), target)) {
+            return compilation.getCompilationId();
+        }
     }
 
     protected final void setupContext(Context newContext) {

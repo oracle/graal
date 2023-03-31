@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
@@ -36,11 +35,11 @@ import com.oracle.truffle.api.ExactMath;
 
 import jdk.vm.ci.amd64.AMD64;
 
-public class ExactMathTest extends GraalCompilerTest {
+public class ExactMathTest extends TruffleCompilerImplTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins, getReplacements(), getLowerer(), getMetaAccess());
+        TruffleGraphBuilderPlugins.registerExactMathPlugins(invocationPlugins, getTypes(), getReplacements(), getLowerer());
         super.registerInvocationPlugins(invocationPlugins);
     }
 

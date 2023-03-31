@@ -24,8 +24,13 @@
  */
 package org.graalvm.compiler.truffle.common;
 
+import java.util.Collections;
+import java.util.Map;
+
+import jdk.vm.ci.meta.JavaConstant;
+
 /**
- * Describes the state and the configuration of a Truffle compilation.
+ * A handle to a compilation task managed by the Truffle runtime.
  */
 public interface TruffleCompilationTask {
     /**
@@ -49,23 +54,53 @@ public interface TruffleCompilationTask {
         return isFirstTier() ? 1 : 2;
     }
 
-    TruffleInliningData inliningData();
-
     boolean hasNextTier();
 
-    default long time() {
-        return 0;
+    /**
+     * If {@code node} represents an AST Node then return the nearest source information for it.
+     * Otherwise simply return null.
+     */
+    // TODO GR-44222 move this to CompilableTruffleAST
+    @SuppressWarnings("unused")
+    default TruffleSourceLanguagePosition getPosition(JavaConstant node) {
+        return null;
     }
 
-    default double weight() {
-        return Double.NaN;
+    /**
+     * Returns the debug properties of a truffle node constant or an empty map if there are no debug
+     * properties.
+     */
+    // TODO GR-44222 move this to CompilableTruffleAST
+    @SuppressWarnings("unused")
+    default Map<String, Object> getDebugProperties(JavaConstant node) {
+        return Collections.emptyMap();
     }
 
-    default double rate() {
-        return Double.NaN;
+    /**
+     * Records the given target to be dequeued from the compilation queue at the end of the current
+     * compilation.
+     */
+    @SuppressWarnings("unused")
+    default void addTargetToDequeue(CompilableTruffleAST target) {
+        // not supported -> do nothing
     }
 
-    default int queueChange() {
-        return 0;
+    /**
+     * To be used from the compiler side. Sets how many calls in total are in the related
+     * compilation unit, and how many of those were inlined.
+     */
+    @SuppressWarnings("unused")
+    default void setCallCounts(int total, int inlined) {
+        // not supported -> discard
     }
+
+    /**
+     * To be used from the compiler side.
+     *
+     * @param target register this target as inlined.
+     */
+    default void addInlinedTarget(CompilableTruffleAST target) {
+        // not supported -> discard
+    }
+
 }

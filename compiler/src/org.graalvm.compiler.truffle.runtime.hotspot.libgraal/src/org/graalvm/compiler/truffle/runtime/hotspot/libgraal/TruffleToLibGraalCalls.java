@@ -24,19 +24,11 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.CloseCompilation;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.CloseDebugContext;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.CloseDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.DoCompile;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.DumpChannelClose;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.DumpChannelWrite;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationFactoryName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetCompilerConfigurationName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetDataPatchesCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetDumpChannel;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetExceptionHandlersCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetExecutionID;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetGraphDumpDirectory;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopoints;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetInfopointsCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetMarksCount;
@@ -45,25 +37,14 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetSuppliedString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTargetCodeSize;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTotalFrameSize;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTruffleCompilationId;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetTruffleCompilationTruffleAST;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.GetVersionProperties;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InitializeCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InitializeRuntime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleCallBoundaryMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.InstallTruffleReservedOopMethod;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsBasicDumpEnabled;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsDumpChannelOpen;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.IsPrintGraphEnabled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.NewCompiler;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenCompilation;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContext;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
-
-import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -88,22 +69,15 @@ final class TruffleToLibGraalCalls {
     @TruffleToLibGraal(InitializeCompiler)
     static native void initializeCompiler(long isolateThreadId, long compilerHandle, byte[] options, CompilableTruffleAST compilable, boolean firstInitialization);
 
-    @TruffleToLibGraal(IsPrintGraphEnabled)
-    static native boolean isPrintGraphEnabled(long isolateThreadId, long truffleRuntimeHandle);
-
-    @TruffleToLibGraal(OpenCompilation)
-    static native long openCompilation(long isolateThreadId, long handle, CompilableTruffleAST compilable);
-
     @TruffleToLibGraal(GetCompilerConfigurationName)
     static native String getCompilerConfigurationName(long isolateThreadId, long handle);
 
     @TruffleToLibGraal(DoCompile)
     static native void doCompile(long isolateThreadId,
                     long compilerHandle,
-                    long debugContextHandle,
-                    long compilationHandle,
-                    byte[] options,
                     TruffleCompilationTask task,
+                    CompilableTruffleAST compilable,
+                    byte[] options,
                     TruffleCompilerListener listener);
 
     @TruffleToLibGraal(InstallTruffleCallBoundaryMethod)
@@ -117,9 +91,6 @@ final class TruffleToLibGraalCalls {
 
     @TruffleToLibGraal(Shutdown)
     static native void shutdown(long isolateThreadId, long handle);
-
-    @TruffleToLibGraal(GetGraphDumpDirectory)
-    static native String getGraphDumpDirectory(long isolateThreadId);
 
     @TruffleToLibGraal(GetNodeCount)
     static native int getNodeCount(long isolateThreadId, long handle);
@@ -150,48 +121,6 @@ final class TruffleToLibGraalCalls {
 
     @TruffleToLibGraal(GetDataPatchesCount)
     static native int getDataPatchesCount(long isolateThreadId, long handle);
-
-    @TruffleToLibGraal(OpenDebugContext)
-    static native long openDebugContext(long isolateThreadId, long compilerHandle, long compilationHandle, byte[] options);
-
-    @TruffleToLibGraal(CloseDebugContext)
-    static native void closeDebugContext(long isolateThreadId, long handle);
-
-    @TruffleToLibGraal(OpenDebugContextScope)
-    static native long openDebugContextScope(long isolateThreadId, long ownerHandle, String name, long compilationHandle);
-
-    @TruffleToLibGraal(CloseDebugContextScope)
-    static native void closeDebugContextScope(long isolateThreadId, long handle);
-
-    @TruffleToLibGraal(IsBasicDumpEnabled)
-    static native boolean isBasicDumpEnabled(long isolateThreadId, long handle);
-
-    @TruffleToLibGraal(CloseCompilation)
-    static native void closeCompilation(long isolateThreadId, long compilationHandle);
-
-    @TruffleToLibGraal(GetTruffleCompilationTruffleAST)
-    static native CompilableTruffleAST getTruffleCompilationTruffleAST(long isolateThreadId, long compilationHandle);
-
-    @TruffleToLibGraal(GetTruffleCompilationId)
-    static native String getTruffleCompilationId(long isolateThreadId, long compilationHandle);
-
-    @TruffleToLibGraal(GetVersionProperties)
-    static native byte[] getVersionProperties(long isolateThreadId);
-
-    @TruffleToLibGraal(GetDumpChannel)
-    static native long getDumpChannel(long isolateThreadId, long debugContextHandle);
-
-    @TruffleToLibGraal(IsDumpChannelOpen)
-    static native boolean isDumpChannelOpen(long isolateThreadId, long channelHandle);
-
-    @TruffleToLibGraal(DumpChannelWrite)
-    static native int dumpChannelWrite(long isolateThreadId, long channelHandle, ByteBuffer buffer, int capacity, int position, int limit);
-
-    @TruffleToLibGraal(DumpChannelClose)
-    static native void dumpChannelClose(long isolateThreadId, long channelHandle);
-
-    @TruffleToLibGraal(GetExecutionID)
-    static native String getExecutionID(long isolateThreadId);
 
     @TruffleToLibGraal(PurgePartialEvaluationCaches)
     static native void purgePartialEvaluationCaches(long isolateThreadId, long compilerHandle);

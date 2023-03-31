@@ -29,10 +29,10 @@ import java.io.IOException;
 
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
+import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -68,8 +68,8 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
     private static final class TestListener implements GraalTruffleRuntimeListener {
 
         @Override
-        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph,
-                        TruffleCompilerListener.CompilationResultInfo result, int tier) {
+        public void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, TruffleCompilerListener.GraphInfo graph,
+                        TruffleCompilerListener.CompilationResultInfo result) {
             TTY.printf(FORMAT_SUCCESS, target.getName());
             printCommon();
         }
