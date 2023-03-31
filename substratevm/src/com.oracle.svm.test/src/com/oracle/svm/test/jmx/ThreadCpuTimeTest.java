@@ -97,6 +97,7 @@ public class ThreadCpuTimeTest {
 
     private static class ThreadCpuTimeRunnable implements Runnable {
 
+        @Override
         public void run() {
             try {
                 long time = System.currentTimeMillis() + MILLIS;
