@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.ameta;
 
 import java.util.function.ObjIntConsumer;
 
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -127,6 +128,21 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver) {
+        if (!field.isStatic()) {
+            if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
+                /*
+                 * During compiler optimizations, it is possible to see field loads with a constant
+                 * receiver of a wrong type. The code will later be removed as dead code, and in
+                 * most cases the field read would also be rejected as illegal by the HotSpot
+                 * constant reflection provider doing the actual field load. But there are several
+                 * other ways how a field can be accessed, e.g., our ReadableJavaField mechanism or
+                 * fields of classes that are initialized at image run time. To avoid any surprises,
+                 * we abort the field reading here early.
+                 */
+                return null;
+            }
+        }
+
         JavaConstant value;
         if (receiver instanceof ImageHeapConstant) {
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
