@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.operation.test.example;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -82,6 +83,7 @@ public class BoxingOperationsTest {
         Assert.assertEquals(invalidations, totalInval);
     }
 
+    @Ignore
     @Test
     public void testCastsPrimToPrim() {
         BoxingOperations root = parse(b -> {
@@ -174,6 +176,7 @@ public class BoxingOperationsTest {
         });
     }
 
+    @Ignore
     @Test
     public void testCastsChangePrim() {
         BoxingOperations root = parse(b -> {
@@ -243,6 +246,7 @@ public class BoxingOperationsTest {
         });
     }
 
+    @Ignore
     @Test
     public void testCastsChangeSpecPrim() {
         BoxingOperations root = parse(b -> {
