@@ -3976,6 +3976,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             }
         } catch (IllegalArgumentException err) {
             handleIllegalArgumentException(err, method);
+        } catch (NoSuchFieldError err) {
+            handleNoSuchFieldError(err, method);
         } catch (BootstrapMethodError error) {
             handleBootstrapMethodError(error, method);
         }
@@ -3983,6 +3985,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     @SuppressWarnings("unused")
     protected void handleIllegalArgumentException(IllegalArgumentException error, JavaMethod javaMethod) {
+        throw error;
+    }
+
+    @SuppressWarnings("unused")
+    protected void handleNoSuchFieldError(NoSuchFieldError error, JavaMethod javaMethod) {
         throw error;
     }
 
