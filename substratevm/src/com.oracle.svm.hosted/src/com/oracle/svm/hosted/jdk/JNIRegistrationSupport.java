@@ -170,6 +170,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         return Stream.empty();
     }
 
+    private String imageName;
+
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         if (SubstrateOptions.StaticExecutable.getValue() || isDarwin()) {
@@ -187,6 +189,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                             .forEach(linkerInvocation::addNativeLinkerOption);
             return linkerInvocation;
         });
+
+        imageName = ((BeforeImageWriteAccessImpl) access).getImageName();
     }
 
     private Stream<String> getShimExports() {
@@ -323,12 +327,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     /** Returns the import library of the native image. */
     private Path getImageImportLib() {
         assert isWindows();
-        Path image = accessImpl.getImagePath();
-        String imageName = String.valueOf(image.getFileName());
-        String importLibName = imageName.substring(0, imageName.lastIndexOf('.')) + ".lib";
-        Path importLib = accessImpl.getImageKind().isExecutable
-                        ? accessImpl.getTempDirectory().resolve(importLibName)
-                        : image.resolveSibling(importLibName);
+        Path importLib = accessImpl.getTempDirectory().resolve(imageName + ".lib");
         assert Files.exists(importLib);
         return importLib;
     }
