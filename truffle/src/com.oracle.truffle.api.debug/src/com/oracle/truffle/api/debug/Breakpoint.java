@@ -66,6 +66,7 @@ import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
@@ -198,7 +199,7 @@ public class Breakpoint {
 
     private final AtomicReference<EventBinding<?>> sourceBinding = new AtomicReference<>();
     private final List<EventBinding<? extends ExecutionEventNodeFactory>> execBindings = new ArrayList<>();
-    private LocationsInExecutedSources locationsInExecutedSources;
+    private volatile LocationsInExecutedSources locationsInExecutedSources;
     private volatile boolean breakpointBindingReady;
 
     Breakpoint(BreakpointLocation key, SuspendAnchor suspendAnchor) {
@@ -273,6 +274,7 @@ public class Breakpoint {
      */
     public void setEnabled(boolean enabled) {
         boolean doInstall = false;
+        Debugger d;
         synchronized (this) {
             if (disposed) {
                 // cannot enable disposed breakpoints
@@ -284,10 +286,13 @@ public class Breakpoint {
                 }
                 this.enabled = enabled;
             }
+            d = debugger;
         }
         if (doInstall) {
             if (enabled) {
-                install();
+                if (d != null) {
+                    installInstrumentation(d.getInstrumenter());
+                } // else when debugger == null, the breakpoint was disposed.
             } else {
                 uninstall();
             }
@@ -371,9 +376,9 @@ public class Breakpoint {
         DebuggerSession[] breakpointSessions = null;
         Debugger breakpointDebugger = null;
         LocationsInExecutedSources locations = null;
+        setEnabled(false);
         synchronized (this) {
             if (!disposed) {
-                setEnabled(false);
                 breakpointSessions = sessions.toArray(new DebuggerSession[sessions.size()]);
                 breakpointDebugger = debugger;
                 debugger = null;
@@ -511,6 +516,7 @@ public class Breakpoint {
     }
 
     private void install(Debugger d) {
+        assert d != null;
         assert Thread.holdsLock(this);
         if (this.debugger != null && this.debugger != d) {
             throw new IllegalStateException("Breakpoint is already installed in a different Debugger instance.");
@@ -542,18 +548,19 @@ public class Breakpoint {
             install(d.getDebugger());
         }
         if (enabled) {
-            install();
+            installInstrumentation(d.getDebugger().getInstrumenter());
         }
         return true;
     }
 
-    private void install() {
+    private void installInstrumentation(Instrumenter instrumenter) {
         EventBinding<?> binding = sourceBinding.get();
         if (binding == null || binding.isDisposed()) {
             BreakpointLocation.LocationFilters filters = locationKey.createLocationFilters(suspendAnchor);
             if (locationKey.isLoadBindingNeeded()) {
-                locationsInExecutedSources = new LocationsInExecutedSources();
-                EventBinding<?> loadBinding = debugger.getInstrumenter().createLoadSourceSectionBinding(filters.nearestFilter, filters.sectionFilter, locationsInExecutedSources, true);
+                LocationsInExecutedSources locations = new LocationsInExecutedSources();
+                locationsInExecutedSources = locations;
+                EventBinding<?> loadBinding = instrumenter.createLoadSourceSectionBinding(filters.nearestFilter, filters.sectionFilter, locations, true);
                 if (sourceBinding.compareAndSet(null, loadBinding)) {
                     try {
                         loadBinding.attach();
@@ -569,7 +576,7 @@ public class Breakpoint {
                 }
                 if (needExecBinding) {
                     EventBinding<? extends ExecutionEventNodeFactory> execBinding;
-                    execBinding = debugger.getInstrumenter().attachExecutionEventFactory(filters.nearestFilter, filters.sectionFilter, new BreakpointNodeFactory());
+                    execBinding = instrumenter.attachExecutionEventFactory(filters.nearestFilter, filters.sectionFilter, new BreakpointNodeFactory());
                     execBindingAdded(execBinding);
                 }
             }
@@ -591,6 +598,10 @@ public class Breakpoint {
             boolean doAssign;
             EventBinding<?> execBinding = null;
             synchronized (this) {
+                if (debugger == null) {
+                    // disposed
+                    return;
+                }
                 if (!(doAssign = executedSources.contains(source))) {
                     SourceSection oldSection = loadedSections.put(source, section);
                     if (oldSection == null) {
