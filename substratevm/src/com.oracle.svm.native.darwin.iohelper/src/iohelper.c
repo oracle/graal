@@ -23,6 +23,8 @@
  * questions.
  */
 
+// Last update: jdk-20+34 (revision 1330d4eaa54790b468f69e61574b3c5d522be120).
+
 #include <errno.h> 
 #include <fcntl.h>
 #include <string.h>
@@ -31,32 +33,11 @@
 
 #define MAX_PATH 2048
 
+// Based os:open(...) in os_bsd.cpp.
 int iohelper_open_file(const char *path, int oflag, int mode) {
   if (strlen(path) > MAX_PATH - 1) {
     errno = ENAMETOOLONG;
     return -1;
-  }
-  int fd;
-
-  fd = open(path, oflag, mode);
-  if (fd == -1) return -1;
-
-  // If the open succeeded, the file might still be a directory
-  {
-    struct stat buf;
-    int ret = fstat(fd, &buf);
-    int st_mode = buf.st_mode;
-
-    if (ret != -1) {
-      if ((st_mode & S_IFMT) == S_IFDIR) {
-        errno = EISDIR;
-        close(fd);
-        return -1;
-      }
-    } else {
-      close(fd);
-      return -1;
-    }
   }
 
   // All file descriptors that are opened in the JVM and not
@@ -80,15 +61,27 @@ int iohelper_open_file(const char *path, int oflag, int mode) {
   // 4843136: (process) pipe file descriptor from Runtime.exec not being closed
   // 6339493: (process) Runtime.exec does not close all file descriptors on Solaris 9
   //
-#ifdef FD_CLOEXEC
+
+  int fd = open(path, oflag | O_CLOEXEC, mode);
+  if (fd == -1) return -1;
+
+  // If the open succeeded, the file might still be a directory
   {
-    int flags = fcntl(fd, F_GETFD);
-    if (flags != -1) {
-      fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
+    struct stat buf;
+    int ret = fstat(fd, &buf);
+    int st_mode = buf.st_mode;
+
+    if (ret != -1) {
+      if ((st_mode & S_IFMT) == S_IFDIR) {
+        errno = EISDIR;
+        close(fd);
+        return -1;
+      }
+    } else {
+      close(fd);
+      return -1;
     }
   }
-#endif
 
   return fd;
 }
-

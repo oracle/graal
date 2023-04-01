@@ -53,14 +53,14 @@ public class WindowsRawFileOperationSupport extends AbstractRawFileOperationSupp
     @Override
     public RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode) {
         String path = file.getPath();
-        int flags = parseMode(creationMode) | parseMode(accessMode) | IO._O_BINARY();
+        int flags = parseMode(creationMode) | parseMode(accessMode);
         return open0(path, flags);
     }
 
     @Override
     public RawFileDescriptor open(File file, FileAccessMode mode) {
         String path = file.getPath();
-        int flags = parseMode(mode) | IO._O_BINARY();
+        int flags = parseMode(mode);
         return open0(path, flags);
     }
 

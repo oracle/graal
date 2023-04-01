@@ -22,7 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
- 
+
+// Last update: jdk-20+34 (revision 1330d4eaa54790b468f69e61574b3c5d522be120).
+
 #include <windows.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -32,10 +34,14 @@
 #include <stdio.h>
 #include <stdbool.h> 
 
+/* In Native Image, all allocations need a null check because we can't exit the process
+ * if we run out-of-memory (there may be multiple isolates in the same process). This
+ * is a major difference to HotSpot and needs to be considered by the code below. */
 #define NEW_C_HEAP_ARRAY(type, size, memflags) malloc((size) * sizeof(type))
 #define FREE_C_HEAP_ARRAY(type, old) free(old)
 #define MAX2(a, b) ((a > b) ? a : b)
 
+// Based on convert_to_unicode(...) in os_windows.cpp.
 static errno_t convert_to_unicode(char const* char_path, LPWSTR* unicode_path) {
   // Get required buffer size to convert to Unicode
   int unicode_path_len = MultiByteToWideChar(CP_ACP,
@@ -59,6 +65,7 @@ static errno_t convert_to_unicode(char const* char_path, LPWSTR* unicode_path) {
   return ERROR_SUCCESS;
 }
 
+// Based on get_full_path(...) in os_windows.cpp.
 static errno_t get_full_path(LPCWSTR unicode_path, LPWSTR* full_path) {
   // Get required buffer size to convert to full path. The return
   // value INCLUDES the terminating null character.
@@ -79,6 +86,7 @@ static errno_t get_full_path(LPCWSTR unicode_path, LPWSTR* full_path) {
   return ERROR_SUCCESS;
 }
 
+// Based on set_path_prefix(...) in os_windows.cpp.
 static void set_path_prefix(char* buf, LPWSTR* prefix, int* prefix_off, bool* needs_fullpath) {
   *prefix_off = 0;
   *needs_fullpath = true;
@@ -98,6 +106,8 @@ static void set_path_prefix(char* buf, LPWSTR* prefix, int* prefix_off, bool* ne
   }
 }
 
+// Based on os::native_path(...) in os_windows.cpp.
+//
 // Convert a pathname to native format.  On win32, this involves forcing all
 // separators to be '\\' rather than '/' (both are legal inputs, but Win95
 // sometimes rejects '/') and removing redundant separators.  The input path is
@@ -196,6 +206,8 @@ static char * native_path(char *path) {
   return path;
 }
 
+// Based on wide_abs_unc_path(...) in os_windows.cpp.
+//
 // Returns the given path as an absolute wide path in unc format. The returned path is NULL
 // on error (with err being set accordingly) and should be freed via free() otherwise.
 // additional_space is the size of space, in wchar_t, the function will additionally add to
@@ -214,7 +226,7 @@ static wchar_t* wide_abs_unc_path(char const* path, errno_t* err, int additional
     *err = ENOMEM;
     return NULL;
   }
-  
+
   strncpy(buf, path, buf_len);
   native_path(buf);
 
@@ -262,6 +274,7 @@ static wchar_t* wide_abs_unc_path(char const* path, errno_t* err, int additional
   return (wchar_t*) result; // LPWSTR and wchat_t* are the same type on Windows.
 }
 
+// Based os:open(...) in os_windows.cpp.
 int iohelper_open_file(const char *path, int oflag, int mode) {
   errno_t err;
   wchar_t* wide_path = wide_abs_unc_path(path, &err, 0);
@@ -270,7 +283,7 @@ int iohelper_open_file(const char *path, int oflag, int mode) {
     errno = err;
     return -1;
   }
-  int fd = _wopen(wide_path, oflag | O_NOINHERIT, mode);
+  int fd = _wopen(wide_path, oflag | O_BINARY | O_NOINHERIT, mode);
   free(wide_path);
 
   if (fd == -1) {

@@ -58,9 +58,6 @@ public class IO {
     public static native int _O_TRUNC();
 
     @CConstant
-    public static native int _O_BINARY();
-
-    @CConstant
     public static native int _O_RDONLY();
 
     @CConstant

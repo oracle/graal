@@ -23,6 +23,8 @@
  * questions.
  */
 
+// Last update: jdk-20+34 (revision 1330d4eaa54790b468f69e61574b3c5d522be120).
+
 #include <errno.h> 
 #include <fcntl.h>
 #include <signal.h>
@@ -32,6 +34,7 @@
 
 #define MAX_PATH 2048
 
+// Based os:open(...) in os_linux.cpp.
 int iohelper_open_file(const char *path, int oflag, int mode) {
   if (strlen(path) > MAX_PATH - 1) {
     errno = ENAMETOOLONG;
@@ -106,4 +109,3 @@ int iohelper_open_file(const char *path, int oflag, int mode) {
 
   return fd;
 }
-
