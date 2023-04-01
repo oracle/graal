@@ -132,8 +132,11 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         if (isArray(field) && field.isFinal() && field.getName().equals("cache")) {
             ResolvedJavaType type = field.getDeclaringClass();
             String typeName = type.getName();
-            if (typeName.equals("Ljava/lang/Character$CharacterCache;") || typeName.equals("Ljava/lang/Byte$ByteCache;") || typeName.equals("Ljava/lang/Short$ShortCache;") ||
-                            typeName.equals("Ljava/lang/Integer$IntegerCache;") || typeName.equals("Ljava/lang/Long$LongCache;")) {
+            if (typeName.equals("Ljava/lang/Character$CharacterCache;") ||
+                            typeName.equals("Ljava/lang/Byte$ByteCache;") ||
+                            typeName.equals("Ljava/lang/Short$ShortCache;") ||
+                            typeName.equals("Ljava/lang/Integer$IntegerCache;") ||
+                            typeName.equals("Ljava/lang/Long$LongCache;")) {
                 return true;
             }
         }

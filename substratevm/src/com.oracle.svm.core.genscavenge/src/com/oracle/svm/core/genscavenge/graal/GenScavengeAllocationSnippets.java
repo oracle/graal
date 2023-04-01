@@ -124,6 +124,7 @@ public final class GenScavengeAllocationSnippets implements Snippets {
         private final SnippetInfo formatStoredContinuation;
         private final SnippetInfo formatPod;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets.Templates baseTemplates) {
             super(options, providers);
             this.baseTemplates = baseTemplates;

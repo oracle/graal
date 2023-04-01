@@ -62,6 +62,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     private final CustomTypeFieldHandler customTypeFieldHandler;
     private final CallChecker callChecker;
 
+    @SuppressWarnings("this-escape")
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe,
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,

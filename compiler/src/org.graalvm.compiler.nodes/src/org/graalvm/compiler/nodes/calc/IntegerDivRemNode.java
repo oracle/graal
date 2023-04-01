@@ -64,6 +64,7 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
     protected JavaConstant deoptReasonAndAction;
     protected JavaConstant deoptSpeculation;
 
+    @SuppressWarnings("this-escape")
     protected IntegerDivRemNode(NodeClass<? extends IntegerDivRemNode> c, Stamp stamp, Op op, Type type, ValueNode dividend, ValueNode divisor, GuardingNode zeroGuard) {
         super(c, stamp, dividend, divisor);
         this.zeroGuard = zeroGuard;

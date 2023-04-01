@@ -61,6 +61,7 @@ import sun.nio.ch.DirectBuffer;
  * contents; layout decisions (offsets, ordering) are modelled separately (see
  * {@link LayoutDecision}), being computed on write-out (see {@link WriteLayout}).
  */
+@SuppressWarnings("this-escape")
 public abstract class ObjectFile {
 
     /*

@@ -56,6 +56,7 @@ public class StringUTF16Snippets implements Snippets {
         public final SnippetTemplate.SnippetInfo indexOfLatin1Unsafe;
         public final SnippetTemplate.SnippetInfo indexOfUnsafe;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 

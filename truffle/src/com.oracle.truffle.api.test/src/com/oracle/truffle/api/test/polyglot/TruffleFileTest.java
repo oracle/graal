@@ -1220,6 +1220,7 @@ public class TruffleFileTest {
         private Charset encoding;
         private Predicate<? super TruffleFile> recognizer;
 
+        @SuppressWarnings("this-escape")
         protected BaseDetector() {
             INSTANCES.put(getClass(), this);
         }

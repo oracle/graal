@@ -36,6 +36,7 @@ public class DeoptInvalidateListener extends AbstractGraalTruffleRuntimeListener
     boolean deoptimized = false;
     boolean invalidated = false;
 
+    @SuppressWarnings("this-escape")
     protected DeoptInvalidateListener(GraalTruffleRuntime runtime, OptimizedCallTarget focus) {
         super(runtime);
         this.focus = focus;

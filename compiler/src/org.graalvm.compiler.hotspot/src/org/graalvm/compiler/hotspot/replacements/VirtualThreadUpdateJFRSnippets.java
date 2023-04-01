@@ -137,6 +137,7 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
 
         private final SnippetInfo virtualThreadUpdateJFR;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 

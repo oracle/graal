@@ -70,6 +70,7 @@ public class HybridLayout<T> {
         this((HostedInstanceClass) metaAccess.lookupJavaType(hybridClass), layout, metaAccess);
     }
 
+    @SuppressWarnings("this-escape")
     public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout, MetaAccessProvider metaAccess) {
         this.layout = layout;
         HybridLayoutSupport.HybridInfo hybridInfo = HybridLayoutSupport.singleton().inspectHybrid(hybridClass, metaAccess);

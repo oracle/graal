@@ -28,6 +28,7 @@ import org.graalvm.compiler.lir.alloc.SaveCalleeSaveRegisters;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 
 public class EconomyPreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
+    @SuppressWarnings("this-escape")
     public EconomyPreAllocationOptimizationStage() {
         /*
          * Although HotSpot does not use callee saved registers on any configuration, this phase is

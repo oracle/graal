@@ -38,6 +38,7 @@ public class StructBitfieldInfo extends ElementInfo {
     private final PropertyInfo<Integer> endBit;
     private final PropertyInfo<SignednessValue> signednessInfo;
 
+    @SuppressWarnings("this-escape")
     public StructBitfieldInfo(String name) {
         super(name);
         this.byteOffset = adoptChild(new PropertyInfo<Integer>("byteOffset"));

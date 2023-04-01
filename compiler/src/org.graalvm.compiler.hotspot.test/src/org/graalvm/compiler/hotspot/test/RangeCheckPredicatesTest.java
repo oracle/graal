@@ -91,6 +91,7 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
         return new OptionValues(getInitialOptions(), overrides);
     }
 
+    @SuppressWarnings("this-escape")
     public RangeCheckPredicatesTest() {
         speculationLog = getCodeCache().createSpeculationLog();
     }

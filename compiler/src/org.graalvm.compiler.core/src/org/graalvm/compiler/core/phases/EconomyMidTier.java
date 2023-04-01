@@ -35,6 +35,7 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 public class EconomyMidTier extends BaseTier<MidTierContext> {
 
+    @SuppressWarnings("this-escape")
     public EconomyMidTier() {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(new RemoveValueProxyPhase(canonicalizer));

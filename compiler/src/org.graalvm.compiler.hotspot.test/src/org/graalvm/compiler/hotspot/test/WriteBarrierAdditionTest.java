@@ -76,6 +76,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * parameters can be checked against printed output from the G1 write barrier snippets. The runtime
  * checks have been validated offline.
  */
+@SuppressWarnings("this-escape")
 public class WriteBarrierAdditionTest extends HotSpotGraalCompilerTest {
 
     /**

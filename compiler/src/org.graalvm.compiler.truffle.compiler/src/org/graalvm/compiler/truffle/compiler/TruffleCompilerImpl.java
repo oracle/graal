@@ -144,6 +144,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
                     UseTypeCheckedInlining,
                     UseTypeCheckHints);
 
+    @SuppressWarnings("this-escape")
     public TruffleCompilerImpl(TruffleCompilerConfiguration config) {
         this.config = config;
         this.codeInstallationTaskFactory = new TrufflePostCodeInstallationTaskFactory();

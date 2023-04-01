@@ -40,6 +40,7 @@ enum JfrLogTag {
     METADATA,
     STREAMING,
     THROTTLE,
+    PERIODIC,
     DCMD,
     START
 }

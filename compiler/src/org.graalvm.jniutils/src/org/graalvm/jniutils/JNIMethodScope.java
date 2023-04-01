@@ -95,7 +95,7 @@ public class JNIMethodScope implements AutoCloseable {
     /**
      * Enters the scope of an native method call.
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "this-escape"})
     public JNIMethodScope(String scopeName, JNIEnv env) {
         Objects.requireNonNull(scopeName, "ScopeName must be non null.");
         this.scopeName = scopeName;

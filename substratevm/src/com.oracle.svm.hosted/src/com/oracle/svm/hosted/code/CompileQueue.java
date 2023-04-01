@@ -354,6 +354,7 @@ public class CompileQueue {
         }
     }
 
+    @SuppressWarnings("this-escape")
     public CompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse universe, RuntimeConfiguration runtimeConfiguration, Boolean deoptimizeAll,
                     SnippetReflectionProvider snippetReflection, ForkJoinPool executorService) {
         this.universe = universe;

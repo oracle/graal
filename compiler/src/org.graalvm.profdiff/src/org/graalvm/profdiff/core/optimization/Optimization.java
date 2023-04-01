@@ -83,6 +83,7 @@ public class Optimization extends OptimizationTreeNode {
      * @param properties a map of additional properties of this optimization, mapped by property
      *            name
      */
+    @SuppressWarnings("this-escape")
     public Optimization(String optimizationName,
                     String eventName,
                     UnmodifiableEconomicMap<String, Integer> position,

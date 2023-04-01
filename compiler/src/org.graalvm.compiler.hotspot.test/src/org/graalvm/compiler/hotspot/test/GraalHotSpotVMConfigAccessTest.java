@@ -32,6 +32,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -39,6 +40,7 @@ import jdk.vm.ci.common.JVMCIError;
 public class GraalHotSpotVMConfigAccessTest {
     @Test
     public void test() {
+        Assume.assumeTrue("Only expect error in JDK with explicit JVMCI version (e.g. labsjdk)", GraalHotSpotVMConfig.JVMCI);
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         GraalHotSpotVMConfig config = rt.getVMConfig();
 
@@ -57,8 +59,8 @@ public class GraalHotSpotVMConfigAccessTest {
 
     private static void testErrorInternal(Supplier<Object> fn, String expectedName) {
         try {
-            fn.get();
-            Assert.fail("JVMCIError expected");
+            Object obj = fn.get();
+            Assert.fail("JVMCIError expected, got " + obj);
         } catch (JVMCIError err) {
             Assert.assertTrue(err.getMessage().contains("VM config values missing"));
             Assert.assertTrue(err.getMessage().contains(expectedName));

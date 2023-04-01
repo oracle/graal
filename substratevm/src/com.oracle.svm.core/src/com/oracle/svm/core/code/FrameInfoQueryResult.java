@@ -174,6 +174,7 @@ public class FrameInfoQueryResult {
     // Index of sourceMethodName in CodeInfoDecoder.frameInfoSourceMethodNames
     protected int sourceMethodNameIndex;
 
+    @SuppressWarnings("this-escape")
     public FrameInfoQueryResult() {
         init();
     }

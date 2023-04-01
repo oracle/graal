@@ -112,6 +112,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
     private final RegisterAttributes[] attributesMap;
     private final MetaAccessProvider metaAccess;
 
+    @SuppressWarnings("this-escape")
     public SubstrateRISCV64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
         this.target = target;
         this.metaAccess = metaAccess;

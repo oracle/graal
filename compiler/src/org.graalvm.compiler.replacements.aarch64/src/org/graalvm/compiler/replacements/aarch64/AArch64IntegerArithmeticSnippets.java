@@ -76,6 +76,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     private final SnippetTemplate.SnippetInfo uirem;
     private final SnippetTemplate.SnippetInfo ulrem;
 
+    @SuppressWarnings("this-escape")
     public AArch64IntegerArithmeticSnippets(OptionValues options, Providers providers) {
         super(options, providers);
         idiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "idivSnippet");
