@@ -30,8 +30,6 @@ import java.net.URL;
 import java.security.ProtectionDomain;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -119,6 +117,7 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute
+    @SuppressWarnings("unused")
     static NativeLibrary loadLibrary(Class<?> fromClass, String name) {
         NativeLibrarySupport.singleton().loadLibraryRelative(name);
         // We don't use the JDK's NativeLibraries or NativeLibrary implementations
@@ -126,6 +125,7 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute
+    @SuppressWarnings("unused")
     static NativeLibrary loadLibrary(Class<?> fromClass, File file) {
         NativeLibrarySupport.singleton().loadLibraryAbsolute(file);
         // We don't use the JDK's NativeLibraries or NativeLibrary implementations
@@ -166,14 +166,9 @@ public final class Target_java_lang_ClassLoader {
         return findClass(name);
     }
 
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    native Class<?> findBootstrapClassOrNull(String name);
-
     // JDK-8265605
     @Delete
-    @TargetElement(onlyWith = JDK17OrLater.class, name = "findBootstrapClassOrNull")
-    static native Class<?> findBootstrapClassOrNullJDK17OrLater(String name);
+    static native Class<?> findBootstrapClassOrNull(String name);
 
     @Substitute
     @SuppressWarnings("unused")
@@ -213,7 +208,6 @@ public final class Target_java_lang_ClassLoader {
     ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
         ConcurrentHashMap<?, ?> result = classLoaderValueMap;
         if (result == null) {
-            // Checkstyle: allow synchronization
             synchronized (this) {
                 result = classLoaderValueMap;
                 if (result == null) {
@@ -342,80 +336,13 @@ public final class Target_java_lang_ClassLoader {
         throw VMError.unsupportedFeature("Defining hidden classes at runtime is not supported.");
     }
 
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private native Class<?> findBootstrapClass(String name);
-
     // JDK-8265605
     @Delete
     @TargetElement(onlyWith = JDK17OrLater.class, name = "findBootstrapClass")
     private static native Class<?> findBootstrapClassJDK17OrLater(String name);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private static native String findBuiltinLib(String name);
-
-    @Delete
     private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();
-
-    /*
-     * Ensure that fields and methods that hold state of the image generator are not reachable when
-     * all fields or methods of the class are registered for reflection.
-     */
-
-    @Delete //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private static Set<String> loadedLibraryNames;
-    @Delete //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private static Map<String, Target_java_lang_ClassLoader_NativeLibrary> systemNativeLibraries;
-    @Delete //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private Map<String, Target_java_lang_ClassLoader_NativeLibrary> nativeLibraries;
-    // Checkstyle: stop
-    @Delete //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private static String[] usr_paths;
-    @Delete //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private static String[] sys_paths;
-    // Checkstyle: resume
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private native Map<String, Target_java_lang_ClassLoader_NativeLibrary> nativeLibraries();
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private static native Map<String, Target_java_lang_ClassLoader_NativeLibrary> systemNativeLibraries();
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private static native boolean loadLibrary0(Class<?> fromClass, File file);
-}
-
-@TargetClass(value = ClassLoader.class, innerClass = "NativeLibrary", onlyWith = JDK11OrEarlier.class)
-final class Target_java_lang_ClassLoader_NativeLibrary {
-
-    /*
-     * We are defensive and also handle private native methods by marking them as deleted. If they
-     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
-     * linking error.
-     */
-
-    @Delete
-    @TargetElement(onlyWith = Load0With2Args.class)
-    private native boolean load0(String name, boolean isBuiltin);
-
-    @Delete
-    @TargetElement(onlyWith = Load0With3Args.class)
-    private native boolean load0(String name, boolean isBuiltin, boolean throwExceptionIfFail);
-
-    @Delete
-    private native long findEntry(String name);
-
-    @Delete
-    private static native void unload(String name, boolean isBuiltin, long handle);
 }
 
 @TargetClass(className = "java.lang.AssertionStatusDirectives") //

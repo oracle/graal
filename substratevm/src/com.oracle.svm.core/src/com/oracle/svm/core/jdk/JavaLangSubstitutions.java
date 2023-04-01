@@ -87,12 +87,6 @@ import jdk.internal.module.ServicesCatalog;
 final class Target_java_lang_Object {
 
     @Substitute
-    @TargetElement(name = "registerNatives", onlyWith = JDK11OrEarlier.class)
-    private static void registerNativesSubst() {
-        /* We reimplemented all native methods, so nothing to do. */
-    }
-
-    @Substitute
     @TargetElement(name = "getClass")
     private Object getClassSubst() {
         return readHub(this);

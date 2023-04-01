@@ -95,7 +95,6 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.Resources;
@@ -362,10 +361,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Substitute @InjectAccessors(CachedConstructorAccessors.class) //
     private Constructor<?> cachedConstructor;
-
-    @Substitute @InjectAccessors(NewInstanceCallerCacheAccessors.class) //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private Class<?> newInstanceCallerCache;
 
     @UnknownObjectField(types = DynamicHubMetadata.class, canBeNull = true) private DynamicHubMetadata hubMetadata;
 
@@ -1818,18 +1813,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         @SuppressWarnings("unused")
         private static void setCachedConstructor(DynamicHub that, Constructor<?> value) {
             that.companion.setCachedConstructor(value);
-        }
-    }
-
-    private static class NewInstanceCallerCacheAccessors {
-        @SuppressWarnings("unused")
-        private static Class<?> getNewInstanceCallerCache(DynamicHub that) {
-            return that.companion.getNewInstanceCallerCache();
-        }
-
-        @SuppressWarnings("unused")
-        private static void setNewInstanceCallerCache(DynamicHub that, Class<?> value) {
-            that.companion.setNewInstanceCallerCache(value);
         }
     }
 
