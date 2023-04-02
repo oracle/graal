@@ -22,28 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.util;
+package com.oracle.svm.core.collections;
 
 import java.util.function.Supplier;
 
 import com.oracle.svm.core.Uninterruptible;
 
-/**
- * Keeps the last-n entries and allows to read the out on demand..
- */
+/** Keeps the last-n entries. */
 public final class RingBuffer<T> {
-    private static final int DEFAULT_BUFFER_SIZE = 30;
-
     private final T[] entries;
     private int pos;
     private boolean wrapped;
 
     public interface Consumer<T> {
         void accept(Object context, T t);
-    }
-
-    public RingBuffer() {
-        this(DEFAULT_BUFFER_SIZE);
     }
 
     @SuppressWarnings("unchecked")
