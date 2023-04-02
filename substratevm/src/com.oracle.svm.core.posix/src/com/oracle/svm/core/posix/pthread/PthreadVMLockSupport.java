@@ -123,14 +123,18 @@ final class PthreadVMLockFeature implements InternalFeature {
         PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
         int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), alignment);
         for (PthreadVMMutex mutex : mutexes) {
-            mutex.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
+            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
+            assert offset % alignment == 0;
+            mutex.structOffset = WordFactory.unsigned(offset);
             nextIndex += mutexSize;
         }
 
         PthreadVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new PthreadVMCondition[0]);
         int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), alignment);
         for (PthreadVMCondition condition : conditions) {
-            condition.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
+            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
+            assert offset % alignment == 0;
+            condition.structOffset = WordFactory.unsigned(offset);
             nextIndex += conditionSize;
         }
 

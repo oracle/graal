@@ -103,20 +103,29 @@ final class WindowsVMLockFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
+        final int alignment = 8;
+
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int nextIndex = 0;
+        final int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
+
+        // Align the first element to word boundary.
+        int nextIndex = NumUtil.roundUp(baseOffset, alignment) - baseOffset;
 
         WindowsVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new WindowsVMMutex[0]);
-        int mutexSize = NumUtil.roundUp(SizeOf.get(Process.CRITICAL_SECTION.class), 8);
+        int mutexSize = NumUtil.roundUp(SizeOf.get(Process.CRITICAL_SECTION.class), alignment);
         for (WindowsVMMutex mutex : mutexes) {
-            mutex.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
+            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
+            assert offset % alignment == 0;
+            mutex.structOffset = WordFactory.unsigned(offset);
             nextIndex += mutexSize;
         }
 
         WindowsVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new WindowsVMCondition[0]);
-        int conditionSize = NumUtil.roundUp(SizeOf.get(Process.CONDITION_VARIABLE.class), 8);
+        int conditionSize = NumUtil.roundUp(SizeOf.get(Process.CONDITION_VARIABLE.class), alignment);
         for (WindowsVMCondition condition : conditions) {
-            condition.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
+            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
+            assert offset % alignment == 0;
+            condition.structOffset = WordFactory.unsigned(offset);
             nextIndex += conditionSize;
         }
 
