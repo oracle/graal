@@ -813,8 +813,14 @@ public abstract class ShapeImpl extends Shape {
         }
 
         sb.append("{");
+        boolean first = true;
         for (Iterator<Property> iterator = propertyMap.reverseOrderedValueIterator(); iterator.hasNext();) {
             Property p = iterator.next();
+            if (first) {
+                first = false;
+            } else {
+                sb.append("\n");
+            }
             sb.append(p);
             if (iterator.hasNext()) {
                 sb.append(",");
@@ -823,7 +829,6 @@ public abstract class ShapeImpl extends Shape {
                 sb.append("...");
                 break;
             }
-            sb.append("\n");
         }
         sb.append("}");
 
