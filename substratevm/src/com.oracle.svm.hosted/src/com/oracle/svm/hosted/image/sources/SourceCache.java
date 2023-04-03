@@ -91,6 +91,7 @@ public class SourceCache {
             Path javaHomePath = Paths.get("", javaHome);
             Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
             if (!srcZipPath.toFile().exists()) {
+                System.out.printf("Warning: Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes\n", srcZipPath);
                 return;
             }
             try {
@@ -298,7 +299,7 @@ public class SourceCache {
             for (String specialRootModule : SourceRoots.specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
                     // handle this module specially as it has intermediate dirs
-                    List<Path>  specialModulePathList =  SourceRoots.specialSrcRoots.get(specialRootModule);
+                    List<Path> specialModulePathList = SourceRoots.specialSrcRoots.get(specialRootModule);
                     // if we have no src.zip then there will be no entry in the hash table
                     if (specialModulePathList == null) {
                         break;
@@ -368,7 +369,7 @@ public class SourceCache {
             for (String specialRootModule : SourceRoots.specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
                     // handle this module specially as it has intermediate dirs
-                    List<Path>  specialModulePathList =  SourceRoots.specialSrcRoots.get(specialRootModule);
+                    List<Path> specialModulePathList = SourceRoots.specialSrcRoots.get(specialRootModule);
                     // if we have no src.zip then there will be no entry in the hash table
                     if (specialModulePathList == null) {
                         break;
