@@ -10,8 +10,6 @@ redirect_from: /$version/docs/graalvm-updater/
 
 * [Check Available Components](#check-available-components)
 * [Install Components](#install-components)
-* [Install Components with a Download Token](#install-components-with-a-download-token)
-* [Provide a Download Token via Environment Variable for CI/CD](#provide-a-download-token-via-environment-variable-for-cicd)
 * [Install Components Manually](#install-components-manually)
 * [Install Components from Local Collection](#install-cmponents-from-local-collection)
 * [Uninstall Components](#uninstall-components)
@@ -81,65 +79,7 @@ To see more verbose output during the installation, as the download progress bar
 If a component is installed that depends on another component, GraalVM Updater will search for the appropriate dependency and install it as well.
 If a required component cannot be found, the installation will fail.
 
-## Install Components with a Download Token
-
-On GraalVM Enterprise Edition, the predecessor of Oracle GraalVM, installing a component requires users to provide a valid email address and accept a license for a given component.
-GraalVM Updater uses the **download token** (a personal access token, an alternative to using a password) which is bound to the user's email and defines the set of accepted licenses.
-Follow these steps to install, for example, Python: 
-
-1. Run `gu available` to list the available components for your Oracle GraalVM installation.
-    
-    ```shell
-    gu available
-    ```
-
-2. Install a component using the `ComponentId` value:
-
-    ```shell
-    gu install python
-    ```
-   You will see a message to provide your valid email address or input your download token and press `ENTER`. 
-   Supposedly, this is your first installation and you have not accepted the license yet. So press `ENTER`.
-
-3. Type your valid email address. You will immediately be sent an email to verify your email address and accept the license. If an email address is not provided, `gu` will abort the installation and print an error message that no download token was provided.
-
-4. Go to your email client and review the [Oracle Technology Network License Agreement GraalVM Enterprise Edition Including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html). 
-
-5. Accept the license. This way you confirm the license acceptance and generate a download token simultaneously.
-
-6. Return to the console window and press `ENTER` to continue. It will ask you where to store the download token on your computer. By default, the download token will be saved in the `~/.gu/config` file in the user's home directory. To confirm the default location, type `yes`. The download and installation of the component will start.
-
-Once the installation completes, you can continue installing other components using the same command: `gu install ComponentId`. 
-GraalVM Updater reads your `~/.gu/config` and you do not have to re-accept the license. 
- 
-The following commands can help you manage a download token: 
-
-* `--email <address>` to print an e-mail address used for generating a download token
-* `--config <path>` to provide the path to a download token
-* `--show-ee-token` to print a saved download token
-
-## Provide a Download Token via Environment Variable for CI/CD
-
-A download token can also be provided via an environment variable.
-This is useful for automation use cases, for example, in continuous integration (CI) and continuous delivery (CD) setups.
-
-> Note: The GitHub Action for GraalVM has [instructions on how to set up CI/CD using the download token](https://github.com/graalvm/setup-graalvm#basic-graalvm-enterprise-edition-template).
-
-As a prerequisite, use GraalVM Updater manually to set up GraalVM and any components you may need. It will help you create a valid download token. 
-
-To show this download token, run:
-
-```shell
-gu --show-ee-token
-```
-
-To use this download token on another machine, copy the download token, and set the `$GRAAL_EE_DOWNLOAD_TOKEN` environment variable:
-```shell
-export GRAAL_EE_DOWNLOAD_TOKEN=<valid-download-token>
-```
-
-GraalVM Updater then reads the download token from the variable.
-Note: `$GRAAL_EE_DOWNLOAD_TOKEN` takes precedence over the token stored in the `~/.gu/config` file.
+> Note:  See the [Install Components on GraalVM Enterprise guide](https://www.graalvm.org/22.3/reference-manual/graalvm-updater/#install-components-on-graalvm-enterprise) for information on installing components on older GraalVM Enterprise releases.
 
 ## Install Components Manually
 

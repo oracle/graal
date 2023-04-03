@@ -55,8 +55,6 @@ Follow these steps to download and install GraalVM.
 4. Select the destination folder.
 
 The installation starts immediately.
-If you are installing Oracle GraalVM, the installation wizard downloads a package from Oracle's storage point and displays progress. 
-If you are installing GraalVM Community Edition, the wizard downloads the package from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) and displays progress.
 
 > Note: This installation option offers the latest verion of GraalVM. If you would like to install an older version, follow [these steps](../../../getting-started/graalvm-community/get-started-graalvm-community.md#install-graalvm).
 
@@ -118,7 +116,7 @@ Thanks to [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?it
 
 ### Configuration
 
-GraalVM Tools for Java extension provides the **NATIVE IMAGE** with **Agent** pane to automate the process of tracking and registering dynamic feature calls, making it easier to configure and build a native executable in VS Code. The [tracing agent](../../../reference-manual/native-image/AutomaticMetadataCollection.md) tracks dynamic feature calls whilst your application is running on a JVM, and records those calls into JSON configuration files.
+GraalVM Tools for Java extension provides the **NATIVE IMAGE** with **Agent** pane to automate the process of tracking and registering dynamic feature calls, making it easier to configure and build a native executable in VS Code. The [Tracing agent](../../../reference-manual/native-image/AutomaticMetadataCollection.md) (hence, the agent) tracks dynamic feature calls whilst your application is running on a JVM, and records those calls into JSON configuration files.
 
 ![Native Image Agent pane](images/ni_agent_pane.png)
 
