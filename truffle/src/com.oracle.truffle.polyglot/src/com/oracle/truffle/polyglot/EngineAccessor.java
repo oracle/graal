@@ -1881,11 +1881,6 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Map<String, String> readOptionsFromSystemProperties(Map<String, String> options) {
-            return PolyglotEngineImpl.readOptionsFromSystemProperties(options);
-        }
-
-        @Override
         public AbstractPolyglotImpl.AbstractHostLanguageService getHostService(Object polyglotEngineImpl) {
             assert polyglotEngineImpl instanceof PolyglotEngineImpl;
             return ((PolyglotEngineImpl) polyglotEngineImpl).host;

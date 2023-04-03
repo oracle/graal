@@ -711,8 +711,6 @@ public abstract class Accessor {
 
         public abstract Throwable createInterruptExecution(SourceSection sourceSection);
 
-        public abstract Map<String, String> readOptionsFromSystemProperties(Map<String, String> options);
-
         public abstract AbstractHostLanguageService getHostService(Object polyglotEngineImpl);
 
         public abstract LogHandler getEngineLogHandler(Object polyglotEngineImpl);
