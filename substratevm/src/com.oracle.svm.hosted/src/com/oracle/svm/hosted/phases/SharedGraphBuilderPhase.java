@@ -343,7 +343,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleBootstrapMethodError(BootstrapMethodError bme, JavaMethod javaMethod) {
+        protected void handleLoadConstantException(Error bme, JavaMethod javaMethod) {
             if (linkAtBuildTime) {
                 reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
             } else {
@@ -352,13 +352,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleIllegalArgumentException(IllegalArgumentException error, JavaMethod javaMethod) {
-            replaceWithThrowingAtRuntime(this, error);
-        }
-
-        @SuppressWarnings("unused")
-        protected void handleIncompatibleClassChangeError(IncompatibleClassChangeError error, JavaMethod javaMethod) {
-            replaceWithThrowingAtRuntime(this, error);
+        protected void handleLoadConstantException(RuntimeException error, JavaMethod javaMethod) {
+            if (linkAtBuildTime) {
+                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), error);
+            } else {
+                replaceWithThrowingAtRuntime(this, error);
+            }
         }
 
         /**

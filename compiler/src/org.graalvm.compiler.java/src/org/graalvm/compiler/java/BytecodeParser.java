@@ -3975,27 +3975,20 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 throw new Error("lookupConstant returned an object of incorrect type: " + con);
             }
         } catch (IllegalArgumentException err) {
-            handleIllegalArgumentException(err, method);
-        } catch (IncompatibleClassChangeError err) {
-            handleIncompatibleClassChangeError(err, method);
-        } catch (BootstrapMethodError error) {
-            handleBootstrapMethodError(error, method);
+            handleLoadConstantException(err, method);
+        } catch (BootstrapMethodError | IncompatibleClassChangeError error) {
+            handleLoadConstantException(error, method);
         }
     }
 
     @SuppressWarnings("unused")
-    protected void handleIllegalArgumentException(IllegalArgumentException error, JavaMethod javaMethod) {
+    protected void handleLoadConstantException(RuntimeException error, JavaMethod javaMethod) {
         throw error;
     }
 
     @SuppressWarnings("unused")
-    protected void handleIncompatibleClassChangeError(IncompatibleClassChangeError error, JavaMethod javaMethod) {
+    protected void handleLoadConstantException(Error error, JavaMethod javaMethod) {
         throw error;
-    }
-
-    @SuppressWarnings("unused")
-    protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
-        throw be;
     }
 
     private JavaKind refineComponentType(ValueNode array, JavaKind kind) {
