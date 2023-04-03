@@ -103,6 +103,8 @@ _graalvm_base_name = 'GraalVM'
 _registered_graalvm_components = {}
 _project_name = 'graal'
 
+_base_jdk_version_info = None
+
 default_components = []
 
 
@@ -3306,7 +3308,9 @@ def graalvm_version():
     Example: 17.0.1-dev+4.1
     :rtype: str
     """
-    def base_jdk_info():
+    global _base_jdk_version_info
+
+    def base_jdk_version_info():
         """
         :rtype: (str, str, str)
         """
@@ -3333,12 +3337,15 @@ def graalvm_version():
                         assert build is None
                         build = build_match.group('build')
             if version is None or build is None:
-                mx.abort('VM info extraction failed. Output:\n' + '\n'.join(out.lines))
+                raise mx.abort('VM info extraction failed. Output:\n' + '\n'.join(out.lines))
             return version, qualifier, build
         else:
-            mx.abort('VM info extraction failed. Exit code: ' + str(code))
+            raise mx.abort('VM info extraction failed. Exit code: ' + str(code))
 
-    jdk_version, jdk_qualifier, jdk_build = base_jdk_info()
+    if _base_jdk_version_info is None:
+        _base_jdk_version_info = base_jdk_version_info()
+
+    jdk_version, jdk_qualifier, jdk_build = _base_jdk_version_info
     graalvm_id = '' if _suite.is_release() else '-dev'
     if jdk_qualifier:
         graalvm_id += '.' if graalvm_id else '-'
