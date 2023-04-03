@@ -3303,12 +3303,13 @@ def graalvm_dist_name():
 
 def graalvm_version():
     """
-    Example: 17.0.1+4.1
+    Example: 17.0.1-dev+4.1
     :rtype: str
     """
     base_jdk = mx_sdk_vm.base_jdk()
-    return '{jdk_version}{jdk_build}.{release_build}'.format(
+    return '{jdk_version}{pre_release_id}{jdk_build}.{release_build}'.format(
         jdk_version=base_jdk.version.versionString,
+        pre_release_id='' if _suite.is_release() else '-dev',
         jdk_build='+' + base_jdk.build_id if base_jdk.build_id else '',
         release_build=mx_sdk_vm.release_build
     )
