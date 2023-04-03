@@ -45,6 +45,7 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.os.RawFileOperationSupport;
@@ -73,8 +74,7 @@ public final class UninterruptibleAnnotationChecker {
 
     public static void checkAfterParsing(ResolvedJavaMethod method, StructuredGraph graph) {
         if (Uninterruptible.Utils.isUninterruptible(method) && graph != null) {
-            singleton().checkNoAllocation(method, graph);
-            singleton().checkNoSynchronization(method, graph);
+            singleton().checkGraph(method, graph);
         }
     }
 
@@ -134,12 +134,6 @@ public final class UninterruptibleAnnotationChecker {
         }
 
         if (annotation.mayBeInlined()) {
-            if (!annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class)) {
-                violations.add("Method " + method.format("%H.%n(%p)") + " is annotated with @Uninterruptible('mayBeInlined = true') which allows the method to be inlined into interruptible code. " +
-                                "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please remove 'mayBeInlined = true'. " +
-                                "Otherwise, use the following reason: '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'");
-            }
-
             if (AnnotationAccess.isAnnotationPresent(method, NeverInline.class)) {
                 violations.add("Method " + method.format("%H.%n(%p)") +
                                 " is annotated with conflicting annotations: @Uninterruptible('mayBeInlined = true') and @NeverInline");
@@ -148,6 +142,14 @@ public final class UninterruptibleAnnotationChecker {
             if (annotation.callerMustBe()) {
                 violations.add("Method " + method.format("%H.%n(%p)") + " is annotated with conflicting options: 'mayBeInlined = true' and 'callerMustBe = true'. " +
                                 "If the callers of the method need to be uninterruptible, then it should not be allowed to inline the method into interruptible code.");
+            }
+        }
+
+        if (annotation.mayBeInlined() && annotation.calleeMustBe()) {
+            if (!annotation.reason().equals(Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE) && !AnnotationAccess.isAnnotationPresent(method, AlwaysInline.class)) {
+                violations.add("Method " + method.format("%H.%n(%p)") + " is annotated with @Uninterruptible('mayBeInlined = true') which allows the method to be inlined into interruptible code. " +
+                                "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please remove 'mayBeInlined = true'. " +
+                                "Otherwise, use the following reason: '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'");
             }
         }
 
@@ -259,18 +261,14 @@ public final class UninterruptibleAnnotationChecker {
         }
     }
 
-    private void checkNoAllocation(ResolvedJavaMethod method, StructuredGraph graph) {
+    private void checkGraph(ResolvedJavaMethod method, StructuredGraph graph) {
         for (Node node : graph.getNodes()) {
             if (isAllocationNode(node)) {
                 violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to allocate.");
-            }
-        }
-    }
-
-    private void checkNoSynchronization(ResolvedJavaMethod method, StructuredGraph graph) {
-        for (Node node : graph.getNodes()) {
-            if (node instanceof MonitorEnterNode) {
+            } else if (node instanceof MonitorEnterNode) {
                 violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " is not allowed to use 'synchronized'.");
+            } else if (node instanceof EnsureClassInitializedNode) {
+                violations.add("Uninterruptible method " + method.format("%H.%n(%p)") + " not allowed to do class initialization.");
             }
         }
     }
