@@ -1074,6 +1074,11 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
             self._layout_initialized = True
         return super(DebuginfoDistribution, self)._walk_layout()
 
+    def remoteName(self, platform=None):
+        remote_name = super(DebuginfoDistribution, self).remoteName(platform=platform)
+        # maven artifactId cannot contain '+'
+        return remote_name.replace('+', '-')
+
 
 def get_graalvm_os():
     os = mx.get_os()
