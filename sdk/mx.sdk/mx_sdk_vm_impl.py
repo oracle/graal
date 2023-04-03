@@ -932,7 +932,7 @@ def _graalvm_jdk_version(base_jdk):
     return '{jdk_version}{jdk_build}.{release_build}'.format(
         jdk_version=base_jdk.version.versionString,
         jdk_build='+' + base_jdk.build_id if base_jdk.build_id else '',
-        release_build=_suite._get_early_suite_dict_property('releaseBuild')
+        release_build=mx_sdk_vm.release_build
     )
 
 
