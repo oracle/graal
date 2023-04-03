@@ -135,16 +135,13 @@ public class JfrSymbolRepository implements JfrRepository {
         try {
             JfrSymbolEpochData epochData = getEpochData(!flushpoint);
             int count = epochData.unflushedEntries;
-            if (count == 0) {
-                return EMPTY;
+            if (count != 0) {
+                writer.writeCompressedLong(JfrType.Symbol.getId());
+                writer.writeCompressedLong(count);
+                writer.write(epochData.buffer);
             }
-
-            writer.writeCompressedLong(JfrType.Symbol.getId());
-            writer.writeCompressedLong(count);
-            writer.write(epochData.buffer);
-
             epochData.clear(flushpoint);
-            return NON_EMPTY;
+            return count == 0 ? EMPTY : NON_EMPTY;
         } finally {
             mutex.unlock();
         }

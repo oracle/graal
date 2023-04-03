@@ -37,6 +37,7 @@ import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.util.UnsignedUtils;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -44,14 +45,32 @@ import jdk.jfr.consumer.RecordedThread;
 public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
     private static final int K = 1024;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.ObjectAllocationInNewTLAB.getName()};
+    @Test
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.ObjectAllocationInNewTLAB.getName()};
+        Recording recording = startRecording(events);
+
+        final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+
+        // Allocate large arrays (always need a new TLAB).
+        allocateByteArray(2 * alignedHeapChunkSize);
+        allocateCharArray(alignedHeapChunkSize);
+
+        // Exhaust TLAB with small arrays.
+        for (int i = 0; i < alignedHeapChunkSize / K; i++) {
+            allocateByteArray(K);
+        }
+
+        // Exhaust TLAB with instances.
+        for (int i = 0; i < alignedHeapChunkSize; i++) {
+            allocateInstance();
+        }
+
+        stopRecording(recording, TestObjectAllocationInNewTLABEvent::validateEvents);
     }
 
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+    private static void validateEvents(List<RecordedEvent> events) {
+        long alignedHeapChunkSize = HeapParameters.getAlignedHeapChunkSize().rawValue();
 
         boolean foundBigByteArray = false;
         boolean foundSmallByteArray = false;
@@ -87,25 +106,6 @@ public class TestObjectAllocationInNewTLABEvent extends JfrRecordingTest {
         assertTrue(foundBigByteArray);
         assertTrue(foundSmallByteArray);
         assertTrue(foundInstance);
-    }
-
-    @Test
-    public void test() throws Exception {
-        final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
-
-        // Allocate large arrays (always need a new TLAB).
-        allocateByteArray(2 * alignedHeapChunkSize);
-        allocateCharArray(alignedHeapChunkSize);
-
-        // Exhaust TLAB with small arrays.
-        for (int i = 0; i < alignedHeapChunkSize / K; i++) {
-            allocateByteArray(K);
-        }
-
-        // Exhaust TLAB with instances.
-        for (int i = 0; i < alignedHeapChunkSize; i++) {
-            allocateInstance();
-        }
     }
 
     @NeverInline("Prevent escape analysis.")

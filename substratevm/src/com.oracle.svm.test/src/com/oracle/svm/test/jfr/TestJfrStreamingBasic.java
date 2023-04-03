@@ -32,6 +32,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 
@@ -40,6 +41,7 @@ import com.oracle.svm.core.jfr.JfrEvent;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
+import jdk.jfr.consumer.RecordingStream;
 
 /**
  * Check to make sure 1. The events that are emitted are found in the stream 2. The resulting JFR
@@ -50,30 +52,15 @@ public class TestJfrStreamingBasic extends JfrStreamingTest {
     private static final int EXPECTED_EVENTS = THREADS * 2;
 
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
+    private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
     private final Set<String> seenThreads = new HashSet<>();
     private boolean firstFlush = true;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.JavaMonitorWait.getName()};
-    }
-
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        int count = 0;
-        for (RecordedEvent event : events) {
-            if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
-                String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-                seenThreads.remove(eventThread);
-                count++;
-            }
-        }
-        assertEquals(EXPECTED_EVENTS, count);
-        assertTrue(seenThreads.isEmpty());
-    }
-
     @Test
-    public void test() throws Exception {
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
+        RecordingStream stream = startStream(events);
+
         stream.onEvent(JfrEvent.JavaMonitorWait.getName(), event -> {
             if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
                 String thread = event.getThread("eventThread").getJavaName();
@@ -97,5 +84,20 @@ public class TestJfrStreamingBasic extends JfrStreamingTest {
 
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS);
         waitUntilTrue(() -> seenThreads.size() == EXPECTED_EVENTS);
+
+        stopStream(stream, this::validateEvents);
+    }
+
+    private void validateEvents(List<RecordedEvent> events) {
+        int count = 0;
+        for (RecordedEvent event : events) {
+            if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
+                String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+                seenThreads.remove(eventThread);
+                count++;
+            }
+        }
+        assertEquals(EXPECTED_EVENTS, count);
+        assertTrue(seenThreads.isEmpty());
     }
 }
