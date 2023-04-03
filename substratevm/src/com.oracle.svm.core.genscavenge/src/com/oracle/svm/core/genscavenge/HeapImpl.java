@@ -214,14 +214,20 @@ public final class HeapImpl extends Heap {
         return objectHeaderImpl;
     }
 
-    ObjectHeaderImpl getObjectHeaderImpl() {
-        return objectHeaderImpl;
+    @Fold
+    static ObjectHeaderImpl getObjectHeaderImpl() {
+        return getHeapImpl().objectHeaderImpl;
     }
 
     @Fold
     @Override
     public GC getGC() {
-        return getGCImpl();
+        return getHeapImpl().gcImpl;
+    }
+
+    @Fold
+    static GCImpl getGCImpl() {
+        return getHeapImpl().gcImpl;
     }
 
     @Fold
@@ -233,11 +239,6 @@ public final class HeapImpl extends Heap {
     @Fold
     public HeapAccounting getAccounting() {
         return accounting;
-    }
-
-    @Fold
-    GCImpl getGCImpl() {
-        return gcImpl;
     }
 
     @Override
@@ -707,7 +708,7 @@ public final class HeapImpl extends Heap {
 
     @Override
     public long getMillisSinceLastWholeHeapExamined() {
-        return getGCImpl().getMillisSinceLastWholeHeapExamined();
+        return HeapImpl.getGCImpl().getMillisSinceLastWholeHeapExamined();
     }
 
     @Override

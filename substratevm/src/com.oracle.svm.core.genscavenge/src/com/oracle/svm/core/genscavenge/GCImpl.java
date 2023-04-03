@@ -515,7 +515,7 @@ public final class GCImpl implements GC {
 
     @Fold
     public static GCImpl getGCImpl() {
-        GCImpl gcImpl = HeapImpl.getHeapImpl().getGCImpl();
+        GCImpl gcImpl = HeapImpl.getGCImpl();
         assert gcImpl != null;
         return gcImpl;
     }
@@ -1290,7 +1290,7 @@ public final class GCImpl implements GC {
              */
             ImplicitExceptions.activateImplicitExceptionsAreFatal();
             try {
-                HeapImpl.getHeapImpl().getGCImpl().collectOperation((CollectionVMOperationData) data);
+                HeapImpl.getGCImpl().collectOperation((CollectionVMOperationData) data);
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere(t);
             } finally {
@@ -1301,7 +1301,7 @@ public final class GCImpl implements GC {
         @Override
         protected boolean hasWork(NativeVMOperationData data) {
             CollectionVMOperationData d = (CollectionVMOperationData) data;
-            return HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
+            return HeapImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
         }
     }
 

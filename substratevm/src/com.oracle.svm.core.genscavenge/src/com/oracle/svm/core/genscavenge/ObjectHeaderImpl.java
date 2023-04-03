@@ -104,7 +104,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Fold
     public static ObjectHeaderImpl getObjectHeaderImpl() {
-        ObjectHeaderImpl oh = HeapImpl.getHeapImpl().getObjectHeaderImpl();
+        ObjectHeaderImpl oh = HeapImpl.getObjectHeaderImpl();
         assert oh != null;
         return oh;
     }
