@@ -356,6 +356,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
      */
     private final EconomicMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex = EconomicMap.create();
 
+    @SuppressWarnings("this-escape")
     public DwarfDebugInfo(ELFMachine elfMachine, ByteOrder byteOrder) {
         super(byteOrder);
         this.elfMachine = elfMachine;

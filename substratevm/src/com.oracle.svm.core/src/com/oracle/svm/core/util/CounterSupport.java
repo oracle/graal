@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes;
+package com.oracle.svm.core.util;
 
-import static java.lang.Character.toLowerCase;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
+import com.oracle.svm.core.log.Log;
 
-public class ValueNodeUtil {
+public class CounterSupport {
+    private final Counter.Group[] enabledGroups;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    CounterSupport(Counter.Group[] enabledGroups) {
+        this.enabledGroups = enabledGroups;
+    }
+
+    @Fold
+    public static CounterSupport singleton() {
+        return ImageSingletons.lookup(CounterSupport.class);
+    }
 
     /**
-     * Converts a given instruction to a value string. The representation of an node as a value is
-     * formed by concatenating the {@linkplain jdk.vm.ci.meta.JavaKind#getTypeChar character}
-     * denoting its {@linkplain ValueNode#getStackKind kind} and its id. For example, {@code "i13"}.
-     *
-     * @param value the instruction to convert to a value string. If {@code value == null}, then "-"
-     *            is returned.
-     * @return the instruction representation as a string
+     * Prints all counters of all enabled groups to the {@link Log}.
      */
-    public static String valueString(ValueNode value) {
-        return (value == null) ? "-" : ("" + toLowerCase(value.getStackKind().getTypeChar()) + value.toString(Verbosity.Id));
-    }
-
-    public static ValueNode asNode(MemoryKill node) {
-        if (node == null) {
-            return null;
-        } else {
-            return node.asNode();
+    public void logValues(Log log) {
+        for (Counter.Group group : enabledGroups) {
+            group.logValues(log);
         }
     }
+
+    public boolean hasCounters() {
+        return enabledGroups != null && enabledGroups.length > 0;
+    }
+
 }

@@ -88,6 +88,7 @@ public class AssertionSnippets implements Snippets {
         private final SnippetInfo assertion;
         private final SnippetInfo stubAssertion;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 

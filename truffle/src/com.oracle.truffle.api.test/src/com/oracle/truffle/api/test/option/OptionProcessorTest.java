@@ -62,7 +62,6 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.SandboxPolicy;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Option;
@@ -76,13 +75,9 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class OptionProcessorTest {
 
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
-
     @Test
     public void testTestLang() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         Engine engine = Engine.create();
         OptionDescriptors descriptors = engine.getLanguages().get("optiontestlang1").getOptions();
 
@@ -165,7 +160,7 @@ public class OptionProcessorTest {
 
     @Test
     public void testOptionsInstrument() {
-
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         Engine engine = Engine.create();
         OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
 
@@ -226,6 +221,7 @@ public class OptionProcessorTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testOptionValues() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         Engine engine = Engine.create();
         OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
         OptionValues optionValues = engine.getInstruments().get("optiontestinstr1").lookup(OptionValues.class);
@@ -269,6 +265,7 @@ public class OptionProcessorTest {
 
     @Test
     public void testDescriptorPrefixMatching() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         Engine engine = Engine.create();
         OptionDescriptors descriptors = engine.getInstruments().get("optiontestinstr1").getOptions();
 
@@ -339,6 +336,7 @@ public class OptionProcessorTest {
 
     @Test
     public void testOptionValueEqualsAndHashCode() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         // options are never equals if different engines are used.
         Context c0 = Context.newBuilder().option("optiontestlang1.StableOption", "foo").build();
         Context c1 = Context.newBuilder().option("optiontestlang1.StableOption", "foo").build();

@@ -44,6 +44,7 @@ import java.util.function.Supplier;
 /**
  * Implementation of feedback and input for commands.
  */
+@SuppressWarnings("this-escape")
 public class Environment implements Feedback, CommandInput, Config {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle");

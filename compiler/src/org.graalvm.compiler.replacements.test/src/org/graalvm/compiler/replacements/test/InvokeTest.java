@@ -34,6 +34,7 @@ import org.graalvm.compiler.phases.common.AbstractInliningPhase;
  */
 public class InvokeTest extends GraalCompilerTest {
 
+    @SuppressWarnings("this-escape")
     public InvokeTest() {
         createSuites(getInitialOptions()).getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }

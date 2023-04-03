@@ -30,6 +30,7 @@ import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocat
 import org.graalvm.compiler.options.OptionValues;
 
 public class PreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
+    @SuppressWarnings("this-escape")
     public PreAllocationOptimizationStage(OptionValues options) {
         if (ConstantLoadOptimization.Options.LIROptConstantLoadOptimization.getValue(options)) {
             appendPhase(new ConstantLoadOptimization());

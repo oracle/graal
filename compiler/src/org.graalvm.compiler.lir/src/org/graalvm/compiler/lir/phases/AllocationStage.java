@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.OptionValues;
 
 public class AllocationStage extends LIRPhaseSuite<AllocationContext> {
 
+    @SuppressWarnings("this-escape")
     public AllocationStage(OptionValues options) {
         appendPhase(new MarkBasePointersPhase());
         appendPhase(new LinearScanPhase());

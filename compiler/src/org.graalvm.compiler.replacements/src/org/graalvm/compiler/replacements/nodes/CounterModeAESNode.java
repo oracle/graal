@@ -67,6 +67,7 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
 
     @Input protected NodeInputList<ValueNode> inputs;
 
+    @SuppressWarnings("this-escape")
     public CounterModeAESNode(ValueNode inAddr,
                     ValueNode outAddr,
                     ValueNode kAddr,
@@ -85,6 +86,7 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
                         usedPtr);
     }
 
+    @SuppressWarnings("this-escape")
     public CounterModeAESNode(ValueNode inAddr,
                     ValueNode outAddr,
                     ValueNode kAddr,
@@ -104,6 +106,7 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
                         usedPtr);
     }
 
+    @SuppressWarnings("this-escape")
     private CounterModeAESNode(EnumSet<?> runtimeCheckedCPUFeatures, Stamp stamp, ValueNode... args) {
         super(TYPE, stamp, runtimeCheckedCPUFeatures, LocationIdentity.any());
 

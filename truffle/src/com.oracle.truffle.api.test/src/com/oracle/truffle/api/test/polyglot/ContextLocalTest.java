@@ -88,6 +88,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("this-escape")
 public class ContextLocalTest extends AbstractPolyglotTest {
 
     private static final int PARALLELISM = 32;
@@ -961,6 +962,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     }
 
     @TruffleLanguage.Registration(id = INVALID_CONTEXT_THREAD_LOCAL, name = INVALID_CONTEXT_THREAD_LOCAL)
+    @SuppressWarnings("this-escape")
     public static class InvalidLanguageContextThreadLocal extends TruffleLanguage<TruffleLanguage.Env> {
 
         static int effect = 0;
@@ -976,6 +978,7 @@ public class ContextLocalTest extends AbstractPolyglotTest {
     }
 
     @TruffleInstrument.Registration(id = "example", name = "Example Instrument")
+    @SuppressWarnings("this-escape")
     public static class ExampleInstrument extends TruffleInstrument {
 
         final ContextThreadLocal<ExampleLocal> local = createContextThreadLocal(ExampleLocal::new);

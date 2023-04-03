@@ -38,6 +38,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
@@ -122,6 +123,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Delete
+    @TargetElement(onlyWith = {JDK20OrEarlier.class})
     private static native int getMembers(Class<?> defc, String matchName, String matchSig, int matchFlags, Class<?> caller, int skip, Target_java_lang_invoke_MemberName[] results);
 
     @Substitute
@@ -381,9 +383,12 @@ final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     @Alias static int MN_IS_TYPE;
     @Alias static int MN_CALLER_SENSITIVE;
     @Alias static int MN_REFERENCE_KIND_SHIFT;
+    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
     @Alias static int MN_REFERENCE_KIND_MASK;
     // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:
+    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
     @Alias static int MN_SEARCH_SUPERCLASSES;
+    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
     @Alias static int MN_SEARCH_INTERFACES;
 
     /**

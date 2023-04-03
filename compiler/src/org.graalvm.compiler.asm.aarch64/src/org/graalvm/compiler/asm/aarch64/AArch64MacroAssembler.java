@@ -67,6 +67,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     // preferred byte alignment for a branch target
     public static final int PREFERRED_BRANCH_TARGET_ALIGNMENT = 16;
 
+    @SuppressWarnings("this-escape")
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
         this.neon = new AArch64ASIMDMacroAssembler(this);

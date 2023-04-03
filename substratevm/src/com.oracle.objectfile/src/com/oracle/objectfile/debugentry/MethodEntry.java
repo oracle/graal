@@ -55,6 +55,7 @@ public class MethodEntry extends MemberEntry {
     int vtableOffset = -1;
     final String symbolName;
 
+    @SuppressWarnings("this-escape")
     public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,
                     FileEntry fileEntry, int line, String methodName, ClassEntry ownerType,
                     TypeEntry valueType, TypeEntry[] paramTypes, DebugLocalInfo[] paramInfos, DebugLocalInfo thisParam) {

@@ -268,7 +268,7 @@ public final class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         if (SubstrateOptions.MultiThreaded.getValue() && !(SubstrateOptions.UseParallelGC.getValue() && VMOperation.isGCInProgress())) {
-            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.", true);
         }
         HeapChunk.setSpace(aChunk, this);
 
@@ -314,7 +314,7 @@ public final class Space {
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
         if (SubstrateOptions.MultiThreaded.getValue() && !(SubstrateOptions.UseParallelGC.getValue() && VMOperation.isGCInProgress())) {
-            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
+            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.", true);
         }
         HeapChunk.setSpace(uChunk, this);
 

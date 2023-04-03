@@ -83,6 +83,7 @@ public class LoadExceptionObjectSnippets implements Snippets {
         private final SnippetInfo loadException;
         private final HotSpotWordTypes wordTypes;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 

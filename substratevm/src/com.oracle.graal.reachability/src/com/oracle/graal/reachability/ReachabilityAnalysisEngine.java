@@ -76,6 +76,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     private final ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
 
+    @SuppressWarnings("this-escape")
     public ReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection,

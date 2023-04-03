@@ -131,6 +131,7 @@ public abstract class PartialEvaluator {
     protected boolean allowAssumptionsDuringParsing;
     protected boolean persistentEncodedGraphCache;
 
+    @SuppressWarnings("this-escape")
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownFields) {
         this.config = config;
         this.knownTruffleTypes = knownFields;

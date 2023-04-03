@@ -49,6 +49,7 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
 
     private int bci;
 
+    @SuppressWarnings("this-escape")
     public SubstrateIntrinsicGraphBuilder(OptionValues options, DebugContext debug, CoreProviders providers, Bytecode code) {
         super(options, debug, providers, code, -1, AllowAssumptions.NO);
         setStateAfter(getGraph().start());

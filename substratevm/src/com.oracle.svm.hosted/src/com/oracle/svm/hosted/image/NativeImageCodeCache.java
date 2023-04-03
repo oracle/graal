@@ -142,6 +142,7 @@ public abstract class NativeImageCodeCache {
         orderedCompilations.clear();
     }
 
+    @SuppressWarnings("this-escape")//
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
         this.compilations = compilations;
         this.imageHeap = imageHeap;

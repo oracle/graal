@@ -53,6 +53,7 @@ public class StringLatin1Snippets implements Snippets {
 
         public final SnippetTemplate.SnippetInfo indexOf;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 

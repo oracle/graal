@@ -92,6 +92,7 @@ public class AMD64HotSpotFrameMap extends AMD64FrameMap {
      */
     private StackSlot deoptimizationRescueSlot;
 
+    @SuppressWarnings("this-escape")
     public AMD64HotSpotFrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, GraalHotSpotVMConfig config) {
         super(codeCache, registerConfig, referenceMapFactory, config.preserveFramePointer);
         // HotSpot is picky about the frame layout in the presence of nmethod entry barriers, so

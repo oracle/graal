@@ -530,6 +530,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         private ResolvedJavaMethod originalArraycopy;
         private final Counters counters;
 
+        @SuppressWarnings("this-escape")
         public Templates(ArrayCopySnippets receiver, Group.Factory factory, OptionValues options, Providers providers) {
             super(options, providers);
             this.counters = new Counters(factory);

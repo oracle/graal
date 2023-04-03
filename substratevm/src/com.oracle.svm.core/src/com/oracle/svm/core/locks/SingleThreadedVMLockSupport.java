@@ -109,7 +109,7 @@ final class SingleThreadedVMMutex extends VMMutex {
 
     @Override
     public VMMutex lock() {
-        assertNotOwner("Recursive locking is not supported");
+        assert !isOwner() : "Recursive locking is not supported";
         setOwnerToCurrentThread();
         return this;
     }
@@ -117,7 +117,7 @@ final class SingleThreadedVMMutex extends VMMutex {
     @Override
     @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockNoTransition() {
-        assertNotOwner("Recursive locking is not supported");
+        assert !isOwner() : "Recursive locking is not supported";
         setOwnerToCurrentThread();
     }
 

@@ -90,6 +90,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
         return true;
     }
 
+    @SuppressWarnings("this-escape")
     protected DynamicCounterNode(NodeClass<? extends DynamicCounterNode> c, String group, String name, ValueNode increment, boolean withContext) {
         super(c, StampFactory.forVoid());
         this.group = group;

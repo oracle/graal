@@ -98,6 +98,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     protected SystemPropertiesSupport() {
         properties = new Properties();
         savedProperties = new HashMap<>();

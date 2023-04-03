@@ -93,6 +93,7 @@ import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("this-escape")
 public class ContextPolicyTest {
 
     private static final String EXCLUSIVE0 = "ExclusiveLanguage0";

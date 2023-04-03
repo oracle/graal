@@ -40,6 +40,7 @@ public class SubstrateSignature implements Signature {
         /* Types are initialized later with an explicit call to setTypes. */
     }
 
+    @SuppressWarnings("this-escape")
     public SubstrateSignature(SubstrateType[] parameterTypes, SubstrateType returnType) {
         setTypes(parameterTypes, returnType);
     }

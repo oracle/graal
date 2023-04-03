@@ -68,6 +68,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         // @formatter:on
     }
 
+    @SuppressWarnings("this-escape")
     public HighTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);

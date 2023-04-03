@@ -71,6 +71,7 @@ import jdk.vm.ci.meta.Value;
  */
 public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
+    @SuppressWarnings("this-escape")
     public AMD64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
         super(graph, gen, nodeMatchRules);
         assert gen instanceof AMD64HotSpotLIRGenerator;

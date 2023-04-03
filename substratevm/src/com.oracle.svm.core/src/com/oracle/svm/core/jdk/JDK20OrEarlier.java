@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.BooleanSupplier;
-
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
+import java.util.function.BooleanSupplier;
 
 public class JDK20OrEarlier implements BooleanSupplier {
     @Override

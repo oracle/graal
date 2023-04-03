@@ -51,6 +51,7 @@ public class StringCompareToTest extends StringSubstitutionTestBase {
     private static final int EXPECT_NODE_COUNT = 4;
     private static final String DISABLE_COMPACTSTRINGS_FLAG = "-XX:-CompactStrings";
 
+    @SuppressWarnings("this-escape")
     public StringCompareToTest() {
         initSubstitution(
                         getResolvedJavaMethod(String.class, "compareTo", String.class),

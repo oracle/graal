@@ -120,7 +120,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -600,7 +600,7 @@ public class SnippetTemplate {
      * {@link SnippetTemplate#instantiate instantiated}
      * </ul>
      */
-    public static class Arguments implements Formattable {
+    public static final class Arguments implements Formattable {
 
         protected final SnippetInfo info;
         protected final CacheKey cacheKey;
@@ -1831,7 +1831,7 @@ public class SnippetTemplate {
             if (lastLocationAccess == memoryAnchor) {
                 return super.getLastLocationAccess(locationIdentity);
             } else {
-                return (MemoryKill) duplicates.get(ValueNodeUtil.asNode(lastLocationAccess));
+                return (MemoryKill) duplicates.get(ValueNodeInterface.asNode(lastLocationAccess));
             }
         }
 
