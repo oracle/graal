@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot.nodes;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -35,7 +37,7 @@ import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_32, size = NodeSize.SIZE_32)
+@NodeInfo(allowedUsageTypes = Memory, cycles = NodeCycles.CYCLES_32, size = NodeSize.SIZE_32)
 public final class VirtualThreadUpdateJFRNode extends FixedWithNextNode implements Lowerable, SingleMemoryKill {
 
     public static final NodeClass<VirtualThreadUpdateJFRNode> TYPE = NodeClass.create(VirtualThreadUpdateJFRNode.class);

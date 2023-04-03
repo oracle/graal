@@ -609,6 +609,7 @@ public class HotSpotGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode thread) {
                     GraalError.guarantee(Services.IS_IN_NATIVE_IMAGE || isAnnotatedByChangesCurrentThread(b.getMethod()), "method changes current Thread but is not annotated ChangesCurrentThread");
                     try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                        receiver.get();
                         helper.setCurrentThread(thread);
                     }
                     return true;
