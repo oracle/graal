@@ -922,20 +922,6 @@ def _components_set(components=None, stage1=False):
 _graal_vm_configs_cache = {}
 
 
-def _graalvm_jdk_version(base_jdk):
-    """
-    :type base_jdk: mx.JDKConfig
-    :rtype: str
-    """
-    # Example:
-    # 17.0.1+4.1
-    return '{jdk_version}{jdk_build}.{release_build}'.format(
-        jdk_version=base_jdk.version.versionString,
-        jdk_build='+' + base_jdk.build_id if base_jdk.build_id else '',
-        release_build=mx_sdk_vm.release_build
-    )
-
-
 def _get_graalvm_configuration(base_name, components=None, stage1=False):
     key = base_name, stage1
     if key not in _graal_vm_configs_cache:
@@ -952,7 +938,6 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
                 break
 
         if vm_dist_name is not None:
-            base_jdk = mx_sdk_vm.base_jdk()
             # Examples (later we call `.lower().replace('_', '-')`):
             # GraalVM_community_openjdk_17.0.7+4.1
             # GraalVM_jdk_17.0.7+4.1
@@ -960,8 +945,8 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
             base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{graalvm_jdk_version}'.format(
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
-                jdk_type='jdk' if mx_sdk_vm.ee_implementor(base_jdk.home) else 'openjdk',
-                graalvm_jdk_version=_graalvm_jdk_version(base_jdk)
+                jdk_type='jdk' if mx_sdk_vm.ee_implementor() else 'openjdk',
+                graalvm_jdk_version=graalvm_version()
             )
             name = base_dir
         else:
@@ -3317,7 +3302,16 @@ def graalvm_dist_name():
 
 
 def graalvm_version():
-    return _suite.release_version()
+    """
+    Example: 17.0.1+4.1
+    :rtype: str
+    """
+    base_jdk = mx_sdk_vm.base_jdk()
+    return '{jdk_version}{jdk_build}.{release_build}'.format(
+        jdk_version=base_jdk.version.versionString,
+        jdk_build='+' + base_jdk.build_id if base_jdk.build_id else '',
+        release_build=mx_sdk_vm.release_build
+    )
 
 
 def graalvm_home(stage1=False, fatalIfMissing=False):
@@ -3683,10 +3677,9 @@ def graalvm_vendor_version():
     # Examples:
     # GraalVM CE 17.0.1+4.1
     # Oracle GraalVM 17.0.1+4.1
-    base_jdk = mx_sdk_vm.base_jdk()
     return '{vendor} {version}'.format(
-        vendor=('Oracle ' + _graalvm_base_name) if mx_sdk_vm.ee_implementor(base_jdk.home) else (_graalvm_base_name + ' CE'),
-        version=_graalvm_jdk_version(base_jdk)
+        vendor=('Oracle ' + _graalvm_base_name) if mx_sdk_vm.ee_implementor() else (_graalvm_base_name + ' CE'),
+        version=graalvm_version()
     )
 
 
