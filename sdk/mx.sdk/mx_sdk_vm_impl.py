@@ -948,7 +948,7 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
                 jdk_type='jdk' if mx_sdk_vm.ee_implementor() else 'openjdk',
-                graalvm_jdk_version=graalvm_version()
+                graalvm_jdk_version=graalvm_version(vendor_info=False)
             )
             name = base_dir
         else:
@@ -3308,9 +3308,10 @@ def graalvm_dist_name():
     return get_final_graalvm_distribution().name
 
 
-def graalvm_version():
+def graalvm_version(vendor_info):
     """
     Example: 17.0.1-dev+4.1
+    :type vendor_info: True
     :rtype: str
     """
     global _base_jdk_version_info
@@ -3351,10 +3352,13 @@ def graalvm_version():
         _base_jdk_version_info = base_jdk_version_info()
 
     jdk_version, jdk_qualifier, jdk_build = _base_jdk_version_info
-    graalvm_id = '' if _suite.is_release() else '-dev'
-    if jdk_qualifier:
-        graalvm_id += '.' if graalvm_id else '-'
-        graalvm_id += jdk_qualifier
+    if vendor_info:
+        pre_release_id = '' if _suite.is_release() else '-dev'
+        if jdk_qualifier:
+            pre_release_id += '.' if pre_release_id else '-'
+            pre_release_id += jdk_qualifier
+    else:
+        pre_release_id = ''
     # Examples:
     #
     # ```
@@ -3370,7 +3374,7 @@ def graalvm_version():
     # -> `21-dev.ea+16.1`
     return '{jdk_version}{pre_release_id}{jdk_build}.{release_build}'.format(
         jdk_version=jdk_version,
-        pre_release_id=graalvm_id,
+        pre_release_id=pre_release_id,
         jdk_build='+' + jdk_build,
         release_build=mx_sdk_vm.release_build
     )
@@ -3408,8 +3412,9 @@ def print_graalvm_dist_name(args):
 def print_graalvm_version(args):
     """print the GraalVM version"""
     parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version')
-    _ = parser.parse_args(args)
-    print(graalvm_version())
+    parser.add_argument('--vendor', action='store_true', help='show vendor information')
+    args = parser.parse_args(args)
+    print(graalvm_version(args.vendor))
 
 
 def print_graalvm_home(args):
@@ -3741,7 +3746,7 @@ def graalvm_vendor_version():
     # Oracle GraalVM 17.0.1+4.1
     return '{vendor} {version}'.format(
         vendor=('Oracle ' + _graalvm_base_name) if mx_sdk_vm.ee_implementor() else (_graalvm_base_name + ' CE'),
-        version=graalvm_version()
+        version=graalvm_version(vendor_info=True)
     )
 
 
