@@ -84,8 +84,8 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -573,7 +573,7 @@ public class LocalizationFeature implements InternalFeature {
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
          * down to the root.
          */
-        for (ResourceBundle cur = bundle; cur != null; cur = getParent(cur)) {
+        for (ResourceBundle cur = bundle; cur != null; cur = SharedSecrets.getJavaUtilResourceBundleAccess().getParent(cur)) {
             /* Register all bundles with their corresponding locales */
             support.prepareBundle(bundleName, cur, cur.getLocale());
         }
@@ -583,22 +583,6 @@ public class LocalizationFeature implements InternalFeature {
          * specific than the actual bundle locale
          */
         support.prepareBundle(bundleName, bundle, locale);
-    }
-
-    /*
-     * The field ResourceBundle.parent is not public. There is a backdoor to access it via
-     * SharedSecrets, but the package of SharedSecrets changed from JDK 8 to JDK 11 so it is
-     * inconvenient to use it. Reflective access is easier.
-     */
-    private static final Field PARENT_FIELD = ReflectionUtil.lookupField(ResourceBundle.class, "parent");
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static ResourceBundle getParent(ResourceBundle bundle) {
-        try {
-            return (ResourceBundle) PARENT_FIELD.get(bundle);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

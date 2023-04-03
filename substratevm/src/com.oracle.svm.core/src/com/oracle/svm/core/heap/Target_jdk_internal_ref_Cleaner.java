@@ -50,17 +50,6 @@ public final class Target_jdk_internal_ref_Cleaner {
     native void clean();
 }
 
-/**
- * On JDK11+, the cleaner infrastructure is quite different from JDK8:
- * <ul>
- * <li>java.lang.ref.Cleaner: starts a new thread to process its reference queue.</li>
- * <li>jdk.internal.ref.CleanerFactory: provides a common cleaner with a shared cleaner thread. In
- * native-image, we do not necessarily spawn a separate thread for processing references, but may
- * drain the queue after garbage collection.</li>
- * <li>jdk.internal.ref.Cleaner: this only seems to be used by DirectByteBuffer but at least the
- * handling is the same as on JDK 8.
- * </ul>
- */
 @TargetClass(className = "jdk.internal.ref.CleanerFactory")
 final class Target_jdk_internal_ref_CleanerFactory {
     @Alias

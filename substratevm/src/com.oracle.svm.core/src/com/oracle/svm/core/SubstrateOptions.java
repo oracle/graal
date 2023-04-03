@@ -841,16 +841,7 @@ public class SubstrateOptions {
     public static int getPageSize() {
         int value = PageSize.getValue();
         if (value == 0) {
-            try {
-                /*
-                 * On JDK 17 and later, this is just a final field access that can never fail. But
-                 * on JDK 11, it is a native method call with some corner cases that can throw an
-                 * exception.
-                 */
-                return Unsafe.getUnsafe().pageSize();
-            } catch (IllegalArgumentException e) {
-                return 4096;
-            }
+            return Unsafe.getUnsafe().pageSize();
         }
         assert value > 0;
         return value;

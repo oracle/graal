@@ -601,6 +601,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal",
+                    "jdk.internal.access",
                     "jdk.internal.event",
                     "jdk.internal.loader",
                     "jdk.internal.misc",
