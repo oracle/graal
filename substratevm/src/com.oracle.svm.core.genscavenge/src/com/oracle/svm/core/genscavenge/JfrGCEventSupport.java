@@ -54,11 +54,13 @@ class JfrGCEventSupport {
         this.gcName = gcName;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long startGCPhasePause() {
         pushPhase();
         return JfrTicks.elapsedTicks();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int stopGCPhasePause() {
         return popPhase();
     }
@@ -124,6 +126,7 @@ class JfrGCEventSupport {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void pushPhase() {
         assert currentPhase < MAX_PHASE_LEVEL;
         currentPhase++;

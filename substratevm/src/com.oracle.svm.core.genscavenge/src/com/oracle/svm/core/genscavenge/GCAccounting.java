@@ -30,6 +30,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -154,6 +155,7 @@ public final class GCAccounting {
 
     /** Called after an object has been promoted from the young generation to the old generation. */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void onSurvivorOverflowed() {
         lastIncrementalCollectionOverflowedSurvivors = true;
     }

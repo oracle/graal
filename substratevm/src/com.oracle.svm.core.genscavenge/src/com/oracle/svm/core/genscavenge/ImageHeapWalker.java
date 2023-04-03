@@ -31,8 +31,9 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -50,6 +51,7 @@ public final class ImageHeapWalker {
     private ImageHeapWalker() {
     }
 
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     public static boolean walkRegions(ImageHeapInfo heapInfo, MemoryWalker.ImageHeapRegionVisitor visitor) {
         return visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_PRIMITIVE_WALKER) &&
                         visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_REFERENCE_WALKER) &&
@@ -75,11 +77,13 @@ public final class ImageHeapWalker {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean walkPartitionInline(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks) {
         return walkPartitionInline(firstObject, lastObject, visitor, alignedChunks, true);
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean walkPartitionInline(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks, boolean inlineObjectVisit) {
         if (firstObject == null || lastObject == null) {
             assert firstObject == null && lastObject == null;
@@ -113,10 +117,10 @@ public final class ImageHeapWalker {
             while (current.belowOrEqual(limit)) {
                 Object currentObject = current.toObject();
                 if (inlineObjectVisit) {
-                    if (!visitor.visitObjectInline(currentObject)) {
+                    if (!visitObjectInline(visitor, currentObject)) {
                         return false;
                     }
-                } else if (!visitor.visitObject(currentObject)) {
+                } else if (!visitObject(visitor, currentObject)) {
                     return false;
                 }
                 current = LayoutEncoding.getImageHeapObjectEnd(current.toObject());
@@ -129,6 +133,16 @@ public final class ImageHeapWalker {
             }
         } while (current.belowOrEqual(lastPointer));
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean visitObject(ObjectVisitor visitor, Object currentObject) {
+        return visitor.visitObject(currentObject);
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean visitObjectInline(ObjectVisitor visitor, Object currentObject) {
+        return visitor.visitObjectInline(currentObject);
     }
 }
 
@@ -167,24 +181,29 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean containsReferences(ImageHeapInfo region) {
         return containsReferences;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isWritable(ImageHeapInfo region) {
         return isWritable;
     }
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final boolean visitObjects(ImageHeapInfo region, ObjectVisitor visitor) {
         boolean alignedChunks = !hasHugeObjects;
         return ImageHeapWalker.walkPartitionInline(getFirstObject(region), getLastObject(region), visitor, alignedChunks);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract Object getFirstObject(ImageHeapInfo info);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract Object getLastObject(ImageHeapInfo info);
 }
 
@@ -195,11 +214,13 @@ final class ReadOnlyPrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getFirstObject(ImageHeapInfo info) {
         return info.firstReadOnlyPrimitiveObject;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastReadOnlyPrimitiveObject;
     }
@@ -212,11 +233,13 @@ final class ReadOnlyReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getFirstObject(ImageHeapInfo info) {
         return info.firstReadOnlyReferenceObject;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastReadOnlyReferenceObject;
     }
@@ -229,11 +252,13 @@ final class ReadOnlyRelocatableMemoryWalkerAccess extends MemoryWalkerAccessBase
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getFirstObject(ImageHeapInfo info) {
         return info.firstReadOnlyRelocatableObject;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastReadOnlyRelocatableObject;
     }
@@ -246,11 +271,13 @@ final class WritablePrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getFirstObject(ImageHeapInfo info) {
         return info.firstWritablePrimitiveObject;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastWritablePrimitiveObject;
     }
@@ -263,11 +290,13 @@ final class WritableReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getFirstObject(ImageHeapInfo info) {
         return info.firstWritableReferenceObject;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastWritableReferenceObject;
     }
@@ -280,11 +309,13 @@ final class WritableHugeMemoryWalkerAccess extends MemoryWalkerAccessBase {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getFirstObject(ImageHeapInfo info) {
         return info.firstWritableHugeObject;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastWritableHugeObject;
     }
@@ -297,11 +328,13 @@ final class ReadOnlyHugeMemoryWalkerAccess extends MemoryWalkerAccessBase {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getFirstObject(ImageHeapInfo info) {
         return info.firstReadOnlyHugeObject;
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastReadOnlyHugeObject;
     }

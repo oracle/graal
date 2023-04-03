@@ -137,6 +137,7 @@ public final class HeapParameters {
      * Zapping
      */
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean getZapProducedHeapChunks() {
         return SerialAndEpsilonGCOptions.ZapChunks.getValue() || SerialAndEpsilonGCOptions.ZapProducedHeapChunks.getValue();
     }

@@ -435,6 +435,13 @@ public class UninterruptibleUtils {
         }
     }
 
+    public static class Byte {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static int toUnsignedInt(byte x) {
+            return ((int) x) & 0xff;
+        }
+    }
+
     public static class Long {
         /** Uninterruptible version of {@link java.lang.Long#numberOfLeadingZeros(long)}. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

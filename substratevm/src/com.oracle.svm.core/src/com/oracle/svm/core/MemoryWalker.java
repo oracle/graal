@@ -27,9 +27,9 @@ package com.oracle.svm.core;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 
 /** A walker over different kinds of allocated memory. */
 public final class MemoryWalker {
@@ -64,10 +64,13 @@ public final class MemoryWalker {
 
         String getRegionName(T region);
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean containsReferences(T region);
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean isWritable(T region);
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean visitObjects(T region, ObjectVisitor visitor);
     }
 

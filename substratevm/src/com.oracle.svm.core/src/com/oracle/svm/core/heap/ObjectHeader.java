@@ -68,6 +68,7 @@ public abstract class ObjectHeader {
         return (DynamicHub) extractPotentialDynamicHubFromHeader(header).toObject();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DynamicHub readDynamicHubFromObject(Object o) {
         return KnownIntrinsics.readHub(o);
     }
