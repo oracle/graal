@@ -36,6 +36,7 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -542,6 +543,25 @@ public final class InterpreterToVM extends ContextAccessImpl {
     public static int arrayLength(StaticObject arr, EspressoLanguage language) {
         assert arr.isArray();
         return arr.length(language);
+    }
+
+    public static boolean referenceIdentityEqual(StaticObject o1, StaticObject o2, EspressoLanguage language) {
+        if (o1 == o2) {
+            return true;
+        }
+        // Espresso null == foreign null
+        if (StaticObject.isNull(o1) && StaticObject.isNull(o2)) {
+            return true;
+        }
+        // an Espresso object can never be identical to a foreign object
+        if (o1.isForeignObject() && o2.isForeignObject()) {
+            Object foreignOp1 = o1.rawForeignObject(language);
+            Object foreignOp2 = o2.rawForeignObject(language);
+            InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
+            InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
+            return operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
+        }
+        return false;
     }
 
     public @JavaType(String.class) StaticObject intern(@JavaType(String.class) StaticObject guestString) {

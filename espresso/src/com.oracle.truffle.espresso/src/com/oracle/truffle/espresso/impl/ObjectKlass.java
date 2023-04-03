@@ -899,7 +899,7 @@ public final class ObjectKlass extends Klass {
         return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
     }
 
-    public boolean permittedSubclassCheck(ObjectKlass k) {
+    public boolean permittedSubclassCheck(ObjectKlass subKlass) {
         CompilerAsserts.neverPartOfCompilation();
         if (!getContext().getJavaVersion().java17OrLater()) {
             return true;
@@ -908,15 +908,15 @@ public final class ObjectKlass extends Klass {
         if (permittedSubclasses == null) {
             return true;
         }
-        if (module() != k.module()) {
+        if (module() != subKlass.module()) {
             return false;
         }
-        if (!isPublic() && !sameRuntimePackage(k)) {
+        if (!subKlass.isPublic() && !sameRuntimePackage(subKlass)) {
             return false;
         }
         RuntimeConstantPool pool = getConstantPool();
         for (int index : permittedSubclasses.getClasses()) {
-            if (k.getName().equals(pool.classAt(index).getName(pool))) {
+            if (subKlass.getName().equals(pool.classAt(index).getName(pool))) {
                 // There should be no need to resolve: the previous checks guarantees it would
                 // resolve to k, but resolving here would cause circularity errors.
                 return true;
@@ -1143,7 +1143,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
         KLASS_LOOKUP_METHOD_COUNT.inc();
         Method method = lookupDeclaredMethod(methodName, signature, lookupMode);
         if (method == null) {
@@ -1156,7 +1156,7 @@ public final class ObjectKlass extends Klass {
             method = lookupPolysigMethod(methodName, signature, lookupMode);
         }
         if (method == null && getSuperKlass() != null) {
-            method = getSuperKlass().lookupMethod(methodName, signature, accessingKlass, lookupMode);
+            method = getSuperKlass().lookupMethod(methodName, signature, lookupMode);
         }
         return method;
     }
@@ -1283,6 +1283,11 @@ public final class ObjectKlass extends Klass {
     @Override
     public int getClassModifiers() {
         return getKlassVersion().getClassModifiers();
+    }
+
+    @Override
+    public int getRedefinitionAwareModifiers() {
+        return getKlassVersion().getModifiers();
     }
 
     @Override
@@ -1888,6 +1893,7 @@ public final class ObjectKlass extends Klass {
             if (flags == -1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 computedModifiers = flags = computeModifiers();
+                assert flags != -1;
             }
             // Remember to strip ACC_SUPER bit
             return flags & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;

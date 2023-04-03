@@ -133,7 +133,14 @@ public interface MethodHandleConstant extends PoolConstant {
                 Symbol<Symbol.Type>[] parsed = target.getParsedSignature();
 
                 mtype = MethodTypeConstant.signatureToMethodType(parsed, accessingKlass, false, meta);
-                mklass = target.getDeclaringKlass();
+                MethodRefConstant ref = pool.methodAt(getRefIndex());
+                /*
+                 * we should use the klass from the method ref here rather than the declaring klass
+                 * of the target this is because the resolved target might come from a default
+                 * method and have an interface as declaring klass however if the refKind is
+                 * invokeVirtual, it would be illegal to use the interface type
+                 */
+                mklass = pool.resolvedKlassAt(accessingKlass, ((MemberRefConstant.Indexes) ref).classIndex);
                 refName = target.getName();
             } else {
                 assert refTag == Tag.FIELD_REF;
