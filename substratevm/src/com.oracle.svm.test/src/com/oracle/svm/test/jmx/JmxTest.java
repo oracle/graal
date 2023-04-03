@@ -28,6 +28,7 @@ package com.oracle.svm.test.jmx;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.ManagementFactory;
@@ -39,9 +40,13 @@ import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
+import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.List;
 
 import jdk.management.jfr.FlightRecorderMXBean;
 import org.graalvm.nativeimage.ImageInfo;
@@ -58,24 +63,65 @@ import javax.management.MalformedObjectNameException;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+import javax.rmi.ssl.SslRMIClientSocketFactory;
+
 import org.junit.Assert;
 
 @AddExports("jdk.management.agent/jdk.internal.agent")
 public class JmxTest {
     static final String PORT_PROPERTY = "com.sun.management.jmxremote.port";
+    static final String RMI_PORT_PROPERTY = "com.sun.management.jmxremote.rmi.port";
     static final String AUTH_PROPERTY = "com.sun.management.jmxremote.authenticate";
+    static final String CLIENT_AUTH_PROPERTY = "com.sun.management.jmxremote.ssl.need.client.auth";
+    static final String ACCESS_PROPERTY = "com.sun.management.jmxremote.access.file";
+    static final String PASSWORD_PROPERTY = "com.sun.management.jmxremote.password.file";
     static final String SSL_PROPERTY = "com.sun.management.jmxremote.ssl";
+    static final String KEYSTORE_PROPERTY = "javax.net.ssl.keyStore";
+    static final String KEYSTORE_PASSWORD_PROPERTY = "javax.net.ssl.keyStorePassword";
+    static final String TRUSTSTORE_PROPERTY = "javax.net.ssl.trustStore";
+    static final String TRUSTSTORE_PASSWORD_PROPERTY = "javax.net.ssl.trustStorePassword";
+    static final String REGISTRY_SSL_PROPERTY = "com.sun.management.jmxremote.registry.ssl";
+    static final String SOCKET_FACTORY_PROPERTY = "com.sun.jndi.rmi.factory.socket";
     static final String TEST_PORT = "12345";
-    static final String FALSE = "false";
+    static final String TRUE = "true";
+    static final String JMX_REMOTE_RESOURCES = "src/com.oracle.svm.test/src/com/oracle/svm/test/jmx/jmxremoteresources";
 
     @BeforeClass
-    public static void checkForJFR() {
+    public static void checkForJFR() throws IOException {
         assumeTrue("skipping JMX tests", !ImageInfo.inImageCode() ||
                         (VMInspectionOptions.hasJmxClientSupport() && VMInspectionOptions.hasJmxServerSupport()));
 
         System.setProperty(PORT_PROPERTY, TEST_PORT);
-        System.setProperty(AUTH_PROPERTY, FALSE);
-        System.setProperty(SSL_PROPERTY, FALSE);
+        System.setProperty(RMI_PORT_PROPERTY, TEST_PORT);
+        System.setProperty(AUTH_PROPERTY, TRUE);
+        System.setProperty(CLIENT_AUTH_PROPERTY, TRUE);
+        System.setProperty(SSL_PROPERTY, TRUE);
+        System.setProperty(REGISTRY_SSL_PROPERTY, TRUE);
+
+        // The following are dummy password and access files required for testing authentication.
+        System.setProperty(ACCESS_PROPERTY, JMX_REMOTE_RESOURCES + "/jmxremote.access");
+        System.setProperty(PASSWORD_PROPERTY, JMX_REMOTE_RESOURCES + "/jmxremote.password");
+
+        /*
+         * The following are dummy SSL keystore and truststore files required for testing connection
+         * using SSL. The clientkeystore was used to create a client certificate
+         * (jmxremoteresources/client.cer) which was then imported into the servertruststore. The
+         * client key was created with the following properties: -alias clientkey -validity 99999
+         * -storepass clientpass -keypass clientpass -keyalg rsa (The validity is from March 28
+         * 2023).
+         */
+        System.setProperty(KEYSTORE_PROPERTY, JMX_REMOTE_RESOURCES + "/clientkeystore");
+        System.setProperty(KEYSTORE_PASSWORD_PROPERTY, "clientpass");
+        System.setProperty(TRUSTSTORE_PROPERTY, JMX_REMOTE_RESOURCES + "/servertruststore");
+        System.setProperty(TRUSTSTORE_PASSWORD_PROPERTY, "servertrustpass");
+
+        // Password file must have restricted access.
+        File file = new File(JMX_REMOTE_RESOURCES + "/jmxremote.password");
+        Set<PosixFilePermission> perms = new HashSet<>();
+        perms.add(PosixFilePermission.OWNER_READ);
+        perms.add(PosixFilePermission.OWNER_WRITE);
+        Files.setPosixFilePermissions(file.toPath(), perms);
+
         try {
             // We need to rerun the startup hook with the correct properties set.
             ManagementAgentStartupHook startupHook = new ManagementAgentStartupHook();
@@ -89,7 +135,10 @@ public class JmxTest {
         try {
             JMXServiceURL jmxUrl = new JMXServiceURL("service:jmx:rmi:///jndi/rmi://" + "localhost" + ":" + TEST_PORT + "/jmxrmi");
             Map<String, Object> env = new HashMap<>();
-
+            String[] credentials = {"myrole", "MYP@SSWORD"}; // dummy password for testing
+            env.put(JMXConnector.CREDENTIALS, credentials);
+            // Include below if protecting registry with SSL
+            env.put(SOCKET_FACTORY_PROPERTY, new SslRMIClientSocketFactory());
             JMXConnector connector = JMXConnectorFactory.connect(jmxUrl, env);
             return connector.getMBeanServerConnection();
         } catch (IOException e) {
