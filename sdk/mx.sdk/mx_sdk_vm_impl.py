@@ -950,7 +950,12 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
                 jdk_type='jdk' if mx_sdk_vm.ee_implementor() else 'openjdk',
                 graalvm_jdk_version=graalvm_version(vendor_info=False)
             )
-            name = base_dir
+            name_prefix = '{base_name}{vm_dist_name}_java{jdk_version}'.format(
+                base_name=base_name,
+                vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
+                jdk_version=_src_jdk_version
+            )
+            name = '{name_prefix}{stage_suffix}'.format(name_prefix=name_prefix, stage_suffix='_stage1' if stage1 else '')
         else:
             components_sorted_set = sorted(components_set)
             if mx.get_opts().verbose:
