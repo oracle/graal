@@ -1060,10 +1060,10 @@ def format_release_file(release_dict, skip_quoting=None):
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
 
 
-def ee_implementor(jdk_home):
+def ee_implementor(jdk_home=base_jdk().home):
     """
     Returns True if the value of the `IMPLEMENTOR` field of the `release` file of a given JDK is `Oracle Corporation`
-    :type jdk_home: str
+    :type jdk_home: str | None
     :rtype bool
     """
     release_file_path = join(jdk_home, 'release')
