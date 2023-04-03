@@ -187,7 +187,7 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "SharedSecrets")
+@TargetClass(jdk.internal.access.SharedSecrets.class)
 final class Target_jdk_internal_access_SharedSecrets {
     @Substitute
     private static Target_jdk_internal_access_JavaAWTAccess getJavaAWTAccess() {
@@ -202,11 +202,11 @@ final class Target_jdk_internal_access_SharedSecrets {
     private static Target_jdk_internal_access_JavaIOAccess javaIOAccess;
 }
 
-@TargetClass(className = "jdk.internal.access.JavaIOAccess")
+@TargetClass(jdk.internal.access.JavaIOAccess.class)
 final class Target_jdk_internal_access_JavaIOAccess {
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "JavaAWTAccess")
+@TargetClass(jdk.internal.access.JavaAWTAccess.class)
 final class Target_jdk_internal_access_JavaAWTAccess {
 }
 

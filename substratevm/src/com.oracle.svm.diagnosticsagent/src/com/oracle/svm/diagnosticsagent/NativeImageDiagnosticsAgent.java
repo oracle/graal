@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -374,9 +373,8 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
         newClassDataLen.write(newClassDataLength);
     }
 
-    static final int ASM6 = 6 << 16;
     static final int ASM8 = 8 << 16;
-    static final int ASM_TARGET_VERSION = JavaVersionUtil.JAVA_SPEC == 11 ? ASM6 : ASM8;
+    static final int ASM_TARGET_VERSION = ASM8;
 
     private byte[] maybeInstrumentClassWithClinit(String clazzName, byte[] clazzData) {
         if (clazzName != null && !advisor.shouldTraceClassInitialization(clazzName.replace('/', '.'))) {

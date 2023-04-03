@@ -157,15 +157,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              */
             monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors"));
 
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                /*
-                 * PhantomCleanable.remove() synchronizes on an instance of PhantomCleanable. When
-                 * the secondary storage monitors map is modified it can trigger a
-                 * slow-path-new-instance allocation which in turn can trigger a GC which processes
-                 * all the pending cleaners.
-                 */
-                monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
-            }
+            /*
+             * PhantomCleanable.remove() synchronizes on an instance of PhantomCleanable. When the
+             * secondary storage monitors map is modified it can trigger a slow-path-new-instance
+             * allocation which in turn can trigger a GC which processes all the pending cleaners.
+             */
+            monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
 
             /*
              * Use as the delegate for locking on {@link Class} (i.e. {@link DynamicHub}) since the

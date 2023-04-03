@@ -121,7 +121,7 @@ final class Target_java_lang_Object {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_loader_helper.class, className = "ClassLoaderHelper")
+@TargetClass(className = "jdk.internal.loader.ClassLoaderHelper")
 final class Target_jdk_internal_loader_ClassLoaderHelper {
     @Alias
     static native File mapAlternativeName(File lib);

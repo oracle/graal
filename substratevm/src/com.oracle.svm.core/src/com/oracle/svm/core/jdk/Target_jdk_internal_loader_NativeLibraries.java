@@ -74,6 +74,7 @@ final class Target_jdk_internal_loader_NativeLibraries {
      */
 
     @Delete//
+    @TargetElement(onlyWith = JDK20OrLater.class)
     private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl impl, String name, boolean isBuiltin, boolean throwExceptionIfFail);
 
     @Delete//

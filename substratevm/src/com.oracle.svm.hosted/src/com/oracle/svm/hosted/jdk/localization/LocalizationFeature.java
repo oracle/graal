@@ -64,7 +64,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -277,17 +276,10 @@ public class LocalizationFeature implements InternalFeature {
         if (optimizedMode) {
             access.registerObjectReplacer(this::eagerlyInitializeBundles);
         }
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
-            parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
-        }
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
-            localeCacheField = access.findField("java.util.Locale$Cache", "LOCALECACHE");
-        } else {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale", "CACHE");
-            localeCacheField = access.findField("java.util.Locale", "LOCALECACHE");
-        }
+        langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
+        parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
+        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
+        localeCacheField = access.findField("java.util.Locale$Cache", "LOCALECACHE");
         candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
         localeObjectCacheMapField = access.findField(LocaleObjectCache.class, "map");
 
@@ -345,10 +337,8 @@ public class LocalizationFeature implements InternalFeature {
         scanLocaleCache(access, baseLocaleCacheField);
         scanLocaleCache(access, localeCacheField);
         scanLocaleCache(access, candidatesCacheField);
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            access.rescanRoot(langAliasesCacheField);
-            access.rescanRoot(parentLocalesMapField);
-        }
+        access.rescanRoot(langAliasesCacheField);
+        access.rescanRoot(parentLocalesMapField);
     }
 
     private void scanLocaleCache(DuringAnalysisAccessImpl access, Field cacheFieldField) {

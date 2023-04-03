@@ -36,7 +36,6 @@ import java.security.PermissionCollection;
 import java.security.Permissions;
 import java.security.Policy;
 import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.Provider;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -112,14 +110,6 @@ final class Target_java_security_AccessController {
         PrivilegedStack.push(context, caller);
         try {
             return action.run();
-        } catch (RuntimeException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            if (JavaVersionUtil.JAVA_SPEC > 11) {
-                throw ex;
-            } else {
-                throw new PrivilegedActionException(ex);
-            }
         } finally {
             PrivilegedStack.pop();
         }
@@ -127,7 +117,7 @@ final class Target_java_security_AccessController {
 
     @Substitute
     @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
+    static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) {
         if (action == null) {
             throw new NullPointerException("Null action");
         }
@@ -135,14 +125,6 @@ final class Target_java_security_AccessController {
         PrivilegedStack.push(context, caller);
         try {
             return action.run();
-        } catch (RuntimeException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            if (JavaVersionUtil.JAVA_SPEC > 11) {
-                throw ex;
-            } else {
-                throw new PrivilegedActionException(ex);
-            }
         } finally {
             PrivilegedStack.pop();
         }
@@ -311,7 +293,9 @@ final class Target_javax_crypto_JceSecurity {
 
     @Substitute
     static void verifyProvider(URL codeBase, Provider p) {
-        throw JceSecurityUtil.shouldNotReach("javax.crypto.JceSecurity.verifyProviderJar(URL, Provider)");
+        throw VMError.shouldNotReachHere("javax.crypto.JceSecurity.verifyProviderJar(URL, Provider) is reached at runtime. " +
+                        "This should not happen. The contents of JceSecurity.verificationResults " +
+                        "are computed and cached at image build time.");
     }
 
     @Substitute
@@ -322,7 +306,8 @@ final class Target_javax_crypto_JceSecurity {
     @Substitute
     static Exception getVerificationResult(Provider p) {
         /* Start code block copied from original method. */
-        Object o = verificationResults.get(JceSecurityUtil.providerKey(p));
+        /* The verification results map key is an identity wrapper object. */
+        Object o = verificationResults.get(new Target_javax_crypto_JceSecurity_IdentityWrapper(p));
         if (o == PROVIDER_VERIFIED) {
             return null;
         } else if (o != null) {
@@ -382,24 +367,6 @@ class JceSecurityAccessor {
         RANDOM = result;
         return result;
     }
-}
-
-final class JceSecurityUtil {
-
-    static Object providerKey(Provider p) {
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            return p;
-        }
-        /* Starting with JDK 17 the verification results map key is an identity wrapper object. */
-        return new Target_javax_crypto_JceSecurity_IdentityWrapper(p);
-    }
-
-    static RuntimeException shouldNotReach(String method) {
-        throw VMError.shouldNotReachHere(method + " is reached at runtime. " +
-                        "This should not happen. The contents of JceSecurity.verificationResults " +
-                        "are computed and cached at image build time.");
-    }
-
 }
 
 /**
