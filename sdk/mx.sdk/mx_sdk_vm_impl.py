@@ -887,8 +887,8 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
     def remoteName(self, platform=None):
         remote_name = super(GraalVmLayoutDistribution, self).remoteName(platform=platform)
         # maven artifactId cannot contain '+'
-        # Example: 'graalvm-community-openjdk-17.0.7+4.1-linux-amd64' -> 'graalvm-community-openjdk-17.0.7.4.1-linux-amd64'
-        return remote_name.replace('+', '.')
+        # Example: 'graalvm-community-openjdk-17.0.7+4.1-linux-amd64' -> 'graalvm-community-openjdk-17.0.7-4.1-linux-amd64'
+        return remote_name.replace('+', '-')
 
     def getBuildTask(self, args):
         return GraalVmLayoutDistributionTask(args, self, 'latest_graalvm', 'latest_graalvm_home')
