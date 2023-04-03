@@ -1,6 +1,6 @@
 [
     {
-        "name": "graalvm-ce-java17",
+        "name": "graalvm-community-java17",
         "core": true,
         "jdk": "jdk_17",
         "artifacts": [
@@ -27,7 +27,7 @@
         ]
     },
     {
-        "name": "graalvm-ce-java20",
+        "name": "graalvm-community-java20",
         "core": true,
         "jdk": "jdk_20",
         "artifacts": [
