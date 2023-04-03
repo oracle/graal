@@ -3306,11 +3306,61 @@ def graalvm_version():
     Example: 17.0.1-dev+4.1
     :rtype: str
     """
-    base_jdk = mx_sdk_vm.base_jdk()
+    @staticmethod
+    def base_jdk_info():
+        """
+        :rtype: (str, str, str)
+        """
+        full_version = None
+        version = None
+        qualifier = None
+        build = None
+
+        out = mx.LinesOutputCapture()
+        with mx.DisableJavaDebugging():
+            code = mx_sdk_vm.base_jdk().run_java(['-version'], out=out, err=out)
+        if code == 0:
+            for line in out.lines:
+                version_match = re.search(r'version "(?P<full_version>(?P<version>[0-9.]+)(-(?P<qualifier>.+))?)"', line)
+                if version_match is not None:
+                    assert full_version is None
+                    full_version = version_match.group('full_version')
+                    version = version_match.group('version')
+                    qualifier = version_match.group('qualifier')
+                else:
+                    assert full_version is not None
+                    build_match = re.search(r'Runtime Environment \(build ' + full_version + r'\+(?P<build>[0-9]+)', line)
+                    if build_match is not None:
+                        assert build is None
+                        build = build_match.group('build')
+            if version is None or build is None:
+                mx.abort('VM info extraction failed. Output:\n' + '\n'.join(out.lines))
+            return version, qualifier, build
+        else:
+            mx.abort('VM info extraction failed. Exit code: ' + str(code))
+
+    jdk_version, jdk_qualifier, jdk_build = base_jdk_info()
+    graalvm_id = '' if _suite.is_release() else '-dev'
+    if jdk_qualifier:
+        graalvm_id += '.' if graalvm_id else '-'
+        graalvm_id += jdk_qualifier
+    # Examples:
+    #
+    # ```
+    # openjdk version "17.0.7" 2023-04-18
+    # OpenJDK Runtime Environment (build 17.0.7+4-jvmci-23.0-b10)
+    # ```
+    # -> `17.0.7-dev+4.1`
+    #
+    # ```
+    # openjdk version "21-ea" 2023-09-19
+    # OpenJDK Runtime Environment (build 21-ea+16-1326)
+    # ```
+    # -> `21-dev.ea+16.1`
     return '{jdk_version}{pre_release_id}{jdk_build}.{release_build}'.format(
-        jdk_version=base_jdk.version.versionString,
-        pre_release_id='' if _suite.is_release() else '-dev',
-        jdk_build='+' + base_jdk.build_id if base_jdk.build_id else '',
+        jdk_version=jdk_version,
+        pre_release_id=graalvm_id,
+        jdk_build='+' + jdk_build,
         release_build=mx_sdk_vm.release_build
     )
 
