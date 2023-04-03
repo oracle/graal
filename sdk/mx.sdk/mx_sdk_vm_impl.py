@@ -3306,7 +3306,6 @@ def graalvm_version():
     Example: 17.0.1-dev+4.1
     :rtype: str
     """
-    @staticmethod
     def base_jdk_info():
         """
         :rtype: (str, str, str)
