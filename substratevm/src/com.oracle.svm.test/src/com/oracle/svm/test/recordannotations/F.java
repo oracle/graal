@@ -22,28 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import java.util.Arrays;
-import java.util.function.BooleanSupplier;
-import java.util.Optional;
-import java.util.stream.Stream;
+package com.oracle.svm.test.recordannotations;
 
-/**
- * A predicate that returns {@code true} iff
- * {@code boolean java.lang.ClassLoader.NativeLibrary.load0(String name, boolean isBuiltin, boolean throwExceptionIfFail)}
- * exists. It should only be used in conjunction with {@link JDK11OrEarlier} as
- * {@code NativeLibrary} was moved to a top level class in later JDKs.
- */
-// Checkstyle: allow Class.getSimpleName
-public class Load0With3Args implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        Optional<Class<?>> nativeLibrary = Stream.of(ClassLoader.class.getDeclaredClasses()).filter(c -> c.getSimpleName().equals("NativeLibrary")).findFirst();
-        if (nativeLibrary.isPresent()) {
-            Class<?>[] signature = {String.class, boolean.class, boolean.class};
-            return Stream.of(nativeLibrary.get().getDeclaredMethods()).filter(m -> m.getName().equals("load0") && Arrays.equals(m.getParameters(), signature)).findFirst().isPresent();
-        }
-        return false;
-    }
+// Main record under test. See Main.
+@RCA2
+record F(@RCA @RCA2 String name, @RCA2 int i) {
 }

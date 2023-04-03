@@ -28,6 +28,7 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+@Deprecated(since = "23.1.0", forRemoval = true)
 public class JDK11OrEarlier implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {

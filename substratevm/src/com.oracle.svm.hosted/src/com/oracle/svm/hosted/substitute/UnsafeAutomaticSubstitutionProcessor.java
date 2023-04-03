@@ -80,12 +80,10 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
@@ -485,11 +483,11 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         boolean valid = true;
         if (JavaVersionUtil.JAVA_SPEC >= 17 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
             Class<?> declaringClass = field.getDeclaringClass();
-            if (RecordSupport.singleton().isRecord(declaringClass)) {
+            if (declaringClass.isRecord()) {
                 unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a record.");
                 valid = false;
             }
-            if (SubstrateUtil.isHiddenClass(declaringClass)) {
+            if (declaringClass.isHidden()) {
                 unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a hidden class.");
                 valid = false;
             }

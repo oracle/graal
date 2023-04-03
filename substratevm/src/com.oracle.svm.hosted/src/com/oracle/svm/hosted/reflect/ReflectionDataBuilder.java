@@ -78,7 +78,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -349,7 +348,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 processAnnotationMethod(queriedOnly, (Method) reflectExecutable);
             }
 
-            if (!throwMissingRegistrationErrors() && RecordSupport.singleton().isRecord(declaringClass)) {
+            if (!throwMissingRegistrationErrors() && declaringClass.isRecord()) {
                 pendingRecordClasses.computeIfPresent(declaringClass, (clazz, unregisteredAccessors) -> {
                     if (unregisteredAccessors.remove(reflectExecutable) && unregisteredAccessors.isEmpty()) {
                         registerRecordComponents(declaringClass);
@@ -858,8 +857,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void maybeRegisterRecordComponents(Class<?> clazz) {
-        RecordSupport support = RecordSupport.singleton();
-        if (!support.isRecord(clazz)) {
+        if (!clazz.isRecord()) {
             return;
         }
 
@@ -874,7 +872,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * components in that case will throw an exception at image run time, see
          * DynamicHub.getRecordComponents0().
          */
-        Method[] accessors = support.getRecordComponentAccessorMethods(clazz);
+        Method[] accessors = RecordUtils.getRecordComponentAccessorMethods(clazz);
         Set<Method> unregisteredAccessors = ConcurrentHashMap.newKeySet();
         for (Method accessor : accessors) {
             if (SubstitutionReflectivityFilter.shouldExclude(accessor, metaAccess, universe)) {

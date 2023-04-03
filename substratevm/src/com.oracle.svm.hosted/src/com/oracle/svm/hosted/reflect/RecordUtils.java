@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk17;
+package com.oracle.svm.hosted.reflect;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -30,33 +30,18 @@ import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.RecordSupport;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticallyRegisteredImageSingleton(value = RecordSupport.class, onlyWith = JDK17OrLater.class)
-final class RecordSupportJDK17OrLater extends RecordSupport {
-    @Override
-    public boolean isRecord(Class<?> clazz) {
-        return clazz.isRecord();
-    }
+public final class RecordUtils {
 
-    @Override
-    public Object[] getRecordComponents(Class<?> clazz) {
-        return clazz.getRecordComponents();
-    }
-
-    @Override
-    public Method[] getRecordComponentAccessorMethods(Class<?> clazz) {
+    public static Method[] getRecordComponentAccessorMethods(Class<?> clazz) {
         return Arrays.stream(clazz.getRecordComponents())
                         .map(RecordComponent::getAccessor)
                         .filter(Objects::nonNull)
                         .toArray(Method[]::new);
     }
 
-    @Override
-    public Constructor<?> getCanonicalRecordConstructor(Class<?> clazz) {
+    public static Constructor<?> getCanonicalRecordConstructor(Class<?> clazz) {
         Class<?>[] paramTypes = Arrays.stream(clazz.getRecordComponents())
                         .map(RecordComponent::getType)
                         .toArray(Class<?>[]::new);

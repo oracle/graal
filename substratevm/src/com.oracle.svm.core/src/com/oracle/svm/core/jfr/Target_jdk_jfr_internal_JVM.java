@@ -39,7 +39,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
@@ -48,7 +47,6 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.jfr.Event;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
 
@@ -68,11 +66,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
-
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    private volatile boolean recording;
 
     /** See {@link JVM#registerNatives}. */
     @Substitute
@@ -124,13 +117,6 @@ public final class Target_jdk_jfr_internal_JVM {
         return JfrJavaEvents.getAllEventClasses();
     }
 
-    /** See {@link JVM#getAllEventClasses}. */
-    @Substitute
-    @TargetElement(name = "getAllEventClasses", onlyWith = JDK11OrEarlier.class)
-    public List<Class<? extends Event>> getAllEventClassesJDK11() {
-        return JfrJavaEvents.getJfrEventClasses();
-    }
-
     /** See {@link JVM#getUnloadedEventClassCount}. */
     @Substitute
     public long getUnloadedEventClassCount() {
@@ -146,13 +132,6 @@ public final class Target_jdk_jfr_internal_JVM {
          * instances are invalidated when the epoch changes.
          */
         return SubstrateJVM.get().getClassId(clazz);
-    }
-
-    /** See JVM.getClassIdNonIntrinsic(Class). */
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public static long getClassIdNonIntrinsic(Class<?> clazz) {
-        return getClassId(clazz);
     }
 
     /** See {@link JVM#getPid}. */
@@ -435,14 +414,6 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#emitOldObjectSamples}. */
     @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    public void emitOldObjectSamples(long cutoff, boolean emitAll) {
-        // Not supported but this method is called during JFR shutdown, so we can't throw an error.
-    }
-
-    /** See {@link JVM#emitOldObjectSamples}. */
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     public void emitOldObjectSamples(long cutoff, boolean emitAll, boolean skipBFS) {
         // Not supported but this method is called during JFR shutdown, so we can't throw an error.
     }

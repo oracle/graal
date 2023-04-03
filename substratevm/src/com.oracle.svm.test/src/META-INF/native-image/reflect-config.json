@@ -1,6 +1,6 @@
 [
   {
-    "name" : "com.oracle.svm.test.jdk17.recordannotations.F",
+    "name" : "com.oracle.svm.test.recordannotations.F",
     "allDeclaredConstructors" : true,
     "allPublicConstructors" : true,
     "allDeclaredMethods" : true,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,25 +26,15 @@ package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-/**
- * Avoid making the code for logging reachable. We do not need it, and it only increases code size.
- * If we ever want to enable logging, we also need to define a way to create the logger at run time,
- * in the JDK the logger is created as part of the module system bootstrapping.
- *
- * The logging code is only present in JDK 11, all logging was removed for JDK 17.
- */
-@TargetClass(className = "jdk.internal.module.IllegalAccessLogger", onlyWith = JDK11OrEarlier.class)
-final class Target_jdk_internal_module_IllegalAccessLogger {
-
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    private static Target_jdk_internal_module_IllegalAccessLogger logger;
-
-    @Substitute
-    private static Target_jdk_internal_module_IllegalAccessLogger illegalAccessLogger() {
-        return null;
-    }
+@TargetClass(className = "sun.nio.ch.UnixDomainSockets")
+final class Target_sun_nio_ch_UnixDomainSockets {
+    /*
+     * UninitializedStaticFieldValueReader captures the value from the image builder by mistake, so
+     * until we have a proper JVMCI API to capture the value of ConstantValue attributes (GR-41856),
+     * we reset the field as a workaround.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static String tempDir;
 }

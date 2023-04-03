@@ -23,12 +23,13 @@
  * questions.
  */
 
-package com.oracle.svm.test.jdk17.recordannotations;
+package com.oracle.svm.test.recordannotations;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -61,8 +62,8 @@ public class RecordAnnotationsTest {
         List<Annotation> stringCompAnnot = Arrays.asList(stringComp.getAnnotations());
         // Checkstyle: resume
         Assert.assertEquals("expected 2 record annotations for string component", 2, stringCompAnnot.size());
-        Assert.assertTrue("expected RCA component annotation", stringCompAnnot.stream().anyMatch(a -> a.annotationType().getName().equals("com.oracle.svm.test.jdk17.recordannotations.RCA")));
-        Assert.assertTrue("expected RCA2 component annotation", stringCompAnnot.stream().anyMatch(a -> a.annotationType().getName().equals("com.oracle.svm.test.jdk17.recordannotations.RCA2")));
+        Assert.assertTrue("expected RCA component annotation", stringCompAnnot.stream().anyMatch(a -> a.annotationType().getName().equals("com.oracle.svm.test.recordannotations.RCA")));
+        Assert.assertTrue("expected RCA2 component annotation", stringCompAnnot.stream().anyMatch(a -> a.annotationType().getName().equals("com.oracle.svm.test.recordannotations.RCA2")));
         Assert.assertEquals(String.class.getTypeName(), stringComp.getAnnotatedType().getType().getTypeName());
         // Checkstyle: stop
         Annotation rcaAnnotation = stringComp.getAnnotation(RCA.class);
@@ -76,7 +77,7 @@ public class RecordAnnotationsTest {
         List<Annotation> intCompAnnot = Arrays.asList(intComp.getAnnotations());
         // Checkstyle: resume
         Assert.assertEquals("expected 1 record annotation for int component", 1, intCompAnnot.size());
-        Assert.assertTrue("expected RCA2 component annotation", intCompAnnot.stream().anyMatch(a -> a.annotationType().getName().equals("com.oracle.svm.test.jdk17.recordannotations.RCA2")));
+        Assert.assertTrue("expected RCA2 component annotation", intCompAnnot.stream().anyMatch(a -> a.annotationType().getName().equals("com.oracle.svm.test.recordannotations.RCA2")));
         Assert.assertEquals(int.class.getTypeName(), intComp.getAnnotatedType().getType().getTypeName());
         // Checkstyle: stop
         Assert.assertNull(intComp.getAnnotation(RCA.class));

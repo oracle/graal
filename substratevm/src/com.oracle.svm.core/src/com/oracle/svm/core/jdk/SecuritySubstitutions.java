@@ -56,7 +56,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -66,7 +65,6 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.internal.reflect.Reflection;
 import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
 
@@ -78,35 +76,6 @@ import sun.security.util.SecurityConstants;
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"unused"})
 final class Target_java_security_AccessController {
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public static <T> T doPrivileged(PrivilegedAction<T> action) throws Throwable {
-        return executePrivileged(action, null, Reflection.getCallerClass());
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) throws Throwable {
-        Class<?> caller = Reflection.getCallerClass();
-        AccessControlContext acc = checkContext(context, caller);
-        return executePrivileged(action, acc, caller);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Throwable {
-        Class<?> caller = Reflection.getCallerClass();
-        return executePrivileged(action, null, caller);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Throwable {
-        Class<?> caller = Reflection.getCallerClass();
-        AccessControlContext acc = checkContext(context, caller);
-        return executePrivileged(action, acc, caller);
-    }
 
     @Substitute
     @SuppressWarnings("deprecation")
@@ -320,17 +289,6 @@ final class Target_javax_crypto_ProviderVerifier {
 @TargetClass(className = "javax.crypto.JceSecurity")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity {
-
-    /*
-     * Lazily recompute the RANDOM field at runtime. We cannot push the entire static initialization
-     * of JceSecurity to run time because we want the JceSecurity.verificationResults initialized at
-     * image build time.
-     *
-     * This is only used in {@link KeyAgreement}, it's safe to remove.
-     */
-    @Alias @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    @InjectAccessors(JceSecurityAccessor.class) //
-    static SecureRandom RANDOM;
 
     /*
      * The JceSecurity.verificationResults cache is initialized by the SecurityServicesFeature at
@@ -632,22 +590,6 @@ final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true)//
     static Target_sun_security_jca_ProviderConfig_ProviderLoader INSTANCE;
-}
-
-/**
- * This only applies to JDK8 and JDK11. Experimental FIPS mode in the SunJSSE Provider was removed
- * in JDK-8217835. Going forward it is recommended to configure FIPS 140 compliant cryptography
- * providers by using the usual JCA providers configuration mechanism.
- */
-@SuppressWarnings("unused")
-@TargetClass(value = sun.security.ssl.SunJSSE.class, onlyWith = JDK11OrEarlier.class)
-final class Target_sun_security_ssl_SunJSSE {
-
-    @Substitute
-    private Target_sun_security_ssl_SunJSSE(java.security.Provider cryptoProvider, String providerName) {
-        throw VMError.unsupportedFeature("Experimental FIPS mode in the SunJSSE Provider is deprecated (JDK-8217835)." +
-                        " To register a FIPS provider use the supported java.security.Security.addProvider() API.");
-    }
 }
 
 @TargetClass(className = "sun.security.jca.Providers")

@@ -78,7 +78,6 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.core.reflect.serialize.SerializationSupport;
 import com.oracle.svm.core.util.UserError;
@@ -90,6 +89,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.hosted.reflect.RecordUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
@@ -558,17 +558,16 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private static void registerForDeserialization(Class<?> serializationTargetClass) {
         RuntimeReflection.register(serializationTargetClass);
 
-        RecordSupport recordSupport = RecordSupport.singleton();
-        if (recordSupport.isRecord(serializationTargetClass)) {
+        if (serializationTargetClass.isRecord()) {
             /* Serialization for records uses the canonical record constructor directly. */
-            RuntimeReflection.register(recordSupport.getCanonicalRecordConstructor(serializationTargetClass));
+            RuntimeReflection.register(RecordUtils.getCanonicalRecordConstructor(serializationTargetClass));
             /*
              * Serialization for records invokes Class.getRecordComponents(). Registering all record
              * component accessor methods for reflection ensures that the record components are
              * available at run time.
              */
             RuntimeReflection.registerAllRecordComponents(serializationTargetClass);
-            RuntimeReflection.register(recordSupport.getRecordComponentAccessorMethods(serializationTargetClass));
+            RuntimeReflection.register(RecordUtils.getRecordComponentAccessorMethods(serializationTargetClass));
         } else if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
             Optional.ofNullable(ReflectionUtil.lookupConstructor(true, serializationTargetClass, (Class<?>[]) null))
                             .ifPresent(RuntimeReflection::register);

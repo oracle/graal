@@ -328,30 +328,6 @@ suite = {
         },
 
 
-        "com.oracle.svm.core.jdk17": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "requiresConcealed" : {
-                "java.base" : [
-                    "jdk.internal.access.foreign",
-                    "jdk.internal.loader",
-                    "jdk.internal.misc",
-                    "jdk.internal.platform",
-                    "sun.invoke.util",
-                ],
-            },
-            "javaCompliance": "17+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "checkstyle": "com.oracle.svm.core",
-            "workingSets": "SVM",
-            "jacoco" : "exclude",
-        },
-
-
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
             "sourceDirs": [
@@ -620,6 +596,7 @@ suite = {
                 "java.base" : [
                     "jdk.internal",
                     "jdk.internal.event",
+                    "jdk.internal.loader",
                     "jdk.internal.misc",
                     "jdk.internal.vm.annotation",
                     "jdk.internal.org.objectweb.asm",
@@ -661,26 +638,6 @@ suite = {
             "jacoco" : "include",
         },
 
-        "com.oracle.svm.hosted.jdk17": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "requiresConcealed" : {
-                "java.base" :
-                    ["jdk.internal.loader"],
-                "jdk.internal.vm.ci" :
-                    ["jdk.vm.ci.meta"],
-            },
-            "javaCompliance": "17+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-            "jacoco" : "exclude",
-        },
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
         # functions that can cause a stack overflow like snprintf. If set to 1 or 2, it causes glibc to use internal
         # functions with extra checking that are not available in all libc implementations. Different distros use
@@ -876,26 +833,6 @@ suite = {
             ],
             "javaCompliance" : "17+",
             "spotbugs": "false",
-            "jacoco" : "exclude",
-        },
-
-        "com.oracle.svm.test.jdk17": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "mx:JUNIT_TOOL",
-                "sdk:GRAAL_SDK",
-                "SVM",
-            ],
-            "checkstyle": "com.oracle.svm.test",
-            "workingSets": "SVM",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "javaCompliance": "17+",
-            "spotbugs": "false",
-            "testProject": True,
             "jacoco" : "exclude",
         },
 
@@ -1306,9 +1243,7 @@ suite = {
                 "com.oracle.svm.graal",
                 "com.oracle.svm.truffle",
                 "com.oracle.svm.hosted",
-                "com.oracle.svm.hosted.jdk17",
                 "com.oracle.svm.core",
-                "com.oracle.svm.core.jdk17",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
                 "com.oracle.svm.core.graal.riscv64",
@@ -1780,7 +1715,6 @@ suite = {
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
-            "com.oracle.svm.test.jdk17",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
           ],
