@@ -51,12 +51,6 @@ import com.oracle.svm.core.util.VMError;
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.loader.NativeLibrary;
 
-@TargetClass(className = "jdk.internal.loader.Resource")
-@SuppressWarnings("unused")
-final class Target_jdk_internal_loader_Resource {
-
-}
-
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
 public final class Target_java_lang_ClassLoader {

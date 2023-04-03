@@ -33,22 +33,19 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.svm.core.util.VMError;
 
-@SuppressWarnings("unchecked")
+import jdk.internal.loader.Resource;
+
 public class ResourcesHelper {
 
-    private static <T> T urlToResource(String resourceName, URL url) {
+    private static Resource urlToResource(String resourceName, URL url) {
         try {
             if (url == null) {
                 return null;
             }
             URLConnection urlConnection = url.openConnection();
-            Object resource = ImageSingletons.lookup(JDKVersionSpecificResourceBuilder.class).buildResource(resourceName, url, urlConnection);
-            VMError.guarantee(resource != null);
-            return (T) resource;
+            return buildResource(resourceName, url, urlConnection);
         } catch (IOException e) {
             return null;
         } catch (ClassCastException classCastException) {
@@ -56,13 +53,45 @@ public class ResourcesHelper {
         }
     }
 
-    public static <T> T nameToResource(String resourceName) {
+    private static Resource buildResource(String name, URL url, URLConnection urlConnection) {
+        return new Resource() {
+
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public URL getURL() {
+                return url;
+            }
+
+            @Override
+            public URL getCodeSourceURL() {
+                // We are deleting resource URL class path during native image build,
+                // so in runtime we don't have this information.
+                return null;
+            }
+
+            @Override
+            public InputStream getInputStream() throws IOException {
+                return urlConnection.getInputStream();
+            }
+
+            @Override
+            public int getContentLength() throws IOException {
+                return urlConnection.getContentLength();
+            }
+        };
+    }
+
+    public static Resource nameToResource(String resourceName) {
         return urlToResource(resourceName, nameToResourceURL(resourceName));
     }
 
-    public static <T> Enumeration<T> nameToResources(String resourceName) {
+    public static Enumeration<Resource> nameToResources(String resourceName) {
         Enumeration<URL> urls = Resources.createURLs(resourceName);
-        List<T> resourceURLs = new ArrayList<>();
+        List<Resource> resourceURLs = new ArrayList<>();
         while (urls.hasMoreElements()) {
             resourceURLs.add(urlToResource(resourceName, urls.nextElement()));
         }
