@@ -343,18 +343,26 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected void handleLoadConstantException(Error bme, JavaMethod javaMethod) {
+        protected void handleLoadConstantException(Error error, JavaMethod javaMethod) {
             if (linkAtBuildTime) {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
+                String kind;
+                if (error instanceof BootstrapMethodError || error instanceof NoSuchMethodError) {
+                    kind = "method";
+                } else if (error instanceof NoSuchFieldError) {
+                    kind = "field";
+                } else {
+                    kind = "constant";
+                }
+                reportUnresolvedElement(kind, javaMethod.format("%H.%n(%P)"), error);
             } else {
-                replaceWithThrowingAtRuntime(this, bme);
+                replaceWithThrowingAtRuntime(this, error);
             }
         }
 
         @Override
         protected void handleLoadConstantException(RuntimeException error, JavaMethod javaMethod) {
             if (linkAtBuildTime) {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), error);
+                reportUnresolvedElement("constant", javaMethod.format("%H.%n(%P)"), error);
             } else {
                 replaceWithThrowingAtRuntime(this, error);
             }
