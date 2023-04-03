@@ -413,9 +413,14 @@ public final class Space {
         assert ParallelGC.isEnabled() && ParallelGC.isInParallelPhase();
         assert ObjectHeaderImpl.isAlignedObject(original);
 
+        /*
+         * Always read 8 bytes at the hub offset so that we can install the forwarding header with
+         * cmpxchng.
+         */
         Pointer originalMemory = Word.objectToUntrackedPointer(original);
         int hubOffset = ObjectHeaderImpl.getHubOffset();
-        Word originalHeader = originalMemory.readWord(hubOffset);
+        long eightHeaderBytes = originalMemory.readLong(hubOffset);
+        Word originalHeader = ObjectHeaderImpl.hasShift() ? WordFactory.unsigned(eightHeaderBytes & 0xFFFFFFFFL) : WordFactory.unsigned(eightHeaderBytes);
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         if (ObjectHeaderImpl.isForwardedHeader(originalHeader)) {
             return ohi.getForwardedObject(originalMemory, originalHeader);
@@ -441,15 +446,16 @@ public final class Space {
 
         // Install forwarding pointer into the original header
         Object copy = copyMemory.toObject();
-        Object forward = ohi.installForwardingPointerParallel(original, originalHeader, copy);
+        Object forward = ohi.installForwardingPointerParallel(original, eightHeaderBytes, copy);
         if (forward == copy) {
-            // We have won the race, now we must copy the object bits. First install the original header
-            copyMemory.writeWord(hubOffset, originalHeader);
+            // We have won the race, now we must copy the object bits. First install the original
+            // header
+            copyMemory.writeLong(hubOffset, eightHeaderBytes);
             // Copy the rest of original object
             if (hubOffset > 0) {
                 UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, WordFactory.unsigned(hubOffset));
             }
-            int offset = hubOffset + ConfigurationValues.getObjectLayout().getReferenceSize();
+            int offset = hubOffset + Long.BYTES;
             UnmanagedMemoryUtil.copyLongsForward(originalMemory.add(offset), copyMemory.add(offset), originalSize.subtract(offset));
 
             if (probability(SLOW_PATH_PROBABILITY, addIdentityHashField)) {
