@@ -73,11 +73,8 @@ final class Target_jdk_internal_loader_NativeLibraries {
      * linking error.
      */
 
-    /*-
-     * Temporarily disabled: the signature of this method is changing in JDK 17.0.2+5 to 17.0.2+6
-    @Delete
-    private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK17OrLater impl, String name, boolean isBuiltin, boolean isJNI, boolean throwExceptionIfFail);
-    */
+    @Delete//
+    private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl impl, String name, boolean isBuiltin, boolean throwExceptionIfFail);
 
     @Delete//
     @TargetElement(onlyWith = JDK17OrEarlier.class)

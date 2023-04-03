@@ -718,7 +718,6 @@ final class Target_java_lang_Compiler {
 final class Target_java_lang_NullPointerException {
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("static-method")
     private String getExtendedNPEMessage() {
         return null;

@@ -41,7 +41,6 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -200,11 +199,10 @@ final class Target_jdk_internal_access_SharedSecrets {
      * captures state like "is a tty". The only way to remove such state is by resetting the field.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     private static Target_jdk_internal_access_JavaIOAccess javaIOAccess;
 }
 
-@TargetClass(className = "jdk.internal.access.JavaIOAccess", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.internal.access.JavaIOAccess")
 final class Target_jdk_internal_access_JavaIOAccess {
 }
 

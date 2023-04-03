@@ -98,13 +98,11 @@ final class Target_java_security_AccessController {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static ProtectionDomain getProtectionDomain(final Class<?> caller) {
         return caller.getProtectionDomain();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("deprecation") // deprecated starting JDK 17
     static <T> T executePrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
         if (action == null) {
@@ -128,7 +126,6 @@ final class Target_java_security_AccessController {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("deprecation") // deprecated starting JDK 17
     static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
         if (action == null) {
@@ -152,7 +149,6 @@ final class Target_java_security_AccessController {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("deprecation")
     static AccessControlContext checkContext(AccessControlContext context, Class<?> caller) {
 
@@ -351,7 +347,7 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity_IdentityWrapper {
     @Alias //

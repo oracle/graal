@@ -33,8 +33,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 
 @TargetClass(className = "sun.reflect.annotation.AnnotationInvocationHandler")
 public final class Target_sun_reflect_annotation_AnnotationInvocationHandler {
@@ -49,7 +47,6 @@ public final class Target_sun_reflect_annotation_AnnotationInvocationHandler {
     static native String toSourceString(double clazz);
 
     @Alias
-    @TargetElement(onlyWith = JDK17OrLater.class)
     static native String toSourceString(byte clazz);
 
     @Alias

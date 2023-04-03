@@ -833,20 +833,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native boolean isAnonymousClass();
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isHidden() {
         return isFlagSet(flags, IS_HIDDEN_FLAG_BIT);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isRecord() {
         return isFlagSet(flags, IS_RECORD_FLAG_BIT);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isSealed() {
         return isFlagSet(flags, IS_SEALED_FLAG_BIT);
     }
@@ -1143,11 +1140,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     native Method[] privateGetPublicMethods();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private native Target_java_lang_reflect_RecordComponent[] getRecordComponents();
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private Target_java_lang_reflect_RecordComponent[] getRecordComponents0() {
         checkClassFlag(ALL_RECORD_COMPONENTS_FLAG, "getRecordComponents");
         if (reflectionMetadata == null || reflectionMetadata.recordComponentsEncodingIndex == NO_DATA) {
@@ -1159,7 +1154,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private native Class<?>[] getPermittedSubclasses();
 
     @Substitute
@@ -1389,7 +1383,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.getProtectionDomain();
     }
 
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Substitute
     private ProtectionDomain protectionDomain() {
         return getProtectionDomain();
@@ -1468,14 +1461,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public native Class<?>[] getNestMembers();
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public DynamicHub componentType() {
         return componentType;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public DynamicHub arrayType() {
         if (toClass(this) == void.class) {
@@ -1677,7 +1668,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Target_java_lang_Class_AnnotationData createAnnotationData(int redefinitionCount);
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private Class<?>[] getPermittedSubclasses0() {
         if (!isSealed()) {
             return null;
@@ -1715,7 +1705,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     static native byte[] getExecutableTypeAnnotationBytes(Executable ex);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private native boolean isDirectSubType(Class<?> c);
 
     @KeepOriginal
@@ -1825,7 +1814,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         final int classesEncodingIndex;
 
-        @TargetElement(onlyWith = JDK17OrLater.class)//
         final int permittedSubclassesEncodingIndex;
 
         final int nestMembersEncodingIndex;
@@ -1851,7 +1839,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         final int constructorsEncodingIndex;
 
-        @TargetElement(onlyWith = JDK17OrLater.class)//
         final int recordComponentsEncodingIndex;
 
         final int classFlags;

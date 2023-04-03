@@ -42,7 +42,7 @@ final class Target_java_util_concurrent_ThreadLocalRandom {
     private static AtomicLong seeder;
 }
 
-@TargetClass(className = "jdk.internal.util.random.RandomSupport", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.internal.util.random.RandomSupport")
 final class Target_jdk_internal_util_random_RandomSupport {
     @Alias
     static native long mixMurmur64(long z);

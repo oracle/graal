@@ -54,7 +54,6 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.jdk.ContinuationsNotSupported;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrLater;
@@ -610,7 +609,6 @@ public final class Target_java_lang_Thread {
      * Our implementation in {@code WindowsPlatformThreads} already handles this.
      */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static void clearInterruptEvent() {
     }
 
