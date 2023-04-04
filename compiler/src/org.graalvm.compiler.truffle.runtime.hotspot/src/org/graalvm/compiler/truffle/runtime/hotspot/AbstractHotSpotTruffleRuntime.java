@@ -33,6 +33,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
@@ -213,14 +214,14 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public HotSpotTruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
+    public TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
         Objects.requireNonNull(compilable, "Compilable must be non null.");
         if (truffleCompiler == null) {
-            initializeTruffleCompiler((OptimizedCallTarget) compilable);
+            initializeTruffleCompiler(compilable);
             rethrowTruffleCompilerInitializationException();
             assert truffleCompiler != null : "TruffleCompiler must be non null";
         }
-        return (HotSpotTruffleCompiler) truffleCompiler;
+        return truffleCompiler;
     }
 
     /**
@@ -287,15 +288,18 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         truffleCompilerInitializationException = null;
     }
 
-    private synchronized void initializeTruffleCompiler(OptimizedCallTarget callTarget) {
+    private synchronized void initializeTruffleCompiler(CompilableTruffleAST compilable) {
         // might occur for multiple compiler threads at the same time.
         if (!truffleCompilerInitialized) {
             rethrowTruffleCompilerInitializationException();
             try {
+                OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
+
                 EngineData engine = callTarget.engine;
                 profilingEnabled = engine.profilingEnabled;
                 HotSpotTruffleCompiler compiler = (HotSpotTruffleCompiler) newTruffleCompiler();
-                compiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
+                Map<String, Object> options = getOptionsForCompiler(callTarget);
+                compiler.initialize(options, callTarget, true);
 
                 installCallBoundaryMethods(compiler);
                 if (jvmciReservedReference0Offset != -1) {

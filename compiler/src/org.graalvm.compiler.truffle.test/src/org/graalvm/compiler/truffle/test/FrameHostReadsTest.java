@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -45,7 +44,7 @@ import com.oracle.truffle.api.impl.FrameWithoutBoxing;
  * This test is likely to fail with changes to {@link FrameWithoutBoxing}. Update this test
  * accordingly.
  */
-public class FrameHostReadsTest extends GraalCompilerTest {
+public class FrameHostReadsTest extends TruffleCompilerImplTest {
 
     public static int snippet0(FrameWithoutBoxing frame, int index) {
         int sum = 0;
@@ -61,6 +60,8 @@ public class FrameHostReadsTest extends GraalCompilerTest {
 
     @Test
     public void test0() {
+        getTruffleCompiler();
+        initAssertionError();
         Assert.assertSame("New frame implementation detected. Make sure to update this test.", FrameWithoutBoxing.class,
                         Truffle.getRuntime().createVirtualFrame(new Object[0], FrameDescriptor.newBuilder().build()).getClass());
 
@@ -105,6 +106,17 @@ public class FrameHostReadsTest extends GraalCompilerTest {
          */
         Assert.assertEquals(2, arrayLengthReads);
         Assert.assertEquals(0, otherReads);
+    }
+
+    @SuppressWarnings({"serial"})
+    private static AssertionError initAssertionError() {
+        return new AssertionError() {
+            @SuppressWarnings("sync-override")
+            @Override
+            public Throwable fillInStackTrace() {
+                return this;
+            }
+        };
     }
 
 }

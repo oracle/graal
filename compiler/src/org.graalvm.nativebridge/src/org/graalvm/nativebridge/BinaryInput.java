@@ -517,6 +517,13 @@ public abstract class BinaryInput {
     }
 
     /**
+     * Creates a new buffer backed by a byte array only up to a given length.
+     */
+    public static BinaryInput create(byte[] buffer, int length) {
+        return new ByteArrayBinaryInput(buffer, length);
+    }
+
+    /**
      * Creates a new buffer wrapping an off-heap memory segment starting at an {@code address}
      * having {@code length} bytes.
      */
@@ -536,6 +543,11 @@ public abstract class BinaryInput {
 
         ByteArrayBinaryInput(byte[] buffer) {
             super(buffer.length);
+            this.buffer = buffer;
+        }
+
+        ByteArrayBinaryInput(byte[] buffer, int length) {
+            super(length);
             this.buffer = buffer;
         }
 

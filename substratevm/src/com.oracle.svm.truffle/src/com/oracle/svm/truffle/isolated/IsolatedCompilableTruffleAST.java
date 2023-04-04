@@ -28,13 +28,9 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
@@ -47,7 +43,6 @@ import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
 import com.oracle.svm.graal.isolated.IsolatedSpeculationLog;
 import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
-import com.oracle.truffle.api.Assumption;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.JavaConstant;
@@ -100,9 +95,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public TruffleCallNode[] getCallNodes() {
-        CompilerHandle<IsolatedTruffleCallNode[]> nodes = getCallNodes0(IsolatedCompileContext.get().getClient(), handle);
-        return IsolatedCompileContext.get().unhand(nodes);
+    public int countDirectCallNodes() {
+        return countDirectCallNodes0(IsolatedCompileContext.get().getClient(), handle);
     }
 
     @Override
@@ -117,12 +111,6 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public void dequeueInlined() {
-        final IsolatedCompileContext context = IsolatedCompileContext.get();
-        dequeueInlined0(context.getClient(), handle);
-    }
-
-    @Override
     public boolean isSameOrSplit(CompilableTruffleAST ast) {
         IsolatedCompilableTruffleAST other = (IsolatedCompilableTruffleAST) ast;
         return isSameOrSplit0(IsolatedCompileContext.get().getClient(), handle, other.handle);
@@ -134,13 +122,8 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @Override
-    public JavaConstant getNodeRewritingAssumptionConstant() {
-        return new IsolatedObjectConstant(getNodeRewritingAssumption0(IsolatedCompileContext.get().getClient(), handle), false);
-    }
-
-    @Override
-    public JavaConstant getValidRootAssumptionConstant() {
-        return new IsolatedObjectConstant(getValidRootAssumption0(IsolatedCompileContext.get().getClient(), handle), false);
+    public void prepareForCompilation() {
+        prepareForCompilation0(IsolatedCompileContext.get().getClient(), handle);
     }
 
     @Override
@@ -196,27 +179,9 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static CompilerHandle<IsolatedTruffleCallNode[]> getCallNodes0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
+    private static int countDirectCallNodes0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle) {
         SubstrateCompilableTruffleAST compilable = IsolatedCompileClient.get().unhand(compilableHandle);
-        TruffleCallNode[] nodes = compilable.getCallNodes();
-        ClientHandle<?>[] nodeHandles = new ClientHandle<?>[nodes.length];
-        for (int i = 0; i < nodes.length; i++) {
-            nodeHandles[i] = IsolatedCompileClient.get().hand(nodes[i]);
-        }
-        try (PinnedObject pinnedNodeHandles = PinnedObject.create(nodeHandles)) {
-            return getCallNodes1(IsolatedCompileClient.get().getCompiler(), pinnedNodeHandles.addressOfArrayElement(0), nodeHandles.length);
-        }
-    }
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static CompilerHandle<IsolatedTruffleCallNode[]> getCallNodes1(@SuppressWarnings("unused") CompilerIsolateThread compiler, WordPointer nodeHandleArray, int length) {
-
-        IsolatedTruffleCallNode[] nodes = new IsolatedTruffleCallNode[length];
-        for (int i = 0; i < nodes.length; i++) {
-            ClientHandle<TruffleCallNode> handle = nodeHandleArray.read(i);
-            nodes[i] = new IsolatedTruffleCallNode(handle);
-        }
-        return IsolatedCompileContext.get().hand(nodes);
+        return compilable.countDirectCallNodes();
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -231,13 +196,6 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
         final SubstrateCompilableTruffleAST compilable = isolatedCompileClient.unhand(compilableHandle);
         final String reason = isolatedCompileClient.unhand(reasonHandle);
         return compilable.cancelCompilation(reason);
-    }
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static void dequeueInlined0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
-        final IsolatedCompileClient isolatedCompileClient = IsolatedCompileClient.get();
-        final SubstrateCompilableTruffleAST compilable = isolatedCompileClient.unhand(handle);
-        compilable.dequeueInlined();
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -256,19 +214,9 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static ClientHandle<Assumption> getNodeRewritingAssumption0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
+    private static void prepareForCompilation0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
-        JavaConstant assumptionConstant = ast.getNodeRewritingAssumptionConstant();
-        Assumption assumption = (Assumption) SubstrateObjectConstant.asObject(assumptionConstant);
-        return IsolatedCompileClient.get().hand(assumption);
-    }
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static ClientHandle<Assumption> getValidRootAssumption0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
-        CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
-        JavaConstant assumptionConstant = ast.getValidRootAssumptionConstant();
-        Assumption assumption = (Assumption) SubstrateObjectConstant.asObject(assumptionConstant);
-        return IsolatedCompileClient.get().hand(assumption);
+        ast.prepareForCompilation();
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)

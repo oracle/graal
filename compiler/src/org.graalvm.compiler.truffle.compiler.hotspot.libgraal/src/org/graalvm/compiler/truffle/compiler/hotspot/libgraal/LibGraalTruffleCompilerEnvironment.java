@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common;
+package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-/**
- * A truffle node which can call a {@link CompilableTruffleAST}.
- */
-public interface TruffleCallNode {
-    /**
-     * Return the call target corresponding to this call node.
-     */
-    CompilableTruffleAST getCurrentCallTarget();
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
+import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerEnvironment;
 
-    /**
-     * Return the total call count of this callsite.
-     */
-    int getCallCount();
+final class LibGraalTruffleCompilerEnvironment extends HotSpotTruffleCompilerEnvironment {
 
-    /**
-     * @return Should inlining this call node be forced
-     */
-    boolean isInliningForced();
+    LibGraalTruffleCompilerEnvironment(HSTruffleCompilerRuntime runtime) {
+        super(runtime);
+    }
+
+    @Override
+    public HSTruffleCompilerRuntime runtime() {
+        return (HSTruffleCompilerRuntime) super.runtime();
+    }
+
+    public static LibGraalTruffleCompilerEnvironment get() {
+        return (LibGraalTruffleCompilerEnvironment) TruffleCompilerEnvironment.get();
+    }
+
 }

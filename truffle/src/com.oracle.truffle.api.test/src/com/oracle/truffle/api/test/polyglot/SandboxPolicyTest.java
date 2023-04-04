@@ -1032,8 +1032,8 @@ public class SandboxPolicyTest {
 
     @TruffleLanguage.Registration(id = TrustedLanguage.ID, name = TrustedLanguage.ID, characterMimeTypes = TrustedLanguage.MIME)
     static final class TrustedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
-        private static final String ID = "lang_sandbox_trusted";
-        private static final String MIME = "text/x-" + ID;
+        static final String ID = "lang_sandbox_trusted";
+        static final String MIME = "text/x-" + ID;
 
         @Override
         protected Env createContext(Env env) {
@@ -1043,8 +1043,8 @@ public class SandboxPolicyTest {
 
     @TruffleLanguage.Registration(id = ConstrainedLanguage.ID, name = ConstrainedLanguage.ID, characterMimeTypes = ConstrainedLanguage.MIME, sandbox = SandboxPolicy.CONSTRAINED)
     static final class ConstrainedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
-        private static final String ID = "lang_sandbox_constrained";
-        private static final String MIME = "text/x-" + ID;
+        static final String ID = "lang_sandbox_constrained";
+        static final String MIME = "text/x-" + ID;
 
         @Override
         protected Env createContext(Env env) {
@@ -1054,8 +1054,8 @@ public class SandboxPolicyTest {
 
     @TruffleLanguage.Registration(id = IsolatedLanguage.ID, name = IsolatedLanguage.ID, characterMimeTypes = IsolatedLanguage.MIME, sandbox = SandboxPolicy.ISOLATED)
     static final class IsolatedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
-        private static final String ID = "lang_sandbox_isolated";
-        private static final String MIME = "text/x-" + ID;
+        static final String ID = "lang_sandbox_isolated";
+        static final String MIME = "text/x-" + ID;
 
         @Override
         protected Env createContext(Env env) {
@@ -1065,8 +1065,8 @@ public class SandboxPolicyTest {
 
     @TruffleLanguage.Registration(id = UntrustedLanguage.ID, name = UntrustedLanguage.ID, characterMimeTypes = UntrustedLanguage.MIME, sandbox = SandboxPolicy.UNTRUSTED)
     static final class UntrustedLanguage extends TruffleLanguage<TruffleLanguage.Env> {
-        private static final String ID = "lang_sandbox_untrusted";
-        private static final String MIME = "text/x-" + ID;
+        static final String ID = "lang_sandbox_untrusted";
+        static final String MIME = "text/x-" + ID;
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Option allowed only in trusted policy")//
         static final OptionKey<Boolean> TrustedOption = new OptionKey<>(false);
@@ -1100,7 +1100,7 @@ public class SandboxPolicyTest {
     @TruffleInstrument.Registration(id = TrustedInstrument.ID, name = TrustedInstrument.ID)
     static final class TrustedInstrument extends TruffleInstrument {
 
-        private static final String ID = "tool_sandbox_trusted";
+        static final String ID = "tool_sandbox_trusted";
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<Boolean> Enable = new OptionKey<>(false);
@@ -1118,7 +1118,7 @@ public class SandboxPolicyTest {
     @TruffleInstrument.Registration(id = ConstrainedInstrument.ID, name = ConstrainedInstrument.ID, sandbox = SandboxPolicy.CONSTRAINED)
     static final class ConstrainedInstrument extends TruffleInstrument {
 
-        private static final String ID = "tool_sandbox_constrained";
+        static final String ID = "tool_sandbox_constrained";
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<Boolean> Enable = new OptionKey<>(false);
@@ -1136,7 +1136,7 @@ public class SandboxPolicyTest {
     @TruffleInstrument.Registration(id = IsolatedInstrument.ID, name = IsolatedInstrument.ID, sandbox = SandboxPolicy.ISOLATED)
     static final class IsolatedInstrument extends TruffleInstrument {
 
-        private static final String ID = "tool_sandbox_isolated";
+        static final String ID = "tool_sandbox_isolated";
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<Boolean> Enable = new OptionKey<>(false);
@@ -1154,7 +1154,7 @@ public class SandboxPolicyTest {
     @TruffleInstrument.Registration(id = UntrustedInstrument.ID, name = UntrustedInstrument.ID, sandbox = SandboxPolicy.UNTRUSTED)
     static final class UntrustedInstrument extends TruffleInstrument {
 
-        private static final String ID = "tool_sandbox_untrusted";
+        static final String ID = "tool_sandbox_untrusted";
 
         @Option(category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Enables instrument", sandbox = SandboxPolicy.UNTRUSTED)//
         static final OptionKey<Boolean> Enable = new OptionKey<>(false);

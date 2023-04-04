@@ -24,35 +24,27 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SubstrateKnownTruffleTypes extends KnownTruffleTypes {
 
-    public final ResolvedJavaField referentField = findField(lookupType(Target_java_lang_ref_Reference.class), ReferenceInternals.REFERENT_FIELD_NAME);
-
-    public SubstrateKnownTruffleTypes(MetaAccessProvider metaAccess) {
-        super(metaAccess);
+    public SubstrateKnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+        super(runtime, metaAccess, constantReflection);
     }
 
     @Override
-    protected ResolvedJavaType lookupType(String className) {
-        AnalysisType type = (AnalysisType) super.lookupType(className);
-        type.registerAsReachable("known Truffle type");
-        return type;
+    protected void onTypeLookup(ResolvedJavaType type) {
+        if (type != null) {
+            ((AnalysisType) type).registerAsReachable("known Truffle type");
+        }
+        super.onTypeLookup(type);
     }
 
-    @Override
-    protected ResolvedJavaType lookupType(Class<?> c) {
-        AnalysisType type = (AnalysisType) super.lookupType(c);
-        type.registerAsReachable("known Truffle type");
-        return type;
-    }
 }
