@@ -20,6 +20,9 @@ local common_json = import "../common.json";
   } + {
     [name]: common_json.jdks[name] + { jdk_version:: 20 }
     for name in ["oraclejdk20"] + variants("labsjdk-ce-20") + variants("labsjdk-ee-20")
+  } + {
+    [name]: common_json.jdks[name] + { jdk_version:: 21 }
+    for name in ["oraclejdk21"]
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
 
@@ -52,6 +55,7 @@ local common_json = import "../common.json";
     "windows-jdk17": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
+    "windows-jdk21": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
     "linux-jdk17": { packages+: { "devkit:gcc10.3.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
@@ -101,9 +105,13 @@ local common_json = import "../common.json";
     },
 
     truffleruby:: {
-      packages+: if self.os == "linux" then {
-        ruby: "==2.6.3",
-      } else {},
+      packages+: (if self.os == "linux" && self.arch == "amd64" then {
+        ruby: "==3.1.2", # Newer version, also used for benchmarking
+      } else {
+        ruby: "==3.0.2",
+      }) + (if self.os == "linux" then {
+        libyaml: "==0.2.5",
+      } else {}),
     },
 
     graalnodejs:: {

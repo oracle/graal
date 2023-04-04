@@ -57,6 +57,7 @@ public class LowTier extends BaseTier<LowTierContext> {
 
     }
 
+    @SuppressWarnings("this-escape")
     public LowTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         CanonicalizerPhase canonicalizerWithoutGVN = canonicalizer.copyWithoutGVN();

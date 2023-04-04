@@ -58,7 +58,7 @@ public class LoopsData {
         this.loopBeginToEx = loopBeginToEx;
     }
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "this-escape"})
     protected LoopsData(final StructuredGraph graph, ControlFlowGraph preComputedCFG) {
         loopBeginToEx = EconomicMap.create(Equivalence.IDENTITY);
         DebugContext debug = graph.getDebug();

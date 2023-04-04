@@ -157,6 +157,7 @@ public class InvocationPlugins {
         private final String name;
         private Class<?> resolved;
 
+        @SuppressWarnings("this-escape")
         public OptionalLazySymbol(String name) {
             this.name = name;
             if (IS_BUILDING_NATIVE_IMAGE) {
@@ -1040,7 +1041,7 @@ public class InvocationPlugins {
                 }
                 klass = klass.getSuperclass();
             }
-            throw new AssertionError(format("graph builder plugin for %s not found", plugin.getMethodNameWithArgumentsDescriptor()));
+            throw new AssertionError(format("graph builder plugin for %s not found. check that the plugin-method signature matches the target", plugin.getMethodNameWithArgumentsDescriptor()));
         }
 
         static boolean checkResolvable(Type declaringType, InvocationPlugin plugin) {

@@ -76,6 +76,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     private final ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
 
+    @SuppressWarnings("this-escape")
     public ReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection,
@@ -185,6 +186,14 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         }
     }
 
+    public void markMethodSpecialInvoked(ReachabilityAnalysisMethod targetMethod, Object reason) {
+        ReachabilityAnalysisType declaringClass = targetMethod.getDeclaringClass();
+        declaringClass.addSpecialInvokedMethod(targetMethod);
+        if (!declaringClass.getInstantiatedSubtypes().isEmpty()) {
+            markMethodImplementationInvoked(targetMethod, reason);
+        }
+    }
+
     @Override
     public boolean registerTypeAsInHeap(AnalysisType t, Object reason) {
         ReachabilityAnalysisType type = (ReachabilityAnalysisType) t;
@@ -265,6 +274,10 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
                 if (method != null) {
                     markMethodImplementationInvoked(method, reason);
                 }
+            }
+
+            for (ReachabilityAnalysisMethod method : ((ReachabilityAnalysisType) current).getInvokedSpecialMethods()) {
+                markMethodImplementationInvoked(method, reason);
             }
         });
     }

@@ -27,12 +27,13 @@ package com.oracle.svm.core.jdk;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
 @SuppressWarnings("unused")
@@ -50,10 +51,13 @@ final class Target_java_lang_Module {
         return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
     }
 
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private static void defineModule0(Module module, boolean isOpen, String version, String location, String[] pns) {
-        ModuleUtil.defineModule(module, isOpen, Arrays.asList(pns));
+    @Substitute
+    private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
+        if (Arrays.stream(pns).anyMatch(Objects::isNull)) {
+            throw new IllegalArgumentException("Bad package name");
+        }
+        List<String> packages = Arrays.stream(pns).map(Object::toString).collect(Collectors.toUnmodifiableList());
+        ModuleUtil.defineModule(module, isOpen, packages);
     }
 
     @Substitute

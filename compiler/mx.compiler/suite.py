@@ -1,10 +1,10 @@
 suite = {
-  "mxversion": "6.15.3",
+  "mxversion": "6.18.1",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -24,9 +24,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir": True,
-        "urls" : [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-         ]
       },
       {
         "name" : "regex",
@@ -2065,6 +2062,7 @@ suite = {
         "exports" : [
           """* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.nativeimage.base,
           org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise""",
+          "org.graalvm.compiler.java                   to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",

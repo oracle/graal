@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -396,8 +396,7 @@ public class WebAssembly extends Dictionary {
         List<ByteArrayBuffer> sections = new ArrayList<>();
         for (WasmCustomSection section : module.customSections()) {
             if (section.name().equals(name)) {
-                final byte[] sectionData = section.data();
-                sections.add(new ByteArrayBuffer(sectionData, 0, sectionData.length));
+                sections.add(new ByteArrayBuffer(module.customData(), section.offset(), section.length()));
             }
         }
         return new Sequence<>(sections);

@@ -210,6 +210,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
 
+    @SuppressWarnings("this-escape")
     public AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
         this.wrapped = javaType;

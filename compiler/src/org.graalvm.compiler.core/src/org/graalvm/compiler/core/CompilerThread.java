@@ -31,6 +31,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
  */
 public class CompilerThread extends Thread {
 
+    @SuppressWarnings("this-escape")
     public CompilerThread(Runnable r, String namePrefix) {
         super(r);
         this.setName(namePrefix + "-" + GraalServices.getThreadId(this));

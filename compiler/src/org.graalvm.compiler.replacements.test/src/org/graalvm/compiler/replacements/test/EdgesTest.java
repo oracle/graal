@@ -51,6 +51,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+@SuppressWarnings("this-escape")
 public class EdgesTest extends GraalCompilerTest {
 
     @NodeInfo(cycles = CYCLES_0, size = SIZE_0)

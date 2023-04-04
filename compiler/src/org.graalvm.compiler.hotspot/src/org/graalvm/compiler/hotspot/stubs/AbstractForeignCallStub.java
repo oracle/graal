@@ -100,6 +100,7 @@ public abstract class AbstractForeignCallStub extends Stub {
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
      */
+    @SuppressWarnings("this-escape")
     public AbstractForeignCallStub(OptionValues options,
                     HotSpotJVMCIRuntime runtime,
                     HotSpotProviders providers,

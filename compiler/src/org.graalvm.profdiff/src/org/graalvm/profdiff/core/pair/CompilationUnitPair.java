@@ -51,6 +51,7 @@ public class CompilationUnitPair {
      * @param compilationUnit1 a compilation unit from the first experiment
      * @param compilationUnit2 a compilation unit from the second experiment
      */
+    @SuppressWarnings("this-escape")
     public CompilationUnitPair(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
         assert compilationUnit1 != null || compilationUnit2 != null;
         assert !bothNotNull() || compilationUnit1.getMethod().getMethodName().equals(compilationUnit2.getMethod().getMethodName());

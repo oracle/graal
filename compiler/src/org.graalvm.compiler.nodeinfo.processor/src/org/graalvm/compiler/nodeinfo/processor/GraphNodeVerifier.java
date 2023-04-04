@@ -67,6 +67,7 @@ public class GraphNodeVerifier {
 
     // Checkstyle: resume
 
+    @SuppressWarnings("this-escape")
     public GraphNodeVerifier(AbstractProcessor processor) {
         this.processor = processor;
         this.Input = getTypeElement("org.graalvm.compiler.graph.Node.Input");

@@ -117,6 +117,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         }
     }
 
+    @SuppressWarnings("this-escape")
     protected MacroNode(NodeClass<? extends MacroNode> c, MacroParams p) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);

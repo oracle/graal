@@ -54,6 +54,7 @@ public class ValuePhiNode extends PhiNode {
         this(TYPE, stamp, merge);
     }
 
+    @SuppressWarnings("this-escape")
     protected ValuePhiNode(NodeClass<? extends ValuePhiNode> c, Stamp stamp, AbstractMergeNode merge) {
         super(c, stamp, merge);
         assert stamp != StampFactory.forVoid();
@@ -64,6 +65,7 @@ public class ValuePhiNode extends PhiNode {
         this(TYPE, stamp, merge, values);
     }
 
+    @SuppressWarnings("this-escape")
     public ValuePhiNode(NodeClass<? extends ValuePhiNode> c, Stamp stamp, AbstractMergeNode merge, ValueNode... values) {
         super(c, stamp, merge);
         assert stamp != StampFactory.forVoid();

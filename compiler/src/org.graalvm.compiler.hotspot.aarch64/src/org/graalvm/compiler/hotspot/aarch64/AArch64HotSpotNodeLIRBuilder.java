@@ -73,6 +73,7 @@ import jdk.vm.ci.meta.Value;
  */
 public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implements HotSpotNodeLIRBuilder {
 
+    @SuppressWarnings("this-escape")
     public AArch64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AArch64NodeMatchRules nodeMatchRules) {
         super(graph, gen, nodeMatchRules);
         assert gen instanceof AArch64HotSpotLIRGenerator;

@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.Platform.LINUX;
@@ -66,7 +67,7 @@ final class Target_jdk_jfr_internal_instrument_JDKEvents {
     private static boolean initializationTriggered;
 }
 
-@TargetClass(className = "jdk.jfr.internal.RequestEngine", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.jfr.internal.RequestEngine", onlyWith = {JDK17OrLater.class, JDK20OrEarlier.class})
 @Platforms(LINUX.class)
 final class Target_jdk_jfr_internal_RequestEngine {
     @Alias //
@@ -77,6 +78,15 @@ final class Target_jdk_jfr_internal_RequestEngine {
     @Alias //
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = CopyOnWriteArrayList.class) //
     private static List<?> entries;
+}
+
+@TargetClass(className = "jdk.jfr.internal.periodic.JVMEventTask", onlyWith = JDK21OrLater.class)
+@Platforms(LINUX.class)
+final class Target_jdk_jfr_internal_JVMEventTask {
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReentrantLock.class) //
+    private static Lock lock;
+
 }
 
 // Only present in JDKs without JDK-8268398

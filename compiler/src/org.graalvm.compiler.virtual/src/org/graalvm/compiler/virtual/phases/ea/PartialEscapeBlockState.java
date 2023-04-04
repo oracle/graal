@@ -103,6 +103,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
         this.debug = debug;
     }
 
+    @SuppressWarnings("this-escape")
     protected PartialEscapeBlockState(PartialEscapeBlockState<T> other) {
         super(other);
         adoptAddObjectStates(other);

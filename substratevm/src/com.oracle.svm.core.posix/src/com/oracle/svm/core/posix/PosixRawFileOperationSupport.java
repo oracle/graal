@@ -48,8 +48,6 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixRawFileOperationSupport extends AbstractRawFileOperationSupport {
-    private static final int DEFAULT_PERMISSIONS = 0666;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public PosixRawFileOperationSupport(boolean useNativeByteOrder) {
         super(useNativeByteOrder);
@@ -59,19 +57,20 @@ public class PosixRawFileOperationSupport extends AbstractRawFileOperationSuppor
     public RawFileDescriptor create(File file, FileCreationMode creationMode, FileAccessMode accessMode) {
         String path = file.getPath();
         int flags = parseMode(creationMode) | parseMode(accessMode);
-
-        try (CTypeConversion.CCharPointerHolder cPath = CTypeConversion.toCString(path)) {
-            return WordFactory.signed(Fcntl.NoTransitions.open(cPath.get(), flags, DEFAULT_PERMISSIONS));
-        }
+        return open0(path, flags);
     }
 
     @Override
     public RawFileDescriptor open(File file, FileAccessMode mode) {
         String path = file.getPath();
         int flags = parseMode(mode);
+        return open0(path, flags);
+    }
 
+    private static RawFileDescriptor open0(String path, int flags) {
+        int permissions = PosixStat.S_IRUSR() | PosixStat.S_IWUSR();
         try (CTypeConversion.CCharPointerHolder cPath = CTypeConversion.toCString(path)) {
-            return WordFactory.signed(Fcntl.NoTransitions.open(cPath.get(), flags, DEFAULT_PERMISSIONS));
+            return WordFactory.signed(Fcntl.NoTransitions.open(cPath.get(), flags, permissions));
         }
     }
 

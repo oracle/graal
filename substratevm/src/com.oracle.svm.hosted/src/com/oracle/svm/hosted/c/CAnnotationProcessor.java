@@ -34,7 +34,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -43,10 +42,12 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.codegen.QueryCodeWriter;
 import com.oracle.svm.hosted.c.info.InfoTreeBuilder;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
+import com.oracle.svm.hosted.c.libc.HostedLibCBase;
 import com.oracle.svm.hosted.c.query.QueryResultParser;
 import com.oracle.svm.hosted.c.query.RawStructureLayoutPlanner;
 import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
@@ -83,7 +84,7 @@ public class CAnnotationProcessor {
         }
     }
 
-    public NativeCodeInfo process(CAnnotationProcessorCache cache) {
+    public NativeCodeInfo process(CAnnotationProcessorCache cache, ImageClassLoader loader) {
         InfoTreeBuilder constructor = new InfoTreeBuilder(nativeLibs, codeCtx);
         codeInfo = constructor.construct();
         if (nativeLibs.getErrors().size() > 0) {
@@ -108,8 +109,8 @@ public class CAnnotationProcessor {
                 // Only output query code and exit
                 return codeInfo;
             }
-
             Path binary = compileQueryCode(queryFile);
+            loader.watchdog.recordActivity();
             if (nativeLibs.getErrors().size() > 0) {
                 return codeInfo;
             }

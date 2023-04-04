@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.hosted.snippets;
 
+import java.io.ObjectInputFilter;
 import java.lang.ref.Reference;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
@@ -47,6 +49,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeParser;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicPiNode;
@@ -90,7 +93,6 @@ import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordCastNode;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageInfo;
@@ -101,6 +103,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.hosted.RuntimeSerialization;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -119,7 +122,6 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
@@ -140,16 +142,15 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
-import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
@@ -166,6 +167,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.reflect.ReflectionFactory;
 
 public class SubstrateGraphBuilderPlugins {
 
@@ -173,6 +175,9 @@ public class SubstrateGraphBuilderPlugins {
     public static class Options {
         @Option(help = "Enable trace logging for dynamic proxy.")//
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
+
+        @Option(help = "Check reachability before automatically registering proxies observed in the code.")//
+        public static final HostedOptionKey<Boolean> StrictProxyAutoRegistration = new HostedOptionKey<>(false);
     }
 
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -185,10 +190,11 @@ public class SubstrateGraphBuilderPlugins {
                     boolean supportsStubBasedPlugins) {
 
         // register the substratevm plugins
-        registerSystemPlugins(metaAccess, plugins);
+        registerSystemPlugins(metaAccess, snippetReflection, plugins);
         registerReflectionPlugins(plugins, replacements);
         registerImageInfoPlugins(metaAccess, plugins);
         registerProxyPlugins(snippetReflection, annotationSubstitutions, plugins, parsingReason);
+        registerSerializationPlugins(snippetReflection, plugins, parsingReason);
         registerAtomicUpdaterPlugins(metaAccess, snippetReflection, plugins, parsingReason);
         registerObjectPlugins(plugins);
         registerUnsafePlugins(metaAccess, plugins, snippetReflection, parsingReason);
@@ -207,25 +213,163 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
+    private static void registerSerializationPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
+        if (reason.duringAnalysis()) {
+            Registration serializationFilter = new Registration(plugins, ObjectInputFilter.Config.class);
+            serializationFilter.register(new RequiredInvocationPlugin("createFilter", String.class) {
+                @Override
+                public boolean isDecorator() {
+                    return true;
+                }
+
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode patternNode) {
+                    if (nonNullJavaConstants(patternNode)) {
+                        String pattern = snippetReflection.asObject(String.class, patternNode.asJavaConstant());
+                        b.add(new ReachabilityRegistrationNode(() -> parsePatternAndRegister(pattern)));
+                        return true;
+                    }
+                    return false;
+                }
+            });
+
+            Registration customConstructor = new Registration(plugins, ReflectionFactory.class);
+            customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class) {
+                @Override
+                public boolean isDecorator() {
+                    return true;
+                }
+
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
+                    if (nonNullJavaConstants(receiver.get(), clazz)) {
+                        b.add(new ReachabilityRegistrationNode(() -> RuntimeSerialization.register(snippetReflection.asObject(Class.class, clazz.asJavaConstant()))));
+                        return true;
+                    }
+                    return false;
+                }
+            });
+
+            customConstructor.register(new RequiredInvocationPlugin("newConstructorForSerialization", Receiver.class, Class.class, Constructor.class) {
+                @Override
+                public boolean isDecorator() {
+                    return true;
+                }
+
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode constructor) {
+                    if (nonNullJavaConstants(receiver.get(), clazz, constructor)) {
+                        var constructorDeclaringClass = snippetReflection.asObject(Constructor.class, constructor.asJavaConstant()).getDeclaringClass();
+                        b.add(new ReachabilityRegistrationNode(() -> RuntimeSerialization.registerWithTargetConstructorClass(snippetReflection.asObject(Class.class, clazz.asJavaConstant()),
+                                        constructorDeclaringClass)));
+                        return true;
+                    }
+                    return false;
+                }
+            });
+        }
+    }
+
+    private static boolean nonNullJavaConstants(ValueNode... valueNodes) {
+        for (ValueNode valueNode : valueNodes) {
+            if (!valueNode.isJavaConstant() || valueNode.isNullConstant()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isLimitPattern(String pattern) {
+        int eqNdx = pattern.indexOf('=');
+        // not a limit pattern
+        return eqNdx >= 0;
+    }
+
+    /**
+     * Extract the target class name from the <code>pattern</code>. We support two formats:
+     * <ul>
+     * <li>A concrete class name (pattern doesn't end with .* or .**), e.g.:
+     * <code>com.foo.Bar</code>. In this case we register the concrete class for
+     * serialization/deserialization.</li>
+     * <li>A concrete class name that ends with a <code>$$Lambda$*</code>. In this case, we register
+     * all lambdas that originate in the methods of the target class for
+     * serialization/deserialization.</li>
+     * </ul>
+     */
+    private static void parsePatternAndRegister(String pattern) {
+        String[] patterns = pattern.split(";");
+        for (String p : patterns) {
+            int nameLen = p.length();
+            if (nameLen == 0) {
+                continue;
+            }
+            if (isLimitPattern(p)) {
+                continue;
+            }
+            boolean negate = p.charAt(0) == '!';
+            int poffset = negate ? 1 : 0;
+
+            // isolate module name, if any
+            int slash = p.indexOf('/', poffset);
+            if (slash == poffset) {
+                continue; // Module name is missing.
+            }
+            poffset = (slash >= 0) ? slash + 1 : poffset;
+
+            if (p.endsWith("*")) {
+                // Wildcard cases
+                if (!(p.endsWith(".*") || p.endsWith(".**"))) {
+                    // Pattern is a classname (possibly empty) with a trailing wildcard
+                    final String className = p.substring(poffset, nameLen - 1);
+                    if (!negate) {
+                        if (className.endsWith(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                            try {
+                                String lambdaHolderName = className.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0];
+                                RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
+                            } catch (ClassNotFoundException e) {
+                                // no class, no registration
+                            }
+                        }
+                    }
+                }
+            } else {
+                final String name = p.substring(poffset);
+                if (name.isEmpty()) {
+                    return;
+                }
+                // Pattern is a class name
+                if (!negate) {
+                    try {
+                        RuntimeSerialization.register(Class.forName(name, false, Thread.currentThread().getContextClassLoader()));
+                    } catch (ClassNotFoundException e) {
+                        // no class, no registration
+                    }
+                }
+            }
+        }
+    }
+
+    private static void registerSystemPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, System.class);
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
             r.register(new RequiredInvocationPlugin("getSecurityManager") {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     /* System.getSecurityManager() always returns null. */
-                    b.addPush(JavaKind.Object, ConstantNode.forConstant(SubstrateObjectConstant.forObject(null), metaAccess, b.getGraph()));
+                    b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(null), metaAccess, b.getGraph()));
                     return true;
                 }
             });
         }
 
         r.register(new RequiredInvocationPlugin("identityHashCode", Object.class) {
+
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(JavaKind.Int, SubstrateIdentityHashCodeNode.create(object, b.bci()));
                 return true;
             }
+
         });
     }
 
@@ -273,17 +417,25 @@ public class SubstrateGraphBuilderPlugins {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
             proxyRegistration.register(new RequiredInvocationPlugin("getProxyClass", ClassLoader.class, Class[].class) {
                 @Override
+                public boolean isDecorator() {
+                    return Options.StrictProxyAutoRegistration.getValue();
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode) {
-                    interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
-                    return false;
+                    return interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
                 }
             });
 
             proxyRegistration.register(new RequiredInvocationPlugin("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class) {
                 @Override
+                public boolean isDecorator() {
+                    return Options.StrictProxyAutoRegistration.getValue();
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode, ValueNode invocationHandlerNode) {
-                    interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
-                    return false;
+                    return interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
                 }
             });
         }
@@ -293,25 +445,38 @@ public class SubstrateGraphBuilderPlugins {
      * Try to intercept proxy interfaces passed in as literal constants, and register the interfaces
      * in the {@link DynamicProxyRegistry}.
      */
-    private static void interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
+    private static boolean interceptProxyInterfaces(GraphBuilderContext b, ResolvedJavaMethod targetMethod, SnippetReflectionProvider snippetReflection,
                     AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode interfacesNode) {
         Class<?>[] interfaces = extractClassArray(b, snippetReflection, annotationSubstitutions, interfacesNode);
         if (interfaces != null) {
-            /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
-            RuntimeProxyCreation.register(interfaces);
-            if (ImageSingletons.contains(FallbackFeature.class)) {
-                ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(b.getMethod(), b.bci());
+            var caller = b.getGraph().method();
+            var method = b.getMethod();
+            var bci = b.bci();
+            Runnable registerProxy = () -> {
+                /* The interfaces array can be empty. The java.lang.reflect.Proxy API allows it. */
+                RuntimeProxyCreation.register(interfaces);
+                if (ImageSingletons.contains(FallbackFeature.class)) {
+                    ImageSingletons.lookup(FallbackFeature.class).addAutoProxyInvoke(method, bci);
+                }
+                if (Options.DynamicProxyTracing.getValue()) {
+                    System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
+                                    " reached from " + caller.format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
+                }
+            };
+
+            if (Options.StrictProxyAutoRegistration.getValue()) {
+                b.add(new ReachabilityRegistrationNode(registerProxy));
+                return true;
             }
-            if (Options.DynamicProxyTracing.getValue()) {
-                System.out.println("Successfully determined constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
-                                " reached from " + b.getGraph().method().format("%H.%n(%p)") + ". " + "Registered proxy class for " + Arrays.toString(interfaces) + ".");
-            }
-        } else {
-            if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
-                System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
-                                " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
-            }
+
+            registerProxy.run();
+            return false;
         }
+        if (Options.DynamicProxyTracing.getValue() && !b.parsingIntrinsic()) {
+            System.out.println("Could not determine constant value for interfaces argument of call to " + targetMethod.format("%H.%n(%p)") +
+                            " reached from " + b.getGraph().method().format("%H.%n(%p)") + ".");
+        }
+        return false;
     }
 
     /**
@@ -718,11 +883,10 @@ public class SubstrateGraphBuilderPlugins {
             /* A NullPointerException will be thrown at run time for this call. */
             return false;
         }
-        if (isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 17 &&
-                        (RecordSupport.singleton().isRecord(targetField.getDeclaringClass()) || SubstrateUtil.isHiddenClass(targetField.getDeclaringClass()))) {
+        if (isSunMiscUnsafe && (targetField.getDeclaringClass().isRecord() || targetField.getDeclaringClass().isHidden())) {
             /*
-             * After JDK 11, sun.misc.Unsafe performs a few more checks than
-             * jdk.internal.misc.Unsafe to explicitly disallow hidden classes and records.
+             * sun.misc.Unsafe performs a few more checks than jdk.internal.misc.Unsafe to
+             * explicitly disallow hidden classes and records.
              */
             return false;
         }

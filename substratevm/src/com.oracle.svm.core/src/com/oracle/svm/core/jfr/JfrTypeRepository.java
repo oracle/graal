@@ -33,7 +33,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
@@ -150,7 +149,7 @@ public class JfrTypeRepository implements JfrRepository {
         writer.writeCompressedLong(getPackageId(typeInfo, clazz.getPackage()));
         writer.writeCompressedLong(clazz.getModifiers());
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            writer.writeBoolean(SubstrateUtil.isHiddenClass(clazz));
+            writer.writeBoolean(clazz.isHidden());
         }
     }
 

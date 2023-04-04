@@ -53,7 +53,7 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * The intrinsics are created upon encountering a listed function during method handle resolution.
  * (see
- * {@link Target_java_lang_invoke_MethodHandleNatives#resolve(Target_java_lang_invoke_MemberName, Class, boolean)}).
+ * {@link Util_java_lang_invoke_MethodHandleNatives#resolve(Target_java_lang_invoke_MemberName, Class, boolean)}).
  */
 final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
     enum Variant {

@@ -64,6 +64,7 @@ public class JfrBufferList extends BufferList {
             /* If the buffer is still alive, then mark it as removed from the list. */
             JfrBuffer buffer = BufferNodeAccess.getJfrBuffer(node);
             if (buffer.isNonNull()) {
+                assert JfrBufferAccess.isRetired(buffer);
                 buffer.setNode(WordFactory.nullPointer());
             }
 

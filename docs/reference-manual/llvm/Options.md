@@ -15,7 +15,7 @@ Here, `<bitcode file>` is a compiled program with embedded LLVM bitcode.
 The following options to `lli` are available:
 
 * `--llvm.managed`: enable a managed execution mode for LLVM IR code, which means memory
-allocations from LLVM bitcode are done on the managed heap. Learn more from [Limitations and Differences to Native Execution](NativeExecution.md). Note: Managed execution mode for LLVM bitcode is possible with GraalVM Enterprise only.
+allocations from LLVM bitcode are done on the managed heap. Learn more from [Limitations and Differences to Native Execution](NativeExecution.md). Note: The managed execution mode for LLVM bitcode is not available in GraalVM Community Edition.
 
 * `--print-toolchain-path`: print the path of the LLVM toolchain bundled with GraalVM.
 This directory contains compilers and tools that can be used to compile C/C++ programs

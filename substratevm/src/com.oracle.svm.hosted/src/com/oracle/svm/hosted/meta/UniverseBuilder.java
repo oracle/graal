@@ -901,6 +901,7 @@ public class UniverseBuilder {
                     assert vtable.get(slot) == null;
                     vtable.set(slot, resolvedMethod);
                 }
+                resolvedMethod.vtableIndex = slot;
             }
         }
 

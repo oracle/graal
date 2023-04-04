@@ -407,8 +407,8 @@ public class LockFreePrefixTree {
         }
     }
 
-    private Allocator allocator;
-    private Node root;
+    private final Allocator allocator;
+    private volatile Node root;
 
     /**
      * Create new {@link LockFreePrefixTree} with root being a Node with key 0.
@@ -433,6 +433,15 @@ public class LockFreePrefixTree {
      */
     public Node root() {
         return root;
+    }
+
+    /**
+     * Resets the tree.
+     *
+     * @since 23.0
+     */
+    public void reset() {
+        root = allocator.newNode(0);
     }
 
     /**

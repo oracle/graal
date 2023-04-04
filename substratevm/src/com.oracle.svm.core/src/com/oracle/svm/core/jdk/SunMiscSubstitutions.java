@@ -139,13 +139,6 @@ final class Target_jdk_internal_misc_Unsafe_Core {
         return PredefinedClassesSupport.loadClass(loader, name, b, off, len, protectionDomain);
     }
 
-    // JDK-8243287
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private Class<?> defineAnonymousClass(Class<?> hostClass, byte[] data, Object[] cpPatches) {
-        throw VMError.unsupportedFeature("Defining anonymous classes at runtime is not supported.");
-    }
-
     @Substitute
     private int getLoadAverage0(double[] loadavg, int nelems) {
         /* Adapted from `Unsafe_GetLoadAverage0` in `src/hotspot/share/prims/unsafe.cpp`. */
@@ -188,28 +181,11 @@ final class Target_jdk_internal_misc_Unsafe_Core {
     @Delete
     private native int arrayIndexScale0(Class<?> arrayClass);
 
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private native int addressSize0();
-
     @Substitute
     @SuppressWarnings("unused")
     private Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
         throw VMError.unsupportedFeature("Target_Unsafe_Core.defineClass0(String, byte[], int, int, ClassLoader, ProtectionDomain)");
     }
-
-    // JDK-8243287
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private native Class<?> defineAnonymousClass0(Class<?> hostClass, byte[] data, Object[] cpPatches);
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private native boolean unalignedAccess0();
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private native boolean isBigEndian0();
 }
 
 @TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "SharedSecrets")

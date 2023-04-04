@@ -38,6 +38,7 @@ import org.graalvm.compiler.truffle.compiler.phases.PhiTransformPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
+    @SuppressWarnings("this-escape")
     public PostPartialEvaluationSuite(boolean iterativePartialEscape) {
         CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
         appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizerPhase));

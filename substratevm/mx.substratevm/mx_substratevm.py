@@ -87,16 +87,6 @@ def graal_compiler_flags():
 
     return [adjusted_exports(line) for line in compiler_flags[str(version_tag)]]
 
-def svm_unittest_config_participant(config):
-    vmArgs, mainClass, mainClassArgs = config
-    # Run the VM in a mode where application/test classes can
-    # access JVMCI loaded classes.
-    vmArgs = graal_compiler_flags() + vmArgs
-    return (vmArgs, mainClass, mainClassArgs)
-
-if mx.primary_suite() == suite:
-    mx_unittest.add_config_participant(svm_unittest_config_participant)
-
 def classpath(args):
     if not args:
         return [] # safeguard against mx.classpath(None) behaviour
@@ -1078,6 +1068,18 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${java.home}/lib/polyglot/",
         "-H:CStandard=C11",
         "-H:+SpawnIsolates",
+        # Temporary solution for polyglot-native-api.jar on classpath, will be fixed by modularization, GR-45104.
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.c.function=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.handles=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.jvmstat=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.thread=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.util=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c.util=ALL-UNNAMED",
+        "--add-exports org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED",
     ],
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
@@ -1480,9 +1482,19 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
             else:
                 mx.abort('gen_fallbacks not supported on ' + sys.platform)
 
+            seen_gnu_property_type_5_warnings = False
+            def suppress_gnu_property_type_5_warnings(line):
+                nonlocal seen_gnu_property_type_5_warnings
+                if 'unsupported GNU_PROPERTY_TYPE (5)' not in line:
+                    mx.log_error(line.rstrip())
+                elif not seen_gnu_property_type_5_warnings:
+                    mx.log_error(line.rstrip())
+                    mx.log_error('(suppressing all further warnings about "unsupported GNU_PROPERTY_TYPE (5)")')
+                    seen_gnu_property_type_5_warnings = True
+
             for staticlib_path in self.staticlibs:
                 mx.logv('Collect from : ' + staticlib_path)
-                mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'))
+                mx.run(symbol_dump_command.split() + [staticlib_path], out=collect_symbols_fn('JVM_'), err=suppress_gnu_property_type_5_warnings)
 
             if len(symbols) == 0:
                 mx.abort('Could not find any unresolved JVM_* symbols in static JDK libraries')
@@ -1694,6 +1706,8 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
         # Currently JDK 20 and JDK 19 have the same flags
         graal_compiler_flags_map['20'] = graal_compiler_flags_map['19']
+        # Currently JDK 21 and JDK 20 have the same flags
+        graal_compiler_flags_map['21'] = graal_compiler_flags_map['20']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
         # Instead provide the correct requiresConcealed entries in the moduleInfo

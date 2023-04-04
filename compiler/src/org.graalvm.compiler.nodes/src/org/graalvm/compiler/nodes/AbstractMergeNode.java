@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
  * Denotes the merging of multiple control-flow paths.
  */
 @NodeInfo(allowedUsageTypes = Association, cycles = CYCLES_0, size = SIZE_0)
+@SuppressWarnings("this-escape")
 public abstract class AbstractMergeNode extends BeginStateSplitNode implements IterableNodeType, Simplifiable, LIRLowerable {
     public static final NodeClass<AbstractMergeNode> TYPE = NodeClass.create(AbstractMergeNode.class);
 

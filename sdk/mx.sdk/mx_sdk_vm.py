@@ -149,6 +149,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         :param list[str] | None extra_jvm_args
         :param str main_module: Specifies the main module. Mandatory if use_modules is not None
+        :param bool link_at_build_time
         :param list[str] | None option_vars
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
@@ -1055,6 +1056,27 @@ def parse_release_file(release_file_path):
 def format_release_file(release_dict, skip_quoting=None):
     skip_quoting = skip_quoting or set()
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
+
+
+def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
+    """
+    Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
+    :type jdk_home: str
+    :type ce_edition: list[str] | None
+    :type oracle_edition: list[str] | None
+    :rtype: list[str] | None
+    """
+    release_file_path = join(jdk_home, 'release')
+    release_dict = parse_release_file(release_file_path)
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        if implementor == 'Oracle Corporation':
+            return oracle_edition
+        else:
+            return ce_edition
+    else:
+        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
+        return ce_edition
 
 
 @mx.command(_suite, 'verify-graalvm-configs')

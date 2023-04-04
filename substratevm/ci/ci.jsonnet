@@ -1,9 +1,10 @@
 {
+  local gate_triggering_suites = ["sdk", "substratevm", "compiler", "truffle"],
+
   local common     = import "../../ci/ci_common/common.jsonnet",
   local util       = import "../../ci/ci_common/common-utils.libsonnet",
   local tools      = import "ci_common/tools.libsonnet",
   local sg         = import "ci_common/svm-gate.libsonnet",
-  local inc        = import "ci_common/include.libsonnet",
   local run_spec   = import "../../ci/ci_common/run-spec.libsonnet",
   local exclude    = run_spec.exclude,
 
@@ -42,8 +43,6 @@
       "pip:jsonschema": "==4.6.1",
     },
   }),
-
-  local musl_toolchain = task_spec(inc.musl_dependency),
 
   local mx_build_exploded = task_spec({
     environment+: {
@@ -129,6 +128,6 @@
   },
   // END MAIN BUILD DEFINITION
   processed_builds::run_spec.process(task_dict),
-  builds: [{'defined_in': std.thisFile} + util.add_gate_predicate(b, sg.gate_triggering_suites) for b in self.processed_builds.list],
+  builds: [{'defined_in': std.thisFile} + util.add_gate_predicate(b, gate_triggering_suites) for b in self.processed_builds.list],
   assert tools.check_names($.builds),
 }

@@ -197,7 +197,7 @@
         ]
     },
     {
-        "name": "llvm-toolchain-installable-java17",
+        "name": "llvm-toolchain-installable-ce-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
@@ -224,7 +224,7 @@
         ]
     },
     {
-        "name": "llvm-toolchain-installable-java20",
+        "name": "llvm-toolchain-installable-ce-java20",
         "core": false,
         "jdk": "jdk_20",
         "artifacts": [
@@ -335,7 +335,7 @@
         ]
     },
     {
-        "name": "r-installable-java17",
+        "name": "r-installable-ce-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
@@ -350,7 +350,7 @@
         ]
     },
     {
-        "name": "r-installable-java20",
+        "name": "r-installable-ce-java20",
         "core": false,
         "jdk": "jdk_20",
         "artifacts": [
@@ -657,7 +657,7 @@
         ]
     },
     {
-        "name": "icu4j-installable-java17",
+        "name": "icu4j-installable-ce-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
@@ -684,7 +684,7 @@
         ]
     },
     {
-        "name": "icu4j-installable-java20",
+        "name": "icu4j-installable-ce-java20",
         "core": false,
         "jdk": "jdk_20",
         "artifacts": [
@@ -711,7 +711,7 @@
         ]
     },
     {
-        "name": "regex-installable-java17",
+        "name": "regex-installable-ce-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
@@ -738,7 +738,7 @@
         ]
     },
     {
-        "name": "regex-installable-java20",
+        "name": "regex-installable-ce-java20",
         "core": false,
         "jdk": "jdk_20",
         "artifacts": [

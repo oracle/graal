@@ -54,6 +54,7 @@ public abstract class IdentityHashCodeSnippets implements Snippets {
 
         private final SnippetInfo identityHashCodeSnippet;
 
+        @SuppressWarnings("this-escape")
         public Templates(IdentityHashCodeSnippets receiver, OptionValues options, Providers providers, LocationIdentity locationIdentity) {
             super(options, providers);
 

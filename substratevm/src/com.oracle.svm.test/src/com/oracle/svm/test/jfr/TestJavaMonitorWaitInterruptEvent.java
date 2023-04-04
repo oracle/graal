@@ -26,7 +26,9 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -36,6 +38,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -51,38 +54,15 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrRecordingTest {
     private boolean interruptedFound;
     private boolean simpleWaitFound;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.JavaMonitorWait.getName()};
-    }
+    @Test
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
+        Recording recording = startRecording(events);
 
-    @Override
-    public void validateEvents(List<RecordedEvent> events) throws Throwable {
-        for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
-            if (!eventThread.equals(interrupterThread.getName()) &&
-                            !eventThread.equals(interruptedThread.getName()) &&
-                            !eventThread.equals(simpleNotifyThread.getName()) &&
-                            !eventThread.equals(simpleWaitThread.getName())) {
-                continue;
-            }
-            if (!event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
-                continue;
-            }
-            assertTrue("Event is wrong duration." + event.getDuration().toMillis(), event.getDuration().toMillis() >= MILLIS);
-            assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
+        testInterruption();
+        testWaitNotify();
 
-            if (eventThread.equals(interruptedThread.getName())) {
-                assertTrue("Notifier of interrupted thread should be null", notifThread == null);
-                interruptedFound = true;
-            } else if (eventThread.equals(simpleWaitThread.getName())) {
-                assertTrue("Notifier of simple wait is incorrect: " + notifThread + " " + simpleNotifyThread.getName(), notifThread.equals(simpleNotifyThread.getName()));
-                simpleWaitFound = true;
-            }
-        }
-        assertTrue("Couldn't find expected wait events. SimpleWaiter: " + simpleWaitFound + " interrupted: " + interruptedFound,
-                        simpleWaitFound && interruptedFound);
+        stopRecording(recording, this::validateEvents);
     }
 
     private void testInterruption() throws Exception {
@@ -136,10 +116,32 @@ public class TestJavaMonitorWaitInterruptEvent extends JfrRecordingTest {
         simpleNotifyThread.join();
     }
 
-    @Test
-    public void test() throws Exception {
-        testInterruption();
-        testWaitNotify();
+    private void validateEvents(List<RecordedEvent> events) {
+        for (RecordedEvent event : events) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
+            if (!eventThread.equals(interrupterThread.getName()) &&
+                            !eventThread.equals(interruptedThread.getName()) &&
+                            !eventThread.equals(simpleNotifyThread.getName()) &&
+                            !eventThread.equals(simpleWaitThread.getName())) {
+                continue;
+            }
+            if (!event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
+                continue;
+            }
+            assertTrue("Event is wrong duration." + event.getDuration().toMillis(), event.getDuration().toMillis() >= MILLIS);
+            assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
+
+            if (eventThread.equals(interruptedThread.getName())) {
+                assertNull("Notifier of interrupted thread should be null", notifThread);
+                interruptedFound = true;
+            } else if (eventThread.equals(simpleWaitThread.getName())) {
+                assertEquals("Notifier of simple wait is incorrect: " + notifThread + " " + simpleNotifyThread.getName(), notifThread, simpleNotifyThread.getName());
+                simpleWaitFound = true;
+            }
+        }
+        assertTrue("Couldn't find expected wait events. SimpleWaiter: " + simpleWaitFound + " interrupted: " + interruptedFound,
+                        simpleWaitFound && interruptedFound);
     }
 
     private class Helper {

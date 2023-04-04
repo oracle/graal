@@ -33,7 +33,7 @@ Follow these steps to install GraalVM Community Edition on the Linux operating s
 
 Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.
 
-For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/22/docs/getting-started/installation-linux/).
+For Oracle GraalVM users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/22/docs/getting-started/installation-linux/).
 
 ## Supported Functionalities
 
@@ -56,5 +56,3 @@ Language runtimes:
 
 To assist a user with installation, GraalVM includes **GraalVM Updater**, a command line utility to install and manage additional functionalities.
 Proceed to the [installation steps](../../reference-manual/graalvm-updater.md#component-installation) to add any necessary language runtime or utility from above to GraalVM.
-
-> Note: Runtimes for Python, R, and Ruby languages are not available for the GraalVM Enterprise Linux AArch64 distribution.

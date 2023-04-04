@@ -155,6 +155,7 @@ public class AMD64ConvertSnippets implements Snippets {
         private final SnippetInfo d2i;
         private final SnippetInfo d2l;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 

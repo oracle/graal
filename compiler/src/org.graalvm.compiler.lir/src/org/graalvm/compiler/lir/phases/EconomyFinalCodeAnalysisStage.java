@@ -29,6 +29,7 @@ import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisC
 
 public class EconomyFinalCodeAnalysisStage extends LIRPhaseSuite<FinalCodeAnalysisContext> {
 
+    @SuppressWarnings("this-escape")
     public EconomyFinalCodeAnalysisStage() {
         appendPhase(new LocationMarkerPhase());
     }

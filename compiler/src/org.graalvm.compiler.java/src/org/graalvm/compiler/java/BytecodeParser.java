@@ -920,7 +920,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected FixedWithNextNode lastInstr;                 // the last instruction added
     private boolean controlFlowSplit;
-    private final InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(this);
+    private final InvocationPluginReceiver invocationPluginReceiver;
 
     private FixedWithNextNode[] firstInstructionArray;
     private FrameStateBuilder[] entryStateArray;
@@ -931,9 +931,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     private final boolean uninitializedIsError;
     private final int traceLevel;
 
+    @SuppressWarnings("this-escape")
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
         super(graphBuilderInstance.providers);
+        invocationPluginReceiver = new InvocationPluginReceiver(this);
         this.bytecodeProvider = intrinsicContext == null ? new ResolvedJavaMethodBytecodeProvider() : intrinsicContext.getBytecodeProvider();
         this.code = bytecodeProvider.getBytecode(method);
         this.method = code.getMethod();
@@ -2148,7 +2150,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                  * doesn't return a value, it probably throws an exception.
                  */
                 int expectedStackSize = beforeStackSize + resultType.getSlotCount();
-                assert lastInstr == null || expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize,
+                assert lastInstr == null || plugin.isDecorator() || expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d",
+                                expectedStackSize,
                                 frameState.stackSize());
 
                 NodeIterable<Node> newNodes = graph.getNewNodes(mark);

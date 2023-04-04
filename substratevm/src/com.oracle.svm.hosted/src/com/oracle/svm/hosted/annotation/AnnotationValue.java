@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.AnnotationParser;
@@ -46,7 +48,7 @@ public final class AnnotationValue extends AnnotationMemberValue {
     final Map<String, AnnotationMemberValue> members;
 
     @SuppressWarnings("unchecked")
-    static AnnotationValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container, boolean exceptionOnMissingAnnotationClass, boolean skip) {
+    static AnnotationValue extract(SnippetReflectionProvider snippetReflection, ByteBuffer buf, ConstantPool cp, Class<?> container, boolean exceptionOnMissingAnnotationClass, boolean skip) {
         boolean skipMembers = skip;
         Object typeOrException = AnnotationMetadata.extractType(buf, cp, container, skip);
         if (typeOrException instanceof TypeNotPresentExceptionProxy) {
@@ -61,7 +63,7 @@ public final class AnnotationValue extends AnnotationMemberValue {
         Map<String, AnnotationMemberValue> memberValues = new LinkedHashMap<>();
         for (int i = 0; i < numMembers; i++) {
             String memberName = AnnotationMetadata.extractString(buf, cp, skipMembers);
-            AnnotationMemberValue memberValue = AnnotationMemberValue.extract(buf, cp, container, skipMembers);
+            AnnotationMemberValue memberValue = AnnotationMemberValue.extract(snippetReflection, buf, cp, container, skipMembers);
             if (!skipMembers) {
                 memberValues.put(memberName, memberValue);
             }

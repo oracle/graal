@@ -26,7 +26,10 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
@@ -38,6 +41,7 @@ import com.oracle.svm.test.jfr.events.StringEvent;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordingStream;
 
 import static org.junit.Assert.assertTrue;
 
@@ -54,34 +58,18 @@ public class TestJfrStreamingStress extends JfrStreamingTest {
     private static final int EXPECTED_TOTAL_EVENTS = EXPECTED_EVENTS_PER_TYPE * 4;
 
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
+    private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
     private final AtomicLong classEvents = new AtomicLong(0);
     private final AtomicLong integerEvents = new AtomicLong(0);
     private final AtomicLong stringEvents = new AtomicLong(0);
     private final AtomicLong waitEvents = new AtomicLong(0);
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class", JfrEvent.JavaMonitorWait.getName()};
-    }
-
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        int otherMonitorWaitEvents = 0;
-        for (RecordedEvent event : events) {
-            if (event.getEventType().getName().equals(JfrEvent.JavaMonitorWait.getName())) {
-                if (!event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
-                    otherMonitorWaitEvents++;
-                }
-            }
-        }
-
-        if (events.size() - otherMonitorWaitEvents != EXPECTED_TOTAL_EVENTS) {
-            throw new Exception("Not all expected events were found in the JFR file");
-        }
-    }
-
     @Test
-    public void test() throws Exception {
+
+    public void test() throws Throwable {
+        String[] events = new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class", JfrEvent.JavaMonitorWait.getName()};
+        RecordingStream stream = startStream(events);
+
         stream.onEvent("com.jfr.Class", event -> {
             assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
             classEvents.incrementAndGet();
@@ -126,5 +114,21 @@ public class TestJfrStreamingStress extends JfrStreamingTest {
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS_PER_TYPE);
         waitUntilTrue(() -> classEvents.get() == EXPECTED_EVENTS_PER_TYPE && integerEvents.get() == EXPECTED_EVENTS_PER_TYPE && stringEvents.get() == EXPECTED_EVENTS_PER_TYPE &&
                         waitEvents.get() == EXPECTED_EVENTS_PER_TYPE);
+
+        stopStream(stream, TestJfrStreamingStress::validateEvents);
+    }
+
+    private static void validateEvents(List<RecordedEvent> events) {
+        int otherMonitorWaitEvents = 0;
+        for (RecordedEvent event : events) {
+            if (event.getEventType().getName().equals(JfrEvent.JavaMonitorWait.getName())) {
+                if (!event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
+                    otherMonitorWaitEvents++;
+                }
+            }
+        }
+
+        int relevantEvents = events.size() - otherMonitorWaitEvents;
+        assertEquals(relevantEvents, EXPECTED_TOTAL_EVENTS);
     }
 }

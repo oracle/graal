@@ -339,8 +339,9 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+        FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
         ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions,
-                        plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason);
+                        plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason, fallbackFeature);
     }
 }
 

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.15.3",
+  "mxversion": "6.17.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -8,9 +8,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "urls" : [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-        ]
       },
     ],
   },
@@ -899,6 +896,7 @@ suite = {
           "ninja_install_targets" : ["install-cxxabi"],
           "results" : ["native"],
           "cmakeConfig" : {
+            "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
           },
         },
@@ -907,6 +905,7 @@ suite = {
           "ninja_install_targets" : ["install-cxxabi"],
           "results" : ["native"],
           "cmakeConfig" : {
+            "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
             "LIBCXX_HAS_MUSL_LIBC" : "YES",
           },
@@ -916,7 +915,7 @@ suite = {
           "ninja_install_targets" : ["install-cxxabi"],
           "results" : ["native"],
           "cmakeConfig" : {
-            "CMAKE_INSTALL_RPATH" : "\\$ORIGIN",
+            "CMAKE_INSTALL_RPATH" : "@loader_path/",
             "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
             "CMAKE_LIBTOOL" : "<path:LLVM_TOOLCHAIN>/bin/llvm-libtool-darwin",
           },

@@ -80,6 +80,7 @@
 
   test:: s.base(no_warning_as_error=true),
   test_zgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseZGC"),
+  test_serialgc:: s.base(no_warning_as_error=true, extra_vm_args="-XX:+UseSerialGC"),
 
 
   jacoco_gate_args:: ["--jacoco-omit-excluded", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
@@ -122,6 +123,17 @@
                   "-Dpolyglot.engine.BackgroundCompilation=false " +
                   "-Dtck.inlineVerifierInstrument=false " +
                   "-XX:+UseZGC",
+    extra_unittest_args="--very-verbose truffle") + {
+      environment+: {"TRACE_COMPILATION": "true"},
+      logs+: ["*/*_compilation.log"]
+    },
+
+  truffle_xcomp_serialgc:: s.base("build,unittest",
+    extra_vm_args="-Dpolyglot.engine.AllowExperimentalOptions=true " +
+                  "-Dpolyglot.engine.CompileImmediately=true " +
+                  "-Dpolyglot.engine.BackgroundCompilation=false " +
+                  "-Dtck.inlineVerifierInstrument=false " +
+                  "-XX:+UseSerialGC",
     extra_unittest_args="--very-verbose truffle") + {
       environment+: {"TRACE_COMPILATION": "true"},
       logs+: ["*/*_compilation.log"]
@@ -257,7 +269,15 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test-labsjdk-20Debug-linux-amd64": {}
+    "weekly-compiler-test-labsjdk-20Debug-linux-amd64": t("5:00:00"),
+
+    "weekly-compiler-test_serialgc-labsjdk-20-linux-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-20-linux-aarch64": t("1:50:00"),
+    "weekly-compiler-test_serialgc-labsjdk-20-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-20-darwin-aarch64": t("1:00:00"),
+
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-20-linux-amd64": t("1:30:00"),
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-20-linux-aarch64": t("1:30:00"),
   },
 
   # This map defines overrides and field extensions for monthly builds.
@@ -276,11 +296,12 @@
   # returns: an object with a single "build" field
   make_build(jdk, os_arch, task, suite="compiler", extra_tasks={},
              include_common_os_arch=true,
+             jdk_name="labsjdk",
              gates_manifest=gates,
              dailies_manifest=dailies,
              weeklies_manifest=weeklies,
              monthlies_manifest=monthlies):: {
-    local base_name = "%s-%s-labsjdk-%s-%s" % [suite, task, jdk, os_arch],
+    local base_name = "%s-%s-%s-%s-%s" % [suite, task, jdk_name, jdk, os_arch],
     local gate_name = "gate-" + base_name,
     local daily_name = "daily-" + base_name,
     local weekly_name = "weekly-" + base_name,
@@ -307,7 +328,7 @@
        else                   monthly_name
     } +
       (s + extra_tasks)[task] +
-      c["labsjdk%s" % jdk] +
+      c["%s%s" % [jdk_name, jdk]] +
       (if include_common_os_arch then c[std.strReplace(os_arch, "-", "_")] else {}) +
       (if is_daily then s.daily else {}) +
       (if is_weekly then s.weekly else {}) +
@@ -345,19 +366,21 @@
         true
   },
 
+  local all_os_arches = [
+    "linux-amd64",
+    "linux-aarch64",
+    "darwin-amd64",
+    "darwin-aarch64",
+    "windows-amd64"
+  ],
+
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [self.make_build(jdk, os_arch, task).build
     for jdk in [
       "17",
       "20"
     ]
-    for os_arch in [
-      "linux-amd64",
-      "linux-aarch64",
-      "darwin-amd64",
-      "darwin-aarch64",
-      "windows-amd64"
-    ]
+    for os_arch in all_os_arches
     for task in [
       "test",
       "truffle_xcomp",
@@ -393,6 +416,20 @@
       ]
     ],
 
+  # Run unittests with SerialGC.
+  local all_serialgc_builds = [self.make_build("20", os_arch, task).build
+    for os_arch in [
+      "linux-amd64",
+      "linux-aarch64",
+      "darwin-amd64",
+      "darwin-aarch64"
+    ]
+    for task in [
+      "test_serialgc",
+      "truffle_xcomp_serialgc",
+    ]
+  ],
+
   # Builds run on only on linux-amd64-jdk20
   local linux_amd64_jdk20_builds = [self.make_build("20", "linux-amd64", task).build
     for task in [
@@ -404,6 +441,14 @@
       "test_javabase",
       "test_jtt_phaseplan_fuzzing",
       "style"
+    ]
+  ],
+
+  # Builds run on only on jdk21
+  local jdk21_builds = [self.make_build("21", os_arch, task, jdk_name="oraclejdk").build
+    for os_arch in all_os_arches
+    for task in [
+      "test",
     ]
   ],
 
@@ -419,6 +464,8 @@
   local all_builds =
     all_platforms_builds +
     all_zgc_builds +
+    all_serialgc_builds +
+    jdk21_builds +
     linux_amd64_jdk20_builds +
     linux_amd64_jdk20Debug_builds,
 

@@ -53,8 +53,10 @@ public class GraalCompilerOptions {
                    "by CompilationFailureAction before changing to a less verbose action. " +
                    "This does not apply to the ExitVM action.", type = OptionType.User)
     public static final OptionKey<Integer> MaxCompilationProblemsPerAction = new OptionKey<>(2);
-    @Option(help = "Alias for CompilationFailureAction=ExitVM.", type = OptionType.User)
-    public static final OptionKey<Boolean> ExitVMOnException = new OptionKey<>(false);
+    @Option(help = "Compilation failure rate indicating a systemic compilation problem and causing the VM to exit. " +
+                   "The value is the percent of compilations that failed during a sliding time window. " +
+                   "Set to 0 to disable systemic compilation problem detection.", type = OptionType.User)
+    public static final OptionKey<Integer> ExitVMCompilationFailureRate = new OptionKey<>(1);
     @Option(help = "The number of seconds by which to slow down each compilation. The compilations slowed down " +
                    "can be restricted with MethodFilter. This option exists to test the compilation watchdog.", type = OptionType.Debug)
     public static final OptionKey<Integer> InjectedCompilationDelay = new OptionKey<>(0);

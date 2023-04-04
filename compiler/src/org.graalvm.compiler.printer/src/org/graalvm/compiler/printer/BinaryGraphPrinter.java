@@ -90,6 +90,7 @@ public class BinaryGraphPrinter implements
     private final SnippetReflectionProvider snippetReflection;
     private final GraphOutput<BinaryGraphPrinter.GraphInfo, ResolvedJavaMethod> output;
 
+    @SuppressWarnings("this-escape")
     public BinaryGraphPrinter(DebugContext ctx, SnippetReflectionProvider snippetReflection) throws IOException {
         // @formatter:off
         this.output = ctx.buildOutput(GraphOutput.newBuilder(this).

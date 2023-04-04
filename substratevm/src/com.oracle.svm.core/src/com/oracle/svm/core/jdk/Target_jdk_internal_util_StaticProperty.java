@@ -147,7 +147,7 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK20OrEarlier.class})
     public static Charset jnuCharset() {
         String jnuEncoding = SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding");
         return Target_java_nio_charset_Charset.forName(jnuEncoding, Charset.defaultCharset());

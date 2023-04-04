@@ -30,6 +30,7 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -42,7 +43,7 @@ import com.oracle.svm.hosted.util.CPUTypeAMD64;
 
 @AutomaticallyRegisteredFeature
 public class ProgressReporterFeature implements InternalFeature {
-    private final ProgressReporter reporter = ProgressReporter.singleton();
+    protected final ProgressReporter reporter = ProgressReporter.singleton();
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
@@ -50,6 +51,9 @@ public class ProgressReporterFeature implements InternalFeature {
     }
 
     protected void appendGraalSuffix(@SuppressWarnings("unused") DirectPrinter graalLine) {
+    }
+
+    public void createAdditionalArtifacts(@SuppressWarnings("unused") BuildArtifacts artifacts) {
     }
 
     protected List<UserRecommendation> getRecommendations() {

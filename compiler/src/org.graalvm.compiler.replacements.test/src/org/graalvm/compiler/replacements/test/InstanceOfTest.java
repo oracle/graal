@@ -49,6 +49,7 @@ import jdk.vm.ci.meta.JavaTypeProfile;
  */
 public class InstanceOfTest extends TypeCheckTest {
 
+    @SuppressWarnings("this-escape")
     public InstanceOfTest() {
         createSuites(getInitialOptions()).getHighTier().findPhase(AbstractInliningPhase.class).remove();
     }

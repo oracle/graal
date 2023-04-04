@@ -66,6 +66,7 @@ public class RegisterFinalizerSnippets implements Snippets {
 
         private final SnippetInfo registerFinalizerSnippet;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 

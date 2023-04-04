@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.java;
 
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -49,10 +50,24 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class LambdaUtils {
-    private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/\\.][^/]+;");
+
+    private static final Pattern LAMBDA_PATTERN;
     private static final char[] HEX = "0123456789abcdef".toCharArray();
-    public static final String LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda\\$";
-    public static final String LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda$";
+    public static final String LAMBDA_SPLIT_PATTERN;
+    public static final String LAMBDA_CLASS_NAME_SUBSTRING;
+
+    static {
+        if (Runtime.version().feature() < 21) {
+            LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/.][^/]+;");
+            LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda\\$";
+            LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda$";
+        } else {
+            // JDK-8292914
+            LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda[/.][^/]+;");
+            LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda";
+            LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda";
+        }
+    }
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
@@ -106,7 +121,7 @@ public final class LambdaUtils {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
-        List<ResolvedJavaMethod> invokedMethods = StreamSupport.stream(graph.getInvokes().spliterator(), false).map((inv) -> inv.getTargetMethod()).collect(Collectors.toList());
+        List<ResolvedJavaMethod> invokedMethods = StreamSupport.stream(graph.getInvokes().spliterator(), false).map(Invoke::getTargetMethod).collect(Collectors.toList());
         if (invokedMethods.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("Lambda without a target invoke: ").append(lambdaType.toClassName());
@@ -120,18 +135,20 @@ public final class LambdaUtils {
 
     public static boolean isLambdaType(ResolvedJavaType type) {
         String typeName = type.getName();
-        return type.isFinalFlagSet() && typeName.contains(LAMBDA_CLASS_NAME_SUBSTRING) && lambdaMatcher(type.getName()).find();
+        return type.isFinalFlagSet() && isLambdaName(typeName);
+    }
+
+    public static boolean isLambdaName(String name) {
+        return name.contains(LAMBDA_CLASS_NAME_SUBSTRING) && lambdaMatcher(name).find();
     }
 
     private static String createStableLambdaName(ResolvedJavaType lambdaType, List<ResolvedJavaMethod> targetMethods) {
         final String lambdaName = lambdaType.getName();
-        assert lambdaMatcher(lambdaName).find() : "Stable name should be created only for lambda types: " + lambdaName;
+        assert lambdaMatcher(lambdaName).find() : "Stable name should be created for lambda types: " + lambdaName;
 
         Matcher m = lambdaMatcher(lambdaName);
         StringBuilder sb = new StringBuilder();
-        targetMethods.forEach((targetMethod) -> {
-            sb.append(targetMethod.format("%H.%n(%P)%R"));
-        });
+        targetMethods.forEach((targetMethod) -> sb.append(targetMethod.format("%H.%n(%P)%R")));
         return m.replaceFirst(Matcher.quoteReplacement("$$Lambda$" + digest(sb.toString()) + ";"));
     }
 
@@ -151,9 +168,9 @@ public final class LambdaUtils {
     public static String digest(String value) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-1");
-            md.update(value.getBytes("UTF-8"));
+            md.update(value.getBytes(StandardCharsets.UTF_8));
             return toHex(md.digest());
-        } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
+        } catch (NoSuchAlgorithmException ex) {
             throw new JVMCIError(ex);
         }
     }

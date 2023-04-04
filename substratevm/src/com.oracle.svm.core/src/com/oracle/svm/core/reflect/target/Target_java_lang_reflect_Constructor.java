@@ -71,7 +71,7 @@ public final class Target_java_lang_reflect_Constructor {
     @Substitute
     Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
         if (constructorAccessor == null) {
-            throw MissingReflectionRegistrationUtils.forQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
+            MissingReflectionRegistrationUtils.forQueriedOnlyExecutable(SubstrateUtil.cast(this, Executable.class));
         }
         return constructorAccessor;
     }

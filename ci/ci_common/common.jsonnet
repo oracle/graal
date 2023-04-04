@@ -6,7 +6,7 @@ local repo_config = import '../repo-configuration.libsonnet';
 common + common.frequencies + {
   build_base:: {
     // holds location of CI resources that can easily be overwritten in an overlay
-    ci_resources:: (import "ci/ci_common/ci-resources.libsonnet"),
+    ci_resources:: (import "ci-resources.libsonnet"),
   },
 
   # Add a guard to `build` that prevents it from running in the gate
@@ -83,6 +83,6 @@ common + common.frequencies + {
   windows_amd64: common.windows_amd64 + graal_common_extras,
   windows_server_2016_amd64: common.windows_server_2016_amd64 + graal_common_extras,
 
-  // Other
+  // See GR-31169 for description of the mach5 target
   mach5_target:: {targets+: ["mach5"]},
 }

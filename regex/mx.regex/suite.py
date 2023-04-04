@@ -39,11 +39,11 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.15.3",
+  "mxversion": "6.17.0",
 
   "name" : "regex",
 
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -64,9 +64,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir": True,
-        "urls" : [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-         ]
       },
     ]
   },

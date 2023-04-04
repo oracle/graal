@@ -62,8 +62,6 @@ public class PhiResolveLowerer {
         return moveResolver.scheduleMoves();
     }
 
-    private static int TEMP;
-
     public void lower(CodeGenTool codeGenTool) {
         MoveResolver<ValueNode, ValuePhiNode>.Schedule schedule = scheduleMoves(codeGenTool);
 
@@ -75,7 +73,7 @@ public class PhiResolveLowerer {
 
                 if (tmpName == null) {
                     // This is the first move into the temp variable, declare it first.
-                    tmpName = "TEMP_" + TEMP++;
+                    tmpName = "TEMP_" + codeGenTool.genUniqueID();
                     codeGenTool.genResolvedVarDeclPrefix(tmpName);
                 } else {
                     codeGenTool.genResolvedVarAssignmentPrefix(tmpName);

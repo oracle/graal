@@ -80,14 +80,12 @@ public final class VMErrorReporter {
     private static void reportGraalVMSetup(PrintWriter pw) {
         pw.println("## GraalVM Setup");
         pw.println();
-        boolean isImageSingletonsInstalled = ImageSingletonsSupport.isInstalled();
-        String version = isImageSingletonsInstalled && ImageSingletons.contains(VM.class) ? ImageSingletons.lookup(VM.class).version : new VM().version;
-        String javaVersion = System.getProperty("java.runtime.version");
         pw.println("| Name | Value |");
         pw.println("| ---- | ----- |");
-        pw.printf("| GraalVM version | `%s` |%n", version);
-        pw.printf("| Java version | `%s` |%n", javaVersion);
-        if (isImageSingletonsInstalled && ImageSingletons.contains(CCompilerInvoker.class)) {
+        VM vm = VM.getErrorReportingInstance();
+        pw.printf("| Java version and vendor | `%s` (%s) |%n", vm.version, vm.vendor);
+        pw.printf("| Runtime version | `%s` |%n", System.getProperty("java.runtime.version"));
+        if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(CCompilerInvoker.class)) {
             pw.printf("| C compiler | `%s` |%n", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription());
         }
 

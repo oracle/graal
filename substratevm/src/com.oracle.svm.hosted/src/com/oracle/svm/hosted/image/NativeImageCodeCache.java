@@ -48,6 +48,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -141,6 +142,7 @@ public abstract class NativeImageCodeCache {
         orderedCompilations.clear();
     }
 
+    @SuppressWarnings("this-escape")//
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
         this.compilations = compilations;
         this.imageHeap = imageHeap;
@@ -409,13 +411,17 @@ public abstract class NativeImageCodeCache {
     protected HostedImageCodeInfo installCodeInfo(CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder, ReflectionMetadataEncoder reflectionMetadataEncoder) {
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
         codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
-        reflectionMetadataEncoder.encodeAllAndInstall();
+        reflectionMetadataEncoder.encodeAllAndInstall(getSnippetReflection());
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
         imageCodeInfo.setDataOffset(codeSize);
         imageCodeInfo.setDataSize(WordFactory.zero()); // (only for data immediately after code)
         imageCodeInfo.setCodeAndDataMemorySize(codeSize);
         return imageCodeInfo;
+    }
+
+    protected SnippetReflectionProvider getSnippetReflection() {
+        return imageHeap.getUniverse().getSnippetReflection();
     }
 
     protected void encodeMethod(CodeInfoEncoder codeInfoEncoder, Pair<HostedMethod, CompilationResult> pair) {
@@ -692,7 +698,7 @@ public abstract class NativeImageCodeCache {
 
         void addNegativeConstructorQueryMetadata(HostedType declaringClass, HostedType[] parameterTypes);
 
-        void encodeAllAndInstall();
+        void encodeAllAndInstall(SnippetReflectionProvider snippetReflection);
 
         Method getRoot = ReflectionUtil.lookupMethod(AccessibleObject.class, "getRoot");
 

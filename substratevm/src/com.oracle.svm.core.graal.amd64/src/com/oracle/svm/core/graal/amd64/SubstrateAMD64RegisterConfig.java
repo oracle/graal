@@ -109,6 +109,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     private static final RegisterArray MASK_REGISTERS = new RegisterArray(k1, k2, k3, k4, k5, k6, k7);
 
+    @SuppressWarnings("this-escape")
     public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
@@ -334,5 +335,9 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         }
 
         return new RegisterArray(list);
+    }
+
+    public RegisterArray getJavaGeneralParameterRegs() {
+        return javaGeneralParameterRegs;
     }
 }

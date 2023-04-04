@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,24 +44,24 @@ package org.graalvm.wasm.test.suites.bytecode;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.SegmentMode;
-import org.graalvm.wasm.parser.bytecode.BytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.function.Consumer;
 
 /**
- * Tests the correctness of the bytecode produced by the {@link BytecodeGen}.
+ * Tests the correctness of the bytecode produced by the {@link RuntimeBytecodeGen}.
  */
 public class BytecodeSuite {
-    private static void test(Consumer<BytecodeGen> b, byte[] expected) {
-        BytecodeGen bytecodeGen = new BytecodeGen();
+    private static void test(Consumer<RuntimeBytecodeGen> b, byte[] expected) {
+        RuntimeBytecodeGen bytecodeGen = new RuntimeBytecodeGen();
         b.accept(bytecodeGen);
         Assert.assertArrayEquals(expected, bytecodeGen.toArray());
     }
 
-    private static void testAssertion(Consumer<BytecodeGen> b, String errorMessage) {
-        BytecodeGen bytecodeGen = new BytecodeGen();
+    private static void testAssertion(Consumer<RuntimeBytecodeGen> b, String errorMessage) {
+        RuntimeBytecodeGen bytecodeGen = new RuntimeBytecodeGen();
         try {
             b.accept(bytecodeGen);
             Assert.fail("Should have thrown assertion error");
@@ -766,7 +766,7 @@ public class BytecodeSuite {
 
     @Test
     public void testElemNull() {
-        test(BytecodeGen::addElemNull, new byte[]{0x10});
+        test(RuntimeBytecodeGen::addElemNull, new byte[]{0x10});
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,6 +110,7 @@ public class LogStream {
      *
      * @param sink the {@link Consumer} to which prints are sent
      */
+    @SuppressWarnings("this-escape")
     public LogStream(Consumer<? super String> sink) {
         this.consumer = new ForwardingConsumer(this, sink);
         lineBuffer = new StringBuilder(100);
@@ -501,6 +502,7 @@ public class LogStream {
         private final Consumer<? super String> delegate;
         private final AtomicReference<PrintStream> printStreamRef;
 
+        @SuppressWarnings("this-escape")
         ForwardingConsumer(LogStream owner, Consumer<? super String> delegate) {
             this.owner = Objects.requireNonNull(owner, "Owner must be non null.");
             this.delegate = Objects.requireNonNull(delegate, "Delegate must be non null.");
@@ -652,12 +654,12 @@ public class LogStream {
 
             @Override
             public void write(byte[] buf, int off, int len) {
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException(); // ExcludeFromJacocoGeneratedReport
             }
 
             @Override
             public void write(int b) {
-                throw new UnsupportedOperationException();
+                throw new UnsupportedOperationException(); // ExcludeFromJacocoGeneratedReport
             }
 
             @Override

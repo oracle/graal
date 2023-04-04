@@ -108,7 +108,6 @@ public class JfrMethodRepository implements JfrRepository {
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public int write(JfrChunkWriter writer, boolean flushpoint) {
-        int result = EMPTY;
         mutex.lockNoTransition();
         try {
             JfrMethodEpochData epochData = getEpochData(!flushpoint);
@@ -117,10 +116,10 @@ public class JfrMethodRepository implements JfrRepository {
                 writer.writeCompressedLong(JfrType.Method.getId());
                 writer.writeCompressedInt(count);
                 writer.write(epochData.buffer);
-                result = NON_EMPTY;
+
             }
             epochData.clear(flushpoint);
-            return result;
+            return count == 0 ? EMPTY : NON_EMPTY;
         } finally {
             mutex.unlock();
         }

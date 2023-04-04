@@ -68,7 +68,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -762,37 +761,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     throw PolyglotEngineException.illegalArgument("Image build-time option '" + key + "' cannot be set at runtime");
             }
             throw OptionValuesImpl.failNotFound(getAllOptions(), key);
-        }
-    }
-
-    static Map<String, String> readOptionsFromSystemProperties(Map<String, String> options) {
-        Properties properties = System.getProperties();
-        Map<String, String> newOptions = null;
-        synchronized (properties) {
-            for (Object systemKey : properties.keySet()) {
-                if (PolyglotImpl.PROP_ALLOW_EXPERIMENTAL_OPTIONS.equals(systemKey)) {
-                    continue;
-                }
-                String key = (String) systemKey;
-                if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
-                    final String optionKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length());
-                    // Image build time options are not set in runtime options
-                    if (!optionKey.startsWith(OPTION_GROUP_IMAGE_BUILD_TIME)) {
-                        // system properties cannot override existing options
-                        if (!options.containsKey(optionKey)) {
-                            if (newOptions == null) {
-                                newOptions = new HashMap<>(options);
-                            }
-                            newOptions.put(optionKey, System.getProperty(key));
-                        }
-                    }
-                }
-            }
-        }
-        if (newOptions == null) {
-            return options;
-        } else {
-            return newOptions;
         }
     }
 

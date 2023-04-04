@@ -299,11 +299,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         if (SubstrateJVM.getThreadRepo().hasUnflushedData()) {
             writeCheckpointEvent(JfrCheckpointType.Threads, threadCheckpointRepos, false, flushpoint);
         } else if (!flushpoint) {
-            /*
-             * After an epoch change, the previous epoch data must be completely clear. It's safe to
-             * clear the previous epoch data without holding the JfrThreadRepository mutex, because
-             * this is at a chunk rotation and the JfrChunkWriter lock is held.
-             */
+            /* After an epoch change, the previous epoch data must be completely clear. */
             SubstrateJVM.getThreadRepo().clearPreviousEpoch();
         }
     }
@@ -594,6 +590,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isLockedByCurrentThread() {
         return lock.isOwner();

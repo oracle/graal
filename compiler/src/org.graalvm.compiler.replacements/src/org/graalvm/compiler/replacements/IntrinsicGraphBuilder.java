@@ -111,6 +111,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         this(options, debug, providers, code, invokeBci, allowAssumptions, null);
     }
 
+    @SuppressWarnings("this-escape")
     protected IntrinsicGraphBuilder(OptionValues options,
                     DebugContext debug,
                     CoreProviders providers,

@@ -471,6 +471,11 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static boolean useHeavyMonitors(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.useHeavyMonitors;
+    }
+
+    @Fold
     public static int unlockedMask(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.unlockedMask;
     }
@@ -857,24 +862,47 @@ public class HotSpotReplacementsUtil {
         return config.arrayKlassOffset;
     }
 
+    /**
+     * HotSpot oop handle memory locations.
+     */
+    public static class OopHandleLocationIdentity extends NamedLocationIdentity {
+        public OopHandleLocationIdentity(String name, boolean immutable) {
+            super(name, immutable);
+        }
+
+        /**
+         * @see NamedLocationIdentity#immutable(String)
+         */
+        public static NamedLocationIdentity immutable(String name) {
+            return new OopHandleLocationIdentity(name, true);
+        }
+
+        /**
+         * @see NamedLocationIdentity#mutable(String)
+         */
+        public static NamedLocationIdentity mutable(String name) {
+            return new OopHandleLocationIdentity(name, false);
+        }
+    }
+
     public static final LocationIdentity CLASS_MIRROR_LOCATION = NamedLocationIdentity.immutable("Klass::_java_mirror");
 
     /**
      * This represents the contents of OopHandles used for some internal fields.
      */
-    public static final LocationIdentity HOTSPOT_OOP_HANDLE_LOCATION = NamedLocationIdentity.immutable("OopHandle contents");
+    public static final LocationIdentity HOTSPOT_OOP_HANDLE_LOCATION = OopHandleLocationIdentity.immutable("OopHandle contents");
 
     /**
      * This represents the contents of the OopHandle used to store the current thread. Virtual
      * thread support makes this mutable.
      */
     public static final LocationIdentity HOTSPOT_CURRENT_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
-                    : NamedLocationIdentity.mutable("_vthread OopHandle contents");
+                    : OopHandleLocationIdentity.mutable("_vthread OopHandle contents");
 
     public static final LocationIdentity HOTSPOT_CARRIER_THREAD_OOP_HANDLE_LOCATION = JavaVersionUtil.JAVA_SPEC < 19 ? HOTSPOT_OOP_HANDLE_LOCATION
-                    : NamedLocationIdentity.mutable("_threadObj OopHandle contents");
+                    : OopHandleLocationIdentity.mutable("_threadObj OopHandle contents");
 
-    public static final LocationIdentity HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION = NamedLocationIdentity.mutable("_scopedValueCache OopHandle contents");
+    public static final LocationIdentity HOTSPOT_JAVA_THREAD_SCOPED_VALUE_CACHE_HANDLE_LOCATION = OopHandleLocationIdentity.mutable("_scopedValueCache OopHandle contents");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {

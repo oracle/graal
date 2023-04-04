@@ -78,13 +78,13 @@ Once you confirm, you are taken to the selection list:
 
 ![Select Components to Install](images/install_components_action.png)
 
-### Download and Install GraalVM Enterprise
+### Download and Install Oracle GraalVM
 
-Installing GraalVM Enterprise requires a user to provide a valid email address and accept the [Oracle Technology Network License Agreement GraalVM Enterprise Edition Including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
+Installing Oracle GraalVM requires a user to provide a valid email address and accept the [Oracle Technology Network License Agreement GraalVM Enterprise Edition Including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
-Follow these steps to download and install GraalVM Enterprise:
+Follow these steps to download and install Oracle GraalVM:
 
-1. Pick the GraalVM distribution: **Enterprise (free for evaluation and development)**.
+1. Pick the GraalVM distribution: **Oracle GraalVM (free for evaluation and development)**.
 2. Pick the GraalVM version: one of the latest major stable releases.
 3. Pick one of the available Java versions.
 4. Select the destination folder.
@@ -104,7 +104,7 @@ Follow these steps to download and install GraalVM Enterprise:
 
     ![Download Token generated](images/download_token_generated.png)
 
-    The download and installation of GraalVM Enterprise starts.
+    The download and installation of Oracle GraalVM starts.
     The installation wizard downloads a package from Oracle's storage point.
 
     If you clicked **Continue Download** without accepting the license, you would see the following warning:
@@ -119,7 +119,7 @@ Since you already have a download token and accepted the license, components wil
 #### Show Current Download Configuration
 
 There is a quick action to determine the location of an existing download token (default location, system property, user-defined file), and to copy it into the clipboard. 
-Once copied you can re-use the download token, for example, (1) to install GraalVM Enterprise or its component on another computer; (2) to integrate into CI/CD build pipelines, etc.
+Once copied you can re-use the download token, for example, (1) to install Oracle GraalVM or its component on another computer; (2) to integrate into CI/CD build pipelines, etc.
 
 1. Go to **View**, then **Command Palette** and search for **GraalVM: Show GU Configuration**:
 
@@ -228,7 +228,7 @@ For more documentation, go to:
 * [Gradle plugin](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html)
 * [Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html)
 
-If you use the Micronaut framework to create your Java project, you can build a native executable of a Micronaut application using VS Code quick actions. Go [here](../micronaut/README.md#generate-native-images-of-micronaut-projects) to learn how.
+If you use the Micronaut framework to create your Java project, you can build a native executable of a Micronaut application using VS Code quick actions. Go [here](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) to learn how.
 
 ### Building Native Images on Windows
 

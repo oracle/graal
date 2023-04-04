@@ -498,6 +498,9 @@ public class SubstrateOptions {
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial, if it does not have any invokes.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
 
+    @Option(help = "The maximum number of nodes in a graph allowed after trivial inlining.")//
+    public static final HostedOptionKey<Integer> MaxNodesAfterTrivialInlining = new HostedOptionKey<>(40000);
+
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
 
@@ -816,14 +819,18 @@ public class SubstrateOptions {
     public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning", Immutable);
 
     public static String reportsPath() {
-        return Paths.get(Paths.get(Path.getValue()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();
+        Path reportsPath = ImageSingletons.lookup(ReportingSupport.class).reportsPath;
+        if (reportsPath.isAbsolute()) {
+            return reportsPath.toString();
+        }
+        return Paths.get(Path.getValue()).resolve(reportsPath).toString();
     }
 
     public static class ReportingSupport {
-        String reportsPath;
+        Path reportsPath;
 
         public ReportingSupport(Path reportingPath) {
-            this.reportsPath = reportingPath.toString();
+            this.reportsPath = reportingPath;
         }
     }
 
@@ -859,6 +866,9 @@ public class SubstrateOptions {
             SubstrateDiagnostics.updateInitialInvocationCounts(newValue);
         }
     };
+
+    @Option(help = "Specifies the number of entries that diagnostic buffers have.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Integer> DiagnosticBufferSize = new HostedOptionKey<>(30);
 
     @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//

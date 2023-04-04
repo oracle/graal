@@ -50,6 +50,7 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
     private final boolean strengthenGraalGraphs;
     private final CustomTypeFieldHandler unknownFieldHandler;
 
+    @SuppressWarnings("this-escape")
     public NativeImageReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe,
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
