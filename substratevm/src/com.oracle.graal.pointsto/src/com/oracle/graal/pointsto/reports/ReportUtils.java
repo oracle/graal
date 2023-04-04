@@ -35,11 +35,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
