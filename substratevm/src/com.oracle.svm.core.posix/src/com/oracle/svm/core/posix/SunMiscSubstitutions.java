@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
@@ -111,10 +112,21 @@ final class Util_jdk_internal_misc_Signal {
     private static final long sunMiscSignalErrorHandler = -1;
 
     /**
-     * Register a Java signal handler with the the C signal handling mechanism.
+     * Returns whether the currently installed signal handler matched the passed dispatcher.
      *
-     * This implementation does not complain (by returning -1) about registering signal handlers for
-     * signals that the VM itself uses.
+     * Note this method can race with signal installation unless proper locking is used.
+     */
+    static boolean isCurrentDispatcher(int sig, SignalDispatcher dispatcher) {
+        Signal.sigaction handler = UnsafeStackValue.get(Signal.sigaction.class);
+        Signal.sigaction(sig, WordFactory.nullPointer(), handler);
+        return handler.sa_handler() == dispatcher;
+    }
+
+    /**
+     * Register a Java signal handler with the C signal handling mechanism.
+     *
+     * This code is only called from the substitute Target_jdk_internal_misc_Signal#handle0, which
+     * is called from within a static synchronized call to ensure race-free execution.
      */
     static long handle0(int sig, long nativeH) {
         if (!SubstrateOptions.EnableSignalHandling.getValue()) {
@@ -126,6 +138,24 @@ final class Util_jdk_internal_misc_Signal {
         if ((newDispatcher == CSunMiscSignal.countingHandlerFunctionPointer()) && (CSunMiscSignal.signalRangeCheck(sig) != 1)) {
             return sunMiscSignalErrorHandler;
         }
+
+        /*
+         * If the segfault handler is registered, then the user cannot override this handler within
+         * Java code.
+         */
+        if (SubstrateSegfaultHandler.isInstalled() && (sig == Signal.SignalEnum.SIGSEGV.getCValue() || sig == Signal.SignalEnum.SIGBUS.getCValue())) {
+            return sunMiscSignalErrorHandler;
+        }
+
+        /*
+         * If the following signals are ignored, then a handler should not be registered for them.
+         */
+        if (sig == Signal.SignalEnum.SIGHUP.getCValue() || sig == Signal.SignalEnum.SIGINT.getCValue() || sig == Signal.SignalEnum.SIGTERM.getCValue()) {
+            if (isCurrentDispatcher(sig, Signal.SIG_IGN())) {
+                return sunMiscSignalIgnoreHandler;
+            }
+        }
+
         updateDispatcher(sig, newDispatcher);
         final Signal.SignalDispatcher oldDispatcher = PosixUtils.installSignalHandler(sig, newDispatcher);
         CIntPointer sigset = UnsafeStackValue.get(CIntPointer.class);
@@ -409,8 +439,17 @@ final class IgnoreSIGPIPEStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
         if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
-            final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), NOOP_SIGNAL_HANDLER.getFunctionPointer());
-            VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+            synchronized (Target_jdk_internal_misc_Signal.class) {
+                int signum = Signal.SignalEnum.SIGPIPE.getCValue();
+                if (Util_jdk_internal_misc_Signal.isCurrentDispatcher(signum, Signal.SIG_DFL())) {
+                    /*
+                     * Replace with NOOP signal handler if a custom one has not already been
+                     * installed.
+                     */
+                    final SignalDispatcher signalResult = PosixUtils.installSignalHandler(signum, NOOP_SIGNAL_HANDLER.getFunctionPointer());
+                    VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+                }
+            }
         }
     }
 }
