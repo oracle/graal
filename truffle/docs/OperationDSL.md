@@ -498,7 +498,7 @@ Some custom operations require returning multiple values, or just want to be abl
 
 One common pattern of language operations is the short-circuiting operations. These include logical short-circuiting operations (e.g. `&&` and `||` in Java, but also null-coalescing operators in some languages, etc.).
 
-Regular custom operations in Operation DSL cannot influence the execution of their children, since they are always eagerly executed. For this reason Operation DSL allows creation of short-circuiting custom operations. The short-circuiting custom operation is defined using a "boolean converter" operation and a "contiue when" value.
+Regular custom operations in Operation DSL cannot influence the execution of their children, since they are always eagerly executed. For this reason Operation DSL allows creation of short-circuiting custom operations. The short-circuiting custom operation is defined using a "boolean converter" operation and a "continue when" value.
 
 The boolean converter operation is another operation (which may or may not be its own operation as well) that converts a language value into a `boolean` result. In addition to all the requirements outlined above for operations, it must also satisfy the following constraints:
 

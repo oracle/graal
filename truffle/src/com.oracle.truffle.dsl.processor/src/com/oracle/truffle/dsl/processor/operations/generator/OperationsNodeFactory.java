@@ -804,10 +804,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case CUSTOM:
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
-                    // TODO: shouldn't we check whether the uncached class is needed? Do we even
-                    // generate one if it's not?
+                    assert instr.needsUncachedData() : "Short circuit operations should always have branch targets.";
                     String dataClassName = model.generateUncached ? uncachedDataClassName(instr) : cachedDataClassName(instr);
-                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "((" + dataClassName + " ) data).op_branchTarget_.value");
+                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "((" + dataClassName + " ) data).op_branchTarget_");
                     break;
             }
 
@@ -1968,7 +1967,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case CUSTOM_SHORT_CIRCUIT:
                     b.startNewArray(arrayOf(context.getType(Object.class)), null);
                     if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                        b.string("new IntRef()");
+                        b.string("new int[0] /* branch fix-up indices */");
                     }
 
                     for (int i = 0; i < operation.operationArguments.length; i++) {
@@ -2155,7 +2154,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
                     }
-                    b.statement("((IntRef) ((Object[]) operationData[operationSp])[0]).value = bci");
+                    // Go through the work list and fill in the branch target for each branch.
+                    String dataClassName = model.generateUncached ? uncachedDataClassName(operation.instruction) : cachedDataClassName(operation.instruction);
+                    b.startFor().string("int site : (int[]) ((Object[]) operationData[operationSp])[0]").end().startBlock();
+                    b.statement(dataClassName + " node = (" + dataClassName + ") objs[site]");
+                    b.statement("node.op_branchTarget_ = bci");
+                    b.end();
                     break;
                 case SOURCE_SECTION:
                     b.statement("sourceLocationSp -= 2");
@@ -2380,23 +2384,24 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.statement("doEmitVariadic(operationChildCount[operationSp] - " + (instruction.signature.valueCount - 1) + ")");
             }
 
-            if (model.generateUncached) {
-                if (!instruction.needsUncachedData()) {
-                    b.statement("Object argument = EPSILON");
-                    return;
-                }
-
-                b.statement(uncachedDataClassName(instruction) + " argument = new " + uncachedDataClassName(instruction) + "()");
-
-            } else {
-                b.statement(cachedDataClassName(instruction) + " argument = new " + cachedDataClassName(instruction) + "()");
+            if (model.generateUncached && !instruction.needsUncachedData()) {
+                b.statement("Object argument = EPSILON");
+                return;
             }
 
-            boolean inEmit = operation.numChildren == 0;
+            String dataClassName = model.generateUncached ? uncachedDataClassName(instruction) : cachedDataClassName(instruction);
+            b.statement(dataClassName + " argument = new " + dataClassName + "()");
 
+            boolean inEmit = operation.numChildren == 0;
             int argBase;
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                b.statement("argument.op_branchTarget_ = (IntRef) ((Object[]) data)[0]");
+                // Mark the branch target as uninitialized. Add this location to a work list to
+                // be processed once the branch target is known.
+                b.statement("argument.op_branchTarget_ = " + UNINIT);
+                b.statement("int[] sites = (int[]) ((Object[]) data)[0]");
+                b.statement("sites = Arrays.copyOf(sites, sites.length + 1)");
+                b.statement("sites[sites.length-1] = bci");
+                b.statement("((Object[]) data)[0] = sites");
                 argBase = 1;
             } else {
                 argBase = 0;
@@ -3381,7 +3386,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         } else {
                             b.string("(" + cachedDataClassName(instr) + ")");
                         }
-                        b.string(" curObj).op_branchTarget_.value");
+                        b.string(" curObj).op_branchTarget_");
                         b.end();
                         b.statement("continue loop");
                         b.end().startElseBlock();
