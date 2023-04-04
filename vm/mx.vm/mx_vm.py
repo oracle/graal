@@ -174,11 +174,11 @@ ce_python_components = llvm_components + ['bgu', 'sllvmvm', 'bpolybench', 'bpoly
 ce_fastr_components = ce_components + llvm_components + ['sllvmvm', 'llp', 'bnative-image', 'snative-image-agent', 'R', 'bRMain', 'bnative-image-configure', 'llrc', 'snative-image-diagnostics-agent', 'llrn', 'llrl']
 ce_no_native_components = ['bgu', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'jss', 'lsp', 'nfi-libffi', 'nfi', 'polynative', 'pro', 'sdk', 'spolyglot', 'tfl', 'tflm', 'libpoly', 'poly']
 
-mx_sdk_vm.register_vm_config('ce', ce_components + llvm_components, _suite, env_file='ce-win')
-mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-aarch64')
-mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin')
-mx_sdk_vm.register_vm_config('ce', ce_components, _suite, env_file='ce-darwin-aarch64')
-mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
+mx_sdk_vm.register_vm_config('community', ce_components + llvm_components, _suite, env_file='ce-win')
+mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-aarch64')
+mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-darwin')
+mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-darwin-aarch64')
+mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'njs', 'rgx', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['llrn', 'llp', 'llrc', 'llrl'], _suite, env_file='ce-llvm')
