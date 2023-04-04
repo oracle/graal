@@ -135,6 +135,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     private Map<ValuePhiNode, LLVMValueRef> backwardsPhi = new HashMap<>();
     private long nextCGlobalId = 0L;
 
+    @SuppressWarnings("this-escape")
     protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen) {
         this.gen = gen;
         this.builder = gen.getBuilder();

@@ -66,6 +66,7 @@ public class JfrFileParser {
     private final HashMap<Long, ConstantPoolParser> supportedConstantPools = new HashMap<>();
     private final ArrayList<AbstractSerializerParser> serializerParsers = new ArrayList<>();
 
+    @SuppressWarnings("this-escape")
     public JfrFileParser(Path path) {
         this.path = path;
 
