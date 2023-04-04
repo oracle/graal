@@ -82,7 +82,10 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
         /* Register sa_sigaction signal handler */
         structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER());
         structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
-        Signal.sigaction(Signal.SignalEnum.SIGPROF.getCValue(), structSigAction, WordFactory.nullPointer());
+        synchronized (Target_jdk_internal_misc_Signal.class) {
+            // ensure this does not race with other signal installation
+            Signal.sigaction(Signal.SignalEnum.SIGPROF.getCValue(), structSigAction, WordFactory.nullPointer());
+        }
     }
 
     private static int callSetitimer() {
