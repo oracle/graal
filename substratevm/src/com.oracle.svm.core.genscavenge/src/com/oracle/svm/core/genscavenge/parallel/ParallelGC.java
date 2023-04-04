@@ -61,6 +61,7 @@ import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.jdk.Jvm;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -89,6 +90,8 @@ import com.oracle.svm.core.util.VMError;
 public class ParallelGC {
 
     public static final int UNALIGNED_BIT = 0x01;
+
+    private static final int MAX_WORKER_THREADS = 8;
 
     private final CEntryPointLiteral<CFunctionPointer> gcWorkerRunFunc;
 
@@ -207,15 +210,13 @@ public class ParallelGC {
     private static int getWorkerCount() {
         int index = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ParallelGCThreads);
         int setting = IsolateArgumentParser.getIntOptionValue(index);
-        int count = setting > 0 ? setting : getDefaultWorkerCount();
-        return count;
+        return setting > 0 ? setting : getDefaultWorkerCount();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getDefaultWorkerCount() {
-        // Adapted from Hotspot, see WorkerPolicy::nof_parallel_worker_threads()
         int cpus = Jvm.JVM_ActiveProcessorCount();
-        return cpus <= 8 ? cpus : 8 + (cpus - 8) * 5 / 8;
+        return UninterruptibleUtils.Math.min(cpus, MAX_WORKER_THREADS);
     }
 
     @Uninterruptible(reason = "Heap base is not set up yet.")
