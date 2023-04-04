@@ -80,6 +80,7 @@ public class InstructionModel implements InfoDumpable {
         SUPERINSTRUCTION,
     }
 
+    // Models data required to execute an instruction.
     public static class InstructionField {
         public final TypeMirror type;
         public final String name;
