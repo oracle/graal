@@ -178,7 +178,7 @@ mx_sdk_vm.register_vm_config('community', ce_components + llvm_components, _suit
 mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-aarch64')
 mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-darwin')
 mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-darwin-aarch64')
-mx_sdk_vm.register_vm_config('community', ce_components, _suite)
+mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'njs', 'rgx', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['llrn', 'llp', 'llrc', 'llrl'], _suite, env_file='ce-llvm')
