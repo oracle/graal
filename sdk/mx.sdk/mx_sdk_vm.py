@@ -1118,7 +1118,12 @@ def verify_graalvm_configs(suites=None, start_from=None):
             _env_file = env_file or dist_name
             started = started or _env_file == start_from
 
-            graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=mx_sdk_vm_impl._graalvm_base_name, dist_name=dist_name, jdk_version=mx_sdk_vm_impl._src_jdk_version).upper().replace('-', '_')
+            graalvm_dist_name = '{base_name}{delimiter}{dist_name}_JAVA{jdk_version}'.format(
+                base_name=mx_sdk_vm_impl._graalvm_base_name,
+                delimiter='_' if dist_name else '',
+                dist_name=dist_name,
+                jdk_version=mx_sdk_vm_impl._src_jdk_version
+            ).upper().replace('-', '_')
             mx.log("{}Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format('' if started else '[SKIPPED] ', _env_file, suite.name, graalvm_dist_name))
 
             if started:
