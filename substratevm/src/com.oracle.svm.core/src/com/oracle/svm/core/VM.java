@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,7 +46,15 @@ public final class VM {
         version = stripJVMCISuffix(System.getProperty("java.runtime.version"));
         vendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
         vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
-        vendorVersion = System.getProperty("org.graalvm.vendorversion", "GraalVM CE");
+        vendorVersion = getVendorVersion();
+    }
+
+    public static String getVendorVersion() {
+        if (ImageInfo.inImageRuntimeCode()) {
+            return System.getProperty("java.vendor.version");
+        } else {
+            return System.getProperty("org.graalvm.vendorversion", "GraalVM CE");
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
