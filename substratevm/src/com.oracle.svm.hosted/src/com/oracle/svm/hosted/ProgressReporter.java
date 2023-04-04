@@ -688,8 +688,8 @@ public class ProgressReporter {
             l().link(NativeImageOptions.getErrorFilePath(parsedHostedOptions)).println();
             l().println();
             l().a("If you are unable to resolve this problem, please file an issue with the error report at:").println();
-            var supportURL = VM.getErrorReportingInstance().supportURL;
-            l().link(supportURL, supportURL).println();
+            var supportUrl = VM.getSupportUrl();
+            l().link(supportUrl, supportUrl).println();
         }
     }
 
