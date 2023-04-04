@@ -44,7 +44,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
@@ -100,7 +99,6 @@ import com.oracle.svm.core.util.VMError;
 public final class GCImpl implements GC {
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
-    private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
     private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
 
@@ -1024,21 +1022,22 @@ public final class GCImpl implements GC {
 
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
-            HeapImpl.getHeapImpl().walkNativeImageHeapRegions(blackenImageHeapRootsVisitor);
+            blackenImageHeapRoots(HeapImpl.getImageHeapInfo());
+            if (AuxiliaryImageHeap.isPresent()) {
+                ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
+                if (auxImageHeapInfo != null) {
+                    blackenImageHeapRoots(auxImageHeapInfo);
+                }
+            }
         } finally {
             blackenImageHeapRootsTimer.close();
         }
     }
 
-    private class BlackenImageHeapRootsVisitor implements MemoryWalker.ImageHeapRegionVisitor {
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (access.containsReferences(region) && access.isWritable(region)) {
-                access.visitObjects(region, greyToBlackObjectVisitor);
-            }
-            return true;
-        }
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void blackenImageHeapRoots(ImageHeapInfo imageHeapInfo) {
+        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableReferenceObject, imageHeapInfo.lastWritableReferenceObject, greyToBlackObjectVisitor, true);
+        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableHugeObject, imageHeapInfo.lastWritableHugeObject, greyToBlackObjectVisitor, false);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

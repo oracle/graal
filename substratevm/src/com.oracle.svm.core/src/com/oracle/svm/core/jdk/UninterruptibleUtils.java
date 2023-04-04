@@ -437,6 +437,7 @@ public class UninterruptibleUtils {
 
     public static class Byte {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        @SuppressWarnings("cast")
         public static int toUnsignedInt(byte x) {
             return ((int) x) & 0xff;
         }

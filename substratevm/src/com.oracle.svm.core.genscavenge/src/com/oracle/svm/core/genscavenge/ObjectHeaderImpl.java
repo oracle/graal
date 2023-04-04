@@ -420,11 +420,11 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         assert !isConsumedHeapChunkZapped(header) : "Consumed chunk zap value";
         return header.and(reservedBitsMask);
     }
-    }
 
     @Fold
     static boolean hasShift() {
         return ReferenceAccess.singleton().getCompressEncoding().hasShift();
+    }
 
     @Fold
     static boolean hasFixedIdentityHashField() {

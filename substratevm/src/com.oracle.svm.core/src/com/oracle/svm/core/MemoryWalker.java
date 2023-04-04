@@ -64,13 +64,10 @@ public final class MemoryWalker {
 
         String getRegionName(T region);
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean containsReferences(T region);
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean isWritable(T region);
 
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean visitObjects(T region, ObjectVisitor visitor);
     }
 

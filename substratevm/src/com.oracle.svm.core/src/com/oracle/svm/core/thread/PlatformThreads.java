@@ -67,6 +67,7 @@ import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
@@ -566,16 +567,19 @@ public abstract class PlatformThreads {
         throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.createNativeThreadLocal directly.");
     }
 
+    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void deleteUnmanagedThreadLocal(ThreadLocalKey key) {
         throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.deleteNativeThreadLocal directly.");
     }
 
+    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public <T extends WordBase> T getUnmanagedThreadLocalValue(ThreadLocalKey key) {
         throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.getNativeThreadLocalValue directly.");
     }
 
+    @SuppressWarnings("unused")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void setUnmanagedThreadLocalValue(ThreadLocalKey key, WordBase value) {
         throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.setNativeThreadLocalValue directly.");
@@ -1222,7 +1226,7 @@ public abstract class PlatformThreads {
         OSThreadHandle read(int index);
     }
 
-    public interface ThreadLocalKey extends PointerBase {
+    public interface ThreadLocalKey extends ComparableWord {
     }
 }
 
