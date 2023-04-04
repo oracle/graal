@@ -100,7 +100,7 @@ public class SubstrateGraalUtils {
             @Override
             protected CompilationResult performCompilation(DebugContext debug) {
                 try (CompilationWatchDog watchdog = CompilationWatchDog.watch(compilationId, debug.getOptions(), false, COMPILATION_WATCH_DOG_EVENT_HANDLER)) {
-                    StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method);
+                    StructuredGraph graph = GraalSupport.decodeGraph(debug, null, compilationId, method, null);
                     return compileGraph(runtimeConfig, GraalSupport.getMatchingSuitesForGraph(graph), lirSuites, method, graph);
                 }
             }

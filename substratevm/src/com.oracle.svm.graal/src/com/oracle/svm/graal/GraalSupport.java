@@ -376,7 +376,7 @@ public class GraalSupport {
         return new EncodedGraph(get().graphEncoding, startOffset, get().graphObjects, get().graphNodeTypes, null, null, false, trackNodeSourcePosition);
     }
 
-    public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method) {
+    public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method, StructuredGraph caller) {
         EncodedGraph encodedGraph = encodedGraph(method, false);
         if (encodedGraph == null) {
             return null;
@@ -389,6 +389,7 @@ public class GraalSupport {
                         .recordInlinedMethods(false)
                         .compilationId(compilationId)
                         .setIsSubstitution(isSubstitution)
+                        .speculationLog((caller != null) ? caller.getSpeculationLog() : null)
                         .build();
         GraphDecoder decoder = new GraphDecoder(ConfigurationValues.getTarget().arch, graph);
         decoder.decode(encodedGraph);

@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import jdk.vm.ci.services.Services;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -121,7 +120,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.TriState;
-import org.graalvm.nativeimage.ImageInfo;
 
 public class InliningUtil extends ValueMergeUtil {
 
@@ -528,12 +526,7 @@ public class InliningUtil extends ValueMergeUtil {
                             invoke.asNode().graph().getSpeculationLog(),
                             inlineGraph,
                             inlineGraph.getSpeculationLog());
-            if (!ImageInfo.inImageCode() || Services.IS_IN_NATIVE_IMAGE) {
-                GraalError.shouldNotReachHere(message);
-            } else {
-                // Workaround for GR-45129 - disable this check for non-libgraal SVM runtime
-                // compilations
-            }
+            throw GraalError.shouldNotReachHere(message);
         }
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         /*
