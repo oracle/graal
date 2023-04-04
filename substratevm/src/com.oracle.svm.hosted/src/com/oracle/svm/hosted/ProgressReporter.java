@@ -249,9 +249,9 @@ public class ProgressReporter {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         VM vm = ImageSingletons.lookup(VM.class);
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
-        recordJsonMetric(GeneralInfo.VENDOR, vm.vendor);
-        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion + " " + vm.version); // deprecated
-        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor", "#glossary-java-info").a(": ").a(vm.vendor).println();
+        recordJsonMetric(GeneralInfo.VENDOR_VERSION, vm.vendorVersion);
+        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion); // deprecated
+        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor version", "#glossary-java-info").a(": ").a(vm.vendorVersion).println();
         String optimizationLevel = SubstrateOptions.Optimize.getValue();
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
         String march = CPUType.getSelectedOrDefaultMArch();
