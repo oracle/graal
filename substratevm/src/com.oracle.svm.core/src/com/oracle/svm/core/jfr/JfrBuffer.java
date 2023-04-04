@@ -61,13 +61,13 @@ import com.oracle.svm.core.util.VMError;
  * Multiple threads may access the same {@link JfrBuffer} concurrently:
  * <li>If a thread owns/created a thread-local buffer, then it may access and modify most of that
  * buffer's data at any time, without the need for any locking. Only the following operations
- * require that the {@link JfrBufferNode} is locked:
+ * require that the {@link BufferNode} is locked:
  * <ul>
  * <li>accessing or modifying the flushed position (see {@link JfrBufferAccess#setFlushedPos}</li>
  * <li>freeing the buffer</li>
  * </ul>
  * <li>Accessing a thread-local buffer of another thread is only allowed after locking the
- * corresponding {@link JfrBufferNode} (see {@link #getNode()}). This prevents other threads from
+ * corresponding {@link BufferNode} (see {@link #getNode()}). This prevents other threads from
  * freeing the buffer in meanwhile. The thread that holds the lock may read any field in the buffer
  * header and it may also access flushed or committed data (i.e., everything below
  * {@link #getCommittedPos()}). It must not modify any header fields, except for the flushed

@@ -43,9 +43,10 @@ import com.oracle.svm.core.Uninterruptible;
  *
  * The following invariants are crucial if the list is used for thread-local buffers:
  * <ul>
- * <li>Each thread shall only add one node to the list at a time (multiple sequential recordings result in successive additions).</li>
- * <li>Only threads executing at a safepoint or that hold the {@link JfrChunkWriter#lock()} may iterate or remove nodes from the
- * list.</li>
+ * <li>Each thread shall only add one node to the list at a time (multiple sequential recordings
+ * result in successive additions).</li>
+ * <li>Only threads executing at a safepoint or that hold the {@link JfrChunkWriter#lock()} may
+ * iterate or remove nodes from the list.</li>
  * </ul>
  */
 public class JfrBufferList extends BufferList {
@@ -54,8 +55,10 @@ public class JfrBufferList extends BufferList {
     public JfrBufferList() {
     }
 
-    /** This is called when a recording is stopped. We cannot safely destroy Java buffers here because their corresponding
-     * interruptible EventWriters may still be using them.*/
+    /**
+     * This is called when a recording is stopped. We cannot safely destroy Java buffers here
+     * because their corresponding interruptible EventWriters may still be using them.
+     */
     public void teardown() {
         assert VMOperation.isInProgressAtSafepoint();
 

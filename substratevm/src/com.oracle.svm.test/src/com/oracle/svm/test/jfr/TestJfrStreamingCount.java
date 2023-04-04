@@ -62,18 +62,18 @@ public class TestJfrStreamingCount extends JfrStreamingTest {
         String[] events = new String[]{"com.jfr.String", "com.jfr.Integer", "com.jfr.Class"};
         RecordingStream stream = startStream(events);
 
-            stream.onEvent("com.jfr.Class", event -> {
-                assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
-                classEvents.incrementAndGet();
-            });
-            stream.onEvent("com.jfr.Integer", event -> {
-                assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
-                integerEvents.incrementAndGet();
-            });
-            stream.onEvent("com.jfr.String", event -> {
-                assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
-                stringEvents.incrementAndGet();
-            });
+        stream.onEvent("com.jfr.Class", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
+            classEvents.incrementAndGet();
+        });
+        stream.onEvent("com.jfr.Integer", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
+            integerEvents.incrementAndGet();
+        });
+        stream.onEvent("com.jfr.String", event -> {
+            assertTrue(event.getStackTrace() != null && !event.getStackTrace().getFrames().isEmpty());
+            stringEvents.incrementAndGet();
+        });
 
         Runnable eventEmitter = () -> {
             for (int i = 0; i < COUNT; i++) {

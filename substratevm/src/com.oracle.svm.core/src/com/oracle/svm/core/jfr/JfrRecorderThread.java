@@ -111,7 +111,7 @@ public class JfrRecorderThread extends Thread {
 
     private void run0() {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
-        SamplerBuffersAccess.processFullBuffers(true, false);
+        SamplerBuffersAccess.processFullBuffers();
         try {
             if (chunkWriter.hasOpenFile()) {
                 persistBuffers(chunkWriter);

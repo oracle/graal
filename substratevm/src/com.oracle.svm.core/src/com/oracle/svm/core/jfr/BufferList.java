@@ -122,7 +122,7 @@ public abstract class BufferList {
             prev = cur;
             cur = cur.getNext();
         }
-        throw VMError.shouldNotReachHere("JfrBufferNode not found in JfrBufferList.");
+        throw VMError.shouldNotReachHere("BufferNode not found in BufferList.");
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)

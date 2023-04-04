@@ -513,7 +513,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     @Uninterruptible(reason = "Prevent JFR recording.")
     private static void processSamplerBuffers(boolean flushpoint) {
         SamplerBuffersAccess.processActiveBuffers(flushpoint);
-        SamplerBuffersAccess.processFullBuffers(false, flushpoint);
+        SamplerBuffersAccess.processFullBuffers();
     }
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")

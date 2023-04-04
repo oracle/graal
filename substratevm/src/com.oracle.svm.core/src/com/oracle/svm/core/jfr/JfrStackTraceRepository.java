@@ -376,7 +376,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    public void serializeStackTraces(SamplerBuffer rawStackTraceBuffer, boolean flushpoint) {
+    public void serializeStackTraces(SamplerBuffer rawStackTraceBuffer) {
 
         mutex.lockNoTransition();
         try {
@@ -492,7 +492,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private int visitRawStackTrace(Pointer rawStackTrace, int sampleSize, JfrNativeEventWriterData data) {
+    private static int visitRawStackTrace(Pointer rawStackTrace, int sampleSize, JfrNativeEventWriterData data) {
         int numStackTraceElements = 0;
         Pointer rawStackTraceEnd = rawStackTrace.add(sampleSize);
         Pointer ipPtr = rawStackTrace;
@@ -505,7 +505,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording, epoch change, and that the GC frees the CodeInfo.")
-    private int visitFrame(JfrNativeEventWriterData data, long address) {
+    private static int visitFrame(JfrNativeEventWriterData data, long address) {
         CodePointer ip = WordFactory.pointer(address);
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
@@ -523,7 +523,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private int visitFrame(JfrNativeEventWriterData data, CodeInfo codeInfo, CodePointer ip) {
+    private static int visitFrame(JfrNativeEventWriterData data, CodeInfo codeInfo, CodePointer ip) {
         int numStackTraceElements = 0;
         FRAME_INFO_CURSOR.initialize(codeInfo, ip);
         while (FRAME_INFO_CURSOR.advance()) {
@@ -537,7 +537,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private void serializeStackTraceElement(JfrNativeEventWriterData data, FrameInfoQueryResult stackTraceElement) {
+    private static void serializeStackTraceElement(JfrNativeEventWriterData data, FrameInfoQueryResult stackTraceElement) {
         long methodId = SubstrateJVM.getMethodRepo().getMethodId(stackTraceElement.getSourceClass(), stackTraceElement.getSourceMethodName(), stackTraceElement.getMethodId());
         JfrNativeEventWriter.putLong(data, methodId);
         JfrNativeEventWriter.putInt(data, stackTraceElement.getSourceLineNumber());

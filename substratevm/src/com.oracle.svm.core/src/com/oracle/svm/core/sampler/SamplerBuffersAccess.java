@@ -64,7 +64,7 @@ public final class SamplerBuffersAccess {
             assert SamplerBufferAccess.verify(buffer);
             try {
                 // serialize active buffers
-                SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint);
+                SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer);
             } finally {
                 BufferNodeAccess.unlock(node);
             }
@@ -83,7 +83,7 @@ public final class SamplerBuffersAccess {
      * </ul>
      */
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    public static void processFullBuffers(boolean useSafepointChecks, boolean flushpoint) {
+    public static void processFullBuffers() {
         while (true) {
             SamplerBuffer buffer = SubstrateJVM.getSamplerBufferPool().popFullBuffer();
             if (buffer.isNull()) {
@@ -91,24 +91,10 @@ public final class SamplerBuffersAccess {
                 break;
             }
 
-            SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer, flushpoint);
+            SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer);
             SubstrateJVM.getSamplerBufferPool().releaseBuffer(buffer);
-
-            /* Do a safepoint check if the caller requested one. */
-            if (useSafepointChecks) {
-                safepointCheck();
-            }
         }
 
         SubstrateJVM.getSamplerBufferPool().adjustBufferCount();
     }
-
-    @Uninterruptible(reason = "The callee explicitly does a safepoint check.", calleeMustBe = false)
-    private static void safepointCheck() {
-        safepointCheck0();
-    }
-
-    private static void safepointCheck0() {
-    }
-
 }

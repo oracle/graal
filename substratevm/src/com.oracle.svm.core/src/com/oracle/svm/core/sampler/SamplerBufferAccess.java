@@ -83,6 +83,6 @@ public final class SamplerBufferAccess {
         Pointer start = getDataStart(buffer);
         Pointer end = getDataEnd(buffer);
         return buffer.getPos().aboveOrEqual(start) && buffer.getPos().belowOrEqual(end) && buffer.getSerializedPos().belowOrEqual(buffer.getPos()) &&
-                buffer.getSerializedPos().aboveOrEqual(start);
+                        buffer.getSerializedPos().aboveOrEqual(start);
     }
 }

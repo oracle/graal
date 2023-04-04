@@ -34,15 +34,16 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.jfr.BufferNodeAccess;
 import com.oracle.svm.core.jfr.BufferNode;
 import com.oracle.svm.core.jfr.BufferList;
+import com.oracle.svm.core.jfr.JfrChunkWriter;
 
 /**
  * Singly linked list that stores {@link SamplerBuffer}s. When entering a safepoint, it is
  * guaranteed that none of the blocked Java threads holds the list's lock.
  *
  * Nodes should only be removed from this list by
- * {@link SamplerBuffersAccess#processSamplerBuffers()} Nodes are marked for removal if their buffer
- * field is null. This means that the buffer has been put on the full buffer queue because it is
- * full or the owning thread has exited.
+ * {@link SamplerBuffersAccess#processActiveBuffers(boolean)} Nodes are marked for removal if their
+ * buffer field is null. This means that the buffer has been put on the full buffer queue because it
+ * is full or the owning thread has exited.
  *
  * The following invariants are crucial if the list is used for thread-local buffers:
  * <ul>
