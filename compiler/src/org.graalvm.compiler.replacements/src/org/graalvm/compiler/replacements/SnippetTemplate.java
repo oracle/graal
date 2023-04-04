@@ -1489,7 +1489,7 @@ public class SnippetTemplate {
         } while (exploded);
     }
 
-    protected Object[] getConstantArgs(Arguments args) {
+    protected static Object[] getConstantArgs(Arguments args) {
         Object[] constantArgs = args.values.clone();
         for (int i = 0; i < args.info.getParameterCount(); i++) {
             if (!args.info.isConstantParameter(i)) {
