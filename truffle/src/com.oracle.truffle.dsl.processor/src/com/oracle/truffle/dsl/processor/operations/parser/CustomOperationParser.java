@@ -408,7 +408,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         if (isShortCircuit) {
             instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(mirror, "continueWhen").getValue();
-            instr.addField(new GeneratedTypeMirror("", "IntRef"), "op_branchTarget_", true, true);
+            instr.addField(context.getType(int.class), "op_branchTarget_", true, true);
         }
 
         return instr;
