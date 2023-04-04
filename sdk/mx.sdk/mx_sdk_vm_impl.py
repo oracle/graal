@@ -3341,8 +3341,7 @@ def graalvm_version(vendor_info):
                     full_version = version_match.group('full_version')
                     version = version_match.group('version')
                     qualifier = version_match.group('qualifier')
-                else:
-                    assert full_version is not None
+                elif full_version is not None:
                     build_match = re.search(r'Runtime Environment \(build ' + full_version + r'\+(?P<build>[0-9]+)', line)
                     if build_match is not None:
                         assert build is None
