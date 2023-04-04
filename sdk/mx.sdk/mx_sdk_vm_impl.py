@@ -42,7 +42,7 @@
 from __future__ import print_function
 
 from abc import ABCMeta
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawTextHelpFormatter
 from collections import OrderedDict
 from zipfile import ZipFile
 import hashlib
@@ -57,6 +57,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import textwrap
 import zipfile
 
 import mx
@@ -944,11 +945,11 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
             # GraalVM_community_openjdk_17.0.7+4.1
             # GraalVM_jdk_17.0.7+4.1
             # GraalVM_jit_jdk_17.0.7+4.1
-            base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{graalvm_jdk_version}'.format(
+            base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{version}'.format(
                 base_name=base_name,
                 vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
                 jdk_type='jdk' if mx_sdk_vm.ee_implementor() else 'openjdk',
-                graalvm_jdk_version=graalvm_version(vendor_info=False)
+                version=graalvm_version(version_type='base-dir')
             )
             name_prefix = '{base_name}{vm_dist_name}_java{jdk_version}'.format(
                 base_name=base_name,
@@ -3313,13 +3314,15 @@ def graalvm_dist_name():
     return get_final_graalvm_distribution().name
 
 
-def graalvm_version(vendor_info):
+def graalvm_version(version_type):
     """
     Example: 17.0.1-dev+4.1
-    :type vendor_info: True
+    :type version_type: str
     :rtype: str
     """
     global _base_jdk_version_info
+
+    assert version_type in ['graalvm', 'vendor', 'base-dir'], version_type
 
     def base_jdk_version_info():
         """
@@ -3352,36 +3355,40 @@ def graalvm_version(vendor_info):
         else:
             raise mx.abort('VM info extraction failed. Exit code: ' + str(code))
 
-    if _base_jdk_version_info is None:
-        _base_jdk_version_info = base_jdk_version_info()
-
-    jdk_version, jdk_qualifier, jdk_build = _base_jdk_version_info
-    if vendor_info:
-        pre_release_id = '' if _suite.is_release() else '-dev'
-        if jdk_qualifier:
-            pre_release_id += '.' if pre_release_id else '-'
-            pre_release_id += jdk_qualifier
+    if version_type == 'graalvm':
+        return _suite.release_version()
     else:
-        pre_release_id = ''
-    # Examples:
-    #
-    # ```
-    # openjdk version "17.0.7" 2023-04-18
-    # OpenJDK Runtime Environment (build 17.0.7+4-jvmci-23.0-b10)
-    # ```
-    # -> `17.0.7-dev+4.1`
-    #
-    # ```
-    # openjdk version "21-ea" 2023-09-19
-    # OpenJDK Runtime Environment (build 21-ea+16-1326)
-    # ```
-    # -> `21-dev.ea+16.1`
-    return '{jdk_version}{pre_release_id}{jdk_build}.{release_build}'.format(
-        jdk_version=jdk_version,
-        pre_release_id=pre_release_id,
-        jdk_build='+' + jdk_build,
-        release_build=mx_sdk_vm.release_build
-    )
+        if _base_jdk_version_info is None:
+            _base_jdk_version_info = base_jdk_version_info()
+
+        jdk_version, jdk_qualifier, jdk_build = _base_jdk_version_info
+        if version_type == 'vendor':
+            pre_release_id = '' if _suite.is_release() else '-dev'
+            if jdk_qualifier:
+                pre_release_id += '.' if pre_release_id else '-'
+                pre_release_id += jdk_qualifier
+        else:
+            assert version_type == 'base-dir', version_type
+            pre_release_id = ''
+        # Examples:
+        #
+        # ```
+        # openjdk version "17.0.7" 2023-04-18
+        # OpenJDK Runtime Environment (build 17.0.7+4-jvmci-23.0-b10)
+        # ```
+        # -> `17.0.7-dev+4.1`
+        #
+        # ```
+        # openjdk version "21-ea" 2023-09-19
+        # OpenJDK Runtime Environment (build 21-ea+16-1326)
+        # ```
+        # -> `21-dev.ea+16.1`
+        return '{jdk_version}{pre_release_id}{jdk_build}.{release_build}'.format(
+            jdk_version=jdk_version,
+            pre_release_id=pre_release_id,
+            jdk_build='+' + jdk_build,
+            release_build=mx_sdk_vm.release_build
+        )
 
 
 def graalvm_home(stage1=False, fatalIfMissing=False):
@@ -3415,10 +3422,13 @@ def print_graalvm_dist_name(args):
 
 def print_graalvm_version(args):
     """print the GraalVM version"""
-    parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version')
-    parser.add_argument('--vendor', action='store_true', help='show vendor information')
+    parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version', formatter_class=RawTextHelpFormatter)
+    parser.add_argument('--type', default='graalvm', choices=['graalvm', 'vendor', 'base-dir'], help=textwrap.dedent("""\
+        'graalvm' taken from the 'suite.py' file of the 'sdk' suite;
+        'vendor' is an extension of the base-JDK version;
+        'base-dir' similar to 'vendor', without extra identifiers like 'dev' or 'ea';"""))
     args = parser.parse_args(args)
-    print(graalvm_version(args.vendor))
+    print(graalvm_version(args.type))
 
 
 def print_graalvm_home(args):
@@ -3750,7 +3760,7 @@ def graalvm_vendor_version():
     # Oracle GraalVM 17.0.1+4.1
     return '{vendor} {version}'.format(
         vendor=('Oracle ' + _graalvm_base_name) if mx_sdk_vm.ee_implementor() else (_graalvm_base_name + ' CE'),
-        version=graalvm_version(vendor_info=True)
+        version=graalvm_version(version_type='vendor')
     )
 
 
