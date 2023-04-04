@@ -21,7 +21,7 @@ Below is the example output when building a native executable of the `HelloWorld
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
 [1/8] Initializing...                                            (3.3s @ 0.15GB)
- Java version: 17.0.7+4, vendor: GraalVM Community
+ Java version: 17.0.7+4, vendor version: GraalVM CE 17.0.7+4.1
  Graal compiler: optimization level: '2', target machine: 'x86-64-v3'
  C compiler: gcc (linux, x86_64, 12.2.0)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
@@ -80,8 +80,8 @@ In this stage, the Native Image build process is set up and [`Features`](https:/
 By default, Native Image generates *executables* but it can also generate [*native shared libraries*](InteropWithNativeCode.md) and [*static executables*](guides/build-static-and-mostly-static-executable.md).
 
 #### <a name="glossary-java-info"></a>Java Version Info
-The Java version and vendor of the Native Image process.
-Both are also used for the `java.vm.version` and `java.vm.vendor` properties within the generated native binary.
+The Java and vendor version of the Native Image process.
+Both are also used for the `java.vm.version` and `java.vendor.version` properties within the generated native binary.
 Please report version and vendor when you [file issues](https://github.com/oracle/graal/issues/new).
 
 #### <a name="glossary-graal-compiler"></a>Graal Compiler
