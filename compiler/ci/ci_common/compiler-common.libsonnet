@@ -65,7 +65,12 @@
       "--results-file",
       "${BENCH_RESULTS_FILE_PATH}",
       "--machine-name=${MACHINE_NAME}"] +
-      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=rss"]),
+      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=psrecord+maxrss"]),
+    packages+: {
+      "pip:psrecord": "==1.2",
+      "pip:matplotlib": "==3.3.4",
+      "pip:psutil": "==5.9.0"
+    },
     benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
