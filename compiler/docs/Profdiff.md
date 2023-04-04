@@ -213,8 +213,20 @@ bci 9, which was inlined in the root method `java.lang.String.equals(Object)` at
 output reported the bci as 44, because it is relative to the root method (`java.lang.String.equals(Object)` in this
 case).
 
-Perhaps a better way to visualize the position of an optimization is to enable the optimization-context tree. Read the
-section about the optimization-context tree to learn more.
+The above text describes how positions are formatted in the optimization tree. Perhaps a better way to visualize the
+position of an optimization is to enable the optimization-context tree. The optimization-context tree shows optimization
+decisions in their inlining context. The bcis of optimizations (like `UnusedNodeRemoval`) are displayed relative to the
+parent method. Consider the example below. It states that `UnusedNodeRemoval` was performed at bci 9 in method
+`java.lang.StringLatin1.equals(byte[], byte[])`, which was inlined at bci 44 in method
+`java.lang.String.equals(Object)`.
+
+```
+(root) java.lang.String.equals(Object)
+    (inlined) java.lang.StringLatin1.equals(byte[], byte[]) at bci 44
+        Canonicalizer UnusedNodeRemoval at bci 9
+```
+
+Read the section about the optimization-context tree to learn more.
 
 ## Indirect calls
 

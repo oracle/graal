@@ -136,7 +136,7 @@ public final class InliningPath {
     }
 
     /**
-     * Creates an inlining from method names and callsite bcis.
+     * Creates an inlining path from method names and callsite bcis.
      *
      * For example, the call:
      *
