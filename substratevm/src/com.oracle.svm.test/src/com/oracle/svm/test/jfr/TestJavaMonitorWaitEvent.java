@@ -27,7 +27,9 @@
 package com.oracle.svm.test.jfr;
 
 import static java.lang.Math.abs;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -36,6 +38,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -48,47 +51,11 @@ public class TestJavaMonitorWaitEvent extends JfrRecordingTest {
     private String producerName;
     private String consumerName;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.JavaMonitorWait.getName()};
-    }
-
-    @Override
-    public void validateEvents(List<RecordedEvent> events) throws Throwable {
-        int prodCount = 0;
-        int consCount = 0;
-        String lastEventThreadName = null; // should alternate if buffer is 1
-        for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
-            assertTrue("No event thread", eventThread != null);
-            if ((!eventThread.equals(producerName) && !eventThread.equals(consumerName)) ||
-                            !event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
-                continue;
-            }
-
-            assertTrue("Wrong event duration", event.getDuration().toMillis() >= MILLIS);
-            assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
-
-            if (lastEventThreadName == null) {
-                lastEventThreadName = notifThread;
-            }
-            assertTrue("Not alternating", lastEventThreadName.equals(notifThread));
-            if (eventThread.equals(producerName)) {
-                prodCount++;
-                assertTrue("Wrong notifier", notifThread.equals(consumerName));
-            } else if (eventThread.equals(consumerName)) {
-                consCount++;
-                assertTrue("Wrong notifier", notifThread.equals(producerName));
-            }
-            lastEventThreadName = eventThread;
-        }
-        assertFalse("Wrong number of events: " + prodCount + " " + consCount,
-                        abs(prodCount - consCount) > 1 || abs(consCount - COUNT) > 1);
-    }
-
     @Test
-    public void test() throws Exception {
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
+        Recording recording = startRecording(events);
+
         Runnable consumer = () -> {
             try {
                 helper.consume();
@@ -114,9 +81,44 @@ public class TestJavaMonitorWaitEvent extends JfrRecordingTest {
 
         tp.join();
         tc.join();
+
+        stopRecording(recording, this::validateEvents);
     }
 
-    private class Helper {
+    private void validateEvents(List<RecordedEvent> events) {
+        int prodCount = 0;
+        int consCount = 0;
+        String lastEventThreadName = null; // should alternate if buffer is 1
+        for (RecordedEvent event : events) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            String notifThread = event.<RecordedThread> getValue("notifier") != null ? event.<RecordedThread> getValue("notifier").getJavaName() : null;
+            assertNotNull("No event thread", eventThread);
+            if ((!eventThread.equals(producerName) && !eventThread.equals(consumerName)) ||
+                            !event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName())) {
+                continue;
+            }
+
+            assertTrue("Wrong event duration", event.getDuration().toMillis() >= MILLIS);
+            assertFalse("Should not have timed out.", event.<Boolean> getValue("timedOut").booleanValue());
+
+            if (lastEventThreadName == null) {
+                lastEventThreadName = notifThread;
+            }
+            assertEquals("Not alternating", lastEventThreadName, notifThread);
+            if (eventThread.equals(producerName)) {
+                prodCount++;
+                assertEquals("Wrong notifier", notifThread, consumerName);
+            } else if (eventThread.equals(consumerName)) {
+                consCount++;
+                assertEquals("Wrong notifier", notifThread, producerName);
+            }
+            lastEventThreadName = eventThread;
+        }
+        assertFalse("Wrong number of events: " + prodCount + " " + consCount,
+                        abs(prodCount - consCount) > 1 || abs(consCount - COUNT) > 1);
+    }
+
+    private static class Helper {
         private int count = 0;
         private final int bufferSize = 1;
 
