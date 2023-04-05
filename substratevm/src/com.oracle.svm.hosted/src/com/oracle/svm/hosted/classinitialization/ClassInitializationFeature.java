@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,7 +110,6 @@ public class ClassInitializationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-        classInitializationSupport.setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
         access.registerObjectReplacer(this::checkImageHeapInstance);
         universe = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getUniverse();
         metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getMetaAccess();
@@ -171,8 +170,6 @@ public class ClassInitializationFeature implements InternalFeature {
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
         try (Timer.StopTimer ignored = TimerCollection.createTimerAndStart(TimerCollection.Registry.CLINIT)) {
-            classInitializationSupport.setUnsupportedFeatures(null);
-
             assert classInitializationSupport.checkDelayedInitialization();
 
             classInitializationSupport.doLateInitialization(universe, metaAccess);
