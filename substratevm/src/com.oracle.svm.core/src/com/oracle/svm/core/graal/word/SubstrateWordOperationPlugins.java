@@ -42,13 +42,14 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateWordOperationPlugins extends WordOperationPlugin {
 
-    public SubstrateWordOperationPlugins(SnippetReflectionProvider snippetReflection, WordTypes wordTypes, BarrierSet barrierSet) {
-        super(snippetReflection, wordTypes, barrierSet);
+    public SubstrateWordOperationPlugins(SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, WordTypes wordTypes, BarrierSet barrierSet) {
+        super(snippetReflection, constantReflection, wordTypes, barrierSet);
     }
 
     @Override

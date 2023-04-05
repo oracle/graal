@@ -1269,28 +1269,6 @@ public class MethodTypeFlowBuilder {
                     typeFlowGraphBuilder.registerSinkBuilder(arrayCopyBuilder);
                 }
 
-            } else if (n instanceof WordCastNode) {
-                WordCastNode node = (WordCastNode) n;
-                ValueNode input = node.getInput();
-
-                if (input.getStackKind() == JavaKind.Object) {
-                    /*
-                     * The object-to-word operation converts an object into its address. The
-                     * points-to analysis doesn't model object-to-word operations and they must be
-                     * handled at a different level.
-                     */
-                } else {
-                    /* Word-to-object: Any object can flow out from a low level memory read. */
-                    TypeFlowBuilder<?> wordToObjectBuilder = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                        /* Use the all-instantiated type flow. */
-                        TypeFlow<?> objectFlow = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), bb.getAllInstantiatedTypeFlow());
-                        flowsGraph.addMiscEntryFlow(objectFlow);
-                        return objectFlow;
-                    });
-
-                    state.add(node, wordToObjectBuilder);
-                }
-
             } else if (n instanceof InvokeNode || n instanceof InvokeWithExceptionNode) {
                 Invoke invoke = (Invoke) n;
                 if (invoke.callTarget() instanceof MethodCallTargetNode) {
@@ -1524,17 +1502,9 @@ public class MethodTypeFlowBuilder {
              * is materialized.
              */
             ActualReturnTypeFlow actualReturn = null;
-            /*
-             * Get the receiver type from the invoke, it may be more precise than the method
-             * declaring class.
-             */
-            AnalysisType receiverType = null;
-            if (invokeKind.hasReceiver()) {
-                receiverType = (AnalysisType) StampTool.typeOrNull(arguments.get(0), bb.getMetaAccess());
-                if (receiverType == null) {
-                    receiverType = targetMethod.getDeclaringClass();
-                }
-            }
+
+            /* Infer the receiver type. Insert a filter for the receiver type flow if necessary. */
+            AnalysisType receiverType = getReceiverType(invokeKind, targetMethod, arguments, invokeLocation, actualParameters);
 
             MultiMethod.MultiMethodKey multiMethodKey = method.getMultiMethodKey();
             InvokeTypeFlow invokeFlow;
@@ -1614,6 +1584,39 @@ public class MethodTypeFlowBuilder {
 
         /* Invokes must not be removed. */
         typeFlowGraphBuilder.registerSinkBuilder(invokeBuilder);
+    }
+
+    /**
+     * Infer the receiver type by first checking the stamp of the first argument. If that's less
+     * precise than the declaring type of the target method then return the declaring type, but also
+     * insert a filter for the formal receiver type flow.
+     * <p>
+     * If the receiver flow comes from a {@link WordCastNode} without a precise stamp then it is an
+     * {@code AllInstantiatedTypeFlow<Object>} since there's no more concrete type information. In
+     * this case the declaring class of the target method is more precise.
+     * <p>
+     * Strengthening the receiver type avoids triggering invoke-type-flow updates for incompatible
+     * types. For virtual invokes it would just lead to failed method resolutions, but for special
+     * invokes it would lead to linking the callee even if the declaring type (or a type assignable
+     * from it) is not present.
+     */
+    private AnalysisType getReceiverType(InvokeKind invokeKind, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments,
+                    BytecodePosition invokeLocation, TypeFlow<?>[] actualParameters) {
+        if (invokeKind.hasReceiver()) {
+            AnalysisType declaringType = targetMethod.getDeclaringClass();
+            AnalysisType receiverStampType = (AnalysisType) StampTool.typeOrNull(arguments.get(0), bb.getMetaAccess());
+            if (receiverStampType == null || !receiverStampType.equals(declaringType) && receiverStampType.isAssignableFrom(declaringType)) {
+                /* The argument stamp type is less precise. Filter with the declaring type. */
+                FilterTypeFlow receiverFilter = new FilterTypeFlow(invokeLocation, declaringType, false, true, true);
+                flowsGraph.addMiscEntryFlow(receiverFilter);
+                actualParameters[0].addUse(bb, receiverFilter);
+                actualParameters[0] = receiverFilter;
+                return declaringType;
+            } else {
+                return receiverStampType;
+            }
+        }
+        return null;
     }
 
     protected void processCommitAllocation(CommitAllocationNode commitAllocationNode, TypeFlowsOfNodes state) {

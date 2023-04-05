@@ -125,6 +125,11 @@ public final class HostedByteBufferPointer implements Pointer {
     }
 
     @Override
+    public <T> T toObject(Class<T> clazz, boolean nonNull) {
+        throw unsupported();
+    }
+
+    @Override
     public Object toObjectNonNull() {
         throw unsupported();
     }
