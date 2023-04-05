@@ -244,7 +244,7 @@ public class TestOperationsParserTest {
     @Test
     public void testExampleSumLoop() {
         // i = 0; j = 0;
-        // while ( i < arg0 ) { j = j + i; i = i + 1;}
+        // while (i < arg0) { j = j + i; i = i + 1;}
         // return j;
 
         RootCallTarget root = parse(b -> {
@@ -575,7 +575,7 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testFinallyTryBranchOutOfHandler() {
+    public void testFinallyTryBranchForwardOutOfHandler() {
         // try {
         //   arg0.append(1);
         //   return 0;
@@ -633,6 +633,95 @@ public class TestOperationsParserTest {
         });
 
         testOrdering(false, root, 1L, 2L, 4L);
+    }
+
+    @Test
+    public void testFinallyTryBranchBackwardOutOfHandler() {
+        // tee(0, local);
+        // arg0.append(1);
+        // lbl:
+        // if (0 < local) {
+        //   arg0.append(4);
+        //   return 0;
+        // }
+        // try {
+        //   tee(1, local);
+        //   arg0.append(2);
+        //   return 0;
+        // } finally {
+        //   arg0.append(3);
+        //   goto lbl;
+        // }
+        // arg0.append(5);
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+            OperationLabel lbl = b.createLabel();
+            OperationLocal local = b.createLocal();
+
+            b.beginTeeLocal(local);
+            b.emitLoadConstant(0L);
+            b.endTeeLocal();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(1L);
+            b.endAppenderOperation();
+
+            b.emitLabel(lbl);
+            b.beginIfThen();
+                b.beginLessThanOperation();
+                b.emitLoadConstant(0L);
+                b.emitLoadLocal(local);
+                b.endLessThanOperation();
+
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(4L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0);
+                    b.endReturn();
+                b.endBlock();
+            b.endIfThen();
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(3L);
+                    b.endAppenderOperation();
+
+                    b.emitBranch(lbl);
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginTeeLocal(local);
+                    b.emitLoadConstant(1L);
+                    b.endTeeLocal();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(2L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(5L);
+            b.endAppenderOperation();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 2L, 3L, 4L);
     }
 
     @Test
@@ -704,6 +793,51 @@ public class TestOperationsParserTest {
 
         testOrdering(false, root, 1L, 3L, 5L);
     }
+
+    @Test
+    public void testFinallyTryBranchIntoTry() {
+        // try {
+        //   return 0;
+        //   lbl:
+        //   return 0;
+        // } finally {
+        //   goto lbl;
+        //   return 0;
+        // }
+
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Branch inside Finally section of FinallyTry could not be resolved. Ensure that the corresponding OperationLabel is emitted inside the Finally section.");
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    OperationLabel lbl = b.createLabel();
+
+                    b.emitBranch(lbl);
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+
+                    b.emitLabel(lbl);
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.endRoot();
+        });
+    }
+
 
     @Test
     public void testFinallyTryNestedTry() {

@@ -1227,7 +1227,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
                         new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLabels"),
-                        new CodeVariableElement(Set.of(PRIVATE), generic(HashMap.class, Integer.class, int[].class), "labelUseSites"),
+                        new CodeVariableElement(Set.of(PRIVATE), generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"),
 
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState")));
@@ -1253,9 +1253,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         class FinallyTryContextFactory {
             private CodeTypeElement create() {
-                if (model.enableTracing) {
-                    finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "basicBlockBoundary"));
-                }
                 finallyTryContext.addAll(List.of(
                                 new CodeVariableElement(context.getType(short[].class), "bc"),
                                 new CodeVariableElement(context.getType(int.class), "bci"),
@@ -1266,25 +1263,61 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(context.getType(int.class), "sourceInfoIndex"),
                                 new CodeVariableElement(context.getType(int[].class), "exHandlers"),
                                 new CodeVariableElement(context.getType(int.class), "exHandlerCount"),
+                                new CodeVariableElement(generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"),
                                 new CodeVariableElement(context.getType(int.class), "finallyTrySequenceNumber"),
-                                new CodeVariableElement(generic(context.getDeclaredType(HashSet.class), context.getDeclaredType(Integer.class)), "outerReferences"),
+                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel), "finallyInternalBranches"),
                                 new CodeVariableElement(finallyTryContext.asType(), "finallyTryContext")));
+                if (model.enableTracing) {
+                    finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "basicBlockBoundary"));
+                }
 
                 finallyTryContext.add(createConstructorUsingFields(Set.of(), finallyTryContext, null));
 
-                // these could be merged with their counterparts above
-                finallyTryContext.addAll(List.of(
+                List<CodeVariableElement> handlerFields = new ArrayList<>(List.of(
                                 new CodeVariableElement(context.getType(short[].class), "handlerBc"),
                                 new CodeVariableElement(context.getType(Object[].class), "handlerObjs"),
                                 new CodeVariableElement(context.getType(int.class), "handlerMaxStack"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerSourceInfo"),
-                                new CodeVariableElement(context.getType(int[].class), "handlerExHandlers")));
-
+                                new CodeVariableElement(context.getType(int[].class), "handlerExHandlers"),
+                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel), "handlerUnresolvedLabelsByIndex")));
                 if (model.enableTracing) {
-                    finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "handlerBasicBlockBoundary"));
+                    handlerFields.add(new CodeVariableElement(context.getType(boolean[].class), "handlerBasicBlockBoundary"));
                 }
 
+                finallyTryContext.addAll(handlerFields);
+
+                finallyTryContext.add(createSetHandler(handlerFields));
+                finallyTryContext.add(createHandlerIsSet(handlerFields));
+
                 return finallyTryContext;
+            }
+
+            private CodeExecutableElement createSetHandler(List<CodeVariableElement> handlerFields) {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "setHandler");
+                CodeTreeBuilder b = ex.createBuilder();
+
+                b.statement("assert !handlerIsSet()");
+                for (CodeVariableElement field : handlerFields) {
+                    String fieldName = field.getSimpleName().toString();
+                    ex.addParameter(new CodeVariableElement(field.asType(), fieldName));
+                    b.startStatement();
+                    b.string("this.");
+                    b.string(fieldName);
+                    b.string(" = ");
+                    b.string(fieldName);
+                    b.end();
+                }
+
+                return ex;
+            }
+
+            private CodeExecutableElement createHandlerIsSet(List<CodeVariableElement> handlerFields) {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "handlerIsSet");
+                CodeTreeBuilder b = ex.createBuilder();
+
+                b.startReturn().variable(handlerFields.get(0)).string(" != null").end();
+
+                return ex;
             }
         }
 
@@ -1347,6 +1380,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             builder.add(createCreateLocal());
             builder.add(createCreateLabel());
+            builder.add(createRegisterUnresolvedLabel());
+            builder.add(createResolveUnresolvedLabels());
+            builder.add(createReverseLabelMapping());
 
             for (OperationModel operation : model.getOperations()) {
                 if (operation.hasChildren()) {
@@ -1664,6 +1700,54 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createRegisterUnresolvedLabel() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "registerUnresolvedLabel");
+            ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "bci"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.statement("int[] sites = unresolvedLabels.getOrDefault(label, new int[0])");
+            b.statement("sites = Arrays.copyOf(sites, sites.length + 1)");
+            b.statement("sites[sites.length-1] = bci");
+            b.statement("unresolvedLabels.put(label, sites)");
+
+            return ex;
+        }
+
+        private CodeExecutableElement createResolveUnresolvedLabels() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "resolveUnresolvedLabels");
+            ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.statement("OperationLabelImpl impl = (OperationLabelImpl) label");
+            b.statement("assert impl.isDefined()");
+            b.statement("int[] sites = unresolvedLabels.remove(impl)");
+            b.startIf().string("sites != null").end().startBlock();
+            b.startFor().string("int site : sites").end().startBlock();
+            b.statement("objs[site] = impl.index");
+            b.end(2);
+
+            return ex;
+        }
+
+        private CodeExecutableElement createReverseLabelMapping() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel), "reverseLabelMapping");
+            ex.addParameter(new CodeVariableElement(generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.statement("HashMap<Integer, OperationLabel> result = new HashMap<>()");
+            b.startFor().string("OperationLabel lbl : unresolvedLabels.keySet()").end().startBlock();
+            b.startFor().string("int site : unresolvedLabels.get(lbl)").end().startBlock();
+            b.statement("assert !result.containsKey(site)");
+            b.statement("result.put(site, lbl)");
+            b.end(2);
+            b.startReturn().string("result").end();
+
+            return ex;
+        }
+
         private CodeVariableElement createOperationNames() {
             CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(String[].class), "OPERATION_NAMES");
 
@@ -1789,7 +1873,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.statement("exHandlers = new int[10]");
                 b.statement("exHandlerCount = 0");
                 b.statement("numLabels = 0");
-                b.statement("labelUseSites = new HashMap<>()");
+                b.statement("unresolvedLabels = new HashMap<>()");
 
                 if (model.hasBoxingElimination()) {
                     b.statement("stackValueBciStack = new int[8]");
@@ -1871,10 +1955,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("sourceInfoIndex");
                     b.string("exHandlers");
                     b.string("exHandlerCount");
+                    b.string("unresolvedLabels");
                     b.string("opSeqNum - 1");
-                    b.string("new HashSet<>()");
+                    b.string("new HashMap<>()");
                     b.string("finallyTryContext");
                     b.end(2);
+                    b.statement("operationData[operationSp - 1] = finallyTryContext");
 
                     b.statement("bc = new short[16]");
                     b.statement("bci = 0");
@@ -1893,6 +1979,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                     b.statement("exHandlers = new int[10]");
                     b.statement("exHandlerCount = 0");
+                    b.statement("unresolvedLabels = new HashMap<>()");
 
                     break;
             }
@@ -2191,21 +2278,21 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case FINALLY_TRY:
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData[operationSp]");
                     b.statement("int exceptionLocal = numLocals++");
-                    b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, -1, curStack, exceptionLocal)");
+
+                    b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, curStack, exceptionLocal)");
 
                     b.statement("doEmitFinallyHandler(ctx)");
 
-                    b.statement("IntRef endBranch = new IntRef(-1)");
-                    buildEmitInstruction(b, model.branchInstruction, "endBranch");
+                    b.statement("int endBranchIndex = bci");
+                    buildEmitInstruction(b, model.branchInstruction, UNINIT);
 
-                    // set handlerBci for the exception handler
-                    b.statement("exHandlers[exHandlerIndex + 2] = bci");
+                    b.statement("exHandlers[exHandlerIndex + 2] = bci /* handler start */");
 
                     b.statement("doEmitFinallyHandler(ctx)");
 
                     buildEmitInstruction(b, model.throwInstruction, "exceptionLocal");
 
-                    b.statement("endBranch.value = bci");
+                    b.statement("objs[endBranchIndex] = bci");
 
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
@@ -2271,10 +2358,17 @@ public class OperationsNodeFactory implements ElementHelpers {
                     // Mark the branch target as uninitialized. Add this location to a work list to
                     // be processed once the label is defined.
                     b.statement("argument = " + UNINIT);
-                    b.statement("int[] sites = labelUseSites.getOrDefault(label.id, new int[0])");
-                    b.statement("sites = Arrays.copyOf(sites, sites.length + 1)");
-                    b.statement("sites[sites.length-1] = bci");
-                    b.statement("labelUseSites.put(label.id, sites)");
+                    b.startStatement().startCall("registerUnresolvedLabel");
+                    b.string("label");
+                    b.string("bci");
+                    b.end(3);
+                    b.newLine();
+                    b.lineComment("We need to track branches within finally handlers so that they can be adjusted each time the handler is emitted.");
+                    b.statement("boolean isInternalFinallyBranch = finallyTryContext != null /* in a FinallyTry */ && " +
+                                    "!finallyTryContext.handlerIsSet() /* still in the handler code */ && " +
+                                    "lbl.finallyTryOp == finallyTryContext.finallyTrySequenceNumber /* label defined in this FinallyTry */");
+                    b.startIf().string("isInternalFinallyBranch").end().startBlock();
+                    b.statement("finallyTryContext.finallyInternalBranches.put(bci, lbl)");
                     b.end();
                     break;
                 case CUSTOM_SIMPLE:
@@ -2342,8 +2436,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                     buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
                     b.end();
                     b.statement("lbl.index = bci");
-                    b.startFor().string("int site : labelUseSites.getOrDefault(lbl.id, new int[0])").end().startBlock();
-                    b.statement("objs[site] = bci").end();
+                    b.startStatement().startCall("resolveUnresolvedLabels");
+                    b.string("lbl");
+                    b.end(2);
                     break;
                 case BRANCH:
                     b.startAssign("OperationLabelImpl lbl").string("(OperationLabelImpl) arg0").end();
@@ -2358,10 +2453,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                     b.startIf().string("!isFound").end().startBlock();
                     buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
-                    b.end();
-
-                    b.startIf().string("finallyTryContext != null && lbl.finallyTryOp != finallyTryContext.finallyTrySequenceNumber").end().startBlock();
-                    b.statement("finallyTryContext.outerReferences.add(lbl.index)");
                     b.end();
 
                     b.statement("doEmitLeaves(lbl.declaringOp)");
@@ -2608,18 +2699,26 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case FINALLY_TRY:
                     case FINALLY_TRY_NO_EXCEPT:
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        b.statement("finallyTryContext.handlerBc = Arrays.copyOf(bc, bci)");
-                        b.statement("finallyTryContext.handlerObjs = Arrays.copyOf(objs, bci)");
-                        b.statement("finallyTryContext.handlerMaxStack = maxStack");
-                        if (model.enableTracing) {
-                            b.statement("finallyTryContext.handlerBasicBlockBoundary = Arrays.copyOf(basicBlockBoundary, bci + 1)");
-                        }
-                        b.startIf().string("withSource").end().startBlock();
-                        b.statement("finallyTryContext.handlerSourceInfo = Arrays.copyOf(sourceInfo, sourceInfoIndex)");
-                        b.end();
-                        b.statement("finallyTryContext.handlerExHandlers = Arrays.copyOf(exHandlers, exHandlerCount)");
 
-                        b.statement("operationData[operationSp - 1] = finallyTryContext");
+                        b.declaration(
+                                        generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel),
+                                        "unresolvedLabelsByIndex",
+                                        CodeTreeBuilder.createBuilder().startStaticCall(operationBuilderType, "reverseLabelMapping").string("unresolvedLabels").end());
+                        b.startFor().string("int site : unresolvedLabelsByIndex.keySet()").end().startBlock();
+                        b.startIf().string("finallyTryContext.finallyInternalBranches.containsKey(site)").end().startBlock();
+                        buildThrowIllegalStateException(b,
+                                        "\"Branch inside Finally section of FinallyTry could not be resolved. Ensure that the corresponding OperationLabel is emitted inside the Finally section. Note that code in the Finally section cannot branch into the Try section.\"");
+                        b.end(2);
+
+                        b.startStatement().startCall("finallyTryContext", "setHandler");
+                        b.string("Arrays.copyOf(bc, bci)");
+                        b.string("Arrays.copyOf(objs, bci)");
+                        b.string("maxStack");
+                        b.string("withSource ? Arrays.copyOf(sourceInfo, sourceInfoIndex) : null");
+                        b.string("Arrays.copyOf(exHandlers, exHandlerCount)");
+                        b.string("unresolvedLabelsByIndex");
+                        b.end(2);
+
                         b.statement("bc = finallyTryContext.bc");
                         b.statement("bci = finallyTryContext.bci");
                         b.statement("objs = finallyTryContext.objs");
@@ -2632,7 +2731,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("sourceInfoIndex = finallyTryContext.sourceInfoIndex");
                         b.statement("exHandlers = finallyTryContext.exHandlers");
                         b.statement("exHandlerCount = finallyTryContext.exHandlerCount");
+                        b.statement("unresolvedLabels = finallyTryContext.unresolvedLabels");
                         b.statement("finallyTryContext = finallyTryContext.finallyTryContext");
+
                         b.end();
                         break;
                 }
@@ -2673,8 +2774,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("short[] handlerBc = context.handlerBc");
             b.statement("Object[] handlerObjs = context.handlerObjs");
 
-            // b.statement("System.err.println(Arrays.toString(handlerBc))");
-
             // resize all arrays
             b.startIf().string("bci + handlerBc.length > bc.length").end().startBlock();
             buildCalculateNewLengthOfArray(b, "bc.length", "bci + handlerBc.length");
@@ -2704,17 +2803,37 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startFor().string("int idx = 0; idx < handlerBc.length; idx++").end().startBlock();
             b.startSwitch().string("handlerBc[idx]").end().startBlock();
 
+            // fix up data objects
             for (InstructionModel instr : model.getInstructions()) {
                 switch (instr.kind) {
                     case BRANCH:
                     case BRANCH_FALSE:
                         b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
+                        b.statement("int branchTarget = (int) handlerObjs[idx]");
 
-                        b.startIf().string("context.outerReferences.contains(handlerObjs[idx])").end().startBlock();
-                        b.statement("objs[offsetBci + idx] = handlerObjs[idx]");
+                        // case 1: Branch target is inside the handler. Adjust the target index.
+                        b.startIf().string("context.finallyInternalBranches.containsKey(idx)").end().startBlock();
+                        b.startAssert().string("branchTarget != " + UNINIT).end();
+                        b.statement("objs[offsetBci + idx] = branchTarget + offsetBci /* internal branch target (moved) */");
+
+                        // case 2: Branch target is outside the handler and known. Use it.
+                        b.end().startElseIf().string("branchTarget != " + UNINIT).end().startBlock();
+                        b.statement("objs[offsetBci + idx] = branchTarget /* external branch target (resolved) */");
+
+                        // case 3: Branch target is outside the handler and unknown. Register it as
+                        // unresolved so it can be filled in later.
                         b.end().startElseBlock();
-                        b.startAssert().string("((IntRef) handlerObjs[idx]).value != -1").end();
-                        b.statement("objs[offsetBci + idx] = new IntRef(((IntRef) handlerObjs[idx]).value + offsetBci)");
+                        b.statement("objs[offsetBci + idx] = " + UNINIT + " /* external branch target (not yet resolved) */");
+                        b.statement("OperationLabelImpl lbl = (OperationLabelImpl) context.handlerUnresolvedLabelsByIndex.get(idx)");
+                        // Quick soundness check: When the handler code was emitted, the label was
+                        // undefined. Since the label is not defined by this operation, it should be
+                        // defined by an outer operation, and should still be undefined.
+                        b.statement("assert !lbl.isDefined()");
+                        b.startStatement().startCall("registerUnresolvedLabel");
+                        b.string("lbl");
+                        b.string("offsetBci + idx");
+                        b.end(2);
+
                         b.end();
 
                         b.statement("break");
@@ -3096,17 +3215,18 @@ public class OperationsNodeFactory implements ElementHelpers {
                 switch (op.kind) {
                     case FINALLY_TRY:
                     case FINALLY_TRY_NO_EXCEPT:
-                        b.startCase().tree(createOperationConstant(op)).end().startBlock();
-
-                        b.startIf().string("operationData[i] != null").end().startBlock();
-                        b.statement("doEmitFinallyHandler((FinallyTryContext) operationData[i])");
-                        b.end();
-
-                        b.statement("break");
-                        b.end();
-                        break;
+                        b.startCase().tree(createOperationConstant(op)).end();
                 }
             }
+            b.startBlock();
+
+            b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData[i]");
+            b.startIf().string("ctx.handlerIsSet()").end().startBlock();
+            b.statement("doEmitFinallyHandler(ctx)");
+            b.end();
+
+            b.statement("break");
+            b.end();
 
             b.end();
 
@@ -3911,13 +4031,15 @@ public class OperationsNodeFactory implements ElementHelpers {
             operationLabelImpl.setSuperClass(generic(types.OperationLabel, model.templateType.asType()));
             operationLabelImpl.setEnclosingElement(operationNodeGen);
 
-            operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "id"));
+            operationLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
             operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "index"));
             operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "declaringOp"));
             operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "finallyTryOp"));
 
             operationLabelImpl.add(createConstructorUsingFields(Set.of(), operationLabelImpl, null));
             operationLabelImpl.add(createIsDefined());
+            operationLabelImpl.add(createEquals());
+            operationLabelImpl.add(createHashCode());
 
             return operationLabelImpl;
         }
@@ -3926,6 +4048,27 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "isDefined");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("index != ").staticReference(operationBuilderType, BuilderFactory.UNINIT).end();
+            return ex;
+        }
+
+        private CodeExecutableElement createEquals() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(boolean.class), "equals");
+            ex.addParameter(new CodeVariableElement(context.getType(Object.class), "other"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.startIf().string("!(other instanceof OperationLabelImpl)").end().startBlock();
+            b.returnFalse();
+            b.end();
+
+            b.startReturn().string("this.id == ((OperationLabelImpl) other).id").end();
+            return ex;
+        }
+
+        private CodeExecutableElement createHashCode() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(int.class), "hashCode");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn().string("this.id").end();
             return ex;
         }
     }
