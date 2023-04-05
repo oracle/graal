@@ -1265,7 +1265,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(context.getType(int.class), "exHandlerCount"),
                                 new CodeVariableElement(generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"),
                                 new CodeVariableElement(context.getType(int.class), "finallyTrySequenceNumber"),
-                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel), "finallyInternalBranches"),
+                                new CodeVariableElement(generic(HashSet.class, context.getDeclaredType(Integer.class)), "finallyInternalBranches"),
                                 new CodeVariableElement(finallyTryContext.asType(), "finallyTryContext")));
                 if (model.enableTracing) {
                     finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "basicBlockBoundary"));
@@ -1405,6 +1405,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(createDoEmitSourceInfo());
             builder.add(createFinish());
             builder.add(createDoEmitLeaves());
+            builder.add(createInFinallyTryHandler());
             if (model.enableSerialization) {
                 builder.add(createSerialize());
                 builder.add(createDeserialize());
@@ -1957,7 +1958,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("exHandlerCount");
                     b.string("unresolvedLabels");
                     b.string("opSeqNum - 1");
-                    b.string("new HashMap<>()");
+                    b.string("new HashSet<>()");
                     b.string("finallyTryContext");
                     b.end(2);
                     b.statement("operationData[operationSp - 1] = finallyTryContext");
@@ -2171,6 +2172,12 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 b.end().startElseBlock(); // } {
 
+                b.startIf().string("!unresolvedLabels.isEmpty()").end().startBlock();
+                b.startThrow().startNew(context.getType(IllegalStateException.class));
+                b.doubleQuote("Found branches with unresolved targets. Did you forget to emit a label?");
+                b.end(2);
+                b.end();
+
                 b.declaration(types.FrameDescriptor_Builder, "fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
 
                 b.startStatement().startCall("fdb.addSlots");
@@ -2364,11 +2371,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.end(3);
                     b.newLine();
                     b.lineComment("We need to track branches within finally handlers so that they can be adjusted each time the handler is emitted.");
-                    b.statement("boolean isInternalFinallyBranch = finallyTryContext != null /* in a FinallyTry */ && " +
-                                    "!finallyTryContext.handlerIsSet() /* still in the handler code */ && " +
-                                    "lbl.finallyTryOp == finallyTryContext.finallyTrySequenceNumber /* label defined in this FinallyTry */");
+                    b.statement("boolean isInternalFinallyBranch = inFinallyTryHandler() && lbl.finallyTryOp == finallyTryContext.finallyTrySequenceNumber /* label defined in this FinallyTry */");
                     b.startIf().string("isInternalFinallyBranch").end().startBlock();
-                    b.statement("finallyTryContext.finallyInternalBranches.put(bci, lbl)");
+                    b.statement("finallyTryContext.finallyInternalBranches.add(bci)");
                     b.end();
                     break;
                 case CUSTOM_SIMPLE:
@@ -2632,6 +2637,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case IF_THEN:
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[0] = bci");
+                        emitFinallyInternalBranchCheck(b);
                         buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
                         b.end().startElseBlock();
                         b.statement("int toUpdate = ((int[]) data)[0]");
@@ -2645,8 +2651,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case IF_THEN_ELSE:
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[0] = bci");
+                        emitFinallyInternalBranchCheck(b);
                         buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
+                        emitFinallyInternalBranchCheck(b);
                         b.statement("((int[]) data)[1] = bci");
                         buildEmitInstruction(b, model.branchInstruction, UNINIT);
                         if (op.kind == OperationKind.CONDITIONAL) {
@@ -2669,8 +2677,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case WHILE:
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[1] = bci");
+                        emitFinallyInternalBranchCheck(b);
                         buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
                         b.end().startElseBlock();
+                        emitFinallyInternalBranchCheck(b);
                         buildEmitInstruction(b, model.branchInstruction, "((int[]) data)[0]");
                         b.statement("int toUpdate = ((int[]) data)[1];");
                         b.statement("objs[toUpdate] = bci");
@@ -2684,6 +2694,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("dArray[1] = bci /* try end */");
                         b.statement("dArray[3] = bci /* branch past catch fix-up index */");
+                        emitFinallyInternalBranchCheck(b);
                         buildEmitInstruction(b, model.branchInstruction, UNINIT);
                         b.statement("dArray[2] = bci /* catch start */");
                         b.end();
@@ -2704,11 +2715,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                                         generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel),
                                         "unresolvedLabelsByIndex",
                                         CodeTreeBuilder.createBuilder().startStaticCall(operationBuilderType, "reverseLabelMapping").string("unresolvedLabels").end());
-                        b.startFor().string("int site : unresolvedLabelsByIndex.keySet()").end().startBlock();
-                        b.startIf().string("finallyTryContext.finallyInternalBranches.containsKey(site)").end().startBlock();
-                        buildThrowIllegalStateException(b,
-                                        "\"Branch inside Finally section of FinallyTry could not be resolved. Ensure that the corresponding OperationLabel is emitted inside the Finally section. Note that code in the Finally section cannot branch into the Try section.\"");
-                        b.end(2);
 
                         b.startStatement().startCall("finallyTryContext", "setHandler");
                         b.string("Arrays.copyOf(bc, bci)");
@@ -2812,8 +2818,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("int branchTarget = (int) handlerObjs[idx]");
 
                         // case 1: Branch target is inside the handler. Adjust the target index.
-                        b.startIf().string("context.finallyInternalBranches.containsKey(idx)").end().startBlock();
-                        b.startAssert().string("branchTarget != " + UNINIT).end();
+                        b.startIf().string("context.finallyInternalBranches.contains(idx)").end().startBlock();
+                        b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
+                        b.startThrow().startNew(context.getType(IllegalStateException.class));
+                        b.doubleQuote("Branch inside the FinallyTry handler was not resolved. The branch's OperationLabel was not declared. This is probably a bug in the parser.");
+                        b.end().end();
+                        b.end();
                         b.statement("objs[offsetBci + idx] = branchTarget + offsetBci /* internal branch target (moved) */");
 
                         // case 2: Branch target is outside the handler and known. Use it.
@@ -3233,6 +3243,25 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             return ex;
+        }
+
+        private CodeExecutableElement createInFinallyTryHandler() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(boolean.class), "inFinallyTryHandler");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn();
+            b.string("finallyTryContext != null /* in a FinallyTry */ && !finallyTryContext.handlerIsSet() /* still in the handler code */");
+            b.end();
+
+            return ex;
+        }
+
+        // When a branch target is within a Finally handler (an "internal" jump) it needs to be
+        // remembered. Every time the handler is emitted, the jump target must be readjusted.
+        private void emitFinallyInternalBranchCheck(CodeTreeBuilder b) {
+            b.startIf().string("inFinallyTryHandler()").end().startBlock();
+            b.statement("finallyTryContext.finallyInternalBranches.add(bci)");
+            b.end();
         }
 
         private CodeExecutableElement createConstructor() {
