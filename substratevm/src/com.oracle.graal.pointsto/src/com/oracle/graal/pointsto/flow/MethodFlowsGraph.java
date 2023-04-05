@@ -111,7 +111,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return original;
     }
 
-    protected static boolean nonCloneableFlow(TypeFlow<?> flow) {
+    public static boolean nonCloneableFlow(TypeFlow<?> flow) {
         /*
          * References to field flows and to array elements flows are not part of the method itself;
          * field and indexed load and store flows will instead be cloned, and used to access the
@@ -120,7 +120,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return flow instanceof FieldTypeFlow || flow instanceof ArrayElementsTypeFlow;
     }
 
-    protected static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
+    public static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
         /*
          * Formal returns and unwinds are method exit points. Formal parameters are entry points
          * into callees.
@@ -128,7 +128,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return flow instanceof FormalReturnTypeFlow || use instanceof FormalParamTypeFlow;
     }
 
-    private static boolean nonMethodFlow(TypeFlow<?> flow) {
+    public static boolean nonMethodFlow(TypeFlow<?> flow) {
         /*
          * All-instantiated flow doesn't belong to any method, but it can be reachable from a use.
          */
