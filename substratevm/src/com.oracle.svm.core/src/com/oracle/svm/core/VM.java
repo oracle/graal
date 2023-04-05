@@ -39,14 +39,24 @@ public final class VM {
     public VM(String vmInfo) {
         info = vmInfo;
         version = getVersion();
-        vendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
-        vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+        vendor = getVendor();
+        vendorUrl = getVendorUrl();
         vendorVersion = getVendorVersion();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static String getSupportUrl() {
         return System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVendor() {
+        return System.getProperty("org.graalvm.vendor", "GraalVM Community");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVendorUrl() {
+        return System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
     }
 
     public static String getVendorVersion() {

@@ -113,8 +113,8 @@ public class NativeImage {
         return (OS.getCurrent().className + "-" + SubstrateUtil.getArchitectureName()).toLowerCase();
     }
 
-    static final String graalvmVendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
-    static final String graalvmVendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+    static final String graalvmVendor = VM.getVendor();
+    static final String graalvmVendorUrl = VM.getVendorUrl();
     static final String graalvmVendorVersion = VM.getVendorVersion();
 
     private static Map<String, String[]> getCompilerFlags() {
