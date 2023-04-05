@@ -456,7 +456,7 @@ public abstract class NativeImageViaCC extends NativeImage {
                     /* Provide an import library for the built shared library. */
                     Path importLib = inv.getTempDirectory().resolve(imageName + ".lib");
                     Path importLibCopy = Files.copy(importLib, imagePath.resolveSibling(importLib.getFileName()), StandardCopyOption.REPLACE_EXISTING);
-                    BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIBRARY, importLibCopy);
+                    BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIB, importLibCopy);
                     }
                 if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
