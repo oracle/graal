@@ -80,6 +80,7 @@ import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -114,7 +115,7 @@ public class NativeImage {
 
     static final String graalvmVendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
     static final String graalvmVendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
-    static final String graalvmVendorVersion = System.getProperty("org.graalvm.vendorversion", "GraalVM CE");
+    static final String graalvmVendorVersion = VM.getVendorVersion();
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
