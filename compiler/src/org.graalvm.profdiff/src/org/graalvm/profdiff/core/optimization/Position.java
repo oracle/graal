@@ -42,6 +42,9 @@ import java.util.Objects;
  * {c(): 4, b(): 3, a(): 2}
  * </pre>
  *
+ * Positions are formatted with the innermost method first ({@code c()} in the example) and the
+ * outermost method last ({@code a()}).
+ *
  * The position of an optimization is defined as the node source position of a node that took part
  * in the transformation. For instance, it is the canonicalized node in case of a canonicalization.
  * For loop transformations, it could be the position of a {@code LoopBeginNode}.
@@ -66,8 +69,16 @@ public final class Position implements Comparable<Position> {
     /**
      * Creates a new position or returns the {@link #EMPTY} position.
      *
-     * @param methodNames the method names comprising the position
-     * @param bcis the bcis comprising the position
+     * The first method name represents the innermost method and the last method name represents the
+     * outermost method. For example, let us have an optimization in method {@code b()} at bci 3. If
+     * {@code a()} calls {@code b()} at bci 2, the position is created by calling:
+     *
+     * <pre>
+     * Position.create(List.of("b()", "a()"), List.of(3, 2))
+     * </pre>
+     *
+     * @param methodNames the method names comprising the position (innermost first)
+     * @param bcis the bcis comprising the position, corresponding to the method names
      * @return a new position or the {@link #EMPTY} position
      */
     public static Position create(List<String> methodNames, List<Integer> bcis) {
@@ -105,7 +116,8 @@ public final class Position implements Comparable<Position> {
     /**
      * Creates a new position from strings and integers.
      *
-     * For example, the call:
+     * The innermost method is specified first and the outermost method is specified last. For
+     * example, the call:
      *
      * <pre>
      * Position.of("c()", 4, "b()", 3, "a()", 2)
@@ -177,7 +189,7 @@ public final class Position implements Comparable<Position> {
      * {c(): 4, b(): 3, a(): 2}
      * </pre>
      *
-     * Then the path from root to the enclosing method is:
+     * Then the path from the root to the enclosing method is:
      *
      * <pre>
      * a() at bci -1, b() at bci 2, c() at bci 3
@@ -327,8 +339,8 @@ public final class Position implements Comparable<Position> {
      * <pre>
      * EMPTY
      * {a(): 1}
-     * {a(): 2}
      * {c(): 1, a(): 1}
+     * {a(): 2}
      * {b(): 1}
      * </pre>
      *
