@@ -714,6 +714,9 @@ suite = {
         "org.graalvm.compiler.hotspot.test",
         "org.graalvm.compiler.jtt",
       ],
+      "requires" : [
+        "jdk.incubator.concurrent",
+      ],
       "requiresConcealed" : {
         "java.base" : [
           "jdk.internal.misc",
@@ -725,6 +728,7 @@ suite = {
       "checkstyle": "org.graalvm.compiler.graph",
       "javaCompliance" : "20+",
       "javaPreviewNeeded": "20+",
+      "javac.lint.overrides": "none",
       "workingSets" : "Graal,HotSpot,Test",
     },
 
