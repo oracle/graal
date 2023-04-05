@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
+import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -72,9 +73,30 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK20OrLater.class)
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiMount(boolean hide, boolean firstMount) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiUnmount(boolean hide, boolean lastUnmount) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiHideFrames(boolean hide) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = {JDK20OrLater.class, JDK20OrEarlier.class}, name = "notifyJvmtiHideFrames")
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiHideFramesJDK20(boolean hide) {
         /*
          * Unfortunately, resetting the `notifyJvmtiEvents` field is not enough to completely remove
          * calls to this method due to the way it's used from the `switchToVirtualThread` method, so
