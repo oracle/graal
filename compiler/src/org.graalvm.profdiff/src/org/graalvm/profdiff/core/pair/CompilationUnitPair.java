@@ -51,7 +51,6 @@ public class CompilationUnitPair {
      * @param compilationUnit1 a compilation unit from the first experiment
      * @param compilationUnit2 a compilation unit from the second experiment
      */
-    @SuppressWarnings("this-escape")
     public CompilationUnitPair(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
         assert compilationUnit1 != null || compilationUnit2 != null;
         assert !bothNotNull() || compilationUnit1.getMethod().getMethodName().equals(compilationUnit2.getMethod().getMethodName());
@@ -114,19 +113,19 @@ public class CompilationUnitPair {
         }
         StringBuilder sb = new StringBuilder("Compilation ");
         if (bothHot()) {
-            sb.append(compilationUnit1 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit1.getCompilationId());
+            sb.append(compilationUnit1 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit1.getCompilationIdAndMultiMethodKey());
             if (compilationUnit1.getMethod().getExperiment().isProfileAvailable()) {
                 sb.append(" (").append(compilationUnit1.createExecutionSummary()).append(")");
             }
             sb.append(" in experiment ").append(compilationUnit1.getMethod().getExperiment().getExperimentId()).append(" vs compilation ").append(
-                            compilationUnit2 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit2.getCompilationId());
+                            compilationUnit2 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit2.getCompilationIdAndMultiMethodKey());
             if (compilationUnit2.getMethod().getExperiment().isProfileAvailable()) {
                 sb.append(" (").append(compilationUnit2.createExecutionSummary()).append(")");
             }
             sb.append(" in experiment ").append(compilationUnit2.getMethod().getExperiment().getExperimentId());
         } else {
             CompilationUnit compilationUnit = compilationUnit1 != null && compilationUnit1.isHot() ? compilationUnit1 : compilationUnit2;
-            sb.append(compilationUnit instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit.getCompilationId()).append(" is ").append(
+            sb.append(compilationUnit instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit.getCompilationIdAndMultiMethodKey()).append(" is ").append(
                             compilationUnit.isHot() ? "hot" : "present").append(" only in experiment ").append(compilationUnit.getMethod().getExperiment().getExperimentId());
         }
         return sb.toString();

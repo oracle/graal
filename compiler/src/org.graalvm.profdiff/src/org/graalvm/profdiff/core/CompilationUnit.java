@@ -31,10 +31,10 @@ import org.graalvm.profdiff.parser.ExperimentParserError;
 /**
  * Represents an executed Graal compilation of a method.
  *
- * A compilation unit contains holds only its identifiers (compilation ID, root method) and simple
- * scalar metadata (execution period, hot flag). The most resource-heavy parts, i.e. an
- * {@link OptimizationTree} and {@link InliningTree}, can be loaded on demand. This design is
- * necessary, because a whole experiment might not fit in memory.
+ * A compilation unit contains holds only its identifiers (compilation ID, multi-method key, root
+ * method) and simple scalar metadata (execution period, hot flag). The most resource-heavy parts,
+ * i.e. an {@link OptimizationTree} and {@link InliningTree}, can be loaded on demand. This design
+ * is necessary, because a whole experiment might not fit in memory.
  */
 public class CompilationUnit {
     /**
@@ -100,11 +100,22 @@ public class CompilationUnit {
      */
     private final TreeLoader loader;
 
-    public CompilationUnit(Method method, String compilationId, long period, TreeLoader loader) {
+    /**
+     * The key of the compiled multi-method. {@code null} if this is not a compilation of a
+     * multi-method.
+     */
+    private final String multiMethodKey;
+
+    public CompilationUnit(Method method, String compilationId, long period, TreeLoader loader, String multiMethodKey) {
         this.method = method;
         this.compilationId = compilationId;
         this.period = period;
         this.loader = loader;
+        this.multiMethodKey = multiMethodKey;
+    }
+
+    public CompilationUnit(Method method, String compilationId, long period, TreeLoader loader) {
+        this(method, compilationId, period, loader, null);
     }
 
     /**
@@ -164,6 +175,25 @@ public class CompilationUnit {
     }
 
     /**
+     * Gets the key of the compiled multi-method or {@code null} if this is not a compilation of a
+     * multi-method.
+     */
+    public String getMultiMethodKey() {
+        return multiMethodKey;
+    }
+
+    /**
+     * Returns the compilation ID extended with the multi-method key if this is a compilation of a
+     * multi-method.
+     */
+    public String getCompilationIdAndMultiMethodKey() {
+        if (multiMethodKey == null) {
+            return compilationId;
+        }
+        return compilationId + ' ' + multiMethodKey;
+    }
+
+    /**
      * Creates and returns a summary that specifies the execution time of this compilation unit
      * relative to the total execution time and relative to the execution time of all graal-compiled
      * methods. This is only possible when proftool data is {@link Experiment#isProfileAvailable()
@@ -185,15 +215,15 @@ public class CompilationUnit {
     }
 
     /**
-     * Writes the header of the compilation unit (compilation ID, execution summary, experiment ID)
-     * and either the optimization-context tree or the optimization and inlining tree to the
-     * destination writer. The execution summary is omitted when proftool data is not
-     * {@link Experiment#isProfileAvailable() available} to the experiment.
+     * Writes the header of the compilation unit (compilation ID, multi-method key, execution
+     * summary, experiment ID) and either the optimization-context tree or the optimization and
+     * inlining tree to the destination writer. The execution summary is omitted when proftool data
+     * is not {@link Experiment#isProfileAvailable() available} to the experiment.
      *
      * @param writer the destination writer
      */
     public void write(Writer writer) throws ExperimentParserError {
-        writer.write("Compilation " + compilationId);
+        writer.write("Compilation " + getCompilationIdAndMultiMethodKey());
         if (method.getExperiment().isProfileAvailable()) {
             writer.write(" (" + createExecutionSummary() + ")");
         }
