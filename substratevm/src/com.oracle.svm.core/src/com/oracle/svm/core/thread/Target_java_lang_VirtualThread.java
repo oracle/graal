@@ -39,6 +39,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
@@ -48,6 +49,7 @@ import com.oracle.svm.core.util.VMError;
 @TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
 public final class Target_java_lang_VirtualThread {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = JDK20OrEarlier.class)
     private static boolean notifyJvmtiEvents;
 
     // Checkstyle: stop
