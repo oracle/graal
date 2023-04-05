@@ -26,6 +26,7 @@
 package com.oracle.svm.core.jdk.localization;
 
 import java.nio.charset.Charset;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.IllformedLocaleException;
 import java.util.Locale;
@@ -41,6 +42,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -107,6 +109,7 @@ public class LocalizationSupport {
             }
             ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), resultingPattern + "\\.properties");
         } else {
+            registerRequiredReflectionForBundle(bundleName, Set.of(locale));
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
             onBundlePrepared(bundle);
@@ -125,6 +128,28 @@ public class LocalizationSupport {
         } else {
             String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
             return bundleNameWithModule[0] + ':' + patternWithLocale;
+        }
+    }
+
+    public void registerRequiredReflectionForBundle(String baseName, Collection<Locale> wantedLocales) {
+        int i = baseName.lastIndexOf('.');
+        if (i > 0) {
+            String name = baseName.substring(i + 1) + "Provider";
+            String providerName = baseName.substring(0, i) + ".spi." + name;
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), providerName);
+        }
+
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), baseName);
+
+        for (Locale locale : wantedLocales) {
+            registerRequiredReflectionForBundleAndLocale(baseName, locale);
+        }
+    }
+
+    private void registerRequiredReflectionForBundleAndLocale(String baseName, Locale baseLocale) {
+        for (Locale locale : control.getCandidateLocales(baseName, baseLocale)) {
+            String bundleWithLocale = control.toBundleName(baseName, locale);
+            RuntimeReflection.registerClassLookup(bundleWithLocale);
         }
     }
 
@@ -151,6 +176,11 @@ public class LocalizationSupport {
     @SuppressWarnings("unused")
     public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
         /*- By default, there is nothing to do */
+    }
+
+    @SuppressWarnings("unused")
+    public boolean isNotIncluded(String bundleName) {
+        return false;
     }
 
     /**
