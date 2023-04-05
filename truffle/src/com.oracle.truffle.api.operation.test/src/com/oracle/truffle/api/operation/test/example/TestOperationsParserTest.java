@@ -399,6 +399,21 @@ public class TestOperationsParserTest {
     }
 
     @Test
+    public void testUndeclaredLabel() {
+        // branch lbl
+
+        thrown.expect(IllegalStateException.class);
+         thrown.expectMessage("Found branches with unresolved targets. Did you forget to emit a label?");
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+            OperationLabel lbl = b.createLabel();
+            b.emitBranch(lbl);
+            b.endRoot();
+        });
+
+    }
+
+    @Test
     public void testFinallyTryBasic() {
         // try {
         //   arg0.append(1);
@@ -794,6 +809,653 @@ public class TestOperationsParserTest {
         testOrdering(false, root, 1L, 3L, 5L);
     }
 
+
+    /*
+     * The following few test cases have local control flow inside finally handlers.
+     * Since finally handlers are relocated, these local branches should be properly
+     * adjusted by the builder.
+     */
+
+    @Test
+    public void testFinallyTryIfThenWithinHandler() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   if (false) {
+        //     arg0.append(4);
+        //   }
+        //   arg0.append(5);
+        // }
+        // arg0.append(6);
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(3L);
+                    b.endAppenderOperation();
+
+                    b.beginIfThen();
+                    b.emitLoadConstant(false);
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(4L);
+                    b.endAppenderOperation();
+                    b.endIfThen();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(5L);
+                    b.endAppenderOperation();
+
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(2L);
+                    b.endAppenderOperation();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(6L);
+            b.endAppenderOperation();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L);
+    }
+
+    @Test
+    public void testFinallyTryIfThenElseWithinHandler() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   if (false) {
+        //     arg0.append(4);
+        //   } else {
+        //     arg0.append(5);
+        //   }
+        //   arg0.append(6);
+        // }
+        // arg0.append(7);
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(3L);
+                    b.endAppenderOperation();
+
+                    b.beginIfThenElse();
+                    b.emitLoadConstant(false);
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(4L);
+                    b.endAppenderOperation();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(5L);
+                    b.endAppenderOperation();
+
+                    b.endIfThenElse();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(6L);
+                    b.endAppenderOperation();
+
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(2L);
+                    b.endAppenderOperation();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(7L);
+            b.endAppenderOperation();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L, 6L);
+    }
+
+    @Test
+    public void testFinallyTryConditionalWithinHandler() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   (false) ? { arg0.append(4); 0 } : { arg0.append(5); 0 }
+        //   (true) ? { arg0.append(6); 0 } : { arg0.append(7); 0 }
+        //   arg0.append(8);
+        // }
+        // arg0.append(9);
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(3L);
+                    b.endAppenderOperation();
+
+                    b.beginConditional();
+                        b.emitLoadConstant(false);
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                                b.emitLoadArgument(0);
+                                b.emitLoadConstant(4L);
+                            b.endAppenderOperation();
+                            b.emitLoadConstant(0L);
+                        b.endBlock();
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                                b.emitLoadArgument(0);
+                                b.emitLoadConstant(5L);
+                            b.endAppenderOperation();
+                            b.emitLoadConstant(0L);
+                        b.endBlock();
+                    b.endConditional();
+
+                    b.beginConditional();
+                        b.emitLoadConstant(true);
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                                b.emitLoadArgument(0);
+                                b.emitLoadConstant(6L);
+                            b.endAppenderOperation();
+                            b.emitLoadConstant(0L);
+                        b.endBlock();
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                                b.emitLoadArgument(0);
+                                b.emitLoadConstant(7L);
+                            b.endAppenderOperation();
+                            b.emitLoadConstant(0L);
+                        b.endBlock();
+                    b.endConditional();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(8L);
+                    b.endAppenderOperation();
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(2L);
+                    b.endAppenderOperation();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(9L);
+            b.endAppenderOperation();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L, 6L, 8L);
+    }
+
+    @Test
+    public void testFinallyTryLoopWithinHandler() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   tee(local, 4);
+        //   while (local < 7) {
+        //     arg0.append(local);
+        //     tee(local, local+1);
+        //   }
+        //   arg0.append(8);
+        // }
+        // arg0.append(9);
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            OperationLocal local = b.createLocal();
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(3L);
+                    b.endAppenderOperation();
+
+                    b.beginTeeLocal(local);
+                    b.emitLoadConstant(4L);
+                    b.endTeeLocal();
+
+                    b.beginWhile();
+                        b.beginLessThanOperation();
+                            b.emitLoadLocal(local);
+                            b.emitLoadConstant(7L);
+                        b.endLessThanOperation();
+
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadLocal(local);
+                            b.endAppenderOperation();
+
+                            b.beginTeeLocal(local);
+                                b.beginAddOperation();
+                                    b.emitLoadLocal(local);
+                                    b.emitLoadConstant(1L);
+                                b.endAddOperation();
+                            b.endTeeLocal();
+                        b.endBlock();
+                    b.endWhile();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(8L);
+                    b.endAppenderOperation();
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(2L);
+                    b.endAppenderOperation();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(9L);
+            b.endAppenderOperation();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 4L, 5L, 6L, 8L);
+    }
+
+
+    @Test
+    public void testFinallyTryShortCircuitOpWithinHandler() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   { arg0.append(4); true } && { arg0.append(5); false } && { arg0.append(6); true }
+        //   { arg0.append(7); false } || { arg0.append(8); true } || { arg0.append(9); false }
+        //   arg0.append(10);
+        // }
+        // arg0.append(11);
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(3L);
+                    b.endAppenderOperation();
+
+                    b.beginScAnd();
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(4L);
+                            b.endAppenderOperation();
+
+                            b.emitLoadConstant(true);
+                        b.endBlock();
+
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(5L);
+                            b.endAppenderOperation();
+
+                            b.emitLoadConstant(false);
+                        b.endBlock();
+
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(6L);
+                            b.endAppenderOperation();
+
+                            b.emitLoadConstant(true);
+                        b.endBlock();
+                    b.endScAnd();
+
+                    b.beginScOr();
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(7L);
+                            b.endAppenderOperation();
+
+                            b.emitLoadConstant(false);
+                        b.endBlock();
+
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(8L);
+                            b.endAppenderOperation();
+
+                            b.emitLoadConstant(true);
+                        b.endBlock();
+
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(9L);
+                            b.endAppenderOperation();
+
+                            b.emitLoadConstant(false);
+                        b.endBlock();
+                    b.endScOr();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(10L);
+                    b.endAppenderOperation();
+
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(2L);
+                    b.endAppenderOperation();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(11L);
+            b.endAppenderOperation();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 4L, 5L, 7L, 8L, 10L);
+    }
+
+    @Test
+    public void testFinallyTryNonThrowingTryCatchWithinHandler() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   try {
+        //     arg0.append(4);
+        //   } catch {
+        //     arg0.append(5);
+        //   }
+        //   arg0.append(6);
+        // }
+        // arg0.append(7);
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(3L);
+                    b.endAppenderOperation();
+
+                    b.beginTryCatch(b.createLocal());
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitLoadConstant(4L);
+                        b.endAppenderOperation();
+
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitLoadConstant(5L);
+                        b.endAppenderOperation();
+                    b.endTryCatch();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(6L);
+                    b.endAppenderOperation();
+
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(2L);
+                    b.endAppenderOperation();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(7L);
+            b.endAppenderOperation();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 4L, 6L);
+    }
+
+    @Test
+    public void testFinallyTryThrowingTryCatchWithinHandler() {
+        // try {
+        //   arg0.append(1);
+        //   return 0;
+        //   arg0.append(2);
+        // } finally {
+        //   arg0.append(3);
+        //   try {
+        //     arg0.append(4);
+        //     throw 0;
+        //     arg0.append(5);
+        //   } catch {
+        //     arg0.append(6);
+        //   }
+        //   arg0.append(7);
+        // }
+        // arg0.append(8);
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(3L);
+                    b.endAppenderOperation();
+
+                    b.beginTryCatch(b.createLocal());
+                        b.beginBlock();
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(4L);
+                            b.endAppenderOperation();
+
+                            b.emitThrowOperation();
+
+                            b.beginAppenderOperation();
+                            b.emitLoadArgument(0);
+                            b.emitLoadConstant(5L);
+                            b.endAppenderOperation();
+                        b.endBlock();
+
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitLoadConstant(6L);
+                        b.endAppenderOperation();
+                    b.endTryCatch();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(7L);
+                    b.endAppenderOperation();
+
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitLoadConstant(2L);
+                    b.endAppenderOperation();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(8L);
+            b.endAppenderOperation();
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 3L, 4L, 6L, 7L);
+    }
+
+    @Test
+    public void testFinallyTryBranchWithinHandlerNoLabel() {
+        // try {
+        //   return 0;
+        // } finally {
+        //   goto lbl;
+        //   return 0;
+        // }
+
+        thrown.expect(IllegalStateException.class);
+        // TODO fix message
+        thrown.expectMessage("bug");
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    OperationLabel lbl = b.createLabel();
+
+                    b.emitBranch(lbl);
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+            b.endFinallyTry();
+            b.endRoot();
+        });
+    }
+
     @Test
     public void testFinallyTryBranchIntoTry() {
         // try {
@@ -806,7 +1468,7 @@ public class TestOperationsParserTest {
         // }
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branch inside Finally section of FinallyTry could not be resolved. Ensure that the corresponding OperationLabel is emitted inside the Finally section.");
+        thrown.expectMessage("Branch inside the FinallyTry handler was not resolved.");
         parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -838,6 +1500,90 @@ public class TestOperationsParserTest {
         });
     }
 
+    @Test
+    public void testFinallyTryBranchIntoFinally() {
+        // try {
+        //   goto lbl;
+        //   return 0;
+        // } finally {
+        //   lbl:
+        //   return 0;
+        // }
+
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.");
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    OperationLabel lbl = b.createLabel();
+
+                    b.emitLabel(lbl);
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+
+                b.beginBlock();
+                    b.emitBranch(lbl);
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+            b.endFinallyTry();
+
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testFinallyTryBranchIntoOuterFinally() {
+        // try {
+        //   return 0;
+        // } finally {
+        //   try {
+        //     return 0;
+        //   } finally {
+        //     goto lbl;
+        //   }
+        //   lbl:
+        //   return 0;
+        // }
+
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("bug");
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginFinallyTry();
+                b.beginBlock();
+                    OperationLabel lbl = b.createLabel();
+
+                    b.beginFinallyTry();
+                        b.emitBranch(lbl);
+
+                        b.beginReturn();
+                        b.emitLoadConstant(0L);
+                        b.endReturn();
+                    b.endFinallyTry();
+
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+
+                b.beginBlock();
+                    b.beginReturn();
+                    b.emitLoadConstant(0L);
+                    b.endReturn();
+                b.endBlock();
+            b.endFinallyTry();
+            b.endRoot();
+        });
+    }
 
     @Test
     public void testFinallyTryNestedTry() {
