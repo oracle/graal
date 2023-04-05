@@ -9,7 +9,7 @@ redirect_from: /$version/reference-manual/native-image/Bundles/
 # Native Image Bundles
 
 Native Image provides a feature that enables users to build native executables from a self-contained _bundle_. 
-In contrast to regular `native-image` building, this mode of operation only takes a single `*.nib`-file as an input that contains everything needed to build an image (a native executable or a native shared library).
+In contrast to regular `native-image` building, this mode of operation takes only a single _*.nib_ file as an input. The file contains everything required to build a native executable (or a native shared library).
 This can be useful when large applications consisting of many input files (JAR-files, configuration files, auto-generated files, downloaded files) need to be rebuilt at a later point in time without worrying whether all files are still available.
 Often complex builds involve downloading many libraries that are not guaranteed to remain accessible later in time.
 Using Native Image bundles is a safe solution to encapsulate all this input required for building into a single file.
@@ -100,7 +100,7 @@ input/stage/path_canonicalizations.json
 As you can see, a bundle is just a JAR file with a specific layout.
 This is explained in detail [below](#bundle-file-format).
 
-Next to the bundle, you can also find the output folder: _target/micronautguide.output_.
+Next to the bundle, you can also find the output directory: _target/micronautguide.output_.
 It contains the native executable and all other files that were created as part of the build. 
 Since you did not specify any options that would produce extra output (for example, `-g` to generate debugging information or `--diagnostics-mode`), only the executable can be found there:
 ```shell
@@ -128,7 +128,7 @@ Native Image Bundles: Bundle written to /home/testuser/micronaut-data-jdbc-repos
 [INFO] ------------------------------------------------------------------------
 ```
 
-Now `micronautguide.nib` is only 20 MB in file size and the executable is not included:
+Now _micronautguide.nib_ is only 20 MB in file size and the executable is not included:
 ```shell
 $ jar tf micronautguide.nib
 META-INF/MANIFEST.MF
@@ -220,15 +220,15 @@ To make an environment variable accessible to build time, use:
 Using `-E` works as expected with bundles.
 Any environment variable specified with `-E` will be captured in the bundle.
 For variables where the optional `<env-var-value>` is not given, the bundle would capture the value the variable had at the time the bundle was created.
-Prefix `-E` was chosen tho make the option look similar to the related `-D<java-system-property-key>=<java-system-property-value>` option (which makes Java system properties available at build time).
+The prefix `-E` was chosen to make the option look similar to the related `-D<java-system-property-key>=<java-system-property-value>` option (which makes Java system properties available at build time).
 
 ## Combining --bundle-create and --bundle-apply
 
-As already mentioned in [Building with Bundles](#building-with-bundles), it is possible to create new bundles based on existing ones.
+As already mentioned in [Building with Bundles](#building-with-bundles), it is possible to create a new bundle based on an existing one.
 The `--bundle-apply` help message has a simple example.
-A more interesting example arises if an existing bundle is used create a bundle that builds a PGO-optimized version of the original application.
+A more interesting example arises if an existing bundle is used to create a new bundle that builds a PGO-optimized version of the original application.
 
-Assuming you have already built the `micronaut-data-jdbc-repository` example into a bundle named `micronautguide.nib`.
+Assuming you have already built the `micronaut-data-jdbc-repository` example into a bundle named _micronautguide.nib_.
 To produce a PGO-optimized variant of that bundle, first build a variant of the native executable that generates PGO profiling information at run time (you will use it later):
 ```shell
 $ native-image --bundle-apply=micronautguide.nib --pgo-instrument
@@ -272,7 +272,7 @@ $ /home/testuser/micronautguide.output/default/micronautguide
 ```
 
 Based on <a href="https://guides.micronaut.io/latest/micronaut-data-jdbc-repository.html" target="_blank">this walkthrough</a>, you use the running native executable to add new database entries and query the information in the database afterwards so that you get real-world profiling information.
-Once completed, shut the Micronaut application down with `CTRL-C` (`SIGTERM`).
+Once completed, stop the Micronaut application using `Ctrl+C` (`SIGTERM`).
 Looking into the current working directory, you can find a new file:
 ```shell
 $ ls -lh  *.iprof
@@ -291,23 +291,23 @@ Warning: Native Image Bundles are an experimental feature.
 Native Image Bundles: Bundle written to /home/testuser/micronautguide-pgo-optimized.nib
 ```
 
-Now take a look how `micronautguide-pgo-optimized.nib` is different from `micronautguide.nib`:
+Now take a look how _micronautguide-pgo-optimized.nib_ is different from _micronautguide.nib_:
 ```shell
 $ ls -lh *.nib
 -rw-r--r-- 1 testuser testuser  20M Mar 28 11:12 micronautguide.nib
 -rw-r--r-- 1 testuser testuser  23M Mar 28 15:02 micronautguide-pgo-optimized.nib
 ```
 
-You can see that the new bundle is 3 MB larger than the existing one.
-The reason, as can be guessed, is that now the bundle contains the `default.iprof` file.
-Using a tool to compare folders, you can inspect the differences in detail:
+You can see that the new bundle is 3 MB larger than the original.
+The reason, as can be guessed, is that now the bundle contains the _default.iprof_ file.
+Using a tool to compare directories, you can inspect the differences in detail:
 
 ![visual-bundle-compare](visual-bundle-compare.png)
 
-As you can see, `micronautguide-pgo-optimized.nib` contains `default.iprof` in the folder _input/auxiliary_, and there
-are also changes in other files. The contents of `META-INF/nibundle.properties`, `input/stage/path_substitutions.json`
-and `input/stage/path_canonicalizations.json` will be explained [later](#bundle-file-format). 
-For now, look at the diff in `build.json`:
+As you can see, _micronautguide-pgo-optimized.nib_ contains _default.iprof_ in the directory _input/auxiliary_, and there
+are also changes in other files. The contents of _META-INF/nibundle.properties_, _input/stage/path_substitutions.json_
+and _input/stage/path_canonicalizations.json_ will be explained [later](#bundle-file-format). 
+For now, look at the diff in _build.json_:
 ```shell
 @@ -4,5 +4,6 @@
    "--no-fallback",
@@ -320,7 +320,7 @@ For now, look at the diff in `build.json`:
 ```
 
 As expected, the new bundle contains the `--pgo` option that you passed to `native-image` to build an optimized bundle.
-Building a native executable from this new bundle generates a pgo-optimized image out of the box (see `PGO: on` in build output):
+Building a native executable from this new bundle generates a pgo-optimized executable out of the box (see `PGO: on` in build output):
 ```shell
 $ native-image --bundle-apply=micronautguide-pgo-optimized.nib
 
@@ -374,15 +374,15 @@ Inside a bundle you can find the following inner structure:
 ### META-INF
 
 The layout of a bundle file itself is versioned.
-There are two properties in `META-INF/nibundle.properties` that declare which version of the layout a given bundle file is based on.
-At the time of writing this documentation, bundles use the following layout version:
+There are two properties in _META-INF/nibundle.properties_ that declare which version of the layout a given bundle file is based on.
+Bundles currently use the following layout version:
 ```shell
 BundleFileVersionMajor=0
 BundleFileVersionMinor=9
 ```
 
 Future versions of GraalVM might alter or extend the internal structure of bundle files.
-The versioning allows to evolve the bundle format with backwards compatibility in mind.
+The versioning enables us to evolve the bundle format with backwards compatibility in mind.
 
 ### input
 
@@ -395,18 +395,18 @@ These include:
 * `--verbose`
 * `--dry-run`
 
-The state of environment variables that are relevant for the build are captured in `input/stage/environment.json`.
+The state of environment variables that are relevant for the build are captured in _input/stage/environment.json_.
 For every `-E` argument that were seen when the bundle was created, a snapshot of its key-value pair is recorded in the file.
-The remaining files `path_canonicalizations.json` and `path_substitutions.json` contain a record of the file-path transformations that were performed by the `native-image` tool based on the input file paths as specified by the original command line arguments.
+The remaining files _path_canonicalizations.json_ and _path_substitutions.json_ contain a record of the file-path transformations that were performed by the `native-image` tool based on the input file paths as specified by the original command line arguments.
 
 ### output
 
-If a native executable is built as part of building the bundle (for example, the `--dry-run` option was not used), you also have an `output` folder in the bundle.
+If a native executable is built as part of building the bundle (for example, the `--dry-run` option was not used), you also have an _output_ directory in the bundle.
 It contains the executable that was built along with any other files that were generated as part of building.
 Most output files are located in the directory _output/default_ (the executable, its debug info, and debug sources).
-Builder output files, that would have been written to arbitrary absolute paths if the executable had not been built in the bundle mode, can be found in `output/other`.
+Builder output files, that would have been written to arbitrary absolute paths if the executable had not been built in the bundle mode, can be found in _output/other_.
 
-### Relative Documentation
+### Related Documentation
 
 * [Native Image Build Configuration](BuildConfiguration.md)
 * [Native Image Build Output](BuildOutput.md)
