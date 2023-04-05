@@ -31,6 +31,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 // Checkstyle: stop
@@ -105,4 +106,9 @@ public class LibC {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native CCharPointer strstr(CCharPointer str, CCharPointer substr);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int errno() {
+        return CErrorNumber.getCErrorNumber();
+    }
 }
