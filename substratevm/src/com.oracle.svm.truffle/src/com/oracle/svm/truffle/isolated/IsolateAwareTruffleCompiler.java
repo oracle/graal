@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Isolates;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.VMRuntime;
@@ -57,6 +56,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.graal.isolated.ClientHandle;
@@ -233,8 +233,8 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             return Collections.emptyMap();
         }
         byte[] encodedOptions = new byte[encodedOptionsLength];
-        try (PinnedObject pinnedEncodedOptions = PinnedObject.create(encodedOptions)) {
-            copyEncodedOptions(client, encodedOptionsHandle, pinnedEncodedOptions.addressOfArrayElement(0));
+        try (PrimitiveArrayView refEncodedOptions = PrimitiveArrayView.createForReadingAndWriting(encodedOptions)) {
+            copyEncodedOptions(client, encodedOptionsHandle, refEncodedOptions.addressOfArrayElement(0));
         }
         return OptionsEncoder.decode(encodedOptions);
     }

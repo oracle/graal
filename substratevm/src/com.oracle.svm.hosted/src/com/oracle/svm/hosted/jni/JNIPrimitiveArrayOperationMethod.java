@@ -191,12 +191,13 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
                 ValueNode arrayHandle = arguments.get(1);
                 ValueNode array = kit.unboxHandle(arrayHandle);
                 ValueNode isCopy = arguments.get(2);
-                result = kit.pinArrayAndGetAddress(array, isCopy);
+                result = kit.createArrayViewAndGetAddress(array, isCopy);
                 break;
             }
             case RELEASE_ELEMENTS: {
                 ValueNode address = arguments.get(2);
-                kit.unpinArrayByAddress(address);
+                ValueNode mode = arguments.get(3);
+                kit.destroyArrayViewByAddress(address, mode);
                 break;
             }
             case GET_REGION:

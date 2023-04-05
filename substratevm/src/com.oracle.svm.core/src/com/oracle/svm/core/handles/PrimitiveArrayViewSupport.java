@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core.handles;
 
-import com.oracle.svm.core.jdk.LoadAverageSupport;
-import com.oracle.svm.core.posix.headers.Stdlib;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
-import com.oracle.svm.core.handles.PrimitiveArrayView;
+public interface PrimitiveArrayViewSupport {
+    PrimitiveArrayView createForReading(Object object);
 
-@AutomaticallyRegisteredImageSingleton(LoadAverageSupport.class)
-class PosixLoadAverageSupport implements LoadAverageSupport {
-    @Override
-    public int getLoadAverage(double[] loadavg, int nelems) {
-        /*
-         * Adapted from `os::loadavg` which is the same in both `src/hotspot/os/linux/os_linux.cpp`
-         * and `src/hotspot/os/bsd/os_bsd.cpp`.
-         */
-        try (PrimitiveArrayView refLoadavg = PrimitiveArrayView.createForReadingAndWriting(loadavg)) {
-            return Stdlib.getloadavg(refLoadavg.addressOfArrayElement(0), nelems);
-        }
-    }
+    PrimitiveArrayView createForReadingAndWriting(Object object);
 }
