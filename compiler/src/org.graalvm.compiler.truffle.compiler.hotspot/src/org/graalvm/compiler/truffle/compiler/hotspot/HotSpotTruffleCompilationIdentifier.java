@@ -26,20 +26,33 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 
 /**
  * A {@link HotSpotCompilationIdentifier} for Truffle compilations.
  */
-public class HotSpotTruffleCompilationIdentifier extends HotSpotCompilationIdentifier implements TruffleCompilationIdentifier {
+public final class HotSpotTruffleCompilationIdentifier extends HotSpotCompilationIdentifier implements TruffleCompilationIdentifier {
 
+    private final TruffleCompilationTask task;
     private final CompilableTruffleAST compilable;
 
-    public HotSpotTruffleCompilationIdentifier(HotSpotCompilationRequest request, CompilableTruffleAST compilable) {
+    public HotSpotTruffleCompilationIdentifier(HotSpotCompilationRequest request, TruffleCompilationTask task, CompilableTruffleAST compilable) {
         super(request);
+        this.task = task;
         this.compilable = compilable;
+    }
+
+    @Override
+    public TruffleCompilationTask getTask() {
+        return task;
+    }
+
+    @Override
+    public CompilableTruffleAST getCompilable() {
+        return compilable;
     }
 
     @Override
@@ -57,12 +70,4 @@ public class HotSpotTruffleCompilationIdentifier extends HotSpotCompilationIdent
         return super.buildID(sb.append("Truffle"));
     }
 
-    @Override
-    public CompilableTruffleAST getCompilable() {
-        return compilable;
-    }
-
-    @Override
-    public void close() {
-    }
 }

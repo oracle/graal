@@ -97,6 +97,7 @@ public class AOTSupportCompilationTest extends PartialEvaluationTest {
         context.enter();
         StructuredGraph graph = partialEval(target, new Object[0]);
         for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            getDebugContext().forceDump(graph, "error");
             throw new AssertionError(call.toString());
         }
         context.leave();

@@ -24,15 +24,33 @@
  */
 package com.oracle.svm.truffle.isolated;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
-import org.graalvm.nativeimage.c.function.CEntryPoint;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
+import org.graalvm.nativebridge.BinaryInput;
+import org.graalvm.nativebridge.BinaryOutput;
+import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
+import com.oracle.svm.graal.isolated.CompilerHandle;
+import com.oracle.svm.graal.isolated.CompilerIsolateThread;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
+import com.oracle.svm.graal.isolated.IsolatedHandles;
+import com.oracle.svm.graal.isolated.IsolatedObjectConstant;
 import com.oracle.svm.graal.isolated.IsolatedObjectProxy;
+import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCompilationTask> implements TruffleCompilationTask {
 
@@ -56,14 +74,47 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
     }
 
     @Override
-    public TruffleInliningData inliningData() {
-        ClientHandle<TruffleInliningData> inliningDataHandle = inliningData0(IsolatedCompileContext.get().getClient(), handle);
-        return new IsolatedTruffleInlining<>(inliningDataHandle);
+    public boolean hasNextTier() {
+        return hasNextTier0(IsolatedCompileContext.get().getClient(), handle);
     }
 
     @Override
-    public boolean hasNextTier() {
-        return hasNextTier0(IsolatedCompileContext.get().getClient(), handle);
+    public TruffleSourceLanguagePosition getPosition(JavaConstant nodeConstant) {
+        if (!(nodeConstant instanceof IsolatedObjectConstant)) {
+            return null; // not an AST node, therefore not handled by this method
+        }
+        ClientHandle<?> nodeConstantHandle = ((IsolatedObjectConstant) nodeConstant).getHandle();
+        CompilerHandle<TruffleSourceLanguagePosition> position = getPosition0(IsolatedCompileContext.get().getClient(), handle, nodeConstantHandle);
+        return IsolatedCompileContext.get().unhand(position);
+    }
+
+    @Override
+    public Map<String, Object> getDebugProperties(JavaConstant nodeConstant) {
+        if (!(nodeConstant instanceof IsolatedObjectConstant)) {
+            return Collections.emptyMap(); // not an AST node, therefore not handled by this method
+        }
+        ClientHandle<?> nodeConstantHandle = ((IsolatedObjectConstant) nodeConstant).getHandle();
+        Map<String, Object> debugProperties = new LinkedHashMap<>();
+        var debugPropertiesHandle = IsolatedCompileContext.get().hand(debugProperties);
+        getDebugProperties0(IsolatedCompileContext.get().getClient(), handle, nodeConstantHandle, debugPropertiesHandle);
+        return debugProperties;
+    }
+
+    @Override
+    public void addTargetToDequeue(CompilableTruffleAST target) {
+        ClientHandle<SubstrateCompilableTruffleAST> targetHandle = ((IsolatedCompilableTruffleAST) target).getHandle();
+        addTargetToDequeue0(IsolatedCompileContext.get().getClient(), handle, targetHandle);
+    }
+
+    @Override
+    public void setCallCounts(int total, int inlined) {
+        setCallCounts0(IsolatedCompileContext.get().getClient(), handle, total, inlined);
+    }
+
+    @Override
+    public void addInlinedTarget(CompilableTruffleAST target) {
+        ClientHandle<SubstrateCompilableTruffleAST> targetHandle = ((IsolatedCompilableTruffleAST) target).getHandle();
+        addInlinedTarget0(IsolatedCompileContext.get().getClient(), handle, targetHandle);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
@@ -87,8 +138,99 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static ClientHandle<TruffleInliningData> inliningData0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
-        TruffleInliningData inliningData = IsolatedCompileClient.get().unhand(taskHandle).inliningData();
-        return IsolatedCompileClient.get().hand(inliningData);
+    private static CompilerHandle<TruffleSourceLanguagePosition> getPosition0(@SuppressWarnings("unused") ClientIsolateThread client,
+                    ClientHandle<? extends TruffleCompilationTask> inliningHandle, ClientHandle<?> callNodeConstantHandle) {
+
+        TruffleCompilationTask task = IsolatedCompileClient.get().unhand(inliningHandle);
+        JavaConstant callNodeConstant = SubstrateObjectConstant.forObject(IsolatedCompileClient.get().unhand(callNodeConstantHandle));
+        TruffleSourceLanguagePosition position = task.getPosition(callNodeConstant);
+        if (position == null) {
+            return IsolatedHandles.nullHandle();
+        }
+        return createPositionInCompiler(IsolatedCompileClient.get().getCompiler(), IsolatedCompileClient.get().hand(position),
+                        position.getLineNumber(), position.getOffsetStart(), position.getOffsetEnd(), position.getNodeId());
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @SuppressWarnings("unused")
+    private static void fillDebugProperties0(@CEntryPoint.IsolateThreadContext CompilerIsolateThread context,
+                    ClientIsolateThread client, CCharPointer buffer, int bufferLength,
+                    CompilerHandle<Map<String, Object>> targetPropertiesHandle) {
+        Map<String, Object> targetProperties = IsolatedCompileContext.get().unhand(targetPropertiesHandle);
+        readDebugMap(targetProperties, BinaryInput.create(buffer, bufferLength));
+    }
+
+    private static Map<String, Object> readDebugMap(Map<String, Object> map, BinaryInput in) {
+        int size = in.readInt();
+        for (int i = 0; i < size; i++) {
+            String key = in.readUTF();
+            Object value = in.readTypedValue();
+            map.put(key, value);
+        }
+        return map;
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    @SuppressWarnings("unused")
+    private static void getDebugProperties0(ClientIsolateThread client,
+                    ClientHandle<? extends TruffleCompilationTask> inliningHandle,
+                    ClientHandle<?> callNodeConstantHandle,
+                    CompilerHandle<Map<String, Object>> targetProperties) {
+        TruffleCompilationTask task = IsolatedCompileClient.get().unhand(inliningHandle);
+        JavaConstant callNodeConstant = SubstrateObjectConstant.forObject(IsolatedCompileClient.get().unhand(callNodeConstantHandle));
+        Map<String, Object> debugProperties = task.getDebugProperties(callNodeConstant);
+        ByteArrayBinaryOutput out = BinaryOutput.create();
+        writeDebugMap(out, debugProperties);
+        byte[] array = out.getArray();
+        try (CTypeConversion.CCharPointerHolder pin = CTypeConversion.toCBytes(array)) {
+            fillDebugProperties0(IsolatedCompileClient.get().getCompiler(), client, pin.get(), array.length, targetProperties);
+        }
+    }
+
+    private static void writeDebugMap(BinaryOutput out, Map<String, Object> map) {
+        out.writeInt(map.size());
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            out.writeUTF(e.getKey());
+            writeDebugMapValue(out, e.getValue());
+        }
+    }
+
+    private static void writeDebugMapValue(BinaryOutput out, Object object) {
+        Object useValue = object;
+        if (!BinaryOutput.isTypedValue(useValue)) {
+            useValue = object.toString();
+        }
+        out.writeTypedValue(useValue);
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static void addTargetToDequeue0(@SuppressWarnings("unused") ClientIsolateThread client,
+                    ClientHandle<? extends TruffleCompilationTask> providerHandle,
+                    ClientHandle<SubstrateCompilableTruffleAST> targetHandle) {
+        final IsolatedCompileClient isolatedCompileClient = IsolatedCompileClient.get();
+        TruffleCompilationTask task = isolatedCompileClient.unhand(providerHandle);
+        task.addTargetToDequeue(isolatedCompileClient.unhand(targetHandle));
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static void addInlinedTarget0(@SuppressWarnings("unused") ClientIsolateThread client,
+                    ClientHandle<? extends TruffleCompilationTask> providerHandle,
+                    ClientHandle<SubstrateCompilableTruffleAST> targetHandle) {
+        final IsolatedCompileClient isolatedCompileClient = IsolatedCompileClient.get();
+        TruffleCompilationTask task = isolatedCompileClient.unhand(providerHandle);
+        task.addInlinedTarget(isolatedCompileClient.unhand(targetHandle));
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static void setCallCounts0(@SuppressWarnings("unused") ClientIsolateThread client,
+                    ClientHandle<? extends TruffleCompilationTask> handle, int total, int inlined) {
+        TruffleCompilationTask task = IsolatedCompileClient.get().unhand(handle);
+        task.setCallCounts(total, inlined);
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static CompilerHandle<TruffleSourceLanguagePosition> createPositionInCompiler(@SuppressWarnings("unused") CompilerIsolateThread compiler,
+                    ClientHandle<TruffleSourceLanguagePosition> positionHandle, int lineNumber, int offsetStart, int offsetEnd, int nodeId) {
+        return IsolatedCompileContext.get().hand(new IsolatedTruffleSourceLanguagePosition(positionHandle, lineNumber, offsetStart, offsetEnd, nodeId));
     }
 }

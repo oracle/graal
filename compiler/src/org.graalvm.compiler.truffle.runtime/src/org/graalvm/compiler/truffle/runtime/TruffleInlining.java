@@ -24,157 +24,46 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.runtime;
-
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
+/**
+ * @deprecated this class is schedule for removal. Use {@link AbstractCompilationTask} instead.
+ */
+@Deprecated
+public class TruffleInlining {
 
-import jdk.vm.ci.meta.JavaConstant;
+    private final AbstractCompilationTask task;
 
-public class TruffleInlining implements TruffleInliningData {
-
-    private final List<CompilableTruffleAST> targetsToDequeue = new ArrayList<>();
-    private final List<CompilableTruffleAST> inlinedTargets = new ArrayList<>();
-    private int callCount = -1;
-    private int inlinedCallCount = -1;
-
-    private TruffleNodeSources nodeSources;
-
-    public TruffleInlining() {
-    }
-
-    public TruffleNodeSources getTruffleNodeSources() {
-        if (nodeSources == null) {
-            nodeSources = new TruffleNodeSources();
-        }
-        return nodeSources;
+    public TruffleInlining(AbstractCompilationTask task) {
+        this.task = task;
     }
 
     public int countCalls() {
-        return callCount;
+        return task.countCalls();
     }
 
-    @Override
     public int countInlinedCalls() {
-        return inlinedCallCount;
+        return task.countInlinedCalls();
     }
 
     public CompilableTruffleAST[] inlinedTargets() {
-        return inlinedTargets.toArray(new CompilableTruffleAST[0]);
+        return task.inlinedTargets();
     }
 
-    @Override
     public void addInlinedTarget(CompilableTruffleAST target) {
-        inlinedTargets.add(target);
+        task.addInlinedTarget(target);
     }
 
-    @Override
     public void setCallCounts(int total, int inlined) {
-        callCount = total;
-        inlinedCallCount = inlined;
+        task.setCallCounts(total, inlined);
     }
 
-    @Override
-    public OptimizedDirectCallNode findCallNode(JavaConstant callNodeConstant) {
-        return runtime().asObject(OptimizedDirectCallNode.class, callNodeConstant);
-    }
-
-    @Override
     public void addTargetToDequeue(CompilableTruffleAST target) {
-        targetsToDequeue.add(target);
+        task.addTargetToDequeue(target);
     }
 
     public void dequeueTargets() {
-        for (CompilableTruffleAST target : targetsToDequeue) {
-            target.dequeueInlined();
-        }
+        task.dequeueTargets();
     }
 
-    @Override
-    public TruffleSourceLanguagePosition getPosition(JavaConstant node) {
-        Node truffleNode = runtime().asObject(Node.class, node);
-        if (truffleNode == null) {
-            return null;
-        }
-        return getTruffleNodeSources().getSourceLocation(truffleNode);
-    }
-
-    static class TruffleSourceLanguagePosition implements org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition {
-
-        private final SourceSection sourceSection;
-        private final Class<?> nodeClass;
-        private final int nodeId;
-
-        TruffleSourceLanguagePosition(SourceSection section, Class<?> nodeClass, int nodeId) {
-            this.sourceSection = section;
-            this.nodeClass = nodeClass;
-            this.nodeId = nodeId;
-        }
-
-        @Override
-        public String getDescription() {
-            if (sourceSection == null) {
-                return "<no-description>";
-            }
-            return sourceSection.getSource().getURI() + " " + sourceSection.getStartLine() + ":" + sourceSection.getStartColumn();
-        }
-
-        @Override
-        public int getOffsetEnd() {
-            if (sourceSection == null) {
-                return -1;
-            }
-            return sourceSection.getCharEndIndex();
-        }
-
-        @Override
-        public int getOffsetStart() {
-            if (sourceSection == null) {
-                return -1;
-            }
-            return sourceSection.getCharIndex();
-        }
-
-        @Override
-        public int getLineNumber() {
-            if (sourceSection == null) {
-                return -1;
-            }
-            return sourceSection.getStartLine();
-        }
-
-        @Override
-        public URI getURI() {
-            if (sourceSection == null) {
-                return null;
-            }
-            return sourceSection.getSource().getURI();
-        }
-
-        @Override
-        public String getLanguage() {
-            if (sourceSection == null) {
-                return null;
-            }
-            return sourceSection.getSource().getLanguage();
-        }
-
-        @Override
-        public int getNodeId() {
-            return nodeId;
-        }
-
-        @Override
-        public String getNodeClassName() {
-            return nodeClass.getName();
-        }
-
-    }
 }

@@ -39,15 +39,14 @@ import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -181,7 +180,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
+    public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
         compilations++;
         final CurrentCompilationStatistics times = new CurrentCompilationStatistics(task.tier());
         currentCompilationStatistics.set(times);
@@ -193,12 +192,12 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
+    public synchronized void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph) {
         final CurrentCompilationStatistics current = currentCompilationStatistics.get();
         current.truffleTierFinished = System.nanoTime();
-        nodeStatistics.accept(nodeClasses(inliningDecision), target);
+        nodeStatistics.accept(nodeClasses(task), target);
 
-        CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(inliningDecision);
+        CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(task);
         nodeCount.accept(callTargetStat.getNodeCount(), target);
         nodeCountTrivial.accept(callTargetStat.getNodeCountTrivial(), target);
         nodeCountNonTrivial.accept(callTargetStat.getNodeCountNonTrivial(), target);
@@ -230,9 +229,9 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         return tieredStatistics[tier - 1];
     }
 
-    private static Collection<Class<?>> nodeClasses(TruffleInlining inliningDecision) {
+    private static Collection<Class<?>> nodeClasses(AbstractCompilationTask task) {
         Collection<Class<?>> nodeClasses = new ArrayList<>();
-        for (CompilableTruffleAST ast : inliningDecision.inlinedTargets()) {
+        for (CompilableTruffleAST ast : task.inlinedTargets()) {
             ((OptimizedCallTarget) ast).accept(new NodeVisitor() {
                 @Override
                 public boolean visit(Node node) {
@@ -260,12 +259,12 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
+    public synchronized void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph, CompilationResultInfo result) {
         success++;
         long compilationDone = System.nanoTime();
 
         CurrentCompilationStatistics current = currentCompilationStatistics.get();
-        assert current.tier == tier;
+        assert current.tier == task.tier();
 
         long compilationTime = compilationDone - current.compilationStarted;
         int codeSize = result.getTargetCodeSize();
@@ -564,12 +563,12 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         private int callCountDirectNotCloned;
         private int loopCount;
 
-        CallTargetNodeStatistics(TruffleInlining inliningDecision) {
-            for (CompilableTruffleAST ast : inliningDecision.inlinedTargets()) {
+        CallTargetNodeStatistics(AbstractCompilationTask task) {
+            for (CompilableTruffleAST ast : task.inlinedTargets()) {
                 ((OptimizedCallTarget) ast).accept(this::visitNode);
             }
-            callCountDirectInlined = inliningDecision.countInlinedCalls();
-            callCountDirectDispatched = inliningDecision.countCalls() - callCountDirectInlined;
+            callCountDirectInlined = task.countInlinedCalls();
+            callCountDirectDispatched = task.countCalls() - callCountDirectInlined;
         }
 
         private boolean visitNode(Node node) {
@@ -690,7 +689,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
+        public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
                 listener.onCompilationStarted(target, task);
@@ -730,10 +729,10 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
+        public void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationTruffleTierFinished(target, inliningDecision, graph);
+                listener.onCompilationTruffleTierFinished(target, task, graph);
             }
         }
 
@@ -746,10 +745,10 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
+        public void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph, CompilationResultInfo result) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationSuccess(target, inliningDecision, graph, result, tier);
+                listener.onCompilationSuccess(target, task, graph, result);
             }
         }
 

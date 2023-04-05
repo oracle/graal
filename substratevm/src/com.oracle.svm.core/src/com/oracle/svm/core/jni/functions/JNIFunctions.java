@@ -67,13 +67,14 @@ import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jni.JNIObjectHandles;
 import com.oracle.svm.core.jni.JNIThreadLocalPendingException;
-import com.oracle.svm.core.jni.JNIThreadLocalPinnedObjects;
+import com.oracle.svm.core.jni.JNIThreadLocalPrimitiveArrayViews;
 import com.oracle.svm.core.jni.JNIThreadOwnedMonitors;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethodDescriptor;
@@ -98,6 +99,7 @@ import com.oracle.svm.core.jni.headers.JNIFieldId;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
 import com.oracle.svm.core.jni.headers.JNIMethodId;
+import com.oracle.svm.core.jni.headers.JNIMode;
 import com.oracle.svm.core.jni.headers.JNINativeMethod;
 import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
@@ -514,7 +516,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseStringChars(JNIEnvironment env, JNIObjectHandle hstr, CShortPointer chars) {
-        Support.unpinString(chars);
+        Support.releaseString(chars);
     }
 
     /*
@@ -534,13 +536,13 @@ public final class JNIFunctions {
             isCopy.write((byte) 1);
         }
         byte[] utf = Utf8.stringToUtf8(str, true);
-        return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(utf);
+        return JNIThreadLocalPrimitiveArrayViews.createArrayViewAndGetAddress(utf);
     }
 
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseStringUTFChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer chars) {
-        JNIThreadLocalPinnedObjects.unpinArrayByAddress(chars);
+        JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(chars, JNIMode.JNI_ABORT());
     }
 
     /*
@@ -558,7 +560,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseStringCritical(JNIEnvironment env, JNIObjectHandle hstr, CShortPointer carray) {
-        Support.unpinString(carray);
+        Support.releaseString(carray);
     }
 
     /*
@@ -774,10 +776,11 @@ public final class JNIFunctions {
         if (array == null) {
             return WordFactory.nullPointer();
         }
+        PrimitiveArrayView ref = JNIThreadLocalPrimitiveArrayViews.createArrayView(array);
         if (isCopy.isNonNull()) {
-            isCopy.write((byte) 0);
+            isCopy.write(ref.isCopy() ? (byte) 1 : (byte) 0);
         }
-        return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(array);
+        return ref.addressOfArrayElement(0);
     }
 
     /*
@@ -786,7 +789,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleasePrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, WordPointer carray, int mode) {
-        JNIThreadLocalPinnedObjects.unpinArrayByAddress(carray);
+        JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(carray, mode);
     }
 
     /*
@@ -1298,11 +1301,11 @@ public final class JNIFunctions {
              */
             char[] chars = new char[str.length() + 1];
             str.getChars(0, str.length(), chars, 0);
-            return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(chars);
+            return JNIThreadLocalPrimitiveArrayViews.createArrayViewAndGetAddress(chars);
         }
 
-        static void unpinString(CShortPointer cstr) {
-            JNIThreadLocalPinnedObjects.unpinArrayByAddress(cstr);
+        static void releaseString(CShortPointer cstr) {
+            JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(cstr, JNIMode.JNI_ABORT());
         }
 
         @Uninterruptible(reason = "exception handler")

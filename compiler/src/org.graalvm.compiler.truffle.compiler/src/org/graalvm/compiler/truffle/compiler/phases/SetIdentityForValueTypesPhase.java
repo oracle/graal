@@ -31,13 +31,15 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
+
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
 public final class SetIdentityForValueTypesPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         graph.checkCancellation();
-        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
+        TruffleCompilerRuntime rt = TruffleCompilerEnvironment.get().runtime();
         for (VirtualObjectNode virtualObjectNode : graph.getNodes(VirtualObjectNode.TYPE)) {
             if (virtualObjectNode instanceof VirtualInstanceNode) {
                 VirtualInstanceNode virtualInstanceNode = (VirtualInstanceNode) virtualObjectNode;

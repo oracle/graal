@@ -117,8 +117,7 @@ public final class PerformanceInformationHandler implements Closeable {
     }
 
     private static void logPerformanceWarningImpl(CompilableTruffleAST compilable, String event, String details, Map<String, Object> properties, String message) {
-        TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-        runtime.logEvent(compilable, 0, event, String.format("%-60s|%s", compilable.getName(), details), properties, message);
+        TruffleCompilerEnvironment.get().runtime().logEvent(compilable, 0, event, String.format("%-60s|%s", compilable.getName(), details), properties, message);
     }
 
     private String getPerformanceStackTrace(List<? extends Node> locations) {
@@ -180,7 +179,7 @@ public final class PerformanceInformationHandler implements Closeable {
                     continue; // native methods cannot be inlined
                 }
 
-                TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
+                TruffleCompilerRuntime runtime = TruffleCompilerEnvironment.get().runtime();
                 if (runtime.isInlineable(targetMethod) && runtime.getInlineKind(targetMethod, true).allowsInlining()) {
                     logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, target, Arrays.asList(call),
                                     String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).", call.invokeKind(), targetMethod, call),

@@ -34,7 +34,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -55,12 +55,11 @@ public class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<HighTierCo
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntimeIfAvailable();
-        if (runtime == null) {
+        TruffleCompilerEnvironment env = TruffleCompilerEnvironment.getIfInitialized();
+        if (env == null) {
             return;
         }
-
-        ResolvedJavaType frameType = runtime.resolveType(context.getMetaAccess(), "com.oracle.truffle.api.impl.FrameWithoutBoxing");
+        ResolvedJavaType frameType = env.types().FrameWithoutBoxing;
         for (Node node : graph.getNodes()) {
             if (node instanceof LoadFieldNode) {
                 LoadFieldNode fieldNode = (LoadFieldNode) node;
@@ -72,8 +71,8 @@ public class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<HighTierCo
     }
 
     private static boolean isForcedImmutable(ResolvedJavaField field, ResolvedJavaType frameType) {
-        TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntimeIfAvailable();
-        if (runtime == null) {
+        TruffleCompilerEnvironment env = TruffleCompilerEnvironment.getIfInitialized();
+        if (env == null) {
             return false;
         }
         if (field.isStatic()) {
@@ -96,7 +95,7 @@ public class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<HighTierCo
 
     public static void install(PhaseSuite<HighTierContext> highTier, OptionValues options) {
         // before lowering phase.
-        if (Options.TruffleImmutableFrameFields.getValue(options) && TruffleCompilerRuntime.getRuntimeIfAvailable() != null) {
+        if (Options.TruffleImmutableFrameFields.getValue(options) && TruffleCompilerEnvironment.isInitialized()) {
             var phase = highTier.findPhase(HighTierLoweringPhase.class);
             phase.previous();
             phase.add(new TruffleInjectImmutableFrameFieldsPhase());

@@ -212,12 +212,12 @@ public class JNIGraphKit extends HostedGraphKit {
         return createStaticInvoke("rethrowPendingException");
     }
 
-    public InvokeWithExceptionNode pinArrayAndGetAddress(ValueNode array, ValueNode isCopy) {
-        return createStaticInvoke("pinArrayAndGetAddress", array, isCopy);
+    public InvokeWithExceptionNode createArrayViewAndGetAddress(ValueNode array, ValueNode isCopy) {
+        return createStaticInvoke("createArrayViewAndGetAddress", array, isCopy);
     }
 
-    public InvokeWithExceptionNode unpinArrayByAddress(ValueNode address) {
-        return createStaticInvoke("unpinArrayByAddress", address);
+    public InvokeWithExceptionNode destroyArrayViewByAddress(ValueNode address, ValueNode mode) {
+        return createStaticInvoke("destroyArrayViewByAddress", address, mode);
     }
 
     public FixedWithNextNode getPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {

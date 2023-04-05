@@ -32,7 +32,6 @@ import java.lang.ref.WeakReference;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
@@ -51,6 +50,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -205,8 +205,8 @@ final class NativeClosure {
             return WordFactory.pointer(nativeString.nativePointer);
         } else if (retValue instanceof String) {
             byte[] utf8 = TruffleNFISupport.javaStringToUtf8((String) retValue);
-            try (PinnedObject pinned = PinnedObject.create(utf8)) {
-                CCharPointer source = pinned.addressOfArrayElement(0);
+            try (PrimitiveArrayView ref = PrimitiveArrayView.createForReading(utf8)) {
+                CCharPointer source = ref.addressOfArrayElement(0);
                 return TruffleNFISupport.strdup(source);
             }
         } else {

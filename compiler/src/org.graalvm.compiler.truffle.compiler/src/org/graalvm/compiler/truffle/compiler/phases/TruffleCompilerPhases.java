@@ -32,24 +32,25 @@ import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 
 public final class TruffleCompilerPhases {
 
     private TruffleCompilerPhases() {
     }
 
-    public static void register(Providers providers, Suites suites) {
+    public static void register(KnownTruffleTypes types, Providers providers, Suites suites) {
         if (suites.isImmutable()) {
             throw new IllegalStateException("Suites are already immutable.");
         }
         // insert before to always insert safepoints consistently before host vm safepoints.
         ListIterator<BasePhase<? super MidTierContext>> loopSafepointInsertion = suites.getMidTier().findPhase(LoopSafepointInsertionPhase.class);
         loopSafepointInsertion.previous();
-        loopSafepointInsertion.add(new TruffleSafepointInsertionPhase(providers));
+        loopSafepointInsertion.add(new TruffleSafepointInsertionPhase(types, providers));
 
         // truffle safepoints have additional requirements to get eliminated and can not just use
         // default loop safepoint elimination.
-        suites.getMidTier().replaceAllPhases(LoopSafepointEliminationPhase.class, () -> new TruffleLoopSafepointEliminationPhase(providers));
+        suites.getMidTier().replaceAllPhases(LoopSafepointEliminationPhase.class, () -> new TruffleLoopSafepointEliminationPhase(types));
     }
 
 }
