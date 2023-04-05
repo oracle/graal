@@ -3,16 +3,18 @@ layout: ni-docs
 toc_group: build-overview
 link_title: Native Image Bundles
 permalink: /reference-manual/native-image/overview/Bundles/
-redirect_from: /$version/reference-manual/native-image/Bundles/
 ---
 
 # Native Image Bundles
 
 Native Image provides a feature that enables users to build native executables from a self-contained _bundle_. 
-In contrast to regular `native-image` building, this mode of operation takes only a single _*.nib_ file as an input. The file contains everything required to build a native executable (or a native shared library).
-This can be useful when large applications consisting of many input files (JAR-files, configuration files, auto-generated files, downloaded files) need to be rebuilt at a later point in time without worrying whether all files are still available.
+In contrast to regular `native-image` building, this mode of operation takes only a single _*.nib_ file as input.
+The file contains everything required to build a native executable (or a native shared library).
+This can be useful when large applications consisting of many input files (JAR files, configuration files, auto-generated files, downloaded files) need to be rebuilt at a later point in time without worrying whether all files are still available.
 Often complex builds involve downloading many libraries that are not guaranteed to remain accessible later in time.
 Using Native Image bundles is a safe solution to encapsulate all this input required for building into a single file.
+
+> Note: The feature is experimental.
 
 ### Table of Contents
 
@@ -25,10 +27,10 @@ Using Native Image bundles is a safe solution to encapsulate all this input requ
 ## Creating Bundles
 
 To create a bundle, pass the `--bundle-create` option along with the other arguments for a specific `native-image` command line invocation.
-This will cause `native-image` to create a `*.nib`-file in addition to the actual image.
+This will cause `native-image` to create a _*.nib_ file in addition to the actual image.
 
 Here is the option description:
-```shell
+```
 --bundle-create[=new-bundle.nib]
                       in addition to image building, create a Native Image bundle file (*.nib
                       file) that allows rebuilding of that image again at a later point. If a
@@ -53,7 +55,7 @@ For that, the following needs to be added to the plugins section of `pom.xml`:
 ```
 
 Then, when you run the Maven package command `./mvnw package -Dpackaging=native-image`, you will get the following build artifacts:
-```shell
+```
 Finished generating 'micronautguide' in 2m 0s.
 
 Native Image Bundles: Bundle build output written to /home/testuser/micronaut-data-jdbc-repository-maven-java/target/micronautguide.output
@@ -117,7 +119,7 @@ As mentioned in the `--bundle-create` option description, it is also possible to
 This might be useful if a user wants to move the bundle to a more powerful machine and build the image there.
 Modify the above `native-maven-plugin` configuration to also contain the argument `<buildArg>--dry-run</buildArg>`. 
 Then running `./mvnw package -Dpackaging=native-image` takes only seconds and the created bundle is much smaller: 
-```shell
+```
 Native Image Bundles: Bundle written to /home/testuser/micronaut-data-jdbc-repository-maven-java/target/micronautguide.nib
 
 [INFO] ------------------------------------------------------------------------
@@ -138,7 +140,7 @@ input/classes/cp/micronaut-core-3.8.7.jar
 ```
 
 Note that this time you do not see the following message in the Maven output:
-```shell
+```
 Native Image Bundles: Bundle build output written to /home/testuser/micronaut-data-jdbc-repository-maven-java/target/micronautguide.output
 ```
 Since no executable is created, no bundle build output is available.
@@ -153,7 +155,7 @@ $ native-image --bundle-apply=micronautguide.nib -g
 
 Native Image Bundles: Loaded Bundle from /home/testuser/micronautguide.nib
 Native Image Bundles: Bundle created at 'Tuesday, March 28, 2023, 11:12:04 AM Central European Summer Time'
-Native Image Bundles: Using version: 'GraalVM 23.0.0 Java 20.0.1+8-jvmci-23.0-b09 EE' on platform: 'linux-amd64'
+Native Image Bundles: Using version: '20.0.1+8' (vendor 'Oracle Corporation') on platform: 'linux-amd64'
 Warning: Native Image Bundles are an experimental feature.
 ========================================================================================================================
 GraalVM Native Image: Generating 'micronautguide' (executable)...
@@ -166,7 +168,7 @@ Native Image Bundles: Bundle build output written to /home/testuser/micronautgui
 
 After running this command, the executable is rebuilt with an extra option `-g` passed after `--bundle-apply`.
 The output of this build is in the directory _micronautguide.output_:
-```shell
+```
 micronautguide.output
 micronautguide.output/other
 micronautguide.output/default
@@ -183,7 +185,7 @@ micronautguide.output/default/sources/java/lang/Object.java
 You successfully rebuilt the application from the bundle with debug info enabled.
 
 The full option help of `--bundle-apply` shows a more advanced use case that will be discussed [later](#combining---bundle-create-and---bundle-apply) in detail:
-```shell
+```
 --bundle-apply=some-bundle.nib
                       an image will be built from the given bundle file with the exact same
                       arguments and files that have been passed to native-image originally
@@ -205,11 +207,11 @@ Due to Native Image's ability to run code at build time that can create data to 
 
 Passing environment variables to `native-image` now requires explicit arguments.
 
-Suppose a user wants to use environment variable (for example, `KEY_STORAGE_PATH`) from the environment the `native-image` tool is invoked, in the static constructor of a class that is set to be initialized at build time.
-To allow accessing the variable in the static constructor (with `java.lang.System.getenv`), pass the option `-EKEY_STORAGE_PATH` to the builder.
+Suppose a user wants to use an environment variable (for example, `KEY_STORAGE_PATH`) from the environment in which the `native-image` tool is invoked, in the class initializer that is set to be initialized at build time.
+To allow accessing the variable in the class initializer (with `java.lang.System.getenv`), pass the option `-EKEY_STORAGE_PATH` to the builder.
 
 To make an environment variable accessible to build time, use:
-```shell
+```
 -E<env-var-key>[=<env-var-value>]
                       allow native-image to access the given environment variable during
                       image build. If the optional <env-var-value> is not given, the value
@@ -232,43 +234,11 @@ Assuming you have already built the `micronaut-data-jdbc-repository` example int
 To produce a PGO-optimized variant of that bundle, first build a variant of the native executable that generates PGO profiling information at run time (you will use it later):
 ```shell
 $ native-image --bundle-apply=micronautguide.nib --pgo-instrument
-
-Native Image Bundles: Loaded Bundle from /home/testuser/micronautguide.nib
-Native Image Bundles: Bundle created at 'Tuesday, March 28, 2023, 11:12:04 AM Central European Summer Time'
-Native Image Bundles: Using version: 'GraalVM 23.0.0 Java 20.0.1+8-jvmci-23.0-b09 EE' on platform: 'linux-amd64'
-Warning: Native Image Bundles are an experimental feature.
-========================================================================================================================
-GraalVM Native Image: Generating 'micronautguide' (executable)...
-========================================================================================================================
-...
-[1/8] Initializing...                                                                                    (3.8s @ 0.28GB)
- Version info: 'GraalVM 23.0.0 Java 20.0.1+8-jvmci-23.0-b09 EE'
- Java version info: '20.0.1+8-jvmci-23.0-b09'
- Graal compiler: optimization level: '2', target machine: 'x86-64-v3', PGO: off
- C compiler: gcc (redhat, x86_64, 13.0.1)
- Garbage collector: Serial GC (max heap size: 80% of RAM)
- 6 user-specific feature(s)
- - io.micronaut.buffer.netty.NettyFeature
-...
-Finished generating 'micronautguide' in 2m 47s.
-
-Native Image Bundles: Bundle build output written to /home/testuser/micronautguide.output
 ```
 
 Now run the generated executable so that profile information is collected:
 ```shell
 $ /home/testuser/micronautguide.output/default/micronautguide
- __  __ _                                  _   
-|  \/  (_) ___ _ __ ___  _ __   __ _ _   _| |_ 
-| |\/| | |/ __| '__/ _ \| '_ \ / _` | | | | __|
-| |  | | | (__| | | (_) | | | | (_| | |_| | |_ 
-|_|  |_|_|\___|_|  \___/|_| |_|\__,_|\__,_|\__|
-  Micronaut (v3.8.7)
-
-14:51:32.059 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
-14:51:32.071 [main] INFO  com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
-14:51:32.071 [main] INFO  i.m.flyway.AbstractFlywayMigration - Running migrations for database with qualifier [default]
-...
 ```
 
 Based on <a href="https://guides.micronaut.io/latest/micronaut-data-jdbc-repository.html" target="_blank">this walkthrough</a>, you use the running native executable to add new database entries and query the information in the database afterwards so that you get real-world profiling information.
@@ -283,12 +253,6 @@ The file `default.iprof` contains the profiling information that was created bec
 Now you can create a new optimized bundle out of the existing one:
 ```shell
 native-image --bundle-apply=micronautguide.nib --bundle-create=micronautguide-pgo-optimized.nib --dry-run --pgo
-
-Native Image Bundles: Loaded Bundle from /home/testuser/micronautguide.nib
-Native Image Bundles: Bundle created at 'Tuesday, March 28, 2023, 11:12:04 AM Central European Summer Time'
-Native Image Bundles: Using version: 'GraalVM 23.0.0 Java 20.0.1+8-jvmci-23.0-b09 EE' on platform: 'linux-amd64'
-Warning: Native Image Bundles are an experimental feature.
-Native Image Bundles: Bundle written to /home/testuser/micronautguide-pgo-optimized.nib
 ```
 
 Now take a look how _micronautguide-pgo-optimized.nib_ is different from _micronautguide.nib_:
@@ -308,7 +272,7 @@ As you can see, _micronautguide-pgo-optimized.nib_ contains _default.iprof_ in t
 are also changes in other files. The contents of _META-INF/nibundle.properties_, _input/stage/path_substitutions.json_
 and _input/stage/path_canonicalizations.json_ will be explained [later](#bundle-file-format). 
 For now, look at the diff in _build.json_:
-```shell
+```
 @@ -4,5 +4,6 @@
    "--no-fallback",
    "-H:Name=micronautguide",
@@ -320,17 +284,12 @@ For now, look at the diff in _build.json_:
 ```
 
 As expected, the new bundle contains the `--pgo` option that you passed to `native-image` to build an optimized bundle.
-Building a native executable from this new bundle generates a pgo-optimized executable out of the box (see `PGO: on` in build output):
+Building a native executable from this new bundle generates a PGO-optimized executable out of the box (see `PGO: on` in build output):
 ```shell
 $ native-image --bundle-apply=micronautguide-pgo-optimized.nib
-
-Native Image Bundles: Loaded Bundle from /home/testuser/micronautguide-pgo-optimized.nib
-Native Image Bundles: Bundle created at 'Tuesday, March 28, 2023, 3:02:43 PM Central European Summer Time'
-Native Image Bundles: Using version: 'GraalVM 23.0.0 Java 20.0.1+8-jvmci-23.0-b09 EE' on platform: 'linux-amd64'
 ...
 [1/8] Initializing...                                                                                    (3.9s @ 0.27GB)
- Version info: 'GraalVM 23.0.0-dev Java 20.0.1+8-jvmci-23.0-b09 EE'
- Java version info: '20.0.1+8-jvmci-23.0-b09'
+ Java version: 20.0.1+8, vendor version: GraalVM EE 20.0.1+8.1
  Graal compiler: optimization level: '2', target machine: 'x86-64-v3', PGO: on
  C compiler: gcc (redhat, x86_64, 13.0.1)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
@@ -343,7 +302,7 @@ Native Image Bundles: Using version: 'GraalVM 23.0.0 Java 20.0.1+8-jvmci-23.0-b0
 A bundle file is a JAR file with a well-defined internal layout.
 Inside a bundle you can find the following inner structure:
 
-```shell
+```
 [bundle-file.nib]
 ├── META-INF
 │   ├── MANIFEST.MF
