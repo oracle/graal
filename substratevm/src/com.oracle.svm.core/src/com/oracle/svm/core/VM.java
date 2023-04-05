@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -51,11 +50,7 @@ public final class VM {
     }
 
     public static String getVendorVersion() {
-        if (ImageInfo.inImageRuntimeCode()) {
-            return System.getProperty("java.vendor.version");
-        } else {
-            return System.getProperty("org.graalvm.vendorversion", "GraalVM CE");
-        }
+        return System.getProperty("org.graalvm.vendorversion", System.getProperty("java.vendor.version", ""));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
