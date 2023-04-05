@@ -814,8 +814,7 @@ public class SandboxPolicyTest {
                 throw iae;
             }
         }
-        hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowImplementationsAnnotatedBy(HostAccess.Implementable.class).allowMutableTargetMappings().methodScoping(
-                        true).build();
+        hostAccess = HostAccess.newBuilder().allowAccessAnnotatedBy(HostAccess.Export.class).allowMutableTargetMappings().methodScoping(true).build();
         try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
         } catch (IllegalArgumentException iae) {
@@ -890,7 +889,23 @@ public class SandboxPolicyTest {
                 throw iae;
             }
         }
-
+        hostAccess = HostAccess.UNTRUSTED;
+        try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                throw iae;
+            }
+        }
+        hostAccess = HostAccess.newBuilder(HostAccess.UNTRUSTED).allowImplementationsAnnotatedBy(HostAccess.Implementable.class).build();
+        try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
+            assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
+        } catch (IllegalArgumentException iae) {
+            if (filterUnsupportedIsolate(configuration, iae)) {
+                assertSandboxPolicyException(iae, "Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows implementations of types annotated by Implementable");
+                assertAtLeast(SandboxPolicy.UNTRUSTED, configuration.sandboxPolicy);
+            }
+        }
         hostAccess = HostAccess.newBuilder(HostAccess.UNTRUSTED).allowArrayAccess(true).build();
         try (Context context = newContextBuilder(null, UntrustedLanguage.ID).sandbox(configuration.sandboxPolicy).allowHostAccess(hostAccess).build()) {
             assertAtMost(SandboxPolicy.ISOLATED, configuration.sandboxPolicy);
