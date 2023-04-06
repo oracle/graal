@@ -316,9 +316,13 @@ public class WasmJsApiSuite {
         checkInstantiateWithImportGlobal(binaryWithGlobalImportExternref, "externref", "foo");
     }
 
+    private static void disableRefTypes(Context.Builder builder) {
+        builder.allowExperimentalOptions(true).option(REF_TYPES_OPTION, "false");
+    }
+
     @Test
     public void testCreateAnyfuncGlobalRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             try {
                 wasm.globalAlloc(ValueType.anyfunc, false, WasmConstant.NULL);
@@ -331,7 +335,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testCreateExternrefGlobalRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             try {
                 wasm.globalAlloc(ValueType.externref, false, WasmConstant.NULL);
@@ -477,7 +481,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testGlobalWriteAnyfuncRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = new DefaultWasmGlobal(ValueType.anyfunc, true, WasmConstant.NULL);
             try {
@@ -491,7 +495,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testGlobalWriteExternrefRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = new DefaultWasmGlobal(ValueType.externref, true, WasmConstant.NULL);
             try {
@@ -1422,7 +1426,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testTableAlloc1Param() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
