@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -40,8 +39,8 @@ public final class VM {
     public VM(String vmInfo) {
         info = vmInfo;
         version = getVersion();
-        vendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
-        vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+        vendor = getVendor();
+        vendorUrl = getVendorUrl();
         vendorVersion = getVendorVersion();
     }
 
@@ -50,12 +49,18 @@ public final class VM {
         return System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVendor() {
+        return System.getProperty("org.graalvm.vendor", "GraalVM Community");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVendorUrl() {
+        return System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+    }
+
     public static String getVendorVersion() {
-        if (ImageInfo.inImageRuntimeCode()) {
-            return System.getProperty("java.vendor.version");
-        } else {
-            return System.getProperty("org.graalvm.vendorversion", "GraalVM CE");
-        }
+        return System.getProperty("org.graalvm.vendorversion", System.getProperty("java.vendor.version", ""));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
