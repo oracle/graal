@@ -91,7 +91,10 @@ Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#s
 The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
 See [here](#recommendation-cpu) for recommendations on how to use this option.
 
-On Oracle GraalVM, the line also shows whether [Profile-Guided Optimizations](#recommendation-pgo) are *on* or *off*.
+On Oracle GraalVM, the line also shows information about [Profile-Guided Optimizations (PGO)](#recommendation-pgo).
+- `off`: PGO is not used
+- `user-provided`: PGO is enabled and uses a user-provided profile
+- `ML-inferred`: A machine learning (ML) model is used to infer profiles for control split branches statically.
 
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.
