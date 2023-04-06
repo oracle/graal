@@ -75,8 +75,9 @@ import sun.reflect.annotation.AnnotationParser;
  *
  * The {@link SubstrateAnnotationExtractor} is tightly coupled with {@link AnnotationAccess}, which
  * provides implementations of {@link AnnotatedElement#isAnnotationPresent(Class)} and
- * {@link AnnotatedElement#getAnnotation(Class)}. {@link AnnotatedElement#getAnnotations()} should
- * in principle not be used during Native Image generation.
+ * {@link AnnotatedElement#getAnnotation(Class)}. {@link AnnotatedElement#getAnnotations()} must
+ * never be used during Native Image generation because it initializes all annotation classes and
+ * their dependencies.
  */
 public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private final Map<Class<?>, AnnotationValue[]> annotationCache = new ConcurrentHashMap<>();
@@ -164,11 +165,6 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     @Override
     public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
         return Arrays.stream(getAnnotationData(element, false)).map(AnnotationValue::getType).filter(t -> t != null).toArray(Class[]::new);
-    }
-
-    @Override
-    public Annotation[] extractAnnotations(AnnotatedElement element, boolean declaredOnly) {
-        return Arrays.stream(getAnnotationData(element, declaredOnly)).map(v -> v.get(v.type)).toArray(Annotation[]::new);
     }
 
     public AnnotationValue[] getDeclaredAnnotationData(AnnotatedElement element) {

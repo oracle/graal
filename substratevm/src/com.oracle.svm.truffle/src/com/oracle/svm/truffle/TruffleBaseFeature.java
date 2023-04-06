@@ -678,7 +678,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             /* Trigger computation of uncachedDispatch. */
             factory.getUncached();
         }
-        if (type.getDeclaredAnnotationsByType(ExportLibrary.class).length != 0) {
+        if (type.isAnnotationPresent(ExportLibrary.class) || type.isAnnotationPresent(ExportLibrary.Repeat.class)) {
             /* Eagerly resolve receiver type. */
             invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
                             Collections.singleton(Class.class), type.getJavaClass());
