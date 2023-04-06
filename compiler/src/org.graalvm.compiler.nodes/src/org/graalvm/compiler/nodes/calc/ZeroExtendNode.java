@@ -66,11 +66,11 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
     }
 
     public static ValueNode create(ValueNode input, int resultBits, NodeView view) {
-        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, false);
+        return create(input, PrimitiveStamp.getBits(input.stamp(view)), resultBits, view, inputAlwaysPositive(input));
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view) {
-        return create(input, inputBits, resultBits, view, false);
+        return create(input, inputBits, resultBits, view, inputAlwaysPositive(input));
     }
 
     public static ValueNode create(ValueNode input, int inputBits, int resultBits, NodeView view, boolean alwaysPositive) {
@@ -80,6 +80,15 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
             return synonym;
         }
         return canonical(null, input, inputBits, resultBits, view, alwaysPositive);
+    }
+
+    private static boolean inputAlwaysPositive(ValueNode v) {
+        Stamp s = v.stamp(NodeView.DEFAULT);
+        if (s instanceof IntegerStamp) {
+            return ((IntegerStamp) s).isPositive();
+        } else {
+            return false;
+        }
     }
 
     @Override
