@@ -61,9 +61,9 @@
               "title": "The marchine type targeted by Graal"
             },
             "pgo": {
-              "type": "boolean",
-              "default": "",
-              "title": "Whether Profile-Guided Optimizations are enabled or not (Oracle GraalVM only)"
+              "type": ["string", "null"],
+              "default": null,
+              "title": "The name of the PGO mode (or null if PGO is not used) (Oracle GraalVM only)"
             }
           },
           "title": "Information about the Graal compiler"
