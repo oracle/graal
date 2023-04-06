@@ -116,6 +116,7 @@ public class NativeImage {
     static final String graalvmVendor = VM.getVendor();
     static final String graalvmVendorUrl = VM.getVendorUrl();
     static final String graalvmVendorVersion = VM.getVendorVersion();
+    static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
 
     private static Map<String, String[]> getCompilerFlags() {
         Map<String, String[]> result = new HashMap<>();
@@ -821,6 +822,7 @@ public class NativeImage {
         addImageBuilderJavaArgs("-Dorg.graalvm.vendor=" + graalvmVendor);
         addImageBuilderJavaArgs("-Dorg.graalvm.vendorurl=" + graalvmVendorUrl);
         addImageBuilderJavaArgs("-Dorg.graalvm.vendorversion=" + graalvmVendorVersion);
+        addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
         addImageBuilderJavaArgs("-Djava.system.class.loader=" + CUSTOM_SYSTEM_CLASS_LOADER);
 
