@@ -109,10 +109,11 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return Collections.unmodifiableList(linkActions);
     }
 
+    public void createLinkActions() {
+        linkActions = new ArrayList<>();
+    }
+
     public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
-        if (linkActions == null) {
-            linkActions = new ArrayList<>();
-        }
         linkActions.add(action);
     }
 
