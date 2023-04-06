@@ -596,7 +596,6 @@ public class BytecodeParser {
                     break;
                 case Bytecode.LABEL_U8:
                 case Bytecode.BR_U8:
-                case Bytecode.BR_IF_U8:
                 case Bytecode.LOCAL_GET_U8:
                 case Bytecode.LOCAL_GET_REF_U8:
                 case Bytecode.LOCAL_SET_U8:
@@ -636,9 +635,11 @@ public class BytecodeParser {
                 case Bytecode.LABEL_U16:
                     offset += 2;
                     break;
-                case Bytecode.IF:
+                case Bytecode.BR_IF_U8: {
+                    offset += 3;
+                    break;
+                }
                 case Bytecode.BR_I32:
-                case Bytecode.BR_IF_I32:
                 case Bytecode.LOCAL_GET_I32:
                 case Bytecode.LOCAL_GET_REF_I32:
                 case Bytecode.LOCAL_SET_I32:
@@ -676,6 +677,11 @@ public class BytecodeParser {
                 case Bytecode.TABLE_GET:
                 case Bytecode.TABLE_SET: {
                     offset += 4;
+                    break;
+                }
+                case Bytecode.IF:
+                case Bytecode.BR_IF_I32: {
+                    offset += 6;
                     break;
                 }
                 case Bytecode.I64_CONST_I64:
