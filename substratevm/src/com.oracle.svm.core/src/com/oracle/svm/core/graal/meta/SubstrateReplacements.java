@@ -87,6 +87,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 
@@ -405,6 +406,15 @@ public class SubstrateReplacements extends ReplacementsImpl {
             }
         } else {
             return StampFactory.forKind(kind);
+        }
+    }
+
+    @Override
+    public boolean isSnippet(ResolvedJavaMethod method) {
+        if (method instanceof SharedMethod sharedMethod) {
+            return sharedMethod.isSnippet();
+        } else {
+            return super.isSnippet(method);
         }
     }
 }

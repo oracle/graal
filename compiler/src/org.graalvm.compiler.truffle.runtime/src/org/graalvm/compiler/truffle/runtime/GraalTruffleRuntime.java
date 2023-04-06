@@ -948,9 +948,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         public final ResolvedJavaMethod callTargetMethod;
         public final ResolvedJavaMethod callInlinedCallMethod;
         public final ResolvedJavaMethod[] anyFrameMethod;
-        public final ResolvedJavaMethod inInterpreterMethod;
-        public final ResolvedJavaMethod inInterpreterFastPathMethod;
-        public final ResolvedJavaMethod[] transferToInterpreterMethods;
 
         public KnownMethods(MetaAccessProvider metaAccess) {
             this.callDirectMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_DIRECT);
@@ -959,24 +956,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             this.callInlinedCallMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_INLINED_CALL);
             this.callTargetMethod = metaAccess.lookupJavaMethod(GraalFrameInstance.CALL_TARGET_METHOD);
             this.anyFrameMethod = new ResolvedJavaMethod[]{callDirectMethod, callIndirectMethod, callInlinedMethod, callTargetMethod, callInlinedCallMethod};
-            ResolvedJavaType compilerDirectives = metaAccess.lookupJavaType(CompilerDirectives.class);
-            this.transferToInterpreterMethods = new ResolvedJavaMethod[2];
-            this.transferToInterpreterMethods[0] = searchMethod(compilerDirectives, "transferToInterpreter");
-            this.transferToInterpreterMethods[1] = searchMethod(compilerDirectives, "transferToInterpreterAndInvalidate");
-            this.inInterpreterMethod = searchMethod(compilerDirectives, "inInterpreter");
-
-            ResolvedJavaType hostCompilerDirectives = metaAccess.lookupJavaType(HostCompilerDirectives.class);
-            this.inInterpreterFastPathMethod = searchMethod(hostCompilerDirectives, "inInterpreterFastPath");
         }
-    }
-
-    protected static ResolvedJavaMethod searchMethod(ResolvedJavaType type, String name) {
-        for (ResolvedJavaMethod searchMethod : type.getDeclaredMethods()) {
-            if (searchMethod.getName().equals(name)) {
-                return searchMethod;
-            }
-        }
-        throw CompilerDirectives.shouldNotReachHere(type + "." + name + " method not found.");
     }
 
     @Override
@@ -1042,16 +1022,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * Determines if {@code method} is an inInterpeter method.
      */
     @Override
-    public boolean isInInterpreter(ResolvedJavaMethod targetMethod) {
-        return getKnownMethods().inInterpreterMethod.equals(targetMethod);
+    public boolean isInInterpreter(ResolvedJavaMethod method) {
+        return method.getName().equals("inInterpreter") && method.getDeclaringClass().toClassName().equals(CompilerDirectives.class.getName());
     }
 
     /**
      * Determines if {@code method} is an inInterpeter method.
      */
     @Override
-    public boolean isInInterpreterFastPath(ResolvedJavaMethod targetMethod) {
-        return getKnownMethods().inInterpreterFastPathMethod.equals(targetMethod);
+    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
+        return method.getName().equals("inInterpreterFastPath") && method.getDeclaringClass().toClassName().equals(HostCompilerDirectives.class.getName());
     }
 
     /**
@@ -1059,13 +1039,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      */
     @Override
     public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
-        ResolvedJavaMethod[] methods = getKnownMethods().transferToInterpreterMethods;
-        for (int i = 0; i < methods.length; i++) {
-            if (methods[i].equals(method)) {
-                return true;
-            }
-        }
-        return false;
+        return (method.getName().equals("transferToInterpreter") || method.getName().equals("transferToInterpreterAndInvalidate")) &&
+                        method.getDeclaringClass().toClassName().equals(CompilerDirectives.class.getName());
     }
 
     @SuppressWarnings("deprecation")

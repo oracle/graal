@@ -126,7 +126,6 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
-import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -169,7 +168,6 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
-import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -926,8 +924,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         public ForeignCallLinkage lookupGraalStub(ValueNode valueNode, ForeignCallDescriptor foreignCallDescriptor) {
-            ResolvedJavaMethod method = valueNode.graph().method();
-            if (method != null && AnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class) != null) {
+            SharedMethod method = (SharedMethod) valueNode.graph().method();
+            if (method != null && method.isForeignCallTarget()) {
                 // Emit assembly for snippet stubs
                 return null;
             }

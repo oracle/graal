@@ -162,6 +162,7 @@ import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -274,9 +275,10 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime,
-                        "TruffleFeature requires SubstrateTruffleRuntime");
-        ((SubstrateTruffleRuntime) Truffle.getRuntime()).resetHosted();
+        UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
+        SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
+        truffleRuntime.resetHosted();
+        RuntimeCompilationFeature.singleton().setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));
     }
 
     @Override
@@ -294,6 +296,8 @@ public class TruffleFeature implements InternalFeature {
         if (!ImageSingletons.contains(TruffleSupport.class)) {
             ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
         }
+
+        ImageSingletons.lookup(TruffleBaseFeature.class).setGraalGraphObjectReplacer(RuntimeCompilationFeature.singleton().getObjectReplacer());
     }
 
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {

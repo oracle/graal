@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -56,13 +57,18 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
@@ -291,6 +297,26 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         return compilationInfo.canDeoptForTesting() || multiMethodKey == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
     }
 
+    @Override
+    public boolean isUninterruptible() {
+        return Uninterruptible.Utils.isUninterruptible(wrapped);
+    }
+
+    @Override
+    public boolean needSafepointCheck() {
+        return SubstrateSafepointInsertionPhase.needSafepointCheck(wrapped);
+    }
+
+    @Override
+    public boolean isForeignCallTarget() {
+        return isAnnotationPresent(SubstrateForeignCallTarget.class);
+    }
+
+    @Override
+    public boolean isSnippet() {
+        return isAnnotationPresent(Snippet.class);
+    }
+
     public boolean hasVTableIndex() {
         return vtableIndex != -1;
     }
@@ -317,6 +343,11 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     @Override
     public boolean isEntryPoint() {
         return wrapped.isEntryPoint();
+    }
+
+    @Override
+    public SubstrateCallingConventionKind getCallingConventionKind() {
+        return ExplicitCallingConvention.Util.getCallingConventionKind(wrapped, isEntryPoint());
     }
 
     @Override

@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
@@ -382,7 +381,7 @@ public class GraalSupport {
             return null;
         }
 
-        boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
+        boolean isSubstitution = method.isSnippet();
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
                         .name(name)
                         .method(method)

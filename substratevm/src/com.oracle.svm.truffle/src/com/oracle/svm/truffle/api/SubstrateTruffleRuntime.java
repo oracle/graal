@@ -79,6 +79,7 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -378,18 +379,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public boolean isInlineable(ResolvedJavaMethod method) {
-        if (Uninterruptible.Utils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
-            if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
-                /* The semantics of Uninterruptible would get lost during partial evaluation. */
-                return false;
-            }
-        }
-        return super.isInlineable(method);
-    }
-
-    @Override
     public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
         TriState res = TruffleSupport.singleton().tryIsSuppressedFailure(compilable, serializedException);
         switch (res) {
@@ -488,5 +477,128 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             return hasNextTier;
         }
 
+    }
+
+    /*
+     * Annotations for methods and fields are not available at image run time. So all information is
+     * pre-computed at image build time. Therefore, all the methods below delegate to the
+     * super-class at image build time when invoked for pre-computation, and access the pre-computed
+     * information at image run time.
+     */
+
+    @Override
+    public LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.getLoopExplosionKind(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().explosionKind();
+        }
+    }
+
+    @Override
+    public InlineKind getInlineKind(ResolvedJavaMethod method, boolean duringPartialEvaluation) {
+        if (SubstrateUtil.HOSTED) {
+            return super.getInlineKind(method, duringPartialEvaluation);
+        } else {
+            TruffleMethodInfo truffleMethodInfo = ((TruffleMethod) method).getTruffleMethodInfo();
+            return duringPartialEvaluation ? truffleMethodInfo.inlineKindPE() : truffleMethodInfo.inlineKindNonPE();
+        }
+    }
+
+    @Override
+    public boolean isInlineable(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            if (Uninterruptible.Utils.isUninterruptible(method)) {
+                Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+                if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
+                    /* The semantics of Uninterruptible would get lost during partial evaluation. */
+                    return false;
+                }
+            }
+            return super.isInlineable(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isInlineable();
+        }
+    }
+
+    @Override
+    public boolean isTruffleBoundary(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.isTruffleBoundary(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isTruffleBoundary();
+        }
+    }
+
+    @Override
+    public boolean isSpecializationMethod(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.isSpecializationMethod(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isSpecializationMethod();
+        }
+    }
+
+    @Override
+    public boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.isBytecodeInterpreterSwitch(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isBytecodeInterpreterSwitch();
+        }
+    }
+
+    @Override
+    public boolean isInliningCutoff(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.isInliningCutoff(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isInliningCutoff();
+        }
+    }
+
+    @Override
+    public boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.isBytecodeInterpreterSwitchBoundary(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isBytecodeInterpreterSwitchBoundary();
+        }
+    }
+
+    @Override
+    public boolean isInInterpreter(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.isInInterpreter(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isInInterpreter();
+        }
+    }
+
+    @Override
+    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.isInInterpreterFastPath(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isInInterpreterFastPath();
+        }
+    }
+
+    @Override
+    public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
+        if (SubstrateUtil.HOSTED) {
+            return super.isTransferToInterpreterMethod(method);
+        } else {
+            return ((TruffleMethod) method).getTruffleMethodInfo().isTransferToInterpreterMethod();
+        }
+    }
+
+    @Override
+    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+        if (SubstrateUtil.HOSTED) {
+            return super.getConstantFieldInfo(field);
+        } else {
+            return ((TruffleField) field).getConstantFieldInfo();
+        }
     }
 }

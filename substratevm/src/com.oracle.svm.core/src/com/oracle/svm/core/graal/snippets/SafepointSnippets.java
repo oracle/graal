@@ -51,11 +51,11 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 
@@ -93,7 +93,7 @@ final class SafepointSnippets extends SubstrateTemplates implements Snippets {
         public void lower(SafepointNode node, LoweringTool tool) {
             if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
                 assert SubstrateOptions.MultiThreaded.getValue() : "safepoints are only inserted into the graph in MultiThreaded mode";
-                if (Uninterruptible.Utils.isUninterruptible(node.graph().method())) {
+                if (((SharedMethod) node.graph().method()).isUninterruptible()) {
                     /* Basic sanity check to catch errors during safepoint insertion. */
                     throw GraalError.shouldNotReachHere("Must not insert safepoints in Uninterruptible code: " + node.stateBefore().toString(Verbosity.Debugger)); // ExcludeFromJacocoGeneratedReport
                 }
