@@ -2124,6 +2124,46 @@ public class WasmJsApiSuite {
         });
     }
 
+    @Test
+    public void testInstantiateModuleWithIfTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("if", "(func $f i32.const 0 (if (then nop) (else nop))) (export \"f\" (func $f))");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            WasmInstance instance = wasm.moduleInstantiate(module, importObject);
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                for (int iter = 0; iter < 255; iter++) {
+                    lib.execute(WebAssembly.instanceExport(instance, "f"));
+                }
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+            wasm.moduleInstantiate(module, importObject);
+        });
+    }
+
+    @Test
+    public void testInstantiateModuleWithBrIfTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("br_if", "(func $f (block i32.const 1 br_if 0)) (export \"f\" (func $f))");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            WasmInstance instance = wasm.moduleInstantiate(module, importObject);
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                for (int iter = 0; iter < 255; iter++) {
+                    lib.execute(WebAssembly.instanceExport(instance, "f"));
+                }
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+            wasm.moduleInstantiate(module, importObject);
+        });
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
         runTest(null, testCase);
     }
