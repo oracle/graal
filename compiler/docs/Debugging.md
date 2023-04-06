@@ -226,7 +226,7 @@ By default, `-Dgraal.Dump` output is written to the local file system in a direc
 by the `-Dgraal.DumpPath` option (default is `$CWD/graal_dumps`). You can send dumps directly to
 the IGV over a network socket with the `-Dgraal.PrintGraph=Network` option. The `-Dgraal.PrintGraphHost`
 and `-Dgraal.PrintGraphPort` options determine where the dumps are sent. By default, they are
-sent to 127.0.0.1:4445 and IGV listens on port 4445 by default.
+sent to _127.0.0.1:4445_ and IGV listens on port 4445 by default.
 
 By default, the graph dumping code dumps every graph at a particular level even if the graph hasn't
 changed since the previous dump.  Internally the compiler tracks when changes are made to the edges
