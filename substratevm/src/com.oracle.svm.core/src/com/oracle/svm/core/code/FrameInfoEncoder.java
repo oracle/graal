@@ -163,6 +163,11 @@ public class FrameInfoEncoder {
                     resultFrameInfo.sourceLineNumber = targetFrameInfo.sourceLineNumber;
                     resultFrameInfo.methodId = targetFrameInfo.methodId;
                 }
+            } else {
+                /*
+                 * GR-6000: Make this a hard error once all frame states are covered by
+                 * DeoptEntries.
+                 */
             }
         }
     }

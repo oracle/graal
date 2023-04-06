@@ -551,4 +551,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
          */
     }
 
+    @Override
+    public void registerAllowInliningPredicate(AllowInliningPredicate predicate) {
+        /*
+         * No action is needed for the legacy implementation.
+         */
+    }
+
 }

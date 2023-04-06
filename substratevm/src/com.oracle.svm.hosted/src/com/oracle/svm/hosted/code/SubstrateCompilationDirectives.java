@@ -47,6 +47,13 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @AutomaticallyRegisteredImageSingleton
 public class SubstrateCompilationDirectives {
 
+    public static boolean isRuntimeCompiledMethod(ResolvedJavaMethod method) {
+        if (method instanceof MultiMethod multiMethod) {
+            return multiMethod.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+        }
+        return false;
+    }
+
     public static final MultiMethod.MultiMethodKey RUNTIME_COMPILED_METHOD = new MultiMethod.MultiMethodKey() {
         @Override
         public String toString() {

@@ -42,10 +42,17 @@ import jdk.vm.ci.code.BytecodePosition;
 final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
 
     private volatile boolean calleesLinked = false;
+    private final boolean isDeoptInvokeTypeFlow;
 
     DefaultSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
+        this(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey, false);
+    }
+
+    DefaultSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey, boolean isDeoptInvokeTypeFlow) {
         super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
+        this.isDeoptInvokeTypeFlow = isDeoptInvokeTypeFlow;
     }
 
     @Override
@@ -75,6 +82,9 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
              * Every time the actual receiver state changes in the caller the formal receiver state
              * needs to be updated as there is no direct update link between actual and formal
              * receivers.
+             *
+             * See InvokeTypeFlow#linkCallee for a more thorough explanation of the receiver
+             * linking.
              */
             TypeState invokeState = filterReceiverState(bb, getReceiver().getState());
             updateReceiver(bb, calleeFlows, invokeState);
@@ -85,5 +95,10 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
     @Override
     protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
         return DefaultInvokeTypeFlowUtil.getAllCalleesFlows(this);
+    }
+
+    @Override
+    public boolean isDeoptInvokeTypeFlow() {
+        return isDeoptInvokeTypeFlow;
     }
 }

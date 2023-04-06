@@ -25,7 +25,11 @@
 
 package com.oracle.svm.truffle;
 
+import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINE;
+import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
+import static com.oracle.svm.graal.hosted.RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision.NO_DECISION;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
+import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.reflect.Executable;
@@ -357,12 +361,13 @@ public class TruffleFeature implements InternalFeature {
 
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
+        TruffleAllowInliningPredicate allowInliningPredicate = new TruffleAllowInliningPredicate(runtimeCompilationFeature.getHostedProviders().getReplacements(),
+                        graphBuilderConfig.getPlugins().getInvocationPlugins(),
+                        partialEvaluator, this::allowRuntimeCompilation);
         if (Options.TruffleInlineDuringParsing.getValue() && !SubstrateOptions.parseOnce()) {
-            graphBuilderConfig.getPlugins().appendInlineInvokePlugin(
-                            new TruffleParsingInlineInvokePlugin(config.getHostVM(), runtimeCompilationFeature.getHostedProviders().getReplacements(),
-                                            graphBuilderConfig.getPlugins().getInvocationPlugins(),
-                                            partialEvaluator, this::allowRuntimeCompilation));
+            graphBuilderConfig.getPlugins().appendInlineInvokePlugin(new TruffleParsingInlineInvokePlugin(config.getHostVM(), allowInliningPredicate));
         }
+        runtimeCompilationFeature.registerAllowInliningPredicate(allowInliningPredicate::allowInlining);
 
         registerNeverPartOfCompilation(graphBuilderConfig.getPlugins().getInvocationPlugins());
         graphBuilderConfig.getPlugins().getInvocationPlugins().closeRegistration();
@@ -443,54 +448,81 @@ public class TruffleFeature implements InternalFeature {
         }, BytecodeOSRNode.class);
     }
 
-    static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {
-
-        private final SVMHost hostVM;
+    static class TruffleAllowInliningPredicate {
         private final Replacements replacements;
         private final InvocationPlugins invocationPlugins;
         private final PartialEvaluator partialEvaluator;
         private final Predicate<ResolvedJavaMethod> allowRuntimeCompilationPredicate;
 
-        TruffleParsingInlineInvokePlugin(SVMHost hostVM, Replacements replacements, InvocationPlugins invocationPlugins, PartialEvaluator partialEvaluator,
+        TruffleAllowInliningPredicate(Replacements replacements, InvocationPlugins invocationPlugins, PartialEvaluator partialEvaluator,
                         Predicate<ResolvedJavaMethod> allowRuntimeCompilationPredicate) {
-            this.hostVM = hostVM;
             this.replacements = replacements;
             this.invocationPlugins = invocationPlugins;
             this.partialEvaluator = partialEvaluator;
             this.allowRuntimeCompilationPredicate = allowRuntimeCompilationPredicate;
         }
 
-        @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
-            assert !SubstrateOptions.parseOnce() : "inlining during parsing is not enabled with parse once";
+        public RuntimeCompilationFeature.AllowInliningPredicate.InlineDecision allowInlining(GraphBuilderContext builder, ResolvedJavaMethod target) {
 
-            if (original.hasNeverInlineDirective()) {
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (invocationPlugins.lookupInvocation(original, builder.getOptions()) != null) {
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (original.getAnnotation(ExplodeLoop.class) != null) {
+            if (target.hasNeverInlineDirective()) {
+                return INLINING_DISALLOWED;
+            } else if (invocationPlugins.lookupInvocation(target, builder.getOptions()) != null) {
+                return INLINING_DISALLOWED;
+            } else if (target.getAnnotation(ExplodeLoop.class) != null) {
                 /*
                  * We cannot inline a method annotated with @ExplodeLoop, because then loops are no
                  * longer exploded.
                  */
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+                return INLINING_DISALLOWED;
             } else if (builder.getMethod().getAnnotation(ExplodeLoop.class) != null) {
                 /*
                  * We cannot inline anything into a method annotated with @ExplodeLoop, because then
                  * loops of the inlined callee are exploded too.
                  */
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (replacements.hasSubstitution(original, builder.getOptions())) {
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+                return INLINING_DISALLOWED;
+            } else if (replacements.hasSubstitution(target, builder.getOptions())) {
+                return INLINING_DISALLOWED;
             }
 
             for (ResolvedJavaMethod m : partialEvaluator.getNeverInlineMethods()) {
-                if (original.equals(m)) {
-                    return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
+                if (target.equals(m)) {
+                    return INLINING_DISALLOWED;
                 }
             }
 
-            if (original.getCode() != null && allowRuntimeCompilationPredicate.test(original) && hostVM.isAnalysisTrivialMethod((AnalysisMethod) original) &&
+            if (target.getCode() != null && allowRuntimeCompilationPredicate.test(target)) {
+                return INLINE;
+            }
+
+            return NO_DECISION;
+        }
+    }
+
+    static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {
+
+        private final SVMHost hostVM;
+        TruffleAllowInliningPredicate inlineCriteria;
+
+        TruffleParsingInlineInvokePlugin(SVMHost hostVM, TruffleAllowInliningPredicate inlineCriteria) {
+            this.hostVM = hostVM;
+            this.inlineCriteria = inlineCriteria;
+        }
+
+        @Override
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
+            assert !SubstrateOptions.parseOnce() : "inlining during parsing is not enabled with parse once";
+
+            var result = inlineCriteria.allowInlining(builder, original);
+            switch (result) {
+                case NO_DECISION -> {
+                    return null;
+                }
+                case INLINING_DISALLOWED -> {
+                    return DO_NOT_INLINE_WITH_EXCEPTION;
+                }
+            }
+            assert result == INLINE;
+            if (hostVM.isAnalysisTrivialMethod((AnalysisMethod) original) &&
                             builder.getDepth() < InlineDuringParsingMaxDepth.getValue(HostedOptionValues.singleton())) {
                 return createStandardInlineInfo(original);
             }
@@ -786,7 +818,12 @@ public class TruffleFeature implements InternalFeature {
     public void beforeCompilation(BeforeCompilationAccess config) {
         FeatureImpl.BeforeCompilationAccessImpl access = (FeatureImpl.BeforeCompilationAccessImpl) config;
 
-        boolean failBlockListViolations = Options.TruffleCheckBlockListMethods.getValue() || Options.TruffleCheckBlackListedMethods.getValue();
+        boolean failBlockListViolations;
+        if (Options.TruffleCheckBlackListedMethods.hasBeenSet()) {
+            failBlockListViolations = Options.TruffleCheckBlackListedMethods.getValue();
+        } else {
+            failBlockListViolations = Options.TruffleCheckBlockListMethods.getValue();
+        }
         boolean printBlockListViolations = RuntimeCompilationFeature.Options.PrintRuntimeCompileMethods.getValue() || failBlockListViolations;
         if (printBlockListViolations) {
             Set<RuntimeCompilationCandidate> blocklistViolations = new TreeSet<>(RuntimeCompilationFeature.singleton().getRuntimeCompilationComparator());

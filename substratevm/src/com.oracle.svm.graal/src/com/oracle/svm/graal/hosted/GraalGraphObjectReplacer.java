@@ -112,6 +112,11 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
     private final Field substrateTypeRawAllInstanceFieldsField;
     private final Field substrateMethodImplementationsField;
 
+    /**
+     * Tracks whether it is legal to create new types.
+     */
+    private boolean forbidNewTypes = false;
+
     public GraalGraphObjectReplacer(AnalysisUniverse aUniverse, SubstrateProviders sProviders, SubstrateUniverseFactory universeFactory) {
         this.aUniverse = aUniverse;
         this.sProviders = sProviders;
@@ -284,6 +289,13 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         return types.containsKey(toAnalysisType(original));
     }
 
+    /**
+     * After this is called no new types can be created.
+     */
+    public void forbidNewTypes() {
+        forbidNewTypes = true;
+    }
+
     public synchronized SubstrateType createType(JavaType original) {
         assert !(original instanceof SubstrateType) : original;
         if (original == null) {
@@ -295,7 +307,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         SubstrateType sType = types.get(aType);
 
         if (sType == null) {
-            assert !(original instanceof HostedType) : "too late to create new type";
+            VMError.guarantee(!(forbidNewTypes || (original instanceof HostedType)), "Too late to create a new type: %s", aType);
             aType.registerAsReachable("type reachable from Graal graphs");
             DynamicHub hub = ((SVMHost) aUniverse.hostVM()).dynamicHub(aType);
             sType = new SubstrateType(aType.getJavaKind(), hub);

@@ -214,6 +214,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return caller != null;
         }
 
+        public ValueNode[] getArguments() {
+            return arguments;
+        }
+
         /**
          * Gets the call stack representing this method scope and its callers.
          */
@@ -1208,6 +1212,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
+        predecessor = afterMethodScopeCreation(inlineScope, predecessor);
+
         LoopScope inlineLoopScope = createInitialLoopScope(inlineScope, predecessor);
 
         /*
@@ -1227,6 +1233,10 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * Do the actual inlining by returning the initial loop scope for the inlined method scope.
          */
         return inlineLoopScope;
+    }
+
+    protected FixedWithNextNode afterMethodScopeCreation(@SuppressWarnings("unused") PEMethodScope inlineScope, FixedWithNextNode predecessor) {
+        return predecessor;
     }
 
     @Override
@@ -1349,7 +1359,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         /*
-         * Usage the handles that we have on the return value and the exception to update the
+         * Use the handles that we have on the return value and the exception to update the
          * orderId->Node table.
          */
         registerNode(loopScope, invokeData.invokeOrderId, returnValue, true, true);

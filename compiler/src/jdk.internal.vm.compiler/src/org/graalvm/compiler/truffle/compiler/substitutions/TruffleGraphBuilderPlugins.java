@@ -173,8 +173,16 @@ public class TruffleGraphBuilderPlugins {
         r.register(new RequiredInvocationPlugin("poll", com.oracle.truffle.api.nodes.Node.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                if (arg.isConstant()) {
-                    assert TruffleSafepointInsertionPhase.allowsSafepoints(b.getGraph()) : "TruffleSafepoint.poll only expected to be removed in Truffle compilations.";
+                if (!TruffleSafepointInsertionPhase.allowsSafepoints(b.getGraph())) {
+                    if (!canDelayIntrinsification) {
+                        /*
+                         * TruffleSafepoint.poll only expected to be removed in Truffle
+                         * compilations.
+                         */
+                        throw failPEConstant(b, arg);
+                    }
+                    return false;
+                } else if (arg.isConstant()) {
                     return true;
                 } else if (canDelayIntrinsification) {
                     return false;

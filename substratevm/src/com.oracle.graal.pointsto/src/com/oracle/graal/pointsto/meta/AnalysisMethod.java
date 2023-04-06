@@ -874,10 +874,23 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             return null;
         }
 
-        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
+        var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
                         analyzedGraph.trackNodeSourcePosition()).build();
         GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
+        /*
+         * Since we are merely decoding the graph, the resulting graph should have the same
+         * assumptions as the analyzed graph.
+         */
+        switch (allowAssumptions) {
+            case YES -> {
+                assert analyzedGraph.getAssumptions().equals(result.getAssumptions());
+            }
+            case NO -> {
+                assert analyzedGraph.getAssumptions() == null && result.getAssumptions() == null;
+            }
+        }
         return result;
     }
 

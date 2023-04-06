@@ -45,6 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -127,6 +128,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
+import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
@@ -166,7 +168,9 @@ public class SVMHost extends HostVM {
     private final Set<AnalysisField> finalFieldsInitializedOutsideOfConstructor = ConcurrentHashMap.newKeySet();
     private final MultiMethodAnalysisPolicy multiMethodAnalysisPolicy;
     private final SVMParsingSupport parsingSupport;
+    private final InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy;
 
+    @SuppressWarnings("this-escape")
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
                     UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
         super(options, classLoader);
@@ -183,7 +187,18 @@ public class SVMHost extends HostVM {
             ImageSingletons.add(HostVM.MultiMethodAnalysisPolicy.class, DEFAULT_MULTIMETHOD_ANALYSIS_POLICY);
             multiMethodAnalysisPolicy = DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
         }
-        parsingSupport = ImageSingletons.contains(SVMParsingSupport.class) ? ImageSingletons.lookup(SVMParsingSupport.class) : null;
+        InlineBeforeAnalysisPolicyUtils inliningUtils = getInlineBeforeAnalysisPolicyUtils();
+        inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl(this, inliningUtils);
+        if (ImageSingletons.contains(SVMParsingSupport.class)) {
+            parsingSupport = ImageSingletons.lookup(SVMParsingSupport.class);
+            parsingSupport.initializeInlineBeforeAnalysisPolicy(this, inliningUtils);
+        } else {
+            parsingSupport = null;
+        }
+    }
+
+    protected InlineBeforeAnalysisPolicyUtils getInlineBeforeAnalysisPolicyUtils() {
+        return new InlineBeforeAnalysisPolicyUtils();
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -551,7 +566,14 @@ public class SVMHost extends HostVM {
             }
 
             if (parseOnce) {
-                new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
+                if (!SubstrateCompilationDirectives.isRuntimeCompiledMethod(method)) {
+                    /*
+                     * Runtime compiled methods should not have assertions. If they do, then they
+                     * should be caught via the blocklist instead of being converted to bytecode
+                     * exceptions.
+                     */
+                    new ImplicitAssertionsPhase().apply(graph, getProviders(method.getMultiMethodKey()));
+                }
                 UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
 
                 optimizeAfterParsing(bb, method, graph);
@@ -560,6 +582,14 @@ public class SVMHost extends HostVM {
                  * leftover uncanonicalized nodes.
                  */
                 CanonicalizerPhase.create().apply(graph, getProviders(method.getMultiMethodKey()));
+                /*
+                 * To avoid keeping the whole Graal graphs alive in production use cases, we extract
+                 * the necessary bits of information and store them in secondary storage maps.
+                 */
+                if (InliningUtilities.isTrivialMethod(graph)) {
+                    analysisTrivialMethods.put(method, true);
+                }
+
             }
 
             super.methodAfterParsingHook(bb, method, graph);
@@ -620,10 +650,12 @@ public class SVMHost extends HostVM {
         }
         /*
          * To avoid keeping the whole Graal graphs alive in production use cases, we extract the
-         * necessary bits of information here and store them in secondary storage maps.
+         * necessary bits of information and store them in secondary storage maps.
          */
-        if (InliningUtilities.isTrivialMethod(graph)) {
-            analysisTrivialMethods.put(method, true);
+        if (!parseOnce) {
+            if (InliningUtilities.isTrivialMethod(graph)) {
+                analysisTrivialMethods.put(method, true);
+            }
         }
         for (Node n : graph.getNodes()) {
             if (n instanceof StackValueNode) {
@@ -724,23 +756,16 @@ public class SVMHost extends HostVM {
         return SubstrateOptions.NeverInline.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(method));
     }
 
-    @SuppressWarnings("this-escape")//
-    private final InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl(this);
-
-    protected InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
-        /*
-         * Currently we only allow inlining before analysis in the original methods.
-         */
-        if (multiMethodKey == MultiMethod.ORIGINAL_METHOD) {
-            return inlineBeforeAnalysisPolicy;
-        } else {
-            return InlineBeforeAnalysisPolicy.NO_INLINING;
+    private InlineBeforeAnalysisPolicy inlineBeforeAnalysisPolicy(MultiMethod.MultiMethodKey multiMethodKey) {
+        if (parsingSupport != null) {
+            return parsingSupport.inlineBeforeAnalysisPolicy(multiMethodKey, inlineBeforeAnalysisPolicy);
         }
+        return inlineBeforeAnalysisPolicy;
     }
 
     @Override
-    public InlineBeforeAnalysisGraphDecoder<?> createInlineBeforeAnalysisGraphDecoder(BigBang bb, AnalysisMethod method, StructuredGraph resultGraph) {
-        return new InlineBeforeAnalysisGraphDecoder<>(bb, inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), resultGraph, bb.getProviders(method), null);
+    public InlineBeforeAnalysisGraphDecoder createInlineBeforeAnalysisGraphDecoder(BigBang bb, AnalysisMethod method, StructuredGraph resultGraph) {
+        return new InlineBeforeAnalysisGraphDecoder(bb, inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), resultGraph, bb.getProviders(method), null);
     }
 
     public static class Options {
@@ -919,5 +944,16 @@ public class SVMHost extends HostVM {
             return true;
         }
         return super.ignoreInstanceOfTypeDisallowed();
+    }
+
+    @Override
+    public Function<AnalysisType, ResolvedJavaType> getStrengthenGraphsToTargetFunction(MultiMethod.MultiMethodKey key) {
+        if (parsingSupport != null) {
+            var result = parsingSupport.getStrengthenGraphsToTargetFunction(key);
+            if (result != null) {
+                return result;
+            }
+        }
+        return super.getStrengthenGraphsToTargetFunction(key);
     }
 }
