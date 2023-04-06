@@ -2112,6 +2112,18 @@ public class WasmJsApiSuite {
         });
     }
 
+    @Test
+    public void testInstantiateEmptyModuleTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("empty", "(module)");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            wasm.moduleInstantiate(module, importObject);
+            wasm.moduleInstantiate(module, importObject);
+        });
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
         runTest(null, testCase);
     }
