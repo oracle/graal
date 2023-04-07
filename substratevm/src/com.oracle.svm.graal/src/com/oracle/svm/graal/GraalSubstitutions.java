@@ -113,7 +113,7 @@ final class Target_org_graalvm_compiler_phases_common_inlining_info_elem_Inlinea
     @Substitute
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, boolean trackNodeSourcePosition) {
         DebugContext debug = caller.getDebug();
-        StructuredGraph result = GraalSupport.decodeGraph(debug, null, CompilationIdentifier.INVALID_COMPILATION_ID, (SubstrateMethod) method);
+        StructuredGraph result = GraalSupport.decodeGraph(debug, null, CompilationIdentifier.INVALID_COMPILATION_ID, (SubstrateMethod) method, caller);
         assert result != null : "should not try to inline method when no graph is in the native image";
         assert !trackNodeSourcePosition || result.trackNodeSourcePosition();
         return result;
