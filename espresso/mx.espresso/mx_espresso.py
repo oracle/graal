@@ -22,6 +22,8 @@
 #
 
 import os
+import signal
+import subprocess
 
 import mx
 import mx_espresso_benchmarks  # pylint: disable=unused-import
@@ -64,35 +66,48 @@ def _espresso_standalone_command(args):
     )
 
 
-def _run_espresso_launcher(args=None, cwd=None, nonZeroIsFatal=True):
+def _send_sigquit(p):
+    if mx.is_windows():
+        sig = signal.CTRL_BREAK_EVENT
+    else:
+        sig = signal.SIGQUIT
+    p.send_signal(sig)
+    try:
+        # wait up to 10s for process to print stack traces
+        p.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def _run_espresso_launcher(args=None, cwd=None, nonZeroIsFatal=True, timeout=None):
     """Run Espresso launcher within a GraalVM"""
-    return mx.run(_espresso_launcher_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+    return mx.run(_espresso_launcher_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, timeout=timeout, on_timeout=_send_sigquit)
 
 
-def _run_espresso_standalone(args=None, cwd=None, nonZeroIsFatal=True):
+def _run_espresso_standalone(args=None, cwd=None, nonZeroIsFatal=True, timeout=None):
     """Run standalone Espresso (not as part of GraalVM) from distribution jars"""
-    return mx.run_java(_espresso_standalone_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+    return mx.run_java(_espresso_standalone_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, timeout=timeout, on_timeout=_send_sigquit)
 
 
-def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True):
+def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True, timeout=None):
     """Run espresso through the standard java launcher within a GraalVM"""
-    return mx.run(_java_truffle_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+    return mx.run(_java_truffle_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, timeout=timeout, on_timeout=_send_sigquit)
 
 
-def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True):
+def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True, timeout=None):
     if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
         # no libespresso, we can only run with the espresso launcher
-        _run_espresso_launcher(args, cwd, nonZeroIsFatal)
+        _run_espresso_launcher(args, cwd, nonZeroIsFatal, timeout)
     else:
-        _run_java_truffle(args, cwd, nonZeroIsFatal)
+        _run_java_truffle(args, cwd, nonZeroIsFatal, timeout)
 
 
-def _run_espresso_meta(args, nonZeroIsFatal=True):
+def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):
     """Run Espresso (standalone) on Espresso (launcher)"""
     return _run_espresso_launcher([
         '--vm.Xss4m',
         '-Dtruffle.class.path.append=' + mx.dependency('ESPRESSO').path,  # on GraalVM the EspressoLanguageProvider must be visible to the GraalVMLocator
-    ] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
+    ] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal, timeout=timeout)
 
 
 class EspressoTags:
