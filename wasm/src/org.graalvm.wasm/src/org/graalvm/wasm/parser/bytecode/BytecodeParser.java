@@ -686,6 +686,7 @@ public class BytecodeParser {
                 }
                 case Bytecode.I64_CONST_I64:
                 case Bytecode.F64_CONST:
+                case Bytecode.NOTIFY:
                     offset += 8;
                     break;
                 case Bytecode.LABEL_I32:
@@ -754,17 +755,17 @@ public class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F32_U:
                         case Bytecode.I64_TRUNC_SAT_F64_S:
                         case Bytecode.I64_TRUNC_SAT_F64_U:
-                        case Bytecode.DATA_DROP:
-                        case Bytecode.DATA_DROP_UNSAFE:
                         case Bytecode.MEMORY_COPY:
                         case Bytecode.MEMORY64_COPY:
                         case Bytecode.MEMORY_FILL:
                         case Bytecode.MEMORY64_FILL:
                         case Bytecode.MEMORY64_SIZE:
-                        case Bytecode.MEMORY64_GROW:
-                        case Bytecode.ELEM_DROP: {
+                        case Bytecode.MEMORY64_GROW: {
                             break;
                         }
+                        case Bytecode.DATA_DROP:
+                        case Bytecode.DATA_DROP_UNSAFE:
+                        case Bytecode.ELEM_DROP:
                         case Bytecode.MEMORY_INIT:
                         case Bytecode.MEMORY_INIT_UNSAFE:
                         case Bytecode.MEMORY64_INIT:
