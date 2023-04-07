@@ -40,7 +40,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
@@ -73,7 +72,6 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     public void markChunkFinal() {
         SubstrateJVM.get().markChunkFinal();
     }
@@ -87,7 +85,6 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#isRecording}. */
     @Substitute
     @Uninterruptible(reason = "Needed for calling SubstrateJVM.isRecording().")
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isRecording() {
         return SubstrateJVM.get().isRecording();
     }
@@ -112,7 +109,6 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getAllEventClasses}. */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public List<Class<? extends jdk.internal.event.Event>> getAllEventClasses() {
         return JfrJavaEvents.getAllEventClasses();
     }
@@ -316,7 +312,7 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, Target_jdk_jfr_internal_handlers_EventHandler handler) {
         // eventHandler fields should all be set at compile time so this method
         // should never be reached at runtime
@@ -325,7 +321,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link SubstrateJVM#getHandler}. */
     @Substitute
-    @TargetElement(onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
     public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
         return SubstrateJVM.getHandler(eventClass);
     }
@@ -355,7 +351,6 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     public void flush() {
         SubstrateJVM.get().flush();
     }
@@ -406,7 +401,6 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
         // Not supported but this method is called during JFR startup, so we can't throw an error.
         return true;
@@ -425,19 +419,16 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     public void include(Thread thread) {
         SubstrateJVM.get().setExcluded(thread, false);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     public void exclude(Thread thread) {
         SubstrateJVM.get().setExcluded(thread, true);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     public boolean isExcluded(Thread thread) {
         return SubstrateJVM.get().isExcluded(thread);
     }
@@ -458,7 +449,6 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link SubstrateJVM#getChunkStartNanos}. */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public long getChunkStartNanos() {
         return SubstrateJVM.get().getChunkStartNanos();
     }

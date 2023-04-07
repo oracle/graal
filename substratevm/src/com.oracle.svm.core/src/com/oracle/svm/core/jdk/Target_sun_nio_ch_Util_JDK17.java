@@ -35,12 +35,12 @@ import com.oracle.svm.core.annotate.TargetClass;
  * later JDK versions. This file can be removed when removing JDK 17 support.
  */
 
-@TargetClass(className = "jdk.internal.access.foreign.MemorySegmentProxy", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
+@TargetClass(className = "jdk.internal.access.foreign.MemorySegmentProxy", onlyWith = JDK17OrEarlier.class)
 @SuppressWarnings("unused")
 final class Target_jdk_internal_access_foreign_MemorySegmentProxy_JDK17 {
 }
 
-@TargetClass(className = "java.nio.DirectByteBuffer", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
+@TargetClass(className = "java.nio.DirectByteBuffer", onlyWith = JDK17OrEarlier.class)
 @SuppressWarnings("unused")
 final class Target_java_nio_DirectByteBuffer_JDK17 {
 
@@ -51,7 +51,7 @@ final class Target_java_nio_DirectByteBuffer_JDK17 {
 
 }
 
-@TargetClass(className = "java.nio.DirectByteBufferR", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
+@TargetClass(className = "java.nio.DirectByteBufferR", onlyWith = JDK17OrEarlier.class)
 @SuppressWarnings("unused")
 final class Target_java_nio_DirectByteBufferR_JDK17 {
 
@@ -62,7 +62,7 @@ final class Target_java_nio_DirectByteBufferR_JDK17 {
 
 }
 
-@TargetClass(className = "sun.nio.ch.Util", onlyWith = {JDK17OrLater.class, JDK17OrEarlier.class})
+@TargetClass(className = "sun.nio.ch.Util", onlyWith = JDK17OrEarlier.class)
 final class Target_sun_nio_ch_Util_JDK17 {
 
     @Substitute

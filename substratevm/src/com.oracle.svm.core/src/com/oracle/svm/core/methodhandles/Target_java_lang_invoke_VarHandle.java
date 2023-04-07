@@ -29,8 +29,6 @@ import java.lang.invoke.MethodHandle;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 
 @TargetClass(className = "java.lang.invoke.VarHandle")
 final class Target_java_lang_invoke_VarHandle {
@@ -40,7 +38,6 @@ final class Target_java_lang_invoke_VarHandle {
      * collects details about the MemberName, which are method handle internals that must not be
      * reachable.
      */
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Substitute
     @Override
     public String toString() {

@@ -39,7 +39,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -345,7 +344,6 @@ final class Util_java_lang_invoke_MethodHandleNatives {
     private static Method verifyAccess;
 
     static boolean verifyAccess(Class<?> refc, Class<?> defc, int mods, Class<?> lookupClass, int allowedModes) {
-        assert JavaVersionUtil.JAVA_SPEC >= 17;
         if (verifyAccess == null) {
             try {
                 verifyAccess = VerifyAccess.class.getDeclaredMethod("isMemberAccessible", Class.class, Class.class, int.class, Class.class, Class.class, int.class);

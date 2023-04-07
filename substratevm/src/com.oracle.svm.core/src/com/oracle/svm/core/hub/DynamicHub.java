@@ -44,6 +44,9 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Inherited;
+import java.lang.constant.Constable;
+import java.lang.constant.ConstantDesc;
+import java.lang.invoke.TypeDescriptor;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.AnnotatedElement;
@@ -95,7 +98,6 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.UnknownObjectField;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
@@ -124,8 +126,7 @@ import sun.reflect.generics.repository.ClassRepository;
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
 @SuppressFBWarnings(value = "Se", justification = "DynamicHub must implement Serializable for compatibility with java.lang.Class, not because of actual serialization")
-public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
-                Target_java_lang_invoke_TypeDescriptor_OfField, Target_java_lang_constant_Constable {
+public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable, TypeDescriptor.OfField<DynamicHub>, Constable {
 
     @Substitute //
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
@@ -315,20 +316,13 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Hybrid.Array private CFunctionPointer[] vtable;
 
-    /**
-     * Field used for module information access at run-time.
-     */
+    /** Field used for module information access at run-time. */
     private Module module;
 
-    /**
-     * JDK 11 and later: the class that serves as the host for the nest. All nestmates have the same
-     * host.
-     */
+    /** The class that serves as the host for the nest. All nestmates have the same host. */
     private final Class<?> nestHost;
 
-    /**
-     * The simple binary name of this class, as returned by {@code Class.getSimpleBinaryName0}.
-     */
+    /** The simple binary name of this class, as returned by {@code Class.getSimpleBinaryName0}. */
     private final String simpleBinaryName;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -833,20 +827,17 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native boolean isAnonymousClass();
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isHidden() {
         return isFlagSet(flags, IS_HIDDEN_FLAG_BIT);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isRecord() {
         return isFlagSet(flags, IS_RECORD_FLAG_BIT);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isSealed() {
         return isFlagSet(flags, IS_SEALED_FLAG_BIT);
     }
@@ -1143,11 +1134,9 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     native Method[] privateGetPublicMethods();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private native Target_java_lang_reflect_RecordComponent[] getRecordComponents();
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private Target_java_lang_reflect_RecordComponent[] getRecordComponents0() {
         checkClassFlag(ALL_RECORD_COMPONENTS_FLAG, "getRecordComponents");
         if (reflectionMetadata == null || reflectionMetadata.recordComponentsEncodingIndex == NO_DATA) {
@@ -1159,7 +1148,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private native Class<?>[] getPermittedSubclasses();
 
     @Substitute
@@ -1389,7 +1377,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return companion.getProtectionDomain();
     }
 
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Substitute
     private ProtectionDomain protectionDomain() {
         return getProtectionDomain();
@@ -1468,14 +1455,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     public native Class<?>[] getNestMembers();
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public DynamicHub componentType() {
         return componentType;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
     public DynamicHub arrayType() {
         if (toClass(this) == void.class) {
@@ -1487,34 +1472,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return arrayHub;
     }
 
-    /*
-     * The following methods were introduced after JDK 11, so they should be unreachable in JDK
-     * versions beforehand. But we still do not want to declare them as native to avoid strange
-     * linkage errors, but throw an error instead.
-     */
+    @KeepOriginal
+    private native Class<?> elementType();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
-    private Class<?> elementType() {
-        throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
-    }
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
-    public String descriptorString() {
-        throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
-    }
+    public native String descriptorString();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @Override
-    public Optional<?> describeConstable() {
-        throw VMError.unsupportedFeature("Method is not available in JDK 8 or JDK 11");
-    }
+    public native Optional<? extends ConstantDesc> describeConstable();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static native String typeVarBounds(TypeVariable<?> typeVar);
 
     /*
@@ -1677,7 +1646,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native Target_java_lang_Class_AnnotationData createAnnotationData(int redefinitionCount);
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private Class<?>[] getPermittedSubclasses0() {
         if (!isSealed()) {
             return null;
@@ -1715,7 +1683,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     static native byte[] getExecutableTypeAnnotationBytes(Executable ex);
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private native boolean isDirectSubType(Class<?> c);
 
     @KeepOriginal
@@ -1825,7 +1792,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         final int classesEncodingIndex;
 
-        @TargetElement(onlyWith = JDK17OrLater.class)//
         final int permittedSubclassesEncodingIndex;
 
         final int nestMembersEncodingIndex;
@@ -1851,7 +1817,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
         final int constructorsEncodingIndex;
 
-        @TargetElement(onlyWith = JDK17OrLater.class)//
         final int recordComponentsEncodingIndex;
 
         final int classFlags;
@@ -1885,49 +1850,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         return ImageSingletons.lookup(ReflectionMetadataDecoder.class).parseReachableConstructors(this, reflectionMetadata.constructorsEncodingIndex);
     }
-}
-
-/**
- * In JDK versions after 11, {@link java.lang.Class} implements more interfaces: Constable and
- * TypeDescriptor.OfField. Since these interfaces do not exist in older JDK versions, we cannot just
- * have DynamicHub implement them, the code would not compile. But the substitution mechanism also
- * requires the class {@link DynamicHub} to be final, so we cannot use inheritance to have a
- * subclass that implements the additional interfaces.
- * <p>
- * So we use JDK-specific substitution interfaces. When the target interfaces exist, they are like
- * an alias of the original interface. For older JDK versions, they are just normal interfaces
- * without any substitution target. This means they really show up as implemented interfaces of
- * java.lang.Class at run time. This is a benign side effect.
- */
-
-@Substitute
-@TargetClass(className = "java.lang.constant.Constable", onlyWith = JDK17OrLater.class)
-interface Target_java_lang_constant_Constable {
-    @KeepOriginal
-    Optional<?> describeConstable();
-}
-
-@Substitute
-@TargetClass(className = "java.lang.invoke.TypeDescriptor", onlyWith = JDK17OrLater.class)
-interface Target_java_lang_invoke_TypeDescriptor {
-    @KeepOriginal
-    String descriptorString();
-}
-
-@Substitute
-@TargetClass(className = "java.lang.invoke.TypeDescriptor", innerClass = "OfField", onlyWith = JDK17OrLater.class)
-interface Target_java_lang_invoke_TypeDescriptor_OfField extends Target_java_lang_invoke_TypeDescriptor {
-    @KeepOriginal
-    boolean isArray();
-
-    @KeepOriginal
-    boolean isPrimitive();
-
-    @KeepOriginal
-    DynamicHub componentType();
-
-    @KeepOriginal
-    DynamicHub arrayType();
 }
 
 @TargetClass(className = "java.lang.Class", innerClass = "ReflectionData")

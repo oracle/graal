@@ -28,7 +28,6 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 
 import java.io.IOException;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assert;
 
 import com.oracle.svm.core.jfr.JfrType;
@@ -49,9 +48,7 @@ public class ClassConstantPoolParser extends AbstractRepositoryParser {
             addExpectedId(JfrType.Symbol, input.readLong()); // ClassName.
             addExpectedId(JfrType.Package, input.readLong()); // PackageId.
             Assert.assertTrue("Modifier value is not correct!", input.readLong() >= 0); // Modifier.
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                input.readBoolean(); // IsHiddenClass.
-            }
+            input.readBoolean(); // IsHiddenClass.
         }
     }
 }
