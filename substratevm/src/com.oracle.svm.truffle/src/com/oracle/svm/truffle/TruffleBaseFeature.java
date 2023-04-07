@@ -465,7 +465,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     private static class AssertionStatusFieldTransformer implements FieldValueTransformer {
         private final Class<?> clazz;
 
-        public AssertionStatusFieldTransformer(Class<?> clazz) {
+        AssertionStatusFieldTransformer(Class<?> clazz) {
             this.clazz = clazz;
         }
 
