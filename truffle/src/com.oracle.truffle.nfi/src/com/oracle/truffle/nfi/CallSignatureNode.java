@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -47,6 +48,7 @@ import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -63,7 +65,6 @@ import com.oracle.truffle.nfi.CallSignatureNodeFactory.OptimizedCallClosureNodeG
 import com.oracle.truffle.nfi.CallSignatureNodeFactory.OptimizedCallSignatureNodeGen;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertFromNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertToNativeNode;
-import com.oracle.truffle.nfi.ConvertTypeNode.OptimizedConvertTypeNode;
 import com.oracle.truffle.nfi.NFISignature.ArgsCachedState;
 import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
@@ -112,38 +113,44 @@ abstract class CallSignatureNode extends Node {
                 if (signature.argTypes[i].cachedState.managedArgCount == 1) {
                     input = args[argIdx++];
                 }
-                preparedArgs[i] = convertArg.execute(signature.argTypes[i], input);
+                preparedArgs[i] = convertArg.executeInlined(node, signature.argTypes[i], input);
             }
 
             Object ret = nativeLibrary.call(signature.nativeSignature, backendSymbolUnwrapNode.execute(node, function), preparedArgs);
-            return convertRet.execute(signature.retType, ret);
+            return convertRet.executeInlined(node, signature.retType, ret);
         }
 
     }
 
+    @NeverDefault
     static CallSignatureNode createOptimizedCall(TypeCachedState retType, ArgsCachedState argsState) {
         return OptimizedCallSignatureNodeGen.create(retType, argsState);
     }
 
+    @NeverDefault
     static CallSignatureNode createOptimizedClosure(TypeCachedState retType, ArgsCachedState argsState) {
         return OptimizedCallClosureNodeGen.create(retType, argsState);
     }
 
     abstract static class OptimizedCallSignatureNode extends CallSignatureNode {
 
-        @Child OptimizedConvertTypeNode convertRet;
-        @Children final OptimizedConvertTypeNode[] convertArgs;
+        @Child ConvertTypeNode convertRet;
+
+        @CompilationFinal(dimensions = 1) final TypeCachedState[] argTypes;
+        @Children final ConvertTypeNode[] convertArgs;
 
         private final int managedArgCount;
 
         OptimizedCallSignatureNode(TypeCachedState retType, ArgsCachedState argsState) {
             this.convertRet = retType.createFromNative();
 
-            this.convertArgs = new OptimizedConvertTypeNode[argsState.nativeArgCount];
+            this.argTypes = new TypeCachedState[argsState.nativeArgCount];
+            this.convertArgs = new ConvertTypeNode[argsState.nativeArgCount];
             this.managedArgCount = argsState.managedArgCount;
 
             ArgsCachedState cur = argsState;
             for (int i = argsState.nativeArgCount - 1; i >= 0; i--) {
+                argTypes[i] = cur.argType;
                 convertArgs[i] = cur.argType.createToNative();
                 cur = cur.prev;
             }
@@ -155,7 +162,7 @@ abstract class CallSignatureNode extends Node {
             int argIdx = 0;
             for (int i = 0; i < convertArgs.length; i++) {
                 Object input = null;
-                if (convertArgs[i].typeState.managedArgCount == 1) {
+                if (argTypes[i].managedArgCount == 1) {
                     input = args[argIdx++];
                 }
                 preparedArgs[i] = convertArgs[i].execute(signature.argTypes[i], input);
@@ -181,19 +188,23 @@ abstract class CallSignatureNode extends Node {
 
     abstract static class OptimizedCallClosureNode extends CallSignatureNode {
 
-        @Child OptimizedConvertTypeNode convertRet;
-        @Children final OptimizedConvertTypeNode[] convertArgs;
+        @Child ConvertTypeNode convertRet;
+
+        @CompilationFinal(dimensions = 1) final TypeCachedState[] argTypes;
+        @Children final ConvertTypeNode[] convertArgs;
 
         final int managedArgCount;
 
         OptimizedCallClosureNode(TypeCachedState retType, ArgsCachedState argsState) {
             this.convertRet = retType.createToNative();
 
-            this.convertArgs = new OptimizedConvertTypeNode[argsState.nativeArgCount];
+            this.argTypes = new TypeCachedState[argsState.nativeArgCount];
+            this.convertArgs = new ConvertTypeNode[argsState.nativeArgCount];
             this.managedArgCount = argsState.managedArgCount;
 
             ArgsCachedState cur = argsState;
             for (int i = argsState.nativeArgCount - 1; i >= 0; i--) {
+                argTypes[i] = cur.argType;
                 convertArgs[i] = cur.argType.createFromNative();
                 cur = cur.prev;
             }
@@ -204,7 +215,7 @@ abstract class CallSignatureNode extends Node {
             Object[] preparedArgs = new Object[managedArgCount];
             int argIdx = 0;
             for (int i = 0; i < convertArgs.length; i++) {
-                if (convertArgs[i].typeState.managedArgCount == 1) {
+                if (argTypes[i].managedArgCount == 1) {
                     preparedArgs[argIdx++] = convertArgs[i].execute(signature.argTypes[i], args[i]);
                 }
             }
