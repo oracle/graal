@@ -33,6 +33,7 @@ import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.PLAIN;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
+import static org.graalvm.compiler.replacements.BoxingSnippets.Templates.getCacheClass;
 import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.DECRYPT;
 import static org.graalvm.compiler.replacements.nodes.AESNode.CryptMode.ENCRYPT;
 
@@ -41,6 +42,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
@@ -1310,17 +1313,44 @@ public class StandardGraphBuilderPlugins {
             this.kind = kind;
         }
 
+        static final Map<JavaKind, Class<?>> boxClassToCacheClass = new EnumMap<>(Map.of(
+                        JavaKind.Boolean, Boolean.class,
+                        JavaKind.Char, getCacheClass(JavaKind.Char),
+                        JavaKind.Byte, getCacheClass(JavaKind.Byte),
+                        JavaKind.Short, getCacheClass(JavaKind.Short),
+                        JavaKind.Int, getCacheClass(JavaKind.Int),
+                        JavaKind.Long, getCacheClass(JavaKind.Long)));
+
+        private boolean isCacheTypeInitialized(MetaAccessProvider metaAccess) {
+            Class<?> cacheClass = boxClassToCacheClass.get(kind);
+            if (cacheClass != null) {
+                ResolvedJavaType cacheType = metaAccess.lookupJavaType(cacheClass);
+                if (!cacheType.isInitialized()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+            MetaAccessProvider metaAccess = b.getMetaAccess();
             if (b.parsingIntrinsic()) {
                 ResolvedJavaMethod rootMethod = b.getGraph().method();
-                if (b.getMetaAccess().lookupJavaType(BoxingSnippets.class).isAssignableFrom(rootMethod.getDeclaringClass())) {
+                if (metaAccess.lookupJavaType(BoxingSnippets.class).isAssignableFrom(rootMethod.getDeclaringClass())) {
                     // Disable invocation plugins for boxing snippets so that the
                     // original JDK methods are inlined
                     return false;
                 }
             }
-            ResolvedJavaType resultType = b.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass());
+            ResolvedJavaType resultType = metaAccess.lookupJavaType(kind.toBoxedJavaClass());
+
+            // Cannot perform boxing if the box type or its cache (if any) is not initialized
+            // or failed during initialization (e.g. StackOverflowError in LongCache.<clinit>).
+            if (!resultType.isInitialized() || !isCacheTypeInitialized(metaAccess)) {
+                return false;
+            }
+
             b.addPush(JavaKind.Object, BoxNode.create(value, resultType, kind));
             return true;
         }
