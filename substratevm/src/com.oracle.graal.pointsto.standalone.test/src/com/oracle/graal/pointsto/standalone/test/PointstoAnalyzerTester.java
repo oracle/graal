@@ -302,7 +302,7 @@ public class PointstoAnalyzerTester {
             // Find all the elements that should be reachable but not
             List<T> shouldReachableButNot = expectedReachables.stream().filter(t -> {
                 R element = getAnalysisElement.apply(t);
-                return !element.isReachable();
+                return element != null && !element.isReachable();
             }).collect(Collectors.toList());
 
             if (!shouldReachableButNot.isEmpty()) {
