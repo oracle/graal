@@ -14,7 +14,7 @@ GraalVM tools, however, are implemented to inspect single or multi-language appl
 
 Learn more about each of the tools:
 
-* [GraalVM Visual Studio Code Extensions](vscode/vscode.md)
+* [GraalVM Visual Studio Code Extension](vscode/graalvm/README.md)
 * [VisualVM](visualvm.md)
 * [GraalVM Insight](insight/README.md)
 * [Profiling Command Line Tools](profiling.md)
