@@ -170,9 +170,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     private static Field getField(ResolvedJavaField annotated, Class<?> targetClass, String targetName) {
         try {
-            return targetClass.getDeclaredField(targetName);
-        } catch (NoSuchFieldException e) {
-            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetClass.getName(), targetName, annotated.format("%H.%n"));
+            return ReflectionUtil.lookupField(targetClass, targetName);
+        } catch (ReflectionUtilError e) {
+            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetClass.getName(), targetName, annotated == null ? null : annotated.format("%H.%n"));
         }
     }
 

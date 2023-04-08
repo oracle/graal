@@ -46,6 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+@SuppressWarnings("this-escape")
 public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
 
     // Checkstyle: stop field name check

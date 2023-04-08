@@ -82,7 +82,7 @@ final class Target_jdk_jfr_internal_RequestEngine {
 
 @TargetClass(className = "jdk.jfr.internal.periodic.JVMEventTask", onlyWith = JDK21OrLater.class)
 @Platforms(LINUX.class)
-final class Target_jdk_jfr_internal_JVMEventTask {
+final class Target_jdk_jfr_internal_periodic_JVMEventTask {
     @Alias //
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReentrantLock.class) //
     private static Lock lock;
