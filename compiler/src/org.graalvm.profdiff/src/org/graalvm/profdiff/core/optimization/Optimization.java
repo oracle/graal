@@ -32,6 +32,8 @@ import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.Writer;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 
+import java.util.Objects;
+
 /**
  * Represents an immutable optimization (applied graph transformation) in a compilation unit at a
  * particular source position.
@@ -52,17 +54,9 @@ public class Optimization extends OptimizationTreeNode {
     private final String eventName;
 
     /**
-     * An ordered map that represents the position of a significant node related to this
-     * optimization. It maps method names to byte code indices, starting with the method containing
-     * the significant node and its bci. If the node does not belong to the root method in the
-     * compilation unit, the map also contains the method names of the method's callsites mapped to
-     * the byte code indices of their invokes.
-     *
-     * A significant node is a node that describes the applied transformation well. For instance, it
-     * is the canonicalized node in case of a canonicalization. For loop transformations, it could
-     * be the position of a {@code LoopBeginNode}.
+     * The position of a node related to this optimization.
      */
-    private final UnmodifiableEconomicMap<String, Integer> position;
+    private final Position position;
 
     /**
      * A map of additional properties of this optimization, mapped by property name.
@@ -79,18 +73,18 @@ public class Optimization extends OptimizationTreeNode {
      *
      * @param optimizationName the name of this optimization
      * @param eventName a more specific description of the optimization
-     * @param position a position of a significant node related to this optimization
+     * @param position the position of this optimization
      * @param properties a map of additional properties of this optimization, mapped by property
      *            name
      */
     @SuppressWarnings("this-escape")
     public Optimization(String optimizationName,
                     String eventName,
-                    UnmodifiableEconomicMap<String, Integer> position,
+                    Position position,
                     UnmodifiableEconomicMap<String, Object> properties) {
         super(optimizationName);
         this.eventName = eventName;
-        this.position = (position == null) ? EconomicMap.emptyMap() : position;
+        this.position = (position == null) ? Position.EMPTY : position;
         this.properties = (properties == null) ? EconomicMap.emptyMap() : properties;
         cachedHashCode = calculateHashCode();
     }
@@ -118,42 +112,10 @@ public class Optimization extends OptimizationTreeNode {
     }
 
     /**
-     * Gets an ordered map that represents the position of a significant node related to this
-     * optimization. It maps method names to byte code indices, starting with the method containing
-     * the significant node and its bci. If the node does not belong the root method in the
-     * compilation unit, the map also contains the method names of the method's callsites mapped to
-     * the byte code indices of their invokes.
-     *
-     * @return an ordered map that represents the position of a significant node
+     * Gets the position of this optimization.
      */
-    public UnmodifiableEconomicMap<String, Integer> getPosition() {
+    public Position getPosition() {
         return position;
-    }
-
-    /**
-     * Returns the bci of this optimization relative to an enclosing method.
-     *
-     * As an example, if the position of this optimization is:
-     *
-     * <pre>
-     * {c(): 4, b(): 3, a(): 2}
-     * </pre>
-     *
-     * Then, the method returns 2 for method {@code a()}, 3 for method {@code b()}, and 4 for method
-     * {@code c()}.
-     *
-     * @param enclosingMethod an enclosing method
-     * @return the bci of this optimization relative to an enclosing method
-     */
-    private int getRelativeBCI(InliningTreeNode enclosingMethod) {
-        assert !position.isEmpty() : "the position must not be empty";
-        InliningPath optimizationPath = InliningPath.ofEnclosingMethod(this);
-        InliningPath enclosingMethodPath = InliningPath.fromRootToNode(enclosingMethod);
-        if (enclosingMethodPath.matches(optimizationPath)) {
-            return position.getValues().iterator().next();
-        }
-        assert enclosingMethodPath.isPrefixOf(optimizationPath) : "the path must lead to an enclosing method of the optimization";
-        return optimizationPath.get(enclosingMethodPath.size()).getCallsiteBCI();
     }
 
     /**
@@ -196,12 +158,12 @@ public class Optimization extends OptimizationTreeNode {
      * The short form prints a bci relative to an enclosing method.
      *
      * <pre>
-     * Canonicalizer CanonicalReplacement at bci 53 with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
+     * Canonicalizer CanonicalReplacement at bci 13 with {replacedNodeClass: ValuePhi, canonicalNodeClass: Constant}
      * </pre>
      *
-     * If {@code enclosingMethod} is {@code null}, the method prints the bci of the innermost
-     * enclosing method (53 in the example). If the enclosing method were specified as {@code a()}
-     * in the above example, the bci would be 13.
+     * If {@code enclosingMethod} is {@code null}, the method prints the bci of the outermost
+     * enclosing method (13 in the example). If the enclosing method were specified as {@code b()}
+     * in the above example, the bci would be 53.
      *
      * @param bciLongForm byte code indices should be printed in the long form
      * @param enclosingMethod an enclosing method or {@code null}; ignored if the long form is
@@ -212,14 +174,7 @@ public class Optimization extends OptimizationTreeNode {
         StringBuilder sb = new StringBuilder();
         sb.append(getName()).append(" ").append(eventName);
         if (!position.isEmpty()) {
-            sb.append(" at bci ");
-            if (bciLongForm) {
-                formatMap(sb, position);
-            } else if (enclosingMethod == null) {
-                sb.append(position.getValues().iterator().next());
-            } else {
-                sb.append(getRelativeBCI(enclosingMethod));
-            }
+            sb.append(" at bci ").append(position.toString(bciLongForm, bciLongForm ? null : InliningPath.fromRootToNode(enclosingMethod)));
         }
         if (properties.isEmpty()) {
             return sb.toString();
@@ -268,11 +223,7 @@ public class Optimization extends OptimizationTreeNode {
     }
 
     private int calculateHashCode() {
-        int result = EconomicMapUtil.hashCode(position);
-        result = 31 * result + getName().hashCode();
-        result = 31 * result + eventName.hashCode();
-        result = 31 * result + EconomicMapUtil.hashCode(properties);
-        return result;
+        return Objects.hash(position, getName(), eventName, EconomicMapUtil.hashCode(properties));
     }
 
     @Override
@@ -287,7 +238,7 @@ public class Optimization extends OptimizationTreeNode {
         }
         Optimization other = (Optimization) object;
         return cachedHashCode == other.cachedHashCode && eventName.equals(other.eventName) &&
-                        getName().equals(other.getName()) && EconomicMapUtil.equals(position, other.position) &&
+                        getName().equals(other.getName()) && position.equals(other.position) &&
                         EconomicMapUtil.equals(properties, other.properties);
     }
 
@@ -304,18 +255,10 @@ public class Optimization extends OptimizationTreeNode {
 
     @Override
     public Optimization cloneMatchingPath(InliningPath prefix) {
-        InliningPath path = InliningPath.ofEnclosingMethod(this);
+        InliningPath path = position.enclosingMethodPath();
         if (!prefix.isPrefixOf(path)) {
             return null;
         }
-        EconomicMap<String, Integer> newPosition = EconomicMap.create();
-        UnmodifiableMapCursor<String, Integer> cursor = position.getEntries();
-        int i = 0;
-        int size = position.size() - prefix.size() + 1;
-        while (cursor.advance() && i < size) {
-            newPosition.put(cursor.getKey(), cursor.getValue());
-            ++i;
-        }
-        return new Optimization(getName(), eventName, newPosition, properties);
+        return new Optimization(getName(), eventName, position.relativeTo(prefix), properties);
     }
 }
