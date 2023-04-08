@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,6 +91,9 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
@@ -137,6 +140,15 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * partial evaluation.
  */
 public class TruffleGraphBuilderPlugins {
+
+    public static class Options {
+
+        @Option(help = "Whether Truffle trusted non-null casts are enabled.", type = OptionType.Debug) //
+        public static final OptionKey<Boolean> TruffleTrustedNonNullCast = new OptionKey<>(true);
+        @Option(help = "Whether Truffle trusted type casts are enabled.", type = OptionType.Debug) //
+        public static final OptionKey<Boolean> TruffleTrustedTypeCast = new OptionKey<>(true);
+
+    }
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, KnownTruffleTypes types, Providers providers, boolean canDelayIntrinsification) {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
@@ -1036,6 +1048,10 @@ public class TruffleGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode clazz, ValueNode condition, ValueNode nonNull,
                             ValueNode isExactType) {
                 if (clazz.isConstant() && nonNull.isConstant() && isExactType.isConstant()) {
+                    if (!Options.TruffleTrustedTypeCast.getValue(b.getOptions())) {
+                        b.push(JavaKind.Object, object);
+                        return true;
+                    }
                     ConstantReflectionProvider constantReflection = b.getConstantReflection();
                     ResolvedJavaType javaType = constantReflection.asJavaType(clazz.asConstant());
                     if (javaType == null) {
@@ -1049,7 +1065,8 @@ public class TruffleGraphBuilderPlugins {
                             type = TypeReference.createTrusted(b.getAssumptions(), javaType);
                         }
 
-                        Stamp piStamp = StampFactory.object(type, nonNull.asJavaConstant().asInt() != 0);
+                        boolean trustedNonNull = nonNull.asJavaConstant().asInt() != 0 && Options.TruffleTrustedNonNullCast.getValue(b.getOptions());
+                        Stamp piStamp = StampFactory.object(type, trustedNonNull);
 
                         ConditionAnchorNode valueAnchorNode = null;
                         if (condition.isConstant() && condition.asJavaConstant().asInt() == 1) {
