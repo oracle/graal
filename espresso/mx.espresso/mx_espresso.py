@@ -71,10 +71,12 @@ def _send_sigquit(p):
         sig = signal.CTRL_BREAK_EVENT
     else:
         sig = signal.SIGQUIT
+    mx.warn(f"Sending {sig.name} ({sig.value}) to {p.pid} on timeout")
     p.send_signal(sig)
     try:
         # wait up to 10s for process to print stack traces
         p.wait(timeout=10)
+        mx.warn(f"{p.pid} exited within 10s after receiving {sig} with return code: {p.returncode}")
     except subprocess.TimeoutExpired:
         pass
 
