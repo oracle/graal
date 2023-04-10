@@ -63,6 +63,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -1250,13 +1251,30 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(Set.of(PRIVATE), context.getType(Object.class), "data"),
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sequenceNumber"),
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "startSp"),
-                                new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "childCount"));
+                                new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "childCount"),
+                                new CodeVariableElement(Set.of(PRIVATE), generic(context.getDeclaredType(ArrayList.class), types.OperationLabel), "declaredLabels"));
 
                 operationStackEntry.addAll(fields);
 
                 operationStackEntry.add(createConstructorUsingFields(Set.of(), operationStackEntry, null));
+                operationStackEntry.add(createAddDeclaredLabel());
 
                 return operationStackEntry;
+            }
+
+            private CodeExecutableElement createAddDeclaredLabel() {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "addDeclaredLabel");
+                ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
+
+                CodeTreeBuilder b = ex.createBuilder();
+
+                b.startIf().string("declaredLabels == null").end().startBlock();
+                b.statement("declaredLabels = new ArrayList<>(8)");
+                b.end();
+
+                b.statement("declaredLabels.add(label)");
+
+                return ex;
             }
         }
 
@@ -1274,7 +1292,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(context.getType(int.class), "exHandlerCount"),
                                 new CodeVariableElement(generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"),
                                 new CodeVariableElement(context.getType(int.class), "finallyTrySequenceNumber"),
-                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), finallyTryContext.asType()), "finallyRelativeBranches"),
+                                new CodeVariableElement(generic(HashSet.class, context.getDeclaredType(Integer.class)), "finallyRelativeBranches"),
                                 new CodeVariableElement(finallyTryContext.asType(), "parentContext")));
                 if (model.enableTracing) {
                     finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "basicBlockBoundary"));
@@ -1701,12 +1719,16 @@ public class OperationsNodeFactory implements ElementHelpers {
             buildThrowIllegalStateException(b, "\"Labels must be created inside either Block or Root operations.\"");
             b.end();
 
-            b.startReturn().startNew(operationLabelImpl.asType());
+            b.startAssign("OperationLabel result").startNew(operationLabelImpl.asType());
             b.string("numLabels++");
             b.string(UNINIT);
             b.string("operationStack[operationSp - 1].sequenceNumber");
             b.string("finallyTryContext == null ? " + UNINIT + " : finallyTryContext.finallyTrySequenceNumber");
             b.end(2);
+
+            b.statement("operationStack[operationSp - 1].addDeclaredLabel(result)");
+
+            b.startReturn().string("result").end();
 
             return ex;
         }
@@ -1803,6 +1825,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("opSeqNum++");
             b.string("curStack");
             b.string("0");
+            b.string("null");
             b.end(2);
 
             return ex;
@@ -1950,7 +1973,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("exHandlerCount");
                     b.string("unresolvedLabels");
                     b.string("opSeqNum - 1");
-                    b.string("new HashMap<>()");
+                    b.string("new HashSet<>()");
                     b.string("finallyTryContext");
                     b.end(2);
                     b.statement("operationStack[operationSp - 1].data = finallyTryContext");
@@ -2083,11 +2106,22 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end(2);
             b.end(); // }
 
-            b.startIf().string("operationStack[operationSp - 1].operation != id").end().startBlock(); // {
+            b.statement("OperationStackEntry entry = operationStack[operationSp - 1]");
+
+            b.startIf().string("entry.operation != id").end().startBlock(); // {
             b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Unexpected operation end, expected end\" + OPERATION_NAMES[operationStack[operationSp - 1].operation] + \", but got end \" + OPERATION_NAMES[id]").end();
+            b.string("\"Unexpected operation end, expected end\" + OPERATION_NAMES[entry.operation] + \", but got end \" + OPERATION_NAMES[id]").end();
             b.end(2);
             b.end(); // }
+
+            b.startIf().string("entry.declaredLabels != null").end().startBlock();
+            b.startFor().string("OperationLabel label : entry.declaredLabels").end().startBlock();
+            b.statement("OperationLabelImpl impl = (OperationLabelImpl) label");
+            b.startIf().string("!impl.isDefined()").end().startBlock();
+            b.startThrow().startNew(context.getType(IllegalStateException.class));
+            b.string("\"Operation \" + OPERATION_NAMES[id] + \" ended without emitting one or more declared labels. This likely indicates a bug in the parser.\"").end();
+            b.end(2);
+            b.end(3);
 
             b.statement("operationSp -= 1");
 
@@ -2163,12 +2197,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.startAssert().string("result.buildIndex == buildIndex").end();
 
                 b.end().startElseBlock(); // } {
-
-                b.startIf().string("!unresolvedLabels.isEmpty()").end().startBlock();
-                b.startThrow().startNew(context.getType(IllegalStateException.class));
-                b.doubleQuote("Found branches with unresolved targets. Did you forget to emit a label?");
-                b.end(2);
-                b.end();
 
                 b.declaration(types.FrameDescriptor_Builder, "fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
 
@@ -2376,7 +2404,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.end();
 
                     b.startIf().string("inFinallyTryHandler(ctx)").end().startBlock();
-                    b.statement("finallyTryContext.finallyRelativeBranches.put(bci, ctx)");
+                    b.statement("finallyTryContext.finallyRelativeBranches.add(bci)");
                     b.end();
 
                     b.end();
@@ -2824,6 +2852,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                         // Mark branch target as unresolved, if necessary.
                         b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
+                        b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation. Remember it for later.");
                         b.statement("OperationLabelImpl lbl = (OperationLabelImpl) context.handlerUnresolvedLabelsByIndex.get(idx)");
                         b.statement("assert !lbl.isDefined()");
                         b.startStatement().startCall("registerUnresolvedLabel");
@@ -2834,18 +2863,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.newLine();
 
                         // Adjust relative branch targets.
-                        b.startIf().string("context.finallyRelativeBranches.containsKey(idx)").end().startBlock();
-                        b.statement("FinallyTryContext definingCtx = context.finallyRelativeBranches.get(idx)");
-                        // Quick check to handle uninitialized labels (TODO: remove once we assert
-                        // more generally that a created label is emitted).
-                        b.startIf().string("branchTarget == " + UNINIT + " && definingCtx == context").end().startBlock();
-                        b.startThrow().startNew(context.getType(IllegalStateException.class));
-                        b.doubleQuote("Branch inside the FinallyTry handler was not resolved. The branch's OperationLabel was not declared. This is probably a bug in the parser.");
-                        b.end(3);
-                        // If the parent context is in a handler, this adjusted branch is *still*
-                        // relative.
+                        b.startIf().string("context.finallyRelativeBranches.contains(idx)").end().startBlock();
                         b.startIf().string("inFinallyTryHandler(context.parentContext)").end().startBlock();
-                        b.statement("context.parentContext.finallyRelativeBranches.put(offsetBci + idx, definingCtx)");
+                        b.lineComment("If we're currently nested inside some other finally handler, the branch will also need to be relocated in that handler.");
+                        b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + idx)");
                         b.end();
                         b.statement("objs[offsetBci + idx] = branchTarget + offsetBci /* relocated  */");
                         b.end().startElseBlock();
@@ -3270,7 +3291,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         // determine the context that defines the branch target.
         private void emitFinallyRelativeBranchCheck(CodeTreeBuilder b) {
             b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
-            b.statement("finallyTryContext.finallyRelativeBranches.put(bci, finallyTryContext)");
+            b.statement("finallyTryContext.finallyRelativeBranches.add(bci)");
             b.end();
         }
 

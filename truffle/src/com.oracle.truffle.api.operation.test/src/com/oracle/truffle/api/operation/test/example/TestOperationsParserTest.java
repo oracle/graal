@@ -410,7 +410,7 @@ public class TestOperationsParserTest {
         // goto lbl;
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Found branches with unresolved targets. Did you forget to emit a label?");
+        thrown.expectMessage("Operation Root ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
         parse(b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
@@ -1160,7 +1160,7 @@ public class TestOperationsParserTest {
         // }
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branch inside the FinallyTry handler was not resolved. The branch's OperationLabel was not declared. This is probably a bug in the parser.");
+        thrown.expectMessage("Operation Block ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
         parse(b -> {
             b.beginRoot(LANGUAGE);
 
@@ -1193,7 +1193,7 @@ public class TestOperationsParserTest {
         // }
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("Branch inside the FinallyTry handler was not resolved.");
+        thrown.expectMessage("Operation Block ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
         parse(b -> {
             b.beginRoot(LANGUAGE);
 
