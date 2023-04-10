@@ -1250,7 +1250,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "operation"),
                                 new CodeVariableElement(Set.of(PRIVATE), context.getType(Object.class), "data"),
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sequenceNumber"),
-                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "startSp"),
                                 new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "childCount"),
                                 new CodeVariableElement(Set.of(PRIVATE), generic(context.getDeclaredType(ArrayList.class), types.OperationLabel), "declaredLabels"));
 
@@ -1823,7 +1822,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("id");
             b.string("data");
             b.string("opSeqNum++");
-            b.string("curStack");
             b.string("0");
             b.string("null");
             b.end(2);
