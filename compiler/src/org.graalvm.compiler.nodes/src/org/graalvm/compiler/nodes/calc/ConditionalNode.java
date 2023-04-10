@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -230,14 +230,14 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
             }
 
             if (condition instanceof IntegerLessThanNode) {
-                /*
-                 * Convert a conditional add ((x < 0) ? (x + y) : x) into (x + (y & (x >> (bits -
-                 * 1)))) to avoid the test.
-                 */
                 IntegerLessThanNode lt = (IntegerLessThanNode) condition;
-                if (lt.getY().isDefaultConstant()) {
-                    if (falseValue == lt.getX()) {
+                if (falseValue == lt.getX()) {
+                    if (lt.getY().isDefaultConstant()) {
                         if (trueValue instanceof AddNode) {
+                            /*
+                             * Convert a conditional add ((x < 0) ? (x + y) : x) into (x + (y & (x
+                             * >> (bits - 1)))) to avoid the test.
+                             */
                             AddNode add = (AddNode) trueValue;
                             if (add.getX() == falseValue) {
                                 int bits = ((IntegerStamp) trueValue.stamp(NodeView.DEFAULT)).getBits();
@@ -245,6 +245,18 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                                 ValueNode and = new AndNode(shift, add.getY());
                                 return new AddNode(add.getX(), and);
                             }
+                        } else if (trueValue instanceof NegateNode && ((NegateNode) trueValue).getValue() == falseValue) {
+                            /*
+                             * Detect (x < 0) ? -x : x and replace with an "abs" node.
+                             */
+                            return AbsNode.create(falseValue, NodeView.DEFAULT);
+                        }
+                    } else if (lt.getY().isJavaConstant() && lt.getY().asJavaConstant().asLong() == 1) {
+                        /*
+                         * Detect (x < 1) ? -x : x and replace with an "abs" node.
+                         */
+                        if (trueValue instanceof NegateNode && ((NegateNode) trueValue).getValue() == falseValue) {
+                            return AbsNode.create(falseValue, NodeView.DEFAULT);
                         }
                     }
                 }
