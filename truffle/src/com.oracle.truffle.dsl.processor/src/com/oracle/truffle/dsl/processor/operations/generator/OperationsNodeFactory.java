@@ -149,9 +149,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     // Interface representing data objects that can have a specified boxing state.
     private final CodeTypeElement boxableInterface = new CodeTypeElement(Set.of(PRIVATE), ElementKind.INTERFACE, null, "BoxableInterface");
-    // Class that allows us to store and overwrite integer constants without performing additional
-    // boxing.
-    private final CodeTypeElement intRef = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "IntRef");
     private final CodeTypeElement loadLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "LoadLocalData");
     private final CodeTypeElement storeLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "StoreLocalData");
 
@@ -213,9 +210,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(new InstructionConstantsFactory().create());
         operationNodeGen.add(new OperationsConstantsFactory().create());
 
-        // Define the classes that model instruction data (e.g., branches, inline caches).
+        // Define the classes that model instruction data (e.g., cache data, continuation data).
         operationNodeGen.add(new BoxableInterfaceFactory().create());
-        operationNodeGen.add(new IntRefFactory().create());
         if (model.hasBoxingElimination()) {
             operationNodeGen.add(new LoadLocalDataFactory().create());
             operationNodeGen.add(new StoreLocalDataFactory().create());
@@ -776,7 +772,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             switch (instr.kind) {
                 case BRANCH:
                 case BRANCH_FALSE:
-                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "((IntRef) data).value");
+                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "(int) data");
                     break;
                 case LOAD_CONSTANT:
                     buildIntrospectionArgument(b, "CONSTANT", "data");
@@ -1265,8 +1261,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(context.getType(int.class), "exHandlerCount"),
                                 new CodeVariableElement(generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"),
                                 new CodeVariableElement(context.getType(int.class), "finallyTrySequenceNumber"),
-                                new CodeVariableElement(generic(HashSet.class, context.getDeclaredType(Integer.class)), "finallyInternalBranches"),
-                                new CodeVariableElement(finallyTryContext.asType(), "finallyTryContext")));
+                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), finallyTryContext.asType()), "finallyRelativeBranches"),
+                                new CodeVariableElement(finallyTryContext.asType(), "parentContext")));
                 if (model.enableTracing) {
                     finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "basicBlockBoundary"));
                 }
@@ -1695,7 +1691,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("numLabels++");
             b.string(UNINIT);
             b.string("opSeqNumStack[operationSp - 1]");
-            b.string("finallyTryContext == null ? -1 : finallyTryContext.finallyTrySequenceNumber");
+            b.string("finallyTryContext == null ? " + UNINIT + " : finallyTryContext.finallyTrySequenceNumber");
             b.end(2);
 
             return ex;
@@ -1958,7 +1954,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("exHandlerCount");
                     b.string("unresolvedLabels");
                     b.string("opSeqNum - 1");
-                    b.string("new HashSet<>()");
+                    b.string("new HashMap<>()");
                     b.string("finallyTryContext");
                     b.end(2);
                     b.statement("operationData[operationSp - 1] = finallyTryContext");
@@ -2291,6 +2287,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.statement("doEmitFinallyHandler(ctx)");
 
                     b.statement("int endBranchIndex = bci");
+                    // The branch past the catch handler may be a relative branch in an outer
+                    // handler (finallyTryContext points to the parent context at this point).
+                    emitFinallyRelativeBranchCheck(b);
                     buildEmitInstruction(b, model.branchInstruction, UNINIT);
 
                     b.statement("exHandlers[exHandlerIndex + 2] = bci /* handler start */");
@@ -2335,7 +2334,14 @@ public class OperationsNodeFactory implements ElementHelpers {
                     if (model.hasBoxingElimination()) {
                         b.statement("StoreLocalData argument = new StoreLocalData((short) ((OperationLocalImpl) operationData[operationSp]).index)");
                     } else {
-                        b.statement("IntRef argument = ((OperationLocalImpl) operationData[operationSp]).index");
+                        b.statement("int argument = ((OperationLocalImpl) operationData[operationSp]).index");
+                    }
+                    break;
+                case LOAD_LOCAL:
+                    if (model.hasBoxingElimination()) {
+                        b.statement("LoadLocalData argument = new LoadLocalData((short) ((OperationLocalImpl) arg0).index)");
+                    } else {
+                        b.statement("int argument = ((OperationLocalImpl) arg0).index");
                     }
                     break;
                 case STORE_LOCAL_MATERIALIZED:
@@ -2349,16 +2355,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case LOAD_CONSTANT:
                     b.statement("Object argument = arg0");
                     break;
-                case LOAD_LOCAL:
-                    if (model.hasBoxingElimination()) {
-                        b.statement("LoadLocalData argument = new LoadLocalData((short) ((OperationLocalImpl) arg0).index)");
-                    } else {
-                        b.statement("IntRef argument = ((OperationLocalImpl) arg0).index");
-                    }
-                    break;
                 case BRANCH:
-                    b.declaration(context.getType(int.class), "argument");
                     b.statement("OperationLabelImpl label = (OperationLabelImpl) arg0");
+                    b.declaration(context.getType(int.class), "argument");
                     b.startIf().string("label.isDefined()").end().startBlock();
                     b.statement("argument = label.index");
                     b.end().startElseBlock();
@@ -2370,10 +2369,20 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("bci");
                     b.end(3);
                     b.newLine();
-                    b.lineComment("We need to track branches within finally handlers so that they can be adjusted each time the handler is emitted.");
-                    b.statement("boolean isInternalFinallyBranch = inFinallyTryHandler() && lbl.finallyTryOp == finallyTryContext.finallyTrySequenceNumber /* label defined in this FinallyTry */");
-                    b.startIf().string("isInternalFinallyBranch").end().startBlock();
-                    b.statement("finallyTryContext.finallyInternalBranches.add(bci)");
+                    b.lineComment("We need to track branches targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
+                    b.startIf().string("lbl.finallyTryOp != " + UNINIT).end().startBlock();
+                    // An earlier step has validated that the label is defined by an operation on
+                    // the stack. We should be able to find the defining FinallyTry context without
+                    // hitting an NPE.
+                    b.statement("FinallyTryContext ctx = finallyTryContext");
+                    b.startWhile().string("ctx.finallyTrySequenceNumber != lbl.finallyTryOp").end().startBlock();
+                    b.statement("ctx = ctx.parentContext");
+                    b.end();
+
+                    b.startIf().string("inFinallyTryHandler(ctx)").end().startBlock();
+                    b.statement("finallyTryContext.finallyRelativeBranches.put(bci, ctx)");
+                    b.end();
+
                     b.end();
                     break;
                 case CUSTOM_SIMPLE:
@@ -2637,7 +2646,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case IF_THEN:
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[0] = bci");
-                        emitFinallyInternalBranchCheck(b);
+                        emitFinallyRelativeBranchCheck(b);
                         buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
                         b.end().startElseBlock();
                         b.statement("int toUpdate = ((int[]) data)[0]");
@@ -2651,10 +2660,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case IF_THEN_ELSE:
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[0] = bci");
-                        emitFinallyInternalBranchCheck(b);
+                        emitFinallyRelativeBranchCheck(b);
                         buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
-                        emitFinallyInternalBranchCheck(b);
+                        emitFinallyRelativeBranchCheck(b);
                         b.statement("((int[]) data)[1] = bci");
                         buildEmitInstruction(b, model.branchInstruction, UNINIT);
                         if (op.kind == OperationKind.CONDITIONAL) {
@@ -2677,10 +2686,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case WHILE:
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[1] = bci");
-                        emitFinallyInternalBranchCheck(b);
+                        emitFinallyRelativeBranchCheck(b);
                         buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
                         b.end().startElseBlock();
-                        emitFinallyInternalBranchCheck(b);
+                        emitFinallyRelativeBranchCheck(b);
                         buildEmitInstruction(b, model.branchInstruction, "((int[]) data)[0]");
                         b.statement("int toUpdate = ((int[]) data)[1];");
                         b.statement("objs[toUpdate] = bci");
@@ -2694,7 +2703,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("dArray[1] = bci /* try end */");
                         b.statement("dArray[3] = bci /* branch past catch fix-up index */");
-                        emitFinallyInternalBranchCheck(b);
+                        emitFinallyRelativeBranchCheck(b);
                         buildEmitInstruction(b, model.branchInstruction, UNINIT);
                         b.statement("dArray[2] = bci /* catch start */");
                         b.end();
@@ -2738,7 +2747,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("exHandlers = finallyTryContext.exHandlers");
                         b.statement("exHandlerCount = finallyTryContext.exHandlerCount");
                         b.statement("unresolvedLabels = finallyTryContext.unresolvedLabels");
-                        b.statement("finallyTryContext = finallyTryContext.finallyTryContext");
+                        b.statement("finallyTryContext = finallyTryContext.parentContext");
 
                         b.end();
                         break;
@@ -2817,33 +2826,34 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
                         b.statement("int branchTarget = (int) handlerObjs[idx]");
 
-                        // case 1: Branch target is inside the handler. Adjust the target index.
-                        b.startIf().string("context.finallyInternalBranches.contains(idx)").end().startBlock();
+                        // Mark branch target as unresolved, if necessary.
                         b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
-                        b.startThrow().startNew(context.getType(IllegalStateException.class));
-                        b.doubleQuote("Branch inside the FinallyTry handler was not resolved. The branch's OperationLabel was not declared. This is probably a bug in the parser.");
-                        b.end().end();
-                        b.end();
-                        b.statement("objs[offsetBci + idx] = branchTarget + offsetBci /* internal branch target (moved) */");
-
-                        // case 2: Branch target is outside the handler and known. Use it.
-                        b.end().startElseIf().string("branchTarget != " + UNINIT).end().startBlock();
-                        b.statement("objs[offsetBci + idx] = branchTarget /* external branch target (resolved) */");
-
-                        // case 3: Branch target is outside the handler and unknown. Register it as
-                        // unresolved so it can be filled in later.
-                        b.end().startElseBlock();
-                        b.statement("objs[offsetBci + idx] = " + UNINIT + " /* external branch target (not yet resolved) */");
                         b.statement("OperationLabelImpl lbl = (OperationLabelImpl) context.handlerUnresolvedLabelsByIndex.get(idx)");
-                        // Quick soundness check: When the handler code was emitted, the label was
-                        // undefined. Since the label is not defined by this operation, it should be
-                        // defined by an outer operation, and should still be undefined.
                         b.statement("assert !lbl.isDefined()");
                         b.startStatement().startCall("registerUnresolvedLabel");
                         b.string("lbl");
                         b.string("offsetBci + idx");
-                        b.end(2);
+                        b.end(3);
 
+                        b.newLine();
+
+                        // Adjust relative branch targets.
+                        b.startIf().string("context.finallyRelativeBranches.containsKey(idx)").end().startBlock();
+                        b.statement("FinallyTryContext definingCtx = context.finallyRelativeBranches.get(idx)");
+                        // Quick check to handle uninitialized labels (TODO: remove once we assert
+                        // more generally that a created label is emitted).
+                        b.startIf().string("branchTarget == " + UNINIT + " && definingCtx == context").end().startBlock();
+                        b.startThrow().startNew(context.getType(IllegalStateException.class));
+                        b.doubleQuote("Branch inside the FinallyTry handler was not resolved. The branch's OperationLabel was not declared. This is probably a bug in the parser.");
+                        b.end(3);
+                        // If the parent context is in a handler, this adjusted branch is *still*
+                        // relative.
+                        b.startIf().string("inFinallyTryHandler(context.parentContext)").end().startBlock();
+                        b.statement("context.parentContext.finallyRelativeBranches.put(offsetBci + idx, definingCtx)");
+                        b.end();
+                        b.statement("objs[offsetBci + idx] = branchTarget + offsetBci /* relocated  */");
+                        b.end().startElseBlock();
+                        b.statement("objs[offsetBci + idx] = branchTarget");
                         b.end();
 
                         b.statement("break");
@@ -2878,8 +2888,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 if (field.needLocationFixup) {
                                     if (ElementUtils.typeEquals(field.type, context.getType(int.class))) {
                                         b.string("curObj.", field.name, " + offsetBci");
-                                    } else if (ElementUtils.typeEquals(field.type, new GeneratedTypeMirror("", "IntRef"))) {
-                                        b.string("new IntRef(curObj.", field.name, ".value + offsetBci)");
                                     } else {
                                         throw new UnsupportedOperationException("how?");
                                     }
@@ -3247,20 +3255,26 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createInFinallyTryHandler() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(boolean.class), "inFinallyTryHandler");
+            ex.addParameter(new CodeVariableElement(finallyTryContext.asType(), "context"));
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startReturn();
-            b.string("finallyTryContext != null /* in a FinallyTry */ && !finallyTryContext.handlerIsSet() /* still in the handler code */");
+            b.string("context != null && (!context.handlerIsSet() || inFinallyTryHandler(context.parentContext))");
             b.end();
 
             return ex;
         }
 
-        // When a branch target is within a Finally handler (an "internal" jump) it needs to be
-        // remembered. Every time the handler is emitted, the jump target must be readjusted.
-        private void emitFinallyInternalBranchCheck(CodeTreeBuilder b) {
-            b.startIf().string("inFinallyTryHandler()").end().startBlock();
-            b.statement("finallyTryContext.finallyInternalBranches.add(bci)");
+        // Finally handler code gets emitted in multiple locations. When a branch target is inside a
+        // finally handler, the instruction referencing it needs to be remembered so that we can
+        // relocate the target each time we emit the instruction.
+        // This helper should only be used for a local branch within the same operation (i.e., the
+        // "defining context" of the branch target is the current finallyTryContext).
+        // For potentially non-local branches (i.e. branches to outer operations) we must instead
+        // determine the context that defines the branch target.
+        private void emitFinallyRelativeBranchCheck(CodeTreeBuilder b) {
+            b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
+            b.statement("finallyTryContext.finallyRelativeBranches.put(bci, finallyTryContext)");
             b.end();
         }
 
@@ -3561,7 +3575,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case LOAD_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
                         if (!model.hasBoxingElimination()) {
-                            b.statement("frame.setObject(sp, " + localFrame + ".getObject(((IntRef) curObj).value))");
+                            b.statement("frame.setObject(sp, " + localFrame + ".getObject((int) curObj))");
                         } else if (isUncached) {
                             b.statement("frame.setObject(sp, " + localFrame + ".getObject(((LoadLocalData) curObj).v_index))");
                         } else {
@@ -3650,7 +3664,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case STORE_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
                         if (!model.hasBoxingElimination()) {
-                            b.statement(localFrame + ".setObject(((IntRef) curObj).value, frame.getObject(sp - 1))");
+                            b.statement(localFrame + ".setObject((int) curObj, frame.getObject(sp - 1))");
                         } else if (isUncached) {
                             b.statement(localFrame + ".setObject(((StoreLocalData) curObj).s_index, frame.getObject(sp - 1))");
                         } else {
@@ -4099,20 +4113,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startReturn().string("this.id").end();
             return ex;
-        }
-    }
-
-    class IntRefFactory {
-        private CodeTypeElement create() {
-            intRef.setEnclosingElement(operationNodeGen);
-
-            intRef.add(createConstructorUsingFields(Set.of(), intRef, null));
-
-            intRef.add(new CodeVariableElement(context.getType(int.class), "value"));
-
-            intRef.add(createConstructorUsingFields(Set.of(), intRef, null));
-
-            return intRef;
         }
     }
 
