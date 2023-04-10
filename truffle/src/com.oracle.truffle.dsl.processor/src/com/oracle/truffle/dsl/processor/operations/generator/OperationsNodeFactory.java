@@ -63,7 +63,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -1193,6 +1192,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeTypeElement deserializerContextImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "DeserializerContextImpl");
 
         CodeTypeElement savedState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SavedState");
+        CodeTypeElement operationStackEntry = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "OperationStackEntry");
         CodeTypeElement finallyTryContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyTryContext");
 
         // this is per-function state that needs to be stored/restored when going into/out of
@@ -1201,11 +1201,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "operationStack"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "operationStartSpStack"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "operationData"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "operationChildCount"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "opSeqNumStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), new ArrayCodeTypeMirror(operationStackEntry.asType()), "operationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStack"),
@@ -1244,6 +1240,23 @@ public class OperationsNodeFactory implements ElementHelpers {
                 savedState.add(createConstructorUsingFields(Set.of(), savedState, null));
 
                 return savedState;
+            }
+        }
+
+        class OperationStackEntryFactory {
+            private CodeTypeElement create() {
+                List<CodeVariableElement> fields = List.of(
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "operation"),
+                                new CodeVariableElement(Set.of(PRIVATE), context.getType(Object.class), "data"),
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sequenceNumber"),
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "startSp"),
+                                new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "childCount"));
+
+                operationStackEntry.addAll(fields);
+
+                operationStackEntry.add(createConstructorUsingFields(Set.of(), operationStackEntry, null));
+
+                return operationStackEntry;
             }
         }
 
@@ -1350,6 +1363,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             uninitialized.createInitBuilder().string(-1).end();
 
             builder.add(new SavedStateFactory().create());
+            builder.add(new OperationStackEntryFactory().create());
             builder.add(new FinallyTryContextFactory().create());
 
             builder.add(createOperationNames());
@@ -1681,8 +1695,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             b.startIf();
-            b.string("operationSp == 0 || (operationStack[operationSp - 1] != ").tree(createOperationConstant(model.blockOperation));
-            b.string(" && operationStack[operationSp - 1] != ").tree(createOperationConstant(model.rootOperation)).string(")");
+            b.string("operationSp == 0 || (operationStack[operationSp - 1].operation != ").tree(createOperationConstant(model.blockOperation));
+            b.string(" && operationStack[operationSp - 1].operation != ").tree(createOperationConstant(model.rootOperation)).string(")");
             b.end().startBlock();
             buildThrowIllegalStateException(b, "\"Labels must be created inside either Block or Root operations.\"");
             b.end();
@@ -1690,7 +1704,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startReturn().startNew(operationLabelImpl.asType());
             b.string("numLabels++");
             b.string(UNINIT);
-            b.string("opSeqNumStack[operationSp - 1]");
+            b.string("operationStack[operationSp - 1].sequenceNumber");
             b.string("finallyTryContext == null ? " + UNINIT + " : finallyTryContext.finallyTrySequenceNumber");
             b.end(2);
 
@@ -1781,29 +1795,15 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("operationStack");
             b.string("operationStack.length * 2");
             b.end(2);
-            b.startAssign("operationStartSpStack").startStaticCall(context.getType(Arrays.class), "copyOf");
-            b.string("operationStartSpStack");
-            b.string("operationStartSpStack.length * 2");
-            b.end(2);
-            b.startAssign("operationChildCount").startStaticCall(context.getType(Arrays.class), "copyOf");
-            b.string("operationChildCount");
-            b.string("operationChildCount.length * 2");
-            b.end(2);
-            b.startAssign("operationData").startStaticCall(context.getType(Arrays.class), "copyOf");
-            b.string("operationData");
-            b.string("operationData.length * 2");
-            b.end(2);
-            b.startAssign("opSeqNumStack").startStaticCall(context.getType(Arrays.class), "copyOf");
-            b.string("opSeqNumStack");
-            b.string("opSeqNumStack.length * 2");
-            b.end(2);
             b.end(); // }
 
-            b.statement("operationStack[operationSp] = id");
-            b.statement("operationChildCount[operationSp] = 0");
-            b.statement("operationData[operationSp] = data");
-            b.statement("operationStartSpStack[operationSp] = curStack");
-            b.statement("opSeqNumStack[operationSp++] = opSeqNum++");
+            b.startAssign("operationStack[operationSp++]").startNew(operationStackEntry.asType());
+            b.string("id");
+            b.string("data");
+            b.string("opSeqNum++");
+            b.string("curStack");
+            b.string("0");
+            b.end(2);
 
             return ex;
         }
@@ -1857,11 +1857,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (model.enableTracing) {
                     b.statement("basicBlockBoundary = new boolean[33]");
                 }
-                b.statement("operationStack = new int[8]");
-                b.statement("operationData = new Object[8]");
-                b.statement("operationStartSpStack = new int[8]");
-                b.statement("operationChildCount = new int[8]");
-                b.statement("opSeqNumStack = new int[8]");
+                b.statement("operationStack = new OperationStackEntry[8]");
                 b.statement("opSeqNum = 0");
                 b.statement("operationSp = 0");
                 b.statement("numLocals = 0");
@@ -1957,7 +1953,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("new HashMap<>()");
                     b.string("finallyTryContext");
                     b.end(2);
-                    b.statement("operationData[operationSp - 1] = finallyTryContext");
+                    b.statement("operationStack[operationSp - 1].data = finallyTryContext");
 
                     b.statement("bc = new short[16]");
                     b.statement("bci = 0");
@@ -2087,9 +2083,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end(2);
             b.end(); // }
 
-            b.startIf().string("operationStack[operationSp - 1] != id").end().startBlock(); // {
+            b.startIf().string("operationStack[operationSp - 1].operation != id").end().startBlock(); // {
             b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Unexpected operation end, expected end\" + OPERATION_NAMES[operationStack[operationSp - 1]] + \", but got end \" + OPERATION_NAMES[id]").end();
+            b.string("\"Unexpected operation end, expected end\" + OPERATION_NAMES[operationStack[operationSp - 1].operation] + \", but got end \" + OPERATION_NAMES[id]").end();
             b.end(2);
             b.end(); // }
 
@@ -2135,21 +2131,21 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                 // Short-circuiting operations should have at least one child.
-                b.startIf().string("operationChildCount[operationSp] == 0").end().startBlock();
+                b.startIf().string("operationStack[operationSp].childCount == 0").end().startBlock();
                 buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(1) +
-                                ", but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
+                                ", but \" + operationStack[operationSp].childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             } else if (operation.isVariadic && operation.numChildren > 1) {
                 // The variadic child is included in numChildren, so the operation requires
                 // numChildren - 1 children at minimum.
-                b.startIf().string("operationChildCount[operationSp] < " + (operation.numChildren - 1)).end().startBlock();
+                b.startIf().string("operationStack[operationSp].childCount < " + (operation.numChildren - 1)).end().startBlock();
                 buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected at least " + childString(operation.numChildren - 1) +
-                                ", but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
+                                ", but \" + operationStack[operationSp].childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             } else if (!operation.isVariadic) {
-                b.startIf().string("operationChildCount[operationSp] != " + operation.numChildren).end().startBlock();
+                b.startIf().string("operationStack[operationSp].childCount != " + operation.numChildren).end().startBlock();
                 buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numChildren) +
-                                ", but \" + operationChildCount[operationSp] + \" provided. This is probably a bug in the parser.\"");
+                                ", but \" + operationStack[operationSp].childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
             }
 
@@ -2158,7 +2154,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 b.declaration(types.TruffleLanguage, "language");
 
-                b.startAssign("language").cast(types.TruffleLanguage).string("((Object[]) operationData[operationSp])[1]").end();
+                b.startAssign("language").cast(types.TruffleLanguage).string("((Object[]) operationStack[operationSp].data)[1]").end();
 
                 b.declaration(operationNodeGen.asType(), "result", (CodeTree) null);
                 b.startIf().string("isReparse").end().startBlock(); // {
@@ -2246,7 +2242,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     }
                     // Go through the work list and fill in the branch target for each branch.
                     String dataClassName = model.generateUncached ? uncachedDataClassName(operation.instruction) : cachedDataClassName(operation.instruction);
-                    b.startFor().string("int site : (int[]) ((Object[]) operationData[operationSp])[0]").end().startBlock();
+                    b.startFor().string("int site : (int[]) ((Object[]) operationStack[operationSp].data)[0]").end().startBlock();
                     b.statement(dataClassName + " node = (" + dataClassName + ") objs[site]");
                     b.statement("node.op_branchTarget_ = bci");
                     b.end();
@@ -2279,7 +2275,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     }
                     break;
                 case FINALLY_TRY:
-                    b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData[operationSp]");
+                    b.statement("FinallyTryContext ctx = (FinallyTryContext) operationStack[operationSp].data");
                     b.statement("int exceptionLocal = numLocals++");
 
                     b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, curStack, exceptionLocal)");
@@ -2288,7 +2284,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                     b.statement("int endBranchIndex = bci");
                     // The branch past the catch handler may be a relative branch in an outer
-                    // handler (finallyTryContext points to the parent context at this point).
+                    // handler(finallyTryContext points to the parent context at this point).
                     emitFinallyRelativeBranchCheck(b);
                     buildEmitInstruction(b, model.branchInstruction, UNINIT);
 
@@ -2302,7 +2298,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
-                    b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData[operationSp]");
+                    b.statement("FinallyTryContext ctx = (FinallyTryContext) operationStack[operationSp].data");
                     b.statement("doEmitFinallyHandler(ctx)");
                     break;
                 case RETURN:
@@ -2318,7 +2314,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startStatement().startCall("afterChild");
             if (operation.isTransparent) {
-                b.string("(boolean) ((Object[]) operationData[operationSp])[0]");
+                b.string("(boolean) ((Object[]) operationStack[operationSp].data)[0]");
             } else {
                 b.string("" + !operation.isVoid);
             }
@@ -2332,9 +2328,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             switch (operation.kind) {
                 case STORE_LOCAL:
                     if (model.hasBoxingElimination()) {
-                        b.statement("StoreLocalData argument = new StoreLocalData((short) ((OperationLocalImpl) operationData[operationSp]).index)");
+                        b.statement("StoreLocalData argument = new StoreLocalData((short) ((OperationLocalImpl) operationStack[operationSp].data).index)");
                     } else {
-                        b.statement("int argument = ((OperationLocalImpl) operationData[operationSp]).index");
+                        b.statement("int argument = ((OperationLocalImpl) operationStack[operationSp].data).index");
                     }
                     break;
                 case LOAD_LOCAL:
@@ -2346,7 +2342,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     break;
                 case STORE_LOCAL_MATERIALIZED:
                 case LOAD_LOCAL_MATERIALIZED:
-                    b.statement("int argument = ((OperationLocalImpl) operationData[operationSp]).index");
+                    b.statement("int argument = ((OperationLocalImpl) operationStack[operationSp].data).index");
                     break;
                 case RETURN:
                     b.statement("Object argument = EPSILON");
@@ -2446,7 +2442,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     buildThrowIllegalStateException(b, "\"OperationLabel already emitted. Each label must be emitted exactly once.\"");
                     b.end();
 
-                    b.startIf().string("lbl.declaringOp != opSeqNumStack[operationSp - 1]").end().startBlock();
+                    b.startIf().string("lbl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
                     buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
                     b.end();
                     b.statement("lbl.index = bci");
@@ -2459,7 +2455,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                     b.statement("boolean isFound = false");
                     b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
-                    b.startIf().string("opSeqNumStack[i] == lbl.declaringOp").end().startBlock();
+                    b.startIf().string("operationStack[i].sequenceNumber == lbl.declaringOp").end().startBlock();
                     b.statement("isFound = true");
                     b.statement("break");
                     b.end();
@@ -2486,7 +2482,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private void buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction) {
             if (instruction.signature.isVariadic) {
-                b.statement("doEmitVariadic(operationChildCount[operationSp] - " + (instruction.signature.valueCount - 1) + ")");
+                b.statement("doEmitVariadic(operationStack[operationSp].childCount - " + (instruction.signature.valueCount - 1) + ")");
             }
 
             if (model.generateUncached && !instruction.needsUncachedData()) {
@@ -2518,7 +2514,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (inEmit) {
                     b.string("((OperationLocalImpl) arg" + (argBase + i) + ").index");
                 } else {
-                    b.string("((OperationLocalImpl)((Object[]) operationData[operationSp])[" + (argBase + i) + "]).index");
+                    b.string("((OperationLocalImpl)((Object[]) operationStack[operationSp].data)[" + (argBase + i) + "]).index");
                 }
                 b.end(2);
 
@@ -2531,7 +2527,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (inEmit) {
                     b.statement("OperationLocal[] argg = arg" + (argBase + i));
                 } else {
-                    b.statement("OperationLocal[] argg = (OperationLocal[]) ((Object[]) operationData[operationSp])[" + (argBase + i) + "]");
+                    b.statement("OperationLocal[] argg = (OperationLocal[]) ((Object[]) operationStack[operationSp].data)[" + (argBase + i) + "]");
                 }
                 b.statement("int[] indices = new int[argg.length]");
 
@@ -2557,10 +2553,10 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             createCheckRoot(b);
 
-            b.statement("Object data = operationData[operationSp - 1]");
-            b.statement("int childIndex = operationChildCount[operationSp - 1]");
+            b.statement("Object data = operationStack[operationSp - 1].data");
+            b.statement("int childIndex = operationStack[operationSp - 1].childCount");
 
-            b.startSwitch().string("operationStack[operationSp - 1]").end().startBlock();
+            b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
             for (OperationModel op : model.getOperations()) {
                 if (!op.hasChildren()) {
@@ -2604,10 +2600,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "producedValue"));
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.statement("Object data = operationData[operationSp - 1]");
-            b.statement("int childIndex = operationChildCount[operationSp - 1]");
+            b.statement("Object data = operationStack[operationSp - 1].data");
+            b.statement("int childIndex = operationStack[operationSp - 1].childCount");
 
-            b.startSwitch().string("operationStack[operationSp - 1]").end().startBlock();
+            b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
             for (OperationModel op : model.getOperations()) {
                 if (!op.hasChildren()) {
@@ -2759,7 +2755,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end();
 
-            b.statement("operationChildCount[operationSp - 1] = childIndex + 1");
+            b.statement("operationStack[operationSp - 1].childCount = childIndex + 1");
 
             return ex;
         }
@@ -3047,7 +3043,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case CUSTOM_QUICKENED:
                         int effect;
                         if (instr.signature.isVariadic) {
-                            b.statement("stackValueBciSp -= operationChildCount[operationSp] - " + (instr.signature.valueCount - 1));
+                            b.statement("stackValueBciSp -= operationStack[operationSp].childCount - " + (instr.signature.valueCount - 1));
                             effect = instr.signature.valueCount - 2;
                         } else {
                             effect = instr.signature.valueCount - 1;
@@ -3223,11 +3219,11 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startFor().string("int i = operationSp - 1; i >= 0; i--").end().startBlock();
 
-            b.startIf().string("opSeqNumStack[i] == targetSeq").end().startBlock();
+            b.startIf().string("operationStack[i].sequenceNumber == targetSeq").end().startBlock();
             b.returnStatement();
             b.end();
 
-            b.startSwitch().string("operationStack[i]").end().startBlock();
+            b.startSwitch().string("operationStack[i].operation").end().startBlock();
 
             for (OperationModel op : model.getOperations()) {
                 switch (op.kind) {
@@ -3238,7 +3234,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
             b.startBlock();
 
-            b.statement("FinallyTryContext ctx = (FinallyTryContext) operationData[i]");
+            b.statement("FinallyTryContext ctx = (FinallyTryContext) operationStack[i].data");
             b.startIf().string("ctx.handlerIsSet()").end().startBlock();
             b.statement("doEmitFinallyHandler(ctx)");
             b.end();
