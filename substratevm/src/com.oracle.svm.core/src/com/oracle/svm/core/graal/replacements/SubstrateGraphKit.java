@@ -84,6 +84,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -158,7 +159,11 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createLoadIndexed(ValueNode array, int index, JavaKind kind, GuardingNode boundsCheck) {
-        ValueNode loadIndexed = LoadIndexedNode.create(null, array, ConstantNode.forInt(index, getGraph()), boundsCheck, kind, getMetaAccess(), getConstantReflection());
+        return createLoadIndexed(array, ConstantNode.forInt(index, getGraph()), kind, boundsCheck);
+    }
+
+    public ValueNode createLoadIndexed(ValueNode array, ValueNode index, JavaKind kind, GuardingNode boundsCheck) {
+        ValueNode loadIndexed = LoadIndexedNode.create(null, array, index, boundsCheck, kind, getMetaAccess(), getConstantReflection());
         if (loadIndexed instanceof FixedNode) {
             return append((FixedNode) loadIndexed);
         }

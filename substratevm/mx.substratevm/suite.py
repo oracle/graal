@@ -656,6 +656,37 @@ suite = {
             ],
         },
 
+        "com.oracle.svm.preview.panama": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            	"SVM"
+            ],
+            "requiresConcealed": {
+            	"java.base": [
+                    "jdk.internal.loader",
+                    "jdk.internal.foreign",
+                    "jdk.internal.foreign.abi",
+                    "jdk.internal.foreign.abi.x64",
+                    "jdk.internal.foreign.abi.x64.sysv"
+            	],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                ],
+            },
+            "javaCompliance" : "20+",
+            "javaPreviewNeeded": "20+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javac.lint.overrides": "-preview",
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "jacoco" : "include",
+        },
+
         # Native libraries below explicitly set _FORTIFY_SOURCE to 0. This constant controls how glibc handles some
         # functions that can cause a stack overflow like snprintf. If set to 1 or 2, it causes glibc to use internal
         # functions with extra checking that are not available in all libc implementations. Different distros use
@@ -1314,7 +1345,7 @@ suite = {
                 "name" : "org.graalvm.nativeimage.builder",
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
-                    "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise,com.oracle.svm.svm_enterprise.llvm,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+                    "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise,com.oracle.svm.svm_enterprise.llvm,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.nativeimage.panama,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
                 "opens" : [
                     "com.oracle.svm.core                          to jdk.internal.vm.compiler",
@@ -1729,8 +1760,8 @@ suite = {
                 "name" : "org.graalvm.nativeimage.base",
                 "exports" : [
                     "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
-                    "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
-                    "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+                    "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.panama,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+                    "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.panama,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
             }
         },
@@ -1951,6 +1982,39 @@ suite = {
             "layout" : {
                 "native-image.properties" : "file:mx.substratevm/macro-junitcp.properties",
                 "svm-junit.packages" : "file:mx.substratevm/svm-junit.packages",
+            },
+        },
+
+        "PANAMA": {
+            "subDir": "src",
+            "description" : "SubstrateVM support for project Panama",
+            "dependencies": [
+                "com.oracle.svm.preview.panama",
+            ],
+            "distDependencies": [
+                "compiler:GRAAL",
+                "SVM"
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.panama",
+                "requires" : [
+                    "org.graalvm.nativeimage.builder"
+                ],
+                "exports" : [
+                    "* to org.graalvm.nativeimage.builder",
+                ],
+                "requiresConcealed": {
+                    "jdk.internal.vm.ci" : [
+                        "jdk.vm.ci.meta",
+                        "jdk.vm.ci.code",
+                    ],
+                    "java.base": [
+                        "jdk.internal.foreign",
+                        "jdk.internal.foreign.abi",
+                        "jdk.internal.foreign.abi.x64",
+                        "jdk.internal.foreign.abi.x64.sysv"
+                    ],
+                },
             },
         },
 

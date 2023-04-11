@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.panama;
+package com.oracle.svm.core.graal.code;
 
-import java.util.Collections;
-import java.util.List;
-
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-
-/**
- * Automatically enables {@link PanamaForeignFunctionsFeature} when specific options are set.
- */
-@AutomaticallyRegisteredFeature
-@Platforms(InternalPlatform.NATIVE_ONLY.class)
-public class PanamaForeignFunctionsAutomaticFeature implements InternalFeature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.PanamaForeignFunctions.getValue();
+public record MemoryAssignment(Kind kind, int index) {
+    public enum Kind {
+        INTEGER, FLOAT, STACK
     }
 
     @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(PanamaForeignFunctionsFeature.class);
+    public String toString() {
+        return switch (kind) {
+            case INTEGER -> "i";
+            case FLOAT -> "f";
+            case STACK -> "s";
+        } + index;
     }
 }

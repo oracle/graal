@@ -1,43 +1,51 @@
-package com.oracle.svm.core.configure;
+/*
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.preview.panama.hosted;
 
-import com.oracle.svm.core.panama.Target_jdk_internal_foreign_abi_NativeEntrypoint;
-import com.oracle.svm.core.panama.downcalls.PanamaDowncallsSupport;
-import org.graalvm.util.json.JSONParserException;
-
-import java.io.IOException;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
-import java.net.URI;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class PanamaForeignConfigurationParser extends ConfigurationParser {
-    public PanamaForeignConfigurationParser() {
-        super(true);
-    }
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    @Override
-    public void parseAndRegister(Object json, URI origin) throws IOException {
-        parseSignatures(asList(json, "first level of document must be an array of method signatures"));
-    }
+@Platforms(Platform.HOSTED_ONLY.class)
+public final class FunctionDescriptorParser {
+    private FunctionDescriptorParser() {}
 
-    private void parseSignatures(List<Object> signatures) {
-        for (Object signature: signatures) {
-            parseSignature(asString(signature, "second level of document must be function descriptors"));
+    private static class Impl {
+        private final String layout;
+        private int at;
+
+        private Impl(String input) {
+            this.layout = input;
+            this.at = 0;
         }
-    }
-
-    private void parseSignature(String signature) {
-        PanamaDowncallsSupport.singleton().register(Target_jdk_internal_foreign_abi_NativeEntrypoint.make(LAYOUT_PARSER.parse(signature)));
-    }
-
-    static class LayoutParser {
-        private String layout = "";
-        private int at = 0;
 
         private char peek() {
             if (this.at == layout.length()) {
@@ -53,22 +61,11 @@ public class PanamaForeignConfigurationParser extends ConfigurationParser {
             return layout.charAt(at++);
         }
 
-        private char consumeChecked(char expected) {
+        private void consumeChecked(char expected) {
             char v = consume();
             if (v != expected) {
                 handleError("Expected " + expected + " but got " + v + "in " + layout);
             }
-            return v;
-        }
-
-        public FunctionDescriptor parse(String layout) {
-            this.layout = layout;
-            this.at = 0;
-            FunctionDescriptor res = parseDescriptor();
-            if (this.at < layout.length()) {
-                handleError("Layout parsing ended (at " + this.at + ")before its end: " + layout);
-            }
-            return res;
         }
 
         private <T> List<T> parseSequence(char start, char end, Supplier<T> parser) {
@@ -85,9 +82,8 @@ public class PanamaForeignConfigurationParser extends ConfigurationParser {
             MemoryLayout[] arguments = parseSequence('(', ')', this::parseLayout).toArray(new MemoryLayout[0]);
             if (peek() == 'v') {
                 consume();
-                return FunctionDescriptor.ofVoid(arguments);
-            }
-            else {
+                return FunctionDescriptor.ofVoid(arguments); //FunctionDescriptor.ofVoid(arguments);
+            } else {
                 return FunctionDescriptor.of(parseLayout(), arguments);
             }
         }
@@ -116,7 +112,7 @@ public class PanamaForeignConfigurationParser extends ConfigurationParser {
                 case 'J' -> parseValueLayout(long.class);
                 case 'F' -> parseValueLayout(float.class);
                 case 'D' -> parseValueLayout(double.class);
-                case 'A' -> parseValueLayout(MemorySegment.class);
+                case 'A' -> parseValueLayout(MemoryLayout.class);
                 case '[' -> parseSequenceLayout();
                 case '{' -> parseStructLayout();
                 case '<' -> parseUnionLayout();
@@ -148,12 +144,13 @@ public class PanamaForeignConfigurationParser extends ConfigurationParser {
             return MemoryLayout.sequenceLayout(size, element);
         }
 
-        private ValueLayout parseValueLayout(Class<?> carrier) {ByteOrder order = ByteOrder.BIG_ENDIAN;
+        private MemoryLayout parseValueLayout(Class<?> carrier) {
+            ByteOrder order = ByteOrder.BIG_ENDIAN;
             if (Character.isLowerCase(peek())) {
                 order = ByteOrder.LITTLE_ENDIAN;
             }
             consume();
-            ValueLayout layout = MemoryLayout.valueLayout(carrier, order);
+            MemoryLayout layout = MemoryLayout.valueLayout(carrier, order);
             int size = parseInt();
             assert layout.bitSize() == size;
 
@@ -166,14 +163,33 @@ public class PanamaForeignConfigurationParser extends ConfigurationParser {
                     consume();
                     layout = layout.withBitAlignment(parseInt());
                 }
-            };
+            }
 
             return layout;
         }
+
+        private void checkDone() {
+            if (this.at < layout.length()) {
+                handleError("Layout parsing ended (at " + this.at + ")before its end: " + layout);
+            }
+        }
     }
-    static final LayoutParser LAYOUT_PARSER = new LayoutParser();
+
+    @SuppressWarnings("serial")
+    public final static class FunctionDescriptorParserException extends RuntimeException {
+        public FunctionDescriptorParserException(final String msg) {
+            super(msg);
+        }
+    }
+
+    public static FunctionDescriptor parse(String input) {
+        Impl parser = new Impl(input);
+        FunctionDescriptor res = parser.parseDescriptor();
+        parser.checkDone();
+        return res;
+    }
 
     private static <T> T handleError(String msg) {
-        throw new JSONParserException(msg);
+        throw new FunctionDescriptorParserException(msg);
     }
 }

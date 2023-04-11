@@ -296,7 +296,6 @@ public class NativeImage {
     BundleSupport bundleSupport;
 
     protected static class BuildConfiguration {
-
         /*
          * Reuse com.oracle.svm.util.ModuleSupport.isModulePathBuild() to ensure same interpretation
          * of com.oracle.svm.util.ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM environment variable use.
@@ -309,6 +308,7 @@ public class NativeImage {
         protected final Path workDir;
         protected final Path rootDir;
         protected final Path libJvmciDir;
+        protected final Path libPreviewDir;
         protected final List<String> args;
 
         BuildConfiguration(BuildConfiguration original) {
@@ -317,6 +317,7 @@ public class NativeImage {
             workDir = original.workDir;
             rootDir = original.rootDir;
             libJvmciDir = original.libJvmciDir;
+            libPreviewDir = original.libPreviewDir;
             args = original.args;
         }
 
@@ -360,6 +361,8 @@ public class NativeImage {
             }
             Path ljDir = this.rootDir.resolve(Paths.get("lib", "jvmci"));
             libJvmciDir = Files.exists(ljDir) ? ljDir : null;
+            Path lpDir = this.rootDir.resolve(Paths.get("lib", "svm-preview", "builder"));
+            libPreviewDir = Files.exists(lpDir) ? lpDir : null;
         }
 
         /**
@@ -1845,6 +1848,38 @@ public class NativeImage {
         }
     }
 
+    public enum PreviewFeatures {
+        PANAMA(JavaVersionUtil.JAVA_SPEC >= 20, "panama");
+
+        private final boolean requirementsMet;
+        private final String libName;
+
+        PreviewFeatures(boolean requirementsMet, String libName) {
+            this.requirementsMet = requirementsMet;
+            this.libName = libName;
+        }
+
+        public boolean requirementsMet() {
+            return requirementsMet;
+        }
+
+        public String getLibName() {
+            return libName;
+        }
+    }
+
+    public void enablePreview() {
+        if (config.libPreviewDir == null) {
+            return;
+        }
+
+        for (var preview : PreviewFeatures.values()) {
+            if (preview.requirementsMet()) {
+                addImageBuilderModulePath(config.libPreviewDir.resolve(preview.getLibName() + ".jar"));
+            }
+        }
+    }
+
     public void addImageBuilderModulePath(Path modulePathEntry) {
         imageBuilderModulePath.add(canonicalize(modulePathEntry));
     }
@@ -2177,8 +2212,11 @@ public class NativeImage {
     }
 
     protected static List<Path> getJars(Path dir, String... jarBaseNames) {
+        return getJars(dir, Arrays.asList(jarBaseNames));
+    }
+
+    protected static List<Path> getJars(Path dir, List<String> baseNameList) {
         try {
-            List<String> baseNameList = Arrays.asList(jarBaseNames);
             return Files.list(dir)
                             .filter(p -> {
                                 String jarFileName = p.getFileName().toString();

@@ -35,20 +35,7 @@ import jdk.vm.ci.code.CallingConvention;
  * of the enum values. Use {@link SubstrateCallingConventionKind#toType} to get an instance.
  */
 public final class SubstrateCallingConventionType implements CallingConvention.Type {
-    public record MemoryAssignment(Kind kind, int index) {
-        public enum Kind {
-            INTEGER, FLOAT, STACK
-        }
 
-        @Override
-        public String toString() {
-            return switch (kind) {
-                case INTEGER -> "i";
-                case FLOAT -> "f";
-                case STACK -> "s";
-            } + index;
-        }
-    }
 
     public final SubstrateCallingConventionKind kind;
     /** Determines if this is a request for the outgoing argument locations at a call site. */
