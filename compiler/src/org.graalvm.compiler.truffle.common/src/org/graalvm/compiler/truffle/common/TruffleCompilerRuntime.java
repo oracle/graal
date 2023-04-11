@@ -57,6 +57,9 @@ public interface TruffleCompilerRuntime {
          */
         public static final ConstantFieldInfo CHILDREN = new ConstantFieldInfo(-2);
 
+        private static final ConstantFieldInfo FINAL_DIMENSIONS_ZERO = new ConstantFieldInfo(0);
+        private static final ConstantFieldInfo FINAL_DIMENSIONS_ONE = new ConstantFieldInfo(1);
+
         private final int dimensions;
 
         /**
@@ -92,7 +95,14 @@ public interface TruffleCompilerRuntime {
             if (dimensions < 0) {
                 throw new IllegalArgumentException("Negative dimensions not allowed");
             }
-            return new ConstantFieldInfo(dimensions);
+            switch (dimensions) {
+                case 0:
+                    return FINAL_DIMENSIONS_ZERO;
+                case 1:
+                    return FINAL_DIMENSIONS_ONE;
+                default:
+                    return new ConstantFieldInfo(dimensions);
+            }
         }
 
         private ConstantFieldInfo(int dimensions) {
