@@ -262,9 +262,13 @@ public abstract class CodeGenTool {
         codeBuffer.emitInsEnd();
     }
 
-    public void genReturn(ValueNode returnValue) {
+    public void genReturn(IEmitter returnValue) {
         genReturnPrefix();
-        lowerValue(returnValue);
+        lower(returnValue);
+    }
+
+    public void genReturn(ValueNode returnValue) {
+        genReturn(Emitter.of(returnValue));
     }
 
     private void genReturnPrefix() {
@@ -305,6 +309,7 @@ public abstract class CodeGenTool {
         codeBuffer.emitDeclPrefix(name);
     }
 
+    @SuppressWarnings("unused")
     public void genResolvedVarDeclPrefix(String name, ValueNode node) {
         genResolvedVarDeclPrefix(name);
     }
