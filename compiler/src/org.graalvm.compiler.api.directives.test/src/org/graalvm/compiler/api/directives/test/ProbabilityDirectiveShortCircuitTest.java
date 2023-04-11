@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.api.directives.test;
 
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 import static org.graalvm.compiler.api.directives.GraalDirectives.sideEffect;
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.GraalError;
@@ -33,15 +34,16 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-
 import org.junit.Assert;
 import org.junit.Test;
 
 public class ProbabilityDirectiveShortCircuitTest extends GraalCompilerTest {
 
     private void checkProfiles(String snippetName) {
-        StructuredGraph graph = parseForCompile(getResolvedJavaMethod(snippetName));
+        OptionValues noDumpOnError = new OptionValues(getInitialOptions(), DumpOnError, false);
+        StructuredGraph graph = parseForCompile(getResolvedJavaMethod(snippetName), noDumpOnError);
         CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         createInliningPhase(canonicalizer).apply(graph, getDefaultHighTierContext());
         canonicalizer.apply(graph, getDefaultHighTierContext());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,7 +93,7 @@ public class FloatingDivTest extends GraalCompilerTest {
         Assert.assertEquals(zeroChecks, ie);
     }
 
-    public static int snippet(int x) {
+    public static int snippet01(int x) {
         int result = 0;
         for (int n = 0; n < x; n++) {
             if (n % 5 == 0 && n % 3 == 0) {
@@ -112,7 +112,7 @@ public class FloatingDivTest extends GraalCompilerTest {
     @Test
     public void test01() {
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
-        String s = "snippet";
+        String s = "snippet01";
         test(opt, s, 100);
         checkHighTierGraph(s, 0, 2, 0, 2);
         checkFinalGraph(s, 0, 0, 0);
@@ -268,5 +268,31 @@ public class FloatingDivTest extends GraalCompilerTest {
         OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         test(opt, s, 1);
         checkHighTierGraph(s, 1, 0, 0, 1);
+    }
+
+    // like snippet01 but with div by constant instead of rem by constant
+    public static int snippet09(int x) {
+        int result = 0;
+        for (int n = 0; n < x; n++) {
+            if (n / 5 == 7 && n / 3 == 9) {
+                result += 1;
+            } else if (n / 5 == 7) {
+                result += 2;
+            } else if (n / 3 == 9) {
+                result += 3;
+            } else {
+                result += 4;
+            }
+        }
+        return result;
+    }
+
+    @Test
+    public void test09() {
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
+        String s = "snippet09";
+        test(opt, s, 100);
+        checkHighTierGraph(s, 0, 2, 0, 2);
+        checkFinalGraph(s, 0, 0, 0);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,6 @@ import org.graalvm.compiler.phases.common.DisableOverflownCountedLoopsPhase;
 import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
-import org.graalvm.compiler.phases.common.NodeCounterPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -73,20 +72,12 @@ public class HighTier extends BaseTier<HighTierContext> {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(canonicalizer);
 
-        if (NodeCounterPhase.Options.NodeCounters.getValue(options)) {
-            appendPhase(new NodeCounterPhase(NodeCounterPhase.Stage.INIT));
-        }
-
         if (Options.Inline.getValue(options)) {
             appendPhase(new InliningPhase(new GreedyInliningPolicy(null), canonicalizer));
             appendPhase(new DeadCodeEliminationPhase(Optional));
         }
 
         appendPhase(new DisableOverflownCountedLoopsPhase());
-
-        if (NodeCounterPhase.Options.NodeCounters.getValue(options)) {
-            appendPhase(new NodeCounterPhase(NodeCounterPhase.Stage.EARLY));
-        }
 
         if (OptConvertDeoptsToGuards.getValue(options)) {
             appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizer));
@@ -121,10 +112,6 @@ public class HighTier extends BaseTier<HighTierContext> {
 
         if (OptReadElimination.getValue(options)) {
             appendPhase(new ReadEliminationPhase(canonicalizer));
-        }
-
-        if (NodeCounterPhase.Options.NodeCounters.getValue(options)) {
-            appendPhase(new NodeCounterPhase(NodeCounterPhase.Stage.LATE));
         }
 
         appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
