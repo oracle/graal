@@ -24,31 +24,62 @@
  */
 package org.graalvm.compiler.truffle.compiler.host;
 
-import static org.graalvm.compiler.truffle.compiler.AbstractKnownTruffleTypes.findMethod;
-
-import java.util.List;
-
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.AbstractKnownTruffleTypes;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class TruffleKnownHostTypes {
+/**
+ * Known truffle types only needed for host compilation. For types needed during runtime compilation
+ * see {@link KnownTruffleTypes}.
+ */
+public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
 
     // Checkstyle: stop field name check
 
     // truffle.api.impl
-    public final ResolvedJavaType FrameWithoutBoxing;
-    public final ResolvedJavaType OptimizedCallTarget;
-    public final ResolvedJavaMethod OptimizedCallTarget_call;
+    public final ResolvedJavaType FrameWithoutBoxing = lookupType("com.oracle.truffle.api.impl.FrameWithoutBoxing");
+    public final ResolvedJavaType OptimizedCallTarget = lookupTypeCached("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
+    public final ResolvedJavaMethod OptimizedCallTarget_call = findMethod(OptimizedCallTarget, "call", lookupType(Object[].class));
+
+    // truffle.api
+    public final ResolvedJavaType CompilerDirectives = lookupTypeCached("com.oracle.truffle.api.CompilerDirectives");
+    public final ResolvedJavaMethod CompilerDirectives_transferToInterpreter = findMethod(CompilerDirectives, "transferToInterpreter");
+    public final ResolvedJavaMethod CompilerDirectives_transferToInterpreterAndInvalidate = findMethod(CompilerDirectives, "transferToInterpreterAndInvalidate");
+    public final ResolvedJavaMethod CompilerDirectives_inInterpreter = findMethod(CompilerDirectives, "inInterpreter");
+
+    public final ResolvedJavaType HostCompilerDirectives = lookupTypeCached("com.oracle.truffle.api.HostCompilerDirectives");
+    public final ResolvedJavaMethod HostCompilerDirectives_inInterpreterFastPath = findMethod(HostCompilerDirectives, "inInterpreterFastPath");
+
     // Checkstyle: resume field name check
 
     protected TruffleKnownHostTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess) {
-        FrameWithoutBoxing = runtime.resolveType(metaAccess, "com.oracle.truffle.api.impl.FrameWithoutBoxing");
-        OptimizedCallTarget = runtime.resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
-        OptimizedCallTarget_call = findMethod(OptimizedCallTarget, "call", List.of(OptimizedCallTarget.getDeclaredMethods()), metaAccess.lookupJavaType(Object[].class));
+        super(runtime, metaAccess);
+    }
 
+    /**
+     * Determines if {@code method} is the inInterpeter method from CompilerDirectives.
+     */
+    public boolean isInInterpreter(ResolvedJavaMethod method) {
+        return method.equals(CompilerDirectives_inInterpreter);
+    }
+
+    /**
+     * Determines if {@code method} is the inInterpeterFastPath method from HostCompilerDirectives.
+     */
+    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
+        return method.equals(HostCompilerDirectives_inInterpreterFastPath);
+    }
+
+    /**
+     * Determines if {@code method} is a method is a transferToInterpreter method from
+     * CompilerDirectives.
+     */
+    public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
+        return method.equals(CompilerDirectives_transferToInterpreter) || method.equals(CompilerDirectives_transferToInterpreterAndInvalidate);
     }
 
 }

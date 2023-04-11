@@ -142,13 +142,10 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         boolean truffleBoundary = in.readBoolean();
         boolean bytecodeInterpreterSwitch = in.readBoolean();
         boolean bytecodeInterpreterSwitchBoundary = in.readBoolean();
-        boolean inInterpreter = in.readBoolean();
-        boolean inInterpreterFastPath = in.readBoolean();
-        boolean transferToInterpreterMethod = in.readBoolean();
         boolean callIsInliningCutoff = in.readBoolean();
         return new MethodCache(loopExplosionKind, peInlineKind, inlineKind, inlineable,
                         truffleBoundary, bytecodeInterpreterSwitch, bytecodeInterpreterSwitchBoundary,
-                        inInterpreter, inInterpreterFastPath, transferToInterpreterMethod, callIsInliningCutoff);
+                        callIsInliningCutoff);
     }
 
     @TruffleFromLibGraal(AsCompilableTruffleAST)
@@ -236,36 +233,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         if (JNIMethodScope.scope() != null) {
             MethodCache cache = getMethodCache(method);
             return cache.isBytecodeInterpreterSwitchBoundary;
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public boolean isInInterpreter(ResolvedJavaMethod method) {
-        if (JNIMethodScope.scope() != null) {
-            MethodCache cache = getMethodCache(method);
-            return cache.isInInterpreter;
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
-        if (JNIMethodScope.scope() != null) {
-            MethodCache cache = getMethodCache(method);
-            return cache.isInInterpreterFastPath;
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
-        if (JNIMethodScope.scope() != null) {
-            MethodCache cache = getMethodCache(method);
-            return cache.isTransferToInterpreterMethod;
         } else {
             return false;
         }
@@ -390,24 +357,17 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         final boolean isTruffleBoundary;
         final boolean isBytecodeInterpreterSwitch;
         final boolean isBytecodeInterpreterSwitchBoundary;
-        final boolean isInInterpreter;
-        final boolean isInInterpreterFastPath;
-        final boolean isTransferToInterpreterMethod;
         final boolean isInliningCutoff;
 
         MethodCache(LoopExplosionKind explosionKind, InlineKind inlineKindPE, InlineKind inlineKindNonPE, boolean isInlineable, boolean isTruffleBoundary, boolean isBytecodeInterpreterSwitch,
-                        boolean isBytecodeInterpreterSwitchBoundary, boolean isInInterpreter, boolean isInInterpreterFastPath,
-                        boolean isTransferToInterpreterMethod, boolean isInliningCutoff) {
+                        boolean isBytecodeInterpreterSwitchBoundary, boolean isInliningCutoff) {
             this.explosionKind = explosionKind;
             this.inlineKindPE = inlineKindPE;
             this.inlineKindNonPE = inlineKindNonPE;
             this.isInlineable = isInlineable;
-            this.isInInterpreterFastPath = isInInterpreterFastPath;
             this.isTruffleBoundary = isTruffleBoundary;
             this.isBytecodeInterpreterSwitch = isBytecodeInterpreterSwitch;
             this.isBytecodeInterpreterSwitchBoundary = isBytecodeInterpreterSwitchBoundary;
-            this.isInInterpreter = isInInterpreter;
-            this.isTransferToInterpreterMethod = isTransferToInterpreterMethod;
             this.isInliningCutoff = isInliningCutoff;
         }
 

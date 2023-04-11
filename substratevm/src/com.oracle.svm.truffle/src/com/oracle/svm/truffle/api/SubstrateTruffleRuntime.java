@@ -560,33 +560,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public boolean isInInterpreter(ResolvedJavaMethod method) {
-        if (SubstrateUtil.HOSTED) {
-            return super.isInInterpreter(method);
-        } else {
-            return ((TruffleMethod) method).getTruffleMethodInfo().isInInterpreter();
-        }
-    }
-
-    @Override
-    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
-        if (SubstrateUtil.HOSTED) {
-            return super.isInInterpreterFastPath(method);
-        } else {
-            return ((TruffleMethod) method).getTruffleMethodInfo().isInInterpreterFastPath();
-        }
-    }
-
-    @Override
-    public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
-        if (SubstrateUtil.HOSTED) {
-            return super.isTransferToInterpreterMethod(method);
-        } else {
-            return ((TruffleMethod) method).getTruffleMethodInfo().isTransferToInterpreterMethod();
-        }
-    }
-
-    @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
         if (SubstrateUtil.HOSTED) {
             return super.getConstantFieldInfo(field);

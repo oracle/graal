@@ -34,7 +34,6 @@ import java.util.Map;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -52,13 +51,11 @@ public abstract class AbstractKnownTruffleTypes {
 
     private final TruffleCompilerRuntime runtime;
     protected final MetaAccessProvider metaAccess;
-    protected final ConstantReflectionProvider constantReflection;
     private TypeCache typeCache;
 
-    protected AbstractKnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    protected AbstractKnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess) {
         this.runtime = runtime;
         this.metaAccess = metaAccess;
-        this.constantReflection = constantReflection;
     }
 
     protected final ResolvedJavaType lookupType(String className) {
@@ -104,8 +101,9 @@ public abstract class AbstractKnownTruffleTypes {
         return findMethod(declaringClass, name, methods, types);
     }
 
-    public static ResolvedJavaMethod findMethod(ResolvedJavaType declaringClass, String name, Collection<ResolvedJavaMethod> methods, ResolvedJavaType... types) throws NoSuchMethodError {
+    private static ResolvedJavaMethod findMethod(ResolvedJavaType declaringClass, String name, Collection<ResolvedJavaMethod> methods, ResolvedJavaType... types) throws NoSuchMethodError {
         for (ResolvedJavaMethod method : methods) {
+            assert method.getName().equals(name);
             Signature signature = method.getSignature();
             int parameterCount = signature.getParameterCount(false);
             if (parameterCount == types.length) {

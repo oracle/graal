@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -76,7 +77,7 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
         TruffleCompilerRuntime runtime = context.runtime();
         MethodFilter methodFilter = methodFilter(context);
         for (Node n : graph.getNodes()) {
-            if (n instanceof Invoke && runtime.isTruffleBoundary(((Invoke) n).callTarget().targetMethod())) {
+            if (n instanceof Invoke && runtime.getInlineKind(((Invoke) n).callTarget().targetMethod(), true) != InlineKind.INLINE) {
                 Point p = getOrCreatePoint(n, methodFilter);
                 if (p != null) {
                     insertCounter(graph, context, tableConstant, (FixedWithNextNode) n.predecessor(), p.slotIndex(0));

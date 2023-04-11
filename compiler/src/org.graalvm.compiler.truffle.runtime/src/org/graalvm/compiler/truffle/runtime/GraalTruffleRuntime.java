@@ -1020,31 +1020,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return getAnnotation(InliningCutoff.class, method) != null;
     }
 
-    /**
-     * Determines if {@code method} is an inInterpeter method.
-     */
-    @Override
-    public boolean isInInterpreter(ResolvedJavaMethod method) {
-        return method.getName().equals("inInterpreter") && method.getDeclaringClass().toClassName().equals(CompilerDirectives.class.getName());
-    }
-
-    /**
-     * Determines if {@code method} is an inInterpeter method.
-     */
-    @Override
-    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
-        return method.getName().equals("inInterpreterFastPath") && method.getDeclaringClass().toClassName().equals(HostCompilerDirectives.class.getName());
-    }
-
-    /**
-     * Determines if {@code method} is a method is a transferToInterpreter method.
-     */
-    @Override
-    public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
-        return (method.getName().equals("transferToInterpreter") || method.getName().equals("transferToInterpreterAndInvalidate")) &&
-                        method.getDeclaringClass().toClassName().equals(CompilerDirectives.class.getName());
-    }
-
     @SuppressWarnings("deprecation")
     @Override
     public boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method) {

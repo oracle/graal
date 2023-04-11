@@ -134,18 +134,6 @@ public class HostInliningPhase extends AbstractInliningPhase {
         return isBytecodeInterpreterSwitch(env, method);
     }
 
-    private boolean isTransferToInterpreterMethod(TruffleHostEnvironment env, ResolvedJavaMethod method) {
-        return env.runtime().isTransferToInterpreterMethod(translateMethod(method));
-    }
-
-    private boolean isInInterpreter(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
-        return env.runtime().isInInterpreter(translateMethod(targetMethod));
-    }
-
-    private boolean isInInterpreterFastPath(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
-        return env.runtime().isInInterpreterFastPath(translateMethod(targetMethod));
-    }
-
     protected String isTruffleBoundary(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
         if (env.runtime().isTruffleBoundary(translateMethod(targetMethod))) {
             return "truffle boundary";
@@ -417,7 +405,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                 for (Node input : condition.inputs()) {
                     if (input instanceof Invoke) {
                         ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
-                        if (targetMethod != null && isInInterpreter(context.env, targetMethod)) {
+                        if (targetMethod != null && context.types().isInInterpreter(targetMethod)) {
                             inInterpreterBlocks.add(ifNode.falseSuccessor());
                             break;
                         }
@@ -442,7 +430,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                         for (Node input : condition.inputs()) {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
-                                if (targetMethod != null && isInInterpreter(context.env, targetMethod)) {
+                                if (targetMethod != null && context.types().isInInterpreter(targetMethod)) {
                                     HIRBlock dominatedSilbling = block.getFirstDominated();
                                     while (dominatedSilbling != null) {
                                         inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
@@ -467,7 +455,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                 }
 
                 boolean deoptimized = caller.deoptimized || isBlockOrDominatorContainedIn(block, deoptimizedBlocks);
-                if (isTransferToInterpreterMethod(context.env, newTargetMethod)) {
+                if (context.types().isTransferToInterpreterMethod(newTargetMethod)) {
                     /*
                      * If we detect a deopt we mark the entire block as a deoptimized block. It is
                      * probably rare that a deopt is found in the middle of a block, but that deopt
@@ -580,7 +568,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
     /**
      * Traverses the call graph starting at {@code method} based on invokes in each traversed
      * method's entry block, stopping at depth {@link #MAX_PEEK_PROPAGATE_DEOPT}` to find a
-     * {@link #isTransferToInterpreterMethod}.
+     * {@link TruffleKnownHostTypes#isTransferToInterpreterMethod}.
      */
     private BackPropagation peekPropagatesDeoptOrUnwind(InliningPhaseContext context, Invoke callerInvoke, ResolvedJavaMethod method, int depth) {
         if (depth > MAX_PEEK_PROPAGATE_DEOPT) {
@@ -601,7 +589,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                     continue;
                 }
 
-                if (isTransferToInterpreterMethod(context.env, targetMethod)) {
+                if (context.types().isTransferToInterpreterMethod(targetMethod)) {
                     return BackPropagation.DEOPT;
                 } else if (invoke.getInvokeKind().isDirect()) {
                     if (!targetMethod.canBeInlined()) {
@@ -914,14 +902,14 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        if (isTransferToInterpreterMethod(context.env, targetMethod)) {
+        if (context.types().isTransferToInterpreterMethod(targetMethod)) {
             /*
              * Always inline the transfer to interpreter method.
              */
             return true;
         }
 
-        if (isInInterpreter(context.env, targetMethod) || isInInterpreterFastPath(context.env, targetMethod)) {
+        if (context.types().isInInterpreter(targetMethod) || context.types().isInInterpreterFastPath(targetMethod)) {
             /*
              * Always inline inInterpreter method.
              */
@@ -1312,8 +1300,13 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
     public static boolean shouldDenyTrivialInlining(TruffleHostEnvironment env, ResolvedJavaMethod callee) {
         TruffleCompilerRuntime r = env.runtime();
-        return (r.isBytecodeInterpreterSwitch(callee) || r.isInliningCutoff(callee) || r.isTruffleBoundary(callee) || r.isInInterpreterFastPath(callee) || r.isInInterpreter(callee) ||
-                        r.isTransferToInterpreterMethod(callee));
+        TruffleKnownHostTypes types = env.types();
+        return (r.isBytecodeInterpreterSwitch(callee) ||
+                        r.isInliningCutoff(callee) ||
+                        r.isTruffleBoundary(callee) ||
+                        types.isInInterpreter(callee) ||
+                        types.isInInterpreterFastPath(callee) ||
+                        types.isTransferToInterpreterMethod(callee));
     }
 
     static final class BytecodeParserInlineInvokePlugin implements InlineInvokePlugin {
@@ -1359,6 +1352,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
             this.isBytecodeSwitch = isBytecodeSwitch;
             this.maxSubtreeInvokes = Options.TruffleHostInliningMaxSubtreeInvokes.getValue(options);
             this.printExplored = Options.TruffleHostInliningPrintExplored.getValue(options);
+        }
+
+        TruffleKnownHostTypes types() {
+            return env.types();
         }
 
     }

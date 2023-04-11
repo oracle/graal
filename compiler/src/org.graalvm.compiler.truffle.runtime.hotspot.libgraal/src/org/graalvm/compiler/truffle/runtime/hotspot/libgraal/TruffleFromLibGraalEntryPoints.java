@@ -414,9 +414,6 @@ final class TruffleFromLibGraalEntryPoints {
         out.writeBoolean(truffleCompilerRuntime.isTruffleBoundary(method));
         out.writeBoolean(truffleCompilerRuntime.isBytecodeInterpreterSwitch(method));
         out.writeBoolean(truffleCompilerRuntime.isBytecodeInterpreterSwitchBoundary(method));
-        out.writeBoolean(truffleCompilerRuntime.isInInterpreter(method));
-        out.writeBoolean(truffleCompilerRuntime.isInInterpreterFastPath(method));
-        out.writeBoolean(truffleCompilerRuntime.isTransferToInterpreterMethod(method));
         out.writeBoolean(truffleCompilerRuntime.isInliningCutoff(method));
         return out.getArray();
     }

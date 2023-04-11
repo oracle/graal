@@ -27,6 +27,8 @@ package com.oracle.svm.truffle;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 
@@ -37,6 +39,7 @@ public final class SubstrateTruffleHostEnvironmentLookup implements TruffleHostE
 
     private final TruffleHostEnvironment environment;
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleHostEnvironmentLookup(SubstrateTruffleRuntime runtime, MetaAccessProvider metaAccess) {
         this.environment = new TruffleHostEnvironment(runtime, metaAccess, SubstrateTruffleHostEnvironmentLookup::createCompiler);
     }

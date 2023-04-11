@@ -117,29 +117,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField FrameSlotKind_Static = findField(FrameSlotKind, "Static");
     public final ResolvedJavaField FrameSlotKind_tag = findField(FrameSlotKind, "tag");
 
-    public final JavaKind[] FrameSlotKind_tagIndexToJavaKind = createJavaKindByTagIndex(new ResolvedJavaField[]{
-                    FrameSlotKind_Object,
-                    FrameSlotKind_Long,
-                    FrameSlotKind_Int,
-                    FrameSlotKind_Double,
-                    FrameSlotKind_Float,
-                    FrameSlotKind_Boolean,
-                    FrameSlotKind_Byte,
-                    FrameSlotKind_Illegal,
-                    FrameSlotKind_Static,
-    }, new JavaKind[]{
-                    JavaKind.Object,
-                    JavaKind.Long,
-                    JavaKind.Int,
-                    JavaKind.Double,
-                    JavaKind.Float,
-                    JavaKind.Boolean,
-                    JavaKind.Byte,
-                    JavaKind.Illegal,
-                    JavaKind.Illegal,
-    });
-
-    public final EnumMap<JavaKind, Integer> FrameSlotKind_javaKindToTagIndex = createJavaKindMap(FrameSlotKind_tagIndexToJavaKind);
+    public final JavaKind[] FrameSlotKind_tagIndexToJavaKind;
+    public final EnumMap<JavaKind, Integer> FrameSlotKind_javaKindToTagIndex;
 
     // truffle.api.object
     public final ResolvedJavaType Shape = lookupType("com.oracle.truffle.api.object.Shape");
@@ -195,9 +174,34 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType[] skippedExceptionTypes = createSkippedExceptionTypes();
 
     // Checkstyle: resume field name check
+    protected final ConstantReflectionProvider constantReflection;
 
     public KnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        super(runtime, metaAccess, constantReflection);
+        super(runtime, metaAccess);
+        this.constantReflection = constantReflection;
+
+        FrameSlotKind_tagIndexToJavaKind = createJavaKindByTagIndex(new ResolvedJavaField[]{
+                        FrameSlotKind_Object,
+                        FrameSlotKind_Long,
+                        FrameSlotKind_Int,
+                        FrameSlotKind_Double,
+                        FrameSlotKind_Float,
+                        FrameSlotKind_Boolean,
+                        FrameSlotKind_Byte,
+                        FrameSlotKind_Illegal,
+                        FrameSlotKind_Static,
+        }, new JavaKind[]{
+                        JavaKind.Object,
+                        JavaKind.Long,
+                        JavaKind.Int,
+                        JavaKind.Double,
+                        JavaKind.Float,
+                        JavaKind.Boolean,
+                        JavaKind.Byte,
+                        JavaKind.Illegal,
+                        JavaKind.Illegal,
+        });
+        FrameSlotKind_javaKindToTagIndex = createJavaKindMap(FrameSlotKind_tagIndexToJavaKind);
     }
 
     private ResolvedJavaType[] createSkippedExceptionTypes() {

@@ -69,6 +69,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
@@ -151,6 +152,9 @@ public class HostInliningTest extends TruffleCompilerImplTest {
 
     @SuppressWarnings("try")
     void runTest(String methodName) {
+        // initialize the Truffle runtime to ensure that all intrinsics are applied
+        Truffle.getRuntime();
+
         ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
         ExplorationDepth depth = method.getAnnotation(ExplorationDepth.class);
         int explorationDepth = -1;
@@ -180,9 +184,6 @@ public class HostInliningTest extends TruffleCompilerImplTest {
             if (run == TestRun.WITH_CONVERT_TO_GUARD) {
                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context);
             }
-            // initialize the compiler such that the truffle compiler environment is initialized.
-            getTruffleCompiler();
-
             new HostInliningPhase(canonicalizer).apply(graph, context);
 
             ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);

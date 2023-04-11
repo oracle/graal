@@ -49,9 +49,6 @@ public record TruffleMethodInfo(
                 boolean isSpecializationMethod,
                 boolean isBytecodeInterpreterSwitch,
                 boolean isBytecodeInterpreterSwitchBoundary,
-                boolean isInInterpreter,
-                boolean isInInterpreterFastPath,
-                boolean isTransferToInterpreterMethod,
                 boolean isInliningCutoff) {
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -66,9 +63,6 @@ public record TruffleMethodInfo(
                         runtime.isSpecializationMethod(method),
                         runtime.isBytecodeInterpreterSwitch(method),
                         runtime.isBytecodeInterpreterSwitchBoundary(method),
-                        runtime.isInInterpreter(method),
-                        runtime.isInInterpreterFastPath(method),
-                        runtime.isTransferToInterpreterMethod(method),
                         runtime.isInliningCutoff(method));
     }
 
