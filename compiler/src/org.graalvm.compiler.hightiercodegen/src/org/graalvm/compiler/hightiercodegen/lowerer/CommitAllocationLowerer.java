@@ -97,6 +97,14 @@ public class CommitAllocationLowerer {
     }
 
     /**
+     * Lower the initialization of a single element of a {@link VirtualArrayNode} in a
+     * {@link CommitAllocationNode}.
+     */
+    protected void lowerArrayElementAssignment(VirtualArrayNode array, int index, ValueNode value, CodeGenTool codeGenTool) {
+        codeGenTool.genArrayStore(Emitter.of(index), array, value);
+    }
+
+    /**
      * Lowering of the virtual objects is very special in the sense that we need to ignore them from
      * the schedule yet they are not the same as inlined nodes.
      *
@@ -169,7 +177,7 @@ public class CommitAllocationLowerer {
                                 continue;
                             }
                         }
-                        codeGenTool.genArrayStore(Emitter.of(propertyNum), virtual, value);
+                        lowerArrayElementAssignment((VirtualArrayNode) virtual, propertyNum, value, codeGenTool);
                         codeGenTool.genResolvedVarDeclPostfix("Materialize virtual array assignment");
                     }
                 }
