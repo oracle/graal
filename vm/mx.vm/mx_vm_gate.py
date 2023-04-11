@@ -287,6 +287,64 @@ def _test_libgraal_CompilationTimeout_JIT():
         elif exit_code != 0:
             mx.abort(f'process exit code was {exit_code}, not 0')
 
+def _test_libgraal_TruffleHostInlining(extra_vm_arguments):
+    """
+    Tests that Truffle host inlining can be triggered if truffle is initialized.
+    """
+    vm_arguments = extra_vm_arguments + [
+               '-Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~InlineGraph',
+               '-Dgraal.MethodFilter=LibgraalTruffleHostInlining.*']
+    
+    expectations = [
+        'CUTOFF   org.graalvm.compiler.truffle.test.LibgraalTruffleHostInlining.boundary()']
+
+    run_libgraal_truffle_test(vm_arguments, 'org.graalvm.compiler.truffle.test.LibgraalTruffleHostInlining', ["initRuntime"], expectations)
+    
+    """
+    Tests that Truffle host inlining is not triggered without Truffle.
+    """
+    vm_arguments = extra_vm_arguments + [
+               '-Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~InlineGraph,GraphBuilderPhase',
+               '-Dgraal.MethodFilter=LibgraalTruffleHostInlining.*']
+
+    def extra_check(compiler_log):
+        pattern = "CUTOFF   org.graalvm.compiler.truffle.test.LibgraalTruffleHostInlining.boundary()"
+        if re.search(pattern, compiler_log):
+            mx.abort(f'Did find unexpected pattern ("{pattern}") in compiler log:{linesep}{compiler_log}')
+
+    run_libgraal_truffle_test(vm_arguments, 'org.graalvm.compiler.truffle.test.LibgraalTruffleHostInlining', ["noRuntime"], [], extra_check=extra_check)
+
+def run_libgraal_truffle_test(extra_vm_arguments, main_class, args, expectations, extra_check=None):
+    """
+    Tests timeout handling of Truffle PE compilations.
+    """
+    import mx_truffle
+    
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    compiler_log_file = abspath('graal-compiler.log')
+    if (os.path.exists(compiler_log_file)):
+        os.remove(compiler_log_file)
+    
+    vmargs =  ['-Dgraal.CompilationFailureAction=Print',
+               f'-Dgraal.LogFile={compiler_log_file}',
+               '-Dgraalvm.locatorDisabled=true',
+               '-Xbatch',# run host compilations synchronously
+               ]  + extra_vm_arguments + mx_truffle._open_module_exports_args()
+
+    cp = mx.classpath('GRAAL_TEST')
+    cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-cp', cp, main_class] + args
+    err = mx.OutputCapture()
+    exit_code = mx.run(cmd, nonZeroIsFatal=False, err=err)
+    
+    if err.data:
+        mx.log(err.data)
+
+    _check_compiler_log(compiler_log_file, expectations, extra_check=extra_check)
+    if exit_code != 0:
+        mx.abort(f'process exit code was {exit_code}, not 0')
+        
+    
+
 def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
     """
     Tests timeout handling of Truffle PE compilations.
@@ -450,7 +508,8 @@ def gate_body(args, tasks):
                     if t: _test_libgraal_CompilationTimeout_JIT()
                 with Task('LibGraal Compiler:CompilationTimeout:Truffle', tasks, tags=[VmGateTasks.libgraal]) as t:
                     if t: _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments)
-
+                with Task('LibGraal Compiler:TruffleHostInlining', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_TruffleHostInlining(extra_vm_arguments)
                 with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_ctw(extra_vm_arguments)
 

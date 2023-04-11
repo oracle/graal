@@ -84,7 +84,10 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         final InliningPolicy policy = getInliningPolicyProvider(context).get(context.config().runtime().getGraalOptions(OptionValues.class), context.options, context);
         final CallTree tree = new CallTree(partialEvaluator, postPartialEvaluationSuite, context, policy);
-        TruffleInliningScope.getCurrent(context.debug).setCallTree(tree);
+        TruffleInliningScope scope = TruffleInliningScope.getCurrent(context.debug);
+        if (scope != null) {
+            scope.setCallTree(tree);
+        }
 
         tree.dumpBasic("Before Inline");
         if (optionsAllowInlining(context)) {

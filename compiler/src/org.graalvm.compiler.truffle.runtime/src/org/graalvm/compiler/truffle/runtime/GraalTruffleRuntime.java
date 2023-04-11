@@ -218,6 +218,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      */
     protected abstract String getCompilerConfigurationName();
 
+    public abstract TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
+
     protected GraalTVMCI getTvmci() {
         return tvmci;
     }
@@ -1206,11 +1208,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public long getStackOverflowLimit() {
         throw new UnsupportedOperationException();
     }
-
-    /*
-     * This method is called reflectively by TruffleCompilerEnvironment.
-     */
-    public abstract Object createCompilerEnvironment();
 
     public static class StackTraceHelper {
         public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {

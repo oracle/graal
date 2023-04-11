@@ -98,7 +98,7 @@ public class HostInliningBytecodeInterpreterExampleTest extends TruffleCompilerI
         return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
     }
 
-    static class BytecodeNode extends Node {
+    public static class BytecodeNode extends Node {
 
         @CompilationFinal(dimensions = 1) final byte[] ops;
         @Children final BaseNode[] polymorphic = new BaseNode[]{new SubNode1(), new SubNode2()};

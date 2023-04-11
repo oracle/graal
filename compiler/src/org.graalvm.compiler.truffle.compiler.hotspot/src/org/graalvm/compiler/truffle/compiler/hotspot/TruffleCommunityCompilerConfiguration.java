@@ -28,8 +28,8 @@ import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleInjectImmutableFrameFieldsPhase;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.TruffleInjectImmutableFrameFieldsPhase;
 
 public final class TruffleCommunityCompilerConfiguration extends CommunityCompilerConfiguration {
 

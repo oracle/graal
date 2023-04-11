@@ -28,7 +28,8 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostInliningPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -63,25 +64,25 @@ public final class SubstrateTruffleHostInliningPhase extends TruffleHostInlining
      * compiled methods collected by the {@link TruffleFeature} for that.
      */
     @Override
-    protected boolean isEnabledFor(ResolvedJavaMethod method) {
+    protected boolean isEnabledFor(TruffleHostEnvironment env, ResolvedJavaMethod method) {
         HostedMethod hostedMethod = ((HostedMethod) method);
         if (hostedMethod.isDeoptTarget()) {
             // do not treat deopt targets as interpreter methods
             // they generally should not perform any optimization to simplify deoptimization
             return false;
-        } else if (super.isEnabledFor(method)) {
+        } else if (super.isEnabledFor(env, method)) {
             return true;
         } else if (truffleFeature.runtimeCompiledMethods.contains(translateMethod(method)) &&
-                        isTruffleBoundary(method) == null) {
+                        isTruffleBoundary(env, method) == null) {
             return true;
         }
         return false;
     }
 
     @Override
-    protected String isTruffleBoundary(ResolvedJavaMethod targetMethod) {
+    protected String isTruffleBoundary(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
         ResolvedJavaMethod translatedMethod = translateMethod(targetMethod);
-        String boundary = super.isTruffleBoundary(targetMethod);
+        String boundary = super.isTruffleBoundary(env, targetMethod);
         if (boundary != null) {
             return boundary;
         } else if (truffleFeature.isBlocklisted(translatedMethod)) {

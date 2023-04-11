@@ -137,8 +137,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     public TruffleCompilerImpl(TruffleCompilerConfiguration config) {
         this.config = config;
         this.codeInstallationTaskFactory = new TrufflePostCodeInstallationTaskFactory();
+
         for (Backend backend : config.backends()) {
-            backend.addCodeInstallationTask(codeInstallationTaskFactory);
+            initializeBackend(backend);
         }
 
         GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(this.config.plugins()));
@@ -151,6 +152,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
                         .withEagerResolving(true);
 
         this.partialEvaluator = createPartialEvaluator(config);
+    }
+
+    public void initializeBackend(Backend backend) {
+        backend.addCodeInstallationTask(codeInstallationTaskFactory);
     }
 
     @Override
@@ -232,7 +237,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
 
     @SuppressWarnings("static-method")
     public final TruffleCompilation openCompilation(TruffleCompilationTask task, CompilableTruffleAST compilable) {
-        TruffleCompilation compilation = new TruffleCompilation(task, compilable);
+        TruffleCompilation compilation = new TruffleCompilation(config.runtime(), task, compilable);
         compilation.setCompilationId(createCompilationIdentifier(task, compilable));
         return compilation;
     }
@@ -259,7 +264,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
-                    try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
+                    try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(config.runtime(), compilable)))) {
                         final org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
                         partialEvaluator.initialize(options);
                         truffleTier = newTruffleTier(options);
@@ -827,6 +832,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             if (errors != null) {
                 StringBuilder sb = new StringBuilder("There were errors while notifying assumptions:");
                 for (Throwable e : errors) {
+                    e.printStackTrace();
                     sb.append(System.lineSeparator()).append("  ").append(e);
                 }
                 throw new RetryableBailoutException(sb.toString());

@@ -42,20 +42,20 @@ import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleEntryPointDecorator;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 @ServiceProvider(TruffleCallBoundaryInstrumentationFactory.class)
 public class AMD64TruffleCallBoundaryInstrumentationFactory extends TruffleCallBoundaryInstrumentationFactory {
 
     @Override
-    public EntryPointDecorator create(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
-        return new TruffleEntryPointDecorator(metaAccess, config, registers) {
+    public EntryPointDecorator create(TruffleCompilerConfiguration compilerConfig, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
+        return new TruffleEntryPointDecorator(compilerConfig, config, registers) {
             @Override
             public void emitEntryPoint(CompilationResultBuilder crb) {
                 AMD64MacroAssembler masm = (AMD64MacroAssembler) crb.asm;

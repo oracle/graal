@@ -44,6 +44,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.NewCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.RegisterRuntime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -59,6 +60,9 @@ final class TruffleToLibGraalCalls {
 
     @TruffleToLibGraal(InitializeRuntime)
     static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, long classLoaderDelegateId);
+
+    @TruffleToLibGraal(RegisterRuntime)
+    static native boolean registerRuntime(long isolateThreadId, Object runtime);
 
     @TruffleToLibGraal(GetCompilerConfigurationFactoryName)
     static native String getCompilerConfigurationFactoryName(long isolateThreadId, long truffleRuntimeHandle);

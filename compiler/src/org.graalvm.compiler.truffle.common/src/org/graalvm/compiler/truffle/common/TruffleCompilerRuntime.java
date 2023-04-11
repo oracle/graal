@@ -238,12 +238,6 @@ public interface TruffleCompilerRuntime {
     JavaConstant getCallTargetForCallNode(JavaConstant callNode);
 
     /**
-     * Gets the primary {@link TruffleCompiler} instance associated with this runtime, creating and
-     * initializing it in a thread-safe manner first if necessary.
-     */
-    TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
-
-    /**
      * Registers some dependent code on an assumption.
      *
      * As the dependent code may not yet be available, a {@link Consumer} is returned that must be

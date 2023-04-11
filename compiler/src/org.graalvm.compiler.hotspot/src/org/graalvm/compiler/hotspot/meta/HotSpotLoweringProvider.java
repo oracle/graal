@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.meta;
 
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider.Extensions;
 import org.graalvm.compiler.hotspot.replacements.ObjectCloneSnippets;
 import org.graalvm.compiler.hotspot.stubs.ForeignCallSnippets;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
@@ -41,4 +42,7 @@ public interface HotSpotLoweringProvider extends LoweringProvider {
     ObjectCloneSnippets.Templates getObjectCloneSnippets();
 
     ForeignCallSnippets.Templates getForeignCallSnippets();
+
+    void initializeExtensions(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+                    Iterable<Extensions> iterableExtensions);
 }

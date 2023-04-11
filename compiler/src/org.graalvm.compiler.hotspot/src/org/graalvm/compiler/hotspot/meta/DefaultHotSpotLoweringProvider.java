@@ -324,11 +324,13 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
 
         replacements.registerSnippetTemplateCache(new DigestBaseSnippets.Templates(options, providers));
 
-        initializeExtensions(options, factories, providers, config);
+        initializeExtensions(options, factories, providers, config, GraalServices.load(Extensions.class));
     }
 
-    private void initializeExtensions(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config) throws GraalError {
-        for (Extensions ep : GraalServices.load(Extensions.class)) {
+    @Override
+    public final void initializeExtensions(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+                    Iterable<Extensions> iterableExtensions) throws GraalError {
+        for (Extensions ep : iterableExtensions) {
             for (Extension ext : ep.createExtensions()) {
                 Class<? extends Node> nodeType = ext.getNodeType();
                 Extension old = extensions.put(nodeType, ext);

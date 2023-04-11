@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
+package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerEnvironment;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.nodes.RootNode;
 
-final class LibGraalTruffleCompilerEnvironment extends HotSpotTruffleCompilerEnvironment {
+/**
+ * See mx_vm_gate.py#.
+ */
+public class LibGraalTruffleHostCallTargetInlining {
 
-    LibGraalTruffleCompilerEnvironment(HSTruffleCompilerRuntime runtime) {
-        super(runtime);
+    private static final CallTarget TARGET = RootNode.createConstantNode(42).getCallTarget();
+
+    public static void main(String[] args) {
+        // initialize truffle runtime
+        for (int i = 0; i < 100000; i++) {
+            testMethod();
+        }
     }
 
-    @Override
-    public HSTruffleCompilerRuntime runtime() {
-        return (HSTruffleCompilerRuntime) super.runtime();
-    }
-
-    public static LibGraalTruffleCompilerEnvironment get() {
-        return (LibGraalTruffleCompilerEnvironment) TruffleCompilerEnvironment.get();
+    private static int testMethod() {
+        int value = 0;
+        for (int i = 0; i < 1000; i++) {
+            value += (int) TARGET.call();
+        }
+        return value;
     }
 
 }

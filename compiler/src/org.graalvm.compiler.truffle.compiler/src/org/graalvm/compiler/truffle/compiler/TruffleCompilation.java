@@ -31,6 +31,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 /**
  * Represents a truffle compilation bundling compilable and task into a single object. Also installs
@@ -44,10 +45,10 @@ public final class TruffleCompilation implements AutoCloseable {
 
     TruffleCompilationIdentifier compilationId;
 
-    TruffleCompilation(TruffleCompilationTask task, CompilableTruffleAST compilable) {
+    TruffleCompilation(TruffleCompilerRuntime runtime, TruffleCompilationTask task, CompilableTruffleAST compilable) {
         this.compilable = compilable;
         this.task = task;
-        this.ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)));
+        this.ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(runtime, compilable)));
     }
 
     public void setCompilationId(TruffleCompilationIdentifier compilationId) {
@@ -92,14 +93,16 @@ public final class TruffleCompilation implements AutoCloseable {
     static final class TTYToPolyglotLoggerBridge implements Consumer<String> {
 
         private final CompilableTruffleAST compilable;
+        private final TruffleCompilerRuntime runtime;
 
-        TTYToPolyglotLoggerBridge(CompilableTruffleAST compilable) {
+        TTYToPolyglotLoggerBridge(TruffleCompilerRuntime runtime, CompilableTruffleAST compilable) {
             this.compilable = compilable;
+            this.runtime = runtime;
         }
 
         @Override
         public void accept(String message) {
-            TruffleCompilerEnvironment.get().runtime().log("graal", compilable, message);
+            runtime.log("graal", compilable, message);
         }
     }
 }

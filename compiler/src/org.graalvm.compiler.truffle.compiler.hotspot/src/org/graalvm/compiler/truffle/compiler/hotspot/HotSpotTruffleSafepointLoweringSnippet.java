@@ -55,7 +55,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleSafepointInsertionPhase;
 import org.graalvm.compiler.word.Word;
@@ -127,10 +126,16 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
 
         @NativeImageReinitialize private Templates templates;
 
+        private final HotSpotKnownTruffleTypes types;
+
         /**
-         * Initialization deferred until a {@link TruffleCompilerRuntime} is guaranteed to exist.
+         * Initialization deferred until the first Truffle compilation starts.
          */
         @NativeImageReinitialize private volatile Runnable deferredInit;
+
+        TruffleHotSpotSafepointLoweringExtension(HotSpotKnownTruffleTypes types) {
+            this.types = types;
+        }
 
         @Override
         public Class<TruffleSafepointNode> getNodeType() {
@@ -174,7 +179,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                 this.deferredInit = () -> {
                     long address = config.invokeJavaMethodAddress;
                     GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);
-                    ResolvedJavaMethod staticMethod = HotSpotTruffleCompilerEnvironment.get().types().HotSpotThreadLocalHandshake_doHandshake;
+                    ResolvedJavaMethod staticMethod = types.HotSpotThreadLocalHandshake_doHandshake;
                     foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
                 };
             }

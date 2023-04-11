@@ -489,6 +489,11 @@ public final class JNIUtil {
         return res;
     }
 
+    public static JObject NewLocalRef(JNIEnv env, JObject ref) {
+        traceJNI("NewLocalRef");
+        return env.getFunctions().getNewLocalRef().call(env, ref);
+    }
+
     public static void DeleteWeakGlobalRef(JNIEnv env, JWeak ref) {
         traceJNI("DeleteWeakGlobalRef");
         if (tracingAt(3)) {

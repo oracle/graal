@@ -67,7 +67,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
-import com.oracle.svm.truffle.SubstrateTruffleCompilerEnvironment;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
@@ -163,12 +162,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         if (tcp != null) {
             ((SubstrateTruffleCompiler) tcp).teardown();
         }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    @Override
-    public Object createCompilerEnvironment() {
-        return new SubstrateTruffleCompilerEnvironment(this);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

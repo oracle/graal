@@ -64,7 +64,6 @@ import org.graalvm.compiler.core.common.util.MethodKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerAssumptionDependency;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
@@ -363,11 +362,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         return HotSpotTruffleCompilerRuntime.super.getGraalOptions(optionValuesType);
     }
 
-    @Override
-    public TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
-        throw new UnsupportedOperationException("Should never be called in the compiler.");
-    }
-
     @TruffleFromLibGraal(CreateStringSupplier)
     @TruffleFromLibGraal(IsSuppressedFailure)
     @Override
@@ -435,7 +429,16 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
                 compilable = WordFactory.nullPointer();
                 installedCode = 0;
             } else {
-                compilable = ((HSCompilableTruffleAST) dependency.getCompilable()).getHandle();
+                CompilableTruffleAST ast = dependency.getCompilable();
+                if (ast == null) {
+                    /*
+                     * Compilable may be null if the compilation was triggered by a libgraal host
+                     * compilation.
+                     */
+                    compilable = WordFactory.nullPointer();
+                } else {
+                    compilable = ((HSCompilableTruffleAST) dependency.getCompilable()).getHandle();
+                }
                 installedCode = LibGraal.translate(dependency.getInstalledCode());
             }
             callConsumeOptimizedAssumptionDependency(env(), getHandle(), compilable, installedCode);

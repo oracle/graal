@@ -50,6 +50,7 @@ public final class TruffleTierContext extends HighTierContext {
     public final OptionValues options;
     public final DebugContext debug;
 
+    public final TruffleCompilerConfiguration config;
     public final JavaConstant compilableConstant;
     public final CompilableTruffleAST compilable;
     public final CompilationIdentifier compilationId;
@@ -72,6 +73,7 @@ public final class TruffleTierContext extends HighTierContext {
         Objects.requireNonNull(task);
         this.options = options;
         this.debug = debug;
+        this.config = partialEvaluator.config;
         this.compilableConstant = compilable.asJavaConstant();
         this.compilable = compilable;
         this.compilationId = compilationId;
@@ -100,17 +102,16 @@ public final class TruffleTierContext extends HighTierContext {
         return g;
     }
 
-    @SuppressWarnings("static-method")
-    public TruffleCompilerEnvironment env() {
-        return TruffleCompilerEnvironment.get();
+    public TruffleCompilerConfiguration config() {
+        return config;
     }
 
     public KnownTruffleTypes types() {
-        return env().types();
+        return config.types();
     }
 
     public TruffleCompilerRuntime runtime() {
-        return config().runtime();
+        return config.runtime();
     }
 
     public JavaConstant getNodeRewritingAssumption(Providers providers) {

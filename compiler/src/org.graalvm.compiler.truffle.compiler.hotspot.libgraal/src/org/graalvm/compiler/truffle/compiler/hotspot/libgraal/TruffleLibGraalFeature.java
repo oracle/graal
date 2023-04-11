@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot;
+package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import java.util.Collections;
-import java.util.List;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
-import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider.Extension;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleSafepointLoweringSnippet.TruffleHotSpotSafepointLoweringExtension;
+public class TruffleLibGraalFeature implements Feature {
 
-/**
- * Lowering of HotSpot Truffle specific nodes.
- *
- * IMPORTANT: Instances of this class must not have any state as they are cached for the purpose of
- * being available in libgraal.
- */
-public final class HotSpotTruffleLoweringExtensions implements DefaultHotSpotLoweringProvider.Extensions {
-
-    final HotSpotKnownTruffleTypes truffleTypes;
-
-    HotSpotTruffleLoweringExtensions(HotSpotKnownTruffleTypes truffleTypes) {
-        this.truffleTypes = truffleTypes;
-    }
-
+    @SuppressWarnings({"try", "unchecked"})
     @Override
-    public List<Extension> createExtensions() {
-        return Collections.singletonList(new TruffleHotSpotSafepointLoweringExtension(truffleTypes));
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        TruffleHostEnvironment.overrideLookup(new LibGraalTruffleHostEnvironmentLookup());
     }
 }

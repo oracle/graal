@@ -55,7 +55,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.test.HostInliningTestFactory.IfNodeGen;

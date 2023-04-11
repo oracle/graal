@@ -119,9 +119,9 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -345,6 +345,7 @@ public class TruffleFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
+        TruffleHostEnvironment.overrideLookup(new SubstrateTruffleHostEnvironmentLookup(truffleRuntime, config.getMetaAccess()));
 
         ImageSingletons.lookup(TruffleBaseFeature.class).setProfilingEnabled(truffleRuntime.isProfilingEnabled());
 
@@ -355,7 +356,6 @@ public class TruffleFeature implements InternalFeature {
         // register thread local foreign poll as compiled otherwise the stub won't work
         config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
 
-        TruffleCompilerEnvironment.initialize(new SubstrateTruffleCompilerEnvironment(truffleRuntime));
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.initTruffleCompiler();
@@ -886,15 +886,19 @@ public class TruffleFeature implements InternalFeature {
 
     /**
      * Keep this method in sync with
-     * {@link SubstrateTruffleHostInliningPhase#isTruffleBoundary(ResolvedJavaMethod)}.
+     * {@link SubstrateTruffleHostInliningPhase#isTruffleBoundary(TruffleHostEnvironment, ResolvedJavaMethod)}.
      */
     private boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        if (TruffleHostInliningPhase.shouldDenyTrivialInliningInAllMethods(callee)) {
+        TruffleHostEnvironment env = TruffleHostEnvironment.get(callee);
+        if (env == null) {
+            return false;
+        }
+        if (TruffleHostInliningPhase.shouldDenyTrivialInliningInAllMethods(env, callee)) {
             /*
              * Some methods should never be trivial inlined.
              */
             return true;
-        } else if ((runtimeCompiledMethods == null || runtimeCompiledMethods.contains(caller)) && TruffleHostInliningPhase.shouldDenyTrivialInlining(callee)) {
+        } else if ((runtimeCompiledMethods == null || runtimeCompiledMethods.contains(caller)) && TruffleHostInliningPhase.shouldDenyTrivialInlining(env, callee)) {
             /*
              * Deny trivial inlining in methods which can be included as part of a runtime
              * compilation.

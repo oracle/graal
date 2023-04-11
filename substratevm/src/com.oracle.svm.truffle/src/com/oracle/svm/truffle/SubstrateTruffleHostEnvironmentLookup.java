@@ -24,36 +24,35 @@
  */
 package com.oracle.svm.truffle;
 
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 
-import com.oracle.svm.graal.GraalSupport;
-import com.oracle.svm.truffle.api.SubstrateKnownTruffleTypes;
+import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 
-public final class SubstrateTruffleCompilerEnvironment extends TruffleCompilerEnvironment {
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-    public SubstrateTruffleCompilerEnvironment(TruffleCompilerRuntime runtime) {
-        super(runtime, createKnownTruffleTypes(runtime));
+public final class SubstrateTruffleHostEnvironmentLookup implements TruffleHostEnvironment.Lookup {
+
+    private final TruffleHostEnvironment environment;
+
+    public SubstrateTruffleHostEnvironmentLookup(SubstrateTruffleRuntime runtime, MetaAccessProvider metaAccess) {
+        this.environment = new TruffleHostEnvironment(runtime, metaAccess, SubstrateTruffleHostEnvironmentLookup::createCompiler);
     }
 
-    private static SubstrateKnownTruffleTypes createKnownTruffleTypes(TruffleCompilerRuntime runtime) {
-        Providers providers = GraalSupport.getRuntimeConfig().getProviders();
-        return new SubstrateKnownTruffleTypes(runtime, providers.getMetaAccess(), providers.getConstantReflection());
+    public SubstrateTruffleHostEnvironmentLookup() {
+        this.environment = null;
     }
 
     @Override
-    public TruffleCompilerRuntime runtime() {
-        return super.runtime();
+    public TruffleHostEnvironment lookup(ResolvedJavaType forType) {
+        return environment;
     }
 
-    @Override
-    public SubstrateKnownTruffleTypes types() {
-        return (SubstrateKnownTruffleTypes) super.types();
-    }
-
-    public static SubstrateTruffleCompilerEnvironment get() {
-        return (SubstrateTruffleCompilerEnvironment) TruffleCompilerEnvironment.get();
+    @SuppressWarnings("unused")
+    private static TruffleCompilerImpl createCompiler(TruffleHostEnvironment env, CompilableTruffleAST compilable) {
+        throw new UnsupportedOperationException("Creating a truffle compiler during SVM host compilation is not supported.");
     }
 
 }
