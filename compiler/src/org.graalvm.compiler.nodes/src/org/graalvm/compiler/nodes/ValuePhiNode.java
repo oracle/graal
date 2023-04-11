@@ -26,7 +26,6 @@ package org.graalvm.compiler.nodes;
 
 import java.util.Map;
 
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
@@ -82,53 +81,87 @@ public class ValuePhiNode extends PhiNode {
         Stamp valuesStamp = StampTool.meetOrNull(values(), this);
         if (valuesStamp == null) {
             valuesStamp = stamp;
-        } else if (stamp.isCompatible(valuesStamp)) {
-            valuesStamp = stamp.join(valuesStamp);
         }
-
-        Stamp maybeNonNullStamp = tryInferNonNullStamp(valuesStamp);
-        if (maybeNonNullStamp != valuesStamp) {
-            valuesStamp = maybeNonNullStamp;
+        valuesStamp = tryInferLoopPhiStamp(valuesStamp);
+        if (stamp.isCompatible(valuesStamp)) {
+            valuesStamp = stamp.join(valuesStamp);
         }
 
         return updateStamp(valuesStamp);
     }
 
     /**
-     * See if this phi has a pointer stamp and is part of a set of mutually recursive phis that only
-     * have each other or non-null values as inputs. In this case we can infer a non-null stamp.
+     * Tries to strengthen a loop phi's stamp by recursively taking other phis' inputs into account.
+     * This is necessary for cases like the following, where we initially build the individual phis
+     * with unrestricted object stamps:
      *
-     * @return a non-null version of the original {@code valuesStamp} if it could be improved, the
-     *         unchanged {@code valuesStamp} otherwise
+     * <pre>
+     *     LoopBegin   <value of type C>
+     *         .   \     |
+     *         .   ValuePhi <-----------------------------+
+     *         .        |                                 |
+     *       Merge      |  <non-null value of type C>     |
+     *            \     |  /                              |
+     *             ValuePhi                               |
+     *                  |                                 |
+     *                  +---------------------------------+
+     * </pre>
+     *
+     * By recursively looking through the loop phi's direct phi inputs, we can discover that only
+     * values of type {@code C} can enter the cycle of mutually recursive phis, therefore the loop
+     * phi's stamp must be of type {@code C} as well. Canonicalization will propagate this refined
+     * stamp to the other phis in the cycle.
+     * <p/>
+     *
+     * The implementation only considers pointer stamps, but it is generic. Besides types of object
+     * stamps it derives any other relevant pointer stamp information. For example, the result will
+     * be non-{@code null} if all recursive inputs are non-{@code null}.
+     *
+     * @param valuesStamp a stamp derived from this phi's direct inputs
+     * @return a stronger stamp than {@code valuesStamp} if the recursive search found one;
+     *         {@code valuesStamp} otherwise
      */
-    private Stamp tryInferNonNullStamp(Stamp valuesStamp) {
-        if (isAlive() && isLoopPhi() && valuesStamp instanceof AbstractPointerStamp) {
-            AbstractPointerStamp pointerStamp = (AbstractPointerStamp) valuesStamp;
-            if (!pointerStamp.alwaysNull() && !pointerStamp.nonNull() && StampTool.isPointerNonNull(firstValue())) {
-                // Fail early if this phi already has possibly null non-phi inputs.
-                for (ValueNode value : values()) {
-                    if (value == this || value instanceof ValuePhiNode) {
-                        continue;
-                    } else if (!StampTool.isPointerNonNull(value)) {
+    private Stamp tryInferLoopPhiStamp(Stamp valuesStamp) {
+        if (isAlive() && isLoopPhi() && valuesStamp.isPointerStamp()) {
+            Stamp firstValueStamp = firstValue().stamp(NodeView.DEFAULT);
+            if (firstValueStamp.meet(valuesStamp).equals(firstValueStamp)) {
+                /*
+                 * Even the first value's stamp is not more precise than the current stamp, we won't
+                 * be able to refine anything.
+                 */
+                return valuesStamp;
+            }
+            boolean hasDirectPhiInput = false;
+            for (ValueNode value : values()) {
+                if (value instanceof ValuePhiNode) {
+                    hasDirectPhiInput = true;
+                    break;
+                }
+            }
+            if (!hasDirectPhiInput) {
+                // Nothing to recurse over.
+                return valuesStamp;
+            }
+            Stamp currentStamp = firstValueStamp;
+            // Check input phis recursively.
+            NodeFlood flood = new NodeFlood(graph());
+            flood.addAll(values());
+            for (Node node : flood) {
+                if (node == this) {
+                    // Don't use this value's stamp as that is what we are computing.
+                } else if (node instanceof ValuePhiNode phi) {
+                    flood.addAll(phi.values());
+                } else if (node instanceof ValueNode value) {
+                    currentStamp = currentStamp.meet(value.stamp(NodeView.DEFAULT));
+                    if (currentStamp.equals(valuesStamp)) {
+                        // We won't become more precise.
                         return valuesStamp;
                     }
                 }
-                // Check input phis recursively.
-                NodeFlood flood = new NodeFlood(graph());
-                flood.addAll(values().filter(ValuePhiNode.class));
-                for (Node node : flood) {
-                    if (node instanceof ValuePhiNode) {
-                        for (ValueNode value : ((ValuePhiNode) node).values()) {
-                            if (value == this || value instanceof ValuePhiNode) {
-                                flood.add(value);
-                            } else if (!StampTool.isPointerNonNull(value)) {
-                                return valuesStamp;
-                            }
-                        }
-                    }
-                }
-                // All transitive inputs are non-null.
-                return ((AbstractPointerStamp) valuesStamp).asNonNull();
+            }
+            if (!currentStamp.equals(valuesStamp) && currentStamp.meet(valuesStamp).equals(valuesStamp)) {
+                // Success: currentStamp is strictly more precise than valuesStamp.
+                return currentStamp;
             }
         }
         return valuesStamp;
