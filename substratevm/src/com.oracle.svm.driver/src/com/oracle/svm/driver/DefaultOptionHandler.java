@@ -139,6 +139,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--enable-preview":
                 args.poll();
                 nativeImage.addCustomJavaArgs("--enable-preview");
+                nativeImage.enablePreview();
                 return true;
         }
 

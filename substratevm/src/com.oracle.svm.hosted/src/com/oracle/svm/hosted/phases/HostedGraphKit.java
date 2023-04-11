@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
@@ -39,10 +43,12 @@ import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -62,10 +68,6 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
 
 public class HostedGraphKit extends SubstrateGraphKit {
 
@@ -156,5 +158,14 @@ public class HostedGraphKit extends SubstrateGraphKit {
         JavaKind[] elementKinds = new JavaKind[length];
         Arrays.fill(elementKinds, elementKind);
         return liftArray(array, elementKinds, length);
+    }
+
+    public ValueNode getLastArrayElement(ValueNode array, JavaKind elementKind) {
+        ValueNode length = append(new ArrayLengthNode(array));
+        GuardingNode argsBoundsCheckGuard = AbstractBeginNode.prevBegin(lastFixedNode);
+        ValueNode index = BinaryArithmeticNode.sub(length, ConstantNode.forInt(1, getGraph()));
+        ValueNode load = createLoadIndexed(array, index, elementKind, argsBoundsCheckGuard);
+        append(load);
+        return load;
     }
 }

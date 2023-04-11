@@ -45,6 +45,7 @@ import java.util.Collection;
 import java.util.EnumSet;
 import java.util.function.BiConsumer;
 
+import com.oracle.svm.core.graal.code.MemoryAssignment;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -862,7 +863,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 RegisterValue scratch = r10.asValue(parameters[0].getValueKind()); // One of x86 scratch registers
                 gen.emitMove(scratch, baseSaveLocation);
                 long offset = 0;
-                for (SubstrateCallingConventionType.MemoryAssignment ret: cc.returnSaving) {
+                for (MemoryAssignment ret: cc.returnSaving) {
                     Value saveLocation = gen.getArithmetic().emitAdd(scratch, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
                     switch (ret.kind()) {
                         case INTEGER -> {
