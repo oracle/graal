@@ -41,14 +41,14 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * This phase should ideally already be done using a node plugin when creating the graph.
  */
-public final class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<HighTierContext> {
+public final class InjectImmutableFrameFieldsPhase extends BasePhase<HighTierContext> {
 
     public static class Options {
         @Option(help = "Whether Truffle should mark final frame fields as immutable.")//
         public static final OptionKey<Boolean> TruffleImmutableFrameFields = new OptionKey<>(true);
     }
 
-    TruffleInjectImmutableFrameFieldsPhase() {
+    InjectImmutableFrameFieldsPhase() {
     }
 
     @Override
@@ -95,7 +95,7 @@ public final class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<High
         if (Options.TruffleImmutableFrameFields.getValue(options)) {
             var phase = highTier.findPhase(HighTierLoweringPhase.class);
             phase.previous();
-            phase.add(new TruffleInjectImmutableFrameFieldsPhase());
+            phase.add(new InjectImmutableFrameFieldsPhase());
         }
     }
 }

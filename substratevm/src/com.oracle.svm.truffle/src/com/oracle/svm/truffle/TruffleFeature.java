@@ -120,7 +120,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
-import org.graalvm.compiler.truffle.compiler.host.TruffleHostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
@@ -886,19 +886,19 @@ public class TruffleFeature implements InternalFeature {
 
     /**
      * Keep this method in sync with
-     * {@link SubstrateTruffleHostInliningPhase#isTruffleBoundary(TruffleHostEnvironment, ResolvedJavaMethod)}.
+     * {@link SubstrateHostInliningPhase#isTruffleBoundary(TruffleHostEnvironment, ResolvedJavaMethod)}.
      */
     private boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
         TruffleHostEnvironment env = TruffleHostEnvironment.get(callee);
         if (env == null) {
             return false;
         }
-        if (TruffleHostInliningPhase.shouldDenyTrivialInliningInAllMethods(env, callee)) {
+        if (HostInliningPhase.shouldDenyTrivialInliningInAllMethods(env, callee)) {
             /*
              * Some methods should never be trivial inlined.
              */
             return true;
-        } else if ((runtimeCompiledMethods == null || runtimeCompiledMethods.contains(caller)) && TruffleHostInliningPhase.shouldDenyTrivialInlining(env, callee)) {
+        } else if ((runtimeCompiledMethods == null || runtimeCompiledMethods.contains(caller)) && HostInliningPhase.shouldDenyTrivialInlining(env, callee)) {
             /*
              * Deny trivial inlining in methods which can be included as part of a runtime
              * compilation.
@@ -942,7 +942,7 @@ public class TruffleFeature implements InternalFeature {
              * TruffleParsingInlineInvokePlugin}, which always inlines certain methods to improve
              * footprint. Luckily the Graal graph keeps track of all methods ever inlined in a
              * graph. So we just need to remember them. The set of runtime compiled methods is later
-             * used for driving the entry points of the TruffleHostInliningPhase.
+             * used for driving the entry points of the HostInliningPhase.
              */
             for (ResolvedJavaMethod method : runtimeCompiledMethod.getInlinedMethods()) {
                 if (!(method instanceof AnalysisMethod)) {
@@ -981,8 +981,8 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
-        if (hosted && TruffleHostInliningPhase.Options.TruffleHostInlining.getValue(HostedOptionValues.singleton()) && suites.getHighTier() instanceof HighTier) {
-            suites.getHighTier().prependPhase(new SubstrateTruffleHostInliningPhase(CanonicalizerPhase.create()));
+        if (hosted && HostInliningPhase.Options.TruffleHostInlining.getValue(HostedOptionValues.singleton()) && suites.getHighTier() instanceof HighTier) {
+            suites.getHighTier().prependPhase(new SubstrateHostInliningPhase(CanonicalizerPhase.create()));
         }
     }
 }

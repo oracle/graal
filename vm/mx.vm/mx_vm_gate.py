@@ -292,7 +292,7 @@ def _test_libgraal_TruffleHostInlining(extra_vm_arguments):
     Tests that Truffle host inlining can be triggered if truffle is initialized.
     """
     vm_arguments = extra_vm_arguments + [
-               '-Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~InlineGraph',
+               '-Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~InlineGraph',
                '-Dgraal.MethodFilter=LibgraalTruffleHostInlining.*']
     
     expectations = [
@@ -304,7 +304,7 @@ def _test_libgraal_TruffleHostInlining(extra_vm_arguments):
     Tests that Truffle host inlining is not triggered without Truffle.
     """
     vm_arguments = extra_vm_arguments + [
-               '-Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~InlineGraph,GraphBuilderPhase',
+               '-Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~InlineGraph,GraphBuilderPhase',
                '-Dgraal.MethodFilter=LibgraalTruffleHostInlining.*']
 
     def extra_check(compiler_log):

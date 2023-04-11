@@ -29,7 +29,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
-import org.graalvm.compiler.truffle.compiler.host.TruffleHostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -46,11 +46,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link BytecodeInterpreterSwitch}.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class SubstrateTruffleHostInliningPhase extends TruffleHostInliningPhase {
+public final class SubstrateHostInliningPhase extends HostInliningPhase {
 
     private final TruffleFeature truffleFeature = ImageSingletons.lookup(TruffleFeature.class);
 
-    SubstrateTruffleHostInliningPhase(CanonicalizerPhase canonicalizer) {
+    SubstrateHostInliningPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
     }
 

@@ -28,23 +28,23 @@ import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.host.TruffleHostInliningPhase;
-import org.graalvm.compiler.truffle.compiler.host.TruffleInjectImmutableFrameFieldsPhase;
+import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
 
 public final class TruffleCommunityCompilerConfiguration extends CommunityCompilerConfiguration {
 
     @Override
     public HighTier createHighTier(OptionValues options) {
         HighTier highTier = super.createHighTier(options);
-        TruffleHostInliningPhase.install(highTier, options);
-        TruffleInjectImmutableFrameFieldsPhase.install(highTier, options);
+        HostInliningPhase.install(highTier, options);
+        InjectImmutableFrameFieldsPhase.install(highTier, options);
         return highTier;
     }
 
     @Override
     public void registerGraphBuilderPlugins(Plugins plugins, OptionValues options) {
         super.registerGraphBuilderPlugins(plugins, options);
-        TruffleHostInliningPhase.installInlineInvokePlugin(plugins, options);
+        HostInliningPhase.installInlineInvokePlugin(plugins, options);
     }
 
 }

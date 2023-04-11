@@ -55,7 +55,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.compiler.host.TruffleHostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.test.HostInliningTestFactory.IfNodeGen;
@@ -183,7 +183,7 @@ public class HostInliningTest extends TruffleCompilerImplTest {
             // initialize the compiler such that the truffle compiler environment is initialized.
             getTruffleCompiler();
 
-            new TruffleHostInliningPhase(canonicalizer).apply(graph, context);
+            new HostInliningPhase(canonicalizer).apply(graph, context);
 
             ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);
             ExpectSameGraph sameGraph = method.getAnnotation(ExpectSameGraph.class);
@@ -283,11 +283,11 @@ public class HostInliningTest extends TruffleCompilerImplTest {
 
     static OptionValues createHostInliningOptions(int bytecodeInterpreterLimit, int explorationDepth) {
         EconomicMap<OptionKey<?>, Object> values = EconomicMap.create();
-        values.put(TruffleHostInliningPhase.Options.TruffleHostInlining, true);
+        values.put(HostInliningPhase.Options.TruffleHostInlining, true);
         values.put(HighTier.Options.Inline, false);
-        values.put(TruffleHostInliningPhase.Options.TruffleHostInliningByteCodeInterpreterBudget, bytecodeInterpreterLimit);
+        values.put(HostInliningPhase.Options.TruffleHostInliningByteCodeInterpreterBudget, bytecodeInterpreterLimit);
         if (explorationDepth != -1) {
-            values.put(TruffleHostInliningPhase.Options.TruffleHostInliningMaxExplorationDepth, explorationDepth);
+            values.put(HostInliningPhase.Options.TruffleHostInliningMaxExplorationDepth, explorationDepth);
         }
         OptionValues options = new OptionValues(getInitialOptions(), values);
         return options;

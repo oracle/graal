@@ -96,7 +96,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * For more details on this phase see the <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md">documentation</a>
  */
-public class TruffleHostInliningPhase extends AbstractInliningPhase {
+public class HostInliningPhase extends AbstractInliningPhase {
 
     public static class Options {
         @Option(help = "Whether Truffle host inlining is enabled.")//
@@ -126,7 +126,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     protected final CanonicalizerPhase canonicalizer;
 
-    public TruffleHostInliningPhase(CanonicalizerPhase canonicalizer) {
+    public HostInliningPhase(CanonicalizerPhase canonicalizer) {
         this.canonicalizer = canonicalizer;
     }
 
@@ -1290,7 +1290,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         if (!Options.TruffleHostInlining.getValue(options)) {
             return;
         }
-        TruffleHostInliningPhase phase = new TruffleHostInliningPhase(CanonicalizerPhase.create());
+        HostInliningPhase phase = new HostInliningPhase(CanonicalizerPhase.create());
         ListIterator<BasePhase<? super HighTierContext>> insertionPoint = highTier.findPhase(AbstractInliningPhase.class);
         if (insertionPoint == null) {
             highTier.prependPhase(phase);
@@ -1432,7 +1432,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         /**
          * Set if a monomorphic call site was resolved. We remember the decision from
-         * {@link TruffleHostInliningPhase#shouldInlineMonomorphic(InliningPhaseContext, CallTree, ResolvedJavaMethod)}
+         * {@link HostInliningPhase#shouldInlineMonomorphic(InliningPhaseContext, CallTree, ResolvedJavaMethod)}
          * to speed up later exploration.
          */
         ResolvedJavaMethod monomorphicTargetMethod;
