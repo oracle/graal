@@ -444,8 +444,7 @@ public class TestOperationsParserTest {
         // return 0;
 
         thrown.expect(IllegalStateException.class);
-        // TODO fix message
-        thrown.expectMessage("bug");
+        thrown.expectMessage("Branch cannot be emitted in the middle of an operation.");
         parse(b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
@@ -2103,12 +2102,40 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testBranchOutwards() {
+    public void testBranchOutwardsValid() {
+        // { goto lbl; 2 }
+        // lbl:
+        // return 42;
+
+        RootCallTarget root = parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            OperationLabel lbl = b.createLabel();
+
+            b.beginBlock();
+              b.emitBranch(lbl);
+              b.emitLoadConstant(2L);
+            b.endBlock();
+
+            b.emitLabel(lbl);
+
+            emitReturn(b, 42);
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call());
+    }
+
+    @Test
+    public void testBranchOutwardsInvalid() {
         // return 1 + { goto lbl; 2 }
         // lbl:
         // return 0;
 
-        RootCallTarget root = parse(b -> {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Branch cannot be emitted in the middle of an operation.");
+        parse(b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLabel lbl = b.createLabel();
@@ -2130,7 +2157,6 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        assertEquals(0L, root.call());
     }
 
     @Test
@@ -2150,6 +2176,30 @@ public class TestOperationsParserTest {
             b.beginAddOperation();
             b.emitLoadConstant(1L);
             b.beginBlock();
+              b.emitLabel(lbl);
+              b.emitLoadConstant(2L);
+            b.endBlock();
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+    }
+
+    @Test
+    public void testInvalidLabelDeclaration() {
+        // return 1 + {lbl: 2}
+
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("OperationLabel cannot be emitted in the middle of an operation.");
+        parse(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadConstant(1L);
+            b.beginBlock();
+                OperationLabel lbl = b.createLabel();
               b.emitLabel(lbl);
               b.emitLoadConstant(2L);
             b.endBlock();
