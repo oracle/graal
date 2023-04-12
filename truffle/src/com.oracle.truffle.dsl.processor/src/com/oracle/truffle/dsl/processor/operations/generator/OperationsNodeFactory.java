@@ -2432,6 +2432,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.startIf().string("lbl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
                     buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
                     b.end();
+
+                    b.startIf().string("curStack != 0").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"OperationLabel cannot be emitted in the middle of an operation.\"");
+                    b.end();
+
                     b.statement("lbl.index = bci");
                     b.startStatement().startCall("resolveUnresolvedLabels");
                     b.string("lbl");
@@ -2450,6 +2455,10 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                     b.startIf().string("!isFound").end().startBlock();
                     buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
+                    b.end();
+
+                    b.startIf().string("curStack != 0").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"Branch cannot be emitted in the middle of an operation.\"");
                     b.end();
 
                     b.statement("doEmitLeaves(lbl.declaringOp)");

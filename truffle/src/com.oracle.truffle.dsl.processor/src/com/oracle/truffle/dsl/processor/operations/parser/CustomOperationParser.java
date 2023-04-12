@@ -80,7 +80,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
-import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
