@@ -28,8 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
@@ -52,13 +52,13 @@ public final class LIR extends LIRGenerator.VariableProvider {
     /**
      * The linear-scan ordered list of block ids into {@link AbstractControlFlowGraph#getBlocks()}.
      */
-    private final char[] linearScanOrder;
+    private final int[] linearScanOrder;
 
     /**
      * The code emission ordered list of block ids into
      * {@link AbstractControlFlowGraph#getBlocks()}.
      */
-    private char[] codeEmittingOrder;
+    private int[] codeEmittingOrder;
 
     /**
      * Map from {@linkplain BasicBlock block} to {@linkplain LIRInstruction}s. Note that we are
@@ -81,7 +81,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * Creates a new LIR instance for the specified compilation.
      */
     public LIR(AbstractControlFlowGraph<?> cfg,
-                    char[] linearScanOrder,
+                    int[] linearScanOrder,
                     OptionValues options,
                     DebugContext debug) {
         this.cfg = cfg;
@@ -117,7 +117,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * Determines if any instruction in the LIR has debug info associated with it.
      */
     public boolean hasDebugInfo() {
-        for (char c : linearScanOrder()) {
+        for (int c : linearScanOrder()) {
             BasicBlock<?> b = cfg.getBlocks()[c];
             for (LIRInstruction op : getLIRforBlock(b)) {
                 if (op.hasState()) {
@@ -143,7 +143,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      *
      * @return the blocks in linear scan order
      */
-    public char[] linearScanOrder() {
+    public int[] linearScanOrder() {
         return linearScanOrder;
     }
 
@@ -158,14 +158,14 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * @throws IllegalStateException if the code emitting order is not
      *             {@linkplain #codeEmittingOrderAvailable() available}
      */
-    public char[] codeEmittingOrder() {
+    public int[] codeEmittingOrder() {
         if (!codeEmittingOrderAvailable()) {
             throw new IllegalStateException("codeEmittingOrder not computed, consider using getBlocks() or linearScanOrder()");
         }
         return codeEmittingOrder;
     }
 
-    public void setCodeEmittingOrder(char[] codeEmittingOrder) {
+    public void setCodeEmittingOrder(int[] codeEmittingOrder) {
         this.codeEmittingOrder = codeEmittingOrder;
     }
 
@@ -201,7 +201,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * in {@link #linearScanOrder()}. In either case it can contain {@code null} entries for blocks
      * that have been optimized away. The start block will always be at index 0.
      */
-    public char[] getBlocks() {
+    public int[] getBlocks() {
         if (codeEmittingOrderAvailable()) {
             return codeEmittingOrder;
         } else {
@@ -229,9 +229,9 @@ public final class LIR extends LIRGenerator.VariableProvider {
      * @return the next block in the list that is none {@code null} or {@code null} if there is no
      *         such block
      */
-    public static BasicBlock<?> getNextBlock(AbstractControlFlowGraph<?> cfg, char[] blocks, int blockIndex) {
+    public static BasicBlock<?> getNextBlock(AbstractControlFlowGraph<?> cfg, int[] blocks, int blockIndex) {
         for (int nextIndex = blockIndex + 1; nextIndex > 0 && nextIndex < blocks.length; nextIndex++) {
-            char nextBlock = blocks[nextIndex];
+            int nextBlock = blocks[nextIndex];
             if (nextBlock != AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 return cfg.getBlocks()[nextBlock];
             }
@@ -291,8 +291,8 @@ public final class LIR extends LIRGenerator.VariableProvider {
     }
 
     @SuppressWarnings("unlikely-arg-type")
-    public static boolean verifyBlocks(LIR lir, char[] blocks) {
-        for (char blockId : blocks) {
+    public static boolean verifyBlocks(LIR lir, int[] blocks) {
+        for (int blockId : blocks) {
             if (blockId == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
@@ -312,8 +312,8 @@ public final class LIR extends LIRGenerator.VariableProvider {
         return true;
     }
 
-    private static boolean contains(char[] blockIndices, char key) {
-        for (char index : blockIndices) {
+    private static boolean contains(int[] blockIndices, int key) {
+        for (int index : blockIndices) {
             if (index == key) {
                 return true;
             }
@@ -322,7 +322,7 @@ public final class LIR extends LIRGenerator.VariableProvider {
     }
 
     public void resetLabels() {
-        for (char b : getBlocks()) {
+        for (int b : getBlocks()) {
             BasicBlock<?> block = cfg.getBlocks()[b];
             if (block == null) {
                 continue;
