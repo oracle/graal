@@ -42,8 +42,8 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.SharedInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.SharedInterop;
 
 /**
  * Implementation of the Espresso object model.

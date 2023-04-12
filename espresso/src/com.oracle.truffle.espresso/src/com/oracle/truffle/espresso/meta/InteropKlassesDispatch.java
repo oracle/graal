@@ -28,16 +28,16 @@ import org.graalvm.collections.Pair;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.InterruptedExceptionInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.IterableInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.IteratorInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.ListInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.MapEntryInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.MapInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.ThrowableInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InterruptedExceptionInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.IterableInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.IteratorInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ListInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.MapEntryInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.MapInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ThrowableInterop;
 
 public class InteropKlassesDispatch {
     /**
@@ -50,7 +50,7 @@ public class InteropKlassesDispatch {
      * <p>
      * For example, a class implementing both {@link java.util.List} and {@link java.util.Map.Entry}
      * , which are considered mutually exclusive, will dispatch to the regular object interop
-     * {@link com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop}.
+     * {@link EspressoInterop}.
      */
     @CompilerDirectives.CompilationFinal(dimensions = 2) //
     private final Pair<ObjectKlass, Class<?>>[][] classes;

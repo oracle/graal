@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime.dispatch;
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 

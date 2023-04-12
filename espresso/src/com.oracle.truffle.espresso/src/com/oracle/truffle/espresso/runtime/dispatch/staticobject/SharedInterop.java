@@ -1,4 +1,4 @@
-package com.oracle.truffle.espresso.runtime.dispatch;
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import java.nio.ByteOrder;
 import java.time.Duration;

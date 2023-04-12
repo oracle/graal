@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime.dispatch;
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
