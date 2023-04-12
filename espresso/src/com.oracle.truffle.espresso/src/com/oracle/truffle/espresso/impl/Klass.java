@@ -201,12 +201,19 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     final void writeMember(String member, Object value,
                     @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
+                    @Cached ToEspressoNode.Dynamic toEspressoNode,
+                    @Cached ToPrimitive.Dynamic toPrimitiveNode,
                     @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
         Field field = lookupFieldNode.execute(this, member, true);
         // Can only write to non-final fields.
         if (field != null && !field.isFinalFlagSet()) {
             Klass klass = field.resolveTypeKlass();
-            Object espressoValue = ToEspressoNode.create(klass, klass.getMeta()).execute(value);
+            Object espressoValue;
+            if (klass.isPrimitive()) {
+                espressoValue = toPrimitiveNode.execute(value, klass);
+            } else {
+                espressoValue = toEspressoNode.execute(value, klass);
+            }
             field.set(tryInitializeAndGetStatics(), espressoValue);
         } else {
             error.enter();

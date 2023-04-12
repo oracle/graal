@@ -910,6 +910,7 @@ public class EspressoInterop extends BaseInterop {
     static void writeMember(StaticObject receiver, String member, Object value,
                     @Cached @Exclusive LookupInstanceFieldNode lookup,
                     @Shared("toEspresso") @Cached ToEspressoNode.Dynamic toEspressoNode,
+                    @Cached ToPrimitive.Dynamic toPrimitiveNode,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
         receiver.checkNotForeign();
         Field f = lookup.execute(getInteropKlass(receiver), member);
@@ -918,7 +919,14 @@ public class EspressoInterop extends BaseInterop {
                 error.enter();
                 throw UnsupportedMessageException.create();
             }
-            f.set(receiver, toEspressoNode.execute(value, f.resolveTypeKlass()));
+            Klass fieldType = f.resolveTypeKlass();
+            Object espressoValue;
+            if (fieldType.isPrimitive()) {
+                espressoValue = toPrimitiveNode.execute(value, fieldType);
+            } else {
+                espressoValue = toEspressoNode.execute(value, fieldType);
+            }
+            f.set(receiver, espressoValue);
             return;
         }
         error.enter();
