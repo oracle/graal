@@ -170,7 +170,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     /**
-     * creates an iterator containing all flows which are internal to this method. This does not
+     * Creates an iterator containing all flows which are internal to this method. This does not
      * include the following types of flows:
      * <ul>
      * <li>A cloned flow</li>
@@ -179,10 +179,10 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
      * </ul>
      */
     public final Iterable<TypeFlow<?>> flows() {
-        return () -> flowsIterator(false);
+        return this::flowsIterator;
     }
 
-    private Iterator<TypeFlow<?>> flowsIterator(boolean iterateClones) {
+    private Iterator<TypeFlow<?>> flowsIterator() {
         return new Iterator<>() {
             final Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
             final Set<TypeFlow<?>> seen = new HashSet<>();
@@ -207,7 +207,12 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                     }
                 }
                 if (miscEntryFlows != null) {
-                    worklist.addAll(miscEntryFlows);
+                    for (var value : miscEntryFlows) {
+                        /* Skip embedded AllInstantiatedTypeFlows. */
+                        if (!nonMethodFlow(value)) {
+                            worklist.add(value);
+                        }
+                    }
                 }
                 if (instanceOfFlows != null) {
                     for (var value : instanceOfFlows.getValues()) {
@@ -252,7 +257,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
             private void expand(TypeFlow<?> flow) {
                 for (TypeFlow<?> use : flow.getUses()) {
-                    if ((!iterateClones && use.isClone()) || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
+                    if (use.isClone() || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
                         continue;
                     }
                     worklist.add(use);
