@@ -878,6 +878,8 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_module_ModulePath_of = jdk_internal_module_ModulePath.requireDeclaredMethod(Name.of, Signature.ModuleFinder_Path_array);
             java_lang_module_ModuleFinder = knownKlass(Type.java_lang_module_ModuleFinder);
             java_lang_module_ModuleFinder_compose = java_lang_module_ModuleFinder.requireDeclaredMethod(Name.compose, Signature.ModuleFinder_ModuleFinder_array);
+            jdk_internal_module_Modules = knownKlass(Type.jdk_internal_module_Modules);
+            jdk_internal_module_Modules_defineModule = jdk_internal_module_Modules.requireDeclaredMethod(Name.defineModule, Signature.Module_ClassLoader_ModuleDescriptor_URI);
         } else {
             jdk_internal_module_ModuleLoaderMap = null;
             jdk_internal_module_ModuleLoaderMap_bootModules = null;
@@ -888,6 +890,8 @@ public final class Meta extends ContextAccessImpl {
             jdk_internal_module_ModulePath_of = null;
             java_lang_module_ModuleFinder = null;
             java_lang_module_ModuleFinder_compose = null;
+            jdk_internal_module_Modules = null;
+            jdk_internal_module_Modules_defineModule = null;
         }
 
         jdk_internal_module_ModuleLoaderMap_Modules = diff() //
@@ -1425,6 +1429,8 @@ public final class Meta extends ContextAccessImpl {
     public final Method jdk_internal_module_ModulePath_of;
     public final ObjectKlass java_lang_module_ModuleFinder;
     public final Method java_lang_module_ModuleFinder_compose;
+    public final ObjectKlass jdk_internal_module_Modules;
+    public final Method jdk_internal_module_Modules_defineModule;
 
     // Interop conversions.
     public final ObjectKlass java_time_Duration;
@@ -1566,6 +1572,9 @@ public final class Meta extends ContextAccessImpl {
         public final Field ExceptionType_RUNTIME_ERROR;
         public final Field ExceptionType_PARSE_ERROR;
 
+        public final ObjectKlass VMHelper;
+        public final Method VMHelper_getDynamicModuleDescriptor;
+
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
@@ -1623,6 +1632,9 @@ public final class Meta extends ContextAccessImpl {
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
             ExceptionType_PARSE_ERROR = ExceptionType.requireDeclaredField(Name.PARSE_ERROR,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+
+            VMHelper = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_VMHelper);
+            VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
         }
     }
 

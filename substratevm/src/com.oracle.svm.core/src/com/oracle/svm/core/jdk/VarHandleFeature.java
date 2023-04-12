@@ -31,9 +31,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -92,9 +90,6 @@ import jdk.internal.misc.Unsafe;
 @AutomaticallyRegisteredFeature
 public class VarHandleFeature implements InternalFeature {
 
-    /** The JDK 11 class VarHandleObjects got renamed to VarHandleReferences. */
-    static final String OBJECT_SUFFIX = JavaVersionUtil.JAVA_SPEC <= 11 ? "Objects" : "References";
-
     private final Map<Class<?>, VarHandleInfo> infos = new HashMap<>();
 
     private final ConcurrentMap<Object, Boolean> processedVarHandles = new ConcurrentHashMap<>();
@@ -103,7 +98,7 @@ public class VarHandleFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         try {
-            for (String typeName : new String[]{"Booleans", "Bytes", "Chars", "Doubles", "Floats", "Ints", "Longs", "Shorts", OBJECT_SUFFIX}) {
+            for (String typeName : new String[]{"Booleans", "Bytes", "Chars", "Doubles", "Floats", "Ints", "Longs", "Shorts", "References"}) {
                 buildInfo(false, "receiverType",
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadOnly"),
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadWrite"));
@@ -243,13 +238,6 @@ class VarHandleFieldStaticBaseObjectAccessor {
     }
 }
 
-class VarHandleObjectsClassNameProvider implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass t) {
-        return "java.lang.invoke.VarHandle" + VarHandleFeature.OBJECT_SUFFIX;
-    }
-}
-
 /*
  * Substitutions for VarHandle array access classes. They all follow the same pattern: the array
  * base offset and array index shift is stored in instance fields, and we recompute the instance
@@ -324,8 +312,8 @@ final class Target_java_lang_invoke_VarHandleShorts_Array {
     int ashift;
 }
 
-@TargetClass(classNameProvider = VarHandleObjectsClassNameProvider.class, innerClass = "Array")
-final class Target_java_lang_invoke_VarHandleObjects_Array {
+@TargetClass(className = "java.lang.invoke.VarHandleReferences", innerClass = "Array")
+final class Target_java_lang_invoke_VarHandleReferences_Array {
     @Alias @RecomputeFieldValue(kind = Kind.ArrayBaseOffset, declClass = Object[].class) //
     int abase;
     @Alias @RecomputeFieldValue(kind = Kind.ArrayIndexShift, declClass = Object[].class) //
@@ -386,8 +374,8 @@ final class Target_java_lang_invoke_VarHandleShorts_FieldInstanceReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(classNameProvider = VarHandleObjectsClassNameProvider.class, innerClass = "FieldInstanceReadOnly")
-final class Target_java_lang_invoke_VarHandleObjects_FieldInstanceReadOnly {
+@TargetClass(className = "java.lang.invoke.VarHandleReferences", innerClass = "FieldInstanceReadOnly")
+final class Target_java_lang_invoke_VarHandleReferences_FieldInstanceReadOnly {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //
     long fieldOffset;
 }
@@ -463,8 +451,8 @@ final class Target_java_lang_invoke_VarHandleShorts_FieldStaticReadOnly {
     long fieldOffset;
 }
 
-@TargetClass(classNameProvider = VarHandleObjectsClassNameProvider.class, innerClass = "FieldStaticReadOnly")
-final class Target_java_lang_invoke_VarHandleObjects_FieldStaticReadOnly {
+@TargetClass(className = "java.lang.invoke.VarHandleReferences", innerClass = "FieldStaticReadOnly")
+final class Target_java_lang_invoke_VarHandleReferences_FieldStaticReadOnly {
     @Alias @InjectAccessors(VarHandleFieldStaticBaseObjectAccessor.class) //
     Object base;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = VarHandleFieldOffsetComputer.class) //

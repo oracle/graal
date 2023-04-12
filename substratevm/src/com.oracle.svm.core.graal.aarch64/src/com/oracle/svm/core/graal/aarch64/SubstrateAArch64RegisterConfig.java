@@ -111,6 +111,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final boolean preserveFramePointer;
     public static final Register fp = r29;
 
+    @SuppressWarnings("this-escape")
     public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
         this.target = target;
         this.metaAccess = metaAccess;

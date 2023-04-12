@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
@@ -376,19 +375,20 @@ public class GraalSupport {
         return new EncodedGraph(get().graphEncoding, startOffset, get().graphObjects, get().graphNodeTypes, null, null, false, trackNodeSourcePosition);
     }
 
-    public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method) {
+    public static StructuredGraph decodeGraph(DebugContext debug, String name, CompilationIdentifier compilationId, SharedRuntimeMethod method, StructuredGraph caller) {
         EncodedGraph encodedGraph = encodedGraph(method, false);
         if (encodedGraph == null) {
             return null;
         }
 
-        boolean isSubstitution = method.getAnnotation(Snippet.class) != null;
+        boolean isSubstitution = method.isSnippet();
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
                         .name(name)
                         .method(method)
                         .recordInlinedMethods(false)
                         .compilationId(compilationId)
                         .setIsSubstitution(isSubstitution)
+                        .speculationLog((caller != null) ? caller.getSpeculationLog() : null)
                         .build();
         GraphDecoder decoder = new GraphDecoder(ConfigurationValues.getTarget().arch, graph);
         decoder.decode(encodedGraph);

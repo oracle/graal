@@ -74,6 +74,7 @@ public class LogSnippets implements Snippets {
         private final SnippetInfo printf2;
         private final SnippetInfo printf3;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 

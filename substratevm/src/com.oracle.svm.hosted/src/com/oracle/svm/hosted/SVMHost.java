@@ -70,8 +70,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -94,7 +92,6 @@ import com.oracle.svm.core.NeverInlineTrivial;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -111,8 +108,6 @@ import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.core.jdk.RecordSupport;
-import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.Continuation;
@@ -150,7 +145,6 @@ public class SVMHost extends HostVM {
     private final LinkAtBuildTimeSupport linkAtBuildTimeSupport;
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
-    private final RuntimeReflectionSupport reflectionSupport;
 
     /**
      * Optionally keep the Graal graphs alive during analysis. This increases the memory footprint
@@ -188,7 +182,6 @@ public class SVMHost extends HostVM {
             multiMethodAnalysisPolicy = DEFAULT_MULTIMETHOD_ANALYSIS_POLICY;
         }
         parsingSupport = ImageSingletons.contains(SVMParsingSupport.class) ? ImageSingletons.lookup(SVMParsingSupport.class) : null;
-        this.reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
     }
 
     private static Map<String, EnumSet<AnalysisType.UsageKind>> setupForbiddenTypes(OptionValues options) {
@@ -317,14 +310,6 @@ public class SVMHost extends HostVM {
     }
 
     @Override
-    public void onTypeInstantiated(AnalysisType newValue) {
-        if (newValue.isAnnotation()) {
-            /* getDeclaredMethods is called in the AnnotationType constructor */
-            reflectionSupport.registerAllDeclaredMethodsQuery(ConfigurationCondition.alwaysTrue(), true, newValue.getJavaClass());
-        }
-    }
-
-    @Override
     public boolean isInitialized(AnalysisType type) {
         boolean shouldInitializeAtRuntime = classInitializationSupport.shouldInitializeAtRuntime(type);
         assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
@@ -423,10 +408,10 @@ public class SVMHost extends HostVM {
         String simpleBinaryName = stringTable.deduplicate(getSimpleBinaryName(javaClass), true);
 
         Class<?> nestHost = javaClass.getNestHost();
-        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
-        boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
+        boolean isHidden = javaClass.isHidden();
+        boolean isRecord = javaClass.isRecord();
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
-        boolean isSealed = SealedClassSupport.singleton().isSealed(javaClass);
+        boolean isSealed = javaClass.isSealed();
         boolean isVMInternal = type.isAnnotationPresent(InternalVMMethod.class);
         boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
 
@@ -647,7 +632,7 @@ public class SVMHost extends HostVM {
             if (n instanceof StackValueNode) {
                 containsStackValueNode.put(method, true);
             } else if (n instanceof ReachabilityRegistrationNode node) {
-               bb.postTask(debug -> node.getRegistrationTask().ensureDone());
+                bb.postTask(debug -> node.getRegistrationTask().ensureDone());
             }
             checkClassInitializerSideEffect(method, n);
         }
@@ -742,6 +727,7 @@ public class SVMHost extends HostVM {
         return SubstrateOptions.NeverInline.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(method));
     }
 
+    @SuppressWarnings("this-escape")//
     private final InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl(this);
 
     @Override

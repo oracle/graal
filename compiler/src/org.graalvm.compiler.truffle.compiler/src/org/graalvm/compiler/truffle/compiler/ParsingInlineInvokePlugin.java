@@ -53,7 +53,7 @@ final class ParsingInlineInvokePlugin implements InlineInvokePlugin {
         for (ValueNode argument : arguments) {
             if (argument.isConstant()) {
                 JavaConstant constant = argument.asJavaConstant();
-                if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && partialEvaluator.knownTruffleTypes.classMethodHandle.isInstance(constant)) {
+                if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && partialEvaluator.types.MethodHandle.isInstance(constant)) {
                     return true;
                 }
             }

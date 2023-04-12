@@ -59,6 +59,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     public SubstrateMetaAccess() {
         ImageSingletons.add(SubstrateMetaAccess.class, this);
     }

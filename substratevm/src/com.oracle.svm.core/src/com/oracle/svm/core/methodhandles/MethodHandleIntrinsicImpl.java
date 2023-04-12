@@ -35,8 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -53,7 +51,7 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * The intrinsics are created upon encountering a listed function during method handle resolution.
  * (see
- * {@link Target_java_lang_invoke_MethodHandleNatives#resolve(Target_java_lang_invoke_MemberName, Class, boolean)}).
+ * {@link Util_java_lang_invoke_MethodHandleNatives#resolve(Target_java_lang_invoke_MemberName, Class, boolean)}).
  */
 final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
     enum Variant {
@@ -115,9 +113,7 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
 
     static {
         for (String op : Arrays.asList("get", "put")) {
-            for (String type : Arrays.asList("Boolean", "Byte", "Short", "Char", "Int", "Long", "Float", "Double",
-                            /* JDK-8207146 renamed Unsafe.xxxObject to xxxReference. */
-                            JavaVersionUtil.JAVA_SPEC == 11 ? "Object" : "Reference")) {
+            for (String type : Arrays.asList("Boolean", "Byte", "Short", "Char", "Int", "Long", "Float", "Double", "Reference")) {
                 for (String isVolatile : Arrays.asList("", "Volatile")) {
                     unsafeFieldAccessMethodNames.add(op + type + isVolatile);
                 }

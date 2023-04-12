@@ -381,7 +381,7 @@ public final class NodeUtil {
         NodeClass nodeClass = NodeClass.get(node);
         for (Object field : nodeClass.getNodeFieldArray()) {
             if (!nodeClass.isChildField(field) && !nodeClass.isChildrenField(field)) {
-                nodes.put(nodeClass.getFieldName(field), nodeClass.getFieldValue(field, node));
+                nodes.put("field." + nodeClass.getFieldName(field), nodeClass.getFieldValue(field, node));
             }
         }
         return Collections.unmodifiableMap(nodes);

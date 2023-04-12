@@ -135,6 +135,15 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
+        public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+            /*
+             * If the type flow constraints are relaxed filter the loaded value using the array's
+             * declared type.
+             */
+            return declaredTypeFilter(bb, newState);
+        }
+
+        @Override
         public String toString() {
             return "LoadIndexedTypeFlow<" + getState() + ">";
         }

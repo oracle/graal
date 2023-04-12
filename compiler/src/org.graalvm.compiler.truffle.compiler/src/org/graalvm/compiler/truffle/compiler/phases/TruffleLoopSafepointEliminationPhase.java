@@ -33,11 +33,9 @@ import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Extends the default Graal loop safepoint elimination phase and adds logic to disable guest
@@ -50,10 +48,8 @@ public final class TruffleLoopSafepointEliminationPhase extends LoopSafepointEli
 
     private final ResolvedJavaMethod callBoundary;
 
-    public TruffleLoopSafepointEliminationPhase(Providers providers) {
-        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-        ResolvedJavaType callTarget = rt.resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
-        this.callBoundary = TruffleSafepointInsertionPhase.findMethod(callTarget, "callBoundary");
+    public TruffleLoopSafepointEliminationPhase(KnownTruffleTypes types) {
+        this.callBoundary = types.OptimizedCallTarget_callBoundary;
     }
 
     @Override

@@ -30,10 +30,10 @@ import java.util.Arrays;
 import java.util.concurrent.FutureTask;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
+import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -98,8 +98,8 @@ public class CompilationMemoryTest extends TestWithPolyglotOptions {
         }
 
         @Override
-        public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph,
-                        TruffleCompilerListener.CompilationResultInfo result, int tier) {
+        public synchronized void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, TruffleCompilerListener.GraphInfo graph,
+                        TruffleCompilerListener.CompilationResultInfo result) {
             if (callTarget.equals(target)) {
                 callTarget = null;
                 thread = Thread.currentThread();

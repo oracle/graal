@@ -373,6 +373,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         cache.get().clear();
     }
 
+    @SuppressWarnings("this-escape")
     public GraalCompilerTest() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();

@@ -28,13 +28,16 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 
 import java.io.IOException;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assert;
 
 import com.oracle.svm.core.jfr.JfrType;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ClassConstantPoolParser extends AbstractRepositoryParser {
+    public ClassConstantPoolParser(JfrFileParser parser) {
+        super(parser);
+    }
 
     @Override
     public void parse(RecordingInput input) throws IOException {
@@ -45,9 +48,7 @@ public class ClassConstantPoolParser extends AbstractRepositoryParser {
             addExpectedId(JfrType.Symbol, input.readLong()); // ClassName.
             addExpectedId(JfrType.Package, input.readLong()); // PackageId.
             Assert.assertTrue("Modifier value is not correct!", input.readLong() >= 0); // Modifier.
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                input.readBoolean(); // IsHiddenClass.
-            }
+            input.readBoolean(); // IsHiddenClass.
         }
     }
 }

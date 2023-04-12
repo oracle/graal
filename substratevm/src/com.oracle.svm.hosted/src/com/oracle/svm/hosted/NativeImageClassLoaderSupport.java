@@ -116,6 +116,7 @@ public class NativeImageClassLoaderSupport {
 
     public final AnnotationExtractor annotationExtractor;
 
+    @SuppressWarnings("this-escape")
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
 
         classes = EconomicMap.create();

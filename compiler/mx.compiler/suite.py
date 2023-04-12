@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.17.0",
+  "mxversion": "6.18.2",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -694,6 +694,9 @@ suite = {
         "java.instrument" : [
           "sun.instrument",
         ],
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
       },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
@@ -711,6 +714,9 @@ suite = {
         "org.graalvm.compiler.hotspot.test",
         "org.graalvm.compiler.jtt",
       ],
+      "requires" : [
+        "jdk.incubator.concurrent",
+      ],
       "requiresConcealed" : {
         "java.base" : [
           "jdk.internal.misc",
@@ -722,6 +728,7 @@ suite = {
       "checkstyle": "org.graalvm.compiler.graph",
       "javaCompliance" : "20+",
       "javaPreviewNeeded": "20+",
+      "javac.lint.overrides": "none",
       "workingSets" : "Graal,HotSpot,Test",
     },
 
@@ -969,6 +976,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.jtt",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
+        ],
+      },
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
@@ -1383,6 +1395,11 @@ suite = {
       "requires" : [
         "jdk.unsupported",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
+        ],
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
       "workingSets" : "Graal,AMD64,Test",
@@ -1547,7 +1564,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JVMCI_API",
-        "org.graalvm.graphio",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -2062,6 +2078,7 @@ suite = {
         "exports" : [
           """* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.nativeimage.base,
           org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise""",
+          "org.graalvm.compiler.java                   to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",

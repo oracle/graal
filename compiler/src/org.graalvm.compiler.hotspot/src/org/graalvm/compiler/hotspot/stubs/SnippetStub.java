@@ -73,6 +73,7 @@ public abstract class SnippetStub extends Stub implements Snippets {
      *            {@code snippetDeclaringClass}
      * @param linkage linkage details for a call to the stub
      */
+    @SuppressWarnings("this-escape")
     public SnippetStub(Class<? extends Snippets> snippetDeclaringClass, String snippetMethodName, OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
         super(options, providers, linkage);
         this.method = SnippetTemplate.AbstractTemplates.findMethod(providers.getMetaAccess(), snippetDeclaringClass == null ? getClass() : snippetDeclaringClass, snippetMethodName);

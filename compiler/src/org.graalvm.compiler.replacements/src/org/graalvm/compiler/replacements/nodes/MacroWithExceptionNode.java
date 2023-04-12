@@ -77,6 +77,7 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     protected final InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
+    @SuppressWarnings("this-escape")
     protected MacroWithExceptionNode(NodeClass<? extends MacroWithExceptionNode> c, MacroParams p) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);

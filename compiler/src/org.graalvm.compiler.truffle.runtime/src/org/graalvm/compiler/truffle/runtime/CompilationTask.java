@@ -34,12 +34,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
-
 import com.oracle.truffle.api.Truffle;
 
-public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
+public final class CompilationTask extends AbstractCompilationTask implements Callable<Void>, Comparable<CompilationTask> {
 
     private static final Consumer<CompilationTask> COMPILATION_ACTION = new Consumer<>() {
         @Override
@@ -60,7 +57,6 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private final long id;
     private final Consumer<CompilationTask> action;
     private final EngineData engineData;
-    private final TruffleInlining inliningData = new TruffleInlining();
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
@@ -151,11 +147,6 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     @Override
     public boolean isLastTier() {
         return priority.tier == BackgroundCompileQueue.Priority.Tier.LAST;
-    }
-
-    @Override
-    public TruffleInliningData inliningData() {
-        return inliningData;
     }
 
     @Override
@@ -307,22 +298,18 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return target.highestCompiledTier();
     }
 
-    @Override
     public long time() {
         return time;
     }
 
-    @Override
     public double weight() {
         return lastWeight;
     }
 
-    @Override
     public double rate() {
         return lastRate;
     }
 
-    @Override
     public int queueChange() {
         return queueChange;
     }

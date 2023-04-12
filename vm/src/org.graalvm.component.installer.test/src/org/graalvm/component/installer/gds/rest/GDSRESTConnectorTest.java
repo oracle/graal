@@ -83,6 +83,7 @@ public class GDSRESTConnectorTest extends TestBase {
     final GDSTestConnector testConnector;
     final MemoryFeedback mf;
 
+    @SuppressWarnings("this-escape")
     public GDSRESTConnectorTest() throws IOException {
         testURL = dataFile("data/gdsreleases.json").toUri().toURL().toString();
         testConnector = new GDSTestConnector(testURL, this, TEST_ID, TEST_VERSION);

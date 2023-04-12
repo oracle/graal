@@ -36,6 +36,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 
+@SuppressWarnings("this-escape")
 public abstract class AbstractProfilerTest {
 
     protected Context context;

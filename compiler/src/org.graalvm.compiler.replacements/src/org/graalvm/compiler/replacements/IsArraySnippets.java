@@ -55,6 +55,7 @@ public abstract class IsArraySnippets implements Snippets {
         private final SnippetInfo objectIsArraySnippet;
         private final SnippetInfo classIsArraySnippet;
 
+        @SuppressWarnings("this-escape")
         public Templates(IsArraySnippets receiver, OptionValues options, Providers providers) {
             super(options, providers);
             objectIsArraySnippet = snippet(providers, IsArraySnippets.class, "objectIsArraySnippet", null, receiver);

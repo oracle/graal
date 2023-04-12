@@ -66,6 +66,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     private final boolean primary;
     private final LLVMHelperFunctions helpers;
 
+    @SuppressWarnings("this-escape")
     public LLVMIRBuilder(String name) {
         this.context = LLVM.LLVMContextCreate();
         this.builder = LLVM.LLVMCreateBuilderInContext(context);

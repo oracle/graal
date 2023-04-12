@@ -80,6 +80,7 @@ import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -135,30 +136,30 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     private boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
-        return TruffleCompilerRuntime.getRuntimeIfAvailable().isTransferToInterpreterMethod(translateMethod(method));
+        return TruffleCompilerEnvironment.get().runtime().isTransferToInterpreterMethod(translateMethod(method));
     }
 
     private boolean isInInterpreter(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerRuntime.getRuntimeIfAvailable().isInInterpreter(translateMethod(targetMethod));
+        return TruffleCompilerEnvironment.get().runtime().isInInterpreter(translateMethod(targetMethod));
     }
 
     private boolean isInInterpreterFastPath(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerRuntime.getRuntimeIfAvailable().isInInterpreterFastPath(translateMethod(targetMethod));
+        return TruffleCompilerEnvironment.get().runtime().isInInterpreterFastPath(translateMethod(targetMethod));
     }
 
     protected String isTruffleBoundary(ResolvedJavaMethod targetMethod) {
-        if (TruffleCompilerRuntime.getRuntimeIfAvailable().isTruffleBoundary(translateMethod(targetMethod))) {
+        if (TruffleCompilerEnvironment.get().runtime().isTruffleBoundary(translateMethod(targetMethod))) {
             return "truffle boundary";
         }
         return null;
     }
 
     private boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerRuntime.getRuntimeIfAvailable().isBytecodeInterpreterSwitch(translateMethod(targetMethod));
+        return TruffleCompilerEnvironment.get().runtime().isBytecodeInterpreterSwitch(translateMethod(targetMethod));
     }
 
     private boolean isInliningCutoff(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerRuntime.getRuntimeIfAvailable().isInliningCutoff(translateMethod(targetMethod));
+        return TruffleCompilerEnvironment.get().runtime().isInliningCutoff(translateMethod(targetMethod));
     }
 
     protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
@@ -177,7 +178,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return;
         }
 
-        runImpl(new InliningPhaseContext(highTierContext, graph, TruffleCompilerRuntime.getRuntimeIfAvailable(), isBytecodeInterpreterSwitch(method)));
+        runImpl(new InliningPhaseContext(highTierContext, graph, TruffleCompilerEnvironment.get(), isBytecodeInterpreterSwitch(method)));
     }
 
     private void runImpl(InliningPhaseContext context) {
@@ -1283,10 +1284,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     public static void install(HighTier highTier, OptionValues options) {
-        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntimeIfAvailable();
-        if (rt == null) {
+        TruffleCompilerEnvironment env = TruffleCompilerEnvironment.getIfInitialized();
+        if (env == null) {
             return;
         }
+
         if (!Options.TruffleHostInlining.getValue(options)) {
             return;
         }
@@ -1307,14 +1309,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     public static boolean shouldDenyTrivialInliningInAllMethods(ResolvedJavaMethod callee) {
-        TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
-        assert r != null;
-        return r.isInliningCutoff(callee);
+        return TruffleCompilerEnvironment.get().runtime().isInliningCutoff(callee);
     }
 
     public static boolean shouldDenyTrivialInlining(ResolvedJavaMethod callee) {
-        TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
-        assert r != null;
+        TruffleCompilerRuntime r = TruffleCompilerEnvironment.get().runtime();
         return (r.isBytecodeInterpreterSwitch(callee) || r.isInliningCutoff(callee) || r.isTruffleBoundary(callee) || r.isInInterpreterFastPath(callee) || r.isInInterpreter(callee) ||
                         r.isTransferToInterpreterMethod(callee));
     }
@@ -1323,8 +1322,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] args) {
-            TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntimeIfAvailable();
-            if (rt != null && shouldDenyTrivialInlining(targetMethod)) {
+            if (TruffleCompilerEnvironment.getIfInitialized() != null && shouldDenyTrivialInlining(targetMethod)) {
                 /*
                  * We deny bytecode parser inlining for any method that is relevant for Truffle host
                  * inlining. This is important otherwise we might miss some PE boundaries during
@@ -1342,7 +1340,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         final HighTierContext highTierContext;
         final StructuredGraph graph;
         final OptionValues options;
-        final TruffleCompilerRuntime truffle;
+        final TruffleCompilerEnvironment env;
         final boolean isBytecodeSwitch;
         final int maxSubtreeInvokes;
         final boolean printExplored;
@@ -1354,11 +1352,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
          */
         final EconomicMap<ResolvedJavaMethod, StructuredGraph> graphCache = EconomicMap.create(Equivalence.DEFAULT);
 
-        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleCompilerRuntime truffle, boolean isBytecodeSwitch) {
+        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleCompilerEnvironment env, boolean isBytecodeSwitch) {
             this.highTierContext = context;
             this.graph = graph;
             this.options = graph.getOptions();
-            this.truffle = truffle;
+            this.env = env;
             this.isBytecodeSwitch = isBytecodeSwitch;
             this.maxSubtreeInvokes = Options.TruffleHostInliningMaxSubtreeInvokes.getValue(options);
             this.printExplored = Options.TruffleHostInliningPrintExplored.getValue(options);

@@ -41,6 +41,7 @@ public class DeoptimizeOnIntegerExactTest extends GraalCompilerTest {
     static boolean highlyLikely = true;
     static boolean highlyUnlikely = false;
 
+    @SuppressWarnings("this-escape")
     public DeoptimizeOnIntegerExactTest() {
         speculationLog = getCodeCache().createSpeculationLog();
     }

@@ -21,7 +21,7 @@ Below is the example output when building a native executable of the `HelloWorld
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
 [1/8] Initializing...                                            (3.3s @ 0.15GB)
- Java version: 17.0.7+4, vendor: GraalVM Community
+ Java version: 17.0.7+4, vendor version: GraalVM CE 17.0.7+4.1
  Graal compiler: optimization level: '2', target machine: 'x86-64-v3'
  C compiler: gcc (linux, x86_64, 12.2.0)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
@@ -41,20 +41,20 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
    4.42MB (23.20%) for code area:     7,526 compilation units
    8.18MB (42.92%) for image heap:  107,049 objects and 5 resources
    5.87MB (30.78%) for debug info generated in 1.2s
- 605.20KB ( 3.10%) for other data
+ 605.20kB ( 3.10%) for other data
   19.06MB in total
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
-   3.37MB java.base                     1008.75KB byte[] for code metadata
- 792.12KB svm.jar (Native Image)         995.63KB java.lang.String
- 112.32KB java.logging                   887.47KB byte[] for general heap data
-  62.07KB org.graalvm.nativeimage.base   685.47KB byte[] for java.lang.String
-  24.15KB jdk.internal.vm.ci             670.38KB java.lang.Class
-  23.14KB org.graalvm.sdk                490.13KB java.util.HashMap$Node
-   6.11KB jdk.internal.vm.compiler       297.43KB byte[] for embedded resources
-   1.35KB jdk.proxy1                     249.65KB c.o.s.c.h.DynamicHubCompanion
-   1.27KB jdk.proxy3                     195.52KB java.util.HashMap$Node[]
-   1.18KB jdk.localedata                 171.84KB java.lang.String[]
+   3.37MB java.base                     1008.75kB byte[] for code metadata
+ 792.12kB svm.jar (Native Image)         995.63kB java.lang.String
+ 112.32kB java.logging                   887.47kB byte[] for general heap data
+  62.07kB org.graalvm.nativeimage.base   685.47kB byte[] for java.lang.String
+  24.15kB jdk.internal.vm.ci             670.38kB java.lang.Class
+  23.14kB org.graalvm.sdk                490.13kB java.util.HashMap$Node
+   6.11kB jdk.internal.vm.compiler       297.43kB byte[] for embedded resources
+   1.35kB jdk.proxy1                     249.65kB c.o.s.c.h.DynamicHubCompanion
+   1.27kB jdk.proxy3                     195.52kB java.util.HashMap$Node[]
+   1.18kB jdk.localedata                 171.84kB java.lang.String[]
   594.00B for 2 more packages              1.68MB for 824 more object types
 --------------------------------------------------------------------------------
 Recommendations:
@@ -80,8 +80,8 @@ In this stage, the Native Image build process is set up and [`Features`](https:/
 By default, Native Image generates *executables* but it can also generate [*native shared libraries*](InteropWithNativeCode.md) and [*static executables*](guides/build-static-and-mostly-static-executable.md).
 
 #### <a name="glossary-java-info"></a>Java Version Info
-The Java version and vendor of the Native Image process.
-Both are also used for the `java.vm.version` and `java.vm.vendor` properties within the generated native binary.
+The Java and vendor version of the Native Image process.
+Both are also used for the `java.vm.version` and `java.vendor.version` properties within the generated native binary.
 Please report version and vendor when you [file issues](https://github.com/oracle/graal/issues/new).
 
 #### <a name="glossary-graal-compiler"></a>Graal Compiler
@@ -91,7 +91,10 @@ Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#s
 The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
 See [here](#recommendation-cpu) for recommendations on how to use this option.
 
-On Oracle GraalVM, the line also shows whether [Profile-Guided Optimizations](#recommendation-pgo) are *on* or *off*.
+On Oracle GraalVM, the line also shows information about [Profile-Guided Optimizations (PGO)](#recommendation-pgo).
+- `off`: PGO is not used
+- `user-provided`: PGO is enabled and uses a user-provided profile
+- `ML-inferred`: A machine learning (ML) model is used to infer profiles for control split branches statically.
 
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.

@@ -28,7 +28,6 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -147,8 +146,7 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
         Object[] arguments = {newBuffer()};
         Assert.assertEquals(42, callTarget.call(arguments));
 
-        CompilationIdentifier compilationId = getCompilationId(callTarget);
-        StructuredGraph graph = partialEval(callTarget, arguments, compilationId);
+        StructuredGraph graph = partialEval(callTarget, arguments);
         compile(callTarget, graph);
         for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.TYPE)) {
             Assert.fail("Found unexpected method call target node: " + node + " (" + node.targetMethod() + ")");
@@ -160,7 +158,7 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
             // Speculation has failed and invalidated the code.
             Assert.assertFalse("Speculation should have failed", callTarget.isValid());
             // Recompile to ensure partial evaluation still succeeds.
-            partialEval(callTarget, arguments, compilationId);
+            partialEval(callTarget, arguments);
         } else {
             Assert.assertTrue("Speculation should not have failed", callTarget.isValid());
         }

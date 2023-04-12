@@ -195,7 +195,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
-    private static final boolean VERBOSE = Boolean.getBoolean(CompilationWrapperTest.class.getSimpleName() + ".verbose");
+    private static final boolean VERBOSE = Boolean.getBoolean("CompilationWrapperTest.verbose");
 
     private static void testHelper(List<Probe> initialProbes, List<String> extraVmArgs, String... mainClassAndArgs) throws IOException, InterruptedException {
         final File dumpPath = new File(CompilationWrapperTest.class.getSimpleName() + "_" + System.currentTimeMillis()).getAbsoluteFile();
@@ -262,6 +262,12 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     entries.add(name);
                     if (name.endsWith(".bgv") || name.endsWith(".cfg")) {
                         bgvOrCfgFiles++;
+                    } else if (name.endsWith("retry.log")) {
+                        String log = new String(dd.getInputStream(ze).readAllBytes());
+                        Pattern re = Pattern.compile("<Metrics>.*</Metrics>", Pattern.DOTALL);
+                        if (!re.matcher(log).find()) {
+                            Assert.fail(String.format("Could not find %s in %s:%n%s", re.pattern(), name, log));
+                        }
                     }
                 }
                 if (bgvOrCfgFiles == 0) {

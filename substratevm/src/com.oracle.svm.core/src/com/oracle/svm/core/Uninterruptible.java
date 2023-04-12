@@ -34,6 +34,8 @@ import java.util.Objects;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.AnnotationAccess;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.word.WordBase;
@@ -202,10 +204,12 @@ public @interface Uninterruptible {
          * Returns whether the method is {@link Uninterruptible}, either by explicit annotation of
          * the method or implicitly due to other annotations.
          */
+        @Platforms(Platform.HOSTED_ONLY.class)
         public static boolean isUninterruptible(AnnotatedElement method) {
             return getAnnotation(method) != null;
         }
 
+        @Platforms(Platform.HOSTED_ONLY.class)
         public static boolean inliningAllowed(AnnotatedElement caller, AnnotatedElement callee) {
             boolean callerUninterruptible = isUninterruptible(caller);
             boolean calleeUninterruptible = isUninterruptible(callee);

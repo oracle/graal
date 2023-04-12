@@ -898,7 +898,10 @@ class NativeImageVM(GraalVm):
         else:
             jdk_profiles_args = []
         if self.profile_inference_feature_extraction:
-            ml_args = ['-H:+MLGraphFeaturesExtraction']
+            ml_args = ['-H:+MLGraphFeaturesExtraction', '-H:+ProfileInferenceDumpFeatures']
+            dump_file_flag = 'ProfileInferenceDumpFile'
+            if dump_file_flag not in ''.join(config.base_image_build_args):
+                mx.warn("To dump the profile inference features to a specific location, please set the '{}' flag.".format(dump_file_flag))
         else:
             ml_args = []
         final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + jdk_profiles_args + ml_args

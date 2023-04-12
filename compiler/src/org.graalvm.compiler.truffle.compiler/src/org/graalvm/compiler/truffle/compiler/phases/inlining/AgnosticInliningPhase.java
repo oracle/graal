@@ -34,6 +34,7 @@ import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleInliningScope;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -82,12 +83,14 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         final InliningPolicy policy = getInliningPolicyProvider(context).get(context.options, context);
         final CallTree tree = new CallTree(partialEvaluator, postPartialEvaluationSuite, context, policy);
+        TruffleInliningScope.getCurrent(context.debug).setCallTree(tree);
+
         tree.dumpBasic("Before Inline");
         if (optionsAllowInlining(context)) {
             policy.run(tree);
             tree.dumpBasic("After Inline");
-            tree.collectTargetsToDequeue(context.task.inliningData());
-            tree.updateTracingInfo(context.task.inliningData());
+            tree.collectTargetsToDequeue(context.task);
+            tree.updateTracingInfo(context.task);
         }
         tree.finalizeGraph();
         tree.trace();
@@ -100,6 +103,7 @@ public final class AgnosticInliningPhase extends BasePhase<TruffleTierContext> {
              */
             postPartialEvaluationSuite.apply(graph, context);
         }
+
         graph.maybeCompress();
         assert GraphOrder.assertSchedulableGraph(graph) : "PE result must be schedulable in order to apply subsequent phases";
     }

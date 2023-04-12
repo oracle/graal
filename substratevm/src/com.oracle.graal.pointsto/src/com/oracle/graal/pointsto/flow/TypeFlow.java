@@ -153,6 +153,7 @@ public abstract class TypeFlow<T> {
         this(original, graphRef, TypeState.forEmpty());
     }
 
+    @SuppressWarnings("this-escape")
     public TypeFlow(TypeFlow<T> original, MethodFlowsGraph graphRef, TypeState cloneState) {
         this(original.getSource(), original.getDeclaredType(), cloneState, original.getSlot(), true, graphRef);
         PointsToStats.registerTypeFlowRetainReason(this, original);
@@ -531,7 +532,11 @@ public abstract class TypeFlow<T> {
      * incompatible types flowing through such flows will result in an analysis error.
      */
     public TypeState declaredTypeFilter(PointsToAnalysis bb, TypeState newState) {
-        if (!bb.analysisPolicy().relaxTypeFlowConstraints()) {
+        return declaredTypeFilter(bb, newState, true);
+    }
+
+    public TypeState declaredTypeFilter(PointsToAnalysis bb, TypeState newState, boolean onlyWithRelaxedTypeFlowConstraints) {
+        if (onlyWithRelaxedTypeFlowConstraints && !bb.analysisPolicy().relaxTypeFlowConstraints()) {
             /* Type flow constraints are enforced, so no default filtering is done. */
             return newState;
         }

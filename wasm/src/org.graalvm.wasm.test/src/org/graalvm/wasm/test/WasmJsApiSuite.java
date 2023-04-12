@@ -316,9 +316,13 @@ public class WasmJsApiSuite {
         checkInstantiateWithImportGlobal(binaryWithGlobalImportExternref, "externref", "foo");
     }
 
+    private static void disableRefTypes(Context.Builder builder) {
+        builder.allowExperimentalOptions(true).option(REF_TYPES_OPTION, "false");
+    }
+
     @Test
     public void testCreateAnyfuncGlobalRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             try {
                 wasm.globalAlloc(ValueType.anyfunc, false, WasmConstant.NULL);
@@ -331,7 +335,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testCreateExternrefGlobalRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             try {
                 wasm.globalAlloc(ValueType.externref, false, WasmConstant.NULL);
@@ -477,7 +481,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testGlobalWriteAnyfuncRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = new DefaultWasmGlobal(ValueType.anyfunc, true, WasmConstant.NULL);
             try {
@@ -491,7 +495,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testGlobalWriteExternrefRefTypesDisabled() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = new DefaultWasmGlobal(ValueType.externref, true, WasmConstant.NULL);
             try {
@@ -1422,7 +1426,7 @@ public class WasmJsApiSuite {
 
     @Test
     public void testTableAlloc1Param() throws IOException {
-        runTest(builder -> builder.option(REF_TYPES_OPTION, "false"), context -> {
+        runTest(builder -> disableRefTypes(builder), context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
@@ -2105,6 +2109,58 @@ public class WasmJsApiSuite {
             } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
+        });
+    }
+
+    @Test
+    public void testInstantiateEmptyModuleTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("empty", "(module)");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            wasm.moduleInstantiate(module, importObject);
+            wasm.moduleInstantiate(module, importObject);
+        });
+    }
+
+    @Test
+    public void testInstantiateModuleWithIfTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("if", "(func $f i32.const 0 (if (then nop) (else nop))) (export \"f\" (func $f))");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            WasmInstance instance = wasm.moduleInstantiate(module, importObject);
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                for (int iter = 0; iter < 255; iter++) {
+                    lib.execute(WebAssembly.instanceExport(instance, "f"));
+                }
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+            wasm.moduleInstantiate(module, importObject);
+        });
+    }
+
+    @Test
+    public void testInstantiateModuleWithBrIfTwice() throws IOException, InterruptedException {
+        final byte[] binary = compileWat("br_if", "(func $f (block i32.const 1 br_if 0)) (export \"f\" (func $f))");
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            WasmModule module = wasm.moduleDecode(binary);
+            Object importObject = new Dictionary();
+            WasmInstance instance = wasm.moduleInstantiate(module, importObject);
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                for (int iter = 0; iter < 255; iter++) {
+                    lib.execute(WebAssembly.instanceExport(instance, "f"));
+                }
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+            wasm.moduleInstantiate(module, importObject);
         });
     }
 

@@ -40,6 +40,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
+import jdk.internal.loader.Resource;
+
 @TargetClass(className = "jdk.internal.loader.URLClassPath")
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_internal_loader_URLClassPath {
@@ -61,12 +63,12 @@ final class Target_jdk_internal_loader_URLClassPath {
     private AccessControlContext acc;
 
     @Substitute
-    public Target_jdk_internal_loader_Resource getResource(String name, boolean check) {
+    public Resource getResource(String name, boolean check) {
         return ResourcesHelper.nameToResource(name);
     }
 
     @Substitute
-    public Enumeration<Target_jdk_internal_loader_Resource> getResources(final String name, final boolean check) {
+    public Enumeration<Resource> getResources(final String name, final boolean check) {
         return ResourcesHelper.nameToResources(name);
     }
 }

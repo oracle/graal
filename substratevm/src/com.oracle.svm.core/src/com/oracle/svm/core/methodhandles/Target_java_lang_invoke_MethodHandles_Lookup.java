@@ -33,10 +33,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 
 @TargetClass(value = MethodHandles.class, innerClass = "Lookup")
 final class Target_java_lang_invoke_MethodHandles_Lookup {
@@ -56,19 +54,15 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
     }
 
     @Alias //
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     private Class<?> lookupClass;
 
     @Alias //
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     private Class<?> prevLookupClass;
 
     @Alias //
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     private int allowedModes;
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private IllegalAccessException makeAccessException(Class<?> targetClass) {
         String message = "access violation: " + targetClass;
         if (this == SubstrateUtil.cast(MethodHandles.publicLookup(), Target_java_lang_invoke_MethodHandles_Lookup.class)) {
@@ -87,7 +81,6 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
     /** This call is a noop without the security manager. */
     @SuppressWarnings("unused")
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     void checkSecurityManager(Class<?> refc) {
     }
 }

@@ -181,10 +181,6 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayIndexOutOfBoundsException createOutOfBoundsException(int index, int length) {
         vmErrorIfImplicitExceptionsAreFatal();
-        /*
-         * JDK 11 added the length to the error message, we can do that for all Java versions to be
-         * consistent.
-         */
         return new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length);
     }
 
@@ -284,10 +280,6 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewOutOfBoundsExceptionWithArgs(int index, int length) {
         vmErrorIfImplicitExceptionsAreFatal();
-        /*
-         * JDK 11 added the length to the error message, we can do that for all Java versions to be
-         * consistent.
-         */
         throw new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length);
     }
 

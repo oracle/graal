@@ -43,4 +43,6 @@ public interface TruffleCompilerBase extends TruffleCompiler {
     SnippetReflectionProvider getSnippetReflection();
 
     TruffleTier getTruffleTier();
+
+    TruffleCompilerConfiguration getConfig();
 }

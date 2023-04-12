@@ -113,6 +113,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         this(original, annotated, kind, null, null, targetClass, targetName, isFinal, false);
     }
 
+    @SuppressWarnings("this-escape")
     public ComputedValueField(ResolvedJavaField original, ResolvedJavaField annotated, RecomputeFieldValue.Kind kind, Class<?> transformedValueAllowedType, FieldValueTransformer initialTransformer,
                     Class<?> targetClass, String targetName, boolean isFinal, boolean disableCaching) {
         assert original != null;
@@ -169,9 +170,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     private static Field getField(ResolvedJavaField annotated, Class<?> targetClass, String targetName) {
         try {
-            return targetClass.getDeclaredField(targetName);
-        } catch (NoSuchFieldException e) {
-            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetClass.getName(), targetName, annotated.format("%H.%n"));
+            return ReflectionUtil.lookupField(targetClass, targetName);
+        } catch (ReflectionUtilError e) {
+            throw UserError.abort("Could not find target field %s.%s for alias %s.", targetClass.getName(), targetName, annotated == null ? null : annotated.format("%H.%n"));
         }
     }
 

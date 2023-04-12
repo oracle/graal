@@ -306,6 +306,7 @@ public abstract class Node implements Cloneable, Formattable {
     public static class NodeInsertionStackTrace extends NodeStackTrace {
     }
 
+    @SuppressWarnings("this-escape")
     public Node(NodeClass<? extends Node> c) {
         init(c);
     }

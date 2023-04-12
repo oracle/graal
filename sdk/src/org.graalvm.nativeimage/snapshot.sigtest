@@ -889,7 +889,7 @@ meth public abstract void write(short)
 
 CLSS public final org.graalvm.nativeimage.c.type.CTypeConversion
 innr public abstract interface static CCharPointerHolder
-innr public final static CCharPointerPointerHolder
+innr public abstract static CCharPointerPointerHolder
 meth public static boolean toBoolean(int)
 meth public static boolean toBoolean(org.graalvm.word.PointerBase)
 meth public static byte toCBoolean(boolean)
@@ -911,13 +911,13 @@ intf java.lang.AutoCloseable
 meth public abstract org.graalvm.nativeimage.c.type.CCharPointer get()
 meth public abstract void close()
 
-CLSS public final static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerPointerHolder
+CLSS public abstract static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerPointerHolder
  outer org.graalvm.nativeimage.c.type.CTypeConversion
+cons public init()
 intf java.lang.AutoCloseable
-meth public org.graalvm.nativeimage.c.type.CCharPointerPointer get()
-meth public void close()
+meth public abstract org.graalvm.nativeimage.c.type.CCharPointerPointer get()
+meth public abstract void close()
 supr java.lang.Object
-hfds ccpHolderArray,pinnedCCPArray
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.type.CTypedef
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)

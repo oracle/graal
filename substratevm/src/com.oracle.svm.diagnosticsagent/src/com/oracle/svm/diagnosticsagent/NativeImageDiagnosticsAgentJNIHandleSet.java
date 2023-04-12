@@ -42,6 +42,7 @@ public class NativeImageDiagnosticsAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangStackTraceElement;
     final JNIMethodId javaLangStackTraceElementCtor4;
 
+    @SuppressWarnings("this-escape")
     public NativeImageDiagnosticsAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangStackTraceElement = newClassGlobalRef(env, "java/lang/StackTraceElement");

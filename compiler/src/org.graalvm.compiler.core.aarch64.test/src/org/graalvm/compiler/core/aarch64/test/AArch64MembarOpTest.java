@@ -55,6 +55,7 @@ public class AArch64MembarOpTest extends BackendTest {
     private final JVMCIBackend providers;
     private final CompilationResultBuilder crb;
 
+    @SuppressWarnings("this-escape")
     public AArch64MembarOpTest() {
         this.providers = JVMCI.getRuntime().getHostJVMCIBackend();
 

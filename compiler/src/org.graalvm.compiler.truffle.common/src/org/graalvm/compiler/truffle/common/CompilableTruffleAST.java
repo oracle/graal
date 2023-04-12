@@ -86,9 +86,10 @@ public interface CompilableTruffleAST {
     int getNonTrivialNodeCount();
 
     /**
-     * Returns the list of call nodes in this AST.
+     * Returns the number of direct calls of a call target. This may be used by an inlining
+     * heuristic to inform exploration.
      */
-    TruffleCallNode[] getCallNodes();
+    int countDirectCallNodes();
 
     /**
      * Return the total number of calls to this target.
@@ -99,11 +100,6 @@ public interface CompilableTruffleAST {
      * Cancel the compilation of this truffle ast.
      */
     boolean cancelCompilation(CharSequence reason);
-
-    /**
-     * Cancel the compilation of this truffle ast.
-     */
-    void dequeueInlined();
 
     /**
      * @param ast the ast to compare to
@@ -118,16 +114,10 @@ public interface CompilableTruffleAST {
     int getKnownCallSiteCount();
 
     /**
-     * @return A {@link JavaConstant} representing the assumption that the nodes of the AST were not
-     *         rewritten.
+     * Called before call target is used for runtime compilation, either as root compilation or via
+     * inlining.
      */
-    JavaConstant getNodeRewritingAssumptionConstant();
-
-    /**
-     * @return A {@link JavaConstant} representing the assumption that the compiled code of the AST
-     *         was not invalidated.
-     */
-    JavaConstant getValidRootAssumptionConstant();
+    void prepareForCompilation();
 
     /**
      * Returns {@code e} serialized as a string. The format of the returned string is:

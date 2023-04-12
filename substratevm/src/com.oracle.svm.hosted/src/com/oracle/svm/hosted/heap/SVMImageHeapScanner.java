@@ -64,6 +64,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Field economicMapImplHashArrayField;
     private final ReflectionHostedSupport reflectionSupport;
 
+    @SuppressWarnings("this-escape")
     public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
                     SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
         super(bb, imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver);

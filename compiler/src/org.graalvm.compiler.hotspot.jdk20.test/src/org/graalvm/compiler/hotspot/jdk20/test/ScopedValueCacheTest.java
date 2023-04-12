@@ -24,29 +24,38 @@
  */
 package org.graalvm.compiler.hotspot.jdk20.test;
 
-import static org.junit.Assume.assumeTrue;
-
 import java.lang.reflect.Method;
 
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.test.AddExports;
 
-@AddExports("java.base/jdk.internal.misc")
+import jdk.incubator.concurrent.ScopedValue;
+
+@AddExports({"java.base/jdk.internal.misc", "jdk.incubator.concurrent/jdk.incubator.concurrent"})
 public class ScopedValueCacheTest extends HotSpotGraalCompilerTest {
 
-    public static void testScopedValue() {
-        try {
-            Object[] cache = new Object[1];
-            Method set = Thread.class.getDeclaredMethod("setScopedValueCache", Object[].class);
-            set.setAccessible(true);
-            set.invoke(null, cache);
-
-            Method get = Thread.class.getDeclaredMethod("scopedValueCache");
-            get.setAccessible(true);
-            assumeTrue(cache == get.invoke(null));
-        } catch (ReflectiveOperationException e) {
-            fail(e.getMessage());
+    private static boolean contains(Object[] array, Object value) {
+        for (Object element : array) {
+            if (element == value) {
+                return true;
+            }
         }
+        return false;
     }
 
+    @SuppressWarnings("preview")
+    public static void testScopedValue() {
+        ScopedValue<Integer> scopedValue = ScopedValue.newInstance();
+        ScopedValue.where(scopedValue, 42).run(() -> {
+            scopedValue.get();
+            try {
+                Method get = Thread.class.getDeclaredMethod("scopedValueCache");
+                get.setAccessible(true);
+                Object[] cache = (Object[]) get.invoke(null);
+                assertTrue(contains(cache, scopedValue));
+            } catch (ReflectiveOperationException e) {
+                fail(e.getMessage());
+            }
+        });
+    }
 }

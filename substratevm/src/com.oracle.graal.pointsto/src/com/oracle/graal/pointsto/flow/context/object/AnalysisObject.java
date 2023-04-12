@@ -120,6 +120,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
      * Constructor allowing the subclasses to specify the type of context sensitivity they
      * implement.
      */
+    @SuppressWarnings("this-escape")
     protected AnalysisObject(AnalysisUniverse universe, AnalysisType type, AnalysisObjectKind kind) {
         this.id = createId(type.getId());
         this.type = type;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.svm.truffle.nfi;
 import static com.oracle.svm.truffle.nfi.NativeSignature.ExecuteHelper;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -41,6 +40,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransformer;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleContext;
 import com.oracle.svm.truffle.nfi.NativeAPI.NativeTruffleEnv;
 import com.oracle.svm.truffle.nfi.NativeSignature.CifData;
@@ -158,7 +158,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     @TruffleBoundary
     void executeNative(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs, byte[] ret) {
         try (LocalNativeScope scope = TruffleNFISupport.createLocalScope(patchCount);
-                        PinnedObject retBuffer = PinnedObject.create(ret)) {
+                        PrimitiveArrayView retBuffer = PrimitiveArrayView.createForReadingAndWriting(ret)) {
             NativeTruffleContext ctx = WordFactory.pointer(nativeContext);
             LibFFI.ffi_cif ffiCif = WordFactory.pointer(cif);
             ExecuteHelper.execute(ctx, ffiCif, retBuffer.addressOfArrayElement(0), functionPointer, primArgs, patchCount, patchOffsets, objArgs, scope);

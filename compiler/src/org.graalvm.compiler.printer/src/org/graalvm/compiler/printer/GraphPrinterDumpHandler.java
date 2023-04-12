@@ -271,17 +271,16 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
                 /*
                  * Truffle compilations don't have a standard inline context. Since
                  * TruffleDebugJavaMethod specifies the declaring class for truffle compilations as
-                 * "LTruffleGraal" we identify truffle compilations as starting with "TruffleGraal"
+                 * "LTruffleIR.Tier" we identify truffle compilations as starting with
+                 * "TruffleIR.Tier"
                  */
                 String name = result.get(i);
-                String search = "TruffleGraal.";
+                String search = "TruffleIR.Tier";
                 if (name.startsWith(search)) {
-                    result.set(i, "TruffleIR::" + name.substring(search.length(), name.length()));
                     if (i > 0) {
                         // we can drop previous entry which is just profiledPERoot
                         result.remove(i - 1);
                     }
-                    break;
                 }
             }
 

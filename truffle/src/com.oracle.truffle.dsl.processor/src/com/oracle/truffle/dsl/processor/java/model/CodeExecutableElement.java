@@ -58,6 +58,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("this-escape")
 public class CodeExecutableElement extends CodeElement<Element> implements ExecutableElement {
 
     private final List<TypeMirror> throwables = new ArrayList<>();

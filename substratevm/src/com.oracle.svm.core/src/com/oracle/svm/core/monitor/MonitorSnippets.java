@@ -109,6 +109,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     private final SnippetInfo monitorEnter;
     private final SnippetInfo monitorExit;
 
+    @SuppressWarnings("this-escape")
     protected MonitorSnippets(OptionValues options, Providers providers) {
         super(options, providers);
 

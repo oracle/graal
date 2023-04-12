@@ -2301,7 +2301,22 @@ public final class DebugContext implements AutoCloseable {
     }
 
     /**
-     * Appends metrics in a human readable format to {@code out} for a single method compilation.
+     * Prints the metrics in a human-readable format to {@code out} for a single method compilation.
+     *
+     * @param clear specifies if the metrics should be cleared after printing
+     */
+    public void printMetrics(Description desc, PrintStream out, boolean clear) {
+        if (metricValues == null) {
+            return;
+        }
+        printMetrics(out, desc.compilable, 0, 0, desc.identifier);
+        if (clear) {
+            metricValues = null;
+        }
+    }
+
+    /**
+     * Appends metrics in a human-readable format to {@code out} for a single method compilation.
      *
      * @param identity the identity hash code of {@code compilable}
      * @param compilationNr where this compilation lies in the ordered sequence of all compilations

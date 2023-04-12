@@ -29,8 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.collections.Pair;
-import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.profdiff.core.optimization.Optimization;
 
 /**
@@ -138,6 +136,45 @@ public final class InliningPath {
     }
 
     /**
+     * Creates an inlining path from method names and callsite bcis.
+     *
+     * For example, the call:
+     *
+     * <pre>
+     * InliningPath.of("a()", -1, "b()", 2, "c()", 3)
+     * </pre>
+     *
+     * Creates the following inlining path:
+     *
+     * <pre>
+     * a() at bci -1, b() at bci 2, c() at bci 3
+     * </pre>
+     *
+     * @param pathElements alternating method names (strings) and bcis (integers)
+     * @return a new inlining path or the {@link #EMPTY} path
+     */
+    public static InliningPath of(Object... pathElements) {
+        if (pathElements.length == 0) {
+            return EMPTY;
+        }
+        if (pathElements.length % 2 != 0) {
+            throw new IllegalArgumentException("Expected an even number of arguments.");
+        }
+        List<PathElement> elements = new ArrayList<>();
+        for (int i = 0; i < pathElements.length; i += 2) {
+            elements.add(new PathElement((String) pathElements[i], (Integer) pathElements[i + 1]));
+        }
+        return new InliningPath(elements);
+    }
+
+    /**
+     * Returns {@code true} if the path is empty.
+     */
+    public boolean isEmpty() {
+        return path.isEmpty();
+    }
+
+    /**
      * Gets the number of path elements which compose this path.
      */
     public int size() {
@@ -159,46 +196,6 @@ public final class InliningPath {
      */
     public Iterable<PathElement> elements() {
         return path;
-    }
-
-    /**
-     * Returns a path to the optimization's enclosing method, starting from the root method. If the
-     * given {@link Optimization} does not have {@link Optimization#getPosition() a position},
-     * {@link #EMPTY the empty path} is returned.
-     *
-     * For instance, if an optimization has the position:
-     *
-     * <pre>
-     * {c(): 4, b(): 3, a(): 2}
-     * </pre>
-     *
-     * Note that {@link Optimization#getPosition() positions} start with the innermost method. Then
-     * the path from root to the enclosing method is:
-     *
-     * <pre>
-     * a() at bci -1, b() at bci 2, c() at bci 3
-     * </pre>
-     *
-     * @param optimization the optimization to which the path is computed
-     * @return a path to the optimization's enclosing method
-     */
-    public static InliningPath ofEnclosingMethod(Optimization optimization) {
-        if (optimization.getPosition() == null) {
-            return EMPTY;
-        }
-        List<Pair<String, Integer>> pairs = new ArrayList<>();
-        UnmodifiableMapCursor<String, Integer> cursor = optimization.getPosition().getEntries();
-        while (cursor.advance()) {
-            pairs.add(Pair.create(cursor.getKey(), cursor.getValue()));
-        }
-        Collections.reverse(pairs);
-        List<PathElement> path = new ArrayList<>();
-        int previousBCI = Optimization.UNKNOWN_BCI;
-        for (Pair<String, Integer> pair : pairs) {
-            path.add(new PathElement(pair.getLeft(), previousBCI));
-            previousBCI = pair.getRight();
-        }
-        return new InliningPath(path);
     }
 
     /**

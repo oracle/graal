@@ -24,16 +24,16 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.FixedPointMath;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
@@ -133,19 +133,34 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
+    public void onCompilationStarted(OptimizedCallTarget target, AbstractCompilationTask task) {
         if (target.engine.traceCompilationDetails) {
+            double weight;
+            long time;
+            double rate;
+            int queueChange;
+            if (task instanceof CompilationTask t) {
+                weight = t.weight();
+                time = t.time();
+                rate = t.rate();
+                queueChange = t.queueChange();
+            } else {
+                weight = 0.0d;
+                time = 0;
+                rate = Double.NaN;
+                queueChange = 0;
+            }
             log(target, String.format(START_FORMAT,
                             target.id,
                             safeTargetName(target),
                             task.tier(),
-                            (int) task.weight(),
-                            task.rate(),
+                            (int) weight,
+                            rate,
                             runtime.getCompilationQueueSize(),
-                            task.queueChange() >= 0 ? '+' : '-',
-                            Math.abs(task.queueChange()),
+                            queueChange >= 0 ? '+' : '-',
+                            Math.abs(queueChange),
                             FixedPointMath.toDouble(runtime.compilationThresholdScale()),
-                            task.time() / 1000,
+                            time / 1000,
                             System.nanoTime(),
                             formatSourceSection(safeSourceSection(target))));
         }
@@ -171,7 +186,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
+    public void onCompilationTruffleTierFinished(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph) {
         if (target.engine.traceCompilation || target.engine.traceCompilationDetails) {
             final Times current = currentCompilation.get();
             current.timePartialEvaluationFinished = System.nanoTime();
@@ -180,16 +195,16 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
+    public void onCompilationSuccess(OptimizedCallTarget target, AbstractCompilationTask task, GraphInfo graph, CompilationResultInfo result) {
         if (!target.engine.traceCompilation && !target.engine.traceCompilationDetails) {
             return;
         }
         Times compilation = currentCompilation.get();
-        int[] inlinedAndDispatched = inlinedAndDispatched(target, inliningDecision);
+        int[] inlinedAndDispatched = inlinedAndDispatched(target, task);
         log(target, String.format(DONE_FORMAT,
                         target.id,
                         safeTargetName(target),
-                        tier,
+                        task.tier(),
                         compilationTime(),
                         target.getNonTrivialNodeCount(),
                         inlinedAndDispatched[0],
@@ -221,18 +236,18 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         }
     }
 
-    private int[] inlinedAndDispatched(OptimizedCallTarget target, TruffleInlining inliningDecision) {
+    private int[] inlinedAndDispatched(OptimizedCallTarget target, AbstractCompilationTask task) {
         try {
             int calls = 0;
             int inlinedCalls;
-            if (inliningDecision == null) {
+            if (task == null) {
                 CallCountVisitor visitor = new CallCountVisitor();
                 target.accept(visitor);
                 calls = visitor.calls;
                 inlinedCalls = 0;
             } else {
-                calls = inliningDecision.countCalls();
-                inlinedCalls = inliningDecision.countInlinedCalls();
+                calls = task.countCalls();
+                inlinedCalls = task.countInlinedCalls();
             }
             int dispatchedCalls = calls - inlinedCalls;
             int[] inlinedAndDispatched = new int[2];

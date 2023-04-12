@@ -63,6 +63,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 
+@SuppressWarnings("this-escape")
 public class CodeTypeElement extends CodeElement<Element> implements TypeElement {
 
     private final List<? extends CodeImport> imports = parentableList(this, new ArrayList<CodeImport>());

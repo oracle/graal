@@ -117,6 +117,7 @@ public abstract class CallTargetNode extends ValueNode implements LIRLowerable {
     protected InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
+    @SuppressWarnings("this-escape")
     protected CallTargetNode(NodeClass<? extends CallTargetNode> c, ValueNode[] arguments, ResolvedJavaMethod targetMethod, InvokeKind invokeKind, StampPair returnStamp) {
         super(c, StampFactory.forVoid());
         this.targetMethod = targetMethod;

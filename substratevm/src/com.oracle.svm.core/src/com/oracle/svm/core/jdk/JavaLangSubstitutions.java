@@ -87,12 +87,6 @@ import jdk.internal.module.ServicesCatalog;
 final class Target_java_lang_Object {
 
     @Substitute
-    @TargetElement(name = "registerNatives", onlyWith = JDK11OrEarlier.class)
-    private static void registerNativesSubst() {
-        /* We reimplemented all native methods, so nothing to do. */
-    }
-
-    @Substitute
     @TargetElement(name = "getClass")
     private Object getClassSubst() {
         return readHub(this);
@@ -127,7 +121,7 @@ final class Target_java_lang_Object {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_loader_helper.class, className = "ClassLoaderHelper")
+@TargetClass(className = "jdk.internal.loader.ClassLoaderHelper")
 final class Target_jdk_internal_loader_ClassLoaderHelper {
     @Alias
     static native File mapAlternativeName(File lib);
@@ -724,7 +718,6 @@ final class Target_java_lang_Compiler {
 final class Target_java_lang_NullPointerException {
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("static-method")
     private String getExtendedNPEMessage() {
         return null;
@@ -774,6 +767,12 @@ final class Target_jdk_internal_loader_BootLoader {
     private static Class<?> loadClass(Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
         return ClassForNameSupport.forNameOrNull(name, null);
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    private static void loadLibrary(String name) {
+        System.loadLibrary(name);
     }
 
     @Substitute

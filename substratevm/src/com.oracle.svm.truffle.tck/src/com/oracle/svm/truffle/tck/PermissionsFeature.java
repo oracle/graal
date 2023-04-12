@@ -139,6 +139,7 @@ public class PermissionsFeature implements Feature {
         compilerPackages = new HashSet<>();
         compilerPackages.add("org.graalvm.");
         compilerPackages.add("com.oracle.graalvm.");
+        compilerPackages.add("com.oracle.svm.core.");
         compilerPackages.add("com.oracle.truffle.api.");
         compilerPackages.add("com.oracle.truffle.polyglot.");
         compilerPackages.add("com.oracle.truffle.host.");

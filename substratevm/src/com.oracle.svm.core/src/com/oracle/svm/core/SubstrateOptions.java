@@ -841,16 +841,7 @@ public class SubstrateOptions {
     public static int getPageSize() {
         int value = PageSize.getValue();
         if (value == 0) {
-            try {
-                /*
-                 * On JDK 17 and later, this is just a final field access that can never fail. But
-                 * on JDK 11, it is a native method call with some corner cases that can throw an
-                 * exception.
-                 */
-                return Unsafe.getUnsafe().pageSize();
-            } catch (IllegalArgumentException e) {
-                return 4096;
-            }
+            return Unsafe.getUnsafe().pageSize();
         }
         assert value > 0;
         return value;
@@ -866,6 +857,9 @@ public class SubstrateOptions {
             SubstrateDiagnostics.updateInitialInvocationCounts(newValue);
         }
     };
+
+    @Option(help = "Specifies the number of entries that diagnostic buffers have.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Integer> DiagnosticBufferSize = new HostedOptionKey<>(30);
 
     @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//
@@ -906,4 +900,6 @@ public class SubstrateOptions {
     @Option(help = "Throw Native Image-specific exceptions when encountering an unregistered reflection call.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> ThrowMissingRegistrationErrors = new HostedOptionKey<>(false);
 
+    @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
 }

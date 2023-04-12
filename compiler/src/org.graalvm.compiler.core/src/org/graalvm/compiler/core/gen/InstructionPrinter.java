@@ -30,9 +30,9 @@ import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineCo
 import static org.graalvm.compiler.core.gen.InstructionPrinter.InstructionLineColumn.VALUE;
 
 import org.graalvm.compiler.debug.LogStream;
+import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
 
 /**
  * A utility for {@linkplain #printInstruction(ValueNode) printing} a node as an expression or
@@ -105,8 +105,7 @@ public class InstructionPrinter {
     public void printInstructionListing(ValueNode instruction) {
         int indentation = out.indentationLevel();
         out.fillTo(BCI.position + indentation, ' ').print(0).fillTo(USE.position + indentation, ' ').print("0").fillTo(VALUE.position + indentation, ' ').print(
-                        ValueNodeUtil.valueString(instruction)).fillTo(
-                                        INSTRUCTION.position + indentation, ' ');
+                        valueString(instruction)).fillTo(INSTRUCTION.position + indentation, ' ');
         printInstruction(instruction);
         if (instruction instanceof StateSplit) {
             out.print("  [state: " + ((StateSplit) instruction).stateAfter() + "]");
@@ -116,5 +115,18 @@ public class InstructionPrinter {
 
     public void printInstruction(ValueNode node) {
         out.print(node.toString());
+    }
+
+    /**
+     * Converts a given instruction to a value string. The representation of an node as a value is
+     * formed by concatenating the {@linkplain jdk.vm.ci.meta.JavaKind#getTypeChar character}
+     * denoting its {@linkplain ValueNode#getStackKind kind} and its id. For example, {@code "i13"}.
+     *
+     * @param value the instruction to convert to a value string. If {@code value == null}, then "-"
+     *            is returned.
+     * @return the instruction representation as a string
+     */
+    public static String valueString(ValueNode value) {
+        return (value == null) ? "-" : ("" + Character.toLowerCase(value.getStackKind().getTypeChar()) + value.toString(Verbosity.Id));
     }
 }

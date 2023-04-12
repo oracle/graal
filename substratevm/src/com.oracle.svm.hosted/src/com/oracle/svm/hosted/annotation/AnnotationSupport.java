@@ -138,6 +138,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
      */
     private final ResolvedJavaType constantAnnotationMarkerSubstitutionType;
 
+    @SuppressWarnings("this-escape")
     public AnnotationSupport(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection) {
         super(metaAccess);
         this.snippetReflection = snippetReflection;

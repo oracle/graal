@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -67,8 +66,8 @@ public final class VirtualFrameGetNode extends VirtualFrameAccessorNode implemen
     @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode tagAlias = tool.getAlias(frame.getTagArray(type));
-        ValueNode dataAlias = tool.getAlias(
-                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object ? frame.getObjectArray(type) : frame.getPrimitiveArray(type));
+
+        ValueNode dataAlias = tool.getAlias(accessKind == JavaKind.Object ? frame.getObjectArray(type) : frame.getPrimitiveArray(type));
 
         if (type == VirtualFrameAccessType.Auxiliary) {
             // no tags array
