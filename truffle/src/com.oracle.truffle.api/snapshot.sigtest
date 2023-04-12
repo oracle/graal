@@ -575,7 +575,7 @@ hfds argumentNames,disposed,source
 CLSS public abstract interface static com.oracle.truffle.api.TruffleLanguage$Provider
  outer com.oracle.truffle.api.TruffleLanguage
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-intf com.oracle.truffle.api.providers.TruffleLanguageProvider
+intf com.oracle.truffle.api.provider.TruffleLanguageProvider
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
  outer com.oracle.truffle.api.TruffleLanguage
@@ -1281,7 +1281,7 @@ meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
 
-CLSS public abstract interface com.oracle.truffle.api.providers.TruffleLanguageProvider
+CLSS public abstract interface com.oracle.truffle.api.provider.TruffleLanguageProvider
 meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
 meth public abstract java.lang.String getLanguageClassName()
 meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()

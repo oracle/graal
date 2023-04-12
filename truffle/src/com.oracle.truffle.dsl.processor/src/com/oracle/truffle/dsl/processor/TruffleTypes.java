@@ -133,7 +133,7 @@ public class TruffleTypes {
     public static final String TruffleLanguage_ContextReference_Name = "com.oracle.truffle.api.TruffleLanguage.ContextReference";
     public static final String TruffleLanguage_LanguageReference_Name = "com.oracle.truffle.api.TruffleLanguage.LanguageReference";
     public static final String TruffleLanguage_Name = "com.oracle.truffle.api.TruffleLanguage";
-    public static final String TruffleLanguageProvider_Name = "com.oracle.truffle.api.providers.TruffleLanguageProvider";
+    public static final String TruffleLanguageProvider_Name = "com.oracle.truffle.api.provider.TruffleLanguageProvider";
     public static final String TruffleLanguage_Registration_Name = "com.oracle.truffle.api.TruffleLanguage.Registration";
     public static final String TruffleOptions_Name = "com.oracle.truffle.api.TruffleOptions";
     public static final String TruffleOptionDescriptors_Name = "com.oracle.truffle.api.TruffleOptionDescriptors";
@@ -352,7 +352,7 @@ public class TruffleTypes {
     public static final String ProbeNode_Name = "com.oracle.truffle.api.instrumentation.ProbeNode";
     public static final String ProvidedTags_Name = "com.oracle.truffle.api.instrumentation.ProvidedTags";
     public static final String TruffleInstrument_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument";
-    public static final String TruffleInstrumentProvider_Name = "com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider";
+    public static final String TruffleInstrumentProvider_Name = "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider";
     public static final String TruffleInstrument_Registration_Name = "com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration";
 
     /*

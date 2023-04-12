@@ -40,34 +40,33 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider;
+import com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 import org.graalvm.polyglot.SandboxPolicy;
 
 final class InstrumentCache {
-
-    private static final String DEBUGGER_CLASS = "com.oracle.truffle.api.debug.impl.DebuggerInstrument";
-    private static final String DEBUGGER_PROVIDER = "com.oracle.truffle.api.debug.impl.DebuggerInstrumentProvider";
     private static final List<InstrumentCache> nativeImageCache = TruffleOptions.AOT ? new ArrayList<>() : null;
     private static Map<List<AbstractClassLoaderSupplier>, List<InstrumentCache>> runtimeCaches = new HashMap<>();
 
@@ -78,7 +77,7 @@ final class InstrumentCache {
     private final String website;
     private final boolean internal;
     private final Set<String> services;
-    private final TruffleInstrument.Provider provider;
+    private final ProviderAdapter providerAdapter;
     private final SandboxPolicy sandboxPolicy;
 
     /**
@@ -120,7 +119,7 @@ final class InstrumentCache {
     }
 
     private InstrumentCache(String id, String name, String version, String className, boolean internal, Set<String> services,
-                    TruffleInstrument.Provider provider, String website, SandboxPolicy sandboxPolicy) {
+                    ProviderAdapter providerAdapter, String website, SandboxPolicy sandboxPolicy) {
         this.id = id;
         this.name = name;
         this.version = version;
@@ -128,7 +127,7 @@ final class InstrumentCache {
         this.className = className;
         this.internal = internal;
         this.services = services;
-        this.provider = provider;
+        this.providerAdapter = providerAdapter;
         this.sandboxPolicy = sandboxPolicy;
     }
 
@@ -159,15 +158,8 @@ final class InstrumentCache {
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
-            for (TruffleInstrumentProvider provider : ServiceLoader.load(TruffleInstrumentProvider.class, loader)) {
-                loadInstrumentImpl(provider, loader, list, classNamesUsed);
-            }
-            // ServiceLoader does not respect service interface inheritance. We have to load the
-            // languages registered with the deprecated provider interface, even though the
-            // deprecated interface inherits from the new one.
-            for (TruffleInstrumentProvider provider : loadDeprecatedProviders(loader)) {
-                loadInstrumentImpl(provider, loader, list, classNamesUsed);
-            }
+            loadProviders(loader).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            loadDeprecatedProviders(loader).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
         }
         Collections.sort(list, new Comparator<InstrumentCache>() {
             @Override
@@ -179,25 +171,25 @@ final class InstrumentCache {
     }
 
     @SuppressWarnings("deprecation")
-    private static Iterable<? extends TruffleInstrumentProvider> loadDeprecatedProviders(ClassLoader loader) {
-        return ServiceLoader.load(TruffleInstrument.Provider.class, loader);
+    private static Stream<? extends ProviderAdapter> loadDeprecatedProviders(ClassLoader loader) {
+        return StreamSupport.stream(ServiceLoader.load(TruffleInstrument.Provider.class, loader).spliterator(), false).map(DeprecatedProvider::new);
     }
 
-    private static void loadInstrumentImpl(TruffleInstrumentProvider provider, ClassLoader loader, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
-        Class<? extends TruffleInstrumentProvider> providerClass = provider.getClass();
+    private static Stream<? extends ProviderAdapter> loadProviders(ClassLoader loader) {
+        return StreamSupport.stream(ServiceLoader.load(TruffleInstrumentProvider.class, loader).spliterator(), false).map(NewProvider::new);
+    }
+
+    private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
+        Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
-        if (providerModule.isNamed()) {
-            ModuleUtils.exportTo(null, providerModule);
-        } else {
-            ModuleUtils.exportTo(loader, null);
-        }
+        ModuleUtils.exportTransitivelyTo(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             PrintStream out = System.err;
             out.println("Provider " + providerClass + " is missing @Registration annotation.");
             return;
         }
-        String className = provider.getInstrumentClassName();
+        String className = providerAdapter.getInstrumentClassName();
         String name = reg.name();
         String id = reg.id();
         if (id == null || id.isEmpty()) {
@@ -213,13 +205,13 @@ final class InstrumentCache {
         SandboxPolicy sandboxPolicy = reg.sandbox();
         boolean internal = reg.internal();
         Set<String> servicesClassNames = new TreeSet<>();
-        for (String service : provider.getServicesClassNames()) {
+        for (String service : providerAdapter.getServicesClassNames()) {
             servicesClassNames.add(service);
         }
         // we don't want multiple instruments with the same class name
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
-            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, provider, website, sandboxPolicy));
+            list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, providerAdapter, website, sandboxPolicy));
         }
     }
 
@@ -249,7 +241,7 @@ final class InstrumentCache {
     }
 
     TruffleInstrument loadInstrument() {
-        return (TruffleInstrument) provider.create();
+        return providerAdapter.create();
     }
 
     boolean supportsService(Class<?> clazz) {
@@ -266,5 +258,77 @@ final class InstrumentCache {
 
     SandboxPolicy getSandboxPolicy() {
         return sandboxPolicy;
+    }
+
+    private interface ProviderAdapter {
+        Class<?> getProviderClass();
+
+        TruffleInstrument create();
+
+        String getInstrumentClassName();
+
+        Collection<String> getServicesClassNames();
+    }
+
+    @SuppressWarnings("deprecation")
+    private static final class DeprecatedProvider implements ProviderAdapter {
+
+        private final TruffleInstrument.Provider provider;
+
+        DeprecatedProvider(TruffleInstrument.Provider provider) {
+            Objects.requireNonNull(provider, "Provider must be non null");
+            this.provider = provider;
+        }
+
+        @Override
+        public Class<?> getProviderClass() {
+            return provider.getClass();
+        }
+
+        @Override
+        public TruffleInstrument create() {
+            return provider.create();
+        }
+
+        @Override
+        public String getInstrumentClassName() {
+            return provider.getInstrumentClassName();
+        }
+
+        @Override
+        public Collection<String> getServicesClassNames() {
+            return provider.getServicesClassNames();
+        }
+
+    }
+
+    private static final class NewProvider implements ProviderAdapter {
+
+        private final TruffleInstrumentProvider provider;
+
+        NewProvider(TruffleInstrumentProvider provider) {
+            Objects.requireNonNull(provider, "Provider must be non null");
+            this.provider = provider;
+        }
+
+        @Override
+        public Class<?> getProviderClass() {
+            return provider.getClass();
+        }
+
+        @Override
+        public TruffleInstrument create() {
+            return (TruffleInstrument) EngineAccessor.INSTRUMENT_PROVIDER.create(provider);
+        }
+
+        @Override
+        public String getInstrumentClassName() {
+            return EngineAccessor.INSTRUMENT_PROVIDER.getInstrumentClassName(provider);
+        }
+
+        @Override
+        public Collection<String> getServicesClassNames() {
+            return EngineAccessor.INSTRUMENT_PROVIDER.getServicesClassNames(provider);
+        }
     }
 }

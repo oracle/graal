@@ -53,6 +53,7 @@ import java.lang.annotation.Target;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -96,7 +97,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
-import com.oracle.truffle.api.instrumentation.providers.TruffleInstrumentProvider;
+import com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -1371,8 +1372,29 @@ public abstract class TruffleInstrument {
      * @since 19.3.0
      * @deprecated Use {@link TruffleInstrumentProvider}.
      */
-    @Deprecated
-    public interface Provider extends TruffleInstrumentProvider {
+    @Deprecated(since = "23.1")
+    public interface Provider {
+
+        /**
+         * Returns the name of a class implementing the {@link TruffleInstrument}.
+         *
+         * @since 19.3.0
+         */
+        String getInstrumentClassName();
+
+        /**
+         * Creates a new instance of a {@link TruffleInstrument}.
+         *
+         * @since 19.3.0
+         */
+        TruffleInstrument create();
+
+        /**
+         * Returns the class names of provided services.
+         *
+         * @since 19.3.0
+         */
+        Collection<String> getServicesClassNames();
     }
 
     static {

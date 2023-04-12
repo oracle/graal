@@ -72,7 +72,7 @@ intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.String methodName()
 meth public abstract java.lang.Class<?> value()
 
-CLSS public abstract interface com.oracle.truffle.api.providers.TruffleLanguageProvider
+CLSS public abstract interface com.oracle.truffle.api.provider.TruffleLanguageProvider
 meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
 meth public abstract java.lang.String getLanguageClassName()
 meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
@@ -161,7 +161,7 @@ meth public abstract int value()
 
 CLSS public final com.oracle.truffle.tck.TruffleTestInvokerTruffleTestInvokerLanguageProvider
 cons public init()
-intf com.oracle.truffle.api.providers.TruffleLanguageProvider
+intf com.oracle.truffle.api.provider.TruffleLanguageProvider
 meth public com.oracle.truffle.api.TruffleLanguage<?> create()
 meth public java.lang.String getLanguageClassName()
 meth public java.util.Collection<java.lang.String> getServicesClassNames()

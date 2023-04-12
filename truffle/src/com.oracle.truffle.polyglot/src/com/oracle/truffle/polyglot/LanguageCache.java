@@ -60,10 +60,13 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -73,7 +76,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.providers.TruffleLanguageProvider;
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 import org.graalvm.polyglot.SandboxPolicy;
@@ -103,7 +106,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final boolean needsAllEncodings;
     private final Set<String> services;
     private final ContextPolicy contextPolicy;
-    private final TruffleLanguageProvider provider;
+    private final ProviderAdapter providerAdapter;
     private final String website;
     private final SandboxPolicy sandboxPolicy;
     private volatile List<FileTypeDetector> fileTypeDetectors;
@@ -119,8 +122,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private LanguageCache(String id, String name, String implementationName, String version, String className,
                     String languageHome, Set<String> characterMimeTypes, Set<String> byteMimeTypes, String defaultMimeType,
                     Set<String> dependentLanguages, boolean interactive, boolean internal, boolean needsAllEncodings, Set<String> services,
-                    ContextPolicy contextPolicy, TruffleLanguage.Provider provider, String website, SandboxPolicy sandboxPolicy) {
-        assert provider != null : "Provider must be non null";
+                    ContextPolicy contextPolicy, ProviderAdapter providerAdapter, String website, SandboxPolicy sandboxPolicy) {
+        assert providerAdapter != null : "Provider must be non null";
         this.className = className;
         this.name = name;
         this.implementationName = implementationName;
@@ -138,7 +141,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.languageHome = languageHome;
         this.services = services;
         this.contextPolicy = contextPolicy;
-        this.provider = provider;
+        this.providerAdapter = providerAdapter;
         this.website = website;
         this.sandboxPolicy = sandboxPolicy;
     }
@@ -165,7 +168,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         null,
                         Collections.emptySet(),
                         false, false, false, hostLanguageProvider.getServicesClassNames(),
-                        ContextPolicy.SHARED, hostLanguageProvider, "", SandboxPolicy.UNTRUSTED);
+                        ContextPolicy.SHARED, new NewProvider(hostLanguageProvider), "", SandboxPolicy.UNTRUSTED);
         cache.staticIndex = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
         return cache;
     }
@@ -237,15 +240,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
-            for (TruffleLanguageProvider provider : ServiceLoader.load(TruffleLanguageProvider.class, loader)) {
-                loadLanguageImpl(provider, loader, caches);
-            }
-            // ServiceLoader does not respect service interface inheritance. We have to load the
-            // languages registered with the deprecated provider interface, even though the
-            // deprecated interface inherits from the new one.
-            for (TruffleLanguageProvider provider : loadDeprecatedProviders(loader)) {
-                loadLanguageImpl(provider, loader, caches);
-            }
+            loadProviders(loader).forEach((p) -> loadLanguageImpl(p, caches));
+            loadDeprecatedProviders(loader).forEach((p) -> loadLanguageImpl(p, caches));
         }
         Map<String, LanguageCache> cacheToId = new LinkedHashMap<>();
         for (LanguageCache languageCache : caches) {
@@ -271,13 +267,16 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     @SuppressWarnings("deprecation")
-    private static Iterable<? extends TruffleLanguageProvider> loadDeprecatedProviders(ClassLoader loader) {
-        return ServiceLoader.load(TruffleLanguage.Provider.class, loader);
+    private static Stream<? extends ProviderAdapter> loadDeprecatedProviders(ClassLoader loader) {
+        return StreamSupport.stream(ServiceLoader.load(TruffleLanguage.Provider.class, loader).spliterator(), false).map(DeprecatedProvider::new);
+    }
+
+    private static Stream<? extends ProviderAdapter> loadProviders(ClassLoader loader) {
+        return StreamSupport.stream(ServiceLoader.load(TruffleLanguageProvider.class, loader).spliterator(), false).map(NewProvider::new);
     }
 
     private static boolean hasSameCodeSource(LanguageCache first, LanguageCache second) {
-        assert first.provider != null && second.provider != null : "Must not be called for host language cache";
-        return first.provider.getClass() == second.provider.getClass();
+        return first.providerAdapter.getProviderClass() == second.providerAdapter.getProviderClass();
     }
 
     private static boolean isValidLoader(ClassLoader loader) {
@@ -289,21 +288,17 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    private static void loadLanguageImpl(TruffleLanguageProvider provider, ClassLoader loader, List<LanguageCache> into) {
-        Class<? extends TruffleLanguageProvider> providerClass = provider.getClass();
+    private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into) {
+        Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
-        if (providerModule.isNamed()) {
-            ModuleUtils.exportTo(null, providerModule);
-        } else {
-            ModuleUtils.exportTo(loader, null);
-        }
+        ModuleUtils.exportTransitivelyTo(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
             PrintStream out = System.err;
             out.println("Provider " + providerClass + " is missing @Registration annotation.");
             return;
         }
-        String className = provider.getLanguageClassName();
+        String className = providerAdapter.getLanguageClassName();
         String name = reg.name();
         String id = reg.id();
         if (id == null || id.isEmpty()) {
@@ -348,13 +343,13 @@ final class LanguageCache implements Comparable<LanguageCache> {
         boolean internal = reg.internal();
         boolean needsAllEncodings = reg.needsAllEncodings();
         Set<String> servicesClassNames = new TreeSet<>();
-        for (String service : provider.getServicesClassNames()) {
+        for (String service : providerAdapter.getServicesClassNames()) {
             servicesClassNames.add(service);
         }
         SandboxPolicy sandboxPolicy = reg.sandbox();
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
-                        servicesClassNames, reg.contextPolicy(), provider, reg.website(), sandboxPolicy));
+                        servicesClassNames, reg.contextPolicy(), providerAdapter, reg.website(), sandboxPolicy));
     }
 
     private static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
@@ -394,7 +389,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         StringBuilder sb = new StringBuilder();
         sb.append("Language class ").append(languageCache.getClassName());
 
-        CodeSource source = languageCache.provider != null ? languageCache.provider.getClass().getProtectionDomain().getCodeSource() : null;
+        CodeSource source = languageCache.providerAdapter.getProviderClass().getProtectionDomain().getCodeSource();
         URL url = source != null ? source.getLocation() : null;
         if (url != null) {
             sb.append(", Loaded from " + url);
@@ -575,14 +570,14 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     TruffleLanguage<?> loadLanguage() {
-        return (TruffleLanguage<?>) provider.create();
+        return providerAdapter.create();
     }
 
     @SuppressWarnings("unchecked")
     Set<? extends Class<? extends Tag>> getProvidedTags() {
         Set<Class<? extends Tag>> res = providedTags;
         if (res == null) {
-            ProvidedTags tags = provider.getClass().getAnnotation(ProvidedTags.class);
+            ProvidedTags tags = providerAdapter.getProviderClass().getAnnotation(ProvidedTags.class);
             if (tags == null) {
                 res = Collections.emptySet();
             } else {
@@ -611,7 +606,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     List<? extends FileTypeDetector> getFileTypeDetectors() {
         List<FileTypeDetector> result = fileTypeDetectors;
         if (result == null) {
-            result = (List<FileTypeDetector>) provider.createFileTypeDetectors();
+            result = providerAdapter.createFileTypeDetectors();
             fileTypeDetectors = result;
         }
         return result;
@@ -630,7 +625,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return sandboxPolicy;
     }
 
-    private static final class HostLanguageProvider implements TruffleLanguage.Provider {
+    private static final class HostLanguageProvider extends TruffleLanguageProvider {
 
         private final TruffleLanguage<?> languageInstance;
         private final Set<String> servicesClassNames;
@@ -653,18 +648,100 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        public TruffleLanguage<?> create() {
+        public Object create() {
             return languageInstance;
         }
 
         @Override
-        public List<FileTypeDetector> createFileTypeDetectors() {
+        public List<Object> createFileTypeDetectors() {
             return Collections.emptyList();
         }
 
         @Override
         public Set<String> getServicesClassNames() {
             return servicesClassNames;
+        }
+    }
+
+    private interface ProviderAdapter {
+        Class<?> getProviderClass();
+
+        TruffleLanguage<?> create();
+
+        List<FileTypeDetector> createFileTypeDetectors();
+
+        String getLanguageClassName();
+
+        Collection<String> getServicesClassNames();
+    }
+
+    @SuppressWarnings("deprecation")
+    private static final class DeprecatedProvider implements ProviderAdapter {
+
+        private final TruffleLanguage.Provider provider;
+
+        DeprecatedProvider(TruffleLanguage.Provider provider) {
+            Objects.requireNonNull(provider, "Provider must be non null");
+            this.provider = provider;
+        }
+
+        @Override
+        public Class<?> getProviderClass() {
+            return provider.getClass();
+        }
+
+        @Override
+        public TruffleLanguage<?> create() {
+            return provider.create();
+        }
+
+        @Override
+        public List<FileTypeDetector> createFileTypeDetectors() {
+            return provider.createFileTypeDetectors();
+        }
+
+        @Override
+        public String getLanguageClassName() {
+            return provider.getLanguageClassName();
+        }
+
+        public Collection<String> getServicesClassNames() {
+            return provider.getServicesClassNames();
+        }
+    }
+
+    private static final class NewProvider implements ProviderAdapter {
+
+        private final TruffleLanguageProvider provider;
+
+        NewProvider(TruffleLanguageProvider provider) {
+            Objects.requireNonNull(provider, "Provider must be non null");
+            this.provider = provider;
+        }
+
+        @Override
+        public Class<?> getProviderClass() {
+            return provider.getClass();
+        }
+
+        @Override
+        public TruffleLanguage<?> create() {
+            return (TruffleLanguage<?>) EngineAccessor.LANGUAGE_PROVIDER.create(provider);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public List<FileTypeDetector> createFileTypeDetectors() {
+            return (List<FileTypeDetector>) EngineAccessor.LANGUAGE_PROVIDER.createFileTypeDetectors(provider);
+        }
+
+        @Override
+        public String getLanguageClassName() {
+            return EngineAccessor.LANGUAGE_PROVIDER.getLanguageClassName(provider);
+        }
+
+        public Collection<String> getServicesClassNames() {
+            return EngineAccessor.LANGUAGE_PROVIDER.getServicesClassNames(provider);
         }
     }
 }

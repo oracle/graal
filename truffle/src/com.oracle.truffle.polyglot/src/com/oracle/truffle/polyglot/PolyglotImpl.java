@@ -396,16 +396,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             ClassLoader loader = supplier.get();
             if (loader != null) {
                 try {
-                    Class<?> c = loader.loadClass(className);
-                    if (!TruffleOptions.AOT) {
-                        /*
-                         * In JDK 9+, the Truffle API packages must be dynamically exported to a
-                         * Truffle API client since the Truffle API module descriptor only exports
-                         * these packages to modules known at build time (such as the Graal module).
-                         */
-                        ModuleUtils.exportTo(loader, null);
-                    }
-                    return c;
+                    Class<?> clazz = loader.loadClass(className);
+                    Module clazzModule = clazz.getModule();
+                    ModuleUtils.exportTransitivelyTo(clazzModule);
+                    return clazz;
                 } catch (ClassNotFoundException e) {
                 }
             }

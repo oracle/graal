@@ -55,7 +55,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.providers.TruffleLanguageProvider;
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;

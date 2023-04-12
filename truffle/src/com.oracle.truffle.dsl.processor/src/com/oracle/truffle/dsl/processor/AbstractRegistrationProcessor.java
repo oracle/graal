@@ -186,11 +186,10 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         };
         TypeElement providerElement = context.getTypeElement(getProviderClass());
         CodeTypeElement providerClass = GeneratorUtils.createClass(model, null, EnumSet.of(Modifier.PUBLIC),
-                        createProviderSimpleName(annotatedElement), null);
+                        createProviderSimpleName(annotatedElement), providerElement.asType());
         providerClass.getModifiers().add(Modifier.FINAL);
-        providerClass.getImplements().add(providerElement.asType());
-        for (Element method : ElementFilter.methodsIn(providerElement.getEnclosedElements())) {
-            CodeExecutableElement implementedMethod = CodeExecutableElement.clone((ExecutableElement) method);
+        for (ExecutableElement method : ElementFilter.methodsIn(providerElement.getEnclosedElements())) {
+            CodeExecutableElement implementedMethod = CodeExecutableElement.clone(method);
             implementedMethod.getModifiers().remove(Modifier.ABSTRACT);
             implementMethod(annotatedElement, implementedMethod);
             providerClass.add(implementedMethod);

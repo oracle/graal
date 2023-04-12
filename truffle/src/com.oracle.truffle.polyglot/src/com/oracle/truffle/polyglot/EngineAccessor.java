@@ -148,6 +148,8 @@ final class EngineAccessor extends Accessor {
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final HostSupport HOST = ACCESSOR.hostSupport();
+    static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
+    static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (ImageInfo.inImageRuntimeCode()) {
@@ -293,7 +295,9 @@ final class EngineAccessor extends Accessor {
             Map<Class<?>, T> found = new LinkedHashMap<>();
             // Library providers exported by Truffle are not on the GuestLangToolsLoader path.
             if (type.getClassLoader() == Truffle.class.getClassLoader()) {
-                for (T service : ServiceLoader.load(type, type.getClassLoader())) {
+                ClassLoader loader = type.getClassLoader();
+                for (T service : ServiceLoader.load(type, loader)) {
+                    ModuleUtils.exportToUnnamedModuleOf(loader);
                     found.putIfAbsent(service.getClass(), service);
                 }
             }
@@ -301,7 +305,7 @@ final class EngineAccessor extends Accessor {
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (seesTheSameClass(loader, type)) {
-                    ModuleUtils.exportTo(loader, null);
+                    ModuleUtils.exportToUnnamedModuleOf(loader);
                     for (T service : ServiceLoader.load(type, loader)) {
                         found.putIfAbsent(service.getClass(), service);
                     }

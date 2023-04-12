@@ -40,25 +40,51 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.module.ModuleDescriptor;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.api.Truffle;
 
 final class ModuleUtils {
 
-    static void exportTo(ClassLoader loader, Module module) {
-        assert (loader == null) != (module == null) : "exactly one of a class loader or module name is required when exporting Truffle";
-        Module truffleModule = Truffle.class.getModule();
-        Module clientModule;
-        if (module != null) {
-            clientModule = module;
-        } else {
-            clientModule = loader.getUnnamedModule();
-        }
-        exportFromTo(truffleModule, clientModule);
+    static void exportTo(Module module) {
+        exportFromTo(module);
     }
 
-    private static void exportFromTo(Module truffleModule, Module clientModule) {
+    static void exportToUnnamedModuleOf(ClassLoader loader) {
+        exportFromTo(loader.getUnnamedModule());
+    }
+
+    static void exportTransitivelyTo(Module module) {
+        ModuleLayer layer = module.getLayer();
+        ClassLoader platformClassLoader = ClassLoader.getPlatformClassLoader();
+        Set<Module> targetModules = new HashSet<>();
+        Deque<Module> todo = new ArrayDeque<>();
+        todo.add(module);
+        while (!todo.isEmpty()) {
+            Module m = todo.removeFirst();
+            if (Objects.equals(m.getLayer(), layer)) {
+                ClassLoader classLoader = m.getClassLoader();
+                if (classLoader != null && !classLoader.equals(platformClassLoader)) {
+                    targetModules.add(m);
+                    ModuleDescriptor descriptor = m.getDescriptor();
+                    if (descriptor != null && !descriptor.isAutomatic()) {
+                        descriptor.requires().stream().//
+                                        map((d) -> layer.findModule(d.name()).get()).//
+                                        forEach(todo::add);
+                    }
+                }
+            }
+        }
+        targetModules.forEach(ModuleUtils::exportTo);
+    }
+
+    private static void exportFromTo(Module clientModule) {
+        Module truffleModule = Truffle.class.getModule();
         if (truffleModule != clientModule) {
             Set<String> packages = truffleModule.getPackages();
             for (String pkg : packages) {
