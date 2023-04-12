@@ -37,6 +37,8 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.ReportPolymorphism.Megamorphic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -293,6 +295,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     @GenerateUncached
     @NodeInfo(shortName = "Dynamic toEspresso node")
+    @ReportPolymorphism
     public abstract static class Dynamic extends EspressoNode {
         protected static final int LIMIT = 8;
 
@@ -313,6 +316,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             return toEspressoNode.execute(value);
         }
 
+        @Megamorphic
         @Specialization(replaces = "doCached")
         public StaticObject doGeneric(Object value, Klass targetType) throws UnsupportedTypeException {
             InteropLibrary interop = InteropLibrary.getUncached();
