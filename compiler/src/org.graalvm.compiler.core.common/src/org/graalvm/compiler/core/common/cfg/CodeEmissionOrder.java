@@ -43,5 +43,5 @@ public interface CodeEmissionOrder<T extends BasicBlock<T>> {
      *
      * @return sorted list of blocks
      */
-    char[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime);
+    int[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime);
 }

@@ -54,14 +54,14 @@ public final class LinearScanOrder {
      * @return sorted list of block ids pointing into the reverse post order array of
      *         {@link AbstractControlFlowGraph}
      */
-    public static <T extends BasicBlock<T>> char[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
+    public static <T extends BasicBlock<T>> int[] computeLinearScanOrder(int originalBlockCount, T startBlock) {
         BlockList<T> order = new BlockList<>(originalBlockCount);
         BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = BasicBlockOrderUtils.initializeWorklist(startBlock, visitedBlocks);
         computeLinearScanOrder(order, worklist, visitedBlocks);
         BasicBlockOrderUtils.checkOrder(order, originalBlockCount);
         BasicBlockOrderUtils.checkStartBlock(order, startBlock);
-        char[] orderIndices = new char[order.size()];
+        int[] orderIndices = new int[order.size()];
         for (int i = 0; i < order.size(); i++) {
             orderIndices[i] = order.getOrder().get(i).getId();
         }
