@@ -62,11 +62,14 @@ import java.io.IOError;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -370,7 +373,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.returnNull();
         b.end();
 
-        b.statement("int i = 0;");
+        b.statement("int i = 0");
 
         b.startWhile().string("i < sourceInfo.length && (sourceInfo[i] & 0xffff) <= bci").end().startBlock();
         b.statement("i += 3");
@@ -1196,19 +1199,26 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTypeElement operationStackEntry = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "OperationStackEntry");
         CodeTypeElement finallyTryContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyTryContext");
 
-        // this is per-function state that needs to be stored/restored when going into/out of
-        // functions
-        List<CodeVariableElement> builderState = new ArrayList<>(List.of(
+        // When we enter a FinallyTry, these fields get stored on the FinallyTryContext.
+        // On exit, they are restored.
+        List<CodeVariableElement> builderContextSensitiveState = new ArrayList<>(List.of(
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "curStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "exHandlers"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "exHandlerCount"),
+                        new CodeVariableElement(Set.of(PRIVATE), generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels")));
+
+        // This state is shared across all contexts for a given root node. It does not get
+        // saved/restored when entering/leaving a FinallyTry.
+        List<CodeVariableElement> builderContextInsensitiveState = new ArrayList<>(List.of(
                         new CodeVariableElement(Set.of(PRIVATE), new ArrayCodeTypeMirror(operationStackEntry.asType()), "operationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStack"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "curStack"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "exHandlers"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "exHandlerCount"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "stackValueBciStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "stackValueBciSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceIndexStack"),
@@ -1216,24 +1226,22 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceLocationSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "opSeqNum"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
                         new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLabels"),
-                        new CodeVariableElement(Set.of(PRIVATE), generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"),
-
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState")));
 
         {
             if (model.enableTracing) {
-                builderState.add(0, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary"));
+                builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary"));
             }
 
             if (model.enableYield) {
-                builderState.add(0, new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numYields"));
+                builderContextInsensitiveState.add(builderContextInsensitiveState.size() - 1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numYields"));
             }
         }
+
+        List<CodeVariableElement> builderState = Stream.of(builderContextSensitiveState, builderContextInsensitiveState).flatMap(Collection::stream).collect(Collectors.toList());
 
         class SavedStateFactory {
             private CodeTypeElement create() {
@@ -1279,23 +1287,11 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         class FinallyTryContextFactory {
             private CodeTypeElement create() {
+                finallyTryContext.addAll(builderContextSensitiveState);
                 finallyTryContext.addAll(List.of(
-                                new CodeVariableElement(context.getType(short[].class), "bc"),
-                                new CodeVariableElement(context.getType(int.class), "bci"),
-                                new CodeVariableElement(context.getType(Object[].class), "objs"),
-                                new CodeVariableElement(context.getType(int.class), "curStack"),
-                                new CodeVariableElement(context.getType(int.class), "maxStack"),
-                                new CodeVariableElement(context.getType(int[].class), "sourceInfo"),
-                                new CodeVariableElement(context.getType(int.class), "sourceInfoIndex"),
-                                new CodeVariableElement(context.getType(int[].class), "exHandlers"),
-                                new CodeVariableElement(context.getType(int.class), "exHandlerCount"),
-                                new CodeVariableElement(generic(HashMap.class, types.OperationLabel, context.getType(int[].class)), "unresolvedLabels"),
                                 new CodeVariableElement(context.getType(int.class), "finallyTrySequenceNumber"),
                                 new CodeVariableElement(generic(HashSet.class, context.getDeclaredType(Integer.class)), "finallyRelativeBranches"),
                                 new CodeVariableElement(finallyTryContext.asType(), "parentContext")));
-                if (model.enableTracing) {
-                    finallyTryContext.add(new CodeVariableElement(context.getType(boolean[].class), "basicBlockBoundary"));
-                }
 
                 finallyTryContext.add(createConstructorUsingFields(Set.of(), finallyTryContext, null));
 
@@ -1872,22 +1868,13 @@ public class OperationsNodeFactory implements ElementHelpers {
                 /*
                  * We initialize the fields declared on builderState here when beginRoot is called.
                  */
-                b.statement("bc = new short[32]");
-                b.statement("bci = 0");
-                b.statement("objs = new Object[32]");
-                if (model.enableTracing) {
-                    b.statement("basicBlockBoundary = new boolean[33]");
-                }
+
+                buildContextSensitiveFieldInitializer(b);
                 b.statement("operationStack = new OperationStackEntry[8]");
                 b.statement("opSeqNum = 0");
                 b.statement("operationSp = 0");
                 b.statement("numLocals = 0");
-                b.statement("curStack = 0");
-                b.statement("maxStack = 0");
-                b.statement("exHandlers = new int[10]");
-                b.statement("exHandlerCount = 0");
                 b.statement("numLabels = 0");
-                b.statement("unresolvedLabels = new HashMap<>()");
 
                 if (model.hasBoxingElimination()) {
                     b.statement("stackValueBciStack = new int[8]");
@@ -1899,8 +1886,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.statement("sourceIndexSp = 0");
                 b.statement("sourceLocationStack = new int[12]");
                 b.statement("sourceLocationSp = 0");
-                b.statement("sourceInfo = new int[15]");
-                b.statement("sourceInfoIndex = 0");
                 b.end();
             } else {
                 b.startStatement().startCall("beforeChild").end(2);
@@ -1957,44 +1942,20 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case FINALLY_TRY:
                 case FINALLY_TRY_NO_EXCEPT:
                     b.startAssign("finallyTryContext").startNew(finallyTryContext.asType());
-                    if (model.enableTracing) {
-                        b.string("basicBlockBoundary");
+                    for (CodeVariableElement field : builderContextSensitiveState) {
+                        b.string(field.getName());
                     }
-                    b.string("bc");
-                    b.string("bci");
-                    b.string("objs");
-                    b.string("curStack");
-                    b.string("maxStack");
-                    b.string("sourceInfo");
-                    b.string("sourceInfoIndex");
-                    b.string("exHandlers");
-                    b.string("exHandlerCount");
-                    b.string("unresolvedLabels");
                     b.string("opSeqNum - 1");
                     b.string("new HashSet<>()");
                     b.string("finallyTryContext");
                     b.end(2);
                     b.statement("operationStack[operationSp - 1].data = finallyTryContext");
 
-                    b.statement("bc = new short[16]");
-                    b.statement("bci = 0");
-                    b.statement("objs = new Object[16]");
-                    b.statement("curStack = 0");
-                    b.statement("maxStack = 0");
+                    buildContextSensitiveFieldInitializer(b);
+
                     if (model.enableTracing) {
-                        b.statement("basicBlockBoundary = new boolean[17]");
                         b.statement("basicBlockBoundary[0] = true");
                     }
-
-                    b.startIf().string("withSource").end().startBlock();
-                    b.statement("sourceInfo = new int[15]");
-                    b.statement("sourceInfoIndex = 0");
-                    b.end();
-
-                    b.statement("exHandlers = new int[10]");
-                    b.statement("exHandlerCount = 0");
-                    b.statement("unresolvedLabels = new HashMap<>()");
-
                     break;
             }
 
@@ -2391,7 +2352,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("bci");
                     b.end(3);
                     b.newLine();
-                    b.lineComment("We need to track branches targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
+                    b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
                     b.startIf().string("lbl.finallyTryOp != " + UNINIT).end().startBlock();
                     // An earlier step has validated that the label is defined by an operation on
                     // the stack. We should be able to find the defining FinallyTry context without
@@ -2756,19 +2717,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.string("unresolvedLabelsByIndex");
                         b.end(2);
 
-                        b.statement("bc = finallyTryContext.bc");
-                        b.statement("bci = finallyTryContext.bci");
-                        b.statement("objs = finallyTryContext.objs");
-                        b.statement("curStack = finallyTryContext.curStack");
-                        b.statement("maxStack = finallyTryContext.maxStack");
-                        if (model.enableTracing) {
-                            b.statement("basicBlockBoundary = finallyTryContext.basicBlockBoundary");
+                        for (CodeVariableElement field : builderContextSensitiveState) {
+                            b.startAssign(field.getName()).field("finallyTryContext", field).end();
                         }
-                        b.statement("sourceInfo = finallyTryContext.sourceInfo");
-                        b.statement("sourceInfoIndex = finallyTryContext.sourceInfoIndex");
-                        b.statement("exHandlers = finallyTryContext.exHandlers");
-                        b.statement("exHandlerCount = finallyTryContext.exHandlerCount");
-                        b.statement("unresolvedLabels = finallyTryContext.unresolvedLabels");
                         b.statement("finallyTryContext = finallyTryContext.parentContext");
 
                         b.end();
@@ -2862,11 +2813,11 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                         // Adjust relative branch targets.
                         b.startIf().string("context.finallyRelativeBranches.contains(idx)").end().startBlock();
+                        b.statement("objs[offsetBci + idx] = branchTarget + offsetBci /* relocated */");
                         b.startIf().string("inFinallyTryHandler(context.parentContext)").end().startBlock();
                         b.lineComment("If we're currently nested inside some other finally handler, the branch will also need to be relocated in that handler.");
                         b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + idx)");
                         b.end();
-                        b.statement("objs[offsetBci + idx] = branchTarget + offsetBci /* relocated  */");
                         b.end().startElseBlock();
                         b.statement("objs[offsetBci + idx] = branchTarget");
                         b.end();
@@ -3311,6 +3262,24 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("this.builtNodes = new ArrayList<>()");
 
             return ctor;
+        }
+
+        private void buildContextSensitiveFieldInitializer(CodeTreeBuilder b) {
+            b.statement("bc = new short[32]");
+            b.statement("bci = 0");
+            b.statement("objs = new Object[32]");
+            b.statement("curStack = 0");
+            b.statement("maxStack = 0");
+            b.startIf().string("withSource").end().startBlock();
+            b.statement("sourceInfo = new int[15]");
+            b.statement("sourceInfoIndex = 0");
+            b.end();
+            b.statement("exHandlers = new int[10]");
+            b.statement("exHandlerCount = 0");
+            b.statement("unresolvedLabels = new HashMap<>()");
+            if (model.enableTracing) {
+                b.statement("basicBlockBoundary = new boolean[33]");
+            }
         }
     }
 
