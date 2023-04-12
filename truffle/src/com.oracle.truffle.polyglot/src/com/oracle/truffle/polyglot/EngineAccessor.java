@@ -296,14 +296,19 @@ final class EngineAccessor extends Accessor {
             // Library providers exported by Truffle are not on the GuestLangToolsLoader path.
             if (type.getClassLoader() == Truffle.class.getClassLoader()) {
                 ClassLoader loader = type.getClassLoader();
+                ModuleUtils.exportToUnnamedModuleOf(loader);
                 for (T service : ServiceLoader.load(type, loader)) {
-                    ModuleUtils.exportToUnnamedModuleOf(loader);
                     found.putIfAbsent(service.getClass(), service);
                 }
             }
             // Search guest languages and tools.
+            // 1) Use TruffleLanguageProvider lookup
+            LanguageCache.loadService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            // 2) Use TruffleInstrumentProvider lookup
+            InstrumentCache.loadService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
+                // 3) Use ServiceLoader lookup for open Truffle or for Truffle in unnamed module.
                 if (seesTheSameClass(loader, type)) {
                     ModuleUtils.exportToUnnamedModuleOf(loader);
                     for (T service : ServiceLoader.load(type, loader)) {

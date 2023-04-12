@@ -43,6 +43,7 @@ package com.oracle.truffle.api.instrumentation.provider;
 import com.oracle.truffle.api.impl.Accessor;
 
 import java.util.Collection;
+import java.util.stream.Stream;
 
 final class InstrumentProviderSupportImpl extends Accessor.InstrumentProviderSupport {
 
@@ -59,5 +60,10 @@ final class InstrumentProviderSupportImpl extends Accessor.InstrumentProviderSup
     @Override
     public Collection<String> getServicesClassNames(Object truffleInstrumentProvider) {
         return ((TruffleInstrumentProvider) truffleInstrumentProvider).getServicesClassNames();
+    }
+
+    @Override
+    public <T> Stream<T> loadService(Object truffleInstrumentProvider, Class<T> type) {
+        return ((TruffleInstrumentProvider) truffleInstrumentProvider).loadService(type);
     }
 }

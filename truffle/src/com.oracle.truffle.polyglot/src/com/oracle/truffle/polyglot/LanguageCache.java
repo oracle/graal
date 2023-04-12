@@ -219,6 +219,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
     }
 
+    static <T> Stream<T> loadService(Class<T> type) {
+        return languages().values().stream().flatMap((c) -> c.providerAdapter.loadService(type));
+    }
+
     static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
         if (TruffleOptions.AOT) {
             return nativeImageCache;
@@ -661,6 +665,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         public Set<String> getServicesClassNames() {
             return servicesClassNames;
         }
+
+        @Override
+        protected <T> Stream<T> loadService(Class<T> type) {
+            return Stream.empty();
+        }
     }
 
     private interface ProviderAdapter {
@@ -673,6 +682,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         String getLanguageClassName();
 
         Collection<String> getServicesClassNames();
+
+        <T> Stream<T> loadService(Class<T> type);
     }
 
     @SuppressWarnings("deprecation")
@@ -708,6 +719,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         public Collection<String> getServicesClassNames() {
             return provider.getServicesClassNames();
         }
+
+        @Override
+        public <T> Stream<T> loadService(Class<T> type) {
+            return Stream.empty();
+        }
     }
 
     private static final class NewProvider implements ProviderAdapter {
@@ -742,6 +758,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
         public Collection<String> getServicesClassNames() {
             return EngineAccessor.LANGUAGE_PROVIDER.getServicesClassNames(provider);
+        }
+
+        @Override
+        public <T> Stream<T> loadService(Class<T> type) {
+            return EngineAccessor.LANGUAGE_PROVIDER.loadService(provider, type);
         }
     }
 }

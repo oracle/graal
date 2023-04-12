@@ -46,12 +46,12 @@ import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 
 public class InstrumentRegistrationTest {
 
-    @ExpectError("Registered instrument class must be at least package protected")
+    @ExpectError("Registered instrument class must be at least package protected.")
     @Registration(id = "NonPublicInstrument")
     private static final class PrivateInstrument extends ProxyInstrument {
     }
 
-    @ExpectError("Registered instrument class must subclass TruffleInstrument")
+    @ExpectError("Registered instrument class must subclass TruffleInstrument.")
     @Registration(id = "WrongSuperClassInstrument")
     public static final class WrongSuperClassInstrument {
     }
@@ -63,6 +63,128 @@ public class InstrumentRegistrationTest {
     @Registration(id = "MyInstrumentGoodWithServices", name = "MyInstrumentGoodWithServices", services = Service1.class)
     public static final class MyInstrumentGoodWithServices extends ProxyInstrument {
 
+    }
+
+    @ExpectError("Registered defaultExportProviders must be subclass of com.oracle.truffle.api.library.DefaultExportProvider. " +
+                    "To resolve this, implement DefaultExportProvider.")
+    @Registration(id = "tooldefaultexportprovider1", name = "tooldefaultexportprovider1", defaultExportProviders = DefaultExportProviderRegistration1.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration1 extends ProxyInstrument {
+        public static class DefaultExportProviderImpl {
+        }
+    }
+
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.DefaultExportProviderRegistration2.DefaultExportProviderImpl " +
+                    "must be a static inner-class or a top-level class. To resolve this, make the DefaultExportProviderImpl static or top-level class.")
+    @Registration(id = "tooldefaultexportprovider2", name = "tooldefaultexportprovider2", defaultExportProviders = DefaultExportProviderRegistration2.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration2 extends ProxyInstrument {
+        abstract class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
+        }
+    }
+
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.DefaultExportProviderRegistration3.DefaultExportProviderImpl " +
+                    "must have a no argument constructor. To resolve this, add a DefaultExportProviderImpl() constructor.")
+    @Registration(id = "tooldefaultexportprovider3", name = "tooldefaultexportprovider3", defaultExportProviders = DefaultExportProviderRegistration3.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration3 extends ProxyInstrument {
+        abstract static class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl(long unused) {
+            }
+        }
+    }
+
+    @Registration(id = "tooldefaultexportprovider4", name = "tooldefaultexportprovider4", defaultExportProviders = DefaultExportProviderRegistration4.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration4 extends ProxyInstrument {
+        static class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl(long unused) {
+            }
+
+            DefaultExportProviderImpl() {
+            }
+        }
+    }
+
+    @Registration(id = "tooldefaultexportprovider5", name = "tooldefaultexportprovider5", defaultExportProviders = {
+                    DefaultExportProviderRegistration5.DefaultExportProviderImpl1.class,
+                    DefaultExportProviderRegistration5.DefaultExportProviderImpl2.class
+    })
+    public static class DefaultExportProviderRegistration5 extends ProxyInstrument {
+        static class DefaultExportProviderImpl1 extends LanguageRegistrationTest.ProxyDefaultExportProvider {
+        }
+
+        static class DefaultExportProviderImpl2 extends LanguageRegistrationTest.ProxyDefaultExportProvider {
+        }
+    }
+
+    @ExpectError("Registered eagerExportProviders must be subclass of com.oracle.truffle.api.library.EagerExportProvider. " +
+                    "To resolve this, implement EagerExportProvider.")
+    @Registration(id = "tooleagerexportprovider1", name = "tooleagerexportprovider1", eagerExportProviders = EagerExportProviderRegistration1.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration1 extends ProxyInstrument {
+        public static class EagerExportProviderImpl {
+        }
+    }
+
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.EagerExportProviderRegistration2.EagerExportProviderImpl" +
+                    " must be a static inner-class or a top-level class. To resolve this, make the EagerExportProviderImpl static or top-level class.")
+    @Registration(id = "tooleagerexportprovider2", name = "tooleagerexportprovider2", eagerExportProviders = EagerExportProviderRegistration2.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration2 extends ProxyInstrument {
+        abstract class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        }
+    }
+
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.EagerExportProviderRegistration3.EagerExportProviderImpl" +
+                    " must have a no argument constructor. To resolve this, add a EagerExportProviderImpl() constructor.")
+    @Registration(id = "tooleagerexportprovider3", name = "tooleagerexportprovider3", eagerExportProviders = EagerExportProviderRegistration3.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration3 extends ProxyInstrument {
+        abstract static class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl(long unused) {
+            }
+        }
+    }
+
+    @Registration(id = "tooleagerexportprovider4", name = "tooleagerexportprovider4", eagerExportProviders = EagerExportProviderRegistration4.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration4 extends ProxyInstrument {
+        static class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl(long unused) {
+            }
+
+            EagerExportProviderImpl() {
+            }
+        }
+    }
+
+    @Registration(id = "tooleagerexportprovider5", name = "tooleagerexportprovider5", eagerExportProviders = {
+                    EagerExportProviderRegistration5.EagerExportProviderImpl1.class,
+                    EagerExportProviderRegistration5.EagerExportProviderImpl2.class
+    })
+    public static class EagerExportProviderRegistration5 extends ProxyInstrument {
+        static class EagerExportProviderImpl1 extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        }
+
+        static class EagerExportProviderImpl2 extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        }
     }
 
     interface Service1 {

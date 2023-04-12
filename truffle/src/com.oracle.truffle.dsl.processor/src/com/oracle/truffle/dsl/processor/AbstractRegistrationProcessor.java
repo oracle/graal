@@ -43,15 +43,19 @@ package com.oracle.truffle.dsl.processor;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.ServiceConfigurationError;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
@@ -67,8 +71,10 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
@@ -79,7 +85,9 @@ import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.compiler.JDTCompiler;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -231,6 +239,74 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         }
     }
 
+    static void generateGetServicesClassNames(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
+        if (services.isEmpty()) {
+            builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
+        } else {
+            builder.startReturn();
+            builder.startStaticCall(context.getType(Arrays.class), "asList");
+            for (TypeMirror service : services) {
+                Elements elements = context.getEnvironment().getElementUtils();
+                Types types = context.getEnvironment().getTypeUtils();
+                builder.startGroup().doubleQuote(elements.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement()).toString()).end();
+            }
+            builder.end(2);
+        }
+    }
+
+    static void generateLoadService(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
+        List<TypeMirror> defaultExportProviders = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "defaultExportProviders");
+        List<TypeMirror> eagerExportProviders = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "eagerExportProviders");
+        DeclaredType stream = context.getDeclaredType(Stream.class);
+        if (defaultExportProviders.isEmpty() && eagerExportProviders.isEmpty()) {
+            builder.startReturn().startStaticCall(stream, "empty").end(2);
+        } else {
+            TypeMirror strStream = new DeclaredCodeTypeMirror((TypeElement) stream.asElement(), List.of(context.getDeclaredType(String.class)));
+            builder.declaration(strStream, "implFqns", (String) null);
+            String paramName = builder.findMethod().getParameters().get(0).getSimpleName().toString();
+            CodeTreeBuilder getClass = builder.create().startCall(paramName, "getClass").end();
+            CodeTreeBuilder getClassName = builder.create().startCall(getClass.build(), "getName").end();
+            builder.startSwitch().tree(getClassName.build()).end().startBlock();
+            if (!defaultExportProviders.isEmpty()) {
+                builder.startCase().doubleQuote(binaryName(context.getTypes().DefaultExportProvider, context)).end().startCaseBlock();
+                builder.startStatement().string("implFqns", " = ").startStaticCall(stream, "of");
+                for (TypeMirror impl : defaultExportProviders) {
+                    builder.doubleQuote(binaryName((DeclaredType) impl, context));
+                }
+                builder.end(2);
+                builder.startStatement().string("break").end(2);
+            }
+            if (!eagerExportProviders.isEmpty()) {
+                builder.startCase().doubleQuote(binaryName(context.getTypes().EagerExportProvider, context)).end().startCaseBlock();
+                builder.startStatement().string("implFqns", " = ").startStaticCall(stream, "of");
+                for (TypeMirror impl : eagerExportProviders) {
+                    builder.doubleQuote(binaryName((DeclaredType) impl, context));
+                }
+                builder.end(2);
+                builder.startStatement().string("break").end(2);
+            }
+            builder.caseDefault().startCaseBlock();
+            builder.startStatement().string("implFqns", " = ").startStaticCall(stream, "empty");
+            builder.end(4);
+            builder.startReturn().startCall("implFqns", "map").startGroup().string("(fqn) -> ").startBlock();
+            builder.startTryBlock();
+            DeclaredType clz = context.getDeclaredType(Class.class);
+            builder.declaration(clz, "clazz", builder.create().startStaticCall(clz, "forName").string("fqn").end().build());
+            builder.declaration(context.getDeclaredType(Constructor.class), "constructor", builder.create().startCall("clazz", "getDeclaredConstructor").end().build());
+            builder.startStatement().startCall("constructor", "setAccessible").string("true").end(2);
+            builder.startReturn().startCall(paramName, "cast").startCall("constructor", "newInstance").end(3);
+            builder.end();
+            builder.startCatchBlock(context.getDeclaredType(ReflectiveOperationException.class), "e");
+            builder.startThrow().startNew(context.getDeclaredType(ServiceConfigurationError.class)).startGroup().doubleQuote("Failed to instantiate ").string(" + ", "fqn").end().string("e").end(2);
+            builder.end(5);
+        }
+    }
+
+    private static String binaryName(DeclaredType type, ProcessorContext context) {
+        return context.getEnvironment().getElementUtils().getBinaryName((TypeElement) type.asElement()).toString();
+    }
+
     /**
      * Determines if a given exception is (most likely) caused by
      * <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=367599">Bug 367599</a>.
@@ -274,6 +350,49 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 handleIOError(e, env, providerRegistrations.values().iterator().next());
             }
         }
+    }
+
+    boolean validateDefaultExportProviders(Element annotatedElement, AnnotationMirror mirror, ProcessorContext context) {
+        return validateLookupRegistration(annotatedElement, mirror, "defaultExportProviders", context.getTypes().DefaultExportProvider, context);
+    }
+
+    boolean validateEagerExportProviders(Element annotatedElement, AnnotationMirror mirror, ProcessorContext context) {
+        return validateLookupRegistration(annotatedElement, mirror, "eagerExportProviders", context.getTypes().EagerExportProvider, context);
+    }
+
+    private boolean validateLookupRegistration(Element annotatedElement, AnnotationMirror mirror, String attributeName,
+                    DeclaredType serviceType, ProcessorContext context) {
+        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, attributeName, true);
+        Types types = context.getEnvironment().getTypeUtils();
+        for (TypeMirror serviceImpl : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, attributeName)) {
+            if (!types.isSubtype(serviceImpl, serviceType)) {
+                TypeElement serviceTypeElement = ElementUtils.fromTypeMirror(serviceType);
+                emitError(String.format("Registered %s must be subclass of %s. To resolve this, implement %s.",
+                                attributeName, serviceTypeElement.getQualifiedName(), serviceTypeElement.getSimpleName()),
+                                annotatedElement, mirror, value);
+                return false;
+            }
+            TypeElement serviceImplElement = ElementUtils.fromTypeMirror(serviceImpl);
+            if (serviceImplElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !serviceImplElement.getModifiers().contains(Modifier.STATIC)) {
+                emitError(String.format("The %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
+                                serviceImplElement.getQualifiedName(), serviceImplElement.getSimpleName()), annotatedElement, mirror, value);
+                return false;
+            }
+            boolean foundConstructor = false;
+            for (ExecutableElement constructor : ElementFilter.constructorsIn(serviceImplElement.getEnclosedElements())) {
+                if (!constructor.getParameters().isEmpty()) {
+                    continue;
+                }
+                foundConstructor = true;
+                break;
+            }
+            if (!foundConstructor) {
+                emitError(String.format("The %s must have a no argument constructor. To resolve this, add a %s() constructor.",
+                                serviceImplElement.getQualifiedName(), serviceImplElement.getSimpleName()), annotatedElement, mirror, value);
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void handleIOError(IOException e, ProcessingEnvironment env, Element element) {

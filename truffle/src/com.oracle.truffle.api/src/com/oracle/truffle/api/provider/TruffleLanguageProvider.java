@@ -45,6 +45,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import java.util.Collection;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.stream.Stream;
 
 /**
  * Used to register a {@link TruffleLanguage} using a {@link ServiceLoader}. This interface is not
@@ -87,4 +88,11 @@ public abstract class TruffleLanguageProvider {
      * @since 23.1
      */
     protected abstract Collection<String> getServicesClassNames();
+
+    /**
+     * Loads implementations of {@code type} service.
+     *
+     * @since 23.1
+     */
+    protected abstract <S> Stream<S> loadService(Class<S> type);
 }

@@ -67,6 +67,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
+import java.util.stream.Stream;
 
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import org.graalvm.collections.Pair;
@@ -1240,6 +1241,8 @@ public abstract class Accessor {
 
         public abstract Collection<String> getServicesClassNames(TruffleLanguageProvider provider);
 
+        public abstract <T> Stream<T> loadService(TruffleLanguageProvider provider, Class<T> type);
+
     }
 
     public abstract static class InstrumentProviderSupport extends Support {
@@ -1255,6 +1258,8 @@ public abstract class Accessor {
         public abstract Object create(Object truffleInstrumentProvider);
 
         public abstract Collection<String> getServicesClassNames(Object truffleInstrumentProvider);
+
+        public abstract <T> Stream<T> loadService(Object truffleInstrumentProvider, Class<T> type);
     }
 
     public final void transferOSRFrameStaticSlot(FrameWithoutBoxing sourceFrame, FrameWithoutBoxing targetFrame, int slot) {

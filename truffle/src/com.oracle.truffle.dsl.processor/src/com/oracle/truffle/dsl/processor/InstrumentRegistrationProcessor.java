@@ -40,22 +40,18 @@
  */
 package com.oracle.truffle.dsl.processor;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
-import java.util.function.Predicate;
+import java.util.Set;
 
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -64,17 +60,20 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 @SupportedAnnotationTypes(TruffleTypes.TruffleInstrument_Registration_Name)
 public final class InstrumentRegistrationProcessor extends AbstractRegistrationProcessor {
 
+    private static final Set<String> NOT_COPIED_ATTRS = Set.of("services", "defaultExportProviders", "eagerExportProviders");
+
     @Override
     boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror) {
         if (annotatedElement.getModifiers().contains(Modifier.PRIVATE)) {
-            emitError("Registered instrument class must be at least package protected", annotatedElement);
+            emitError("Registered instrument class must be at least package protected.", annotatedElement);
             return false;
         }
         if (annotatedElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !annotatedElement.getModifiers().contains(Modifier.STATIC)) {
-            emitError("Registered instrument inner-class must be static", annotatedElement);
+            emitError("Registered instrument inner-class must be static.", annotatedElement);
             return false;
         }
-        TruffleTypes types = ProcessorContext.getInstance().getTypes();
+        ProcessorContext context = ProcessorContext.getInstance();
+        TruffleTypes types = context.getTypes();
         TypeMirror truffleInstrument = types.TruffleInstrument;
         TypeMirror truffleInstrumentProvider = types.TruffleInstrumentProvider;
         boolean processingTruffleInstrument;
@@ -83,7 +82,14 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
         } else if (processingEnv.getTypeUtils().isAssignable(annotatedElement.asType(), truffleInstrumentProvider)) {
             processingTruffleInstrument = false;
         } else {
-            emitError("Registered instrument class must subclass TruffleInstrument", annotatedElement);
+            emitError("Registered instrument class must subclass TruffleInstrument.", annotatedElement);
+            return false;
+        }
+        if (!validateDefaultExportProviders(annotatedElement, registrationMirror, context)) {
+            return false;
+        }
+
+        if (!validateEagerExportProviders(annotatedElement, registrationMirror, context)) {
             return false;
         }
         assertNoErrorExpected(annotatedElement);
@@ -101,12 +107,7 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         DeclaredType registrationType = types.TruffleInstrument_Registration;
         AnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
-                        new Predicate<ExecutableElement>() {
-                            @Override
-                            public boolean test(ExecutableElement t) {
-                                return !"services".contentEquals(t.getSimpleName());
-                            }
-                        });
+                        (t) -> !NOT_COPIED_ATTRS.contains(t.getSimpleName().toString()));
         return Collections.singleton(registration);
     }
 
@@ -127,19 +128,14 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
                 ProcessorContext context = ProcessorContext.getInstance();
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 context.getTypes().TruffleInstrument_Registration);
-                List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
-                if (services.isEmpty()) {
-                    builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
-                } else {
-                    builder.startReturn();
-                    builder.startStaticCall(context.getType(Arrays.class), "asList");
-                    for (TypeMirror service : services) {
-                        Elements elements = context.getEnvironment().getElementUtils();
-                        Types types = context.getEnvironment().getTypeUtils();
-                        builder.startGroup().doubleQuote(elements.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement()).toString()).end();
-                    }
-                    builder.end(2);
-                }
+                generateGetServicesClassNames(registration, builder, context);
+                break;
+            }
+            case "loadService": {
+                ProcessorContext context = ProcessorContext.getInstance();
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                context.getTypes().TruffleInstrument_Registration);
+                generateLoadService(registration, builder, context);
                 break;
             }
             default:

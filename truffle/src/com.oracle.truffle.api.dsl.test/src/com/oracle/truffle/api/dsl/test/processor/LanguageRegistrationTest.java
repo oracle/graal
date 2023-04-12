@@ -49,6 +49,8 @@ import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.test.ExpectError;
+import com.oracle.truffle.api.library.DefaultExportProvider;
+import com.oracle.truffle.api.library.EagerExportProvider;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class LanguageRegistrationTest {
@@ -163,6 +165,128 @@ public class LanguageRegistrationTest {
         }
     }
 
+    @ExpectError("Registered defaultExportProviders must be subclass of com.oracle.truffle.api.library.DefaultExportProvider. " +
+                    "To resolve this, implement DefaultExportProvider.")
+    @Registration(id = "langdefaultexportprovider1", name = "langdefaultexportprovider1", defaultExportProviders = DefaultExportProviderRegistration1.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration1 extends ProxyLanguage {
+        public static class DefaultExportProviderImpl {
+        }
+    }
+
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.DefaultExportProviderRegistration2.DefaultExportProviderImpl " +
+                    "must be a static inner-class or a top-level class. To resolve this, make the DefaultExportProviderImpl static or top-level class.")
+    @Registration(id = "langdefaultexportprovider2", name = "langdefaultexportprovider2", defaultExportProviders = DefaultExportProviderRegistration2.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration2 extends ProxyLanguage {
+        abstract class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
+        }
+    }
+
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.DefaultExportProviderRegistration3.DefaultExportProviderImpl " +
+                    "must have a no argument constructor. To resolve this, add a DefaultExportProviderImpl() constructor.")
+    @Registration(id = "langdefaultexportprovider3", name = "langdefaultexportprovider3", defaultExportProviders = DefaultExportProviderRegistration3.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration3 extends ProxyLanguage {
+        abstract static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl(long unused) {
+            }
+        }
+    }
+
+    @Registration(id = "langdefaultexportprovider4", name = "langdefaultexportprovider4", defaultExportProviders = DefaultExportProviderRegistration4.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration4 extends ProxyLanguage {
+        static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl(long unused) {
+            }
+
+            DefaultExportProviderImpl() {
+            }
+        }
+    }
+
+    @Registration(id = "langdefaultexportprovider5", name = "langdefaultexportprovider5", defaultExportProviders = {
+                    DefaultExportProviderRegistration5.DefaultExportProviderImpl1.class,
+                    DefaultExportProviderRegistration5.DefaultExportProviderImpl2.class
+    })
+    public static class DefaultExportProviderRegistration5 extends ProxyLanguage {
+        static class DefaultExportProviderImpl1 extends ProxyDefaultExportProvider {
+        }
+
+        static class DefaultExportProviderImpl2 extends ProxyDefaultExportProvider {
+        }
+    }
+
+    @ExpectError("Registered eagerExportProviders must be subclass of com.oracle.truffle.api.library.EagerExportProvider. " +
+                    "To resolve this, implement EagerExportProvider.")
+    @Registration(id = "langeagerexportprovider1", name = "langeagerexportprovider1", eagerExportProviders = EagerExportProviderRegistration1.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration1 extends ProxyLanguage {
+        public static class EagerExportProviderImpl {
+        }
+    }
+
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.EagerExportProviderRegistration2.EagerExportProviderImpl " +
+                    "must be a static inner-class or a top-level class. To resolve this, make the EagerExportProviderImpl static or top-level class.")
+    @Registration(id = "langeagerexportprovider2", name = "langeagerexportprovider2", eagerExportProviders = EagerExportProviderRegistration2.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration2 extends ProxyLanguage {
+        abstract class EagerExportProviderImpl extends ProxyEagerExportProvider {
+        }
+    }
+
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.EagerExportProviderRegistration3.EagerExportProviderImpl " +
+                    "must have a no argument constructor. To resolve this, add a EagerExportProviderImpl() constructor.")
+    @Registration(id = "langeagerexportprovider3", name = "langeagerexportprovider3", eagerExportProviders = EagerExportProviderRegistration3.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration3 extends ProxyLanguage {
+        abstract static class EagerExportProviderImpl extends ProxyEagerExportProvider {
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl(long unused) {
+            }
+        }
+    }
+
+    @Registration(id = "langeagerexportprovider4", name = "langeagerexportprovider4", eagerExportProviders = EagerExportProviderRegistration4.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration4 extends ProxyLanguage {
+        static class EagerExportProviderImpl extends ProxyEagerExportProvider {
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl(long unused) {
+            }
+
+            EagerExportProviderImpl() {
+            }
+        }
+    }
+
+    @Registration(id = "langeagerexportprovider5", name = "langeagerexportprovider5", eagerExportProviders = {
+                    EagerExportProviderRegistration5.EagerExportProviderImpl1.class,
+                    EagerExportProviderRegistration5.EagerExportProviderImpl2.class
+    })
+    public static class EagerExportProviderRegistration5 extends ProxyLanguage {
+        static class EagerExportProviderImpl1 extends ProxyEagerExportProvider {
+        }
+
+        static class EagerExportProviderImpl2 extends ProxyEagerExportProvider {
+        }
+    }
+
     static class ProxyFileTypeDetector implements FileTypeDetector {
 
         @Override
@@ -174,6 +298,42 @@ public class LanguageRegistrationTest {
         @Override
         @SuppressWarnings("unused")
         public Charset findEncoding(TruffleFile file) throws IOException {
+            return null;
+        }
+    }
+
+    static class ProxyDefaultExportProvider implements DefaultExportProvider {
+
+        @Override
+        public String getLibraryClassName() {
+            return null;
+        }
+
+        @Override
+        public Class<?> getDefaultExport() {
+            return null;
+        }
+
+        @Override
+        public Class<?> getReceiverClass() {
+            return null;
+        }
+
+        @Override
+        public int getPriority() {
+            return 0;
+        }
+    }
+
+    static class ProxyEagerExportProvider implements EagerExportProvider {
+
+        @Override
+        public void ensureRegistered() {
+
+        }
+
+        @Override
+        public String getLibraryClassName() {
             return null;
         }
     }

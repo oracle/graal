@@ -150,6 +150,10 @@ final class InstrumentCache {
         }
     }
 
+    static <T> Stream<T> loadService(Class<T> type) {
+        return load().stream().flatMap((c) -> c.providerAdapter.loadService(type));
+    }
+
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
@@ -268,6 +272,8 @@ final class InstrumentCache {
         String getInstrumentClassName();
 
         Collection<String> getServicesClassNames();
+
+        <T> Stream<T> loadService(Class<T> type);
     }
 
     @SuppressWarnings("deprecation")
@@ -300,6 +306,10 @@ final class InstrumentCache {
             return provider.getServicesClassNames();
         }
 
+        @Override
+        public <T> Stream<T> loadService(Class<T> type) {
+            return Stream.empty();
+        }
     }
 
     private static final class NewProvider implements ProviderAdapter {
@@ -329,6 +339,11 @@ final class InstrumentCache {
         @Override
         public Collection<String> getServicesClassNames() {
             return EngineAccessor.INSTRUMENT_PROVIDER.getServicesClassNames(provider);
+        }
+
+        @Override
+        public <T> Stream<T> loadService(Class<T> type) {
+            return EngineAccessor.INSTRUMENT_PROVIDER.loadService(provider, type);
         }
     }
 }

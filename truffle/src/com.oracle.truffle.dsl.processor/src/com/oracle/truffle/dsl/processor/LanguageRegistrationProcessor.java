@@ -46,7 +46,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.lang.model.element.AnnotationMirror;
@@ -61,7 +60,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
@@ -76,6 +74,8 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
     private static final Set<String> RESERVED_IDS = new HashSet<>(
                     Arrays.asList("host", "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "file",
                                     "engine", "log", "image-build-time"));
+
+    private static final Set<String> NOT_COPIED_ATTRS = Set.of("services", "fileTypeDetectors", "defaultExportProviders", "eagerExportProviders");
 
     static String resolveLanguageId(Element annotatedElement, AnnotationMirror registration) {
         String id = ElementUtils.getAnnotationValue(String.class, registration, "id");
@@ -103,7 +103,8 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             emitError("Registered language inner-class must be static", annotatedElement);
             return false;
         }
-        TruffleTypes types = ProcessorContext.getInstance().getTypes();
+        ProcessorContext context = ProcessorContext.getInstance();
+        TruffleTypes types = context.getTypes();
         TypeMirror truffleLang = processingEnv.getTypeUtils().erasure(types.TruffleLanguage);
         TypeMirror truffleLangProvider = types.TruffleLanguageProvider;
         boolean processingTruffleLanguage;
@@ -201,6 +202,14 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             return false;
         }
 
+        if (!validateDefaultExportProviders(annotatedElement, registrationMirror, context)) {
+            return false;
+        }
+
+        if (!validateEagerExportProviders(annotatedElement, registrationMirror, context)) {
+            return false;
+        }
+
         if (valid) {
             assertNoErrorExpected(annotatedElement);
         }
@@ -219,12 +228,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
         DeclaredType registrationType = types.TruffleLanguage_Registration;
         CodeAnnotationMirror registration = copyAnnotations(ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), registrationType),
-                        new Predicate<ExecutableElement>() {
-                            @Override
-                            public boolean test(ExecutableElement t) {
-                                return !"services".contentEquals(t.getSimpleName()) && !"fileTypeDetectors".contentEquals(t.getSimpleName());
-                            }
-                        });
+                        (t) -> !NOT_COPIED_ATTRS.contains(t.getSimpleName().toString()));
         if (ElementUtils.getAnnotationValue(String.class, registration, "id").isEmpty()) {
             registration.setElementValue(registration.findExecutableElement("id"), new CodeAnnotationValue(getDefaultLanguageId(annotatedElement)));
         }
@@ -275,19 +279,13 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             case "getServicesClassNames": {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleLanguage_Registration);
-                List<TypeMirror> services = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "services");
-                if (services.isEmpty()) {
-                    builder.startReturn().startStaticCall(context.getType(Collections.class), "emptySet").end().end();
-                } else {
-                    builder.startReturn();
-                    builder.startStaticCall(context.getType(Arrays.class), "asList");
-                    for (TypeMirror service : services) {
-                        Elements elements = context.getEnvironment().getElementUtils();
-                        Types typeUtils = context.getEnvironment().getTypeUtils();
-                        builder.startGroup().doubleQuote(elements.getBinaryName((TypeElement) ((DeclaredType) typeUtils.erasure(service)).asElement()).toString()).end();
-                    }
-                    builder.end(2);
-                }
+                generateGetServicesClassNames(registration, builder, context);
+                break;
+            }
+            case "loadService": {
+                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
+                                types.TruffleLanguage_Registration);
+                generateLoadService(registration, builder, context);
                 break;
             }
             default:

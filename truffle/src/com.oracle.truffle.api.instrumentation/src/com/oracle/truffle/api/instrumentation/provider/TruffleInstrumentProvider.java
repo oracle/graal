@@ -45,6 +45,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
 import java.util.Collection;
 import java.util.ServiceLoader;
+import java.util.stream.Stream;
 
 /**
  * Used to register a {@link TruffleInstrument} using a {@link ServiceLoader}. This interface is not
@@ -79,4 +80,11 @@ public abstract class TruffleInstrumentProvider {
      * @since 23.1
      */
     protected abstract Collection<String> getServicesClassNames();
+
+    /**
+     * Loads implementations of {@code type} service.
+     *
+     * @since 23.1
+     */
+    protected abstract <S> Stream<S> loadService(Class<S> type);
 }

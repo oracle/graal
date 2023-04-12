@@ -1361,6 +1361,20 @@ public abstract class TruffleInstrument {
          * @since 23.0
          */
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
+
+        /**
+         * Declarative list of {@code DefaultExportProvider} provided by this instrument.
+         *
+         * @since 23.1
+         */
+        Class<?>[] defaultExportProviders() default {};
+
+        /**
+         * Declarative list of {@code EagerExportProvider} provided by this instrument.
+         *
+         * @since 23.1
+         */
+        Class<?>[] eagerExportProviders() default {};
     }
 
     /**
