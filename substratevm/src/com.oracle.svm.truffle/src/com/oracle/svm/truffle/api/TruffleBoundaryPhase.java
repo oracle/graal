@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase.SubstrateBytecodeParser;
@@ -64,7 +65,7 @@ public class TruffleBoundaryPhase extends Phase {
                 FixedNode originalNext = exceptionObject.next();
                 if (!(originalNext instanceof DeoptimizeNode) && invoke.callTarget().targetMethod() != null) {
                     ResolvedJavaMethod targetMethod = invoke.callTarget().targetMethod();
-                    if (((TruffleMethod) targetMethod).getTruffleMethodInfo().isTruffleBoundaryTransferToInterpreterOnException()) {
+                    if (((TruffleMethod) targetMethod).getTruffleMethodInfo().inlineForPartialEvaluation() == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION) {
                         addDeoptimizeNode(graph, originalNext, targetMethod);
                     }
                 }

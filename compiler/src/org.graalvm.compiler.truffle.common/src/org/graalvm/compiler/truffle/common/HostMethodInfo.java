@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.truffle.api;
+package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
+/**
+ * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
+ * compiler implementation side.
+ */
+public record HostMethodInfo(
+                /**
+                 * Determines if {@code method} is annotated by {@code TruffleBoundary}.
+                 */
+                boolean isTruffleBoundary,
+                /**
+                 * Determines if {@code method} is annotated by {@code BytecodeInterpreterSwitch}.
+                 */
+                boolean isBytecodeInterpreterSwitch,
+                /**
+                 * Determines if {@code method} is annotated by
+                 * {@code BytecodeInterpreterSwitchBoundary}.
+                 */
+                boolean isBytecodeInterpreterSwitchBoundary,
+                /**
+                 * Determines if {@code method} is annotated by {@code InliningCutoff}.
+                 */
+                boolean isInliningCutoff) {
 
-public interface TruffleField {
-
-    ConstantFieldInfo getConstantFieldInfo();
 }

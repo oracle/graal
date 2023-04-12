@@ -46,7 +46,7 @@ public final class TruffleTierConfiguration {
     public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, Providers providers, Suites suites, LIRSuites lirSuites, KnownTruffleTypes knownTruffleTypes) {
         this.configuration = configuration;
         this.backend = backend;
-        this.providers = providers.copyWith(new TruffleStringConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess(), knownTruffleTypes));
+        this.providers = providers.copyWith(new TruffleStringConstantFieldProvider(providers, knownTruffleTypes));
         this.suites = suites;
         this.lirSuites = lirSuites;
         TruffleCompilerPhases.register(knownTruffleTypes, providers, suites);

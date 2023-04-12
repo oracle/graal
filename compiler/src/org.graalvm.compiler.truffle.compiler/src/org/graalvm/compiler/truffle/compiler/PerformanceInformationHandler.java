@@ -172,18 +172,19 @@ public final class PerformanceInformationHandler implements Closeable {
     }
 
     @SuppressWarnings("try")
-    public void reportPerformanceWarnings(CompilableTruffleAST target, StructuredGraph graph) {
-        DebugContext debug = graph.getDebug();
+    public void reportPerformanceWarnings(TruffleTierContext context) {
+        StructuredGraph graph = context.graph;
+        DebugContext debug = context.debug;
         ArrayList<ValueNode> warnings = new ArrayList<>();
         if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL)) {
-            for (MethodCallTargetNode call : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            for (MethodCallTargetNode call : context.graph.getNodes(MethodCallTargetNode.TYPE)) {
                 ResolvedJavaMethod targetMethod = call.targetMethod();
                 if (targetMethod.isNative()) {
                     continue; // native methods cannot be inlined
                 }
 
-                if (runtime.isInlineable(targetMethod) && runtime.getInlineKind(targetMethod, true).allowsInlining()) {
-                    logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, target, Arrays.asList(call),
+                if (targetMethod.canBeInlined() && context.getPartialEvaluator().getMethodInfo(targetMethod).inlineForPartialEvaluation().allowsInlining()) {
+                    logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.VIRTUAL_RUNTIME_CALL, context.compilable, Arrays.asList(call),
                                     String.format("Partial evaluation could not inline the virtual runtime call %s to %s (%s).", call.invokeKind(), targetMethod, call),
                                     null);
                     warnings.add(call);
@@ -209,7 +210,7 @@ public final class PerformanceInformationHandler implements Closeable {
                 ResolvedJavaType type = entry.getKey();
                 String reason = "Partial evaluation could not resolve virtual instanceof to an exact type due to: " +
                                 String.format(type.isInterface() ? "interface type check: %s" : "too deep in class hierarchy: %s", type);
-                logPerformanceInfo(target, entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
+                logPerformanceInfo(context.compilable, entry.getValue(), reason, Collections.singletonMap("Nodes", entry.getValue()));
             }
         }
         if (isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO)) {
@@ -226,7 +227,7 @@ public final class PerformanceInformationHandler implements Closeable {
                     if (loopBlocks.contains(exitDom) && exitDom.getEndNode() instanceof ControlSplitNode) {
                         ControlSplitNode split = (ControlSplitNode) exitDom.getEndNode();
                         if (!ProfileSource.isTrusted(split.getProfileData().getProfileSource())) {
-                            logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, target, Arrays.asList(loop.getHeader().getBeginNode()),
+                            logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.MISSING_LOOP_FREQUENCY_INFO, context.compilable, Arrays.asList(loop.getHeader().getBeginNode()),
                                             String.format("Missing loop profile for %s at loop %s.", split, loop.getHeader().getBeginNode()), null);
                         }
                     }

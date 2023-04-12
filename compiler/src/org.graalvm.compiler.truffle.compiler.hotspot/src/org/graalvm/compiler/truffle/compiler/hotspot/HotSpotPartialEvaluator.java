@@ -33,10 +33,13 @@ import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.options.OptionValues;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
@@ -64,6 +67,16 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected void initialize(OptionValues options) {
         super.initialize(options);
+    }
+
+    @Override
+    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+        return config.runtime().getConstantFieldInfo(field);
+    }
+
+    @Override
+    public PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method) {
+        return config.runtime().getPartialEvaluationMethodInfo(method);
     }
 
     @Override
@@ -128,4 +141,5 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
             return super.getCreateCachedGraphScope();
         }
     }
+
 }

@@ -34,11 +34,10 @@ public final class InliningAcrossTruffleBoundaryPhase extends BasePhase<TruffleT
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         graph.checkCancellation();
-        TruffleCompilerRuntime rt = context.runtime();
-        for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            TruffleCompilerRuntime.InlineKind inlineKind = rt.getInlineKind(mct.targetMethod(), false);
+        for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            TruffleCompilerRuntime.InlineKind inlineKind = context.partialEvaluator.getMethodInfo(node.targetMethod()).inlineForTruffleBoundary();
             if (!inlineKind.allowsInlining()) {
-                mct.invoke().setUseForInlining(false);
+                node.invoke().setUseForInlining(false);
             }
         }
     }

@@ -27,9 +27,11 @@ package org.graalvm.compiler.truffle.compiler.host;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.TruffleMethodCache;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -70,12 +72,15 @@ public final class TruffleHostEnvironment {
     private final TruffleCompilerRuntime runtime;
     private final TruffleKnownHostTypes types;
     private final CompilerFactory compilerFactory;
+    private final HostMethodCache hostCache;
+
     private volatile TruffleCompilerImpl compiler;
 
     public TruffleHostEnvironment(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, CompilerFactory compilerFactory) {
         this.runtime = runtime;
         this.types = new TruffleKnownHostTypes(runtime, metaAccess);
         this.compilerFactory = compilerFactory;
+        this.hostCache = new HostMethodCache();
     }
 
     /**
@@ -84,6 +89,10 @@ public final class TruffleHostEnvironment {
      */
     public static void overrideLookup(Lookup l) {
         TruffleHostEnvironment.lookup = l;
+    }
+
+    public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
+        return hostCache.get(method);
     }
 
     public TruffleCompilerRuntime runtime() {
@@ -155,4 +164,16 @@ public final class TruffleHostEnvironment {
 
     }
 
+    final class HostMethodCache extends TruffleMethodCache<HostMethodInfo> {
+
+        HostMethodCache() {
+            super(1024); // cache size
+        }
+
+        @Override
+        protected HostMethodInfo computeValue(ResolvedJavaMethod method) {
+            return runtime.getHostMethodInfo(method);
+        }
+
+    }
 }

@@ -414,13 +414,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         }
     }
 
-    final ExpansionStatistics getExpansionHistogram(TruffleCompilerRuntime runtime, org.graalvm.options.OptionValues options) {
+    final ExpansionStatistics getExpansionHistogram(org.graalvm.options.OptionValues options) {
         ExpansionStatistics local = expansionStatistics;
         if (local == null && !expansionStatisticsInitialized) {
             synchronized (this) {
                 local = expansionStatistics;
                 if (local == null) {
-                    this.expansionStatistics = local = ExpansionStatistics.create(runtime, options);
+                    this.expansionStatistics = local = ExpansionStatistics.create(partialEvaluator, options);
                     this.expansionStatisticsInitialized = true;
                 }
             }
@@ -666,7 +666,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             this.task = task;
             this.listener = listener;
             this.compilationId = compilationId;
-            this.statistics = getExpansionHistogram(config.runtime(), options);
+            this.statistics = getExpansionHistogram(options);
         }
 
         @Override

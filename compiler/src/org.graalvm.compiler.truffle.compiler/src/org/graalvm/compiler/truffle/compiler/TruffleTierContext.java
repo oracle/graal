@@ -47,10 +47,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public final class TruffleTierContext extends HighTierContext {
+    public final PartialEvaluator partialEvaluator;
     public final OptionValues options;
     public final DebugContext debug;
 
-    public final TruffleCompilerConfiguration config;
     public final JavaConstant compilableConstant;
     public final CompilableTruffleAST compilable;
     public final CompilationIdentifier compilationId;
@@ -71,19 +71,19 @@ public final class TruffleTierContext extends HighTierContext {
         Objects.requireNonNull(compilable);
         Objects.requireNonNull(compilationId);
         Objects.requireNonNull(task);
+        this.partialEvaluator = partialEvaluator;
         this.options = options;
         this.debug = debug;
-        this.config = partialEvaluator.config;
         this.compilableConstant = compilable.asJavaConstant();
         this.compilable = compilable;
         this.compilationId = compilationId;
         this.log = log;
         this.task = task;
         this.handler = handler;
-        this.graph = createInitialGraph(partialEvaluator, method);
+        this.graph = createInitialGraph(method);
     }
 
-    private StructuredGraph createInitialGraph(PartialEvaluator partialEvaluator, ResolvedJavaMethod method) {
+    private StructuredGraph createInitialGraph(ResolvedJavaMethod method) {
         compilable.prepareForCompilation();
 
         // @formatter:off
@@ -92,7 +92,7 @@ public final class TruffleTierContext extends HighTierContext {
                 method(method).
                 speculationLog(this.log).
                 compilationId(this.compilationId).
-                trackNodeSourcePosition(partialEvaluator.configForParsing.trackNodeSourcePosition()).
+                trackNodeSourcePosition(partialEvaluator.graphBuilderConfigForParsing.trackNodeSourcePosition()).
                 cancellable(new CancellableTask(this.task));
         // @formatter:on
         builder = partialEvaluator.customizeStructuredGraphBuilder(builder);
@@ -102,16 +102,20 @@ public final class TruffleTierContext extends HighTierContext {
         return g;
     }
 
+    public PartialEvaluator getPartialEvaluator() {
+        return partialEvaluator;
+    }
+
     public TruffleCompilerConfiguration config() {
-        return config;
+        return partialEvaluator.config;
     }
 
     public KnownTruffleTypes types() {
-        return config.types();
+        return config().types();
     }
 
     public TruffleCompilerRuntime runtime() {
-        return config.runtime();
+        return config().runtime();
     }
 
     public JavaConstant getNodeRewritingAssumption(Providers providers) {

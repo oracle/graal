@@ -78,7 +78,7 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -135,18 +135,18 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     protected String isTruffleBoundary(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
-        if (env.runtime().isTruffleBoundary(translateMethod(targetMethod))) {
+        if (env.getHostMethodInfo(translateMethod(targetMethod)).isTruffleBoundary()) {
             return "truffle boundary";
         }
         return null;
     }
 
     private boolean isBytecodeInterpreterSwitch(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
-        return env.runtime().isBytecodeInterpreterSwitch(translateMethod(targetMethod));
+        return env.getHostMethodInfo(translateMethod(targetMethod)).isBytecodeInterpreterSwitch();
     }
 
     private boolean isInliningCutoff(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
-        return env.runtime().isInliningCutoff(translateMethod(targetMethod));
+        return env.getHostMethodInfo(translateMethod(targetMethod)).isInliningCutoff();
     }
 
     protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
@@ -1295,15 +1295,15 @@ public class HostInliningPhase extends AbstractInliningPhase {
     }
 
     public static boolean shouldDenyTrivialInliningInAllMethods(TruffleHostEnvironment env, ResolvedJavaMethod callee) {
-        return env.runtime().isInliningCutoff(callee);
+        return env.getHostMethodInfo(callee).isInliningCutoff();
     }
 
     public static boolean shouldDenyTrivialInlining(TruffleHostEnvironment env, ResolvedJavaMethod callee) {
-        TruffleCompilerRuntime r = env.runtime();
         TruffleKnownHostTypes types = env.types();
-        return (r.isBytecodeInterpreterSwitch(callee) ||
-                        r.isInliningCutoff(callee) ||
-                        r.isTruffleBoundary(callee) ||
+        HostMethodInfo info = env.getHostMethodInfo(callee);
+        return (info.isBytecodeInterpreterSwitch() ||
+                        info.isInliningCutoff() ||
+                        info.isTruffleBoundary() ||
                         types.isInInterpreter(callee) ||
                         types.isInInterpreterFastPath(callee) ||
                         types.isTransferToInterpreterMethod(callee));

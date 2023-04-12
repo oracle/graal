@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -32,15 +33,17 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class TruffleStringConstantFieldProvider implements ConstantFieldProvider {
+
     private static final int FLAG_IMPRECISE = 1 << 4;
+
     protected final ConstantFieldProvider graalConstantFieldProvider;
     protected final MetaAccessProvider metaAccess;
     protected final KnownTruffleTypes types;
     private final ResolvedJavaType byteArrayType;
 
-    public TruffleStringConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
-        this.graalConstantFieldProvider = graalConstantFieldProvider;
-        this.metaAccess = metaAccess;
+    public TruffleStringConstantFieldProvider(Providers providers, KnownTruffleTypes types) {
+        this.graalConstantFieldProvider = providers.getConstantFieldProvider();
+        this.metaAccess = providers.getMetaAccess();
         this.types = types;
         this.byteArrayType = metaAccess.lookupJavaType(byte[].class);
     }
@@ -60,7 +63,7 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
 
     }
 
-    protected <T> T readWellKnownConstantTruffleField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
+    protected final <T> T readWellKnownConstantTruffleField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         // well-known internal fields of AbstractTruffleString
         if (types.AbstractTruffleString_data.equals(field) ||
                         types.AbstractTruffleString_hashCode.equals(field) ||
@@ -99,7 +102,7 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
     }
 
     @Override
-    public boolean maybeFinal(ResolvedJavaField field) {
+    public final boolean maybeFinal(ResolvedJavaField field) {
         return types.AbstractTruffleString_data.equals(field) ||
                         types.AbstractTruffleString_hashCode.equals(field) ||
                         types.AbstractTruffleString_codeRange.equals(field) ||

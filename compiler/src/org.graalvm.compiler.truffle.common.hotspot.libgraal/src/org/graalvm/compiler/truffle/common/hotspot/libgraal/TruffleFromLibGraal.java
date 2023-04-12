@@ -71,99 +71,99 @@ public @interface TruffleFromLibGraal {
     // Please keep sorted
     enum Id implements FromLibGraalId {
         // @formatter:off
-        @Signature({void.class, Object.class, Object.class})
+        @Signature(void.class, Object.class, Object.class)
         AddTargetToDequeue,
-        @Signature({void.class, Object.class, Object.class})
+        @Signature(void.class, Object.class, Object.class)
         AddInlinedTarget,
-        @Signature({Object.class, Object.class, long.class})
+        @Signature(Object.class, Object.class, long.class)
         AsCompilableTruffleAST,
-        @Signature({long.class, Object.class})
+        @Signature(long.class, Object.class)
         AsJavaConstant,
-        @Signature({boolean.class, Object.class, String.class})
+        @Signature(boolean.class, Object.class, String.class)
         CancelCompilation,
-        @Signature({String.class, Object.class})
+        @Signature(String.class, Object.class)
         CompilableToString,
-        @Signature({void.class, Consumer.class, Object.class, long.class})
+        @Signature(void.class, Consumer.class, Object.class, long.class)
         ConsumeOptimizedAssumptionDependency,
-        @Signature({Supplier.class, long.class})
+        @Signature(Supplier.class, long.class)
         CreateStringSupplier,
-        @Signature({int.class, Object.class})
+        @Signature(int.class, Object.class)
         CountDirectCallNodes,
-        @Signature({long.class, Object.class, long.class})
+        @Signature(long.class, Object.class, long.class)
         GetCallTargetForCallNode,
-        @Signature({int.class, Object.class})
+        @Signature(int.class, Object.class)
         GetCompilableCallCount,
-        @Signature({String.class, Object.class})
+        @Signature(String.class, Object.class)
         GetCompilableName,
-        @Signature({int.class, Object.class, long.class, boolean.class, int.class})
+        @Signature(int.class, Object.class, long.class, boolean.class, int.class)
         GetConstantFieldInfo,
-        @Signature({String.class, Object.class})
+        @Signature(String.class, Object.class)
         GetDescription,
-        @Signature({long.class, Object.class})
+        @Signature(long.class, Object.class)
         GetFailedSpeculationsAddress,
-        @Signature({int.class, Object.class})
+        @Signature(int.class, Object.class)
         GetKnownCallSiteCount,
-        @Signature({String.class, Object.class})
+        @Signature(String.class, Object.class)
         GetLanguage,
-        @Signature({int.class, Object.class})
+        @Signature(int.class, Object.class)
         GetLineNumber,
-        @Signature({void.class, Object.class})
+        @Signature(void.class, Object.class)
         PrepareForCompilation,
-        @Signature({int.class, Object.class})
+        @Signature(int.class, Object.class)
         GetNodeId,
-        @Signature({String.class, Object.class})
+        @Signature(String.class, Object.class)
         GetNodeClassName,
-        @Signature({byte[].class, Object.class, long.class})
+        @Signature(byte[].class, Object.class, long.class)
         GetDebugProperties,
-        @Signature({int.class, Object.class})
+        @Signature(int.class, Object.class)
         GetNonTrivialNodeCount,
-        @Signature({int.class, Object.class})
+        @Signature(int.class, Object.class)
         GetOffsetEnd,
-        @Signature({int.class, Object.class})
+        @Signature(int.class, Object.class)
         GetOffsetStart,
-        @Signature({Object.class, Object.class, long.class})
+        @Signature(Object.class, Object.class, long.class)
         GetPosition,
-        @Signature({String.class, Supplier.class})
+        @Signature(String.class, Supplier.class)
         GetSuppliedString,
-        @Signature({String.class, Object.class})
+        @Signature(String.class, Object.class)
         GetURI,
-        @Signature({boolean.class, Object.class})
+        @Signature(boolean.class, Object.class)
         IsCancelled,
-        @Signature({boolean.class, Object.class})
+        @Signature(boolean.class, Object.class)
         IsLastTier,
-        @Signature({boolean.class, Object.class})
+        @Signature(boolean.class, Object.class)
         HasNextTier,
-        @Signature({boolean.class, Object.class, Object.class})
+        @Signature(boolean.class, Object.class, Object.class)
         IsSameOrSplit,
-        @Signature({boolean.class, Object.class, long.class})
-        IsSpecializationMethod,
-        @Signature({boolean.class, Object.class, Object.class, Supplier.class})
+        @Signature(boolean.class, Object.class, Object.class, Supplier.class)
         IsSuppressedFailure,
-        @Signature({boolean.class, Object.class})
+        @Signature(boolean.class, Object.class)
         IsTrivial,
-        @Signature({boolean.class, Object.class, long.class})
+        @Signature(boolean.class, Object.class, long.class)
         IsValueType,
-        @Signature({void.class, Object.class, String.class, Object.class, String.class})
+        @Signature(void.class, Object.class, String.class, Object.class, String.class)
         Log,
-        @Signature({void.class, Object.class, Object.class, long.class})
+        @Signature(void.class, Object.class, Object.class, long.class)
         OnCodeInstallation,
-        @Signature({void.class, Object.class, Supplier.class, boolean.class, boolean.class, boolean.class, boolean.class})
+        @Signature(void.class, Object.class, Supplier.class, boolean.class, boolean.class, boolean.class, boolean.class)
         OnCompilationFailed,
-        @Signature({void.class, Object.class, Object.class, Object.class})
+        @Signature(void.class, Object.class, Object.class, Object.class)
         OnCompilationRetry,
-        @Signature({void.class, Object.class, Object.class, String.class, boolean.class, boolean.class, int.class})
+        @Signature(void.class, Object.class, Object.class, String.class, boolean.class, boolean.class, int.class)
         OnFailure,
-        @Signature({void.class, Object.class, Object.class, long.class})
+        @Signature(void.class, Object.class, Object.class, long.class)
         OnGraalTierFinished,
-        @Signature({void.class, Object.class, Object.class, Object.class, long.class, long.class, int.class})
+        @Signature(void.class, Object.class, Object.class, Object.class, long.class, long.class, int.class)
         OnSuccess,
-        @Signature({void.class, Object.class, Object.class, Object.class, long.class})
+        @Signature(void.class, Object.class, Object.class, Object.class, long.class)
         OnTruffleTierFinished,
-        @Signature({Object.class, Object.class, long.class})
-        ReadMethodCache,
-        @Signature({Consumer.class, Object.class, long.class})
+        @Signature(Object.class, Object.class, long.class)
+        GetPartialEvaluationMethodInfo,
+        @Signature(Object.class, Object.class, long.class)
+        GetHostMethodInfo,
+        @Signature(Consumer.class, Object.class, long.class)
         RegisterOptimizedAssumptionDependency,
-        @Signature({void.class, Object.class, int.class, int.class})
+        @Signature(void.class, Object.class, int.class, int.class)
         SetCallCounts;
         // @formatter:on
 

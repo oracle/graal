@@ -53,7 +53,6 @@ import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationTier;
 
@@ -65,7 +64,7 @@ import jdk.vm.ci.meta.Signature;
 final class ExpansionStatistics {
 
     private final Set<CompilationTier> enabledStages = new HashSet<>();
-    private final TruffleCompilerRuntime runtime;
+    private final PartialEvaluator partialEvaluator;
     private volatile CompilableTruffleAST previousCompilation;
     private final Set<CompilationTier> traceMethodExpansion;
     private final Set<CompilationTier> traceNodeExpansion;
@@ -74,10 +73,10 @@ final class ExpansionStatistics {
     private final Map<CompilationTier, Map<NodeSpecializationKey, Stats>> specializationExpansionStatistics = new HashMap<>();
     private final ConcurrentHashMap<ResolvedJavaMethod, Boolean> isSpecializationMethodCache = new ConcurrentHashMap<>();
 
-    private ExpansionStatistics(TruffleCompilerRuntime runtime,
+    private ExpansionStatistics(PartialEvaluator partialEvaluator,
                     Set<CompilationTier> traceMethodExpansion, Set<CompilationTier> traceNodeExpansion,
                     Set<CompilationTier> methodExpansionStatistics, Set<CompilationTier> nodeExpansionStatistics) {
-        this.runtime = runtime;
+        this.partialEvaluator = partialEvaluator;
         this.traceMethodExpansion = traceMethodExpansion;
         this.traceNodeExpansion = traceNodeExpansion;
         for (CompilationTier tier : methodExpansionStatistics) {
@@ -92,7 +91,7 @@ final class ExpansionStatistics {
         this.enabledStages.addAll(nodeExpansionStatistics);
     }
 
-    static ExpansionStatistics create(TruffleCompilerRuntime runtime, org.graalvm.options.OptionValues options) {
+    static ExpansionStatistics create(PartialEvaluator partialEvaluator, org.graalvm.options.OptionValues options) {
         if (!isEnabled(options)) {
             return null;
         }
@@ -107,7 +106,7 @@ final class ExpansionStatistics {
             traceMethodExpansion = new HashSet<>(traceMethodExpansion);
             traceMethodExpansion.add(CompilationTier.truffleTier);
         }
-        return new ExpansionStatistics(runtime, traceMethodExpansion, traceNodeExpansion, methodExpansionStatistics, nodeExpansionStatistics);
+        return new ExpansionStatistics(partialEvaluator, traceMethodExpansion, traceNodeExpansion, methodExpansionStatistics, nodeExpansionStatistics);
     }
 
     static boolean isEnabled(org.graalvm.options.OptionValues options) {
@@ -263,7 +262,7 @@ final class ExpansionStatistics {
 
             }
         }
-        runtime.log(ast, String.format("%s expansion statistics after %s:%n%s", kind, tier.toString(), writer.toString()));
+        partialEvaluator.config.runtime().log(ast, String.format("%s expansion statistics after %s:%n%s", kind, tier.toString(), writer.toString()));
     }
 
     private static void printHistogramStats(PrintWriter w, String indent, int maxLabelLength, String label, Stats stats) {
@@ -349,7 +348,7 @@ final class ExpansionStatistics {
         try (PrintWriter w = new PrintWriter(writer)) {
             tree.print(w);
         }
-        runtime.log(compilable, String.format("Expansion tree for %s after %s:%n%s", compilable.getName(), tier.toString(), writer.toString()));
+        partialEvaluator.config.runtime().log(compilable, String.format("Expansion tree for %s after %s:%n%s", compilable.getName(), tier.toString(), writer.toString()));
     }
 
     private static String formatQualifiedMethod(ResolvedJavaMethod method) {
@@ -755,7 +754,8 @@ final class ExpansionStatistics {
              * property many times for the methods. If GR-25553 gets to be implemented then we
              * should just use the normal annotation API that is internally cached.
              */
-            return cache.computeIfAbsent(method, (m) -> runtime.isSpecializationMethod(m));
+            // TODO remove cache
+            return cache.computeIfAbsent(method, (m) -> partialEvaluator.getMethodInfo(method).isSpecializationMethod());
         }
 
         private void findSpecializationMethodsWithNodeId(Set<ResolvedJavaMethod> specializations, int nodeId, ConcurrentHashMap<ResolvedJavaMethod, Boolean> cache) {

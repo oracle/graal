@@ -133,6 +133,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -366,7 +367,7 @@ public class TruffleFeature implements InternalFeature {
         registerKnownTruffleFields(config, partialEvaluator.getTypes());
         TruffleSupport.singleton().registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
-        GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigPrototype();
+        GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
         if (Options.TruffleInlineDuringParsing.getValue() && !SubstrateOptions.parseOnce()) {
             graphBuilderConfig.getPlugins().appendInlineInvokePlugin(
@@ -540,7 +541,14 @@ public class TruffleFeature implements InternalFeature {
     private static boolean runtimeCompilationForbidden(ResolvedJavaMethod method) {
         if (method.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return true;
-        } else if (!((SubstrateTruffleRuntime) Truffle.getRuntime()).isInlineable(method)) {
+        } else if (Uninterruptible.Utils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+            if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
+                /* The semantics of Uninterruptible would get lost during partial evaluation. */
+                return true;
+            }
+        }
+        if (!method.canBeInlined()) {
             return true;
         } else if (method.getAnnotation(TruffleCallBoundary.class) != null) {
             return true;
