@@ -152,17 +152,8 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodFrames(byte[] buffer, int p) {
         Cursor cursor = new Cursor(p);
-        /* Write frames for normal methods. */
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEach(classEntry -> {
-            classEntry.normalCompiledEntries().forEach(compiledEntry -> {
-                cursor.set(writeMethodFrame(compiledEntry, buffer, cursor.get()));
-            });
-        });
-        /* Now write frames for deopt targets. */
-        instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).forEach(classEntry -> {
-            classEntry.deoptCompiledEntries().forEach(compiledEntry -> {
-                cursor.set(writeMethodFrame(compiledEntry, buffer, cursor.get()));
-            });
+        compiledMethodsStream().forEach(compiledMethod -> {
+            cursor.set(writeMethodFrame(compiledMethod, buffer, cursor.get()));
         });
         return cursor.get();
     }

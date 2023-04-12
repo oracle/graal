@@ -47,12 +47,6 @@ public class PrimaryRange extends Range {
     }
 
     @Override
-    public int getFileIndex() {
-        ClassEntry owner = methodEntry.ownerType();
-        return owner.localFilesIdx(getFileEntry());
-    }
-
-    @Override
     public boolean isPrimary() {
         return true;
     }

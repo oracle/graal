@@ -33,6 +33,9 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.DirEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
@@ -713,11 +716,40 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     /**
      * Retrieve a stream of all instance classes, including interfaces and enums, notified via the
      * DebugTypeInfo API.
-     * 
+     *
      * @return a stream of all instance classes notified via the DebugTypeInfo API.
      */
     protected Stream<ClassEntry> instanceClassStream() {
         return dwarfSections.getInstanceClasses().stream();
+    }
+
+    /**
+     * Retrieve a stream of all compiled methods notified via the DebugTypeInfo API.
+     *
+     * @return a stream of all compiled methods notified via the DebugTypeInfo API.
+     */
+    protected Stream<CompiledMethodEntry> compiledMethodsStream() {
+        return dwarfSections.getCompiledMethods().stream();
+    }
+
+    protected int compiledMethodsCount() {
+        return  dwarfSections.getCompiledMethods().size();
+    }
+
+    protected Stream<FileEntry> fileStream() {
+        return dwarfSections.getFiles().stream();
+    }
+
+    protected int fileCount() {
+        return  dwarfSections.getFiles().size();
+    }
+
+    protected Stream<DirEntry> dirStream() {
+        return dwarfSections.getDirs().stream();
+    }
+
+    protected int dirCount() {
+        return  dwarfSections.getDirs().size();
     }
 
     /**
@@ -769,61 +801,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected void setIndirectTypeIndex(TypeEntry typeEntry, int pos) {
         dwarfSections.setIndirectTypeIndex(typeEntry, pos);
-    }
-
-    protected int getCUIndex(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getCUIndex(classEntry);
-    }
-
-    protected void setCUIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setCUIndex(classEntry, pos);
-    }
-
-    protected int getDeoptCUIndex(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getDeoptCUIndex(classEntry);
-    }
-
-    protected void setDeoptCUIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setDeoptCUIndex(classEntry, pos);
-    }
-
-    protected int getLineIndex(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getLineIndex(classEntry);
-    }
-
-    protected void setLineIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setLineIndex(classEntry, pos);
-    }
-
-    protected int getLineSectionSize(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getLineSectionSize(classEntry);
-    }
-
-    protected void setLineSectionSize(ClassEntry classEntry, int pos) {
-        dwarfSections.setLineSectionSize(classEntry, pos);
-    }
-
-    protected int getLinePrologueSize(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getLinePrologueSize(classEntry);
-    }
-
-    protected void setLinePrologueSize(ClassEntry classEntry, int pos) {
-        dwarfSections.setLinePrologueSize(classEntry, pos);
     }
 
     protected int getLayoutIndex(ClassEntry classEntry) {

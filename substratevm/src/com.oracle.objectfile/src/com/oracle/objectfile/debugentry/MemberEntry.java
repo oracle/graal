@@ -81,6 +81,10 @@ public abstract class MemberEntry {
         return fileEntry;
     }
 
+    public int getFileIdx() {
+        return fileEntry.getIdx();
+    }
+
     public int getLine() {
         return line;
     }

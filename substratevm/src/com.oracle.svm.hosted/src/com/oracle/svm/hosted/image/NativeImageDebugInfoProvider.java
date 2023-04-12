@@ -212,6 +212,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     @Override
+    public int compiledCodeMax() {
+        return codeCache.getCodeCacheSize();
+    }
+
+    @Override
     public int oopTagsMask() {
         return tagsMask;
     }

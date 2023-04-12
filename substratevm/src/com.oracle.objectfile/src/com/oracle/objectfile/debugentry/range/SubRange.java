@@ -75,13 +75,6 @@ public abstract class SubRange extends Range {
     }
 
     @Override
-    public int getFileIndex() {
-        // the primary range's class entry indexes all files defined by the compilation unit
-        ClassEntry owner = primary.methodEntry.ownerType();
-        return owner.localFilesIdx(getFileEntry());
-    }
-
-    @Override
     public boolean isPrimary() {
         return false;
     }

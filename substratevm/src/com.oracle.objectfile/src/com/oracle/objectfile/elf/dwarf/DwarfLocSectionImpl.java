@@ -126,41 +126,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     }
 
     private int generateContent(DebugContext context, byte[] buffer) {
-        int pos = 0;
-
-        pos = writeNormalClassLocations(context, buffer, pos);
-        pos = writeDeoptClassLocations(context, buffer, pos);
-
-        return pos;
-    }
-
-    private int writeNormalClassLocations(DebugContext context, byte[] buffer, int pos) {
-        log(context, "  [0x%08x] normal class locations", pos);
-        Cursor cursor = new Cursor(pos);
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEach(classEntry -> {
-            cursor.set(writeMethodLocations(context, classEntry, false, buffer, cursor.get()));
+        Cursor cursor = new Cursor();
+        compiledMethodsStream().forEach( compiledMethod -> {
+             cursor.set(writeCompiledMethodLocations(context, compiledMethod, buffer, cursor.get()));
         });
         return cursor.get();
-    }
-
-    private int writeDeoptClassLocations(DebugContext context, byte[] buffer, int pos) {
-        log(context, "  [0x%08x] deopt class locations", pos);
-        Cursor cursor = new Cursor(pos);
-        instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).forEach(classEntry -> {
-            cursor.set(writeMethodLocations(context, classEntry, true, buffer, cursor.get()));
-        });
-        return cursor.get();
-    }
-
-    private int writeMethodLocations(DebugContext context, ClassEntry classEntry, boolean isDeopt, byte[] buffer, int p) {
-        int pos = p;
-        if (!isDeopt || classEntry.hasDeoptCompiledEntries()) {
-            Stream<CompiledMethodEntry> entries = (isDeopt ? classEntry.deoptCompiledEntries() : classEntry.normalCompiledEntries());
-            pos = entries.reduce(pos,
-                            (p1, entry) -> writeCompiledMethodLocations(context, entry, buffer, p1),
-                            (oldPos, newPos) -> newPos);
-        }
-        return pos;
     }
 
     private int writeCompiledMethodLocations(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
