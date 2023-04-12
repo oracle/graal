@@ -48,6 +48,7 @@ public final class SubstrateTruffleHostEnvironmentLookup implements TruffleHostE
         this.environment = null;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     public TruffleHostEnvironment lookup(ResolvedJavaType forType) {
         return environment;

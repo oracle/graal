@@ -542,7 +542,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
-        InjectImmutableFrameFieldsPhase.install(suites.getHighTier(), HostedOptionValues.singleton());
+        if (hosted) {
+            InjectImmutableFrameFieldsPhase.install(suites.getHighTier(), HostedOptionValues.singleton());
+        }
     }
 
     @Override

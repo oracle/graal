@@ -64,4 +64,9 @@ public abstract class TruffleMethodCache<T> {
 
     protected abstract T computeValue(ResolvedJavaMethod method);
 
+    @Override
+    public String toString() {
+        return methodCache.toString();
+    }
+
 }
