@@ -219,7 +219,7 @@ public abstract class ClangLikeBase extends Driver {
         // Check whether the -fuse-ld= flag would select the same tool we're going to use.
         String linker = useLdFlag.substring(useLdFlag.indexOf('=') + 1);
         if (os == OS.LINUX) {
-            return LinuxLinker.LLD.equals(linker);
+            return LinuxLinker.LD_LLD.equals(linker) || LinuxLinker.LLD.equals(linker);
         } else if (os == OS.WINDOWS) {
             return WindowsLinker.LLD_LINK.equals(linker) || WindowsLinker.LLD_LINK_NO_EXE.equals(linker);
         } else if (os == OS.DARWIN) {
@@ -232,7 +232,7 @@ public abstract class ClangLikeBase extends Driver {
     protected void getLinkerArgs(List<String> sulongArgs) {
         if (os == OS.LINUX) {
             sulongArgs.add("-fuse-ld=lld");
-            sulongArgs.add("--ld-path=" + getLLVMExecutable(LinuxLinker.LLD));
+            sulongArgs.add("--ld-path=" + getLLVMExecutable(LinuxLinker.LD_LLD));
             sulongArgs.add("-Wl," + String.join(",", LinuxLinker.getLinkerFlags()));
         } else if (os == OS.WINDOWS) {
             /*
