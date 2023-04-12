@@ -251,7 +251,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.StrictDeoptInsertion
 import static org.graalvm.compiler.core.common.GraalOptions.TraceInlining;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlinePartialIntrinsicExitDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceBytecodeParserLevel;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceInlineDuringParsing;
@@ -4073,7 +4073,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genFloatRem(x, y);
                 break;
             default:
-                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4095,7 +4095,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genIntegerRem(x, y, zeroCheck);
                 break;
             default:
-                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4123,7 +4123,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genUnsignedRightShift(x, s);
                 break;
             default:
-                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4146,7 +4146,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genXor(x, y);
                 break;
             default:
-                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }

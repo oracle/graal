@@ -220,7 +220,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                     throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -232,7 +232,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                     throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -244,7 +244,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                     throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -256,7 +256,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                     throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -269,7 +269,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                     throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

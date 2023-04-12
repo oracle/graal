@@ -506,7 +506,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             case 64:
                 return JavaConstant.forLong(buffer.getLong());
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(getBits()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -543,7 +543,7 @@ public final class IntegerStamp extends PrimitiveStamp {
             case 64:
                 return metaAccess.lookupJavaType(Long.TYPE);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(getBits()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1730,7 +1730,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() << amount);
                                 default:
-                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                                    throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
@@ -1815,7 +1815,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() >> amount);
                                 default:
-                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                                    throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 
@@ -1867,7 +1867,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 case Long:
                                     return JavaConstant.forLong(c.asLong() >>> amount);
                                 default:
-                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                                    throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
                             }
                         }
 

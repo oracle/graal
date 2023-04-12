@@ -735,7 +735,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                 f = f.parent;
                 nextState = ST_ENTER;
             } else {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(state); // ExcludeFromJacocoGeneratedReport
             }
             state = nextState;
         }

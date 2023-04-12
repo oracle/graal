@@ -102,7 +102,7 @@ public final class Target_java_lang_VirtualThread {
          * calls to this method due to the way it's used from the `switchToVirtualThread` method, so
          * unlike the other `notifyJvmti*` methods, we need a substitution to prevent linker errors.
          */
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Alias Executor scheduler;
@@ -211,14 +211,15 @@ public final class Target_java_lang_VirtualThread {
         } else if (state == PARKING || state == YIELDING) {
             return Thread.State.RUNNABLE;
         } else if (state == PARKED || state == PARKED_SUSPENDED || state == PINNED) {
-            switch (MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false)) {
+            int parkedThreadStatus = MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false);
+            switch (parkedThreadStatus) {
                 case ThreadStatus.BLOCKED_ON_MONITOR_ENTER:
                     return Thread.State.BLOCKED;
                 case ThreadStatus.PARKED:
                 case ThreadStatus.IN_OBJECT_WAIT:
                     return Thread.State.WAITING;
                 default:
-                    throw VMError.shouldNotReachHere();
+                    throw VMError.shouldNotReachHereUnexpectedInput(parkedThreadStatus); // ExcludeFromJacocoGeneratedReport
             }
         } else if (state == TERMINATED) {
             return Thread.State.TERMINATED;

@@ -143,7 +143,7 @@ public class SourceCache {
                         } else if (srcFile.isDirectory()) { // Support for `MX_BUILD_EXPLODED=true`
                             srcRoots.add(new SourceRoot(srcPath));
                         } else {
-                            throw VMError.shouldNotReachHere();
+                            throw VMError.shouldNotReachHereUnexpectedInput(srcFile);
                         }
                     }
                 } else {

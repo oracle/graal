@@ -303,7 +303,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case F2D:
                 return AArch64Kind.DOUBLE;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -430,7 +430,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case NONE:
                 return false;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(op.category); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -442,7 +442,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case QWORD:
                 return AArch64MacroAssembler.isLogicalImmediate(64, value);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -454,7 +454,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case Object:
                 return constValue.isNull();
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(constValue.getJavaKind().getStackKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -523,7 +523,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Variable emitBitScanForward(Value value) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -651,7 +651,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
                 op = AArch64ArithmeticOp.FRINTZ;
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(mode); // ExcludeFromJacocoGeneratedReport
         }
 
         return emitUnary(op, value);

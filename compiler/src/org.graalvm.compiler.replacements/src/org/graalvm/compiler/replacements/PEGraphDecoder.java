@@ -25,6 +25,7 @@
 package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
+import static org.graalvm.compiler.debug.GraalError.unimplementedOverride;
 import static org.graalvm.compiler.nodeinfo.InputType.Anchor;
 import static org.graalvm.compiler.nodeinfo.InputType.Guard;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
@@ -404,37 +405,37 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public <T extends ValueNode> T append(T value) {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public void push(JavaKind kind, ValueNode value) {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public void setStateAfter(StateSplit stateSplit) {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public GraphBuilderContext getParent() {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public Bytecode getCode() {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -458,12 +459,12 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public InvokeKind getInvokeKind() {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public JavaType getInvokeReturnType() {
-            throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -1412,7 +1413,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return (T) node;
             }
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(clazz); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unchecked")

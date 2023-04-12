@@ -1156,7 +1156,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 case 64:
                     return JavaConstant.LONG_0;
                 default:
-                    throw VMError.shouldNotReachHere();
+                    throw VMError.shouldNotReachHereUnexpectedInput(size); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -1285,7 +1285,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         public LIRKind getNarrowPointerKind() {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

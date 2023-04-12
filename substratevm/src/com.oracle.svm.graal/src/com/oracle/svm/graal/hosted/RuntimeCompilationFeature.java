@@ -699,7 +699,7 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
 
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

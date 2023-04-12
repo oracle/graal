@@ -352,7 +352,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                                 out.printf("            return %s.%s();\n", genClass.clazz.getSimpleName(), featuresGetter.aarch64Getter);
                             }
                             out.printf("        }\n");
-                            out.printf("        throw GraalError.shouldNotReachHere();\n");
+                            out.printf("        throw GraalError.unsupportedArchitecture(arch);\n");
                             out.printf("    }\n");
                             out.printf("\n");
 

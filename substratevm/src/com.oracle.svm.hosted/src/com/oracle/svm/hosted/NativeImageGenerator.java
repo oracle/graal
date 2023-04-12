@@ -1780,7 +1780,7 @@ public class NativeImageGenerator {
                                 LayoutEncoding.getArrayIndexScale(le));
 
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(le); // ExcludeFromJacocoGeneratedReport
             }
 
             System.out.println();

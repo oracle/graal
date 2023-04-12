@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.config.ConfigurationValues.getObjectLayout;
-import static com.oracle.svm.core.util.VMError.unimplemented;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -84,12 +84,12 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
 
     @Override
     public ResolvedJavaMethod lookupJavaMethod(Executable reflectionMethod) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public ResolvedJavaField lookupJavaField(Field reflectionField) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -102,7 +102,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
 
     @Override
     public Signature parseMethodDescriptor(String methodDescriptor) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -157,6 +157,6 @@ public class SubstrateMetaAccess implements MetaAccessProvider {
 
     @Override
     public long getMemorySize(JavaConstant constant) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }

@@ -25,7 +25,9 @@
 package com.oracle.svm.core.graal.llvm;
 
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
+import static org.graalvm.compiler.debug.GraalError.unimplementedOverride;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -417,7 +419,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 builder.buildIf(cond, gen.getBlock(switchNode.keySuccessor(0)), defaultSuccessor);
                 break;
             default:
-                throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+                throw shouldNotReachHereUnexpectedValue(numCases); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -493,7 +495,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             gen.getDebugInfoPrinter().printIndirectCall(targetMethod, callee);
         } else {
-            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw shouldNotReachHereUnexpectedValue(callTarget); // ExcludeFromJacocoGeneratedReport
         }
 
         LLVMValueRef call = emitCall(i, callTarget, callee, patchpointId, args);
@@ -518,7 +520,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             LLVMBasicBlockRef handler = gen.getBlock(foreignCallWithExceptionNode.exceptionEdge());
             result = gen.emitForeignCall(linkage, state, successor, handler, args);
         } else {
-            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw shouldNotReachHereUnexpectedValue(i); // ExcludeFromJacocoGeneratedReport
         }
 
         if (result != null) {
@@ -755,6 +757,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public ValueNode valueForOperand(Value value) {
-        throw unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 }

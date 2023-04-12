@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -893,7 +893,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 producer = "subtraction operation " + valueNode;
                 operation = "subtraction";
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(valueNode); // ExcludeFromJacocoGeneratedReport
             }
             Supplier<String> message = () -> "Could not determine the field where the value produced by the " + producer +
                             " for the " + kindAsString(substitutionKind) + " computation is stored. The " + operation +

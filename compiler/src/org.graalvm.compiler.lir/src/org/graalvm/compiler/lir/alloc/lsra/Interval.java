@@ -98,7 +98,7 @@ public final class Interval {
                 case Stack:
                     return stack;
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(binding); // ExcludeFromJacocoGeneratedReport
         }
 
         /**

@@ -110,12 +110,12 @@ public class RISCV64HotSpotBackendFactory extends HotSpotBackendFactory {
         return new HotSpotBackend(runtime, providers) {
             @Override
             public RegisterAllocationConfig newRegisterAllocationConfig(RegisterConfig registerConfig, String[] allocationRestrictedTo) {
-                throw GraalError.unimplemented();
+                throw GraalError.unimplementedOverride();
             }
 
             @Override
             public ReferenceMapBuilder newReferenceMapBuilder(int totalFrameSize) {
-                throw GraalError.unimplemented();
+                throw GraalError.unimplementedOverride();
             }
         };
     }

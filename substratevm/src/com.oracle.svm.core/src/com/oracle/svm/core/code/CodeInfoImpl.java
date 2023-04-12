@@ -250,7 +250,7 @@ interface CodeInfoImpl extends CodeInfo {
 
     @RawFieldOffset
     static int offsetOfGCData() {
-        throw VMError.unimplemented(); // replaced
+        throw VMError.intentionallyUnimplemented(); // replaced
     }
 
     @RawField

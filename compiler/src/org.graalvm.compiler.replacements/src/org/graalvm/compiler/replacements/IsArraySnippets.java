@@ -73,7 +73,7 @@ public abstract class IsArraySnippets implements Snippets {
                 args = new Arguments(classIsArraySnippet, node.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("clazz", ((ClassIsArrayNode) node).getValue());
             } else {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere(node + " " + replacer); // ExcludeFromJacocoGeneratedReport
             }
 
             args.add("trueValue", replacer.trueValue);

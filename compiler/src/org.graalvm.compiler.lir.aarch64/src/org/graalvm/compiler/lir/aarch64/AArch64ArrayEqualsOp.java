@@ -783,7 +783,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                 asm.neon.uxtlVV(fromStride(stride).expand(), vecArray, vecArray);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere(strideMax.log2 + " " + stride.log2); // ExcludeFromJacocoGeneratedReport
         }
     }
 

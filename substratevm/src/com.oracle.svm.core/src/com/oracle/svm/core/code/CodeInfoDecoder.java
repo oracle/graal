@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.util.TypeConversion;
@@ -250,7 +250,7 @@ public final class CodeInfoDecoder {
             case FS_SIZE_S4:
                 return NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFS(entryOffset, entryFlags));
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(entryFlags); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -266,7 +266,7 @@ public final class CodeInfoDecoder {
             case EX_OFFSET_S4:
                 return NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetEX(entryOffset, entryFlags));
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(entryFlags); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -282,7 +282,7 @@ public final class CodeInfoDecoder {
             case RM_INDEX_U4:
                 return NonmovableByteArrayReader.getU4(CodeInfoAccess.getCodeInfoEncodings(info), offsetRM(entryOffset, entryFlags));
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(entryFlags); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -322,7 +322,7 @@ public final class CodeInfoDecoder {
             case FS_SIZE_S4:
                 return (sizeEncoding & FRAME_SIZE_METHOD_START) != 0;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(entryFlags); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -340,7 +340,7 @@ public final class CodeInfoDecoder {
                  */
                 return false;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(entryFlags); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -356,7 +356,7 @@ public final class CodeInfoDecoder {
                 isDeoptEntry = false;
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(entryFlags); // ExcludeFromJacocoGeneratedReport
         }
         int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
         return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), frameInfoIndex), info);

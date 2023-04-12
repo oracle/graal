@@ -205,7 +205,7 @@ public class GenScavengeMemoryPoolMXBeans {
 
         @Override
         void afterCollection(GCAccounting accounting) {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

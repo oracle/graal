@@ -119,7 +119,7 @@ public class UninitializedStaticFieldValueReader {
                 assert value == null || value instanceof String : "String is currently the only specified object type for the ConstantValue class file attribute";
                 return function.apply(value);
             default:
-                throw AnalysisError.shouldNotReachHere();
+                throw AnalysisError.shouldNotReachHereUnexpectedInput(kind);
         }
     }
 }

@@ -93,7 +93,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                                     results = arithmeticGen.emitUnsignedDivRem(operand(divRem.getX()), operand(divRem.getY()), state((DeoptimizingNode) valueNode));
                                     break;
                                 default:
-                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                                    throw GraalError.shouldNotReachHereUnexpectedValue(divRem.getType()); // ExcludeFromJacocoGeneratedReport
                             }
                             switch (divRem.getOp()) {
                                 case DIV:
@@ -107,7 +107,7 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
                                     setResult(otherDivRem, results[0]);
                                     break;
                                 default:
-                                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                                    throw GraalError.shouldNotReachHereUnexpectedValue(divRem.getOp()); // ExcludeFromJacocoGeneratedReport
                             }
                             return true;
                         }

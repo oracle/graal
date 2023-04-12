@@ -348,7 +348,7 @@ final class Util_java_lang_invoke_MethodHandleNatives {
             try {
                 verifyAccess = VerifyAccess.class.getDeclaredMethod("isMemberAccessible", Class.class, Class.class, int.class, Class.class, Class.class, int.class);
             } catch (NoSuchMethodException e) {
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(e);
             }
         }
         try {

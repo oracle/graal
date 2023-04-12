@@ -348,7 +348,7 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
                     }
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(index); // ExcludeFromJacocoGeneratedReport
             }
         }
 

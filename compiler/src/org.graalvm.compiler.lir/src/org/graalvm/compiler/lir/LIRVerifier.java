@@ -182,7 +182,7 @@ public final class LIRVerifier {
                     TTY.println("definition of %s: %s", value, variableDefinitions[variableIdx]);
                 }
                 TTY.println("ERROR: Use of variable %s that is not defined in dominator", value);
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere("intentional"); // ExcludeFromJacocoGeneratedReport
             }
 
         } else if (isAllocatableRegister(value)) {
@@ -195,7 +195,7 @@ public final class LIRVerifier {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
                 TTY.println("live registers: %s", Arrays.toString(curRegistersLive));
                 TTY.println("ERROR: Use of fixed register %s that is not defined in this block", value);
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere("intentional"); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -212,7 +212,7 @@ public final class LIRVerifier {
                 TTY.println("live variables: %s", curVariablesLive);
                 TTY.println("definition of %s: %s", value, variableDefinitions[variableIdx]);
                 TTY.println("ERROR: Variable %s defined multiple times", value);
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere("intentional"); // ExcludeFromJacocoGeneratedReport
             }
             assert curInstruction != null;
             variableDefinitions[variableIdx] = curInstruction;
@@ -226,7 +226,7 @@ public final class LIRVerifier {
             if (curRegistersDefined.get(regNum)) {
                 TTY.println("block %s  instruction %s", curBlock, curInstruction);
                 TTY.println("ERROR: Same register defined twice in the same instruction: %s", value);
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere("intentional"); // ExcludeFromJacocoGeneratedReport
             }
             curRegistersDefined.set(regNum);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static com.oracle.svm.hosted.image.NativeImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 
 import java.io.FileOutputStream;
@@ -75,7 +75,6 @@ import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.LLVMToolchain;
 import com.oracle.svm.hosted.image.LLVMToolchain.RunFailureException;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
@@ -312,7 +311,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             case O2:
                 return 2;
             default:
-                throw VMError.shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(SubstrateOptions.optimizationLevel()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -406,7 +405,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     function = "batch " + id + " (f" + getBatchStart(id) + "-f" + getBatchEnd(id) + "). Use -H:LLVMMaxFunctionsPerBatch=1 to compile each method individually.";
                     break;
                 default:
-                    throw shouldNotReachHere();
+                    throw shouldNotReachHereUnexpectedInput(type);
             }
         }
         return function + " (" + basePath.resolve(fileName).toString() + ")";

@@ -225,7 +225,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 getLIRGen().append(new AMD64Unary.MOp(NOT, QWORD, result, input));
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(input.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -355,7 +355,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     return emitBinary(resultKind, SSEOp.ADD, SD, true, a, b);
                 }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -380,7 +380,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     return emitBinary(resultKind, SSEOp.SUB, SD, false, a, b);
                 }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -435,7 +435,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     return emitBinary(resultKind, SSEOp.MUL, SD, true, a, b);
                 }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -458,7 +458,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case QWORD:
                 return emitMulHigh(AMD64MOp.IMUL, QWORD, a, b);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -470,7 +470,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case QWORD:
                 return emitMulHigh(AMD64MOp.MUL, QWORD, a, b);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -511,7 +511,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 getLIRGen().append(new AMD64Unary.MemoryOp(MOV, QWORD, result, address, state));
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(memoryKind); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -542,7 +542,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 op = emitIDIV(QWORD, a, b, state);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
         return new Value[]{getLIRGen().emitMove(op.getQuotient()), getLIRGen().emitMove(op.getRemainder())};
     }
@@ -557,7 +557,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 op = emitDIV(QWORD, a, b, state);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
         return new Value[]{getLIRGen().emitMove(op.getQuotient()), getLIRGen().emitMove(op.getRemainder())};
     }
@@ -586,7 +586,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     return emitBinary(resultKind, SSEOp.DIV, SD, false, a, b);
                 }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -610,7 +610,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return result;
             }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -625,7 +625,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 op = emitDIV(QWORD, a, b, state);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
         return getLIRGen().emitMove(op.getQuotient());
     }
@@ -641,7 +641,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 op = emitDIV(QWORD, a, b, state);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
         return getLIRGen().emitMove(op.getRemainder());
     }
@@ -659,7 +659,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case DOUBLE:
                 return emitBinary(resultKind, SSEOp.AND, PD, true, a, b);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -685,7 +685,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     return emitBinary(resultKind, SSEOp.OR, PD, true, a, b);
                 }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -711,7 +711,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                     return emitBinary(resultKind, SSEOp.XOR, PD, true, a, b);
                 }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -753,7 +753,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case QWORD:
                 return emitShift(SHL, QWORD, a, b);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -765,7 +765,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case QWORD:
                 return emitShift(SAR, QWORD, a, b);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -777,7 +777,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case QWORD:
                 return emitShift(SHR, QWORD, a, b);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -788,7 +788,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case QWORD:
                 return emitShift(ROL, QWORD, a, b);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -800,7 +800,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case QWORD:
                 return emitShift(ROR, QWORD, a, b);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(a.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -897,7 +897,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
             case L2F:
                 return emitConvertOp(LIRKind.combine(input).changeType(AMD64Kind.SINGLE), SSEOp.CVTSI2SS, QWORD, input);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1134,7 +1134,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 getLIRGen().append(new AMD64Binary.DataTwoOp(SSEOp.AND, PD, result, asAllocatable(input), JavaConstant.forDouble(Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL)), 16));
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(input.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -1150,7 +1150,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 getLIRGen().append(new AMD64Unary.RMOp(SSEOp.SQRT, SD, result, asAllocatable(input)));
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(input.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -1236,7 +1236,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 getLIRGen().append(new AMD64Unary.MemoryOp(MOVSD, SD, result, loadAddress, state));
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -1327,7 +1327,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 getLIRGen().append(new AMD64BinaryConsumer.MemoryMROp(SSEMROp.MOVSD, SD, address, value, state));
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1547,7 +1547,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 case DOUBLE:
                     return kind.getVectorLength() > 1 ? vectorDoubleOp : scalarDoubleOp;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(kind.getScalar()); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -1661,7 +1661,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind.getScalar()); // ExcludeFromJacocoGeneratedReport
         }
         AllocatableValue result = getLIRGen().newVariable(LIRKind.combine(a, b));
         getLIRGen().append(new AMD64VectorFloatCompareOp(vcmpp, size, result, a, b, predicate));

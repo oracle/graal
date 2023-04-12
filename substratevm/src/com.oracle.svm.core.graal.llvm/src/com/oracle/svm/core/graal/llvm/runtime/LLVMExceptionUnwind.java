@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -126,7 +126,7 @@ public class LLVMExceptionUnwind {
             return ((UniverseMetaAccess) metaAccess).getUniverse().lookup(CEntryPointCallStubSupport.singleton()
                             .getStubForMethod(LLVMExceptionUnwind.class.getMethod("personality", int.class, int.class, IsolateThread.class, _Unwind_Exception.class, _Unwind_Context.class)));
         } catch (NoSuchMethodException e) {
-            throw shouldNotReachHere();
+            throw shouldNotReachHere(e);
         }
     }
 
@@ -134,7 +134,7 @@ public class LLVMExceptionUnwind {
         try {
             return metaAccess.lookupJavaMethod(LLVMExceptionUnwind.class.getMethod("retrieveException"));
         } catch (NoSuchMethodException e) {
-            throw shouldNotReachHere();
+            throw shouldNotReachHere(e);
         }
     }
 

@@ -307,7 +307,7 @@ public class AMD64VectorShuffle {
                     op = VSHUFPD;
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(kind.getScalar()); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isRegister(source2)) {

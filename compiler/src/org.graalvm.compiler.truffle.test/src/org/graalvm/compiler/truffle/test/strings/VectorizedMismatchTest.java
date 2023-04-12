@@ -127,7 +127,7 @@ public class VectorizedMismatchTest extends TStringOpsTest<VectorizedMismatchNod
                                 toLongArray(arrayB), offsetB, length);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
         }
     }
 

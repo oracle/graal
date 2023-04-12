@@ -78,7 +78,7 @@ final class LoomVirtualThreads implements VirtualThreads {
 
     @Platforms({}) // fails image build if reachable
     private static RuntimeException unreachable() {
-        return VMError.shouldNotReachHere();
+        return VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

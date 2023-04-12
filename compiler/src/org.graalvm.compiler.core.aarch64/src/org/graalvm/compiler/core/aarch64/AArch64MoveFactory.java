@@ -78,7 +78,7 @@ public class AArch64MoveFactory extends MoveFactory {
         } else if (src instanceof DataPointerConstant) {
             return new AArch64Move.LoadDataOp(dst, (DataPointerConstant) src);
         } else {
-            throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(src); // ExcludeFromJacocoGeneratedReport
         }
     }
 
