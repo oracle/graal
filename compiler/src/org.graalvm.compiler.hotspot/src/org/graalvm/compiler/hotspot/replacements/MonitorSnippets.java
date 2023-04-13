@@ -236,8 +236,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
           lineStart = 474,
           lineEnd   = 932,
-          commit    = "431e702b676e2c02224d60181c34b5fe97873d8b",
-          sha1      = "9945a7b132ccd437330801ce62cf0cedbc54e7d0")
+          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
+          sha1      = "393c6407668262018d912bd7ec58bb03a6b44810")
 // @formatter:on
 public class MonitorSnippets implements Snippets {
 
