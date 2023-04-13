@@ -58,9 +58,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 5983,
-          lineEnd   = 6141,
-          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
+          lineStart = 5977,
+          lineEnd   = 6135,
+          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
           sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")

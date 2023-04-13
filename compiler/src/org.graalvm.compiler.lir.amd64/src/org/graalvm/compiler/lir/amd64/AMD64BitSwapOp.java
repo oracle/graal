@@ -44,9 +44,9 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-          lineStart = 5664,
-          lineEnd   = 5746,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          lineStart = 5670,
+          lineEnd   = 5752,
+          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
           sha1      = "00fb0bbf3d9eee0ceaf2ef39aaeae214b9c91c59")
 // @formatter:on
 public final class AMD64BitSwapOp extends AMD64LIRInstruction {

@@ -43,14 +43,14 @@ import jdk.vm.ci.meta.AllocatableValue;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/x86_64.ad",
-          lineStart = 12800,
-          lineEnd   = 12824,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          lineStart = 12790,
+          lineEnd   = 12814,
+          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
           sha1      = "997a3fd0c34599035d44866b15f1efc7eb28945e")
 @StubPort(path      = "src/hotspot/cpu/x86/x86_64.ad",
-          lineStart = 12852,
-          lineEnd   = 12876,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
+          lineStart = 12842,
+          lineEnd   = 12866,
+          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
           sha1      = "9c6287fe33d5c9be006582942ba131188a924ee3")
 // @formatter:on
 public class AMD64NormalizedUnsignedCompareOp extends AMD64LIRInstruction {
