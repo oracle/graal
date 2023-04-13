@@ -547,7 +547,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 MetaAccessProvider metaAccess = b.getMetaAccess();
                 int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
 
-                ValueNode srcOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), new LeftShiftNode(sp, ConstantNode.forInt(2)), NodeView.DEFAULT);
+                ValueNode srcOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), new LeftShiftNode(sp, ConstantNode.forInt(1)), NodeView.DEFAULT);
                 ValueNode dstOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), dp, NodeView.DEFAULT);
 
                 ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
