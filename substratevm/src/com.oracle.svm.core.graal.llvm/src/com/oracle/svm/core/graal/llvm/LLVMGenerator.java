@@ -261,6 +261,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     private void addMainFunction(ResolvedJavaMethod method) {
         builder.setMainFunction(functionName, getLLVMFunctionType(method, true));
+        builder.setTarget(LLVMTargetSpecific.get().getTargetTriple());
         builder.setFunctionLinkage(LinkageType.External);
         builder.setFunctionAttribute(Attribute.NoInline);
         builder.setFunctionAttribute(Attribute.NoRedZone);

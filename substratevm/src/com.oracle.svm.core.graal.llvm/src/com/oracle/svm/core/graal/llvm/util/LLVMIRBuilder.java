@@ -152,6 +152,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMSetLinkage(global, linkage.code);
     }
 
+    public void setTarget(String target) {
+        LLVM.LLVMSetTarget(module, target);
+    }
+
     public enum LinkageType {
         External(LLVM.LLVMExternalLinkage),
         LinkOnce(LLVM.LLVMLinkOnceAnyLinkage),
