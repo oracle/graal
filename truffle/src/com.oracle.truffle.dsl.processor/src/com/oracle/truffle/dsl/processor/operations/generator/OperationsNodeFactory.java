@@ -105,6 +105,7 @@ import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionField;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
@@ -152,8 +153,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     // Interface representing data objects that can have a specified boxing state.
     private final CodeTypeElement boxableInterface = new CodeTypeElement(Set.of(PRIVATE), ElementKind.INTERFACE, null, "BoxableInterface");
-    private final CodeTypeElement loadLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "LoadLocalData");
-    private final CodeTypeElement storeLocalData = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "StoreLocalData");
 
     // Root node and ContinuationLocal classes to support yield.
     private final CodeTypeElement continuationRoot;
@@ -215,12 +214,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // Define the classes that model instruction data (e.g., cache data, continuation data).
         operationNodeGen.add(new BoxableInterfaceFactory().create());
-        if (model.hasBoxingElimination()) {
-            operationNodeGen.add(new LoadLocalDataFactory().create());
-            operationNodeGen.add(new StoreLocalDataFactory().create());
-        }
+
         // Define a static singleton object for instructions that don't have any data.
-        operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(Object.class), "EPSILON = new Object()"));
+        operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(int[].class), "NO_DATA = new int[0]"));
 
         // Define the classes that implement continuations (yield).
         if (model.enableYield) {
@@ -288,6 +284,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), operationNodesImpl.asType(), "nodes")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "objs")));
+        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "constants")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "handlers")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
@@ -420,13 +417,14 @@ public class OperationsNodeFactory implements ElementHelpers {
             switch (instr.kind) {
                 case CUSTOM:
                 case CUSTOM_SHORT_CIRCUIT:
-                    String udName = (model.generateUncached && instr.needsUncachedData()) ? uncachedDataClassName(instr) : cachedDataClassName(instr);
+                    String udName = (model.generateUncached && instr.hasImmediates()) ? uncachedDataClassName(instr) : cachedDataClassName(instr);
                     b.declaration(udName, "curData", "(" + udName + ") objs[bci]");
                     b.declaration(udName, "newData", "new " + udName + "()");
 
-                    for (InstructionField field : instr.getUncachedFields()) {
-                        b.statement("newData." + field.name + " = curData." + field.name);
-                    }
+                    // TODO figure out how to replace this
+// for (InstructionField field : instr.getUncachedFields()) {
+// b.statement("newData." + field.name + " = curData." + field.name);
+// }
 
                     b.statement("clone.objs[bci] = clone.insert(newData)");
 
@@ -784,17 +782,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     buildIntrospectionArgument(b, "ARGUMENT", "data");
                     break;
                 case LOAD_LOCAL:
-                    if (model.hasBoxingElimination()) {
-                        buildIntrospectionArgument(b, "LOCAL", "(int) ((LoadLocalData) data).v_index");
-                        break;
-                    }
-                    // fall-through
                 case STORE_LOCAL:
-                    if (model.hasBoxingElimination()) {
-                        buildIntrospectionArgument(b, "LOCAL", "(int) ((StoreLocalData) data).s_index");
-                        break;
-                    }
-                    // fall-through
                 case LOAD_LOCAL_MATERIALIZED:
                 case STORE_LOCAL_MATERIALIZED:
                 case THROW:
@@ -803,7 +791,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case CUSTOM:
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
-                    assert instr.needsUncachedData() : "Short circuit operations should always have branch targets.";
+                    assert instr.hasImmediates() : "Short circuit operations should always have branch targets.";
                     String dataClassName = model.generateUncached ? uncachedDataClassName(instr) : cachedDataClassName(instr);
                     buildIntrospectionArgument(b, "BRANCH_OFFSET", "((" + dataClassName + " ) data).op_branchTarget_");
                     break;
@@ -1036,15 +1024,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
 
                     b.statement(cachedDataClassName(instr) + " data = new " + cachedDataClassName(instr) + "()");
-                    if (model.generateUncached && instr.needsUncachedData()) {
+                    if (model.generateUncached && instr.hasImmediates()) {
                         b.startIf().string("interpreter == UNCACHED_INTERPRETER").end().startBlock();
-
-                        b.statement(uncachedDataClassName(instr) + " oldData = (" + uncachedDataClassName(instr) + ") objs[bci]");
-                        for (InstructionField field : instr.getUncachedFields()) {
-                            b.statement("data." + field.name + " = oldData." + field.name);
-                        }
-
-                        // todo: initialize cached fields
+                        b.lineComment("/* TODO: initialize Node here */");
                         b.end();
                     }
 
@@ -1191,13 +1173,14 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     class BuilderFactory {
         public static final String UNINIT = "UNINITIALIZED";
-        CodeVariableElement uninitialized = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(int.class), UNINIT);
+        CodeVariableElement uninitialized = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(short.class), UNINIT);
 
         private CodeTypeElement deserializerContextImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "DeserializerContextImpl");
 
         CodeTypeElement savedState = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "SavedState");
         CodeTypeElement operationStackEntry = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "OperationStackEntry");
         CodeTypeElement finallyTryContext = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "FinallyTryContext");
+        CodeTypeElement constantPool = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "ConstantPool");
 
         // When we enter a FinallyTry, these fields get stored on the FinallyTryContext.
         // On exit, they are restored.
@@ -1228,6 +1211,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "opSeqNum"),
                         new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLabels"),
+                        new CodeVariableElement(Set.of(PRIVATE), constantPool.asType(), "constantPool"),
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState")));
 
@@ -1343,12 +1327,61 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
         }
 
+        class ConstantPoolFactory {
+            private CodeTypeElement create() {
+                List<CodeVariableElement> fields = List.of(
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, context.getType(Object.class)), "constants"),
+                                new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(HashMap.class, context.getType(Object.class), context.getDeclaredType(Integer.class)), "map"));
+
+                constantPool.addAll(fields);
+
+                CodeExecutableElement ctor = createConstructorUsingFields(Set.of(), constantPool, null, Set.of("constants", "map"));
+                CodeTreeBuilder b = ctor.appendBuilder();
+                b.statement("constants = new ArrayList<>()");
+                b.statement("map = new HashMap<>()");
+                constantPool.add(ctor);
+
+                constantPool.add(createAddConstant());
+                constantPool.add(createToArray());
+
+                return constantPool;
+            }
+
+            private CodeExecutableElement createAddConstant() {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(int.class),
+                                "addConstant");
+                ex.addParameter(new CodeVariableElement(context.getType(Object.class), "constant"));
+
+                CodeTreeBuilder b = ex.createBuilder();
+
+                b.startIf().string("map.containsKey(constant)").end().startBlock();
+                b.startReturn().string("map.get(constant)").end();
+                b.end();
+
+                b.statement("int index = constants.size()");
+                b.statement("constants.add(constant)");
+                b.statement("map.put(constant, index)");
+                b.startReturn().string("index").end();
+
+                return ex;
+            }
+
+            private CodeExecutableElement createToArray() {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), new ArrayCodeTypeMirror(context.getType(Object.class)), "toArray");
+
+                CodeTreeBuilder b = ex.createBuilder();
+                b.startReturn().string("constants.toArray()").end();
+
+                return ex;
+            }
+        }
+
         class DeserializerContextImplFactory {
             private CodeTypeElement create() {
                 deserializerContextImpl.setEnclosingElement(operationNodeGen);
                 deserializerContextImpl.getImplements().add(types.OperationDeserializer_DeserializerContext);
 
-                deserializerContextImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes"));
+                deserializerContextImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, operationNodeGen.asType()), "builtNodes"));
                 deserializerContextImpl.add(createConstructorUsingFields(Set.of(PRIVATE), deserializerContextImpl));
 
                 deserializerContextImpl.add(createDeserializeOperationNode());
@@ -1378,6 +1411,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(new SavedStateFactory().create());
             builder.add(new OperationStackEntryFactory().create());
             builder.add(new FinallyTryContextFactory().create());
+            builder.add(new ConstantPoolFactory().create());
 
             builder.add(createOperationNames());
 
@@ -1385,9 +1419,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "isReparse"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withSource"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withInstrumentation"));
-            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, operationNodeGen.asType()), "builtNodes"));
+
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex"));
-            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(context.getDeclaredType(ArrayList.class), types.Source), "sources"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, types.Source), "sources"));
 
             if (model.enableSerialization) {
                 serializationElements = new SerializationStateElements();
@@ -2122,6 +2157,11 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.tree(createOperationConstant(operation));
             b.end(2);
 
+            if (operation.kind == OperationKind.ROOT) {
+                // endRoot is handled specially.
+                return createEndRoot(ex, b);
+            }
+
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                 // Short-circuiting operations should have at least one child.
                 b.startIf().string("operationStack[operationSp].childCount == 0").end().startBlock();
@@ -2140,86 +2180,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 buildThrowIllegalStateException(b, "\"Operation " + operation.name + " expected exactly " + childString(operation.numChildren) +
                                 ", but \" + operationStack[operationSp].childCount + \" provided. This is probably a bug in the parser.\"");
                 b.end();
-            }
-
-            if (operation.kind == OperationKind.ROOT) {
-                ex.setReturnType(model.templateType.asType());
-
-                b.declaration(types.TruffleLanguage, "language");
-
-                b.startAssign("language").cast(types.TruffleLanguage).string("((Object[]) operationStack[operationSp].data)[1]").end();
-
-                b.declaration(operationNodeGen.asType(), "result", (CodeTree) null);
-                b.startIf().string("isReparse").end().startBlock(); // {
-                b.statement("result = builtNodes.get(buildIndex)");
-
-                b.startAssert().string("result.buildIndex == buildIndex").end();
-
-                b.end().startElseBlock(); // } {
-
-                b.declaration(types.FrameDescriptor_Builder, "fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
-
-                b.startStatement().startCall("fdb.addSlots");
-                b.string("numLocals + maxStack");
-                b.staticReference(types.FrameSlotKind, "Illegal");
-                b.end(2);
-
-                b.startAssign("result").startNew(operationNodeGen.asType()).string("language").string("fdb").end(2);
-
-                b.startAssign("result.nodes").string("nodes").end();
-                b.startAssign("result.bc").string("Arrays.copyOf(bc, bci)").end();
-                b.startAssign("result.objs").string("Arrays.copyOf(objs, bci)").end();
-                if (model.enableTracing) {
-                    b.startAssign("result.basicBlockBoundary").string("Arrays.copyOf(basicBlockBoundary, bci)").end();
-                }
-
-                b.startFor().string("int i = 0; i < bci; i++").end().startBlock();
-
-                b.startIf().string("objs[i] instanceof Node").end().startBlock();
-                b.statement("result.insert((Node) objs[i])");
-                b.end();
-
-                if (model.enableYield) {
-                    b.startElseIf().string("objs[i] instanceof ContinuationLocationImpl").end().startBlock();
-                    b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) objs[i]");
-                    b.statement("cl.rootNode = new ContinuationRoot(language, result.getFrameDescriptor(), result, cl.target)");
-                    b.end();
-                }
-
-                b.end();
-
-                b.startAssign("result.handlers").string("Arrays.copyOf(exHandlers, exHandlerCount)").end();
-                b.startAssign("result.numLocals").string("numLocals").end();
-                b.startAssign("result.buildIndex").string("buildIndex").end();
-
-                if (model.hasBoxingElimination() && !model.generateUncached) {
-                    // need to initialize it now
-                    b.startAssign("result.localBoxingState").string("new byte[numLocals]").end();
-                }
-
-                b.startAssert().string("builtNodes.size() == buildIndex").end();
-                b.statement("builtNodes.add(result)");
-
-                b.end(); // }
-
-                b.statement("buildIndex++");
-
-                b.startIf().string("withSource").end().startBlock();
-                b.statement("result.sourceInfo = Arrays.copyOf(sourceInfo, sourceInfoIndex)");
-                b.end();
-
-                b.startIf().string("savedState == null").end().startBlock(); // {
-                b.statement("bc = null");
-                b.end().startElseBlock(); // } {
-                for (CodeVariableElement state : builderState) {
-                    if (state != null) {
-                        b.startAssign("this." + state.getName()).string("savedState." + state.getName()).end();
-                    }
-                }
-                b.end();
-
-                b.startReturn().string("result").end();
-                return ex;
             }
 
             switch (operation.kind) {
@@ -2263,23 +2223,23 @@ public class OperationsNodeFactory implements ElementHelpers {
                     break;
                 case FINALLY_TRY:
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationStack[operationSp].data");
-                    b.statement("int exceptionLocal = numLocals++");
+                    b.statement("short exceptionLocal = (short) numLocals++");
 
                     b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, curStack, exceptionLocal)");
 
                     b.statement("doEmitFinallyHandler(ctx)");
 
-                    b.statement("int endBranchIndex = bci");
+                    b.statement("int endBranchIndex = bci + 1");
                     // The branch past the catch handler may be a relative branch in an outer
                     // handler(finallyTryContext points to the parent context at this point).
-                    emitFinallyRelativeBranchCheck(b);
-                    buildEmitInstruction(b, model.branchInstruction, UNINIT);
+                    emitFinallyRelativeBranchCheck(b, 1);
+                    buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
 
                     b.statement("exHandlers[exHandlerIndex + 2] = bci /* handler start */");
 
                     b.statement("doEmitFinallyHandler(ctx)");
 
-                    buildEmitInstruction(b, model.throwInstruction, "exceptionLocal");
+                    buildEmitInstruction(b, model.throwInstruction, new String[]{"exceptionLocal"});
 
                     b.statement("objs[endBranchIndex] = bci");
 
@@ -2310,36 +2270,116 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private Element createEndRoot(CodeExecutableElement ex, CodeTreeBuilder b) {
+            ex.setReturnType(model.templateType.asType());
+
+            b.declaration(types.TruffleLanguage, "language");
+
+            b.startAssign("language").cast(types.TruffleLanguage).string("((Object[]) operationStack[operationSp].data)[1]").end();
+
+            b.declaration(operationNodeGen.asType(), "result", (CodeTree) null);
+            b.startIf().string("isReparse").end().startBlock(); // {
+            b.statement("result = builtNodes.get(buildIndex)");
+
+            b.startAssert().string("result.buildIndex == buildIndex").end();
+
+            b.end().startElseBlock(); // } {
+
+            b.declaration(types.FrameDescriptor_Builder, "fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
+
+            b.startStatement().startCall("fdb.addSlots");
+            b.string("numLocals + maxStack");
+            b.staticReference(types.FrameSlotKind, "Illegal");
+            b.end(2);
+
+            b.startAssign("result").startNew(operationNodeGen.asType()).string("language").string("fdb").end(2);
+
+            b.startAssign("result.nodes").string("nodes").end();
+            b.startAssign("result.bc").string("Arrays.copyOf(bc, bci)").end();
+            b.startAssign("result.objs").string("Arrays.copyOf(objs, bci)").end();
+            b.startAssign("result.constants").string("constantPool.toArray()").end();
+            if (model.enableTracing) {
+                b.startAssign("result.basicBlockBoundary").string("Arrays.copyOf(basicBlockBoundary, bci)").end();
+            }
+
+            b.startFor().string("int i = 0; i < bci; i++").end().startBlock();
+
+            b.startIf().string("objs[i] instanceof Node").end().startBlock();
+            b.statement("result.insert((Node) objs[i])");
+            b.end();
+
+            if (model.enableYield) {
+                b.startElseIf().string("objs[i] instanceof ContinuationLocationImpl").end().startBlock();
+                b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) objs[i]");
+                b.statement("cl.rootNode = new ContinuationRoot(language, result.getFrameDescriptor(), result, cl.target)");
+                b.end();
+            }
+
+            b.end();
+
+            b.startAssign("result.handlers").string("Arrays.copyOf(exHandlers, exHandlerCount)").end();
+            b.startAssign("result.numLocals").string("numLocals").end();
+            b.startAssign("result.buildIndex").string("buildIndex").end();
+
+            if (model.hasBoxingElimination() && !model.generateUncached) {
+                // need to initialize it now
+                b.startAssign("result.localBoxingState").string("new byte[numLocals]").end();
+            }
+
+            b.startAssert().string("builtNodes.size() == buildIndex").end();
+            b.statement("builtNodes.add(result)");
+
+            b.end(); // }
+
+            b.statement("buildIndex++");
+
+            b.startIf().string("withSource").end().startBlock();
+            b.statement("result.sourceInfo = Arrays.copyOf(sourceInfo, sourceInfoIndex)");
+            b.end();
+
+            b.startIf().string("savedState == null").end().startBlock(); // {
+            b.statement("bc = null");
+            b.end().startElseBlock(); // } {
+            for (CodeVariableElement state : builderState) {
+                if (state != null) {
+                    b.startAssign("this." + state.getName()).string("savedState." + state.getName()).end();
+                }
+            }
+            b.end();
+
+            b.startReturn().string("result").end();
+            return ex;
+        }
+
         private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation) {
             b.startBlock();
-            switch (operation.kind) {
-                case STORE_LOCAL:
-                    if (model.hasBoxingElimination()) {
-                        b.statement("StoreLocalData argument = new StoreLocalData((short) ((OperationLocalImpl) operationStack[operationSp].data).index)");
-                    } else {
-                        b.statement("int argument = ((OperationLocalImpl) operationStack[operationSp].data).index");
-                    }
-                    break;
-                case LOAD_LOCAL:
-                    if (model.hasBoxingElimination()) {
-                        b.statement("LoadLocalData argument = new LoadLocalData((short) ((OperationLocalImpl) arg0).index)");
-                    } else {
-                        b.statement("int argument = ((OperationLocalImpl) arg0).index");
-                    }
-                    break;
-                case STORE_LOCAL_MATERIALIZED:
-                case LOAD_LOCAL_MATERIALIZED:
-                    b.statement("int argument = ((OperationLocalImpl) operationStack[operationSp].data).index");
-                    break;
-                case RETURN:
-                    b.statement("Object argument = EPSILON");
-                    break;
-                case LOAD_ARGUMENT:
-                case LOAD_CONSTANT:
-                    b.statement("Object argument = arg0");
-                    break;
-                case BRANCH:
-                    b.statement("OperationLabelImpl label = (OperationLabelImpl) arg0");
+            String[] args = switch (operation.kind) {
+                case LOAD_LOCAL -> new String[]{"((OperationLocalImpl) arg0).index"};
+                case STORE_LOCAL, LOAD_LOCAL_MATERIALIZED, STORE_LOCAL_MATERIALIZED -> new String[]{"((OperationLocalImpl) operationStack[operationSp].data).index"};
+                case RETURN -> new String[]{"NO_DATA"};
+                case LOAD_ARGUMENT -> new String[]{"arg0"};
+                case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(arg0)"};
+                case BRANCH -> {
+                    b.startAssign("OperationLabelImpl label").string("(OperationLabelImpl) arg0").end();
+
+                    b.statement("boolean isFound = false");
+                    b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
+                    b.startIf().string("operationStack[i].sequenceNumber == label.declaringOp").end().startBlock();
+                    b.statement("isFound = true");
+                    b.statement("break");
+                    b.end();
+                    b.end();
+
+                    b.startIf().string("!isFound").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
+                    b.end();
+
+                    b.startIf().string("curStack != 0").end().startBlock();
+                    buildThrowIllegalStateException(b, "\"Branch cannot be emitted in the middle of an operation.\"");
+                    b.end();
+
+                    b.statement("doEmitLeaves(label.declaringOp)");
+
                     b.declaration(context.getType(int.class), "argument");
                     b.startIf().string("label.isDefined()").end().startBlock();
                     b.statement("argument = label.index");
@@ -2349,16 +2389,16 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.statement("argument = " + UNINIT);
                     b.startStatement().startCall("registerUnresolvedLabel");
                     b.string("label");
-                    b.string("bci");
+                    b.string("bci + 1");
                     b.end(3);
                     b.newLine();
                     b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
-                    b.startIf().string("lbl.finallyTryOp != " + UNINIT).end().startBlock();
+                    b.startIf().string("label.finallyTryOp != " + UNINIT).end().startBlock();
                     // An earlier step has validated that the label is defined by an operation on
                     // the stack. We should be able to find the defining FinallyTry context without
                     // hitting an NPE.
                     b.statement("FinallyTryContext ctx = finallyTryContext");
-                    b.startWhile().string("ctx.finallyTrySequenceNumber != lbl.finallyTryOp").end().startBlock();
+                    b.startWhile().string("ctx.finallyTrySequenceNumber != label.finallyTryOp").end().startBlock();
                     b.statement("ctx = ctx.parentContext");
                     b.end();
 
@@ -2367,20 +2407,16 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.end();
 
                     b.end();
-                    break;
-                case CUSTOM_SIMPLE:
-                case CUSTOM_SHORT_CIRCUIT:
-                    buildCustomInitializer(b, operation, operation.instruction);
-                    break;
-                case YIELD:
-                    b.statement("ContinuationLocationImpl argument = new ContinuationLocationImpl(numYields++, (curStack << 16) | (bci + 1))");
-                    break;
-                default:
-                    b.statement("/* TODO: NOT IMPLEMENTED */");
-                    break;
-            }
-
-            buildEmitInstruction(b, operation.instruction, "argument");
+                    yield new String[]{"argument"};
+                }
+                case YIELD -> {
+                    b.statement("ContinuationLocation continuation = new ContinuationLocationImpl(numYields++, (curStack << 16) | (bci + 1))");
+                    yield new String[]{"constantPool.addConstant(continuation)"};
+                }
+                case CUSTOM_SIMPLE, CUSTOM_SHORT_CIRCUIT -> buildCustomInitializer(b, operation, operation.instruction);
+                default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Operation DSL processor.");
+            };
+            buildEmitInstruction(b, operation.instruction, args);
             b.end();
         }
 
@@ -2421,51 +2457,26 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startStatement().startCall("beforeChild").end(2);
             b.startStatement().startCall("emitOperationBegin").end(2);
 
-            switch (operation.kind) {
-                case LABEL:
-                    b.startAssign("OperationLabelImpl lbl").string("(OperationLabelImpl) arg0").end();
+            if (operation.kind == OperationKind.LABEL) {
+                b.startAssign("OperationLabelImpl label").string("(OperationLabelImpl) arg0").end();
 
-                    b.startIf().string("lbl.isDefined()").end().startBlock();
-                    buildThrowIllegalStateException(b, "\"OperationLabel already emitted. Each label must be emitted exactly once.\"");
-                    b.end();
+                b.startIf().string("label.isDefined()").end().startBlock();
+                buildThrowIllegalStateException(b, "\"OperationLabel already emitted. Each label must be emitted exactly once.\"");
+                b.end();
 
-                    b.startIf().string("lbl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
-                    buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
-                    b.end();
+                b.startIf().string("label.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
+                buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
+                b.end();
 
-                    b.startIf().string("curStack != 0").end().startBlock();
-                    buildThrowIllegalStateException(b, "\"OperationLabel cannot be emitted in the middle of an operation.\"");
-                    b.end();
+                b.startIf().string("curStack != 0").end().startBlock();
+                buildThrowIllegalStateException(b, "\"OperationLabel cannot be emitted in the middle of an operation.\"");
+                b.end();
 
-                    b.statement("lbl.index = bci");
-                    b.startStatement().startCall("resolveUnresolvedLabels");
-                    b.string("lbl");
-                    b.end(2);
-                    break;
-                case BRANCH:
-                    b.startAssign("OperationLabelImpl lbl").string("(OperationLabelImpl) arg0").end();
-
-                    b.statement("boolean isFound = false");
-                    b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
-                    b.startIf().string("operationStack[i].sequenceNumber == lbl.declaringOp").end().startBlock();
-                    b.statement("isFound = true");
-                    b.statement("break");
-                    b.end();
-                    b.end();
-
-                    b.startIf().string("!isFound").end().startBlock();
-                    buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
-                    b.end();
-
-                    b.startIf().string("curStack != 0").end().startBlock();
-                    buildThrowIllegalStateException(b, "\"Branch cannot be emitted in the middle of an operation.\"");
-                    b.end();
-
-                    b.statement("doEmitLeaves(lbl.declaringOp)");
-                    break;
-            }
-
-            if (operation.instruction != null) {
+                b.statement("label.index = bci");
+                b.startStatement().startCall("resolveUnresolvedLabels");
+                b.string("label");
+                b.end(2);
+            } else if (operation.instruction != null) {
                 buildEmitOperationInstruction(b, operation);
             }
 
@@ -2476,71 +2487,97 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private void buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction) {
-            if (instruction.signature.isVariadic) {
-                b.statement("doEmitVariadic(operationStack[operationSp].childCount - " + (instruction.signature.valueCount - 1) + ")");
-            }
-
-            if (model.generateUncached && !instruction.needsUncachedData()) {
-                b.statement("Object argument = EPSILON");
-                return;
-            }
-
-            String dataClassName = model.generateUncached ? uncachedDataClassName(instruction) : cachedDataClassName(instruction);
-            b.statement(dataClassName + " argument = new " + dataClassName + "()");
-
-            boolean inEmit = operation.numChildren == 0;
-            int argBase;
+        private String[] buildCustomInitializer(CodeTreeBuilder b, OperationModel operation, InstructionModel instruction) {
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                // Mark the branch target as uninitialized. Add this location to a work list to
-                // be processed once the branch target is known.
-                b.statement("argument.op_branchTarget_ = " + UNINIT);
+                b.statement("int branchTarget = " + UNINIT);
+                b.statement("int node = " + UNINIT); // TODO: allocate a node index
+                b.lineComment("Add this location to a work list to be processed once the branch target is known.");
                 b.statement("int[] sites = (int[]) ((Object[]) data)[0]");
                 b.statement("sites = Arrays.copyOf(sites, sites.length + 1)");
                 b.statement("sites[sites.length-1] = bci");
                 b.statement("((Object[]) data)[0] = sites");
-                argBase = 1;
-            } else {
-                argBase = 0;
+                return new String[]{"branchTarget", "node"};
             }
 
-            for (int i = 0; i < instruction.signature.localSetterCount; i++) {
-                b.startAssign("argument.op_localSetter" + i + "_");
-                b.startStaticCall(types.LocalSetter, "create");
-                if (inEmit) {
-                    b.string("((OperationLocalImpl) arg" + (argBase + i) + ").index");
-                } else {
-                    b.string("((OperationLocalImpl)((Object[]) operationStack[operationSp].data)[" + (argBase + i) + "]).index");
-                }
-                b.end(2);
-
+            if (instruction.signature.isVariadic) {
+                // Before emitting a variadic instruction, we need to emit instructions to merge all
+                // of the operands on the stack into one array.
+                b.statement("doEmitVariadic(operationStack[operationSp].childCount - " + (instruction.signature.valueCount - 1) + ")");
             }
 
-            argBase += instruction.signature.localSetterCount;
+            boolean inEmit = operation.numChildren == 0;
 
-            for (int i = 0; i < instruction.signature.localSetterRangeCount; i++) {
-                b.startBlock();
-                if (inEmit) {
-                    b.statement("OperationLocal[] argg = arg" + (argBase + i));
-                } else {
-                    b.statement("OperationLocal[] argg = (OperationLocal[]) ((Object[]) operationStack[operationSp].data)[" + (argBase + i) + "]");
-                }
-                b.statement("int[] indices = new int[argg.length]");
+            List<InstructionImmediate> immediates = instruction.getImmediates();
+            String[] args = new String[immediates.size()];
 
-                b.startFor().string("int ix = 0; ix < indices.length; ix++").end().startBlock();
-                b.startAssign("indices[ix]").string("((OperationLocalImpl) argg[ix]).index").end();
-                b.end();
+            int localSetterIndex = 0;
+            int localSetterRangeIndex = 0;
+            for (int i = 0; i < immediates.size(); i++) {
+                InstructionImmediate immediate = immediates.get(i);
+                args[i] = switch (immediate.kind) {
+                    case BYTECODE_INDEX -> {
+                        // Bytecode indices correspond to child pointers.
+                        // TODO: We should mark these as relative in case we're in a finally
+                        // handler.
+                        yield UNINIT;
+                    }
+                    case LOCAL_SETTER -> {
+                        String arg = "localSetter" + localSetterIndex;
+                        b.startAssign("int " + arg);
+                        if (inEmit) {
+                            b.string("((OperationLocalImpl) arg" + (localSetterIndex + i) + ").index");
+                        } else {
+                            b.string("((OperationLocalImpl)((Object[]) operationStack[operationSp].data)[" + (localSetterIndex + i) + "]).index");
+                        }
+                        b.end();
+                        b.startStatement();
+                        b.startStaticCall(types.LocalSetter, "create");
+                        b.string(arg);
+                        b.end(2);
 
-                b.startAssign("argument.op_localSetterRange" + i + "_");
-                b.startStaticCall(types.LocalSetterRange, "create");
-                b.string("indices");
-                b.end(2);
+                        localSetterIndex++;
+                        yield arg;
+                    }
+                    case LOCAL_SETTER_RANGE -> {
+                        String arg = "localSetterRange" + localSetterRangeIndex;
+                        String locals = "range" + localSetterRangeIndex + "Locals";
+                        String indices = "range" + localSetterRangeIndex + "Indices";
+                        String range = "range" + localSetterRangeIndex;
+                        b.startAssign("OperationLocal[] " + locals);
+                        if (inEmit) {
+                            b.string("arg" + (localSetterIndex + localSetterRangeIndex + i));
+                        } else {
+                            b.string("(OperationLocal[]) ((Object[]) operationStack[operationSp].data)[" + (localSetterIndex + localSetterRangeIndex + i) + "]");
+                        }
+                        b.end();
 
-                b.end();
+                        b.startAssign("int[] " + indices);
+                        b.string("new int[" + locals + ".length]");
+                        b.end();
+
+                        b.startFor().string("int i = 0; i < " + indices + ".length; i++").end().startBlock();
+                        b.startAssign(indices + "[i]").string("((OperationLocalImpl) " + locals + "[i]).index").end();
+                        b.end();
+
+                        b.startAssign("LocalSetterRange " + range);
+                        b.startStaticCall(types.LocalSetterRange, "create");
+                        b.string(indices);
+                        b.end(2);
+
+                        b.startAssign("int " + arg);
+                        b.string("(" + range + ".start & 0xffff) << 16 | (" + range + ".length & 0xffff)");
+                        b.end();
+
+                        localSetterRangeIndex++;
+                        yield arg;
+                    }
+                    case NODE -> "-1";
+                    case INTEGER, CONSTANT -> throw new AssertionError("Operation " + operation.name + " takes an immediate " + immediate.name + " with unexpected kind " + immediate.kind +
+                                    ". This is a bug in the Operation DSL processor.");
+                };
             }
 
-            argBase += instruction.signature.localSetterRangeCount;
-
+            return args;
         }
 
         private CodeExecutableElement createBeforeChild() {
@@ -2570,7 +2607,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                     b.startIf().string("childIndex != 0").end().startBlock();
                     buildCustomInitializer(b, op, op.instruction);
-                    buildEmitInstruction(b, op.instruction, "argument");
+                    buildEmitInstruction(b, op.instruction, new String[]{"argument"});
                     b.end();
                 }
 
@@ -2617,7 +2654,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.startIf().string("!producedValue").end().startBlock();
                             b.startThrow().startNew(context.getType(IllegalStateException.class));
                             b.string("\"Operation " + op.name + " expected a value-producing child at position \"",
-                                            "+ childIndex + ",
+                                            " + childIndex + ",
                                             "\", but a void one was provided. This likely indicates a bug in the parser.\"");
                             b.end(2);
                             b.end();
@@ -2637,12 +2674,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                 switch (op.kind) {
                     case IF_THEN:
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        b.statement("((int[]) data)[0] = bci");
-                        emitFinallyRelativeBranchCheck(b);
-                        buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
+                        b.statement("((int[]) data)[0] = bci + 1");
+                        emitFinallyRelativeBranchCheck(b, 1);
+                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT});
                         b.end().startElseBlock();
                         b.statement("int toUpdate = ((int[]) data)[0]");
-                        b.statement("objs[toUpdate] = bci");
+                        b.statement("bc[toUpdate] = (short) bci");
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -2651,13 +2688,13 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case CONDITIONAL:
                     case IF_THEN_ELSE:
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        b.statement("((int[]) data)[0] = bci");
-                        emitFinallyRelativeBranchCheck(b);
-                        buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
+                        b.statement("((int[]) data)[0] = bci + 1");
+                        emitFinallyRelativeBranchCheck(b, 1);
+                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT});
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
-                        emitFinallyRelativeBranchCheck(b);
-                        b.statement("((int[]) data)[1] = bci");
-                        buildEmitInstruction(b, model.branchInstruction, UNINIT);
+                        b.statement("((int[]) data)[1] = bci + 1");
+                        emitFinallyRelativeBranchCheck(b, 1);
+                        buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         if (op.kind == OperationKind.CONDITIONAL) {
                             // we have to adjust the stack for the third child
                             b.statement("curStack -= 1");
@@ -2666,10 +2703,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                             }
                         }
                         b.statement("int toUpdate = ((int[]) data)[0]");
-                        b.statement("objs[toUpdate] = bci");
+                        b.statement("bc[toUpdate] = (short) bci");
                         b.end().startElseBlock();
                         b.statement("int toUpdate = ((int[]) data)[1]");
-                        b.statement("objs[toUpdate] = bci");
+                        b.statement("bc[toUpdate] = (short) bci");
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -2677,14 +2714,14 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case WHILE:
                         b.startIf().string("childIndex == 0").end().startBlock();
-                        b.statement("((int[]) data)[1] = bci");
-                        emitFinallyRelativeBranchCheck(b);
-                        buildEmitInstruction(b, model.branchFalseInstruction, UNINIT);
+                        b.statement("((int[]) data)[1] = bci + 1");
+                        emitFinallyRelativeBranchCheck(b, 1);
+                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT});
                         b.end().startElseBlock();
-                        emitFinallyRelativeBranchCheck(b);
-                        buildEmitInstruction(b, model.branchInstruction, "((int[]) data)[0]");
+                        emitFinallyRelativeBranchCheck(b, 1);
+                        buildEmitInstruction(b, model.branchInstruction, new String[]{"(short) ((int[]) data)[0]"});
                         b.statement("int toUpdate = ((int[]) data)[1];");
-                        b.statement("objs[toUpdate] = bci");
+                        b.statement("bc[toUpdate] = (short) bci");
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -2695,8 +2732,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("dArray[1] = bci /* try end */");
                         b.statement("dArray[3] = bci /* branch past catch fix-up index */");
-                        emitFinallyRelativeBranchCheck(b);
-                        buildEmitInstruction(b, model.branchInstruction, UNINIT);
+                        emitFinallyRelativeBranchCheck(b, 1);
+                        buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         b.statement("dArray[2] = bci /* catch start */");
                         b.end();
                         b.startElseIf().string("childIndex == 1").end().startBlock();
@@ -2797,7 +2834,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.statement("System.arraycopy(context.handlerBasicBlockBoundary, 0, basicBlockBoundary, bci, context.handlerBasicBlockBoundary.length)");
             }
 
-            b.startFor().string("int idx = 0; idx < handlerBc.length; idx++").end().startBlock();
+            b.startFor().string("int idx = 0; idx < handlerBc.length;").end().startBlock();
             b.startSwitch().string("handlerBc[idx]").end().startBlock();
 
             // fix up data objects
@@ -2848,9 +2885,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case CUSTOM_SHORT_CIRCUIT:
                         b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
 
-                        if (model.generateUncached && !instr.needsUncachedData()) {
-                            b.startAssert().string("handlerObjs[idx] == EPSILON").end();
-                            b.statement("objs[offsetBci + idx] = EPSILON");
+                        if (model.generateUncached && !instr.hasImmediates()) {
+                            b.startAssert().string("handlerObjs[idx] == NO_DATA").end();
+                            b.statement("objs[offsetBci + idx] = NO_DATA");
                         } else {
                             String dataClassName = model.generateUncached ? uncachedDataClassName(instr) : cachedDataClassName(instr);
 
@@ -2858,19 +2895,21 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.statement(dataClassName + " newObj = new " + dataClassName + "()");
                             b.statement("objs[offsetBci + idx] = newObj");
 
-                            for (InstructionField field : instr.getUncachedFields()) {
-                                b.startAssign("newObj." + field.name);
-                                if (field.needLocationFixup) {
-                                    if (ElementUtils.typeEquals(field.type, context.getType(int.class))) {
-                                        b.string("curObj.", field.name, " + offsetBci");
-                                    } else {
-                                        throw new UnsupportedOperationException("how?");
-                                    }
-                                } else {
-                                    b.string("curObj.", field.name);
-                                }
-                                b.end();
-                            }
+                            // TODO: instead loop over the InstructionImmediates and perform any
+                            // necessary fixups. We need to migrate away from objs in this code.
+// for (InstructionField field : instr.getUncachedFields()) {
+// b.startAssign("newObj." + field.name);
+// if (field.needLocationFixup) {
+// if (ElementUtils.typeEquals(field.type, context.getType(int.class))) {
+// b.string("curObj.", field.name, " + offsetBci");
+// } else {
+// throw new UnsupportedOperationException("how?");
+// }
+// } else {
+// b.string("curObj.", field.name);
+// }
+// b.end();
+// }
                         }
 
                         b.statement("break");
@@ -2919,18 +2958,26 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createDoEmitInstruction() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "doEmitInstruction");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "instr"));
-            ex.addParameter(new CodeVariableElement(context.getType(Object.class), "data"));
+            ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(context.getType(int.class)), "data"));
+            ex.setVarArgs(true);
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startIf().string("bc.length == bci").end().startBlock(); // {
+            b.statement("int lastIndex = bci + data.length");
+            b.startIf().string("bc.length - 1 < lastIndex").end().startBlock();
+
+            b.statement("int newLength = bc.length * 2");
+            b.startWhile().string("newLength - 1 < lastIndex").end().startBlock();
+            b.statement("newLength *= 2");
+            b.end();
+
             b.startAssign("bc").startStaticCall(context.getType(Arrays.class), "copyOf");
             b.string("bc");
-            b.string("bc.length * 2");
+            b.string("newLength");
             b.end(2);
             b.startAssign("objs").startStaticCall(context.getType(Arrays.class), "copyOf");
             b.string("objs");
-            b.string("bc.length * 2");
+            b.string("newLength");
             b.end(2);
             if (model.enableTracing) {
                 // since we can mark a start of the BB before it's first instruction is emitted,
@@ -2938,13 +2985,16 @@ public class OperationsNodeFactory implements ElementHelpers {
                 // ArrayIndexOutOfBoundsException
                 b.startAssign("basicBlockBoundary").startStaticCall(context.getType(Arrays.class), "copyOf");
                 b.string("basicBlockBoundary");
-                b.string("(bc.length * 2) + 1");
+                b.string("newLength + 1");
                 b.end(2);
             }
-            b.end(); // }
 
-            b.statement("bc[bci] = (short) instr");
-            b.statement("objs[bci++] = data");
+            b.end();
+
+            b.statement("bc[bci++] = (short) instr");
+            b.startFor().string("int i = 0; i < data.length; i++").end().startBlock();
+            b.statement("bc[bci++] = (short) data[i]");
+            b.end();
 
             return ex;
         }
@@ -2957,24 +3007,24 @@ public class OperationsNodeFactory implements ElementHelpers {
             int variadicCount = model.popVariadicInstruction.length - 1;
 
             b.startIf().string("count <= ").string(variadicCount).end().startBlock();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + count, EPSILON)").end();
+            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + count, NO_DATA)").end();
             b.end().startElseBlock();
 
             b.startIf().string("curStack + 1 > maxStack").end().startBlock();
             b.statement("maxStack = curStack + 1");
             b.end();
             b.statement("int elementCount = count + 1");
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.storeNullInstruction)).string(", EPSILON)").end();
+            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.storeNullInstruction)).string(", NO_DATA)").end();
 
             b.startWhile().string("elementCount > 8").end().startBlock();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[variadicCount])).string(", EPSILON)").end();
+            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[variadicCount])).string(", NO_DATA)").end();
             b.statement("elementCount -= 7");
             b.end();
 
             b.startIf().string("elementCount > 0").end().startBlock();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + elementCount, EPSILON)").end();
+            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + elementCount, NO_DATA)").end();
             b.end();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.mergeVariadicInstruction)).string(", EPSILON)").end();
+            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.mergeVariadicInstruction)).string(", NO_DATA)").end();
             b.end();
 
             b.statement("curStack -= count - 1");
@@ -3004,74 +3054,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         }
 
-        private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String argument) {
-            if (model.hasBoxingElimination()) {
-                switch (instr.kind) {
-                    case BRANCH:
-                    case INSTRUMENTATION_ENTER:
-                    case INSTRUMENTATION_EXIT:
-                    case INSTRUMENTATION_LEAVE:
-                    case RETURN:
-                        break;
-                    case BRANCH_FALSE:
-                    case CUSTOM_SHORT_CIRCUIT:
-                    case POP:
-                        b.statement("stackValueBciSp--");
-                        break;
-                    case CUSTOM:
-                    case CUSTOM_QUICKENED:
-                        int effect;
-                        if (instr.signature.isVariadic) {
-                            b.statement("stackValueBciSp -= operationStack[operationSp].childCount - " + (instr.signature.valueCount - 1));
-                            effect = instr.signature.valueCount - 2;
-                        } else {
-                            effect = instr.signature.valueCount - 1;
-                        }
-
-                        for (int i = effect; i >= 0; i--) {
-                            if (instr.signature.valueBoxingElimination[i]) {
-                                b.statement(argument + ".op_childValue" + i + "_boxing_ = stackValueBciStack[--stackValueBciSp]");
-                            } else {
-                                b.statement("stackValueBciSp--");
-                            }
-                        }
-                        if (!instr.signature.isVoid) {
-                            buildPushStackIndex(b, instr.signature.resultBoxingElimination ? "0" : null, instr.signature.valueCount == 0);
-                        }
-                        break;
-                    case LOAD_ARGUMENT:
-                    case LOAD_CONSTANT:
-                        buildPushStackIndex(b, null, true);
-                        break;
-                    case LOAD_LOCAL:
-                        buildPushStackIndex(b, "0", true);
-                        break;
-                    case LOAD_LOCAL_MATERIALIZED:
-                        b.statement("stackValueBciSp--");
-                        buildPushStackIndex(b, null, true);
-                        break;
-                    case STORE_LOCAL:
-                        if (model.hasBoxingElimination()) {
-                            b.statement(argument + ".s_childIndex = stackValueBciStack[--stackValueBciSp]");
-                        } else {
-                            b.statement("stackValueBciSp--");
-                        }
-                        break;
-                    case STORE_LOCAL_MATERIALIZED:
-                        b.statement("stackValueBciSp -= 2");
-                        break;
-                    case THROW:
-                        break;
-                    case YIELD:
-                        b.statement("stackValueBciSp--");
-                        buildPushStackIndex(b, "0", false);
-                        break;
-                    default:
-                        throw new UnsupportedOperationException();
-
-                }
-            }
-
+        private void buildEmitInstruction(CodeTreeBuilder b, InstructionModel instr, String[] arguments) {
             boolean hasPositiveDelta = false;
 
             switch (instr.kind) {
@@ -3119,13 +3102,11 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startStatement().startCall("doEmitInstruction");
             b.tree(createInstructionConstant(instr));
-            b.startGroup();
-            if (argument != null) {
-                b.string(argument);
-            } else {
-                b.string("EPSILON");
+            if (arguments != null) {
+                for (String argument : arguments) {
+                    b.string(argument);
+                }
             }
-            b.end();
             b.end(2);
 
             // todo: check for superinstructions
@@ -3247,9 +3228,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         // "defining context" of the branch target is the current finallyTryContext).
         // For potentially non-local branches (i.e. branches to outer operations) we must instead
         // determine the context that defines the branch target.
-        private void emitFinallyRelativeBranchCheck(CodeTreeBuilder b) {
+        private void emitFinallyRelativeBranchCheck(CodeTreeBuilder b, int offset) {
             b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
-            b.statement("finallyTryContext.finallyRelativeBranches.add(bci)");
+            b.statement("finallyTryContext.finallyRelativeBranches.add(bci + " + offset + ")");
             b.end();
         }
 
@@ -3265,10 +3246,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("this.isReparse = isReparse");
             b.statement("this.withSource = config.isWithSource()");
             b.statement("this.withInstrumentation = config.isWithInstrumentation()");
-
-            b.statement("sources = withSource ? new ArrayList<>() : null");
-
+            b.statement("this.sources = this.withSource ? new ArrayList<>() : null");
             b.statement("this.builtNodes = new ArrayList<>()");
+            b.statement("this.constantPool = new ConstantPool()");
 
             return ctor;
         }
@@ -3424,11 +3404,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             interpreterType.add(createContinueAt());
 
-            if (!isUncached && model.hasBoxingElimination()) {
-                interpreterType.add(createDoLoadLocalInitialize());
-                interpreterType.add(createDoStoreLocalInitialize());
-            }
-
             return interpreterType;
         }
 
@@ -3567,70 +3542,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case LOAD_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        if (!model.hasBoxingElimination()) {
-                            b.statement("frame.setObject(sp, " + localFrame + ".getObject((int) curObj))");
-                        } else if (isUncached) {
-                            b.statement("frame.setObject(sp, " + localFrame + ".getObject(((LoadLocalData) curObj).v_index))");
-                        } else {
-                            b.statement("LoadLocalData curData = (LoadLocalData) curObj");
-                            b.statement("int curIndex = curData.v_index");
-
-                            b.startSwitch().string("curData.v_kind").end().startBlock();
-
-                            // uninitialized
-                            b.startCase().string("0 /* uninitialized */").end().startCaseBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("doLoadLocalInitialize(frame, " + localFrame + ", sp, curData, curIndex, localBoxingState, true)");
-                            b.statement("break");
-                            b.end();
-
-                            // generic
-                            b.startCase().string("-1 /* boxing */").end().startCaseBlock();
-                            b.startIf().string("frame.isObject(curIndex)").end().startBlock();
-                            if (!model.enableYield) {
-                                b.statement("frame.copyObject(curIndex, sp)");
-                            } else {
-                                b.statement("frame.setObject(sp, generatorFrame.getObject(curIndex))");
-                            }
-                            b.end().startElseBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("Object value = " + localFrame + ".getValue(curIndex)");
-                            b.statement(localFrame + ".setObject(curIndex, value)");
-                            b.statement("frame.setObject(sp, value)");
-                            b.end();
-                            b.statement("break");
-                            b.end();
-
-                            for (TypeMirror mir : model.boxingEliminatedTypes) {
-                                String frameName = firstLetterUpperCase(mir.toString());
-
-                                b.startCase().tree(boxingTypeToInt(mir)).end().startCaseBlock();
-                                b.startIf().string("frame.is" + frameName + "(curIndex)").end().startBlock();
-                                b.statement("frame.copyPrimitive(curIndex, sp)");
-                                b.end().startElseBlock();
-                                b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                                b.statement("doLoadLocalInitialize(frame, " + localFrame + ", sp, curData, curIndex, localBoxingState, false)");
-                                b.end();
-                                b.statement("break");
-                                b.end();
-
-                                b.startCase().tree(boxingTypeToInt(mir)).string("| 0x40 /* (boxed) */").end().startCaseBlock();
-                                b.startIf().string("frame.is" + frameName + "(curIndex)").end().startBlock();
-                                b.statement("frame.setObject(sp, frame.get" + frameName + "(curIndex))");
-                                b.end().startElseBlock();
-                                b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                                b.statement("doLoadLocalInitialize(frame, " + localFrame + ", sp, curData, curIndex, localBoxingState, false)");
-                                b.end();
-                                b.statement("break");
-                                b.end();
-                            }
-
-                            b.caseDefault().startCaseBlock();
-                            b.tree(createShouldNotReachHere());
-                            b.end();
-
-                            b.end();
-                        }
+                        b.statement("frame.setObject(sp, " + localFrame + ".getObject((int) curObj))");
                         b.statement("sp += 1");
                         break;
                     }
@@ -3656,45 +3568,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case STORE_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        if (!model.hasBoxingElimination()) {
-                            b.statement(localFrame + ".setObject((int) curObj, frame.getObject(sp - 1))");
-                        } else if (isUncached) {
-                            b.statement(localFrame + ".setObject(((StoreLocalData) curObj).s_index, frame.getObject(sp - 1))");
-                        } else {
-                            b.statement("StoreLocalData curData = (StoreLocalData) curObj");
-                            b.statement("int curIndex = curData.s_index");
-
-                            b.startSwitch().string("localBoxingState[curIndex]").end().startBlock();
-
-                            b.startCase().string("0 /* uninitialized */").end().startBlock();
-                            b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("doStoreLocalInitialize(frame, " + localFrame + ", sp, localBoxingState, curIndex)");
-                            b.statement("break");
-                            b.end();
-
-                            b.startCase().string("-1 /* boxing */").end().startBlock();
-                            b.statement(localFrame + ".setObject(curIndex, doPopObject(frame, $this, sp - 1, curData.s_childIndex, objs))");
-                            b.statement("break");
-                            b.end();
-
-                            for (TypeMirror mir : model.boxingEliminatedTypes) {
-
-                                String frameName = firstLetterUpperCase(mir.toString());
-
-                                b.startCase().tree(boxingTypeToInt(mir)).end().startBlock();
-
-                                b.startTryBlock();
-                                b.statement(localFrame + ".set" + frameName + "(curIndex, doPopPrimitive" + frameName + "(frame, $this, sp - 1, curData.s_childIndex, objs))");
-                                b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-                                b.statement("localBoxingState[curIndex] = -1");
-                                b.statement(localFrame + ".setObject(curIndex, ex.getResult())");
-                                b.end();
-                                b.statement("break");
-                                b.end();
-                            }
-
-                            b.end();
-                        }
+                        b.statement(localFrame + ".setObject((int) curObj, frame.getObject(sp - 1))");
                         b.statement("frame.clear(sp - 1)");
                         b.statement("sp -= 1");
                         break;
@@ -3766,8 +3640,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
 
-            // b.statement("System.err.printf(\" Caught %s @ %04x ... \", ex, bci)");
-
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
 
             // todo: this could get improved
@@ -3778,13 +3650,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("sp = handlers[idx + 3] + numLocals");
             b.statement("frame.setObject(handlers[idx + 4], ex)");
 
-            // b.statement("System.err.printf(\"going to %04x%n\", bci)");
-
             b.statement("continue loop");
 
             b.end(); // for
-
-            // b.statement("System.err.printf(\"rethrowing%n\")");
 
             b.statement("throw ex");
 
@@ -3838,7 +3706,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             if (isUncached) {
 
-                if (instr.needsUncachedData()) {
+                if (instr.hasImmediates()) {
                     b.declaration(uncachedType, "opUncachedData");
                     b.startAssign("opUncachedData").cast(uncachedType).string("curObj").end();
                 }
@@ -3885,81 +3753,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.string("frame");
                 b.string(extraArguments);
                 b.end(2);
-            } else if (signature.resultBoxingElimination) {
-
-                if (!doPush) {
-                    throw new AssertionError("RBE is set for " + instr.name + " but !doPush");
-                }
-
-                b.startBlock();
-                b.declaration(cachedType, "nodeImpl");
-                b.startAssign("nodeImpl").cast(cachedType).string("curObj").end();
-
-                b.startSwitch().string("nodeImpl.op_resultType_").end().startBlock();
-
-                b.startCase().string("0 /* uninitialized */").end();
-                b.startCase().string("-1 /* boxing */").end().startCaseBlock();
-                // object case
-                b.startStatement().startCall("frame.setObject");
-                b.string("resultSp - 1");
-                b.startCall("nodeImpl.executeObject");
-                b.string("frame").string(extraArguments);
-                b.end(3);
-                b.statement("break");
-                b.end();
-
-                for (TypeMirror mir : model.boxingEliminatedTypes) {
-                    String boxingEliminatedType = firstLetterUpperCase(mir.toString());
-
-                    b.startCase().tree(boxingTypeToInt(mir)).end().startBlock();
-
-                    if (signature.possibleBoxingResults == null || signature.possibleBoxingResults.contains(mir)) {
-                        // Invoke the specialization that returns the boxing-eliminated type.
-                        b.startTryBlock();
-
-                        b.startStatement().startCall("frame.set" + boxingEliminatedType);
-                        b.string("resultSp - 1");
-                        b.startCall("nodeImpl.execute" + boxingEliminatedType);
-                        b.string("frame").string(extraArguments);
-                        b.end(3);
-
-                        b.end().startCatchBlock(types.UnexpectedResultException, "ex");
-
-                        b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                        b.statement("nodeImpl.op_resultType_ = -1 /* boxing */ ");
-                        b.statement("frame.setObject(resultSp - 1, ex.getResult())");
-
-                        b.end();
-                    } else {
-                        // Just invoke executeObject.
-                        b.statement("Object result = nodeImpl.executeObject(frame, " + extraArguments + ")");
-
-                        b.startIf().string("result").instanceOf(boxType(mir)).end().startBlock();
-
-                        b.statement("frame.set" + boxingEliminatedType + "(resultSp - 1, (" + mir + ") result)");
-
-                        b.end().startElseBlock();
-
-                        b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                        b.statement("nodeImpl.op_resultType_ = -1 /* boxing */");
-                        b.statement("frame.setObject(resultSp - 1, result)");
-
-                        b.end();
-                    }
-
-                    b.statement("break");
-                    b.end();
-                }
-
-                b.caseDefault().startCaseBlock();
-                b.tree(createShouldNotReachHere("tried to BE " + instr.name + " as type \" + nodeImpl.op_resultType_ + \" but no bueno"));
-                b.end();
-
-                b.end();
-
-                b.end();
             } else {
-                // non-boxing-eliminated, non-void, cached
+                // non-void, cached
                 b.startAssign("Object result");
                 b.startParantheses().cast(cachedType).string("curObj").end().startCall(".executeObject");
                 b.string("frame");
@@ -3980,73 +3775,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
         }
 
-        private CodeExecutableElement createDoLoadLocalInitialize() {
-            CodeExecutableElement ex = new CodeExecutableElement(context.getType(void.class), "doLoadLocalInitialize");
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
-            ex.addParameter(new CodeVariableElement(loadLocalData.asType(), "curData"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "curIndex"));
-            ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localBoxingState"));
-            ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "prim"));
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.statement("Object value = localFrame.getValue(curIndex)");
-            b.statement("frame.setObject(sp, value)");
-
-            b.statement("byte lbs = localBoxingState[curIndex]");
-
-            b.startIf().string("prim && lbs != -1").end().startBlock();
-
-            for (TypeMirror mir : model.boxingEliminatedTypes) {
-                String frameName = firstLetterUpperCase(mir.toString());
-
-                b.startIf().string("(lbs == 0 || lbs == ").tree(boxingTypeToInt(mir)).string(") && value").instanceOf(boxType(mir)).end().startBlock();
-                b.startAssign("curData.v_kind").tree(boxingTypeToInt(mir)).string(" | 0x40 /* (boxed) */").end();
-                b.statement("localFrame.set" + frameName + "(curIndex, (" + mir + ") value)");
-                b.startAssign("localBoxingState[curIndex]").tree(boxingTypeToInt(mir)).end();
-                b.returnStatement();
-                b.end();
-            }
-
-            b.end();
-
-            b.startAssign("curData.v_kind").string("-1").end();
-            b.statement("localFrame.setObject(curIndex, value)");
-            b.statement("localBoxingState[curIndex] = -1");
-
-            return ex;
-        }
-
-        private CodeExecutableElement createDoStoreLocalInitialize() {
-            CodeExecutableElement ex = new CodeExecutableElement(context.getType(void.class), "doStoreLocalInitialize");
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
-            ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localBoxingState"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "curIndex"));
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.tree(createNeverPartOfCompilation());
-
-            b.startAssert().string("frame.isObject(sp - 1)").end();
-            b.statement("Object value = frame.getObject(sp - 1)");
-
-            for (TypeMirror mir : model.boxingEliminatedTypes) {
-                String frameName = firstLetterUpperCase(mir.toString());
-
-                b.startIf().string("value").instanceOf(boxType(mir)).end().startBlock();
-                b.startAssign("localBoxingState[curIndex]").tree(boxingTypeToInt(mir)).end();
-                b.statement("localFrame.set" + frameName + "(curIndex, (" + mir + ") value)");
-                b.returnStatement();
-                b.end();
-            }
-
-            b.startAssign("localBoxingState[curIndex]").string("-1").end();
-            b.statement("localFrame.setObject(curIndex, value)");
-
-            return ex;
-        }
     }
 
     class OperationLocalImplFactory {
@@ -4109,41 +3837,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
     }
 
-    class LoadLocalDataFactory {
-        private CodeTypeElement create() {
-            loadLocalData.setEnclosingElement(operationNodeGen);
-            loadLocalData.add(new CodeVariableElement(Set.of(FINAL), context.getType(short.class), "v_index"));
-            loadLocalData.add(createConstructorUsingFields(Set.of(), loadLocalData, null));
-            loadLocalData.add(compFinal(new CodeVariableElement(context.getType(byte.class), "v_kind")));
-
-            loadLocalData.getImplements().add(boxableInterface.asType());
-            loadLocalData.add(createSetBoxing());
-
-            return loadLocalData;
-        }
-
-        private CodeExecutableElement createSetBoxing() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement((DeclaredType) boxableInterface.asType(), "setBoxing");
-            CodeTreeBuilder b = ex.createBuilder();
-            b.tree(createNeverPartOfCompilation());
-            b.startAssert().string("index == 0").end();
-            b.statement("v_kind = kind");
-            return ex;
-        }
-    }
-
-    class StoreLocalDataFactory {
-        private CodeTypeElement create() {
-            storeLocalData.setEnclosingElement(operationNodeGen);
-            storeLocalData.add(new CodeVariableElement(Set.of(FINAL), context.getType(short.class), "s_index"));
-            storeLocalData.add(createConstructorUsingFields(Set.of(), storeLocalData, null));
-
-            storeLocalData.add(new CodeVariableElement(context.getType(int.class), "s_childIndex"));
-
-            return storeLocalData;
-        }
-    }
-
     // todo: the next two classes could probably be merged into one
     class ContinuationRootFactory {
         private CodeTypeElement create() {
@@ -4200,7 +3893,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             continuationLocationImpl.add(createConstructorUsingFields(Set.of(), continuationLocationImpl, null));
 
-            continuationLocationImpl.add(new CodeVariableElement(types.RootNode, "rootNode"));
+            continuationLocationImpl.add(compFinal(new CodeVariableElement(types.RootNode, "rootNode")));
 
             continuationLocationImpl.add(createGetRootNode());
             continuationLocationImpl.add(createToString());
@@ -4221,7 +3914,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "toString");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.statement("return String.format(\"ContinuationLocation [index=%d, sp=%d, bci=%04x]\", entry, (target >> 16) & 0xffff, target & 0xffff)");
+            b.startReturn().string("String.format(\"ContinuationLocation [index=%d, sp=%d, bci=%04x]\", entry, (target >> 16) & 0xffff, target & 0xffff)").end();
 
             return ex;
         }
@@ -4264,24 +3957,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (type.getSimpleName() == Uncached_Name) {
                     type.setSuperClass(types.Node);
                 }
-            }
-
-            if (instr.needsUncachedData()) {
-                CodeTypeElement uncachedType = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, el.getSimpleName() + "_UncachedData");
-                uncachedType.setSuperClass(types.Node);
-                uncachedType.setEnclosingElement(operationNodeGen);
-                operationNodeGen.add(uncachedType);
-
-                el.setSuperClass(uncachedType.asType());
-
-                for (InstructionField field : instr.getUncachedFields()) {
-                    uncachedType.add(new CodeVariableElement(field.type, field.name));
-                }
-            }
-
-            int index = 0;
-            for (InstructionField field : instr.getCachedFields()) {
-                el.getEnclosedElements().add(index++, new CodeVariableElement(field.type, field.name));
             }
 
             if (instr.signature.resultBoxingElimination) {
@@ -4380,6 +4055,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         return instr.getInternalName() + "Gen";
     }
 
+    // TODO: remove, this might be a good lead for code that needs to be changed.
     private static String uncachedDataClassName(InstructionModel instr) {
         return cachedDataClassName(instr) + "_UncachedData";
     }

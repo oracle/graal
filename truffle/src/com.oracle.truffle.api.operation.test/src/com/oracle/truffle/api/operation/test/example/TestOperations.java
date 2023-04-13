@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -77,6 +78,7 @@ import com.oracle.truffle.api.operation.Variadic;
                 boxingEliminationTypes = {long.class}, //
                 decisionsFile = "decisions.json")
 @GenerateAOT
+@GenerateUncached
 @OperationProxy(SomeOperationNode.class)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScAnd", continueWhen = true)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScOr", continueWhen = false)
@@ -238,6 +240,14 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     public static final class VoidOperation {
         @Specialization
         public static void doNothing() {
+        }
+    }
+
+    @Operation
+    public static final class ZeroLocalOperation {
+        @Specialization
+        public static void doZero(VirtualFrame frame, LocalSetter setter) {
+            setter.setInt(frame, 0);
         }
     }
 

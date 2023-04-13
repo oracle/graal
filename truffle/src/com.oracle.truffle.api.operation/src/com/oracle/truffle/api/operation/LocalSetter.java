@@ -50,8 +50,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class LocalSetter {
 
-    @CompilationFinal(dimensions = 1) //
-    private static LocalSetter[] localSetters = new LocalSetter[8];
+    // LocalSetters are not specific to any OperationRootNode, since they just encapsulate a local
+    // index. We use a static cache to share and reuse the objects for each node.
+    @CompilationFinal(dimensions = 1) private static LocalSetter[] localSetters = new LocalSetter[512];
 
     private static synchronized void resizeLocals(int index) {
         if (localSetters.length <= index) {

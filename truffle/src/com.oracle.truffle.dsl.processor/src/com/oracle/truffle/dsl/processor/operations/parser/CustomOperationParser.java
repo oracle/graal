@@ -82,6 +82,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
@@ -385,29 +386,25 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         instr.nodeData.redirectMessages(parent);
         instr.nodeData.redirectMessagesOnGeneratedElements(parent);
 
-        if (signature.resultBoxingElimination) {
-            instr.addField(context.getType(byte.class), "op_resultType_", false, false);
-        }
-
-        for (int i = 0; i < signature.valueBoxingElimination.length; i++) {
-            if (signature.valueBoxingElimination[i]) {
-                // we could move these to cached-only fields, but then we need more processing
-                // once we go uncached -> cached (recalculating the value offsets and child indices)
-                instr.addField(context.getType(int.class), "op_childValue" + i + "_boxing_", true, true);
-            }
-        }
-
-        for (int i = 0; i < signature.localSetterCount; i++) {
-            instr.addField(types.LocalSetter, "op_localSetter" + i + "_", true, false);
-        }
-
-        for (int i = 0; i < signature.localSetterRangeCount; i++) {
-            instr.addField(types.LocalSetterRange, "op_localSetterRange" + i + "_", true, false);
-        }
-
         if (isShortCircuit) {
             instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(mirror, "continueWhen").getValue();
-            instr.addField(context.getType(int.class), "op_branchTarget_", true, true);
+            instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
+            instr.addImmediate(ImmediateKind.NODE, "node");
+        } else {
+            for (int i = 0; i < signature.valueBoxingElimination.length; i++) {
+                if (signature.valueBoxingElimination[i]) {
+                    instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "child" + i + "_bci");
+                }
+            }
+
+            for (int i = 0; i < signature.localSetterCount; i++) {
+                instr.addImmediate(ImmediateKind.LOCAL_SETTER, "local_setter" + i);
+            }
+
+            for (int i = 0; i < signature.localSetterRangeCount; i++) {
+                instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE, "local_setter_range" + i);
+            }
+            instr.addImmediate(ImmediateKind.NODE, "node");
         }
 
         return instr;
