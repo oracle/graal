@@ -30,11 +30,11 @@ import com.oracle.objectfile.LayoutDecision;
 import org.graalvm.compiler.debug.DebugContext;
 
 /**
- * Section generator for <code>debug_abbrev</code> section. That section defines the
- * layout of the DWARF Information Entries (DIEs) used to model Java debug info. Top
- * level DIEs define Java Compile Units (CUs). Embedded DIEs describe the content of
- * the CU: types, code, variable, etc. These definitions are used to interpret the DIE
- * content inserted into the <code>debug_info</code> section.
+ * Section generator for <code>debug_abbrev</code> section. That section defines the layout of the
+ * DWARF Information Entries (DIEs) used to model Java debug info. Top level DIEs define Java
+ * Compile Units (CUs). Embedded DIEs describe the content of the CU: types, code, variable, etc.
+ * These definitions are used to interpret the DIE content inserted into the <code>debug_info</code>
+ * section.
  * <p>
  *
  * An abbrev table contains abbrev entries for one or more DIEs, the last one being a null entry.
@@ -95,59 +95,60 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <ul>
  *
- * <li><code>code = primitive_type, tag == base_type, parent = class_unit</code> - Java primitive type (non-void)
+ * <li><code>code = primitive_type, tag == base_type, parent = class_unit</code> - Java primitive
+ * type (non-void)
  *
  * <li><code>code = void_type, tag == unspecified_type, parent = class_unit</code> - Java void type
  *
- * <li><code>code = object_header, tag == structure_type, parent = class_unit</code> - Java object header
+ * <li><code>code = object_header, tag == structure_type, parent = class_unit</code> - Java object
+ * header
  *
- * <li><code>code = class_layout, tag == class_type, parent = class_unit</code> - Java
- * instance type structure definition
+ * <li><code>code = class_layout, tag == class_type, parent = class_unit</code> - Java instance type
+ * structure definition
  *
- * <li><code>code = class_pointer, tag == pointer_type, parent = class_unit</code> - Java
- * instance ref type
+ * <li><code>code = class_pointer, tag == pointer_type, parent = class_unit</code> - Java instance
+ * ref type
  *
- * <li><code>code = method_location, tag == subprogram , parent = class_unit</code> - Java
- * method code definition (i.e. location of code)
+ * <li><code>code = method_location, tag == subprogram , parent = class_unit</code> - Java method
+ * code definition (i.e. location of code)
  *
- * <li><code>code = abstract_inline_method, tag == subprogram , parent = class_unit</code> -
- * Java abstract inline method (i.e. proxy for method definition referenced by concrete
- * inline instance)
+ * <li><code>code = abstract_inline_method, tag == subprogram , parent = class_unit</code> - Java
+ * abstract inline method (i.e. proxy for method definition referenced by concrete inline instance)
  *
- * <li><code>code = static_field_location, tag == variable, parent = class_unit</code> - Java
- * static field definition (i.e. location of data)
+ * <li><code>code = static_field_location, tag == variable, parent = class_unit</code> - Java static
+ * field definition (i.e. location of data)
  *
- * <li><code>code = array_layout, tag == structure_type, parent = array_unit</code> - Java
- * array type structure definition
+ * <li><code>code = array_layout, tag == structure_type, parent = array_unit</code> - Java array
+ * type structure definition
  *
- * <li><code>code = array_pointer, tag == pointer_type, parent = array_unit</code> - Java
- * array ref type
+ * <li><code>code = array_pointer, tag == pointer_type, parent = array_unit</code> - Java array ref
+ * type
  *
- * <li><code>code = interface_layout, tag == union_type, parent = class_unit</code> - Java
- * array type structure definition
+ * <li><code>code = interface_layout, tag == union_type, parent = class_unit</code> - Java array
+ * type structure definition
  *
  * <li><code>code = interface_pointer, tag == pointer_type, parent = class_unit</code> - Java
  * interface ref type
  *
  * <li><code>code = indirect_layout, tag == class_type, parent = class_unit, array_unit,
- * interface_unit</code> - wrapper layout attaches address rewriting logic to the layout
- * types that it wraps using a data_location attribute
+ * interface_unit</code> - wrapper layout attaches address rewriting logic to the layout types that
+ * it wraps using a data_location attribute
  *
  * <li><code>code = indirect_pointer, tag == pointer_type, parent = class_unit, array_unit,
- * interface_unit</code> - indirect ref type used to type indirect oops that encode the
- * address of an object, whether by adding tag bits or representing the address as an offset
- * from some base address. these are used to type object references stored in static and
- * instance fields. They are not needed when typing local vars and parameters held in
- * registers or on the stack as they appear as raw addresses.
+ * interface_unit</code> - indirect ref type used to type indirect oops that encode the address of
+ * an object, whether by adding tag bits or representing the address as an offset from some base
+ * address. these are used to type object references stored in static and instance fields. They are
+ * not needed when typing local vars and parameters held in registers or on the stack as they appear
+ * as raw addresses.
  *
  * <li><code>code = namespace, tag == namespace, parent = class_unit, array_unit,
- * interface_unit</code> - a wrap-around DIE that is used to embed all the normal level 1
- * DIEs of a <code>class_unit</code> or <code>array_unit</code> in a namespace. This is
- * needed when the corresponding class/interface or array base element type have been loaded
- * by a loader with a non-empty loader in order to ensure that mangled names for the class
- * and its members can legitimately employ the loader id as a namespace prefix. Note that
- * use of a namespace wrapper DIE causes all the embedded level 1+ DIEs documented above and
- * all their children to be generated at a level one greater than documented here.
+ * interface_unit</code> - a wrap-around DIE that is used to embed all the normal level 1 DIEs of a
+ * <code>class_unit</code> or <code>array_unit</code> in a namespace. This is needed when the
+ * corresponding class/interface or array base element type have been loaded by a loader with a
+ * non-empty loader in order to ensure that mangled names for the class and its members can
+ * legitimately employ the loader id as a namespace prefix. Note that use of a namespace wrapper DIE
+ * causes all the embedded level 1+ DIEs documented above and all their children to be generated at
+ * a level one greater than documented here.
  *
  * </ul>
  *
@@ -155,8 +156,8 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <ul>
  *
- * <li><code>code = header_field, tag == member, parent = object_header</code> - object/array
- * header field
+ * <li><code>code = header_field, tag == member, parent = object_header</code> - object/array header
+ * field
  *
  * <li><code>code == method_declaration1/2, tag == subprogram, parent = class_layout</code>
  *
@@ -364,8 +365,8 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>DW_AT_declaration : ....... DW_FORM_flag</code>
  *
- * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref_addr</code> n.b. only for
- * method_declaration1, points to param 0 DIE
+ * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref_addr</code> n.b. only for method_declaration1,
+ * points to param 0 DIE
  *
  * <li><code>DW_AT_virtuality : ........ DW_FORM_data1<code> (for override methods)
  *
