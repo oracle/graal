@@ -57,6 +57,8 @@ import org.graalvm.polyglot.PolyglotException;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
+import com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
@@ -487,7 +489,10 @@ public final class TruffleContext implements AutoCloseable {
      * @param node an adopted node or {@code null}
      * @param runWhileOutsideContext the supplier to run while having left this context
      * @since 21.1
+     * @deprecated Use {@link #leaveAndEnter(Node, Interrupter, InterruptibleFunction, Object)}
+     *             instead.
      */
+    @Deprecated
     public <T> T leaveAndEnter(Node node, Supplier<T> runWhileOutsideContext) {
         CompilerAsserts.partialEvaluationConstant(node);
         try {
@@ -497,6 +502,39 @@ public final class TruffleContext implements AutoCloseable {
             } finally {
                 LanguageAccessor.engineAccess().enterInternalContext(node, polyglotContext);
             }
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Leaves this context, runs the passed interruptible function and reenters the context. This is
+     * useful when the current thread must wait for another thread (and does not need to access the
+     * context to do so) and triggering multithreading is not desired, for instance when
+     * implementing coroutines with threads. The function cannot access the context and must not run
+     * any guest language code or invoke interoperability messages.
+     * <p>
+     * The function will typically notify another thread that it can now enter the context without
+     * triggering multithreading and then wait for some thread to leave the context before exiting
+     * the function and reentering the context (again to avoid triggering multithreading).
+     * <p>
+     * An adopted node may be passed to allow performing optimizations on the fast-path.
+     * <p>
+     *
+     * @param node an adopted node or {@code null}
+     * @param interrupter an interrupter used to interrupt the interruptible function when, e.g.,
+     *            the context is cancelled. The interrupter is also used to
+     *            {@link Interrupter#resetInterrupted() reset} the interrupted state when the
+     *            context is reentered.
+     * @param interruptible the interruptible function to run while having left this context
+     * 
+     * @since 23.1
+     */
+    @SuppressWarnings("unused")
+    @TruffleBoundary
+    public <T, R> R leaveAndEnter(Node node, Interrupter interrupter, InterruptibleFunction<T, R> interruptible, T object) {
+        try {
+            return LanguageAccessor.engineAccess().leaveAndEnter(polyglotContext, interrupter, interruptible, object);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }

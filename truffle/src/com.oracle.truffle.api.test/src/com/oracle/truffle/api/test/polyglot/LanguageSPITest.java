@@ -80,6 +80,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -135,7 +136,6 @@ import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
-import org.graalvm.home.Version;
 
 public class LanguageSPITest {
 
@@ -2511,16 +2511,16 @@ public class LanguageSPITest {
             @Override
             protected void finalizeContext(LanguageContext context) {
                 if (contextOnFinalize.get()) {
-                    context.env.createThread(() -> {
-                    }).start();
+                    context.env.newTruffleThreadBuilder(() -> {
+                    }).build().start();
                 }
             }
 
             @Override
             protected void disposeContext(LanguageContext context) {
                 if (contextOnDispose.get()) {
-                    context.env.createThread(() -> {
-                    }).start();
+                    context.env.newTruffleThreadBuilder(() -> {
+                    }).build().start();
                 }
             }
         });

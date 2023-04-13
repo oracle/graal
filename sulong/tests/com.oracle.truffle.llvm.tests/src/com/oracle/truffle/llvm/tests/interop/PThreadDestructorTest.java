@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,10 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.tck.TruffleRunner;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,9 +43,13 @@ import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 import org.junit.runners.model.Statement;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.tck.TruffleRunner;
 
 @RunWith(TruffleRunner.class)
 public class PThreadDestructorTest {
@@ -118,11 +119,11 @@ public class PThreadDestructorTest {
         for (int i = 0; i < values.length; i++) {
             final int ii = i;
             keyValues.add(values[ii]);
-            threads[i] = InteropTestBase.runWithPolyglot.getTruffleTestEnv().createThread(() -> {
+            threads[i] = InteropTestBase.runWithPolyglot.getTruffleTestEnv().newTruffleThreadBuilder(() -> {
                 testLibrary.invokeMember("set_specific", values[ii]);
                 Value ret = testLibrary.invokeMember("get_specific");
                 Assert.assertEquals(values[ii], ret.asInt());
-            });
+            }).build();
         }
 
         for (int i = 0; i < values.length; i++) {
