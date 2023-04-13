@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.strings.bench;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
-
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.polyglot.Context;
@@ -68,7 +66,7 @@ public class CompareBenchmark extends TStringBenchmarkBase {
         // Checkstyle: stop
         String str = "NoahLiamJacobMasonWilliamEthanMichaelAlexanderJaydenDanielElijahAidenJamesBenjaminMatthewJacksonLoganDavidAnthonyJosephJoshuaAndrewLucasGabrielSamuelChristopherJohnDylanIsaacRyanNathanCarterCalebLukeChristianHunterHenryOwenLandonJackWyattJonathanEliIsaiahSebastianJaxonBraydenGavinLeviAaronOliverJordanNicholasEvanConnorCharlesJeremiahCameronAdrianThomasRobertTylerColtonAustinJaceAngelDominicJosiahBrandonAydenKevinZacharyParkerBlakeJoseChaseGraysonJasonIanBentleyAdamXavierCooperJustinNolanHudsonEastonJaseCarsonNathanielJaxsonKaydenBrodyLincolnLuisTristanJulianDamianCamdenJuan";
         // Checkstyle: resume
-        TruffleString a = TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16, REPLACE);
+        TruffleString a = TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16, false);
         TruffleString b;
         Context context;
         Value compare;

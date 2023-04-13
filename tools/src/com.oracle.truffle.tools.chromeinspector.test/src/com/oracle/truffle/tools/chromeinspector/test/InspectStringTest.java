@@ -85,7 +85,7 @@ public class InspectStringTest extends AbstractFunctionValueTest {
 
     @Test
     public void testTruffleString() throws Exception {
-        Future<?> run = runWith(TruffleString.fromJavaStringUncached("Test Truffle String", TruffleString.Encoding.UTF_8));
+        Future<?> run = runWith(TruffleString.fromJavaStringUncached("Test Truffle String", TruffleString.Encoding.UTF_8, false));
 
         tester.sendMessage("{\"id\":5,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"1\"}}");
         assertTrue(tester.compareReceivedMessages(

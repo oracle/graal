@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.nodes.util;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -71,7 +70,7 @@ public abstract class SLUnboxNode extends SLExpressionNode {
     @Specialization
     protected static TruffleString fromString(String value,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
-        return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING, REPLACE);
+        return fromJavaStringNode.execute(value, SLLanguage.STRING_ENCODING, false);
     }
 
     @Specialization

@@ -41,9 +41,6 @@
 
 package com.oracle.truffle.api.strings.test;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -105,9 +102,9 @@ public class TStringBasicTests extends TStringTestBase {
 
     private static void switchEncodingEquivalentCodePoint(int codepoint, TruffleString.Encoding encodingA, TruffleString stringA, TruffleString.Encoding encodingB) {
         if (encodingA != TruffleString.Encoding.BYTES && encodingB != TruffleString.Encoding.BYTES) {
-            TruffleString stringB = stringA.switchEncodingUncached(encodingB, REPLACE);
+            TruffleString stringB = stringA.switchEncodingUncached(encodingB, false);
             Assert.assertEquals(codepoint, stringB.codePointAtIndexUncached(0, encodingB, TruffleString.ErrorHandling.BEST_EFFORT));
-            Assert.assertEquals(codepoint, stringB.switchEncodingUncached(encodingA, REPLACE).codePointAtIndexUncached(0, encodingA, TruffleString.ErrorHandling.BEST_EFFORT));
+            Assert.assertEquals(codepoint, stringB.switchEncodingUncached(encodingA, false).codePointAtIndexUncached(0, encodingA, TruffleString.ErrorHandling.BEST_EFFORT));
         }
     }
 
@@ -119,7 +116,7 @@ public class TStringBasicTests extends TStringTestBase {
         if (isAsciiCompatible(encoding) && codepoint <= 0x7f || isUTF(encoding)) {
             String javaString = tStringCP.toJavaStringUncached();
             Assert.assertEquals(codepoint, javaString.codePointAt(0));
-            Assert.assertEquals(codepoint, TruffleString.fromJavaStringUncached(javaString, TruffleString.Encoding.UTF_16, KEEP_SURROGATES).codePointAtIndexUncached(0, TruffleString.Encoding.UTF_16,
+            Assert.assertEquals(codepoint, TruffleString.fromJavaStringUncached(javaString, TruffleString.Encoding.UTF_16, true).codePointAtIndexUncached(0, TruffleString.Encoding.UTF_16,
                             TruffleString.ErrorHandling.BEST_EFFORT));
             for (int first : new int[]{'x', codepoint}) {
                 TruffleString tStringFirst = TruffleString.fromCodePointUncached(first, encoding);

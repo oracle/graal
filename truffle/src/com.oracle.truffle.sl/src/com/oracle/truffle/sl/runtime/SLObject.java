@@ -60,8 +60,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.sl.SLLanguage;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
-
 /**
  * Represents an SL object.
  *
@@ -146,7 +144,7 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     void removeMember(String member,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @CachedLibrary("this") DynamicObjectLibrary objectLibrary) throws UnknownIdentifierException {
-        TruffleString memberTS = fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING, REPLACE);
+        TruffleString memberTS = fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING, false);
         if (objectLibrary.containsKey(this, memberTS)) {
             objectLibrary.removeKey(this, memberTS);
         } else {
@@ -166,7 +164,7 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     boolean existsMember(String member,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
-        return objectLibrary.containsKey(this, fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING, REPLACE));
+        return objectLibrary.containsKey(this, fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING, false));
     }
 
     @ExportMessage
@@ -215,7 +213,7 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     Object readMember(String name,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @CachedLibrary("this") DynamicObjectLibrary objectLibrary) throws UnknownIdentifierException {
-        Object result = objectLibrary.getOrDefault(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING, REPLACE), null);
+        Object result = objectLibrary.getOrDefault(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING, false), null);
         if (result == null) {
             /* Property does not exist. */
             throw UnknownIdentifierException.create(name);
@@ -230,6 +228,6 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     void writeMember(String name, Object value,
                     @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
-        objectLibrary.put(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING, REPLACE), value);
+        objectLibrary.put(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING, false), value);
     }
 }

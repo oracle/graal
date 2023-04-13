@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
@@ -102,12 +101,12 @@ public abstract class RegexTestBase {
     }
 
     Value execRegex(Value compiledRegex, String input, int fromIndex) {
-        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, getTRegexEncoding().getTStringEncoding(), KEEP_SURROGATES);
+        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, getTRegexEncoding().getTStringEncoding(), true);
         return compiledRegex.invokeMember("exec", tsInput, fromIndex);
     }
 
     Value execRegex(Value compiledRegex, Encodings.Encoding encoding, String input, int fromIndex) {
-        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding(), KEEP_SURROGATES);
+        TruffleString tsInput = TruffleString.fromJavaStringUncached(input, encoding.getTStringEncoding(), true);
         return compiledRegex.invokeMember("exec", tsInput, fromIndex);
     }
 

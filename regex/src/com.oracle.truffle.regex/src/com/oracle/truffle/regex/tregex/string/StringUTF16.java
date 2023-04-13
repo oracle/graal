@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.string;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
-
 import com.oracle.truffle.api.strings.TruffleString;
 
 public final class StringUTF16 implements AbstractString {
@@ -87,7 +85,7 @@ public final class StringUTF16 implements AbstractString {
 
     @Override
     public TruffleString asTString() {
-        return TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16, KEEP_SURROGATES);
+        return TruffleString.fromJavaStringUncached(str, TruffleString.Encoding.UTF_16, true);
     }
 
     @Override

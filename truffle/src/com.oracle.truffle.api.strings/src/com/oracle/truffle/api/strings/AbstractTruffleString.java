@@ -54,8 +54,6 @@ import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidMultiByte;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -1212,14 +1210,13 @@ public abstract class AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link TruffleString.SwitchEncodingNode}.
      *
-     * @deprecated use
-     *             {@link #switchEncodingUncached(Encoding, TruffleString.SwitchEncodingNode.ErrorHandling)}
-     *             instead.
+     * @since 22.1
+     * @deprecated use {@link #switchEncodingUncached(TruffleString.Encoding, boolean)} instead.
      */
     @Deprecated(since = "23.0")
     @TruffleBoundary
     public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding) {
-        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, targetEncoding == Encoding.UTF_16 || targetEncoding == Encoding.UTF_32 ? KEEP_SURROGATES : REPLACE);
+        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, targetEncoding == Encoding.UTF_16 || targetEncoding == Encoding.UTF_32);
     }
 
     /**
@@ -1228,8 +1225,8 @@ public abstract class AbstractTruffleString {
      * @since 23.0
      */
     @TruffleBoundary
-    public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding, TruffleString.SwitchEncodingNode.ErrorHandling errorHandling) {
-        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, errorHandling);
+    public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding, boolean allowUTF16Surrogates) {
+        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, allowUTF16Surrogates);
     }
 
     /**

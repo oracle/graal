@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
 import static org.junit.Assume.assumeFalse;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -50,8 +49,8 @@ public class StringNodeInliningCompilationTest {
 
         @Child TruffleString.ByteIndexOfStringNode node = TruffleString.ByteIndexOfStringNode.create();
 
-        TruffleString v0 = TruffleString.fromJavaStringUncached("testtest", Encoding.UTF_16, KEEP_SURROGATES);
-        TruffleString v1 = TruffleString.fromJavaStringUncached("test", Encoding.UTF_16, KEEP_SURROGATES);
+        TruffleString v0 = TruffleString.fromJavaStringUncached("testtest", Encoding.UTF_16, true);
+        TruffleString v1 = TruffleString.fromJavaStringUncached("test", Encoding.UTF_16, true);
         int offset = 1;
 
         @Override

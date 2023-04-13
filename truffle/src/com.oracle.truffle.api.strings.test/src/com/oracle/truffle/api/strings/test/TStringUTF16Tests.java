@@ -41,9 +41,6 @@
 
 package com.oracle.truffle.api.strings.test;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
-
 import java.util.Arrays;
 
 import org.junit.Assert;
@@ -64,7 +61,7 @@ public class TStringUTF16Tests extends TStringTestBase {
     @Test
     public void testBrokenUTF16() {
         String input = new StringBuilder().append('[').append(Character.toChars(0x10ffff)).append(Character.toChars(0xdc80)).append(']').toString();
-        TruffleString utf16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16, KEEP_SURROGATES);
+        TruffleString utf16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16, true);
         Assert.assertFalse(utf16.isValidUncached(TruffleString.Encoding.UTF_16));
         Assert.assertTrue(utf16.codeRangeEqualsUncached(TruffleString.CodeRange.BROKEN));
 
@@ -84,7 +81,7 @@ public class TStringUTF16Tests extends TStringTestBase {
         Assert.assertEquals(']', it.nextUncached());
         Assert.assertFalse(it.hasNext());
 
-        TruffleString utf32 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_32, KEEP_SURROGATES);
+        TruffleString utf32 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_32, true);
         Assert.assertEquals(4, utf32.codePointLengthUncached(TruffleString.Encoding.UTF_32));
         Assert.assertEquals('[', utf32.codePointAtIndexUncached(0, TruffleString.Encoding.UTF_32));
         Assert.assertEquals(0x10ffff, utf32.codePointAtIndexUncached(1, TruffleString.Encoding.UTF_32));
@@ -98,7 +95,7 @@ public class TStringUTF16Tests extends TStringTestBase {
         Assert.assertEquals(']', it.nextUncached());
         Assert.assertFalse(it.hasNext());
 
-        TruffleString utf8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8, REPLACE);
+        TruffleString utf8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8, false);
         Assert.assertEquals(4, utf8.codePointLengthUncached(TruffleString.Encoding.UTF_8));
         Assert.assertEquals('[', utf8.codePointAtIndexUncached(0, TruffleString.Encoding.UTF_8));
         Assert.assertEquals(0x10ffff, utf8.codePointAtIndexUncached(1, TruffleString.Encoding.UTF_8));
@@ -119,11 +116,11 @@ public class TStringUTF16Tests extends TStringTestBase {
     @Test
     public void testBrokenUTF16ToUTF8() {
         String input = "http://example.com/\uD800\uD801\uDFFE\uDFFF\uFDD0\uFDCF\uFDEF\uFDF0\uFFFE\uFFFF?\uD800\uD801\uDFFE\uDFFF\uFDD0\uFDCF\uFDEF\uFDF0\uFFFE\uFFFF";
-        TruffleString utf16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16, KEEP_SURROGATES);
+        TruffleString utf16 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_16, true);
         Assert.assertFalse(utf16.isValidUncached(TruffleString.Encoding.UTF_16));
         Assert.assertTrue(utf16.codeRangeEqualsUncached(TruffleString.CodeRange.BROKEN));
 
-        TruffleString utf8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8, REPLACE);
+        TruffleString utf8 = TruffleString.fromJavaStringUncached(input, TruffleString.Encoding.UTF_8, false);
         Assert.assertEquals(38, utf16.codePointLengthUncached(TruffleString.Encoding.UTF_16));
         Assert.assertEquals(80, utf16.byteLength(TruffleString.Encoding.UTF_16));
 

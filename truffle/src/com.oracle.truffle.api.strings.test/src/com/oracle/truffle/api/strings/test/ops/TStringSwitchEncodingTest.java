@@ -83,10 +83,9 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
             }
             for (TruffleString.Encoding targetEncoding : reducedEncodingSet) {
                 boolean bothUTF = isUTF(encoding) && isUTF(targetEncoding);
-                for (TruffleString.SwitchEncodingNode.ErrorHandling errorHandling : bothUTF ? TruffleString.SwitchEncodingNode.ErrorHandling.values()
-                                : new TruffleString.SwitchEncodingNode.ErrorHandling[]{TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE}) {
-                    TruffleString b = node.execute(a, targetEncoding, errorHandling);
-                    MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding, errorHandling);
+                for (boolean allowUTF16Surrogates : bothUTF ? new boolean[]{true, false} : new boolean[]{false}) {
+                    TruffleString b = node.execute(a, targetEncoding, allowUTF16Surrogates);
+                    MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding, allowUTF16Surrogates);
                     if (a instanceof TruffleString &&
                                     (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding))) {
                         Assert.assertSame(a, b);
@@ -105,7 +104,7 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
                                     if (codepoint > Character.MAX_CODE_POINT) {
                                         expected = 0xfffd;
                                     } else if (codepoint <= 0xffff && Character.isSurrogate((char) codepoint)) {
-                                        if (errorHandling == TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE) {
+                                        if (!allowUTF16Surrogates) {
                                             expected = 0xfffd;
                                         } else if (targetEncoding == TruffleString.Encoding.UTF_8) {
                                             expected = 0xfffd;
@@ -123,6 +122,6 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
 
     @Test
     public void testNull() throws Exception {
-        checkNullSE((s, e) -> node.execute(s, e, TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE));
+        checkNullSE((s, e) -> node.execute(s, e, false));
     }
 }

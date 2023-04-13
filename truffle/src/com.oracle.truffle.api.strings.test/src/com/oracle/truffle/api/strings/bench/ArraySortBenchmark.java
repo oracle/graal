@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.strings.bench;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
-
 import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
@@ -77,7 +75,7 @@ public class ArraySortBenchmark extends TStringBenchmarkBase {
                         "call-classmethod-sized", "pickle-strings", "list-sort-strings", "generator-sized", "for-range", "pickle_utils",
         };
 
-        final TruffleString[] tStrings = Arrays.stream(strings).map(s -> TruffleString.fromJavaStringUncached(s, TruffleString.Encoding.UTF_32, REPLACE)).toArray(TruffleString[]::new);
+        final TruffleString[] tStrings = Arrays.stream(strings).map(s -> TruffleString.fromJavaStringUncached(s, TruffleString.Encoding.UTF_32, false)).toArray(TruffleString[]::new);
 
     }
 

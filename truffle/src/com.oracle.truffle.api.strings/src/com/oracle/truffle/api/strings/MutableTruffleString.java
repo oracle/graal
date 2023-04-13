@@ -46,8 +46,6 @@ import static com.oracle.truffle.api.strings.TStringGuards.isStride2;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF16;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF32;
 import static com.oracle.truffle.api.strings.TStringGuards.isUTF8;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
 
 import java.util.Arrays;
 
@@ -641,7 +639,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
     /**
      * Node to get a given string in a specific encoding. See
-     * {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for details.
+     * {@link #execute(AbstractTruffleString, TruffleString.Encoding, boolean)} for details.
      *
      * @since 22.1
      */
@@ -655,13 +653,12 @@ public final class MutableTruffleString extends AbstractTruffleString {
          * the string itself or a converted version.
          *
          * @since 22.1
-         * @deprecated use
-         *             {@link #execute(AbstractTruffleString, Encoding, TruffleString.SwitchEncodingNode.ErrorHandling)}
+         * @deprecated use {@link #execute(AbstractTruffleString, TruffleString.Encoding, boolean)}
          *             instead.
          */
         @Deprecated(since = "23.0")
         public final MutableTruffleString execute(AbstractTruffleString a, Encoding encoding) {
-            return execute(a, encoding, encoding == Encoding.UTF_16 || encoding == Encoding.UTF_32 ? KEEP_SURROGATES : REPLACE);
+            return execute(a, encoding, encoding == Encoding.UTF_16 || encoding == Encoding.UTF_32);
         }
 
         /**
@@ -674,20 +671,20 @@ public final class MutableTruffleString extends AbstractTruffleString {
          *
          * @since 23.0
          */
-        public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding encoding, TruffleString.SwitchEncodingNode.ErrorHandling errorHandling);
+        public abstract MutableTruffleString execute(AbstractTruffleString a, Encoding encoding, boolean allowUTF16Surrogates);
 
         @SuppressWarnings("unused")
         @Specialization(guards = "a.isCompatibleToIntl(encoding)")
-        static MutableTruffleString compatibleMutable(MutableTruffleString a, Encoding encoding, TruffleString.SwitchEncodingNode.ErrorHandling errorHandling) {
+        static MutableTruffleString compatibleMutable(MutableTruffleString a, Encoding encoding, boolean allowUTF16Surrogates) {
             return a;
         }
 
         @Specialization(guards = "!a.isCompatibleToIntl(encoding) || a.isImmutable()")
-        static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding, TruffleString.SwitchEncodingNode.ErrorHandling errorHandling,
+        static MutableTruffleString transcodeAndCopy(AbstractTruffleString a, Encoding encoding, boolean allowUTF16Surrogates,
                         @Bind("this") Node node,
                         @Cached TruffleString.InternalSwitchEncodingNode switchEncodingNode,
                         @Cached AsMutableTruffleStringNode asMutableTruffleStringNode) {
-            TruffleString switched = switchEncodingNode.execute(node, a, encoding, errorHandling);
+            TruffleString switched = switchEncodingNode.execute(node, a, encoding, allowUTF16Surrogates);
             return asMutableTruffleStringNode.execute(switched, encoding);
         }
 

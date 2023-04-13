@@ -44,7 +44,6 @@ package com.oracle.truffle.api.strings.test.ops;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
 import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
@@ -99,7 +98,7 @@ public class TStringByteIndexOfCodePointSetTest extends TStringTestBase {
         for (TruffleString.Encoding encoding : Encodings.PRIMARY_ENCODINGS) {
             TruffleString[] strings = new TruffleString[src.length];
             for (TruffleString.CodeRange codeRange : TruffleString.CodeRange.values()) {
-                strings[codeRange.ordinal()] = src[codeRange.ordinal()].switchEncodingUncached(encoding, KEEP_SURROGATES);
+                strings[codeRange.ordinal()] = src[codeRange.ordinal()].switchEncodingUncached(encoding, true);
             }
             int[][] byteIndices = new int[src.length][];
             if (encoding == UTF_8) {

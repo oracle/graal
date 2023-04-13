@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.regex.runtime.nodes;
 
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.KEEP_SURROGATES;
-import static com.oracle.truffle.api.strings.TruffleString.SwitchEncodingNode.ErrorHandling.REPLACE;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -63,7 +60,7 @@ public abstract class ExpectStringNode extends Node {
     static TruffleString doString(String input, TruffleString.Encoding encoding,
                     @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
         CompilerAsserts.partialEvaluationConstant(encoding);
-        return fromJavaStringNode.execute(input, encoding, encoding == TruffleString.Encoding.UTF_16 || encoding == TruffleString.Encoding.UTF_32 ? KEEP_SURROGATES : REPLACE);
+        return fromJavaStringNode.execute(input, encoding, encoding == TruffleString.Encoding.UTF_16 || encoding == TruffleString.Encoding.UTF_32);
     }
 
     @Specialization
