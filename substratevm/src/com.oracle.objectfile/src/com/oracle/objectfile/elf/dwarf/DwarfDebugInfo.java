@@ -341,14 +341,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
     private final EconomicMap<MethodEntry, DwarfMethodProperties> methodPropertiesIndex = EconomicMap.create();
 
     /**
-     * A collection of local variable properties associated with a generated method record,
-     * potentially including a method which is abstract (hence why it is not indexed off the primary
-     * range).
-     */
-
-    private final EconomicMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex = EconomicMap.create();
-
-    /**
      * A collection of local variable properties associated with an inlined subrange.
      */
     private final EconomicMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex = EconomicMap.create();
