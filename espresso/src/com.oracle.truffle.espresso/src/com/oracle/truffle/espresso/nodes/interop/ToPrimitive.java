@@ -89,6 +89,41 @@ public abstract class ToPrimitive extends EspressoNode {
             }
         }
 
+        @TruffleBoundary
+        public static ToPrimitive getUncached(Klass targetType) {
+            if (!targetType.isPrimitive()) {
+                throw new IllegalStateException("ToPrimitive.Dynamic can only be used for primitives");
+            }
+            switch (targetType.getJavaKind()) {
+                case Boolean: {
+                    return ToPrimitiveFactory.ToBooleanNodeGen.getUncached();
+                }
+                case Int: {
+                    return ToPrimitiveFactory.ToIntNodeGen.getUncached();
+                }
+                case Byte: {
+                    return ToPrimitiveFactory.ToByteNodeGen.getUncached();
+                }
+                case Char: {
+                    return ToPrimitiveFactory.ToCharNodeGen.getUncached();
+                }
+                case Short: {
+                    return ToPrimitiveFactory.ToShortNodeGen.getUncached();
+                }
+                case Long: {
+                    return ToPrimitiveFactory.ToLongNodeGen.getUncached();
+                }
+                case Float: {
+                    return ToPrimitiveFactory.ToFloatNodeGen.getUncached();
+                }
+                case Double: {
+                    return ToPrimitiveFactory.ToDoubleNodeGen.getUncached();
+                }
+                default:
+                    throw EspressoError.shouldNotReachHere();
+            }
+        }
+
         @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
         public Object doCached(Object value, @SuppressWarnings("unused") Klass targetType,
                         @SuppressWarnings("unused") @Cached("targetType") Klass cachedTargetType,
@@ -99,8 +134,8 @@ public abstract class ToPrimitive extends EspressoNode {
         @Specialization(replaces = "doCached")
         public Object doGeneric(Object value, Klass targetType) throws UnsupportedTypeException {
             // Since we have a cache limit of 8 we cover all cases of primitive types in the cache,
-            // so the generic specialization should never be taken
-            return createToPrimitiveNode(targetType).execute(value);
+            // so the generic specialization should never be taken when the node is cached
+            return getUncached(targetType).execute(value);
         }
     }
 

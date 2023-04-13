@@ -202,7 +202,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     final void writeMember(String member, Object value,
                     @Shared("lookupField") @Cached LookupFieldNode lookupFieldNode,
                     @Cached ToEspressoNode.Dynamic toEspressoNode,
-                    @Cached ToPrimitive.Dynamic toPrimitiveNode,
                     @Shared("error") @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedTypeException {
         Field field = lookupFieldNode.execute(this, member, true);
         // Can only write to non-final fields.
@@ -210,7 +209,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             Klass klass = field.resolveTypeKlass();
             Object espressoValue;
             if (klass.isPrimitive()) {
-                espressoValue = toPrimitiveNode.execute(value, klass);
+                espressoValue = ToPrimitiveFactory.DynamicNodeGen.getUncached().execute(value, klass);
             } else {
                 espressoValue = toEspressoNode.execute(value, klass);
             }
