@@ -1302,7 +1302,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
         int pos = p;
         log(context, "  [0x%08x] concrete entries [0x%x,0x%x] %s", pos, primary.getLo(), primary.getHi(), primary.getFullMethodName());
-        ClassEntry classEntry = compiledEntry.getClassEntry();
         int depth = 0;
         Iterator<SubRange> iterator = compiledEntry.topDownRangeIterator();
         while (iterator.hasNext()) {
@@ -1340,7 +1339,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         // identify the inlined method by looking at the first callee
         Range callee = caller.getFirstCallee();
         MethodEntry methodEntry = callee.getMethodEntry();
-        ClassEntry classEntry = methodEntry.ownerType();
         String methodKey = methodEntry.getSymbolName();
         /* the abstract index was written in the method's class entry */
         int abstractOriginIndex = getAbstractInlineMethodIndex(methodEntry);

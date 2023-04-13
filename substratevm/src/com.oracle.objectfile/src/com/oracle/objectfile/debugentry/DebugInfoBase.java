@@ -545,16 +545,17 @@ public abstract class DebugInfoBase {
 
     private FileEntry addFileEntry(String fileName, Path filePath) {
         assert fileName != null;
+        Path dirPath = filePath;
         Path fileAsPath;
         if (filePath != null) {
-            fileAsPath = filePath.resolve(fileName);
+            fileAsPath = dirPath.resolve(fileName);
         } else {
             fileAsPath = Paths.get(fileName);
-            filePath = EMPTY_PATH;
+            dirPath = EMPTY_PATH;
         }
         FileEntry fileEntry = filesIndex.get(fileAsPath);
         if (fileEntry == null) {
-            DirEntry dirEntry = ensureDirEntry(filePath);
+            DirEntry dirEntry = ensureDirEntry(dirPath);
             /* Ensure file and cachepath are added to the debug_str section. */
             uniqueDebugString(fileName);
             uniqueDebugString(cachePath);
@@ -563,7 +564,7 @@ public abstract class DebugInfoBase {
             /* Index the file entry by file path. */
             filesIndex.put(fileAsPath, fileEntry);
         } else {
-            assert fileEntry.getDirEntry().getPath().equals(filePath);
+            assert fileEntry.getDirEntry().getPath().equals(dirPath);
         }
         return fileEntry;
     }

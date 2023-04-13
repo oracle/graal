@@ -481,17 +481,12 @@ public class DwarfDebugInfo extends DebugInfoBase {
          * Map from field names to info section index for the field declaration.
          */
         private EconomicMap<String, Integer> fieldDeclarationIndex;
-        /**
-         * Map from method entries to associated method local properties index.
-         */
-        private EconomicMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
 
         DwarfClassProperties(StructureTypeEntry entry) {
             super(entry);
             this.layoutIndex = -1;
             this.indirectLayoutIndex = -1;
             fieldDeclarationIndex = null;
-            methodLocalPropertiesIndex = null;
         }
     }
 

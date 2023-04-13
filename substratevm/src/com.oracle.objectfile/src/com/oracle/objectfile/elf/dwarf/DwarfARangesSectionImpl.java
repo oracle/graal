@@ -146,7 +146,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         cursor.set(writeLong(0, buffer, cursor.get()));
         cursor.set(writeLong(0, buffer, cursor.get()));
         patchLength(lengthPos, buffer, cursor.get());
-        assert cursor.get() == buffer.length;
+        assert cursor.get() == size;
     }
 
     private int writeHeader(int cuIndex, byte[] buffer, int p) {

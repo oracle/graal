@@ -213,7 +213,7 @@ public abstract class Range {
 
     public int getFileIndex() {
         return getFileEntry().getIdx();
-    };
+    }
 
     public int getModifiers() {
         return methodEntry.getModifiers();
