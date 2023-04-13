@@ -579,9 +579,9 @@ import org.graalvm.compiler.debug.DebugContext;
  * caller. So, if compiled method M inlines a call to m1 at source position f0:l0, m1 inlines a call
  * to method m2 at source position f1:l1 and m2 inlines a call to m3 at source position f2:l2 then
  * there will be a level 2 DIE for the inline code range derived from m1 referencing the declaration
- * DIE for m1 with f0 and l0 as file and line, a level 3 DIE for the inline code range derived
- * from m2 referencing the declaration DIE for m2 with f1 and l1 as file and line and a level 3 DIE
- * for the inline code range derived from m3 referencing the declaration DIE for m3 with f2 and l2 as
+ * DIE for m1 with f0 and l0 as file and line, a level 3 DIE for the inline code range derived from
+ * m2 referencing the declaration DIE for m2 with f1 and l1 as file and line and a level 3 DIE for
+ * the inline code range derived from m3 referencing the declaration DIE for m3 with f2 and l2 as
  * file and line.
  *
  * <ul>
