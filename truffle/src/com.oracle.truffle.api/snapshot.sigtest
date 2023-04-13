@@ -574,8 +574,11 @@ hfds argumentNames,disposed,source
 
 CLSS public abstract interface static com.oracle.truffle.api.TruffleLanguage$Provider
  outer com.oracle.truffle.api.TruffleLanguage
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-intf com.oracle.truffle.api.provider.TruffleLanguageProvider
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.1")
+meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
+meth public abstract java.lang.String getLanguageClassName()
+meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
+meth public abstract java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.TruffleLanguage$Registration
  outer com.oracle.truffle.api.TruffleLanguage
@@ -587,6 +590,8 @@ meth public abstract !hasdefault boolean internal()
 meth public abstract !hasdefault boolean needsAllEncodings()
 meth public abstract !hasdefault com.oracle.truffle.api.TruffleLanguage$ContextPolicy contextPolicy()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.TruffleFile$FileTypeDetector>[] fileTypeDetectors()
+meth public abstract !hasdefault java.lang.Class<?>[] defaultExportProviders()
+meth public abstract !hasdefault java.lang.Class<?>[] eagerExportProviders()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String defaultMimeType()
 meth public abstract !hasdefault java.lang.String id()
@@ -732,7 +737,7 @@ meth public static com.oracle.truffle.api.TruffleStackTrace fillIn(java.lang.Thr
 meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getAsynchronousStackTrace(com.oracle.truffle.api.CallTarget,com.oracle.truffle.api.frame.Frame)
 meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStackTrace(java.lang.Throwable)
 supr java.lang.Exception
-hfds EMPTY,UNSAFE,causeFieldIndex,frames,lazyFrames,materializedHostException
+hfds EMPTY,frames,lazyFrames,materializedHostException
 hcls LazyStackTrace,TracebackElement
 
 CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
@@ -1280,12 +1285,6 @@ cons public init(java.lang.Object)
 meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
-
-CLSS public abstract interface com.oracle.truffle.api.provider.TruffleLanguageProvider
-meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
-meth public abstract java.lang.String getLanguageClassName()
-meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
-meth public abstract java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
 
 CLSS public abstract com.oracle.truffle.api.source.Source
 fld public final static java.lang.CharSequence CONTENT_NONE

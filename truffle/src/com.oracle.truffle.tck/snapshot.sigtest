@@ -53,6 +53,8 @@ meth public abstract !hasdefault boolean internal()
 meth public abstract !hasdefault boolean needsAllEncodings()
 meth public abstract !hasdefault com.oracle.truffle.api.TruffleLanguage$ContextPolicy contextPolicy()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.TruffleFile$FileTypeDetector>[] fileTypeDetectors()
+meth public abstract !hasdefault java.lang.Class<?>[] defaultExportProviders()
+meth public abstract !hasdefault java.lang.Class<?>[] eagerExportProviders()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String defaultMimeType()
 meth public abstract !hasdefault java.lang.String id()
@@ -72,11 +74,13 @@ intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.String methodName()
 meth public abstract java.lang.Class<?> value()
 
-CLSS public abstract interface com.oracle.truffle.api.provider.TruffleLanguageProvider
-meth public abstract com.oracle.truffle.api.TruffleLanguage<?> create()
-meth public abstract java.lang.String getLanguageClassName()
-meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
-meth public abstract java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
+CLSS public abstract com.oracle.truffle.api.provider.TruffleLanguageProvider
+cons protected init()
+meth protected abstract <%0 extends java.lang.Object> java.util.stream.Stream<{%%0}> loadService(java.lang.Class<{%%0}>)
+meth protected abstract java.lang.Object create()
+meth protected abstract java.lang.String getLanguageClassName()
+meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
+supr java.lang.Object
 
 CLSS public final com.oracle.truffle.tck.DebuggerTester
 cons public init()
@@ -161,12 +165,11 @@ meth public abstract int value()
 
 CLSS public final com.oracle.truffle.tck.TruffleTestInvokerTruffleTestInvokerLanguageProvider
 cons public init()
-intf com.oracle.truffle.api.provider.TruffleLanguageProvider
-meth public com.oracle.truffle.api.TruffleLanguage<?> create()
-meth public java.lang.String getLanguageClassName()
-meth public java.util.Collection<java.lang.String> getServicesClassNames()
-meth public java.util.List<com.oracle.truffle.api.TruffleFile$FileTypeDetector> createFileTypeDetectors()
-supr java.lang.Object
+meth protected <%0 extends java.lang.Object> java.util.stream.Stream<{%%0}> loadService(java.lang.Class<{%%0}>)
+meth protected java.lang.Object create()
+meth protected java.lang.String getLanguageClassName()
+meth protected java.util.Collection<java.lang.String> getServicesClassNames()
+supr com.oracle.truffle.api.provider.TruffleLanguageProvider
 
 CLSS public abstract interface java.lang.AutoCloseable
 meth public abstract void close() throws java.lang.Exception

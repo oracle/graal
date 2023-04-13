@@ -443,8 +443,10 @@ hcls GuardedExecutableNode,MessageTransportProxy
 
 CLSS public abstract interface static com.oracle.truffle.api.instrumentation.TruffleInstrument$Provider
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-intf com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="23.1")
+meth public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument create()
+meth public abstract java.lang.String getInstrumentClassName()
+meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.TruffleInstrument$Registration
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
@@ -452,17 +454,14 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.instrum
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean internal()
+meth public abstract !hasdefault java.lang.Class<?>[] defaultExportProviders()
+meth public abstract !hasdefault java.lang.Class<?>[] eagerExportProviders()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String website()
 meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
-
-CLSS public abstract interface com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider
-meth public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument create()
-meth public abstract java.lang.String getInstrumentClassName()
-meth public abstract java.util.Collection<java.lang.String> getServicesClassNames()
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
