@@ -533,11 +533,9 @@ import org.graalvm.compiler.debug.DebugContext;
  * <code>method_definition</code> DIE, including attributes specified int the latter's child DIEs,
  * such as parameter and local variable declarations.
  *
- * TODO - check we no longer need to replicate the DIES
- *
  * However, it is actually necessary to replicate the parameter and local variable declarations
- * as children of the method definition DIE in order to ensure that gdb is aware of the parameters
- * and locals.
+ * as children of the inline method definition DIE in order to ensure that gdb is aware of the
+ * parameters and locals.
  *
  * <ul>
  *
@@ -582,8 +580,6 @@ import org.graalvm.compiler.debug.DebugContext;
  * DIE for <code>m'</code> at level 1 in the Java CU. The declaration serves as the
  * <code>abstract_origin</code> for any corresponding inlined method DIEs appearing as children
  * of <code>m</code>.
- *
- * TODO - ensure we only generate per inlined method rather than per class per method inlined by that class
  *
  * The <code>abstract_inline_method</code> DIE should inherit attributes from
  * the method_definition DIE referenced as its <code>abstract_origin</code> attribute without the

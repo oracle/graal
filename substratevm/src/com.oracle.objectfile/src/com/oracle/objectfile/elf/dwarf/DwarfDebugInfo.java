@@ -482,11 +482,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
          */
         private EconomicMap<String, Integer> fieldDeclarationIndex;
         /**
-         * Map from method entries to associated abstract inline method index.
-         */
-        private EconomicMap<MethodEntry, Integer> abstractInlineMethodIndex;
-
-        /**
          * Map from method entries to associated method local properties index.
          */
         private EconomicMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
@@ -496,7 +491,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.layoutIndex = -1;
             this.indirectLayoutIndex = -1;
             fieldDeclarationIndex = null;
-            abstractInlineMethodIndex = null;
             methodLocalPropertiesIndex = null;
         }
     }
@@ -514,9 +508,21 @@ public class DwarfDebugInfo extends DebugInfoBase {
          */
         private int abstractInlineMethodIndex;
 
+        /**
+         * Index of info locations for params/locals belonging to a method
+         */
+        private DwarfLocalProperties normalLocalProperties;
+
+        /**
+         * Index of info locations for params/locals declared belonging to an abstract inline method
+         */
+        private  DwarfLocalProperties inlineLocalProperties;
+
         DwarfMethodProperties() {
             methodDeclarationIndex = -1;
             abstractInlineMethodIndex = -1;
+            normalLocalProperties = null;
+            inlineLocalProperties = null;
         }
 
         public int getMethodDeclarationIndex() {
@@ -537,6 +543,24 @@ public class DwarfDebugInfo extends DebugInfoBase {
         public void setAbstractInlineMethodIndex(int pos) {
             assert abstractInlineMethodIndex == -1 || abstractInlineMethodIndex == pos : "bad inline index";
             abstractInlineMethodIndex = pos;
+        }
+
+        public DwarfLocalProperties getLocalProperties(boolean isInlined) {
+            DwarfLocalProperties localProperties;
+            if (isInlined) {
+                localProperties = normalLocalProperties;
+            } else {
+                localProperties = inlineLocalProperties;
+            }
+            if (localProperties == null) {
+                localProperties = new DwarfLocalProperties();
+                if (isInlined) {
+                    normalLocalProperties = localProperties;
+                } else {
+                    inlineLocalProperties = localProperties;
+                }
+            }
+            return localProperties;
         }
     }
 
@@ -690,27 +714,14 @@ public class DwarfDebugInfo extends DebugInfoBase {
         return methodProperties.getMethodDeclarationIndex();
     }
 
-    public void setAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry, int pos) {
-        DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
-        EconomicMap<MethodEntry, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
-        if (abstractInlineMethodIndex == null) {
-            classProperties.abstractInlineMethodIndex = abstractInlineMethodIndex = EconomicMap.create();
-        }
-        if (abstractInlineMethodIndex.get(methodEntry) != null) {
-            assert abstractInlineMethodIndex.get(methodEntry) == pos : classEntry.getTypeName() + " & " + methodEntry.getSymbolName();
-        } else {
-            abstractInlineMethodIndex.put(methodEntry, pos);
-        }
+    public void setAbstractInlineMethodIndex(MethodEntry methodEntry, int pos) {
+        DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
+        methodProperties.setAbstractInlineMethodIndex(pos);
     }
 
-    public int getAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry) {
-        DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-        assert classProperties.getTypeEntry() == classEntry;
-        EconomicMap<MethodEntry, Integer> abstractInlineMethodIndex = classProperties.abstractInlineMethodIndex;
-        assert abstractInlineMethodIndex != null : classEntry.getTypeName() + " & " + methodEntry.getSymbolName();
-        assert abstractInlineMethodIndex.get(methodEntry) != null : classEntry.getTypeName() + " & " + methodEntry.getSymbolName();
-        return abstractInlineMethodIndex.get(methodEntry);
+    public int getAbstractInlineMethodIndex(MethodEntry methodEntry) {
+        DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
+        return methodProperties.getAbstractInlineMethodIndex();
     }
 
     /**
@@ -744,35 +755,19 @@ public class DwarfDebugInfo extends DebugInfoBase {
         return localProperties;
     }
 
-    public DwarfLocalProperties lookupLocalProperties(ClassEntry classEntry, MethodEntry methodEntry) {
-        EconomicMap<MethodEntry, DwarfLocalProperties> map;
-        if (classEntry == null) {
-            map = methodLocalPropertiesIndex;
-        } else {
-            DwarfClassProperties classProperties = lookupClassProperties(classEntry);
-            assert classProperties != null;
-            map = classProperties.methodLocalPropertiesIndex;
-            if (map == null) {
-                map = classProperties.methodLocalPropertiesIndex = EconomicMap.create();
-            }
-        }
-        DwarfLocalProperties localProperties = map.get(methodEntry);
-        if (localProperties == null) {
-            localProperties = new DwarfLocalProperties();
-            map.put(methodEntry, localProperties);
-        }
-        return localProperties;
+    public DwarfLocalProperties lookupLocalProperties(MethodEntry methodEntry, boolean isInlined) {
+        return lookupMethodProperties(methodEntry).getLocalProperties(isInlined);
     }
 
-    public void setMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
-        DwarfLocalProperties localProperties = lookupLocalProperties(classEntry, methodEntry);
+    public void setMethodLocalIndex(MethodEntry methodEntry, boolean isInlined, DebugLocalInfo localInfo, int index) {
+        DwarfLocalProperties localProperties = lookupLocalProperties(methodEntry, isInlined);
         localProperties.setIndex(localInfo, index);
     }
 
-    public int getMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localinfo) {
-        DwarfLocalProperties localProperties = lookupLocalProperties(classEntry, methodEntry);
+    public int getMethodLocalIndex(MethodEntry methodEntry, boolean isInlined, DebugLocalInfo localInfo) {
+        DwarfLocalProperties localProperties = lookupLocalProperties(methodEntry, isInlined);
         assert localProperties != null : "get of non-existent local index";
-        int index = localProperties.getIndex(localinfo);
+        int index = localProperties.getIndex(localInfo);
         assert index >= 0 : "get of local index before it was set";
         return index;
     }
