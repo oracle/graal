@@ -48,8 +48,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class LocalSetterRange {
-    @CompilationFinal(dimensions = 2) //
-    private static LocalSetterRange[][] localSetterRuns = new LocalSetterRange[8][];
+    // LocalSetterRanges are not specific to any OperationRootNode, since they just encapsulate a
+    // range of indices. We use a static cache to share and reuse the objects for each node.
+    // This cache is two-dimensional, indexed first on the range length and then on the start index.
+    @CompilationFinal(dimensions = 2) private static LocalSetterRange[][] localSetterRuns = new LocalSetterRange[8][];
 
     private static synchronized void resizeArray(int length) {
         if (localSetterRuns.length <= length) {
@@ -145,8 +147,8 @@ public final class LocalSetterRange {
         return localSetterRuns[length][start];
     }
 
-    private final int start;
-    private final int length;
+    public final int start;
+    public final int length;
 
     private LocalSetterRange(int start, int length) {
         this.start = start;

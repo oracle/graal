@@ -80,7 +80,25 @@ public class InstructionModel implements InfoDumpable {
         SUPERINSTRUCTION,
     }
 
-    // Models data required to execute an instruction.
+    public enum ImmediateKind {
+        INTEGER,
+        BYTECODE_INDEX,
+        CONSTANT,
+        LOCAL_SETTER,
+        LOCAL_SETTER_RANGE,
+        NODE
+    }
+
+    public static class InstructionImmediate {
+        public final ImmediateKind kind;
+        public final String name;
+
+        public InstructionImmediate(ImmediateKind kind, String name) {
+            this.kind = kind;
+            this.name = name;
+        }
+    }
+
     public static class InstructionField {
         public final TypeMirror type;
         public final String name;
@@ -169,6 +187,9 @@ public class InstructionModel implements InfoDumpable {
     public NodeData nodeData;
     public int variadicPopCount = -1;
 
+    // Immediate values that get encoded in the bytecode.
+    public final List<InstructionImmediate> immediates = new ArrayList<>();
+    // Fields that should be stored on the generated node.
     public final List<InstructionField> fields = new ArrayList<>();
     public boolean continueWhen;
 
@@ -186,7 +207,9 @@ public class InstructionModel implements InfoDumpable {
         if (nodeType != null) {
             dumper.field("nodeType", nodeType.getSimpleName());
         }
-        dumper.field("signature", signature);
+        if (signature != null) {
+            dumper.field("signature", signature);
+        }
     }
 
     public boolean isInstrumentationOnly() {
@@ -214,26 +237,21 @@ public class InstructionModel implements InfoDumpable {
         }
     }
 
-    public boolean needsUncachedData() {
-        for (InstructionField field : fields) {
-            if (field.needInUncached) {
-                return true;
-            }
-        }
-
-        return false;
+    // TODO: code invoking this method should likely be fixed.
+    public boolean hasImmediates() {
+        return immediates.size() > 0;
     }
 
-    public void addField(TypeMirror type, String fieldName, boolean needInUncached, boolean needLocationFixup) {
-        fields.add(new InstructionField(type, fieldName, needInUncached, needLocationFixup));
+    public void addImmediate(ImmediateKind kind, String name) {
+        immediates.add(new InstructionImmediate(kind, name));
     }
 
-    public List<InstructionField> getUncachedFields() {
-        return fields.stream().filter(x -> x.needInUncached).collect(Collectors.toList());
+    public List<InstructionImmediate> getImmediates() {
+        return immediates;
     }
 
-    public List<InstructionField> getCachedFields() {
-        return fields.stream().filter(x -> !x.needInUncached).collect(Collectors.toList());
+    public int instructionWidth() {
+        return 1 + immediates.size();
     }
 
     public String getInternalName() {
@@ -246,6 +264,6 @@ public class InstructionModel implements InfoDumpable {
 
     @Override
     public String toString() {
-        return String.format("Operation(%s)", name);
+        return String.format("Instruction(%s)", name);
     }
 }
