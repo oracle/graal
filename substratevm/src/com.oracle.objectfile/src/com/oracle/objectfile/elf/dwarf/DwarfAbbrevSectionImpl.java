@@ -112,9 +112,6 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>code = method_location, tag == subprogram , parent = class_unit</code> - Java method
  * code definition (i.e. location of code)
  *
- * <li><code>code = abstract_inline_method, tag == subprogram , parent = class_unit</code> - Java
- * abstract inline method (i.e. proxy for method definition referenced by concrete inline instance)
- *
  * <li><code>code = static_field_location, tag == variable, parent = class_unit</code> - Java static
  * field definition (i.e. location of data)
  *
@@ -572,44 +569,19 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Abstract Inline Methods: For any method <code>m'</code> which has been inlined into a top level
- * compiled method <code>m</code> there will be an <code>abstract_inline_method</code> DIE for
- * <code>m'</code> at level 1 in the Java CU. The declaration serves as the
- * <code>abstract_origin</code> for any corresponding inlined method DIEs appearing as children of
- * <code>m</code>. This declaration references the original method declaration via its
- * <code>specification</code> and inherits attributes from that original declaration including
- * parameter and local declarations. The GNU compiler sometimes replicates the parameter and local
- * declarations so they can be referenced from location info in concrete inline methods, ensuring
- * that any such reference is local to the compile unit of the method into which the call is
- * inlined. There is no need for that with Java as all the declarations are lcoated in one compile
- * unit.
- *
- * <ul>
- *
- * <li><code>abbrev_code == DW_ABBREV_CODE_abstract_inline_method, tag == DW_TAG_subprogram,
- * no_children</code>
- *
- * <li><code>DW_AT_inline : .......... DW_FORM_data1</code>
- *
- * <li><code>DW_AT_external : ........ DW_FORM_flag</code>
- *
- * <li><code>DW_AT_specification : ... DW_FORM_ref_addr</code>
- *
- * </ul>
- *
  * Concrete Inlined Methods: Concrete inlined method DIEs are nested as a tree of children under the
  * method_location DIE for the method into which they have been inlined. Each inlined method DIE
  * defines an address range that is a subrange of its parent DIE. A method_location DIE occurs at
  * depth 1 in a compile unit (class_unit). So, this means that for any method which has been inlined
  * into a compiled method at depth K in the inline frame stack there will be a corresponding level
- * 2+K DIE that identifies the method that was inlined (by referencing the corresponding abstract
- * inline method DIE) and locates the call point by citing the file index and line number of its
+ * 2+K DIE that identifies the method that was inlined (by referencing the corresponding method
+ * declaration DIE) and locates the call point by citing the file index and line number of its
  * caller. So, if compiled method M inlines a call to m1 at source position f0:l0, m1 inlines a call
  * to method m2 at source position f1:l1 and m2 inlines a call to m3 at source position f2:l2 then
- * there will be a level 2 DIE for the inline code range derived from m1 referencing the abstract
- * entry for m1 with f0 and l0 as file and line, a level 3 DIE for the inline code range derived
- * from m2 referencing the abstract entry for m2 with f1 and l1 as file and line and a level 3 DIE
- * for the inline code range derived from m3 referencing the abstract entry for m3 with f2 and l2 as
+ * there will be a level 2 DIE for the inline code range derived from m1 referencing the declaration
+ * DIE for m1 with f0 and l0 as file and line, a level 3 DIE for the inline code range derived
+ * from m2 referencing the declaration DIE for m2 with f1 and l1 as file and line and a level 3 DIE
+ * for the inline code range derived from m3 referencing the declaration DIE for m3 with f2 and l2 as
  * file and line.
  *
  * <ul>
@@ -863,7 +835,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeHeaderFieldAbbrev(context, buffer, pos);
         pos = writeArrayDataTypeAbbrev(context, buffer, pos);
         pos = writeMethodLocationAbbrev(context, buffer, pos);
-        pos = writeAbstractInlineMethodAbbrev(context, buffer, pos);
         pos = writeStaticFieldLocationAbbrev(context, buffer, pos);
         pos = writeSuperReferenceAbbrev(context, buffer, pos);
         pos = writeInterfaceImplementorAbbrev(context, buffer, pos);
@@ -1321,25 +1292,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_hi_pc, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_external, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
-        /*
-         * Now terminate.
-         */
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
-        return pos;
-    }
-
-    private int writeAbstractInlineMethodAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
-        int pos = p;
-        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_abstract_inline_method, buffer, pos);
-        pos = writeTag(DwarfDebugInfo.DW_TAG_subprogram, buffer, pos);
-        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
-        pos = writeAttrType(DwarfDebugInfo.DW_AT_inline, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_external, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);

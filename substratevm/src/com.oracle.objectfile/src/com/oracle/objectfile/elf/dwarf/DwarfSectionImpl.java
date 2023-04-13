@@ -847,17 +847,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getMethodDeclarationIndex(methodEntry);
     }
 
-    protected void setAbstractInlineMethodIndex(MethodEntry methodEntry, int pos) {
-        dwarfSections.setAbstractInlineMethodIndex(methodEntry, pos);
-    }
-
-    protected int getAbstractInlineMethodIndex(MethodEntry methodEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getAbstractInlineMethodIndex(methodEntry);
-    }
-
     /**
      * Record the info section offset of a local (or parameter) declaration DIE appearing as a child
      * of a standard method declaration.

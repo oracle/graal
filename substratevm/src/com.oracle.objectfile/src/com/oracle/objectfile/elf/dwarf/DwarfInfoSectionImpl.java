@@ -600,13 +600,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                  */
                 pos = writeMethodDeclaration(context, classEntry, method, buffer, pos);
             }
-            if (method.isInlined()) {
-                /*
-                 * We also need an abstract inlined method as a target for any inline tree that
-                 * includes the method
-                 */
-                pos = writeAbstractInlineMethod(context, classEntry, method, buffer, pos);
-            }
         }
 
         return pos;
@@ -1341,7 +1334,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         MethodEntry methodEntry = callee.getMethodEntry();
         String methodKey = methodEntry.getSymbolName();
         /* the abstract index was written in the method's class entry */
-        int abstractOriginIndex = getAbstractInlineMethodIndex(methodEntry);
+        int abstractOriginIndex = getMethodDeclarationIndex(methodEntry);
 
         int pos = p;
         log(context, "  [0x%08x] concrete inline subroutine [0x%x, 0x%x] %s", pos, caller.getLo(), caller.getHi(), methodKey);
@@ -1374,26 +1367,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData4(fileIndex, buffer, pos);
         log(context, "  [0x%08x]     call_line  %d", pos, callLine);
         pos = writeAttrData4(callLine, buffer, pos);
-        return pos;
-    }
-
-    private int writeAbstractInlineMethod(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
-        int pos = p;
-        setAbstractInlineMethodIndex(method, pos);
-        log(context, "  [0x%08x] abstract inline method %s::%s", pos, classEntry.getTypeName(), method.methodName());
-        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_abstract_inline_method;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
-        pos = writeAbbrevCode(abbrevCode, buffer, pos);
-        log(context, "  [0x%08x]     inline  0x%x", pos, DwarfDebugInfo.DW_INL_inlined);
-        pos = writeAttrData1(DwarfDebugInfo.DW_INL_inlined, buffer, pos);
-        /*
-         * Should pass true only if method is non-private.
-         */
-        log(context, "  [0x%08x]     external  true", pos);
-        pos = writeFlag(DwarfDebugInfo.DW_FLAG_true, buffer, pos);
-        int methodSpecOffset = getMethodDeclarationIndex(method);
-        log(context, "  [0x%08x]     specification  0x%x", pos, methodSpecOffset);
-        pos = writeInfoSectionOffset(methodSpecOffset, buffer, pos);
         return pos;
     }
 

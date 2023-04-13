@@ -80,40 +80,39 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_class_layout2 = 7;
     public static final int DW_ABBREV_CODE_class_pointer = 8;
     public static final int DW_ABBREV_CODE_method_location = 9;
-    public static final int DW_ABBREV_CODE_abstract_inline_method = 10;
-    public static final int DW_ABBREV_CODE_static_field_location = 11;
-    public static final int DW_ABBREV_CODE_array_layout = 12;
-    public static final int DW_ABBREV_CODE_array_pointer = 13;
-    public static final int DW_ABBREV_CODE_interface_layout = 14;
-    public static final int DW_ABBREV_CODE_interface_pointer = 15;
-    public static final int DW_ABBREV_CODE_indirect_layout = 16;
-    public static final int DW_ABBREV_CODE_indirect_pointer = 17;
+    public static final int DW_ABBREV_CODE_static_field_location = 10;
+    public static final int DW_ABBREV_CODE_array_layout = 11;
+    public static final int DW_ABBREV_CODE_array_pointer = 12;
+    public static final int DW_ABBREV_CODE_interface_layout = 13;
+    public static final int DW_ABBREV_CODE_interface_pointer = 14;
+    public static final int DW_ABBREV_CODE_indirect_layout = 15;
+    public static final int DW_ABBREV_CODE_indirect_pointer = 16;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_declaration = 18;
-    public static final int DW_ABBREV_CODE_method_declaration_static = 19;
-    public static final int DW_ABBREV_CODE_field_declaration1 = 20;
-    public static final int DW_ABBREV_CODE_field_declaration2 = 21;
-    public static final int DW_ABBREV_CODE_field_declaration3 = 22;
-    public static final int DW_ABBREV_CODE_field_declaration4 = 23;
-    public static final int DW_ABBREV_CODE_class_constant = 24;
-    public static final int DW_ABBREV_CODE_header_field = 25;
-    public static final int DW_ABBREV_CODE_array_data_type = 26;
-    public static final int DW_ABBREV_CODE_super_reference = 27;
-    public static final int DW_ABBREV_CODE_interface_implementor = 28;
+    public static final int DW_ABBREV_CODE_method_declaration = 17;
+    public static final int DW_ABBREV_CODE_method_declaration_static = 18;
+    public static final int DW_ABBREV_CODE_field_declaration1 = 19;
+    public static final int DW_ABBREV_CODE_field_declaration2 = 20;
+    public static final int DW_ABBREV_CODE_field_declaration3 = 21;
+    public static final int DW_ABBREV_CODE_field_declaration4 = 22;
+    public static final int DW_ABBREV_CODE_class_constant = 23;
+    public static final int DW_ABBREV_CODE_header_field = 24;
+    public static final int DW_ABBREV_CODE_array_data_type = 25;
+    public static final int DW_ABBREV_CODE_super_reference = 26;
+    public static final int DW_ABBREV_CODE_interface_implementor = 27;
     /* Level 2+K DIEs (where inline depth K >= 0) */
-    public static final int DW_ABBREV_CODE_inlined_subroutine = 29;
-    public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 30;
+    public static final int DW_ABBREV_CODE_inlined_subroutine = 28;
+    public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 29;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 31;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 32;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 33;
-    public static final int DW_ABBREV_CODE_method_local_declaration1 = 34;
-    public static final int DW_ABBREV_CODE_method_local_declaration2 = 35;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 30;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 31;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 32;
+    public static final int DW_ABBREV_CODE_method_local_declaration1 = 33;
+    public static final int DW_ABBREV_CODE_method_local_declaration2 = 34;
     /* Level 3 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_location1 = 36;
-    public static final int DW_ABBREV_CODE_method_parameter_location2 = 37;
-    public static final int DW_ABBREV_CODE_method_local_location1 = 38;
-    public static final int DW_ABBREV_CODE_method_local_location2 = 39;
+    public static final int DW_ABBREV_CODE_method_parameter_location1 = 35;
+    public static final int DW_ABBREV_CODE_method_parameter_location2 = 36;
+    public static final int DW_ABBREV_CODE_method_local_location1 = 37;
+    public static final int DW_ABBREV_CODE_method_local_location2 = 38;
 
     /*
      * Define all the Dwarf tags we need for our DIEs.
@@ -490,10 +489,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
          * The index in the info section at which the method's declaration resides.
          */
         private int methodDeclarationIndex;
-        /**
-         * The index in the info section at which the method's abstract inline declaration resides.
-         */
-        private int abstractInlineMethodIndex;
 
         /**
          * Index of info locations for params/locals belonging to a method.
@@ -502,7 +497,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
 
         DwarfMethodProperties() {
             methodDeclarationIndex = -1;
-            abstractInlineMethodIndex = -1;
             localProperties = null;
         }
 
@@ -511,19 +505,9 @@ public class DwarfDebugInfo extends DebugInfoBase {
             return methodDeclarationIndex;
         }
 
-        public int getAbstractInlineMethodIndex() {
-            assert abstractInlineMethodIndex >= 0 : "unset inline index";
-            return abstractInlineMethodIndex;
-        }
-
         public void setMethodDeclarationIndex(int pos) {
             assert methodDeclarationIndex == -1 || methodDeclarationIndex == pos : "bad declaration index";
             methodDeclarationIndex = pos;
-        }
-
-        public void setAbstractInlineMethodIndex(int pos) {
-            assert abstractInlineMethodIndex == -1 || abstractInlineMethodIndex == pos : "bad inline index";
-            abstractInlineMethodIndex = pos;
         }
 
         public DwarfLocalProperties getLocalProperties() {
@@ -682,16 +666,6 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public int getMethodDeclarationIndex(MethodEntry methodEntry) {
         DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
         return methodProperties.getMethodDeclarationIndex();
-    }
-
-    public void setAbstractInlineMethodIndex(MethodEntry methodEntry, int pos) {
-        DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
-        methodProperties.setAbstractInlineMethodIndex(pos);
-    }
-
-    public int getAbstractInlineMethodIndex(MethodEntry methodEntry) {
-        DwarfMethodProperties methodProperties = lookupMethodProperties(methodEntry);
-        return methodProperties.getAbstractInlineMethodIndex();
     }
 
     /**
