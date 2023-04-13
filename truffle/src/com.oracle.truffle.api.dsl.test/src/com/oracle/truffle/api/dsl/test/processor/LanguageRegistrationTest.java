@@ -153,10 +153,10 @@ public class LanguageRegistrationTest {
     }
 
     @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.FileTypeDetectorRegistration3.Detector " +
-                    "must have a no argument constructor. To resolve this, add a Detector() constructor.")
+                    "must have a no argument public constructor. To resolve this, add public Detector() constructor.")
     @Registration(id = "filedetector3", name = "filedetector3", fileTypeDetectors = {FileTypeDetectorRegistration3.Detector.class})
     public static class FileTypeDetectorRegistration3 extends ProxyLanguage {
-        public abstract static class Detector extends ProxyFileTypeDetector {
+        public static class Detector extends ProxyFileTypeDetector {
 
             @SuppressWarnings("unused")
             Detector(String unused) {
@@ -165,11 +165,27 @@ public class LanguageRegistrationTest {
             @SuppressWarnings("unused")
             Detector(long unused) {
             }
+
+            @SuppressWarnings("unused")
+            private Detector() {
+            }
         }
     }
 
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.FileTypeDetectorRegistration4.Detector " +
+                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
+                    "To resolve this, make the Detector public or move it to com.oracle.truffle.api.dsl.test.processor.")
     @Registration(id = "filedetector4", name = "filedetector4", fileTypeDetectors = {FileTypeDetectorRegistration4.Detector.class})
     public static class FileTypeDetectorRegistration4 extends ProxyLanguage {
+        private static class Detector extends ProxyFileTypeDetector {
+            @SuppressWarnings("unused")
+            Detector() {
+            }
+        }
+    }
+
+    @Registration(id = "filedetector5", name = "filedetector5", fileTypeDetectors = {FileTypeDetectorRegistration5.Detector.class})
+    public static class FileTypeDetectorRegistration5 extends ProxyLanguage {
         public static class Detector extends ProxyFileTypeDetector {
 
             @SuppressWarnings("unused")
@@ -202,10 +218,10 @@ public class LanguageRegistrationTest {
     }
 
     @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.DefaultExportProviderRegistration3.DefaultExportProviderImpl " +
-                    "must have a no argument constructor. To resolve this, add a DefaultExportProviderImpl() constructor.")
+                    "must have a no argument public constructor. To resolve this, add public DefaultExportProviderImpl() constructor.")
     @Registration(id = "langdefaultexportprovider3", name = "langdefaultexportprovider3", defaultExportProviders = DefaultExportProviderRegistration3.DefaultExportProviderImpl.class)
     public static class DefaultExportProviderRegistration3 extends ProxyLanguage {
-        abstract static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
+        static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
 
             @SuppressWarnings("unused")
             DefaultExportProviderImpl(String unused) {
@@ -214,11 +230,28 @@ public class LanguageRegistrationTest {
             @SuppressWarnings("unused")
             DefaultExportProviderImpl(long unused) {
             }
+
+            @SuppressWarnings("unused")
+            private DefaultExportProviderImpl() {
+            }
         }
     }
 
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.DefaultExportProviderRegistration4.DefaultExportProviderImpl " +
+                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
+                    "To resolve this, make the DefaultExportProviderImpl public or move it to com.oracle.truffle.api.dsl.test.processor.")
     @Registration(id = "langdefaultexportprovider4", name = "langdefaultexportprovider4", defaultExportProviders = DefaultExportProviderRegistration4.DefaultExportProviderImpl.class)
     public static class DefaultExportProviderRegistration4 extends ProxyLanguage {
+        private static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
+
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl() {
+            }
+        }
+    }
+
+    @Registration(id = "langdefaultexportprovider5", name = "langdefaultexportprovider5", defaultExportProviders = DefaultExportProviderRegistration5.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration5 extends ProxyLanguage {
         static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
 
             @SuppressWarnings("unused")
@@ -234,11 +267,11 @@ public class LanguageRegistrationTest {
         }
     }
 
-    @Registration(id = "langdefaultexportprovider5", name = "langdefaultexportprovider5", defaultExportProviders = {
-                    DefaultExportProviderRegistration5.DefaultExportProviderImpl1.class,
-                    DefaultExportProviderRegistration5.DefaultExportProviderImpl2.class
+    @Registration(id = "langdefaultexportprovider6", name = "langdefaultexportprovider6", defaultExportProviders = {
+                    DefaultExportProviderRegistration6.DefaultExportProviderImpl1.class,
+                    DefaultExportProviderRegistration6.DefaultExportProviderImpl2.class
     })
-    public static class DefaultExportProviderRegistration5 extends ProxyLanguage {
+    public static class DefaultExportProviderRegistration6 extends ProxyLanguage {
         static class DefaultExportProviderImpl1 extends ProxyDefaultExportProvider {
         }
 
@@ -262,11 +295,11 @@ public class LanguageRegistrationTest {
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.EagerExportProviderRegistration3.EagerExportProviderImpl " +
-                    "must have a no argument constructor. To resolve this, add a EagerExportProviderImpl() constructor.")
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.EagerExportProviderRegistration3.EagerExportProviderImpl" +
+                    " must have a no argument public constructor. To resolve this, add public EagerExportProviderImpl() constructor.")
     @Registration(id = "langeagerexportprovider3", name = "langeagerexportprovider3", eagerExportProviders = EagerExportProviderRegistration3.EagerExportProviderImpl.class)
     public static class EagerExportProviderRegistration3 extends ProxyLanguage {
-        abstract static class EagerExportProviderImpl extends ProxyEagerExportProvider {
+        static class EagerExportProviderImpl extends ProxyEagerExportProvider {
 
             @SuppressWarnings("unused")
             EagerExportProviderImpl(String unused) {
@@ -275,11 +308,28 @@ public class LanguageRegistrationTest {
             @SuppressWarnings("unused")
             EagerExportProviderImpl(long unused) {
             }
+
+            @SuppressWarnings("unused")
+            private EagerExportProviderImpl() {
+            }
         }
     }
 
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.EagerExportProviderRegistration4.EagerExportProviderImpl " +
+                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
+                    "To resolve this, make the EagerExportProviderImpl public or move it to com.oracle.truffle.api.dsl.test.processor.")
     @Registration(id = "langeagerexportprovider4", name = "langeagerexportprovider4", eagerExportProviders = EagerExportProviderRegistration4.EagerExportProviderImpl.class)
     public static class EagerExportProviderRegistration4 extends ProxyLanguage {
+        private static class EagerExportProviderImpl extends ProxyEagerExportProvider {
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl() {
+            }
+        }
+    }
+
+    @Registration(id = "langeagerexportprovider5", name = "langeagerexportprovider5", eagerExportProviders = EagerExportProviderRegistration5.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration5 extends ProxyLanguage {
         static class EagerExportProviderImpl extends ProxyEagerExportProvider {
 
             @SuppressWarnings("unused")
@@ -295,11 +345,11 @@ public class LanguageRegistrationTest {
         }
     }
 
-    @Registration(id = "langeagerexportprovider5", name = "langeagerexportprovider5", eagerExportProviders = {
-                    EagerExportProviderRegistration5.EagerExportProviderImpl1.class,
-                    EagerExportProviderRegistration5.EagerExportProviderImpl2.class
+    @Registration(id = "langeagerexportprovider6", name = "langeagerexportprovider6", eagerExportProviders = {
+                    EagerExportProviderRegistration6.EagerExportProviderImpl1.class,
+                    EagerExportProviderRegistration6.EagerExportProviderImpl2.class
     })
-    public static class EagerExportProviderRegistration5 extends ProxyLanguage {
+    public static class EagerExportProviderRegistration6 extends ProxyLanguage {
         static class EagerExportProviderImpl1 extends ProxyEagerExportProvider {
         }
 

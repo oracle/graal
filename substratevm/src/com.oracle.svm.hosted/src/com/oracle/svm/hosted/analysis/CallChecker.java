@@ -40,7 +40,7 @@ public class CallChecker {
     private final Pattern targetCallersPattern;
 
     public CallChecker() {
-        String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};
+        String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.(?!python)", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};
         targetCallersPattern = buildPrefixMatchPattern(targetCallers);
 
         String[] illegalCallees = new String[]{"java\\.util\\.stream", "java\\.util\\.Collection\\.stream", "java\\.util\\.Arrays\\.stream"};

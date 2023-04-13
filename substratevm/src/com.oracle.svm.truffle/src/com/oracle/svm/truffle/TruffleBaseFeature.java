@@ -453,9 +453,9 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
-        config.registerHierarchyForReflectiveInstantiation(DefaultExportProvider.class);
-        config.registerHierarchyForReflectiveInstantiation(EagerExportProvider.class);
-        config.registerHierarchyForReflectiveInstantiation(TruffleFile.FileTypeDetector.class);
+        registerHierarchyForReflectiveLookupAndInstantiation(config, DefaultExportProvider.class);
+        registerHierarchyForReflectiveLookupAndInstantiation(config, EagerExportProvider.class);
+        registerHierarchyForReflectiveLookupAndInstantiation(config, TruffleFile.FileTypeDetector.class);
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
 
         registerDynamicObjectFields(config);
@@ -484,6 +484,13 @@ public final class TruffleBaseFeature implements InternalFeature {
             boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
             return assertionsEnabled;
         }
+    }
+
+    private static void registerHierarchyForReflectiveLookupAndInstantiation(BeforeAnalysisAccessImpl config, Class<?> clazz) {
+        config.findSubclasses(clazz).stream().filter((c) -> !Modifier.isAbstract(c.getModifiers())).forEach((c) -> {
+            RuntimeReflection.register(c);
+            RuntimeReflection.registerForReflectiveInstantiation(c);
+        });
     }
 
     @Override

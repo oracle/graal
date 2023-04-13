@@ -82,7 +82,7 @@ public class InstrumentRegistrationTest {
     }
 
     @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.DefaultExportProviderRegistration3.DefaultExportProviderImpl " +
-                    "must have a no argument constructor. To resolve this, add a DefaultExportProviderImpl() constructor.")
+                    "must have a no argument public constructor. To resolve this, add public DefaultExportProviderImpl() constructor.")
     @Registration(id = "tooldefaultexportprovider3", name = "tooldefaultexportprovider3", defaultExportProviders = DefaultExportProviderRegistration3.DefaultExportProviderImpl.class)
     public static class DefaultExportProviderRegistration3 extends ProxyInstrument {
         abstract static class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
@@ -94,11 +94,27 @@ public class InstrumentRegistrationTest {
             @SuppressWarnings("unused")
             DefaultExportProviderImpl(long unused) {
             }
+
+            @SuppressWarnings("unused")
+            private DefaultExportProviderImpl() {
+            }
         }
     }
 
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.DefaultExportProviderRegistration4.DefaultExportProviderImpl " +
+                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
+                    "To resolve this, make the DefaultExportProviderImpl public or move it to com.oracle.truffle.api.dsl.test.processor.")
     @Registration(id = "tooldefaultexportprovider4", name = "tooldefaultexportprovider4", defaultExportProviders = DefaultExportProviderRegistration4.DefaultExportProviderImpl.class)
     public static class DefaultExportProviderRegistration4 extends ProxyInstrument {
+        private static class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
+            @SuppressWarnings("unused")
+            DefaultExportProviderImpl() {
+            }
+        }
+    }
+
+    @Registration(id = "tooldefaultexportprovider5", name = "tooldefaultexportprovider5", defaultExportProviders = DefaultExportProviderRegistration5.DefaultExportProviderImpl.class)
+    public static class DefaultExportProviderRegistration5 extends ProxyInstrument {
         static class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
 
             @SuppressWarnings("unused")
@@ -114,11 +130,11 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @Registration(id = "tooldefaultexportprovider5", name = "tooldefaultexportprovider5", defaultExportProviders = {
-                    DefaultExportProviderRegistration5.DefaultExportProviderImpl1.class,
-                    DefaultExportProviderRegistration5.DefaultExportProviderImpl2.class
+    @Registration(id = "tooldefaultexportprovider6", name = "tooldefaultexportprovider6", defaultExportProviders = {
+                    DefaultExportProviderRegistration6.DefaultExportProviderImpl1.class,
+                    DefaultExportProviderRegistration6.DefaultExportProviderImpl2.class
     })
-    public static class DefaultExportProviderRegistration5 extends ProxyInstrument {
+    public static class DefaultExportProviderRegistration6 extends ProxyInstrument {
         static class DefaultExportProviderImpl1 extends LanguageRegistrationTest.ProxyDefaultExportProvider {
         }
 
@@ -142,8 +158,8 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.EagerExportProviderRegistration3.EagerExportProviderImpl" +
-                    " must have a no argument constructor. To resolve this, add a EagerExportProviderImpl() constructor.")
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.EagerExportProviderRegistration3.EagerExportProviderImpl " +
+                    "must have a no argument public constructor. To resolve this, add public EagerExportProviderImpl() constructor.")
     @Registration(id = "tooleagerexportprovider3", name = "tooleagerexportprovider3", eagerExportProviders = EagerExportProviderRegistration3.EagerExportProviderImpl.class)
     public static class EagerExportProviderRegistration3 extends ProxyInstrument {
         abstract static class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
@@ -155,11 +171,28 @@ public class InstrumentRegistrationTest {
             @SuppressWarnings("unused")
             EagerExportProviderImpl(long unused) {
             }
+
+            @SuppressWarnings("unused")
+            private EagerExportProviderImpl() {
+            }
         }
     }
 
+    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.EagerExportProviderRegistration4.EagerExportProviderImpl " +
+                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
+                    "To resolve this, make the EagerExportProviderImpl public or move it to com.oracle.truffle.api.dsl.test.processor.")
     @Registration(id = "tooleagerexportprovider4", name = "tooleagerexportprovider4", eagerExportProviders = EagerExportProviderRegistration4.EagerExportProviderImpl.class)
     public static class EagerExportProviderRegistration4 extends ProxyInstrument {
+        private static class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
+
+            @SuppressWarnings("unused")
+            EagerExportProviderImpl() {
+            }
+        }
+    }
+
+    @Registration(id = "tooleagerexportprovider5", name = "tooleagerexportprovider5", eagerExportProviders = EagerExportProviderRegistration5.EagerExportProviderImpl.class)
+    public static class EagerExportProviderRegistration5 extends ProxyInstrument {
         static class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
 
             @SuppressWarnings("unused")
@@ -175,11 +208,11 @@ public class InstrumentRegistrationTest {
         }
     }
 
-    @Registration(id = "tooleagerexportprovider5", name = "tooleagerexportprovider5", eagerExportProviders = {
-                    EagerExportProviderRegistration5.EagerExportProviderImpl1.class,
-                    EagerExportProviderRegistration5.EagerExportProviderImpl2.class
+    @Registration(id = "tooleagerexportprovider6", name = "tooleagerexportprovider6", eagerExportProviders = {
+                    EagerExportProviderRegistration6.EagerExportProviderImpl1.class,
+                    EagerExportProviderRegistration6.EagerExportProviderImpl2.class
     })
-    public static class EagerExportProviderRegistration5 extends ProxyInstrument {
+    public static class EagerExportProviderRegistration6 extends ProxyInstrument {
         static class EagerExportProviderImpl1 extends LanguageRegistrationTest.ProxyEagerExportProvider {
         }
 

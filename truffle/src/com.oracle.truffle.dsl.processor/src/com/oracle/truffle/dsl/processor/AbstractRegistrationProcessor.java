@@ -69,6 +69,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -286,7 +287,6 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             DeclaredType clz = context.getDeclaredType(Class.class);
             builder.declaration(clz, "clazz", builder.create().startStaticCall(clz, "forName").string("fqn").end().build());
             builder.declaration(context.getDeclaredType(Constructor.class), "constructor", builder.create().startCall("clazz", "getDeclaredConstructor").end().build());
-            builder.startStatement().startCall("constructor", "setAccessible").string("true").end(2);
             builder.startReturn().startCall(paramName, "cast").startCall("constructor", "newInstance").end(3);
             builder.end();
             builder.startCatchBlock(context.getDeclaredType(ReflectiveOperationException.class), "e");
@@ -367,13 +367,26 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 return false;
             }
             TypeElement serviceImplElement = ElementUtils.fromTypeMirror(serviceImpl);
-            if (serviceImplElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !serviceImplElement.getModifiers().contains(Modifier.STATIC)) {
+            PackageElement targetPackage = ElementUtils.findPackageElement(annotatedElement);
+            boolean samePackage = targetPackage.equals(ElementUtils.findPackageElement(serviceImplElement));
+            Set<Modifier> modifiers = serviceImplElement.getModifiers();
+            if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
+                emitError(String.format("The %s must be a public class or package protected class in %s package. To resolve this, make the %s public or move it to %s.",
+                                serviceImplElement.getQualifiedName(), targetPackage.getQualifiedName(), serviceImplElement.getSimpleName(), targetPackage.getQualifiedName()),
+                                annotatedElement, mirror, value);
+                return false;
+            }
+            if (serviceImplElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
                 emitError(String.format("The %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
                                 serviceImplElement.getQualifiedName(), serviceImplElement.getSimpleName()), annotatedElement, mirror, value);
                 return false;
             }
             boolean foundConstructor = false;
             for (ExecutableElement constructor : ElementFilter.constructorsIn(serviceImplElement.getEnclosedElements())) {
+                modifiers = constructor.getModifiers();
+                if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
+                    continue;
+                }
                 if (!constructor.getParameters().isEmpty()) {
                     continue;
                 }
@@ -381,7 +394,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 break;
             }
             if (!foundConstructor) {
-                emitError(String.format("The %s must have a no argument constructor. To resolve this, add a %s() constructor.",
+                emitError(String.format("The %s must have a no argument public constructor. To resolve this, add public %s() constructor.",
                                 serviceImplElement.getQualifiedName(), serviceImplElement.getSimpleName()), annotatedElement, mirror, value);
                 return false;
             }
