@@ -91,7 +91,7 @@ public class SourceCache {
             Path javaHomePath = Paths.get("", javaHome);
             Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
             if (!srcZipPath.toFile().exists()) {
-                System.out.printf("Warning: Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes\n", srcZipPath);
+                System.out.printf("Warning: Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes%n", srcZipPath);
                 return;
             }
             try {
