@@ -451,6 +451,7 @@ public class ObjectScanner {
             return previous;
         }
 
+        @SuppressWarnings("unused")
         public String toString(BigBang bb) {
             return toString();
         }
@@ -513,6 +514,7 @@ public class ObjectScanner {
             }
         }
 
+        @Override
         public String toString(BigBang bb) {
             if (field.isStatic()) {
                 return "reading static field " + field.format("%H.%n") + "\n    at " + location();

@@ -352,8 +352,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
                 return index < reasons.length;
             }
 
-            public void storeCurrentIndent(String indent) {
-                this.indent = indent;
+            public void storeCurrentIndent(String indentStr) {
+                this.indent = indentStr;
             }
 
             public String getIndent() {
@@ -417,8 +417,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
 
         private void print(String prefix, String reasonStr) {
-            reasonStr = String.join("\n" + prefix, reasonStr.split("\n"));
-            reasonTrace.append(System.lineSeparator()).append(prefix).append(reasonStr);
+            String reasonStr2 = String.join("\n" + prefix, reasonStr.split("\n"));
+            reasonTrace.append(System.lineSeparator()).append(prefix).append(reasonStr2);
         }
 
         private boolean typeReason(AnalysisType type) {
@@ -431,7 +431,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
             }
         }
 
-        private String typeReasonStr(AnalysisType type) {
+        private static String typeReasonStr(AnalysisType type) {
             if (type.isInHeap()) {
                 return "is marked as in-heap";
             }
@@ -454,7 +454,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
             return false;
         }
 
-        private String fieldReasonStr(AnalysisField field) {
+        private static String fieldReasonStr(AnalysisField field) {
             if (field.isWrittenSet()) {
                 return "is written";
             }
