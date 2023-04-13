@@ -35,7 +35,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import com.oracle.objectfile.debugentry.range.SubRange;
 import org.graalvm.compiler.debug.DebugContext;
@@ -44,7 +43,6 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
@@ -127,8 +125,8 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     private int generateContent(DebugContext context, byte[] buffer) {
         Cursor cursor = new Cursor();
-        compiledMethodsStream().forEach( compiledMethod -> {
-             cursor.set(writeCompiledMethodLocations(context, compiledMethod, buffer, cursor.get()));
+        compiledMethodsStream().forEach(compiledMethod -> {
+            cursor.set(writeCompiledMethodLocations(context, compiledMethod, buffer, cursor.get()));
         });
         return cursor.get();
     }

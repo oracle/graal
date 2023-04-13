@@ -53,7 +53,7 @@ public class DirEntry {
     }
 
     /**
-     * Retrieve the index of the dir entry in the list of all known dirs
+     * Retrieve the index of the dir entry in the list of all known dirs.
      *
      * @return the index of the file entry.
      */

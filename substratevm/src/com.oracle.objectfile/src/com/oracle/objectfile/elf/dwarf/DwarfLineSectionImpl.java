@@ -34,7 +34,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
@@ -213,7 +212,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * 'nul'.
          */
         Cursor cursor = new Cursor();
-        dirStream().forEach( dirEntry -> {
+        dirStream().forEach(dirEntry -> {
             if (dirEntry.getIdx() > 0) {
                 cursor.add(countUTF8Bytes(dirEntry.getPathString()) + 1);
             }
@@ -233,8 +232,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * time stamps
          */
         Cursor cursor = new Cursor();
-        fileStream().forEach( fileEntry -> {
-             // We want the file base name excluding path.
+        fileStream().forEach(fileEntry -> {
+            // We want the file base name excluding path.
             String baseName = fileEntry.getFileName();
             int length = countUTF8Bytes(baseName);
             // We should never have a null or zero length entry in local files.
@@ -378,7 +377,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * Write out the list of dirs
          */
         Cursor cursor = new Cursor(p);
-        dirStream().forEach( dirEntry -> {
+        dirStream().forEach(dirEntry -> {
             int dirIdx = dirEntry.getIdx();
             if (dirIdx > 0) {
                 String dirPath = dirEntry.getPathString();
@@ -399,7 +398,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * Write out the list of files
          */
         Cursor cursor = new Cursor(p);
-        fileStream().forEach( fileEntry -> {
+        fileStream().forEach(fileEntry -> {
             int pos = cursor.get();
             String baseName = fileEntry.getFileName();
             DirEntry dirEntry = fileEntry.getDirEntry();
@@ -621,7 +620,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private int writeLineNumberTable(DebugContext context, byte[] buffer, int p) {
         Cursor cursor = new Cursor(p);
-        compiledMethodsStream().forEach( compiledMethod -> {
+        compiledMethodsStream().forEach(compiledMethod -> {
             int pos = cursor.get();
             String methodName = compiledMethod.getPrimary().getFullMethodNameWithParams();
             String fileName = compiledMethod.getClassEntry().getFullFileName();

@@ -308,8 +308,8 @@ public class ClassEntry extends StructureTypeEntry {
 
     /**
      * Retrieve the highest code section offset for compiled method code belonging to this class.
-     * The returned value is the offset of the first byte that succeeds the code for that method.
-     * It is an error to call this for a class entry which has no compiled methods.
+     * The returned value is the offset of the first byte that succeeds the code for that method. It
+     * is an error to call this for a class entry which has no compiled methods.
      *
      * @return the highest code section offset for compiled method code belonging to this class
      */

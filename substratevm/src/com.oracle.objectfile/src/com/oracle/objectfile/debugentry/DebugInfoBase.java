@@ -110,9 +110,9 @@ public abstract class DebugInfoBase {
      */
     private final StringTable stringTable = new StringTable();
     /**
-      * List of dirs in which files are found to reside.
-      */
-   private final List<DirEntry> dirs = new ArrayList<>();
+     * List of dirs in which files are found to reside.
+     */
+    private final List<DirEntry> dirs = new ArrayList<>();
     /**
      * Index of all dirs in which files are found to reside either as part of substrate/compiler or
      * user code.
@@ -147,8 +147,8 @@ public abstract class DebugInfoBase {
      */
     private ClassEntry objectClass;
     /**
-     * List of all top level compiled methods found in debug info. These ought to arrive
-     * via the debug info API in ascending address range order.
+     * List of all top level compiled methods found in debug info. These ought to arrive via the
+     * debug info API in ascending address range order.
      */
     private final List<CompiledMethodEntry> compiledMethods = new ArrayList<>();
     /**
@@ -461,6 +461,7 @@ public abstract class DebugInfoBase {
         CompiledMethodEntry compiledMethod = classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
         indexCompiledMethod(compiledMethod);
     }
+
     /**
      * Recursively creates subranges based on DebugLocationInfo including, and appropriately
      * linking, nested inline subranges.
@@ -532,14 +533,16 @@ public abstract class DebugInfoBase {
             PrimaryRange lastRange = last.getPrimary();
             PrimaryRange nextRange = next.getPrimary();
             if (lastRange.getHi() > nextRange.getLo()) {
-                assert false : "methods %s [0x%x, 0x%x] and %s [0x%x, 0x%x] presented out of order".formatted(lastRange.getFullMethodName(), lastRange.getLo(), lastRange.getHi(), nextRange.getFullMethodName(), nextRange.getLo(), nextRange.getHi());
+                assert false : "methods %s [0x%x, 0x%x] and %s [0x%x, 0x%x] presented out of order".formatted(lastRange.getFullMethodName(), lastRange.getLo(), lastRange.getHi(),
+                                nextRange.getFullMethodName(), nextRange.getLo(), nextRange.getHi());
                 return false;
             }
         }
         return true;
     }
 
-    final static Path EMPTY_PATH = Paths.get("");
+    static final Path EMPTY_PATH = Paths.get("");
+
     private FileEntry addFileEntry(String fileName, Path filePath) {
         assert fileName != null;
         Path fileAsPath;

@@ -733,7 +733,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int compiledMethodsCount() {
-        return  dwarfSections.getCompiledMethods().size();
+        return dwarfSections.getCompiledMethods().size();
     }
 
     protected Stream<FileEntry> fileStream() {
@@ -741,7 +741,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int fileCount() {
-        return  dwarfSections.getFiles().size();
+        return dwarfSections.getFiles().size();
     }
 
     protected Stream<DirEntry> dirStream() {
@@ -749,7 +749,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int dirCount() {
-        return  dwarfSections.getDirs().size();
+        return dwarfSections.getDirs().size();
     }
 
     /**
@@ -859,34 +859,30 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     /**
-     * Record the info section offset of a local (or parameter) declaration DIE. The local (or
-     * parameter) can be a child of a standard method declaration or of an abstract inline method
-     * declaration.
+     * Record the info section offset of a local (or parameter) declaration DIE appearing as a child
+     * of a standard method declaration.
      * 
      * @param methodEntry the method being declared or inlined.
-     * @param isInlined true if this is a parameter of a standard declaration false if it belongs to an abstract inlined method
      * @param localInfo the local or param whose index is to be recorded.
      * @param index the info section offset to be recorded.
      */
-    protected void setMethodLocalIndex(MethodEntry methodEntry, boolean isInlined, DebugLocalInfo localInfo, int index) {
-        dwarfSections.setMethodLocalIndex(methodEntry, isInlined, localInfo, index);
+    protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        dwarfSections.setMethodLocalIndex(methodEntry, localInfo, index);
     }
 
     /**
-     * Retrieve the info section offset of a local (or parameter) declaration DIE. The local (or
-     * parameter) can be a child of a standard method declaration or of an abstract inline method
-     * declaration.
-     * 
+     * Retrieve the info section offset of a local (or parameter) declaration DIE appearing as a
+     * child of a standard method declaration.
+     *
      * @param methodEntry the method being declared or imported
-     * @param isInlined true if this is a parameter of a standard declaration false if it belongs to an abstract inlined method
      * @param localInfo the local or param whose index is to be retrieved.
      * @return the associated info section offset.
      */
-    protected int getMethodLocalIndex(MethodEntry methodEntry, boolean isInlined, DebugLocalInfo localInfo) {
+    protected int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getMethodLocalIndex(methodEntry, isInlined, localInfo);
+        return dwarfSections.getMethodLocalIndex(methodEntry, localInfo);
     }
 
     /**

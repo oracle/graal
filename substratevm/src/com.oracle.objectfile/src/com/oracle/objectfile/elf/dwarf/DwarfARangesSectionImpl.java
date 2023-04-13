@@ -26,17 +26,13 @@
 
 package com.oracle.objectfile.elf.dwarf;
 
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 
@@ -68,7 +64,8 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>uint16 dwarf_version ..... always 2</code>
          *
-         * <li><code>uint32 info_offset ....... offset of compilation unit in debug_info -- always 0</code>
+         * <li><code>uint32 info_offset ....... offset of compilation unit in debug_info -- always
+         * 0</code>
          *
          * <li><code>uint8 address_size ....... always 8</code>
          *
@@ -142,7 +139,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] DEBUG_ARANGES", cursor.get());
         int lengthPos = cursor.get();
         cursor.set(writeHeader(0, buffer, cursor.get()));
-        compiledMethodsStream().forEach( compiledMethodEntry -> {
+        compiledMethodsStream().forEach(compiledMethodEntry -> {
             cursor.set(writeARange(context, compiledMethodEntry, buffer, cursor.get()));
         });
         // write two terminating zeroes

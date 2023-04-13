@@ -30,14 +30,15 @@ import com.oracle.objectfile.LayoutDecision;
 import org.graalvm.compiler.debug.DebugContext;
 
 /**
- * Section generator for <code>debug_abbrev<code> section. That section defines the
+ * Section generator for <code>debug_abbrev</code> section. That section defines the
  * layout of the DWARF Information Entries (DIEs) used to model Java debug info. Top
  * level DIEs define Java Compile Units (CUs). Embedded DIEs describe the content of
  * the CU: types, code, variable, etc. These definitions are used to interpret the DIE
- * content inserted into the <code>debug_info</code> section.<p>
+ * content inserted into the <code>debug_info</code> section.
+ * <p>
  *
- * An abbrev table contains abbrev entries for one or more DIEs, the last one being
- * a null entry.<p>
+ * An abbrev table contains abbrev entries for one or more DIEs, the last one being a null entry.
+ * <p>
  *
  * A null entry consists of just a 0 abbrev code.
  *
@@ -75,16 +76,17 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * For the moment we only use one abbrev table and one CU. It employs the following top
- * level and nested DIES<p>
+ * For the moment we only use one abbrev table and one CU. It employs the following top level and
+ * nested DIES
+ * <p>
  *
  * Level 0 DIEs
  *
  * <ul>
  *
- * <li><code>code = null, tag == null<code> - empty terminator
+ * <li><code>code = null, tag == null</code> - empty terminator
  *
- * <li><code>code = class_unit, tag == compile_unit<code> - CU that defines the Java object header
+ * <li><code>code = class_unit, tag == compile_unit</code> - CU that defines the Java object header
  * struct, all Java primitive and object types and all Java compiled code.
  *
  * </ul>
@@ -93,54 +95,54 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <ul>
  *
- * <li><code>code = primitive_type, tag == base_type, parent = class_unit<code> - Java primitive type (non-void)
+ * <li><code>code = primitive_type, tag == base_type, parent = class_unit</code> - Java primitive type (non-void)
  *
- * <li><code>code = void_type, tag == unspecified_type, parent = class_unit<code> - Java void type
+ * <li><code>code = void_type, tag == unspecified_type, parent = class_unit</code> - Java void type
  *
- * <li><code>code = object_header, tag == structure_type, parent = class_unit<code> - Java object header
+ * <li><code>code = object_header, tag == structure_type, parent = class_unit</code> - Java object header
  *
- * <li><code>code = class_layout, tag == class_type, parent = class_unit<code> - Java
+ * <li><code>code = class_layout, tag == class_type, parent = class_unit</code> - Java
  * instance type structure definition
  *
- * <li><code>code = class_pointer, tag == pointer_type, parent = class_unit<code> - Java
+ * <li><code>code = class_pointer, tag == pointer_type, parent = class_unit</code> - Java
  * instance ref type
  *
- * <li><code>code = method_location, tag == subprogram , parent = class_unit<code> - Java
+ * <li><code>code = method_location, tag == subprogram , parent = class_unit</code> - Java
  * method code definition (i.e. location of code)
  *
- * <li><code>code = abstract_inline_method, tag == subprogram , parent = class_unit<code> -
+ * <li><code>code = abstract_inline_method, tag == subprogram , parent = class_unit</code> -
  * Java abstract inline method (i.e. proxy for method definition referenced by concrete
  * inline instance)
  *
- * <li><code>code = static_field_location, tag == variable, parent = class_unit<code> - Java
+ * <li><code>code = static_field_location, tag == variable, parent = class_unit</code> - Java
  * static field definition (i.e. location of data)
  *
- * <li><code>code = array_layout, tag == structure_type, parent = array_unit<code> - Java
+ * <li><code>code = array_layout, tag == structure_type, parent = array_unit</code> - Java
  * array type structure definition
  *
- * <li><code>code = array_pointer, tag == pointer_type, parent = array_unit<code> - Java
+ * <li><code>code = array_pointer, tag == pointer_type, parent = array_unit</code> - Java
  * array ref type
  *
- * <li><code>code = interface_layout, tag == union_type, parent = class_unit<code> - Java
+ * <li><code>code = interface_layout, tag == union_type, parent = class_unit</code> - Java
  * array type structure definition
  *
- * <li><code>code = interface_pointer, tag == pointer_type, parent = class_unit<code> - Java
+ * <li><code>code = interface_pointer, tag == pointer_type, parent = class_unit</code> - Java
  * interface ref type
  *
  * <li><code>code = indirect_layout, tag == class_type, parent = class_unit, array_unit,
- * interface_unit<code> - wrapper layout attaches address rewriting logic to the layout
+ * interface_unit</code> - wrapper layout attaches address rewriting logic to the layout
  * types that it wraps using a data_location attribute
  *
  * <li><code>code = indirect_pointer, tag == pointer_type, parent = class_unit, array_unit,
- * interface_unit<code> - indirect ref type used to type indirect oops that encode the
+ * interface_unit</code> - indirect ref type used to type indirect oops that encode the
  * address of an object, whether by adding tag bits or representing the address as an offset
  * from some base address. these are used to type object references stored in static and
  * instance fields. They are not needed when typing local vars and parameters held in
  * registers or on the stack as they appear as raw addresses.
  *
  * <li><code>code = namespace, tag == namespace, parent = class_unit, array_unit,
- * interface_unit<code> - a wrap-around DIE that is used to embed all the normal level 1
- * DIEs of a <code>class_unit</code> or <code>array_unit</code_unit> in a namespace. This is
+ * interface_unit</code> - a wrap-around DIE that is used to embed all the normal level 1
+ * DIEs of a <code>class_unit</code> or <code>array_unit</code> in a namespace. This is
  * needed when the corresponding class/interface or array base element type have been loaded
  * by a loader with a non-empty loader in order to ensure that mangled names for the class
  * and its members can legitimately employ the loader id as a namespace prefix. Note that
@@ -153,30 +155,30 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <ul>
  *
- * <li><code>code = header_field, tag == member, parent = object_header<code> - object/array
+ * <li><code>code = header_field, tag == member, parent = object_header</code> - object/array
  * header field
  *
  * <li><code>code == method_declaration1/2, tag == subprogram, parent = class_layout</code>
  *
- * <li><code>code = field_declaration1/2/3/4, tag == member, parent = class_layout<code> - instance
+ * <li><code>code = field_declaration1/2/3/4, tag == member, parent = class_layout</code> - instance
  * field declaration (i.e. specification of properties)
  *
  * <li><code>code == super_reference, tag == inheritance, parent = class_layout,
- * array_layout</code> - reference to super class layout or to appropriate header struct for
- * {code java.lang.Object} or arrays.
+ * array_layout</code> - reference to super class layout or to appropriate header struct for {code
+ * java.lang.Object} or arrays.
  *
- * <li><code>code == interface_implementor, tag == member, parent = interface_layout</code>
- * - union member typed using class layout of a given implementing class
+ * <li><code>code == interface_implementor, tag == member, parent = interface_layout</code> - union
+ * member typed using class layout of a given implementing class
  *
  * <li><code>code = inlined_subroutine/inlined_subroutine_with_children, tag == subprogram,
  * parent = method_location/inlined_subroutine_with_children<code> - provides range and
  * abstract origin for a concrete inline method
  *
  * <li><code>code == method_parameter_declaration1/2/3, tag == formal_parameter, parent =
- * method_declaration1/2, abstract_inline_method</code> - details of method parameters
+ * method_declaration1/2</code> - details of method parameters
  *
  * <li><code>code == method_local_declaration1/2, tag == variable, parent =
- * method_declaration1/2, abstract_inline_method</code> - details of method local vars
+ * method_declaration1/2</code> - details of method local vars
  *
  * </ul>
  *
@@ -185,16 +187,15 @@ import org.graalvm.compiler.debug.DebugContext;
  * <ul>
  *
  * <li><code>code == method_local_location, tag == formal_parameter, parent =
- * method_location, concrete_inline_method</code> - details of method parameter or local
- * locations
+ * method_location, concrete_inline_method</code> - details of method parameter or local locations
  *
  * </ul>
  *
- * Detailed layouts of the DIEs listed above are as follows:<p>
+ * Detailed layouts of the DIEs listed above are as follows:
+ * <p>
  *
- * A single instance of the level 0 <code>class_unit</code> compile unit provides details
- * of the object header struct, all Java primitive and object types and all Java compiled
- * code.
+ * A single instance of the level 0 <code>class_unit</code> compile unit provides details of the
+ * object header struct, all Java primitive and object types and all Java compiled code.
  *
  * <ul>
  *
@@ -217,10 +218,11 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * All other Java derived DIEs are embedded within this top level CU.<p>
+ * All other Java derived DIEs are embedded within this top level CU.
+ * <p>
  *
- * Primitive Types: For each non-void Java primitive type there is a level 1 DIE defining a
- * base type
+ * Primitive Types: For each non-void Java primitive type there is a level 1 DIE defining a base
+ * type
  *
  * <ul>
  *
@@ -246,10 +248,9 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Header Struct: There is a level 1 DIE defining a structure type which models the
- * header information embedded at the start of every instance or array (all instances embed
- * the same object header). Child DIEs are employed to define the name, type and layout of
- * fields in the header.
+ * Header Struct: There is a level 1 DIE defining a structure type which models the header
+ * information embedded at the start of every instance or array (all instances embed the same object
+ * header). Child DIEs are employed to define the name, type and layout of fields in the header.
  *
  * <ul>
  *
@@ -261,9 +262,9 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Header Data: A level 2 DIE of type member is used to describe the fields of both object
- * and array headers. This includes the type tag and other tag bits in all objects and the
- * length field in all arrays.
+ * Header Data: A level 2 DIE of type member is used to describe the fields of both object and array
+ * headers. This includes the type tag and other tag bits in all objects and the length field in all
+ * arrays.
  *
  * <ul>
  *
@@ -279,13 +280,14 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Namespace embedding for Java class DIEs:<p>
+ * Namespace embedding for Java class DIEs:
+ * <p>
  *
- * When the class loader associated with a class defined in the Java class
- * compile unit has a non-empty loader id string then a namespace DIE is used to wrap
- * the level 1 DIEs that define the class layout, methods etc. Otherwise, these children
- * are embedded directly in the Java class compile unit. The namespace DIE has a
- * single attribute defining the namespace's name as the loader id string.
+ * When the class loader associated with a class defined in the Java class compile unit has a
+ * non-empty loader id string then a namespace DIE is used to wrap the level 1 DIEs that define the
+ * class layout, methods etc. Otherwise, these children are embedded directly in the Java class
+ * compile unit. The namespace DIE has a single attribute defining the namespace's name as the
+ * loader id string.
  *
  * <li><code>abbrev_code == namespace, tag == DW_TAG_namespace, parent = class_unit, has_children</code>
  *
@@ -294,17 +296,18 @@ import org.graalvm.compiler.debug.DebugContext;
  * </ul>
  *
  * Instance Classes: For each instance class type there is a sequence of up to four level 1 DIEs
- * defining the class.<p>
+ * defining the class.
+ * <p>
  *
- * Instance Class Structure: Each java class is described by a series of level 1 DIEs. The first
- * one describes the class layout. The normal layout does not include a <code>data_location</code>
+ * Instance Class Structure: Each java class is described by a series of level 1 DIEs. The first one
+ * describes the class layout. The normal layout does not include a <code>data_location</code>
  * attribute. However, an alternative layout, including that extra attribute, is provided to deal
  * with a single special case, <code>java.lang.Class</code>. Oop references to instances of this
  * class are encoded using tag bits. The <code>data_location</code> attribute defines masking logic
  * which a debugger can use to decode the oop pointer to a raw address. n.b. this only applies in
  * the case where normal oop references are raw addresses (no compressed oops, no isolates). If a
  * heapbase register is being used then decoding logic is encoded for both normal classes and for
- * code>java.lang.Class</code> using an indirect layout (see below).
+ * <code>java.lang.Class</code> using an indirect layout (see below).
  *
  * <ul>
  *
@@ -323,19 +326,20 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Instance Class members: A level 1 <code>class_layout</code> DIE includes a level 2 child for each of
- * the class's methods and fields. The first type <em>declares</em> a method but omits details of the
- * location of the code that implements the method. The second type <em>declares</em> an instance or
- * static field. A class_layout DIE also contains a level 2 DIE specifying the type from
+ * Instance Class members: A level 1 <code>class_layout</code> DIE includes a level 2 child for each
+ * of the class's methods and fields. The first type <em>declares</em> a method but omits details of
+ * the location of the code that implements the method. The second type <em>declares</em> an
+ * instance or static field. A class_layout DIE also contains a level 2 DIE specifying the type from
  * which it inherits superclass structure. In the case of class <code>Object</code> structure is
  * inherited from the object header structure type.
  *
  * n.b. Code implementation details for each method (i.e. the method <em>definition</em>) are
  * provided in an auxiliary level 1 <code>method_location</code> DIE that follows the
  * <code>class_layout</code> DIE. Instance field declarations need no auxiliary level 1 DIE as all
- * relevant details, including size and offset in the instance, are specified in the field declaration
- * DIE. Static field locations (i.e. the field <em>definition</em>) are provided in an auxiliary level 1
- * <code>static_field_location</code>DIE that follows the <code>class_layout</code> DIE.
+ * relevant details, including size and offset in the instance, are specified in the field
+ * declaration DIE. Static field locations (i.e. the field <em>definition</em>) are provided in an
+ * auxiliary level 1 <code>static_field_location</code> DIE that follows the
+ * <code>class_layout</code> DIE.
  *
  * <ul>
  *
@@ -360,7 +364,7 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>DW_AT_declaration : ....... DW_FORM_flag</code>
  *
- * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref_addr<code> n.b. only for
+ * <li><code>Dw_AT_object_pointer : .... DW_FORM_ref_addr</code> n.b. only for
  * method_declaration1, points to param 0 DIE
  *
  * <li><code>DW_AT_virtuality : ........ DW_FORM_data1<code> (for override methods)
@@ -393,8 +397,8 @@ import org.graalvm.compiler.debug.DebugContext;
  * <li><code>Dw_AT_external : ............... DW_FORM_flag</code> (n.b. only for
  * field_declaration3/4 static
  *
- * <li><code>Dw_AT_declaration : ............ DW_FORM_flag</code> n.b. only for
- * field_declaration3/4 static
+ * <li><code>Dw_AT_declaration : ............ DW_FORM_flag</code> n.b. only for field_declaration3/4
+ * static
  *
  * </ul>
  *
@@ -410,9 +414,9 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Method Parameters: Level 2 method_declaration DIEs may include level 3 DIEs that describe
- * their parameters and/or their local variables. n.b. these two DIEs only differ in the value
- * of their tag.
+ * Method Parameters: Level 2 method_declaration DIEs may include level 3 DIEs that describe their
+ * parameters and/or their local variables. n.b. these two DIEs only differ in the value of their
+ * tag.
  *
  * <ul>
  *
@@ -421,16 +425,14 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_name : ... DW_FORM_strp</code> (may be empty string)
  *
- * <li><code>Dw_AT_file : ... DW_FORM_data1/2</code> n.b. only for
- * method_parameter_declaration2
+ * <li><code>Dw_AT_file : ... DW_FORM_data1/2</code> n.b. only for method_parameter_declaration2
  *
- * <li><code>Dw_AT_line : ... DW_FORM_data1/2</code> n.b. only for
- * method_parameter_declaration2
+ * <li><code>Dw_AT_line : ... DW_FORM_data1/2</code> n.b. only for method_parameter_declaration2
  *
  * <li><code>Dw_AT_type : ... DW_FORM_ref_addr</code>
  *
- * <li><code>Dw_AT_artificial : ... DW_FORM_flag</code> n.b. only for
- * method_parameter_declaration1 used for this and access vars
+ * <li><code>Dw_AT_artificial : ... DW_FORM_flag</code> n.b. only for method_parameter_declaration1
+ * used for this and access vars
  *
  * <li><code>Dw_AT_declaration : ... DW_FORM_flag</code>
  *
@@ -441,11 +443,9 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * <li><code>Dw_AT_name : ... DW_FORM_strp</code> (may be empty string)
  *
- * <li><code>Dw_AT_file : ... DW_FORM_data1/2</code> n.b. only for
- * method_parameter_declaration1
+ * <li><code>Dw_AT_file : ... DW_FORM_data1/2</code> n.b. only for method_parameter_declaration1
  *
- * <li><code>Dw_AT_line : ... DW_FORM_data1/2</code> n.b. only for
- * method_parameter_declaration1
+ * <li><code>Dw_AT_line : ... DW_FORM_data1/2</code> n.b. only for method_parameter_declaration1
  *
  * <li><code>Dw_AT_type : ... DW_FORM_ref_addr</code>
  *
@@ -453,17 +453,17 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Indirect Instance Class Structure: The level 1 class layout DIE may be followed by a
- * level 1 <code>indirect_layout</code> DIE. The indirect layout is only needed when a
- * heapbase register is in use (isolates or compressed oops are enabled). This means that
- * oop fields will hold encoded oops. The indirect layout defines an empty wrapper class
- * which declares the previous layout as its super class. This wrapper type also supplies a
- * <code>data_location</code> attribute, ensuring that indirect pointers to the class (see next
- * item) are translated to raw addresses. The name of the indirect type is constructed by
- * prefixing the class name with <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only
- * one child DIE with type super_reference (see above). This effectively embeds the standard
- * layout type in the indirect layout as a type compatible referent for the Java oop. The size
- * of the indirect layout is the same as the size of the class layout.
+ * Indirect Instance Class Structure: The level 1 class layout DIE may be followed by a level 1
+ * <code>indirect_layout</code> DIE. The indirect layout is only needed when a heapbase register is
+ * in use (isolates or compressed oops are enabled). This means that oop fields will hold encoded
+ * oops. The indirect layout defines an empty wrapper class which declares the previous layout as
+ * its super class. This wrapper type also supplies a <code>data_location</code> attribute, ensuring
+ * that indirect pointers to the class (see next item) are translated to raw addresses. The name of
+ * the indirect type is constructed by prefixing the class name with
+ * <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only one child DIE with type
+ * super_reference (see above). This effectively embeds the standard layout type in the indirect
+ * layout as a type compatible referent for the Java oop. The size of the indirect layout is the
+ * same as the size of the class layout.
  *
  * <ul>
  *
@@ -511,8 +511,9 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * n.b. the name used in the <code>class_layout</code> DIE is the Java class name. This is
  * <em>deliberately</em> inconsistent with the Java naming where the name refers to the pointer
- * type. In consequence when gdb displays Java types and signatures oop references appear as
- * pointer types. So, for example the Java String class looks like<p>
+ * type. In consequence when gdb displays Java types and signatures oop references appear as pointer
+ * types. So, for example the Java String class looks like
+ * <p>
  *
  * <pre>
  *   class java.lang.String : public java.lang.Object {
@@ -525,17 +526,13 @@ import org.graalvm.compiler.debug.DebugContext;
  *     ...
  * </pre>
  *
- * Method Code Locations: For each level 2 method <em>declaration</em> which has been compiled
- * as a top-level method (i.e. not just occurring inline) there will be a corresponding level
- * 1 method <em>definition</em> DIE providing details of the location of the compiled code. The
- * two DIEs are cross-referenced using a <code>specification</code> attribute.
- * This cross-reference should imply that the location DIE inherits attributes from the
- * <code>method_definition</code> DIE, including attributes specified int the latter's child DIEs,
- * such as parameter and local variable declarations.
- *
- * However, it is actually necessary to replicate the parameter and local variable declarations
- * as children of the inline method definition DIE in order to ensure that gdb is aware of the
- * parameters and locals.
+ * Method Code Locations: For each level 2 method <em>declaration</em> which has been compiled as a
+ * top-level method (i.e. not just occurring inline) there will be a corresponding level 1 method
+ * <em>definition</em> DIE providing details of the location of the compiled code. The two DIEs are
+ * cross-referenced using a <code>specification</code> attribute. This cross-reference means that
+ * the location DIE inherits attributes from the <code>method_definition</code> DIE, including
+ * attributes specified int the latter's child DIEs, such as parameter and local variable
+ * declarations.
  *
  * <ul>
  *
@@ -553,15 +550,14 @@ import org.graalvm.compiler.debug.DebugContext;
  * </ul>
  *
  * Method local locations: A method location may be followed by zero or more
- * <code>method_local_location</code> DIEs which identify the in-memory location of
- * parameter and/or local values during execution of the compiled code. A
- * <code>method_local_location</code> DIE references the corresponding
- * <code>method_parameter_declaration</code> or <code>method_local_declaration</code>.
- * It also specifies a location list which defines address ranges where the parameter or
- * local is valid and provides details of where to find the value of the parameter or local
- * in memory. Likewise, an inline concrete method DIE is followed by zero or more
- * <code>method_local_location</code> DIEs, providing details of where to find the specification
- * of inlined parameters or locals and their value in memory.
+ * <code>method_local_location</code> DIEs which identify the in-memory location of parameter and/or
+ * local values during execution of the compiled code. A <code>method_local_location</code> DIE
+ * references the corresponding <code>method_parameter_declaration</code> or
+ * <code>method_local_declaration</code>. It also specifies a location list which defines address
+ * ranges where the parameter or local is valid and provides details of where to find the value of
+ * the parameter or local in memory. Likewise, an inline concrete method DIE is followed by zero or
+ * more <code>method_local_location</code> DIEs, providing details of where to find the
+ * specification of inlined parameters or locals and their value in memory.
  *
  * <ul>
  *
@@ -575,22 +571,22 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Abstract Inline Methods: For any method <code>m'</code> which has been inlined into a
- * top level compiled method <code>m</code> there will be an <code>abstract_inline_method</code>
- * DIE for <code>m'</code> at level 1 in the Java CU. The declaration serves as the
- * <code>abstract_origin</code> for any corresponding inlined method DIEs appearing as children
- * of <code>m</code>.
- *
- * The <code>abstract_inline_method</code> DIE should inherit attributes from
- * the method_definition DIE referenced as its <code>abstract_origin</code> attribute without the
- * need to repeat them. However, it is actually necessary to replicate the method parameter and
- * local declaration DIEs of the specification as children of the <code>abstract_inline_method</code>
- * DIE.
+ * Abstract Inline Methods: For any method <code>m'</code> which has been inlined into a top level
+ * compiled method <code>m</code> there will be an <code>abstract_inline_method</code> DIE for
+ * <code>m'</code> at level 1 in the Java CU. The declaration serves as the
+ * <code>abstract_origin</code> for any corresponding inlined method DIEs appearing as children of
+ * <code>m</code>. This declaration references the original method declaration via its
+ * <code>specification</code> and inherits attributes from that original declaration including
+ * parameter and local declarations. The GNU compiler sometimes replicates the parameter and local
+ * declarations so they can be referenced from location info in concrete inline methods, ensuring
+ * that any such reference is local to the compile unit of the method into which the call is
+ * inlined. There is no need for that with Java as all the declarations are lcoated in one compile
+ * unit.
  *
  * <ul>
  *
  * <li><code>abbrev_code == DW_ABBREV_CODE_abstract_inline_method, tag == DW_TAG_subprogram,
- * has_children</code>
+ * no_children</code>
  *
  * <li><code>DW_AT_inline : .......... DW_FORM_data1</code>
  *
@@ -600,21 +596,20 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Concrete Inlined Methods: Concrete inlined method DIEs are nested as a tree of children
- * under the method_location DIE for the method into which they have been inlined. Each
- * inlined method DIE defines an address range that is a subrange of its parent DIE. A
- * method_location DIE occurs at depth 1 in a compile unit (class_unit). So, this means that
- * for any method which has been inlined into a compiled method at depth K in the inline
- * frame stack there will be a corresponding level 2+K DIE that identifies the method that
- * was inlined (by referencing the corresponding abstract inline method DIE) and locates the
- * call point by citing the file index and line number of its caller. So, if compiled method
- * M inlines a call to m1 at source position f0:l0, m1 inlines a call to method m2 at source
- * position f1:l1 and m2 inlines a call to m3 at source position f2:l2 then there will be a
- * level 2 DIE for the inline code range derived from m1 referencing the abstract entry for
- * m1 with f0 and l0 as file and line, a level 3 DIE for the inline code range derived from
- * m2 referencing the abstract entry for m2 with f1 and l1 as file and line and a level 3
- * DIE for the inline code range derived from m3 referencing the abstract entry for m3 with
- * f2 and l2 as file and line.
+ * Concrete Inlined Methods: Concrete inlined method DIEs are nested as a tree of children under the
+ * method_location DIE for the method into which they have been inlined. Each inlined method DIE
+ * defines an address range that is a subrange of its parent DIE. A method_location DIE occurs at
+ * depth 1 in a compile unit (class_unit). So, this means that for any method which has been inlined
+ * into a compiled method at depth K in the inline frame stack there will be a corresponding level
+ * 2+K DIE that identifies the method that was inlined (by referencing the corresponding abstract
+ * inline method DIE) and locates the call point by citing the file index and line number of its
+ * caller. So, if compiled method M inlines a call to m1 at source position f0:l0, m1 inlines a call
+ * to method m2 at source position f1:l1 and m2 inlines a call to m3 at source position f2:l2 then
+ * there will be a level 2 DIE for the inline code range derived from m1 referencing the abstract
+ * entry for m1 with f0 and l0 as file and line, a level 3 DIE for the inline code range derived
+ * from m2 referencing the abstract entry for m2 with f1 and l1 as file and line and a level 3 DIE
+ * for the inline code range derived from m3 referencing the abstract entry for m3 with f2 and l2 as
+ * file and line.
  *
  * <ul>
  *
@@ -636,8 +631,8 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Static Field Locations: For each static field within the class there is a level 1
- * field <em>definition</em>DIE providing details of the static field location
+ * Static Field Locations: For each static field within the class there is a level 1 field
+ * <em>definition</em> DIE providing details of the static field location
  *
  * <ul>
  *
@@ -652,24 +647,25 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Arrays: For each array type there is a sequence of up to five level 1 DIEs defining the array.<p>
+ * Arrays: For each array type there is a sequence of up to five level 1 DIEs defining the array.
+ * <p>
  *
- * Array Layout: The first array DIE describes the array layout. It has three children. The
- * first is a <code>super_reference</code> DIE (see above) to class <code>java.lang.Object</code>.
- * The other two children are field declarations, a length field that overlays the Java array
- * length field and an array data field which aligns with the element 0 of the Java
- * array's data area. The data field type is typed (via a later level 1 DIE) as a DWARF
- * array, i.e. it is a data block embedded directly in the layout, with a nominal element count
- * of 0. The elements of this DWARF array are typed using the DWARF type corresponding to the
- * Java array's element type. It is either a Java primitive type or a Java reference type (i.e.
- * the pointer type ot the underlying layout type). A nominal array length of zero means that
- * this second data field does not actually add any extra size to the array layout. So, all array
- * types have the same length.<p>
+ * Array Layout: The first array DIE describes the array layout. It has three children. The first is
+ * a <code>super_reference</code> DIE (see above) to class <code>java.lang.Object</code>. The other
+ * two children are field declarations, a length field that overlays the Java array length field and
+ * an array data field which aligns with the element 0 of the Java array's data area. The data field
+ * type is typed (via a later level 1 DIE) as a DWARF array, i.e. it is a data block embedded
+ * directly in the layout, with a nominal element count of 0. The elements of this DWARF array are
+ * typed using the DWARF type corresponding to the Java array's element type. It is either a Java
+ * primitive type or a Java reference type (i.e. the pointer type ot the underlying layout type). A
+ * nominal array length of zero means that this second data field does not actually add any extra
+ * size to the array layout. So, all array types have the same length.
+ * <p>
  *
- * Note that when the base element type of the array is a class whose loader has an
- * associated loader id the array type and associated types are embedded in a namespace DIE. This
- * is needed because the encoded type name for the array will include a namespace prefix in order to
- * guarantee that it remains unique.
+ * Note that when the base element type of the array is a class whose loader has an associated
+ * loader id the array type and associated types are embedded in a namespace DIE. This is needed
+ * because the encoded type name for the array will include a namespace prefix in order to guarantee
+ * that it remains unique.
  *
  * <ul>
  *
@@ -681,19 +677,20 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * The immediately following DIE is an indirect_layout (see above) that wraps the array
- * layout as its super type (just as with class layouts). The wrapper type supplies a
- * data_location attribute, allowing indirect pointers to the array to be translated to raw
- * addresses. The name of the indirect array type is constructed by prefixing the array name
- * with <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only one child DIE with type
- * <code>super_reference</code> (see above). The latter references the array layout DIE,
- * effectively embedding the standard array layout type in the indirect layout. The size of
- * the indirect layout is the same as the size of the array layout.<p>
+ * The immediately following DIE is an indirect_layout (see above) that wraps the array layout as
+ * its super type (just as with class layouts). The wrapper type supplies a data_location attribute,
+ * allowing indirect pointers to the array to be translated to raw addresses. The name of the
+ * indirect array type is constructed by prefixing the array name with
+ * <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only one child DIE with type
+ * <code>super_reference</code> (see above). The latter references the array layout DIE, effectively
+ * embedding the standard array layout type in the indirect layout. The size of the indirect layout
+ * is the same as the size of the array layout.
+ * <p>
  *
- * The third and fourth DIEs define array reference types as a pointers to the underlying
- * structure layout types. As with classes, there is an array_pointer type for raw address
- * references used to type local and param vars and an indirect_pointer type (see above) for
- * array references stored in static and instance fields.
+ * The third and fourth DIEs define array reference types as a pointers to the underlying structure
+ * layout types. As with classes, there is an array_pointer type for raw address references used to
+ * type local and param vars and an indirect_pointer type (see above) for array references stored in
+ * static and instance fields.
  *
  * <ul>
  *
@@ -706,13 +703,13 @@ import org.graalvm.compiler.debug.DebugContext;
  * </ul>
  *
  * n.b. the name used in the array_layout DIE is the Java array name. This is deliberately
- * inconsistent with the Java naming where the name refers to the pointer type. As with
- * normal objects an array reference in a Java signature appears as a pointer to an array
- * layout when printed by gdb.
+ * inconsistent with the Java naming where the name refers to the pointer type. As with normal
+ * objects an array reference in a Java signature appears as a pointer to an array layout when
+ * printed by gdb.
  *
- * Array members: The level 1 array_layout DIE includes a member field DIE that defines
- * the layout of the array data. The type of this embedded field is declared by a fifth
- * level 1 DIE, a <code>array_data_type</code> DIE (with DWARF tag <code>array_type</code>).
+ * Array members: The level 1 array_layout DIE includes a member field DIE that defines the layout
+ * of the array data. The type of this embedded field is declared by a fifth level 1 DIE, a
+ * <code>array_data_type</code> DIE (with DWARF tag <code>array_type</code>).
  *
  * <ul>
  *
@@ -724,14 +721,15 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * Interfaces: For each interface there is a sequence of DIEs defining the interface.<p>
+ * Interfaces: For each interface there is a sequence of DIEs defining the interface.
+ * <p>
  *
- * Interface Layout and Reference Types: An interface is primarily modeled by a level 1
- * DIE defining its layout as a union of all the layouts for the classes which implement
- * the interface. The size of the interface layout is the maximum of the sizes for the
- * implementing classes. A DWARF union type is used to ensure that the resulting layout is
- * overlay type compatible with all its implementors. This also means that a reference
- * to an instance of the interface can be cast to a reference to any of the implementors.
+ * Interface Layout and Reference Types: An interface is primarily modeled by a level 1 DIE defining
+ * its layout as a union of all the layouts for the classes which implement the interface. The size
+ * of the interface layout is the maximum of the sizes for the implementing classes. A DWARF union
+ * type is used to ensure that the resulting layout is overlay type compatible with all its
+ * implementors. This also means that a reference to an instance of the interface can be cast to a
+ * reference to any of the implementors.
  *
  * <ul>
  *
@@ -741,26 +739,26 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * A second level 1 DIE provides an indirect layout that wraps the interface layout as its
- * super type (just as with class layouts). The wrapper type supplies a <code>data_location</code>
- * attribute, allowing indirect pointers to the interface to be translated to raw addresses.
- * The name of the indirect interface type is constructed by prefixing the interface name
- * with <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only one child DIE with type
+ * A second level 1 DIE provides an indirect layout that wraps the interface layout as its super
+ * type (just as with class layouts). The wrapper type supplies a <code>data_location</code>
+ * attribute, allowing indirect pointers to the interface to be translated to raw addresses. The
+ * name of the indirect interface type is constructed by prefixing the interface name with
+ * <code>DwarfDebugInfo.INDIRECT_PREFIX</code>. This DIE has only one child DIE with type
  * <code>sup[er_reference</code> (see above). The latter references the interface layout DIE,
- * effectively embedding the standard interface layout type in the indirect layout. The size
- * of the indirect layout is the same as the size of the interface layout.
+ * effectively embedding the standard interface layout type in the indirect layout. The size of the
+ * indirect layout is the same as the size of the interface layout.
  *
- * The third and fourth DIEs define interface reference types as a pointers to the
- * underlying structure layout types. As with classes, there is an interface_pointer type
- * for raw address references used to type local and param vars and an indirect_pointer type
- * (see above) for interface references stored in static and instance fields.
+ * The third and fourth DIEs define interface reference types as a pointers to the underlying
+ * structure layout types. As with classes, there is an interface_pointer type for raw address
+ * references used to type local and param vars and an indirect_pointer type (see above) for
+ * interface references stored in static and instance fields.
  *
  * A second level 1 defines a pointer to this layout type.
  *
  * n.b. the name used in the <code>interface_layout</code> DIE is the Java array name. This is
- * deliberately inconsistent with the Java naming where the name refers to the pointer type.
- * As with normal objects an interface reference in a Java signature appears as a pointer to
- * an interface layout when printed by gdb.
+ * deliberately inconsistent with the Java naming where the name refers to the pointer type. As with
+ * normal objects an interface reference in a Java signature appears as a pointer to an interface
+ * layout when printed by gdb.
  *
  * <ul>
  *
@@ -772,8 +770,8 @@ import org.graalvm.compiler.debug.DebugContext;
  *
  * </ul>
  *
- * The union type embeds level 2 DIEs with tag member. There is a member for each
- * implementing class, typed using the layout.
+ * The union type embeds level 2 DIEs with tag member. There is a member for each implementing
+ * class, typed using the layout.
  *
  * <ul>
  *
@@ -788,8 +786,8 @@ import org.graalvm.compiler.debug.DebugContext;
  * </ul>
  *
  * The union member name is constructed by appending an '_' to the Java* name of the implementing
- * class. So, this means that, for example, the Java interface java.lang.CharSequence will
- * include members for String, StringBuffer etc as follows
+ * class. So, this means that, for example, the Java interface java.lang.CharSequence will include
+ * members for String, StringBuffer etc as follows
  *
  * <pre>
  *   union java.lang.CharSequence {
@@ -1338,7 +1336,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         int pos = p;
         pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_abstract_inline_method, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_subprogram, buffer, pos);
-        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_inline, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_external, buffer, pos);

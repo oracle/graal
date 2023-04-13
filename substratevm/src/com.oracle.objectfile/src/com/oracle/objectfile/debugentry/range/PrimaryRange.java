@@ -26,7 +26,6 @@
 
 package com.oracle.objectfile.debugentry.range;
 
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 
 public class PrimaryRange extends Range {
