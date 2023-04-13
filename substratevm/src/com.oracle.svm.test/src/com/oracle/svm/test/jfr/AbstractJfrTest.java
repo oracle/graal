@@ -184,7 +184,7 @@ public abstract class AbstractJfrTest {
     }
 
     @FunctionalInterface
-    interface EventValidator {
+    protected interface EventValidator {
         void validate(List<RecordedEvent> events) throws Throwable;
     }
 }
