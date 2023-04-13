@@ -34,10 +34,12 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -198,9 +200,28 @@ public abstract class LoopFragment {
             finishDuplication();
             nodes = new NodeBitMap(graph());
 
+            Iterable<Node> duplicationNodes = duplicationMap.getValues();
             try {
-                nodes.markAll(duplicationMap.getValues());
+                nodes.markAll(duplicationNodes);
             } catch (Throwable t) {
+                StructuredGraph graph = graph();
+                if (duplicationMap instanceof NodeMap<?>) {
+                    TTY.printf("GR-42126 data: graph size %s,loop begin node count %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count());
+                    NodeMap<?> nm = (NodeMap<?>) duplicationMap;
+                    Object[] rawValues = nm.rawValues();
+                    int nullEntries = 0;
+                    for (int i = 0; i < rawValues.length; i++) {
+                        if (rawValues[i] == null) {
+                            nullEntries++;
+                        }
+                    }
+                    TTY.printf("GR-42126 data: node map of length %s with %s null entires%n", rawValues.length, nullEntries);
+                } else {
+                    TTY.printf("GR-42126 data: graph size %s,loop begin node count %s, map size %s, map type %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count(),
+                                    duplicationMap.size(),
+                                    duplicationMap.getClass());
+                }
+                checkNoNulls(duplicationNodes);
                 checkNoNulls(duplicationMap);
                 graph().getDebug().forceDump(graph(), "map of type %s has a null key", duplicationMap.getClass());
                 throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
@@ -208,6 +229,12 @@ public abstract class LoopFragment {
             nodesReady = true;
         } else {
             // TODO (gd) apply fix ?
+        }
+    }
+
+    private static void checkNoNulls(Iterable<Node> nodes) {
+        for (Node value : nodes) {
+            GraalError.guarantee(value != null, "Must not see null value in %s", nodes);
         }
     }
 
