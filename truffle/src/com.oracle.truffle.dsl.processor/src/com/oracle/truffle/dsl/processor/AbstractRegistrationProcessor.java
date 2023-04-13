@@ -247,41 +247,33 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             builder.startReturn();
             builder.startStaticCall(context.getType(Arrays.class), "asList");
             for (TypeMirror service : services) {
-                Elements elements = context.getEnvironment().getElementUtils();
-                Types types = context.getEnvironment().getTypeUtils();
-                builder.startGroup().doubleQuote(elements.getBinaryName((TypeElement) ((DeclaredType) types.erasure(service)).asElement()).toString()).end();
+                builder.startGroup().doubleQuote(binaryName(service, context)).end();
             }
             builder.end(2);
         }
     }
 
-    static void generateLoadService(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context) {
-        List<TypeMirror> defaultExportProviders = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "defaultExportProviders");
-        List<TypeMirror> eagerExportProviders = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "eagerExportProviders");
+    static void generateLoadService(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context, Map<String, DeclaredType> registrationAttrToServiceType) {
+        Map<String, List<TypeMirror>> registrationAttrToImpls = new HashMap<>();
+        for (String registrationAttr : registrationAttrToServiceType.keySet()) {
+            List<TypeMirror> impls = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, registrationAttr);
+            if (!impls.isEmpty()) {
+                registrationAttrToImpls.put(registrationAttr, impls);
+            }
+        }
         DeclaredType stream = context.getDeclaredType(Stream.class);
-        if (defaultExportProviders.isEmpty() && eagerExportProviders.isEmpty()) {
+        if (registrationAttrToImpls.isEmpty()) {
             builder.startReturn().startStaticCall(stream, "empty").end(2);
         } else {
             TypeMirror strStream = new DeclaredCodeTypeMirror((TypeElement) stream.asElement(), List.of(context.getDeclaredType(String.class)));
             builder.declaration(strStream, "implFqns", (String) null);
             String paramName = builder.findMethod().getParameters().get(0).getSimpleName().toString();
-            CodeTreeBuilder getClass = builder.create().startCall(paramName, "getClass").end();
-            CodeTreeBuilder getClassName = builder.create().startCall(getClass.build(), "getName").end();
-            builder.startSwitch().tree(getClassName.build()).end().startBlock();
-            if (!defaultExportProviders.isEmpty()) {
-                builder.startCase().doubleQuote(binaryName(context.getTypes().DefaultExportProvider, context)).end().startCaseBlock();
+            builder.startSwitch().startCall(paramName, "getName").end(2).startBlock();
+            for (Map.Entry<String, List<TypeMirror>> entry : registrationAttrToImpls.entrySet()) {
+                builder.startCase().doubleQuote(binaryName(registrationAttrToServiceType.get(entry.getKey()), context)).end().startCaseBlock();
                 builder.startStatement().string("implFqns", " = ").startStaticCall(stream, "of");
-                for (TypeMirror impl : defaultExportProviders) {
-                    builder.doubleQuote(binaryName((DeclaredType) impl, context));
-                }
-                builder.end(2);
-                builder.startStatement().string("break").end(2);
-            }
-            if (!eagerExportProviders.isEmpty()) {
-                builder.startCase().doubleQuote(binaryName(context.getTypes().EagerExportProvider, context)).end().startCaseBlock();
-                builder.startStatement().string("implFqns", " = ").startStaticCall(stream, "of");
-                for (TypeMirror impl : eagerExportProviders) {
-                    builder.doubleQuote(binaryName((DeclaredType) impl, context));
+                for (TypeMirror impl : entry.getValue()) {
+                    builder.doubleQuote(binaryName(impl, context));
                 }
                 builder.end(2);
                 builder.startStatement().string("break").end(2);
@@ -303,8 +295,10 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         }
     }
 
-    private static String binaryName(DeclaredType type, ProcessorContext context) {
-        return context.getEnvironment().getElementUtils().getBinaryName((TypeElement) type.asElement()).toString();
+    private static String binaryName(TypeMirror type, ProcessorContext context) {
+        Elements elements = context.getEnvironment().getElementUtils();
+        Types types = context.getEnvironment().getTypeUtils();
+        return elements.getBinaryName((TypeElement) ((DeclaredType) types.erasure(type)).asElement()).toString();
     }
 
     /**
@@ -360,7 +354,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         return validateLookupRegistration(annotatedElement, mirror, "eagerExportProviders", context.getTypes().EagerExportProvider, context);
     }
 
-    private boolean validateLookupRegistration(Element annotatedElement, AnnotationMirror mirror, String attributeName,
+    boolean validateLookupRegistration(Element annotatedElement, AnnotationMirror mirror, String attributeName,
                     DeclaredType serviceType, ProcessorContext context) {
         AnnotationValue value = ElementUtils.getAnnotationValue(mirror, attributeName, true);
         Types types = context.getEnvironment().getTypeUtils();

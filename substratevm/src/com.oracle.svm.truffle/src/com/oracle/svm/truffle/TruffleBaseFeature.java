@@ -59,6 +59,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import com.oracle.truffle.api.library.EagerExportProvider;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -453,6 +454,8 @@ public final class TruffleBaseFeature implements InternalFeature {
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
         config.registerHierarchyForReflectiveInstantiation(DefaultExportProvider.class);
+        config.registerHierarchyForReflectiveInstantiation(EagerExportProvider.class);
+        config.registerHierarchyForReflectiveInstantiation(TruffleFile.FileTypeDetector.class);
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
 
         registerDynamicObjectFields(config);

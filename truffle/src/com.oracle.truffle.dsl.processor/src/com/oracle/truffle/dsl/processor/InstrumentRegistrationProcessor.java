@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -114,28 +115,28 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
     @Override
     void implementMethod(TypeElement annotatedElement, CodeExecutableElement methodToImplement) {
         CodeTreeBuilder builder = methodToImplement.createBuilder();
+        ProcessorContext context = ProcessorContext.getInstance();
+        TruffleTypes types = context.getTypes();
         switch (methodToImplement.getSimpleName().toString()) {
             case "create":
                 builder.startReturn().startNew(annotatedElement.asType()).end().end();
                 break;
             case "getInstrumentClassName": {
-                ProcessorContext context = ProcessorContext.getInstance();
                 Elements elements = context.getEnvironment().getElementUtils();
                 builder.startReturn().doubleQuote(elements.getBinaryName(annotatedElement).toString()).end();
                 break;
             }
             case "getServicesClassNames": {
-                ProcessorContext context = ProcessorContext.getInstance();
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
-                                context.getTypes().TruffleInstrument_Registration);
+                                types.TruffleInstrument_Registration);
                 generateGetServicesClassNames(registration, builder, context);
                 break;
             }
             case "loadService": {
-                ProcessorContext context = ProcessorContext.getInstance();
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
-                                context.getTypes().TruffleInstrument_Registration);
-                generateLoadService(registration, builder, context);
+                                types.TruffleInstrument_Registration);
+                generateLoadService(registration, builder, context, Map.of("defaultExportProviders", types.DefaultExportProvider,
+                                "eagerExportProviders", types.EagerExportProvider));
                 break;
             }
             default:

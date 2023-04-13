@@ -43,7 +43,6 @@ package com.oracle.truffle.api.provider;
 import com.oracle.truffle.api.impl.Accessor;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.stream.Stream;
 
 final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport {
@@ -56,11 +55,6 @@ final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport
     @Override
     public Object create(TruffleLanguageProvider provider) {
         return provider.create();
-    }
-
-    @Override
-    public List<?> createFileTypeDetectors(TruffleLanguageProvider provider) {
-        return provider.createFileTypeDetectors();
     }
 
     @Override

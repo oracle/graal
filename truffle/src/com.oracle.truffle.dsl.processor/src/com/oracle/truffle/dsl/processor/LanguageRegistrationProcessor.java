@@ -42,9 +42,9 @@ package com.oracle.truffle.dsl.processor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -198,7 +198,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             return false;
         }
 
-        if (!validateFileTypeDetectors(annotatedElement, registrationMirror)) {
+        if (!validateFileTypeDetectors(annotatedElement, registrationMirror, context)) {
             return false;
         }
 
@@ -255,22 +255,6 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                     builder.startReturn().startNew(languageType).end(2);
                 }
                 break;
-            case "createFileTypeDetectors": {
-                AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
-                                types.TruffleLanguage_Registration);
-                List<TypeMirror> detectors = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "fileTypeDetectors");
-                if (detectors.isEmpty()) {
-                    builder.startReturn().startStaticCall(context.getType(Collections.class), "emptyList").end().end();
-                } else {
-                    builder.startReturn();
-                    builder.startStaticCall(context.getType(Arrays.class), "asList");
-                    for (TypeMirror detector : detectors) {
-                        builder.startGroup().startNew(detector).end(2);
-                    }
-                    builder.end(2);
-                }
-                break;
-            }
             case "getLanguageClassName": {
                 Elements elements = context.getEnvironment().getElementUtils();
                 builder.startReturn().doubleQuote(elements.getBinaryName(annotatedElement).toString()).end();
@@ -285,7 +269,9 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             case "loadService": {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleLanguage_Registration);
-                generateLoadService(registration, builder, context);
+                generateLoadService(registration, builder, context, Map.of("defaultExportProviders", types.DefaultExportProvider, //
+                                "eagerExportProviders", types.EagerExportProvider, //
+                                "fileTypeDetectors", types.TruffleFile_FileTypeDetector));
                 break;
             }
             default:
@@ -321,34 +307,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
         return true;
     }
 
-    private boolean validateFileTypeDetectors(Element annotatedElement, AnnotationMirror mirror) {
-        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "fileTypeDetectors", true);
-        for (TypeMirror fileTypeDetectorType : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "fileTypeDetectors")) {
-            TypeElement fileTypeDetectorElement = ElementUtils.fromTypeMirror(fileTypeDetectorType);
-            if (!fileTypeDetectorElement.getModifiers().contains(Modifier.PUBLIC)) {
-                emitError("Registered FileTypeDetector class must be public.", annotatedElement, mirror, value);
-                return false;
-            }
-            if (fileTypeDetectorElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !fileTypeDetectorElement.getModifiers().contains(Modifier.STATIC)) {
-                emitError("Registered FileTypeDetector inner-class must be static.", annotatedElement, mirror, value);
-                return false;
-            }
-            boolean foundConstructor = false;
-            for (ExecutableElement constructor : ElementFilter.constructorsIn(fileTypeDetectorElement.getEnclosedElements())) {
-                if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
-                    continue;
-                }
-                if (!constructor.getParameters().isEmpty()) {
-                    continue;
-                }
-                foundConstructor = true;
-                break;
-            }
-            if (!foundConstructor) {
-                emitError("A FileTypeDetector subclass must have a public no argument constructor.", annotatedElement, mirror, value);
-                return false;
-            }
-        }
-        return true;
+    private boolean validateFileTypeDetectors(Element annotatedElement, AnnotationMirror mirror, ProcessorContext context) {
+        return validateLookupRegistration(annotatedElement, mirror, "fileTypeDetectors", context.getTypes().TruffleFile_FileTypeDetector, context);
     }
 }

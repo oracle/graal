@@ -43,7 +43,6 @@ package com.oracle.truffle.api.provider;
 import com.oracle.truffle.api.TruffleLanguage;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.ServiceLoader;
 import java.util.stream.Stream;
 
@@ -74,13 +73,6 @@ public abstract class TruffleLanguageProvider {
      * @since 23.1
      */
     protected abstract Object create();
-
-    /**
-     * Creates file type detectors used by the {@link TruffleLanguage}.
-     *
-     * @since 23.1
-     */
-    protected abstract List<?> createFileTypeDetectors();
 
     /**
      * Returns the class names of provided services.

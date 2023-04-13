@@ -657,11 +657,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        public List<Object> createFileTypeDetectors() {
-            return Collections.emptyList();
-        }
-
-        @Override
         public Set<String> getServicesClassNames() {
             return servicesClassNames;
         }
@@ -746,9 +741,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         public List<FileTypeDetector> createFileTypeDetectors() {
-            return (List<FileTypeDetector>) EngineAccessor.LANGUAGE_PROVIDER.createFileTypeDetectors(provider);
+            return EngineAccessor.LANGUAGE_PROVIDER.loadService(provider, FileTypeDetector.class).toList();
         }
 
         @Override

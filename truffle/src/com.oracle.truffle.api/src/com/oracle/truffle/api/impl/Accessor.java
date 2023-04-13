@@ -1237,8 +1237,6 @@ public abstract class Accessor {
 
         public abstract Object create(TruffleLanguageProvider provider);
 
-        public abstract List<?> createFileTypeDetectors(TruffleLanguageProvider provider);
-
         public abstract Collection<String> getServicesClassNames(TruffleLanguageProvider provider);
 
         public abstract <T> Stream<T> loadService(TruffleLanguageProvider provider, Class<T> type);
