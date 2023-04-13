@@ -282,8 +282,18 @@ public abstract class SwitchNode extends ControlSplitNode {
 
         double[] nodeProbabilities = new double[keySuccessors.length];
         for (int i = 0; i < keySuccessors.length; ++i) {
-            GraalError.guarantee(keySuccessor(i).next() instanceof SwitchCaseProbabilityNode, "All switch branches must be followed by a SwitchCaseProbabilityNode");
-            SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) keySuccessor(i).next();
+            AbstractBeginNode succ = keySuccessor(i);
+            /*
+             * When a switch case exits out of a nested loop the SwitchProbabilityNode will be
+             * placed after a series of LoopExits, one per noop lesting level.
+             */
+            while (succ.next()instanceof AbstractBeginNode next) {
+                succ = next;
+            }
+            assertTrue(succ.next() instanceof SwitchCaseProbabilityNode,
+                            "Cannot inject switch probability, since key successor %s is not a SwitchCaseProbabilityNode",
+                            this, succ.next());
+            SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) succ.next();
 
             ValueNode probabilityNode = caseProbabilityNode.getProbability();
             if (!probabilityNode.isConstant()) {
@@ -310,7 +320,11 @@ public abstract class SwitchNode extends ControlSplitNode {
         }
 
         for (AbstractBeginNode blockSuccessor : successors) {
-            SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) blockSuccessor.next();
+            AbstractBeginNode succ = blockSuccessor;
+            while (succ.next()instanceof AbstractBeginNode next) {
+                succ = next;
+            }
+            SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) succ.next();
             caseProbabilityNode.replaceAtUsages(null);
             graph().removeFixed(caseProbabilityNode);
         }
