@@ -83,8 +83,8 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp",
           lineStart = 365,
           lineEnd   = 707,
-          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
-          sha1      = "f9be8829233550e1708f81a2770fccac94c9c940")
+          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
+          sha1      = "a7b1945b868377c8354a66f0157bc5f7c50a13df")
 // @formatter:on
 public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
 

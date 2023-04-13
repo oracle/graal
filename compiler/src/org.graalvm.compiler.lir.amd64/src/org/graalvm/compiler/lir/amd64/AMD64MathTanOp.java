@@ -133,8 +133,8 @@ import jdk.vm.ci.amd64.AMD64;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_tan.cpp",
           lineStart = 31,
           lineEnd   = 1029,
-          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
-          sha1      = "cdc6bf440397d248ddcc480cd3cdc762d29c2426")
+          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
+          sha1      = "0ff29f9741410e9069f7feeb9c928eba33fcf475")
 // @formatter:on
 public final class AMD64MathTanOp extends AMD64MathIntrinsicUnaryOp {
 

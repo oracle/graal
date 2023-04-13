@@ -68,8 +68,8 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_ghash.cpp",
           lineStart = 35,
           lineEnd   = 535,
-          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
-          sha1      = "f76af2a4acc060dc34bd5c0597228a69145fd66c")
+          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
+          sha1      = "64d4bc53bdf144f5ebc62a36e4f5f9a05dba483b")
 // @formatter:on
 public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
 
