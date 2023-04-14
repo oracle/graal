@@ -205,6 +205,9 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         }
         long typeHandle = LibGraal.translate(enclosingType);
         int rawValue = callGetConstantFieldInfo(env(), getHandle(), typeHandle, isStatic, fieldIndex);
+        if (rawValue == Integer.MIN_VALUE) {
+            return null;
+        }
         return ConstantFieldInfo.forRawValue(rawValue);
     }
 
