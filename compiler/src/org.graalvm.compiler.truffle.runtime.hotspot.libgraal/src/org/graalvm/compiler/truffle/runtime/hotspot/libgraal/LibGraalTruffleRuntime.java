@@ -45,6 +45,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
+    @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
@@ -65,7 +66,6 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         }
     }
 
-    @SuppressWarnings("try")
     @Override
     public HotSpotTruffleCompiler newTruffleCompiler() {
         return new LibGraalHotSpotTruffleCompiler(this);
