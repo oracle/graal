@@ -44,6 +44,7 @@ public class NativeImageResourceUtils {
     public static final String RESOURCE_DIR = "/resources";
     public static final String RESOURCE_FILE_1 = RESOURCE_DIR + "/resource-test1.txt";
     public static final String RESOURCE_FILE_2 = RESOURCE_DIR + "/resource-test2.txt";
+    public static final String RESOURCE_FILE_3 = RESOURCE_DIR + "/resource-test3.html";
 
     // Register resources.
     public static final class TestFeature implements Feature {
@@ -54,6 +55,7 @@ public class NativeImageResourceUtils {
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_DIR.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_1.substring(1));
             RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_2.substring(1));
+            RuntimeResourceAccess.addResource(resourceModule, RESOURCE_FILE_3.substring(1));
 
             /** Needed for {@link #testURLExternalFormEquivalence()} */
             for (Module module : ModuleLayer.boot().modules()) {

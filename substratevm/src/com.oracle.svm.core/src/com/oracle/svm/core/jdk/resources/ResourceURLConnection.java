@@ -38,6 +38,8 @@ import com.oracle.svm.core.jdk.Resources;
 
 public final class ResourceURLConnection extends URLConnection {
 
+    private static final String CONTENT_TYPE = "content-type";
+
     private byte[] data;
 
     public ResourceURLConnection(URL url) {
@@ -115,5 +117,13 @@ public final class ResourceURLConnection extends URLConnection {
          */
         connect();
         return Resources.singleton().getLastModifiedTime();
+    }
+
+    @Override
+    public String getHeaderField(String name) {
+        if (CONTENT_TYPE.equalsIgnoreCase(name)) {
+            return guessContentTypeFromName(url.getPath());
+        }
+        return super.getHeaderField(name);
     }
 }

@@ -28,6 +28,7 @@ package com.oracle.svm.test;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_DIR;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_1;
 import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_2;
+import static com.oracle.svm.test.NativeImageResourceUtils.RESOURCE_FILE_3;
 import static com.oracle.svm.test.NativeImageResourceUtils.compareTwoURLs;
 import static com.oracle.svm.test.NativeImageResourceUtils.resourceNameToURL;
 
@@ -35,6 +36,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -183,6 +185,39 @@ public class NativeImageResourceTest {
             Assert.assertNotNull("InputStream for resource java.base/java/lang/uniName.dat must not be null", in2);
         } catch (IOException e) {
             Assert.fail("IOException in module.getResourceAsStream(): " + e.getMessage());
+        }
+    }
+
+    /**
+     * <p>
+     * Check URLConnection content type.
+     * </p>
+     *
+     * <p>
+     * <b>Description: </b> Test inspired by issues: </br>
+     * <ol>
+     * <li><a href="https://github.com/oracle/graal/issues/6394">6394</a></li>
+     * </ol>
+     * </p>
+     */
+    @Test
+    public void testResourceURLConnectionContentType() {
+        try {
+            URL url2 = resourceNameToURL(RESOURCE_FILE_2, true);
+            URLConnection conn2 = url2.openConnection();
+            Assert.assertEquals(null, conn2.getHeaderField(null));
+            Assert.assertEquals("text/plain", conn2.getHeaderField("content-type"));
+            Assert.assertEquals("text/plain", conn2.getHeaderField("Content-Type"));
+            Assert.assertEquals("text/plain", conn2.getContentType());
+
+            URL url3 = resourceNameToURL(RESOURCE_FILE_3, true);
+            URLConnection conn3 = url3.openConnection();
+            Assert.assertEquals(null, conn3.getHeaderField(null));
+            Assert.assertEquals("text/html", conn3.getHeaderField("content-type"));
+            Assert.assertEquals("text/html", conn3.getHeaderField("Content-Type"));
+            Assert.assertEquals("text/html", conn3.getContentType());
+        } catch (IOException e) {
+            Assert.fail("IOException in url.openConnection(): " + e.getMessage());
         }
     }
 }
