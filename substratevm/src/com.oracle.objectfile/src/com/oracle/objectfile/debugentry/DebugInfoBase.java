@@ -214,6 +214,7 @@ public abstract class DebugInfoBase {
      */
     private ClassEntry hubClassEntry;
 
+    @SuppressWarnings("this-escape")
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
         this.useHeapBase = true;
