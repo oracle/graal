@@ -115,7 +115,7 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
  */
-public abstract class TruffleCompilerImpl implements TruffleCompilerBase, CompilationWatchDog.EventHandler {
+public abstract class TruffleCompilerImpl implements TruffleCompiler, CompilationWatchDog.EventHandler {
 
     protected TruffleCompilerConfiguration config;
     protected final GraphBuilderConfiguration builderConfig;
@@ -158,7 +158,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         backend.addCodeInstallationTask(codeInstallationTaskFactory);
     }
 
-    @Override
     public TruffleCompilerConfiguration getConfig() {
         return config;
     }
@@ -619,12 +618,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
 
     public abstract PhaseSuite<HighTierContext> createGraphBuilderSuite(TruffleTierConfiguration tier);
 
-    @Override
     public PartialEvaluator getPartialEvaluator() {
         return partialEvaluator;
     }
 
-    @Override
     public TruffleTier getTruffleTier() {
         return truffleTier;
     }
@@ -849,7 +846,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
     }
 
-    @Override
     public final SnippetReflectionProvider getSnippetReflection() {
         return config.snippetReflection();
     }
