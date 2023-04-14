@@ -90,6 +90,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
 import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
@@ -128,7 +129,9 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         /*
          * Host inlining is not necessary for runtime compilation so disable it.
          */
-        options = new OptionValues(options, HostInliningPhase.Options.TruffleHostInlining, Boolean.FALSE);
+        options = new OptionValues(options,
+                        HostInliningPhase.Options.TruffleHostInlining, Boolean.FALSE,
+                        InjectImmutableFrameFieldsPhase.Options.TruffleImmutableFrameFields, Boolean.FALSE);
 
         HotSpotGraalRuntimeProvider graalRuntime = (HotSpotGraalRuntimeProvider) getCompiler(options).getGraalRuntime();
         SnippetReflectionProvider snippetReflection = graalRuntime.getRequiredCapability(SnippetReflectionProvider.class);
