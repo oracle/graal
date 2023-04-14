@@ -129,13 +129,39 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     ] else [
       "libgraal_compiler",
       "libgraal_truffle",
-      "libgraal_compiler_zgc",
-      "libgraal_truffle_zgc",
       "libgraal_compiler_quickbuild",
       "libgraal_truffle_quickbuild"
     ]
   ],
 
+  local adjust_windows_version(gate) = (
+      # replace 2016 with 2019
+     gate + { capabilities: [ if x == "windows_server_2016" then "windows_server_2019" else x for x in gate.capabilities ] }
+  ),
+
+  # Builds run on all platforms (platform = JDK + OS + ARCH) but windows currently requires windows server 2019
+  local all_platforms_zgc_builds = [
+    adjust_windows_version(c["gate_vm_" + underscore(os_arch)]) +
+    svm_common(os_arch, jdk) +
+    vm["custom_vm_" + os(os_arch)] +
+    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
+                 include_common_os_arch=false,
+                 jdk_name = if jdk == "21" then "oraclejdk" else "labsjdk",
+                 gates_manifest=gates,
+                 dailies_manifest=dailies,
+                 weeklies_manifest=weeklies,
+                 monthlies_manifest=monthlies).build +
+    vm["vm_java_" + jdk]
+    for jdk in [
+      "17",
+      "20",
+    ]
+    for os_arch in all_os_arches
+    for task in [
+      "libgraal_compiler_zgc",
+      "libgraal_truffle_zgc",
+    ]
+  ],
 
   # Builds run on only on linux-amd64-jdk20
   local linux_amd64_jdk20_builds = [
@@ -165,6 +191,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
+    all_platforms_zgc_builds +
     linux_amd64_jdk20_builds,
 
   builds: if
