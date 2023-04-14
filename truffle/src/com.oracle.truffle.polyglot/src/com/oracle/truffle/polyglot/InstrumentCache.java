@@ -157,13 +157,26 @@ final class InstrumentCache {
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
+        ClassLoader truffleClassLoader = InstrumentCache.class.getClassLoader();
+        boolean usesTruffleClassLoader = false;
         for (Supplier<ClassLoader> supplier : suppliers) {
             ClassLoader loader = supplier.get();
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
+            usesTruffleClassLoader |= truffleClassLoader == loader;
             loadProviders(loader).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
             loadDeprecatedProviders(loader).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+        }
+        // Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
+        // module. If the ClassLoader does not define module it has no ServiceCatalog. The
+        // ServiceLoader does not load module services from parent classloader. This code can be
+        // removed if we add system classloader into GraalVMLocator.
+        if (!usesTruffleClassLoader) {
+            Module truffleModule = InstrumentCache.class.getModule();
+            loadProviders(truffleClassLoader).//
+                            filter((p) -> p.getProviderClass().getModule().equals(truffleModule)).//
+                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
         }
         Collections.sort(list, new Comparator<InstrumentCache>() {
             @Override
