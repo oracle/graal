@@ -469,7 +469,7 @@ public class StackifierIRWalker extends IRWalker {
          * the caught object is set to Throwable, and only changed if the exception edge indeed is
          * an ExceptionObjectNode
          */
-        if (excpSucc.getBeginNode()instanceof ExceptionObjectNode excpObj) {
+        if (excpSucc.getBeginNode() instanceof ExceptionObjectNode excpObj) {
             caughtObjectType = excpObj.stamp(NodeView.DEFAULT).javaType(codeGenTool.getProviders().getMetaAccess());
         }
         codeGenTool.genCatchBlockPrefix(caughtObjectName, caughtObjectType);
@@ -818,8 +818,8 @@ public class StackifierIRWalker extends IRWalker {
     }
 
     /**
-     * Generates a break statement at the end of a loop or a switch case statement,
-     * used to kill the implicit loop back-edge. See comment in {@link #genLoopEnd} for further explanation.
+     * Generates a break statement at the end of a loop or a switch case statement, used to kill the
+     * implicit loop back-edge. See comment in {@link #genLoopEnd} for further explanation.
      */
     protected void genBlockEndBreak() {
         codeGenTool.genBreak();

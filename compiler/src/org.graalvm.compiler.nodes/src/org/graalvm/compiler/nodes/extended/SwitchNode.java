@@ -287,7 +287,7 @@ public abstract class SwitchNode extends ControlSplitNode {
              * When a switch case exits out of a nested loop the SwitchProbabilityNode will be
              * placed after a series of LoopExits, one per noop lesting level.
              */
-            while (succ.next()instanceof AbstractBeginNode next) {
+            while (succ.next() instanceof AbstractBeginNode next) {
                 succ = next;
             }
             assertTrue(succ.next() instanceof SwitchCaseProbabilityNode,
@@ -321,7 +321,7 @@ public abstract class SwitchNode extends ControlSplitNode {
 
         for (AbstractBeginNode blockSuccessor : successors) {
             AbstractBeginNode succ = blockSuccessor;
-            while (succ.next()instanceof AbstractBeginNode next) {
+            while (succ.next() instanceof AbstractBeginNode next) {
                 succ = next;
             }
             SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) succ.next();
