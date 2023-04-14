@@ -112,7 +112,7 @@ public class StubPortProcessor extends AbstractProcessor {
                                     "commit    = \"%s\",\n" +
                                     "sha1      = \"%s\")\n",
                                     path,
-                                    idxInclusive + 1,
+                                    idxInclusive,
                                     idxInclusive + (lineEnd - lineStart),
                                     getLatestCommit(proxy),
                                     sha1);
