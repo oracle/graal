@@ -98,7 +98,10 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     private final OptionValues initialOptions;
 
     HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, OptionValues options) {
-        super(env, handle);
+        /*
+         * Note global duplicates may happen if the compiler is initialized by a host compilation.
+         */
+        super(env, handle, true, false);
         this.classLoaderDelegate = classLoaderDelegate;
         this.initialOptions = options;
     }
