@@ -3958,30 +3958,26 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected void genLoadConstant(int cpi, int opcode) {
-        try {
-            Object con = lookupConstant(cpi, opcode);
-            if (con instanceof JavaType) {
-                // this is a load of class constant which might be unresolved
-                JavaType type = (JavaType) con;
-                if (typeIsResolved(type)) {
-                    frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
-                } else {
-                    handleUnresolvedLoadConstant(type);
-                }
-            } else if (con instanceof JavaConstant) {
-                JavaConstant constant = (JavaConstant) con;
-                frameState.push(constant.getJavaKind(), appendConstant(constant));
+        Object con = lookupConstant(cpi, opcode);
+        if (con instanceof JavaType) {
+            // this is a load of class constant which might be unresolved
+            JavaType type = (JavaType) con;
+            if (typeIsResolved(type)) {
+                frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
             } else {
-                throw new Error("lookupConstant returned an object of incorrect type: " + con);
+                handleUnresolvedLoadConstant(type);
             }
-        } catch (BootstrapMethodError error) {
-            handleBootstrapMethodError(error, method);
+        } else if (con instanceof JavaConstant) {
+            JavaConstant constant = (JavaConstant) con;
+            frameState.push(constant.getJavaKind(), appendConstant(constant));
+        } else if (!(con instanceof Throwable)) {
+            /**
+             * We use the exceptional return value of {@link #lookupConstant(int, int)} as sentinel
+             * to indicate that the exception is already handled, thus no need to throw an error
+             * here.
+             */
+            throw new Error("lookupConstant returned an object of incorrect type: " + con);
         }
-    }
-
-    @SuppressWarnings("unused")
-    protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
-        throw be;
     }
 
     private JavaKind refineComponentType(ValueNode array, JavaKind kind) {
@@ -4284,7 +4280,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return result;
     }
 
-    private Object lookupConstant(int cpi, int opcode) {
+    /**
+     * This method may return a value of the type {@code Throwable} to indicate that an exceptional
+     * scenario has occurred and has been handled properly. The caller of this method may therefore
+     * ignore the exceptional return value.
+     */
+    protected Object lookupConstant(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
         Object result = constantPool.lookupConstant(cpi);
         assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;
