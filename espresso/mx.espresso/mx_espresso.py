@@ -81,27 +81,27 @@ def _send_sigquit(p):
         pass
 
 
-def _run_espresso_launcher(args=None, cwd=None, nonZeroIsFatal=True, timeout=None):
+def _run_espresso_launcher(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     """Run Espresso launcher within a GraalVM"""
-    return mx.run(_espresso_launcher_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, timeout=timeout, on_timeout=_send_sigquit)
+    return mx.run(_espresso_launcher_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, on_timeout=_send_sigquit)
 
 
-def _run_espresso_standalone(args=None, cwd=None, nonZeroIsFatal=True, timeout=None):
+def _run_espresso_standalone(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     """Run standalone Espresso (not as part of GraalVM) from distribution jars"""
-    return mx.run_java(_espresso_standalone_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, timeout=timeout, on_timeout=_send_sigquit)
+    return mx.run_java(_espresso_standalone_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, on_timeout=_send_sigquit)
 
 
-def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True, timeout=None):
+def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     """Run espresso through the standard java launcher within a GraalVM"""
-    return mx.run(_java_truffle_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, timeout=timeout, on_timeout=_send_sigquit)
+    return mx.run(_java_truffle_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, on_timeout=_send_sigquit)
 
 
-def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True, timeout=None):
+def _run_espresso(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     if mx_sdk_vm_impl._skip_libraries(espresso_library_config):
         # no libespresso, we can only run with the espresso launcher
-        _run_espresso_launcher(args, cwd, nonZeroIsFatal, timeout)
+        _run_espresso_launcher(args, cwd, nonZeroIsFatal, out, err, timeout)
     else:
-        _run_java_truffle(args, cwd, nonZeroIsFatal, timeout)
+        _run_java_truffle(args, cwd, nonZeroIsFatal, out, err, timeout)
 
 
 def _run_espresso_meta(args, nonZeroIsFatal=True, timeout=None):
