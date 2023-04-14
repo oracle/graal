@@ -29,6 +29,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.util.FieldKey;
+import org.graalvm.compiler.core.common.util.MethodKey;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -37,6 +39,7 @@ import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
+import org.graalvm.compiler.truffle.compiler.TruffleElementCache;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -44,11 +47,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
+    private static final int CONSTANT_INFO_CACHE_SIZE = 1024;
+    private static final int METHOD_INFO_CACHE_SIZE = 1024;
+
     private final AtomicReference<EconomicMap<ResolvedJavaMethod, EncodedGraph>> graphCacheRef;
 
     private int jvmciReservedReference0Offset = -1;
-
     private boolean disableEncodedGraphCachePurges;
+
+    private final PartialEvaluationMethodInfoCache methodInfoCache = new PartialEvaluationMethodInfoCache();
+    private final ConstantFieldInfoCache constantInfoCache = new ConstantFieldInfoCache();
 
     public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         super(config, configForRoot);
@@ -71,12 +79,12 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        return config.runtime().getConstantFieldInfo(field);
+        return constantInfoCache.get(field);
     }
 
     @Override
     public PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method) {
-        return config.runtime().getPartialEvaluationMethodInfo(method);
+        return methodInfoCache.get(method);
     }
 
     @Override
@@ -140,6 +148,42 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
         } else {
             return super.getCreateCachedGraphScope();
         }
+    }
+
+    final class PartialEvaluationMethodInfoCache extends TruffleElementCache<ResolvedJavaMethod, PartialEvaluationMethodInfo> {
+
+        PartialEvaluationMethodInfoCache() {
+            super(METHOD_INFO_CACHE_SIZE); // cache size
+        }
+
+        @Override
+        protected Object createKey(ResolvedJavaMethod method) {
+            return new MethodKey(method);
+        }
+
+        @Override
+        protected PartialEvaluationMethodInfo computeValue(ResolvedJavaMethod method) {
+            return config.runtime().getPartialEvaluationMethodInfo(method);
+        }
+
+    }
+
+    final class ConstantFieldInfoCache extends TruffleElementCache<ResolvedJavaField, ConstantFieldInfo> {
+
+        ConstantFieldInfoCache() {
+            super(CONSTANT_INFO_CACHE_SIZE); // cache size
+        }
+
+        @Override
+        protected Object createKey(ResolvedJavaField method) {
+            return new FieldKey(method);
+        }
+
+        @Override
+        protected ConstantFieldInfo computeValue(ResolvedJavaField method) {
+            return config.runtime().getConstantFieldInfo(method);
+        }
+
     }
 
 }

@@ -33,28 +33,34 @@ import org.graalvm.compiler.core.common.util.MethodKey;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Caches expensive idempotent values per {@link ResolvedJavaMethod} without causing leaks.
+ * Cache for method or field related data if it cannot be stored directly in the method or field.
  */
-public abstract class TruffleMethodCache<T> {
+public abstract class TruffleElementCache<K, V> {
 
-    private final Map<MethodKey, T> methodCache;
+    private final Map<Object, V> methodCache;
 
     @SuppressWarnings("serial")
-    protected TruffleMethodCache(int maxSize) {
-        methodCache = Collections.synchronizedMap(new LinkedHashMap<>() {
+    protected TruffleElementCache(int maxSize) {
+        this.methodCache = Collections.synchronizedMap(new LinkedHashMap<>() {
             @Override
-            protected boolean removeEldestEntry(Map.Entry<MethodKey, T> eldest) {
+            protected boolean removeEldestEntry(Map.Entry<Object, V> eldest) {
                 return size() > maxSize;
             }
         });
     }
 
-    public T get(ResolvedJavaMethod method) {
-        MethodKey key = new MethodKey(method);
+    /**
+     * Either use {@link MethodKey} or {@link ResolvedJavaMethod} directly.
+     */
+    protected abstract Object createKey(K method);
+
+    public final V get(K method) {
+        Object key = createKey(method);
+
         // It intentionally does not use Map#computeIfAbsent.
         // Collections.SynchronizedMap#computeIfAbsent implementation blocks readers during the
         // creation of the MethodCache.
-        T cache = methodCache.get(key);
+        V cache = methodCache.get(key);
         if (cache == null) {
             cache = computeValue(method);
             methodCache.putIfAbsent(key, cache);
@@ -62,10 +68,10 @@ public abstract class TruffleMethodCache<T> {
         return cache;
     }
 
-    protected abstract T computeValue(ResolvedJavaMethod method);
+    protected abstract V computeValue(K method);
 
     @Override
-    public String toString() {
+    public final String toString() {
         return methodCache.toString();
     }
 

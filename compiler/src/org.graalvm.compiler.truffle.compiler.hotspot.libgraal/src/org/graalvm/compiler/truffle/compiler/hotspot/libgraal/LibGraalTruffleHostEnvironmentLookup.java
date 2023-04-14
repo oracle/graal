@@ -24,14 +24,9 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import java.util.Collections;
-
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
 import org.graalvm.jniutils.JNI.JWeak;
@@ -87,16 +82,9 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
          * per type. So in theory multiple truffle runtimes can be loaded.
          */
         HSTruffleCompilerRuntime runtime = new HSTruffleCompilerRuntime(env, runtimeLocalRef, runtimeType, HotSpotGraalOptionValues.defaultOptions());
-        this.previousRuntime = environment = new TruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess(),
-                        LibGraalTruffleHostEnvironmentLookup::createCompiler);
+        this.previousRuntime = environment = new LibGraalTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
         assert JNIUtil.IsSameObject(env, hsRuntime(environment).getHandle(), runtimeLocalRef);
         return environment;
-    }
-
-    static TruffleCompilerImpl createCompiler(TruffleHostEnvironment env, CompilableTruffleAST ast) {
-        HotSpotTruffleCompilerImpl compiler = HotSpotTruffleCompilerImpl.create(env.runtime());
-        compiler.initialize(Collections.emptyMap(), ast, true);
-        return compiler;
     }
 
     private static HSTruffleCompilerRuntime hsRuntime(TruffleHostEnvironment environment) {

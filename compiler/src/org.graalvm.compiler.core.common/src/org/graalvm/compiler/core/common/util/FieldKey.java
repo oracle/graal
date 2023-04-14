@@ -28,26 +28,24 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Key type for a map when {@link ResolvedJavaMethod} cannot be used due to the
- * {@link ResolvedJavaMethod} keys potentially becoming invalid while the map is still in use. For
- * example, a JVMCI implementation can scope the validity of a {@link ResolvedJavaMethod} to a
- * single compilation such that VM resources held by the {@link ResolvedJavaMethod} object can be
- * released once compilation ends.
+ * Key type for a map when {@link ResolvedJavaField} cannot be used due to the
+ * {@link ResolvedJavaField} keys potentially becoming invalid while the map is still in use. For
+ * example, a JVMCI implementation can scope the validity of a {@link ResolvedJavaField} to a single
+ * compilation such that VM resources held by the {@link ResolvedJavaField} object can be released
+ * once compilation ends.
  *
- * @see FieldKey for keys created with {@link ResolvedJavaField}
+ * @see MethodKey for keys created with {@link ResolvedJavaMethod}
  */
-public final class MethodKey {
+public final class FieldKey {
 
     private final String declaringClass;
     private final String name;
-    private final String descriptor;
     private final int hashCode;
 
-    public MethodKey(ResolvedJavaMethod method) {
-        this.declaringClass = method.getDeclaringClass().getName();
-        this.name = method.getName();
-        this.descriptor = method.getSignature().toMethodDescriptor();
-        this.hashCode = method.hashCode();
+    public FieldKey(ResolvedJavaField field) {
+        this.declaringClass = field.getDeclaringClass().getName();
+        this.name = field.getName();
+        this.hashCode = field.hashCode();
     }
 
     public String getName() {
@@ -58,10 +56,6 @@ public final class MethodKey {
         return declaringClass;
     }
 
-    public String getDescriptor() {
-        return descriptor;
-    }
-
     @Override
     public int hashCode() {
         return hashCode;
@@ -69,18 +63,17 @@ public final class MethodKey {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof MethodKey) {
-            MethodKey that = (MethodKey) obj;
+        if (obj instanceof FieldKey) {
+            FieldKey that = (FieldKey) obj;
             return this.hashCode == that.hashCode &&
                             this.name.equals(that.name) &&
-                            this.declaringClass.equals(that.declaringClass) &&
-                            this.descriptor.equals(that.descriptor);
+                            this.declaringClass.equals(that.declaringClass);
         }
         return false;
     }
 
     @Override
     public String toString() {
-        return declaringClass + "." + name + descriptor;
+        return declaringClass + "." + name;
     }
 }

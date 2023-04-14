@@ -31,7 +31,6 @@ import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.compiler.TruffleMethodCache;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -66,21 +65,19 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * time. This restriction may be lifted in the future.
  * <p>
  */
-public final class TruffleHostEnvironment {
+public abstract class TruffleHostEnvironment {
+
+    protected static final int HOST_METHOD_CACHE_SIZE = 4096;
 
     public static Lookup lookup = GraalServices.loadSingle(Lookup.class, true);
     private final TruffleCompilerRuntime runtime;
     private final TruffleKnownHostTypes types;
-    private final CompilerFactory compilerFactory;
-    private final HostMethodCache hostCache;
 
     private volatile TruffleCompilerImpl compiler;
 
-    public TruffleHostEnvironment(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, CompilerFactory compilerFactory) {
+    public TruffleHostEnvironment(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess) {
         this.runtime = runtime;
         this.types = new TruffleKnownHostTypes(runtime, metaAccess);
-        this.compilerFactory = compilerFactory;
-        this.hostCache = new HostMethodCache();
     }
 
     /**
@@ -91,15 +88,13 @@ public final class TruffleHostEnvironment {
         TruffleHostEnvironment.lookup = l;
     }
 
-    public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        return hostCache.get(method);
-    }
+    public abstract HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method);
 
-    public TruffleCompilerRuntime runtime() {
+    public final TruffleCompilerRuntime runtime() {
         return runtime;
     }
 
-    public TruffleKnownHostTypes types() {
+    public final TruffleKnownHostTypes types() {
         return types;
     }
 
@@ -110,7 +105,7 @@ public final class TruffleHostEnvironment {
      * @throws UnsupportedOperationException if the truffle compiler cannot be obtained (e.g. on
      *             SVM)
      */
-    public TruffleCompilerImpl getTruffleCompiler(CompilableTruffleAST compilable) throws UnsupportedOperationException {
+    public final TruffleCompilerImpl getTruffleCompiler(CompilableTruffleAST compilable) throws UnsupportedOperationException {
         TruffleCompilerImpl c = compiler;
         if (c == null) {
             c = initializeCompiler(compilable);
@@ -122,9 +117,11 @@ public final class TruffleHostEnvironment {
         if (this.compiler != null) {
             return compiler;
         }
-        compiler = compilerFactory.createCompiler(this, compilable);
+        compiler = createCompiler(compilable);
         return compiler;
     }
+
+    protected abstract TruffleCompilerImpl createCompiler(CompilableTruffleAST compilable);
 
     /**
      * Looks up a Truffle host environment relative to a Java method. This method forwards to
@@ -151,29 +148,10 @@ public final class TruffleHostEnvironment {
         return lookup.lookup(relativeTo);
     }
 
-    @FunctionalInterface
-    public interface CompilerFactory {
-
-        TruffleCompilerImpl createCompiler(TruffleHostEnvironment env, CompilableTruffleAST compilable);
-
-    }
-
     public interface Lookup {
 
         TruffleHostEnvironment lookup(ResolvedJavaType type);
 
     }
 
-    final class HostMethodCache extends TruffleMethodCache<HostMethodInfo> {
-
-        HostMethodCache() {
-            super(1024); // cache size
-        }
-
-        @Override
-        protected HostMethodInfo computeValue(ResolvedJavaMethod method) {
-            return runtime.getHostMethodInfo(method);
-        }
-
-    }
 }

@@ -27,8 +27,6 @@ package org.graalvm.compiler.truffle.runtime.hotspot.java;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -59,17 +57,9 @@ public final class HotSpotTruffleHostEnvironmentLookup implements TruffleHostEnv
             if (env != null && env.runtime() == runtime) {
                 return env;
             }
-            this.environment = env = new TruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess(),
-                            HotSpotTruffleHostEnvironmentLookup::createCompiler);
+            this.environment = env = new HotSpotTruffleHostEnvironment(runtime, HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getMetaAccess());
         }
         return env;
-    }
-
-    private static TruffleCompilerImpl createCompiler(TruffleHostEnvironment env, CompilableTruffleAST compilable) {
-        /*
-         * If we directly compile in the host, we can just lookup the host compiler.
-         */
-        return (TruffleCompilerImpl) ((HotSpotTruffleRuntime) env.runtime()).getTruffleCompiler(compilable);
     }
 
     static boolean registerRuntime(HotSpotTruffleRuntime runtime) {

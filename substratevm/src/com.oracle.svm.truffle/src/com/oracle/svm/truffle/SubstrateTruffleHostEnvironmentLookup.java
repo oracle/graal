@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle;
 
-import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -41,7 +39,7 @@ public final class SubstrateTruffleHostEnvironmentLookup implements TruffleHostE
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleHostEnvironmentLookup(SubstrateTruffleRuntime runtime, MetaAccessProvider metaAccess) {
-        this.environment = new TruffleHostEnvironment(runtime, metaAccess, SubstrateTruffleHostEnvironmentLookup::createCompiler);
+        this.environment = new SubstrateTruffleHostEnvironment(runtime, metaAccess);
     }
 
     public SubstrateTruffleHostEnvironmentLookup() {
@@ -52,11 +50,6 @@ public final class SubstrateTruffleHostEnvironmentLookup implements TruffleHostE
     @Override
     public TruffleHostEnvironment lookup(ResolvedJavaType forType) {
         return environment;
-    }
-
-    @SuppressWarnings("unused")
-    private static TruffleCompilerImpl createCompiler(TruffleHostEnvironment env, CompilableTruffleAST compilable) {
-        throw new UnsupportedOperationException("Creating a truffle compiler during SVM host compilation is not supported.");
     }
 
 }
