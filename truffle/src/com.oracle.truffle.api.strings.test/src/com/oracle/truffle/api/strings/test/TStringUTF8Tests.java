@@ -187,8 +187,8 @@ public class TStringUTF8Tests extends TStringTestBase {
 
     @Test
     public void testIndexOf2() {
-        TruffleString a = TruffleString.fromCodePointUncached(0x102, UTF_8);
-        TruffleString b = TruffleString.fromCodePointUncached(0x10_0304, UTF_8);
+        TruffleString a = TruffleString.fromCodePointUncached(0x102, UTF_8, false);
+        TruffleString b = TruffleString.fromCodePointUncached(0x10_0304, UTF_8, false);
         TruffleString s1 = a.repeatUncached(10, UTF_8);
         TruffleString s2 = a.concatUncached(b, UTF_8, false);
         Assert.assertEquals(-1, s1.byteIndexOfStringUncached(s2, 0, s1.byteLength(UTF_8), UTF_8));

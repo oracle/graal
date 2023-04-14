@@ -103,6 +103,6 @@ public class TStringRepeatTest extends TStringTestBase {
 
     @Test(expected = OutOfMemoryError.class)
     public void testLargeN() {
-        node.execute(TruffleString.fromCodePointUncached(0xffff, TruffleString.Encoding.UTF_16), Integer.MAX_VALUE, TruffleString.Encoding.UTF_16);
+        node.execute(TruffleString.fromCodePointUncached(0xffff, TruffleString.Encoding.UTF_16, false), Integer.MAX_VALUE, TruffleString.Encoding.UTF_16);
     }
 }

@@ -52,7 +52,7 @@ public class TStringBasicTests extends TStringTestBase {
     @Test
     public void testIndexOutOfBounds() throws Exception {
         forAllEncodingsAndCodePoints((TruffleString.Encoding encoding, int codepoint) -> {
-            TruffleString s = TruffleString.fromCodePointUncached(codepoint, encoding);
+            TruffleString s = TruffleString.fromCodePointUncached(codepoint, encoding, false);
             for (int i : new int[]{Integer.MIN_VALUE, Integer.MIN_VALUE + 1, -1, 1, Integer.MAX_VALUE - 1, Integer.MAX_VALUE}) {
                 expectOutOfBoundsException(() -> s.codePointAtIndexUncached(i, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
             }
@@ -80,8 +80,8 @@ public class TStringBasicTests extends TStringTestBase {
         });
     }
 
-    private static void testTransCode(int codepoint, TruffleString.Encoding encodingA) throws Exception {
-        TruffleString stringA = TruffleString.fromCodePointUncached(codepoint, encodingA);
+    private static void testTransCode(int codepoint, TruffleString.Encoding encodingA) {
+        TruffleString stringA = TruffleString.fromCodePointUncached(codepoint, encodingA, false);
         Assert.assertEquals(codepoint, stringA.codePointAtIndexUncached(0, encodingA, TruffleString.ErrorHandling.BEST_EFFORT));
         if (isAsciiCompatible(encodingA)) {
             for (TruffleString.Encoding encodingB : TruffleString.Encoding.values()) {
@@ -109,7 +109,7 @@ public class TStringBasicTests extends TStringTestBase {
     }
 
     private static void testEncodeDecode(int codepoint, TruffleString.Encoding encoding) {
-        TruffleString tStringCP = TruffleString.fromCodePointUncached(codepoint, encoding);
+        TruffleString tStringCP = TruffleString.fromCodePointUncached(codepoint, encoding, false);
         Assert.assertEquals(codepoint, tStringCP.codePointAtIndexUncached(0, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
         Assert.assertEquals(codepoint, tStringCP.createCodePointIteratorUncached(encoding).nextUncached());
         Assert.assertEquals(codepoint, tStringCP.createBackwardCodePointIteratorUncached(encoding).previousUncached());
@@ -119,7 +119,7 @@ public class TStringBasicTests extends TStringTestBase {
             Assert.assertEquals(codepoint, TruffleString.fromJavaStringUncached(javaString, TruffleString.Encoding.UTF_16, true).codePointAtIndexUncached(0, TruffleString.Encoding.UTF_16,
                             TruffleString.ErrorHandling.BEST_EFFORT));
             for (int first : new int[]{'x', codepoint}) {
-                TruffleString tStringFirst = TruffleString.fromCodePointUncached(first, encoding);
+                TruffleString tStringFirst = TruffleString.fromCodePointUncached(first, encoding, false);
                 Assert.assertEquals(codepoint, tStringFirst.concatUncached(tStringCP, encoding, true).codePointAtIndexUncached(1, encoding, TruffleString.ErrorHandling.BEST_EFFORT));
                 Assert.assertEquals(codepoint, tStringFirst.concatUncached(tStringCP, encoding, true).substringUncached(1, 1, encoding, true).codePointAtIndexUncached(0, encoding,
                                 TruffleString.ErrorHandling.BEST_EFFORT));

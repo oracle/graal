@@ -92,7 +92,7 @@ public class CompareBenchmark extends TStringBenchmarkBase {
     private static TruffleString createDiff(TruffleString s, int pos) {
         int charPos = pos < 0 ? s.byteLength(ENCODING) + (pos * 2) : pos * 2;
         return s.substringByteIndexUncached(0, charPos, ENCODING, true).concatUncached(
-                        TruffleString.fromCodePointUncached('!', ENCODING), ENCODING, false).concatUncached(
+                        TruffleString.fromCodePointUncached('!', ENCODING, false), ENCODING, false).concatUncached(
                                         s.substringByteIndexUncached(charPos, s.byteLength(ENCODING) - charPos, ENCODING, true), ENCODING, false);
     }
 

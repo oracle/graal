@@ -1558,7 +1558,9 @@ public final class TruffleString extends AbstractTruffleString {
          * Creates a new TruffleString from a given code point.
          *
          * @since 22.1
+         * @deprecated use {@link #execute(int, Encoding, boolean)} instead.
          */
+        @Deprecated(since = "23.0")
         public final TruffleString execute(int codepoint, Encoding encoding) {
             return execute(codepoint, encoding, encoding == Encoding.UTF_16);
         }
@@ -1723,7 +1725,9 @@ public final class TruffleString extends AbstractTruffleString {
      * Shorthand for calling the uncached version of {@link FromCodePointNode}.
      *
      * @since 22.1
+     * @deprecated use {@link #fromCodePointUncached(int, Encoding, boolean)} instead.
      */
+    @Deprecated(since = "23.0")
     @TruffleBoundary
     public static TruffleString fromCodePointUncached(int codepoint, Encoding encoding) {
         return FromCodePointNode.getUncached().execute(codepoint, encoding);

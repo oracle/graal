@@ -69,7 +69,7 @@ public class TStringCornerCaseTests extends TStringTestBase {
 
     @Test
     public void testForceEncodingStringCompaction2() {
-        TruffleString a = TruffleString.fromCodePointUncached('\'', TruffleString.Encoding.US_ASCII);
+        TruffleString a = TruffleString.fromCodePointUncached('\'', TruffleString.Encoding.US_ASCII, false);
         Assert.assertEquals('\'', a.forceEncodingUncached(TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_16).codePointAtByteIndexUncached(0, TruffleString.Encoding.UTF_16));
     }
 
