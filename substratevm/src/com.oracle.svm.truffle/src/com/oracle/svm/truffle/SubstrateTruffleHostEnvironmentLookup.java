@@ -33,15 +33,26 @@ import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This handles the Truffle host environment lookup on SVM. During native image compilation the host
+ * environment is set. Later during runtime the host environment must not be used.
+ */
 public final class SubstrateTruffleHostEnvironmentLookup implements TruffleHostEnvironment.Lookup {
 
     private final TruffleHostEnvironment environment;
 
+    /**
+     * Used for SVM with the {@link TruffleFeature} enabled.
+     */
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleHostEnvironmentLookup(SubstrateTruffleRuntime runtime, MetaAccessProvider metaAccess) {
         this.environment = new SubstrateTruffleHostEnvironment(runtime, metaAccess);
     }
 
+    /**
+     * Used for SVM with only the {@link TruffleBaseFeature} enabled.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleHostEnvironmentLookup() {
         this.environment = null;
     }

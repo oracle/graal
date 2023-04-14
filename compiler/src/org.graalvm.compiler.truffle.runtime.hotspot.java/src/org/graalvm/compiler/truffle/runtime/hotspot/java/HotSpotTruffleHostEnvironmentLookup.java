@@ -32,6 +32,11 @@ import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This handles the Truffle host environment lookup on HotSpot without libgraal. For HotSpot without
+ * libgraal the Truffle host runtime can be discovered using a static value, which was set on
+ * registration.
+ */
 @ServiceProvider(TruffleHostEnvironment.Lookup.class)
 public final class HotSpotTruffleHostEnvironmentLookup implements TruffleHostEnvironment.Lookup {
 

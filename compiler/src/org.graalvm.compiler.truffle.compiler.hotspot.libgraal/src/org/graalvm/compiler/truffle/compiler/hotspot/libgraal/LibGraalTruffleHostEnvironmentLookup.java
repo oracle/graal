@@ -39,16 +39,26 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * This handles the Truffle host environment lookup on HotSpot with Libgraal.
+ * <p>
+ * For Libgraal the Truffle runtime needs to be discovered across multiple isolates. When a Truffle
+ * runtime in libgraal configuration gets initialized then {@link #registerRuntime(JNIEnv, JObject)}
+ * gets called in any libgraal isolate. We remember the registered Truffle runtime using a weak
+ * global JNI reference in a {@link GlobalAtomicLong}. Since we use a {@link GlobalAtomicLong} to
+ * remember the reference, all libgraal isolates now see the registered runtime and can provide
+ * access to it. This way any libgraal host compilation isolate can see Truffle after it was first
+ * initialized even if none of the Truffle compilation isolates are still alive. Another positive
+ * side-effect of this is that Truffle related host compilation intrinsics and phases are never
+ * applied if no Truffle runtime was ever registered.
+ */
 public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEnvironment.Lookup {
 
     private static final int NO_TRUFFLE_REGISTERED = 0;
     private static final GlobalAtomicLong WEAK_RUNTIME_INSTANCE = new GlobalAtomicLong(NO_TRUFFLE_REGISTERED);
 
-    @RecomputeFieldValue(kind = Kind.Reset) private ResolvedJavaField classLoaderField;
-    @RecomputeFieldValue(kind = Kind.Reset) private ResolvedJavaField parentClassLoaderField;
     @RecomputeFieldValue(kind = Kind.Reset) private TruffleHostEnvironment previousRuntime;
 
     @Override
@@ -61,20 +71,20 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
         JNIEnv env = JNIMethodScope.env();
         JObject runtimeLocalRef = JNIUtil.NewLocalRef(env, WordFactory.pointer(globalReference));
         if (runtimeLocalRef.isNull()) {
-            // Truffle was freed
+            // Truffle was GC'ed
             return null;
         }
         TruffleHostEnvironment environment = this.previousRuntime;
         if (environment != null) {
             JObject cached = hsRuntime(environment).getHandle();
             if (JNIUtil.IsSameObject(env, cached, runtimeLocalRef)) {
-                // fast path for truffle
+                // fast path for registered and cached Truffle runtime handle
                 return environment;
             }
         }
         ResolvedJavaType runtimeType = LibGraal.asResolvedJavaType(JNIUtil.GetObjectClass(env, runtimeLocalRef).rawValue());
         if (runtimeType == null) {
-            // type cannot be resolved
+            assert false : "The object class needs to be available for a Truffle runtime object.";
             return null;
         }
         /*
