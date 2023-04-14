@@ -85,8 +85,8 @@ import jdk.vm.ci.amd64.AMD64;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp",
           lineStart = 32,
           lineEnd   = 363,
-          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
-          sha1      = "e9a6f1abd99c2112a716e26918e9410dbdfb2710")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "1ca91265ff7b638628469c923c2c0051e528790c")
 // @formatter:on
 public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
 

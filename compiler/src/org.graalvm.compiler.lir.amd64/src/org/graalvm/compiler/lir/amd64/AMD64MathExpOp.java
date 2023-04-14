@@ -90,8 +90,8 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_exp.cpp",
           lineStart = 32,
           lineEnd   = 385,
-          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
-          sha1      = "89f217c368ed72eea08baa29f5b905f010a379dc")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "219106b137bac6345b31ef2e2d45eb6b15bfc2f3")
 // @formatter:on
 public final class AMD64MathExpOp extends AMD64MathIntrinsicUnaryOp {
 

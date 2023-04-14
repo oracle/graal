@@ -45,13 +45,13 @@ import jdk.vm.ci.meta.AllocatableValue;
 @StubPort(path      = "src/hotspot/cpu/x86/x86_64.ad",
           lineStart = 12790,
           lineEnd   = 12814,
-          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
-          sha1      = "997a3fd0c34599035d44866b15f1efc7eb28945e")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "4da2dc10643f8141ec40e338a588f6b0f05c2a6f")
 @StubPort(path      = "src/hotspot/cpu/x86/x86_64.ad",
           lineStart = 12842,
           lineEnd   = 12866,
-          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
-          sha1      = "9c6287fe33d5c9be006582942ba131188a924ee3")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "2c16828068d24fd532c9954fef69c7bafa1138fc")
 // @formatter:on
 public class AMD64NormalizedUnsignedCompareOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64NormalizedUnsignedCompareOp> TYPE = LIRInstructionClass.create(AMD64NormalizedUnsignedCompareOp.class);

@@ -39,8 +39,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 @StubPort(path      = "src/hotspot/cpu/aarch64/aarch64.ad",
           lineStart = 14065,
           lineEnd   = 14089,
-          commit    = "6b9b7d1d921367418f82c2813b272d3447a47595",
-          sha1      = "dbb9206a315ed8fe2eae0287681c776a668c1833")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "5e7655c00a9d610fa3c992305c0f6aeba32b2d6c")
 // @formatter:on
 public class AArch64BitSwapOp extends AArch64LIRInstruction {
 
