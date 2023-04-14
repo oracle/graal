@@ -119,10 +119,9 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -131,7 +130,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -173,9 +171,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -250,14 +245,6 @@ public class TruffleFeature implements InternalFeature {
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         new SubstrateThreadLocalHandshakeSnippets(options, providers, lowerings);
-    }
-
-    @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        Architecture arch = providers.getLowerer().getTarget().arch;
-        if (arch instanceof AMD64 || arch instanceof AArch64) {
-            TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins(), providers.getReplacements());
-        }
     }
 
     @Override

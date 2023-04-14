@@ -27,24 +27,42 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
 import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
+
+import jdk.vm.ci.code.Architecture;
 
 public final class TruffleCommunityCompilerConfiguration extends CommunityCompilerConfiguration {
 
     @Override
     public HighTier createHighTier(OptionValues options) {
         HighTier highTier = super.createHighTier(options);
-        HostInliningPhase.install(highTier, options);
-        InjectImmutableFrameFieldsPhase.install(highTier, options);
+        installCommunityHighTier(options, highTier);
         return highTier;
     }
 
+    public static void installCommunityHighTier(OptionValues options, HighTier defaultHighTier) {
+        HostInliningPhase.install(defaultHighTier, options);
+        InjectImmutableFrameFieldsPhase.install(defaultHighTier, options);
+    }
+
     @Override
-    public void registerGraphBuilderPlugins(Plugins plugins, OptionValues options) {
-        super.registerGraphBuilderPlugins(plugins, options);
+    public void registerGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options, Replacements replacements) {
+        super.registerGraphBuilderPlugins(arch, plugins, options, replacements);
+        registerCommunityGraphBuilderPlugins(arch, plugins, options, replacements);
+    }
+
+    public static void registerCommunityGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options, Replacements replacements) {
         HostInliningPhase.installInlineInvokePlugin(plugins, options);
+        plugins.getInvocationPlugins().defer(new Runnable() {
+            @Override
+            public void run() {
+                TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins(), replacements);
+            }
+        });
     }
 
 }

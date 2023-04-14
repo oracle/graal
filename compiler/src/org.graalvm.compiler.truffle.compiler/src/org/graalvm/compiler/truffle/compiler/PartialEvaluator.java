@@ -135,7 +135,7 @@ public abstract class PartialEvaluator {
         this.firstTierDecodingPlugins = createDecodingInvocationPlugins(config.firstTier().partialEvaluator(), configForRoot.getPlugins(), config.firstTier().providers());
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
-        this.constantFieldProvider = new TruffleConstantFieldProvider(this, new TruffleStringConstantFieldProvider(getProviders(), types));
+        this.constantFieldProvider = new TruffleConstantFieldProvider(this, getProviders().getConstantFieldProvider());
     }
 
     protected void initialize(OptionValues options) {
@@ -408,7 +408,6 @@ public abstract class PartialEvaluator {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
         InvocationPlugins decodingPlugins = context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins;
-
         DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
                         method -> getMethodInfo(method).inlineForPartialEvaluation() == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 

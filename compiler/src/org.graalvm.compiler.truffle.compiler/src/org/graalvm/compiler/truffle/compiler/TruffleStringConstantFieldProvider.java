@@ -43,6 +43,7 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
 
     public TruffleStringConstantFieldProvider(Providers providers, KnownTruffleTypes types) {
         this.graalConstantFieldProvider = providers.getConstantFieldProvider();
+        assert !(graalConstantFieldProvider instanceof TruffleStringConstantFieldProvider) : "recursive truffle string constant field provider";
         this.metaAccess = providers.getMetaAccess();
         this.types = types;
         this.byteArrayType = metaAccess.lookupJavaType(byte[].class);
