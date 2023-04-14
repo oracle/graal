@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -57,6 +58,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     private final PartialEvaluationMethodInfoCache methodInfoCache = new PartialEvaluationMethodInfoCache();
     private final ConstantFieldInfoCache constantInfoCache = new ConstantFieldInfoCache();
+
+    private final ConcurrentMap<PartialEvaluationMethodInfo, PartialEvaluationMethodInfo> canonicalMethodInfos = new ConcurrentHashMap<>();
 
     public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         super(config, configForRoot);
@@ -163,7 +166,13 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
         @Override
         protected PartialEvaluationMethodInfo computeValue(ResolvedJavaMethod method) {
-            return config.runtime().getPartialEvaluationMethodInfo(method);
+            PartialEvaluationMethodInfo methodInfo = config.runtime().getPartialEvaluationMethodInfo(method);
+            /*
+             * We can canonicalize the instances to reduce space required in the cache. There are
+             * only a small number of possible instances of PartialEvaluationMethodInfo as it just
+             * contains a bunch of flags.
+             */
+            return canonicalMethodInfos.computeIfAbsent(methodInfo, k -> k);
         }
 
     }
