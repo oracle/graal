@@ -30,9 +30,9 @@ package com.oracle.objectfile.debugentry;
  * Tracks debug info associated with a Java source file.
  */
 public class FileEntry {
-    private String fileName;
-    private DirEntry dirEntry;
-    private int idx;
+    private final String fileName;
+    private final DirEntry dirEntry;
+    private final int idx;
 
     public FileEntry(String fileName, DirEntry dirEntry, int idx) {
         this.fileName = fileName;

@@ -63,7 +63,7 @@ import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_stack_value;
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     // auxiliary class used to track byte array positions
     protected class Cursor {
-        int pos;
+        private int pos;
 
         public Cursor() {
             this(0);
@@ -90,7 +90,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    protected DwarfDebugInfo dwarfSections;
+    protected final DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
     protected long debugTextBase = 0;
     protected long debugAddress = 0;

@@ -310,22 +310,22 @@ public class DwarfDebugInfo extends DebugInfoBase {
      */
     public static final String HUB_TYPE_NAME = "java.lang.Class";
 
-    private DwarfStrSectionImpl dwarfStrSection;
-    private DwarfAbbrevSectionImpl dwarfAbbrevSection;
-    private DwarfInfoSectionImpl dwarfInfoSection;
-    private DwarfLocSectionImpl dwarfLocSection;
-    private DwarfARangesSectionImpl dwarfARangesSection;
-    private DwarfLineSectionImpl dwarfLineSection;
-    private DwarfFrameSectionImpl dwarfFameSection;
+    private final DwarfStrSectionImpl dwarfStrSection;
+    private final DwarfAbbrevSectionImpl dwarfAbbrevSection;
+    private final DwarfInfoSectionImpl dwarfInfoSection;
+    private final DwarfLocSectionImpl dwarfLocSection;
+    private final DwarfARangesSectionImpl dwarfARangesSection;
+    private final DwarfLineSectionImpl dwarfLineSection;
+    private final DwarfFrameSectionImpl dwarfFameSection;
     public final ELFMachine elfMachine;
     /**
      * Register used to hold the heap base.
      */
-    private byte heapbaseRegister;
+    private final byte heapbaseRegister;
     /**
      * Register used to hold the current thread.
      */
-    private byte threadRegister;
+    private final byte threadRegister;
 
     /**
      * A collection of properties associated with each generated type record indexed by type name.

@@ -716,17 +716,6 @@ public abstract class DebugInfoBase {
         return classEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
     }
 
-    public int classLayoutAbbrevCode(ClassEntry classEntry) {
-        if (!useHeapBase & isHubClassEntry(classEntry)) {
-            /*
-             * This layout adds special logic to remove tag bits from indirect pointers to this
-             * type.
-             */
-            return DwarfDebugInfo.DW_ABBREV_CODE_class_layout2;
-        }
-        return DwarfDebugInfo.DW_ABBREV_CODE_class_layout1;
-    }
-
     public ClassEntry getHubClassEntry() {
         return hubClassEntry;
     }

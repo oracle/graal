@@ -43,7 +43,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
     /**
      * Details of fields located in this instance.
      */
-    protected List<FieldEntry> fields;
+    protected final List<FieldEntry> fields;
 
     public StructureTypeEntry(String typeName, int size) {
         super(typeName, size);

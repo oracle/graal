@@ -36,8 +36,8 @@ import java.nio.file.Path;
  * into directory tables once only rather than once per file.
  */
 public class DirEntry {
-    private Path path;
-    private int idx;
+    private final Path path;
+    private final int idx;
 
     public DirEntry(Path path, int idx) {
         this.path = path;

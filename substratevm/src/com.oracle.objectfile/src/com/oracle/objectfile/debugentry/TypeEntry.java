@@ -41,7 +41,7 @@ public abstract class TypeEntry {
     /**
      * The name of this type.
      */
-    protected String typeName;
+    protected final String typeName;
 
     /**
      * The offset of the java.lang.Class instance for this class in the image heap or -1 if no such
@@ -52,7 +52,7 @@ public abstract class TypeEntry {
     /**
      * The size of an occurrence of this type in bytes.
      */
-    protected int size;
+    protected final int size;
 
     protected TypeEntry(String typeName, int size) {
         this.typeName = typeName;

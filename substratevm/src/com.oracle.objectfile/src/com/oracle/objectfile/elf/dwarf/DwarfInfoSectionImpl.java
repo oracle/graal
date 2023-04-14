@@ -63,7 +63,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     /**
      * The name of a special DWARF struct type used to model an object header.
      */
-    public static final String OBJECT_HEADER_STRUCT_NAME = "_objhdr";
+    private static final String OBJECT_HEADER_STRUCT_NAME = "_objhdr";
 
     /**
      * An info header section always contains a fixed number of bytes.

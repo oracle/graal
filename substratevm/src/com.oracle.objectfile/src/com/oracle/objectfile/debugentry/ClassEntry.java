@@ -62,7 +62,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of the associated file.
      */
-    private FileEntry fileEntry;
+    private final FileEntry fileEntry;
     /**
      * Details of the associated loader.
      */
