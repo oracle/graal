@@ -716,33 +716,13 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         StaticObject doForeignNumber(Object value,
-                        @Bind("getMeta()") Meta meta,
-                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
-            try {
-                if (interop.fitsInByte(value)) {
-                    return meta.boxByte(interop.asByte(value));
-                }
-                if (interop.fitsInShort(value)) {
-                    return meta.boxShort(interop.asShort(value));
-                }
-                if (interop.fitsInInt(value)) {
-                    return meta.boxInteger(interop.asInt(value));
-                }
-                if (interop.fitsInLong(value)) {
-                    return meta.boxLong(interop.asLong(value));
-                }
-                if (interop.fitsInFloat(value)) {
-                    return meta.boxFloat(interop.asFloat(value));
-                }
-                if (interop.fitsInDouble(value)) {
-                    return meta.boxDouble(interop.asDouble(value));
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("Contract violation: if isNumber returns true, foreign object must fit in one of the primitives.");
-            } catch (UnsupportedMessageException ex) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere("Contract violation: if isNumber returns true, foreign object must fit in one of the primitives.");
+                        @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context) throws UnsupportedTypeException {
+            if (interop.fitsInDouble(value)) {
+                return StaticObject.createForeign(getLanguage(), getMeta().java_lang_Number, value, interop);
             }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw UnsupportedTypeException.create(new Object[]{value}, "unsupported number");
         }
 
         @Specialization(guards = {
