@@ -29,7 +29,6 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -42,7 +41,6 @@ import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -184,57 +182,11 @@ public abstract class SubstrateBackend extends Backend {
          * This class makes up for some deficiencies in the current implementation of equals on
          * class BytecodeFrame.
          */
-        private static class BytecodeFrameEquivalence extends Equivalence {
-            private static BytecodeFrameEquivalence DEFAULT = new BytecodeFrameEquivalence();
-
-            @Override
-            public boolean equals(Object a, Object b) {
-                if (!(a instanceof BytecodeFrame) || !(b instanceof BytecodeFrame)) {
-                    return false;
-                }
-                BytecodeFrame thisFrame = (BytecodeFrame) a;
-                BytecodeFrame thatFrame = (BytecodeFrame) b;
-                while (thisFrame != thatFrame && thisFrame != null && thatFrame != null) {
-                    if (!(thisFrame.getBCI() == thatFrame.getBCI() &&
-                                    Objects.equals(thisFrame.getMethod(), thatFrame.getMethod()) &&
-                                    Objects.equals(thisFrame.caller(), thatFrame.caller()) &&
-                                    // BytecodeFrame.equals currently returns true even when these
-                                    // tests fail!
-                                    thisFrame.duringCall == thatFrame.duringCall &&
-                                    thisFrame.rethrowException == thatFrame.rethrowException &&
-                                    thisFrame.numLocals == thatFrame.numLocals &&
-                                    thisFrame.numLocks == thatFrame.numLocks &&
-                                    thisFrame.numStack == thatFrame.numStack &&
-                                    Arrays.equals(thisFrame.values, thatFrame.values))) {
-                        return false;
-                    }
-                    // BytecodeFrame.equals does not check slot kinds!
-                    for (int i = 0; i < thisFrame.numLocals; i++) {
-                        if (thisFrame.getLocalValueKind(i) != thatFrame.getLocalValueKind(i)) {
-                            return false;
-                        }
-                    }
-                    for (int i = 0; i < thisFrame.numStack; i++) {
-                        if (thisFrame.getStackValueKind(i) != thatFrame.getStackValueKind(i)) {
-                            return false;
-                        }
-                    }
-                    thisFrame = thisFrame.caller();
-                    thatFrame = thatFrame.caller();
-                }
-                return thisFrame == thatFrame;
-            }
-
-            @Override
-            public int hashCode(Object o) {
-                return o.hashCode();
-            }
-        }
 
         private static void compressInfoPoints(CompilationResult result) {
             List<Infopoint> infopointsCopy = new ArrayList<>(result.getInfopoints());
             result.clearInfopoints();
-            EconomicMap<BytecodeFrame, BytecodeFrame> frameMap = EconomicMap.create(BytecodeFrameEquivalence.DEFAULT);
+            EconomicMap<BytecodeFrame, BytecodeFrame> frameMap = EconomicMap.create();
             for (Infopoint infopoint : infopointsCopy) {
                 Infopoint newInfopoint = removeDuplicates(infopoint, frameMap);
                 assert verifyEqual(newInfopoint, infopoint) : "new " + newInfopoint + "\n    !=\n" + infopoint;
