@@ -37,7 +37,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -71,7 +70,6 @@ final class ExpansionStatistics {
     private final Map<CompilationTier, Map<ResolvedJavaMethod, Stats>> methodExpansionStatistics = new HashMap<>();
     private final Map<CompilationTier, Map<NodeClassKey, Stats>> nodeExpansionStatistics = new HashMap<>();
     private final Map<CompilationTier, Map<NodeSpecializationKey, Stats>> specializationExpansionStatistics = new HashMap<>();
-    private final ConcurrentHashMap<ResolvedJavaMethod, Boolean> isSpecializationMethodCache = new ConcurrentHashMap<>();
 
     private ExpansionStatistics(PartialEvaluator partialEvaluator,
                     Set<CompilationTier> traceMethodExpansion, Set<CompilationTier> traceNodeExpansion,
@@ -181,7 +179,7 @@ final class ExpansionStatistics {
             combineExpansionStatistics(tier, this.nodeExpansionStatistics, classSums);
 
             Map<NodeSpecializationKey, Stats> specializationSums = new HashMap<>();
-            nodeTree.acceptStats(specializationSums, (tree) -> new NodeSpecializationKey(tree, isSpecializationMethodCache), compilable.getName());
+            nodeTree.acceptStats(specializationSums, (tree) -> new NodeSpecializationKey(tree), compilable.getName());
 
             combineExpansionStatistics(tier, this.specializationExpansionStatistics, specializationSums);
         }
@@ -501,9 +499,9 @@ final class ExpansionStatistics {
         private final NodeClassKey classKey;
         private final Set<ResolvedJavaMethod> specializations;
 
-        NodeSpecializationKey(TreeNode tree, ConcurrentHashMap<ResolvedJavaMethod, Boolean> isSpecializationCache) {
+        NodeSpecializationKey(TreeNode tree) {
             this.classKey = new NodeClassKey(tree);
-            this.specializations = tree.findSpecializationMethods(isSpecializationCache);
+            this.specializations = tree.findSpecializationMethods();
         }
 
         @Override
@@ -724,7 +722,7 @@ final class ExpansionStatistics {
             this.label = label;
         }
 
-        Set<ResolvedJavaMethod> findSpecializationMethods(ConcurrentHashMap<ResolvedJavaMethod, Boolean> cache) {
+        Set<ResolvedJavaMethod> findSpecializationMethods() {
             Set<ResolvedJavaMethod> specializations = new HashSet<>();
             int nodeId = getTruffleNodeId(position);
 
@@ -737,35 +735,29 @@ final class ExpansionStatistics {
                         break;
                     }
                     ResolvedJavaMethod method = currentPos.getMethod();
-                    if (method != null && isSpecializationMethod(method, cache)) {
+                    if (method != null && isSpecializationMethod(method)) {
                         specializations.add(currentPos.getMethod());
                     }
                     currentPos = currentPos.getCaller();
                 }
             }
-            findSpecializationMethodsWithNodeId(specializations, nodeId, cache);
+            findSpecializationMethodsWithNodeId(specializations, nodeId);
 
             return specializations;
         }
 
-        private boolean isSpecializationMethod(ResolvedJavaMethod method, ConcurrentHashMap<ResolvedJavaMethod, Boolean> cache) {
-            /*
-             * We cache because libgraal jni transitions are expensive and we need to query this
-             * property many times for the methods. If GR-25553 gets to be implemented then we
-             * should just use the normal annotation API that is internally cached.
-             */
-            // TODO remove cache
-            return cache.computeIfAbsent(method, (m) -> partialEvaluator.getMethodInfo(method).isSpecializationMethod());
+        private boolean isSpecializationMethod(ResolvedJavaMethod method) {
+            return partialEvaluator.getMethodInfo(method).isSpecializationMethod();
         }
 
-        private void findSpecializationMethodsWithNodeId(Set<ResolvedJavaMethod> specializations, int nodeId, ConcurrentHashMap<ResolvedJavaMethod, Boolean> cache) {
+        private void findSpecializationMethodsWithNodeId(Set<ResolvedJavaMethod> specializations, int nodeId) {
             for (Node node : graalNodes) {
                 NodeSourcePosition currentPos = node.getNodeSourcePosition();
                 while (currentPos != null) {
                     SourceLanguagePosition sourceLang = currentPos.getSourceLanguage();
                     if (sourceLang != null && sourceLang.getNodeId() == nodeId) {
                         ResolvedJavaMethod method = currentPos.getMethod();
-                        if (method != null && isSpecializationMethod(method, cache)) {
+                        if (method != null && isSpecializationMethod(method)) {
                             specializations.add(currentPos.getMethod());
                         }
                     }
@@ -773,7 +765,7 @@ final class ExpansionStatistics {
                 }
             }
             for (TreeNode child : children.values()) {
-                child.findSpecializationMethodsWithNodeId(specializations, nodeId, cache);
+                child.findSpecializationMethodsWithNodeId(specializations, nodeId);
             }
         }
 
