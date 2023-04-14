@@ -65,6 +65,7 @@ import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
+import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -302,9 +303,9 @@ public class StackifierIRWalker extends IRWalker {
                 lowerSwitch((IntegerSwitchNode) lastNode, stackifierData);
             } else if (lastNode instanceof TypeSwitchNode) {
                 lowerTypeSwitch((TypeSwitchNode) lastNode, stackifierData);
-            } else if (lastNode instanceof WithExceptionNode) {
+            } else if (isWithExceptionNode(lastNode)) {
                 lowerWithExceptionStackifier(currentBlock, (WithExceptionNode) lastNode);
-            } else if (lastNode instanceof ControlSplitNode) {
+            } else if ((lastNode instanceof ControlSplitNode) && !(lastNode instanceof BasicArrayCopyNode)) {
                 // BasicArrayCopyNode is also a ControlSplitNode
                 assert false : "Unsupported control split node " + lastNode + " is not implemented yet";
             } else if (lastNode instanceof LoopEndNode) {
@@ -634,9 +635,7 @@ public class StackifierIRWalker extends IRWalker {
                     continue;
                 }
             }
-
             ArrayList<Integer> succKeys = new ArrayList<>();
-
             // query all keys that have the succ as block succ
             for (int keyIndex = 0; keyIndex < switchNode.keyCount(); keyIndex++) {
                 // the key
@@ -646,24 +645,20 @@ public class StackifierIRWalker extends IRWalker {
                     succKeys.add(key);
                 }
             }
-
             assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
-
             int[] succk = new int[succKeys.size()];
             for (int s = 0; s < succKeys.size(); s++) {
                 succk[s] = succKeys.get(s);
             }
-
             lowerSwitchCase(switchNode, succ, succk);
-
             if (caseScopes[i] != null) {
                 lowerBlocks(caseScopes[i].getSortedBlocks());
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ), stackifierData);
             }
+            genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
-
         if (hasdefault) {
             lowerSwitchDefaultCase(switchNode);
             int defaultIndex = switchNode.defaultSuccessorIndex();
@@ -672,6 +667,7 @@ public class StackifierIRWalker extends IRWalker {
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()), stackifierData);
             }
+            genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         codeGenTool.genScopeEnd();
@@ -789,11 +785,13 @@ public class StackifierIRWalker extends IRWalker {
             assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
             lowerTypeSwitchCase(switchNode, succ, i, succKeys);
             generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ), stackifierData);
+            genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         if (hasdefault) {
             lowerTypeSwitchDefaultCase(switchNode);
             generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()), stackifierData);
+            genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
     }
@@ -819,24 +817,27 @@ public class StackifierIRWalker extends IRWalker {
         codeGenTool.genWhileTrueHeader();
     }
 
+    /**
+     * Generates a break statement at the end of a loop or a switch case statement,
+     * used to kill the implicit loop back-edge. See comment in {@link #genLoopEnd} for further explanation.
+     */
+    protected void genBlockEndBreak() {
+        codeGenTool.genBreak();
+    }
+
     private void genLoopEnd(HIRBlock header) {
         assert header.isLoopHeader();
         String label = getLabel(header);
         blockNestingVerifier.popLabel(label);
         /*
-         * A break statement was originally emitted before the loop end in order to get rid of the
-         * implicit back edge. The explanation given was as follows:
-         *
-         * Example: If the Graal IR contains a loop with 2 back edges, it has 2 LoopEndNodes. The
-         * generated code will have 2 back-edges because of 2 continue statements for the
-         * LoopEndNodes and 1 back-edge that comes from the loop end. This back-edge needs to be
-         * suppressed (i.e. made unreachable) with the break statement to guarantee that the
+         * A break statement is always emitted before the loop end in order to get rid of the
+         * implicit back edge. Example: If the Graal IR contains a loop with 2 back edges, it has 2
+         * LoopEndNodes. The generated code will have 2 back-edges because of 2 continue statements
+         * for the LoopEndNodes and 1 back-edge that comes from the loop end. This back-edge needs
+         * to be suppressed (i.e. made unreachable) with the break statement to guarantee that the
          * generated loop has the same semantics as the Graal IR.
-         *
-         * However, all blocks contained within the loop will themselves contain either a break or a
-         * continue statement, meaning that the final break before the loop is always unreachable
-         * and thus unnecessary.
          */
+        genBlockEndBreak();
         codeGenTool.genScopeEnd();
         codeGenTool.genComment("End of loop " + label);
     }
