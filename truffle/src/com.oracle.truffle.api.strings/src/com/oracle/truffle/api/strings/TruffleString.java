@@ -2122,7 +2122,10 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Shorthand for calling the uncached version of {@link FromJavaStringNode}.
-     *
+     * <p>
+     * For constant strings, it is recommended to use
+     * {@link #fromConstant(String, Encoding, boolean)} instead.
+     * 
      * @since 23.0
      */
     @TruffleBoundary
@@ -2133,6 +2136,8 @@ public final class TruffleString extends AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link FromJavaStringNode}.
      *
+     * @deprecated use {@link #fromJavaStringUncached(String, int, int, Encoding, boolean, boolean)}
+     *             instead.
      * @since 22.1
      */
     @Deprecated(since = "23.0")
@@ -2143,8 +2148,11 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Shorthand for calling the uncached version of {@link FromJavaStringNode}.
+     * <p>
+     * For constant strings, it is recommended to use
+     * {@link #fromConstant(String, Encoding, boolean)} instead.
      *
-     * @since 22.1
+     * @since 23.0
      */
     @TruffleBoundary
     public static TruffleString fromJavaStringUncached(String s, int charOffset, int length, Encoding encoding, boolean copy, boolean allowUTF16Surrogates) {
