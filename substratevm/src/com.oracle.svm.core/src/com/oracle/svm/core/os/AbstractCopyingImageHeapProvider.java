@@ -84,6 +84,9 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
 
         if (haveDynamicMethodResolution) {
             heapBase = heapBase.add(preHeapRequiredBytes);
+            if (allocatedMemory.isNonNull()) {
+                allocatedMemory.add(preHeapRequiredBytes);
+            }
             Pointer installOffset = heapBase.subtract(DynamicMethodAddressResolutionHeapSupport.get().getRequiredPreHeapMemoryInBytes());
             int error = DynamicMethodAddressResolutionHeapSupport.get().install(installOffset);
 
@@ -155,9 +158,17 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
 
     @Override
     @Uninterruptible(reason = "Called during isolate tear-down.")
-    public int freeImageHeap(PointerBase imageHeap) {
-        if (imageHeap.isNonNull()) {
-            if (VirtualMemoryProvider.get().free(imageHeap, getImageHeapAddressSpaceSize()) != 0) {
+    public int freeImageHeap(PointerBase heapBase) {
+        if (heapBase.isNonNull()) {
+            UnsignedWord totalAddressSpaceSize = getImageHeapAddressSpaceSize();
+            Pointer addressSpaceStart = (Pointer) heapBase;
+            if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
+                UnsignedWord preHeapRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
+                totalAddressSpaceSize = totalAddressSpaceSize.add(preHeapRequiredBytes);
+                addressSpaceStart = addressSpaceStart.subtract(preHeapRequiredBytes);
+            }
+
+            if (VirtualMemoryProvider.get().free(addressSpaceStart, totalAddressSpaceSize) != 0) {
                 return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
             }
         }
