@@ -36,6 +36,9 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.hightiercodegen.CodeGenTool;
 import org.graalvm.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import org.graalvm.compiler.hightiercodegen.reconstruction.StackifierData;
+import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
+import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
+import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.IfScopeContainer;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopScopeContainer;
@@ -54,15 +57,11 @@ import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
-
-import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
-import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
-import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
 
 public class StackifierIRWalker extends IRWalker {
     public static final String LABEL_PREFIX = "looplabel_";
@@ -667,6 +666,6 @@ public class StackifierIRWalker extends IRWalker {
 
     private static String getLabel(HIRBlock block) {
         assert block.isLoopHeader();
-        return LABEL_PREFIX + (int) block.getId();
+        return LABEL_PREFIX + block.getId();
     }
 }
