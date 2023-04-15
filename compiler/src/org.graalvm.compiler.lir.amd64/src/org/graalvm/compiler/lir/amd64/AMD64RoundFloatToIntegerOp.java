@@ -49,15 +49,15 @@ import jdk.vm.ci.meta.AllocatableValue;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 9450,
-          lineEnd   = 9546,
-          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
-          sha1      = "7bb09de1deee91732af6a55f527c53eb33dec489")
+          lineStart = 9444,
+          lineEnd   = 9540,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "9e13c7375bbb35809ad79ebd6a9cc19e66f57aa1")
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
           lineStart = 607,
           lineEnd   = 774,
-          commit    = "5d48da4574f6aacb0db445dd5750566330aa383d",
-          sha1      = "9f29fa373a8469daa04ae89fde27febeb70e7f3b")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "312f16a0551887f78cc567638477bbbcbc3765c5")
 // @formatter:on
 @Opcode("AMD64_ROUND_FLOAT_TO_INTEGER")
 public class AMD64RoundFloatToIntegerOp extends AMD64LIRInstruction {
