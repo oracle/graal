@@ -521,7 +521,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_HOST_THREAD = StaticSymbols.putName("0HIDDEN_HOST_THREAD");
         public static final Symbol<Name> HIDDEN_ESPRESSO_MANAGED = StaticSymbols.putName("0HIDDEN_ESPRESSO_MANAGED");
         public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
-        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
+        public static final Symbol<Name> HIDDEN_THREAD_PENDING_MONITOR = StaticSymbols.putName("0HIDDEN_THREAD_PENDING_MONITOR");
+        public static final Symbol<Name> HIDDEN_THREAD_WAITING_MONITOR = StaticSymbols.putName("0HIDDEN_THREAD_WAITING_MONITOR");
         public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
         public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
         public static final Symbol<Name> HIDDEN_THREAD_DEPTH_FIRST_NUMBER = StaticSymbols.putName("0HIDDEN_THREAD_DEPTH_FIRST_NUMBER");

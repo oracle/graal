@@ -35,7 +35,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
 /**
  * Lock implementation for guest objects. Provides a similar interface to {@link Object} built-in
@@ -417,10 +416,22 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     @SuppressFBWarnings(value = "UL_UNRELEASED_LOCK", justification = "this lock is released at the start of the method and re-acquired at the end")
     private void enterWaitInterruptible(InterruptibleWithBooleanResult<EspressoLockImpl> interruptible) throws GuestInterruptedException {
         ensureWaitLockInitialized();
+        boolean enableManagement;
+        Meta meta;
+        if (interruptible.thread != null) {
+            meta = interruptible.thread.getKlass().getMeta();
+            enableManagement = interruptible.thread.getKlass().getContext().getEspressoEnv().EnableManagement;
+        } else {
+            meta = null;
+            enableManagement = false;
+        }
         waitLock.lock();
         waiters++;
         int holdCount = 0;
         try {
+            if (enableManagement) {
+                meta.HIDDEN_THREAD_WAITING_MONITOR.setHiddenObject(interruptible.thread, interruptible.obj);
+            }
             while (isHeldByCurrentThread()) {
                 unlock();
                 holdCount++;
@@ -448,22 +459,23 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
             consumeSignal();
             throw e;
         } finally {
+            if (enableManagement) {
+                meta.HIDDEN_THREAD_WAITING_MONITOR.setHiddenObject(interruptible.thread, StaticObject.NULL);
+            }
             waitLock.unlock();
             // We need to ensure that we re-acquire the lock (even if the guest is getting
             // interrupted)
             if (!tryLock()) {
-                if (interruptible.thread != null) {
+                if (enableManagement) {
                     // Locks bookkeeping.
-                    Meta meta = interruptible.thread.getKlass().getMeta();
-                    meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(interruptible.thread, interruptible.obj);
+                    meta.HIDDEN_THREAD_PENDING_MONITOR.setHiddenObject(interruptible.thread, interruptible.obj);
                 }
                 try {
                     lock();
                 } finally {
-                    if (interruptible.thread != null) {
+                    if (enableManagement) {
                         // Locks bookkeeping.
-                        Meta meta = interruptible.thread.getKlass().getMeta();
-                        meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(interruptible.thread, null);
+                        meta.HIDDEN_THREAD_PENDING_MONITOR.setHiddenObject(interruptible.thread, null);
                     }
                 }
             }

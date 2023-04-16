@@ -411,12 +411,14 @@ public final class Meta extends ContextAccessImpl {
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
 
         if (context.getEspressoEnv().EnableManagement) {
-            HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
+            HIDDEN_THREAD_PENDING_MONITOR = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PENDING_MONITOR);
+            HIDDEN_THREAD_WAITING_MONITOR = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITING_MONITOR);
             HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
             HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
             HIDDEN_THREAD_DEPTH_FIRST_NUMBER = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_DEPTH_FIRST_NUMBER);
         } else {
-            HIDDEN_THREAD_BLOCKED_OBJECT = null;
+            HIDDEN_THREAD_PENDING_MONITOR = null;
+            HIDDEN_THREAD_WAITING_MONITOR = null;
             HIDDEN_THREAD_BLOCKED_COUNT = null;
             HIDDEN_THREAD_WAITED_COUNT = null;
             HIDDEN_THREAD_DEPTH_FIRST_NUMBER = null;
@@ -1322,7 +1324,8 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
     public final Field HIDDEN_THREAD_PARK_LOCK;
     public final Field HIDDEN_DEPRECATION_SUPPORT;
-    public final Field HIDDEN_THREAD_BLOCKED_OBJECT;
+    public final Field HIDDEN_THREAD_PENDING_MONITOR;
+    public final Field HIDDEN_THREAD_WAITING_MONITOR;
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
     public final Field HIDDEN_THREAD_DEPTH_FIRST_NUMBER;

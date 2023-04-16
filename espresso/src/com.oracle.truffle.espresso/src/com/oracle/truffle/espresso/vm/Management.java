@@ -341,12 +341,14 @@ public final class Management extends NativeEnv {
                 int threadStatus = meta.getThreadAccess().getState(thread);
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
-                int mask = State.BLOCKED.value | State.WAITING.value | State.TIMED_WAITING.value;
-                if ((threadStatus & mask) != 0) {
-                    lockObj = (StaticObject) meta.HIDDEN_THREAD_BLOCKED_OBJECT.getHiddenObject(thread);
-                    if (lockObj == null) {
-                        lockObj = StaticObject.NULL;
-                    }
+                if ((threadStatus & State.BLOCKED.value) != 0) {
+                    lockObj = (StaticObject) meta.HIDDEN_THREAD_PENDING_MONITOR.getHiddenObject(thread);
+                } else if ((threadStatus & (State.WAITING.value | State.TIMED_WAITING.value)) != 0) {
+                    lockObj = (StaticObject) meta.HIDDEN_THREAD_WAITING_MONITOR.getHiddenObject(thread);
+                }
+                if (lockObj == null) {
+                    lockObj = StaticObject.NULL;
+                } else if (StaticObject.notNull(lockObj)) {
                     Thread hostOwner = StaticObject.isNull(lockObj)
                                     ? null
                                     : lockObj.getLock(getContext()).getOwnerThread();

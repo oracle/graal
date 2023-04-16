@@ -413,7 +413,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
         try (Transition transition = Transition.transition(context, State.BLOCKED)) {
             if (context.getEspressoEnv().EnableManagement) {
                 // Locks bookkeeping.
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
+                meta.HIDDEN_THREAD_PENDING_MONITOR.setHiddenObject(thread, obj);
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
             }
@@ -426,7 +426,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
                 context.reportOnContendedMonitorEntered(obj);
             }
             if (context.getEspressoEnv().EnableManagement) {
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
+                meta.HIDDEN_THREAD_PENDING_MONITOR.setHiddenObject(thread, null);
             }
         }
     }
