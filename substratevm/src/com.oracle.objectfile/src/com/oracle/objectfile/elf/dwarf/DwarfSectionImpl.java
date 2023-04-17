@@ -33,6 +33,9 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
+import com.oracle.objectfile.debugentry.DirEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
@@ -60,7 +63,7 @@ import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_stack_value;
 public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     // auxiliary class used to track byte array positions
     protected class Cursor {
-        int pos;
+        private int pos;
 
         public Cursor() {
             this(0);
@@ -87,7 +90,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
-    protected DwarfDebugInfo dwarfSections;
+    protected final DwarfDebugInfo dwarfSections;
     protected boolean debug = false;
     protected long debugTextBase = 0;
     protected long debugAddress = 0;
@@ -713,11 +716,40 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     /**
      * Retrieve a stream of all instance classes, including interfaces and enums, notified via the
      * DebugTypeInfo API.
-     * 
+     *
      * @return a stream of all instance classes notified via the DebugTypeInfo API.
      */
     protected Stream<ClassEntry> instanceClassStream() {
         return dwarfSections.getInstanceClasses().stream();
+    }
+
+    /**
+     * Retrieve a stream of all compiled methods notified via the DebugTypeInfo API.
+     *
+     * @return a stream of all compiled methods notified via the DebugTypeInfo API.
+     */
+    protected Stream<CompiledMethodEntry> compiledMethodsStream() {
+        return dwarfSections.getCompiledMethods().stream();
+    }
+
+    protected int compiledMethodsCount() {
+        return dwarfSections.getCompiledMethods().size();
+    }
+
+    protected Stream<FileEntry> fileStream() {
+        return dwarfSections.getFiles().stream();
+    }
+
+    protected int fileCount() {
+        return dwarfSections.getFiles().size();
+    }
+
+    protected Stream<DirEntry> dirStream() {
+        return dwarfSections.getDirs().stream();
+    }
+
+    protected int dirCount() {
+        return dwarfSections.getDirs().size();
     }
 
     /**
@@ -771,61 +803,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         dwarfSections.setIndirectTypeIndex(typeEntry, pos);
     }
 
-    protected int getCUIndex(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getCUIndex(classEntry);
-    }
-
-    protected void setCUIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setCUIndex(classEntry, pos);
-    }
-
-    protected int getDeoptCUIndex(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getDeoptCUIndex(classEntry);
-    }
-
-    protected void setDeoptCUIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setDeoptCUIndex(classEntry, pos);
-    }
-
-    protected int getLineIndex(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getLineIndex(classEntry);
-    }
-
-    protected void setLineIndex(ClassEntry classEntry, int pos) {
-        dwarfSections.setLineIndex(classEntry, pos);
-    }
-
-    protected int getLineSectionSize(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getLineSectionSize(classEntry);
-    }
-
-    protected void setLineSectionSize(ClassEntry classEntry, int pos) {
-        dwarfSections.setLineSectionSize(classEntry, pos);
-    }
-
-    protected int getLinePrologueSize(ClassEntry classEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getLinePrologueSize(classEntry);
-    }
-
-    protected void setLinePrologueSize(ClassEntry classEntry, int pos) {
-        dwarfSections.setLinePrologueSize(classEntry, pos);
-    }
-
     protected int getLayoutIndex(ClassEntry classEntry) {
         if (!contentByteArrayCreated()) {
             return 0;
@@ -870,50 +847,31 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.getMethodDeclarationIndex(methodEntry);
     }
 
-    protected void setAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry, int pos) {
-        dwarfSections.setAbstractInlineMethodIndex(classEntry, methodEntry, pos);
-    }
-
-    protected int getAbstractInlineMethodIndex(ClassEntry classEntry, MethodEntry methodEntry) {
-        if (!contentByteArrayCreated()) {
-            return 0;
-        }
-        return dwarfSections.getAbstractInlineMethodIndex(classEntry, methodEntry);
-    }
-
     /**
-     * Record the info section offset of a local (or parameter) declaration DIE. The local (or
-     * parameter) can be a child of a standard method declaration in the CU of its owning class.
-     * Alternatively, it can be as a child of an abstract inline method declaration in the CU of a
-     * class into which the original's code needs to be inlined.
+     * Record the info section offset of a local (or parameter) declaration DIE appearing as a child
+     * of a standard method declaration.
      * 
-     * @param classEntry null if the local declaration belongs to a standard method declaration
-     *            otherwise the entry for the class importing the inline code.
      * @param methodEntry the method being declared or inlined.
      * @param localInfo the local or param whose index is to be recorded.
      * @param index the info section offset to be recorded.
      */
-    protected void setMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
-        dwarfSections.setMethodLocalIndex(classEntry, methodEntry, localInfo, index);
+    protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        dwarfSections.setMethodLocalIndex(methodEntry, localInfo, index);
     }
 
     /**
-     * Retrieve the info section offset of a local (or parameter) declaration DIE. The local (or
-     * parameter) can be a child of a standard method declaration in the CU of its owning class.
-     * Alternatively, it can be as a child of an abstract inline method declaration in the CU of a
-     * class into which the original's code needs to be inlined.
-     * 
-     * @param classEntry null if the local declaration belongs to a standard method declaration
-     *            otherwise the entry for the class importing the inline code.
+     * Retrieve the info section offset of a local (or parameter) declaration DIE appearing as a
+     * child of a standard method declaration.
+     *
      * @param methodEntry the method being declared or imported
      * @param localInfo the local or param whose index is to be retrieved.
      * @return the associated info section offset.
      */
-    protected int getMethodLocalIndex(ClassEntry classEntry, MethodEntry methodEntry, DebugLocalInfo localInfo) {
+    protected int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo) {
         if (!contentByteArrayCreated()) {
             return 0;
         }
-        return dwarfSections.getMethodLocalIndex(classEntry, methodEntry, localInfo);
+        return dwarfSections.getMethodLocalIndex(methodEntry, localInfo);
     }
 
     /**
