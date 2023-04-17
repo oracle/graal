@@ -818,6 +818,8 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
                          '-H:+SourceLevelDebug',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
+                         # We do not want to step into class initializer, so initialize everything at build time.
+                         '--initialize-at-build-time=hello',
                          'hello.Hello'] + args
 
     def build_debug_test(extra_args):
