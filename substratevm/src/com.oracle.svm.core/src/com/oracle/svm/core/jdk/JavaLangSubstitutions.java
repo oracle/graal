@@ -289,7 +289,7 @@ final class Target_java_lang_Throwable {
 
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
-    private Object fillInStackTrace() {
+    private Target_java_lang_Throwable fillInStackTrace() {
         if (!RuntimeCompilation.isEnabled()) {
             RawStackTraceVisitor visitor = new RawStackTraceVisitor();
             JavaThreads.visitStackTrace(Thread.currentThread(), visitor);
