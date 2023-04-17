@@ -69,6 +69,8 @@ public interface DebugInfoProvider {
      */
     int oopAlignment();
 
+    int compiledCodeMax();
+
     /**
      * An interface implemented by items that can be located in a file.
      */

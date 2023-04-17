@@ -34,7 +34,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
@@ -140,8 +139,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      */
     private static final byte DW_LNE_define_file = 3;
 
+    private int linePrologueSize;
+
     DwarfLineSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
+        linePrologueSize = 0;
     }
 
     @Override
@@ -159,27 +161,16 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          */
 
         /*
-         * Write line info for each instance class. We do this even when a class has no compiled
-         * methods ane hence no line records. This avoids bail outs by tools when a class's methods
-         * crop up inline-only but the tool still expects a line info entry to provide a file and
-         * dir table.
+         * Write line info for all compiled methods.
          */
-        Cursor cursor = new Cursor();
-        instanceClassStream().forEach(classEntry -> {
-            assert classEntry.getFileName().length() != 0;
-            int startPos = cursor.get();
-            setLineIndex(classEntry, startPos);
-            int headerSize = headerSize();
-            int dirTableSize = computeDirTableSize(classEntry);
-            int fileTableSize = computeFileTableSize(classEntry);
-            int prologueSize = headerSize + dirTableSize + fileTableSize;
-            setLinePrologueSize(classEntry, prologueSize);
-            int lineNumberTableSize = computeLineNUmberTableSize(classEntry);
-            int totalSize = prologueSize + lineNumberTableSize;
-            setLineSectionSize(classEntry, totalSize);
-            cursor.add(totalSize);
-        });
-        byte[] buffer = new byte[cursor.get()];
+        int headerSize = headerSize();
+        int dirTableSize = computeDirTableSize();
+        int fileTableSize = computeFileTableSize();
+        int prologueSize = headerSize + dirTableSize + fileTableSize;
+        setLinePrologueSize(prologueSize);
+        int lineNumberTableSize = computeLineNUmberTableSize();
+        int totalSize = prologueSize + lineNumberTableSize;
+        byte[] buffer = new byte[totalSize];
         super.setContent(buffer);
     }
 
@@ -215,62 +206,58 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return DW_LN_HEADER_SIZE;
     }
 
-    private static int computeDirTableSize(ClassEntry classEntry) {
+    private int computeDirTableSize() {
         /*
          * Table contains a sequence of 'nul'-terminated UTF8 dir name bytes followed by an extra
          * 'nul'.
-         *
-         * For now we assume dir and file names are ASCII byte strings.
          */
-        int dirSize = 0;
-        for (DirEntry dir : classEntry.getLocalDirs()) {
-            dirSize += countUTF8Bytes(dir.getPathString()) + 1;
-        }
+        Cursor cursor = new Cursor();
+        dirStream().forEach(dirEntry -> {
+            if (dirEntry.getIdx() > 0) {
+                cursor.add(countUTF8Bytes(dirEntry.getPathString()) + 1);
+            }
+        });
         /*
-         * Allow for separator nul.
+         * Allow for terminator nul.
          */
-        dirSize++;
-        return dirSize;
+        cursor.add(1);
+        return cursor.get();
     }
 
-    private int computeFileTableSize(ClassEntry classEntry) {
+    private int computeFileTableSize() {
         /*
          * Table contains a sequence of file entries followed by an extra 'nul'
          *
          * each file entry consists of a 'nul'-terminated UTF8 file name, a dir entry idx and two 0
          * time stamps
          */
-        int fileSize = 0;
-        for (FileEntry localEntry : classEntry.getLocalFiles()) {
-            /*
-             * We want the file base name excluding path.
-             */
-            String baseName = localEntry.getFileName();
+        Cursor cursor = new Cursor();
+        fileStream().forEach(fileEntry -> {
+            // We want the file base name excluding path.
+            String baseName = fileEntry.getFileName();
             int length = countUTF8Bytes(baseName);
-            /* We should never have a null or zero length entry in local files. */
+            // We should never have a null or zero length entry in local files.
             assert length > 0;
-            fileSize += length + 1;
-            DirEntry dirEntry = localEntry.getDirEntry();
-            int idx = classEntry.localDirsIdx(dirEntry);
-            fileSize += writeULEB(idx, scratch, 0);
-            /*
-             * The two zero timestamps require 1 byte each.
-             */
-            fileSize += 2;
-        }
+            cursor.add(length + 1);
+            // The dir index gets written as a ULEB
+            int dirIdx = fileEntry.getDirEntry().getIdx();
+            cursor.add(writeULEB(dirIdx, scratch, 0));
+            // The two zero timestamps require 1 byte each
+            cursor.add(2);
+        });
         /*
          * Allow for terminator nul.
          */
-        fileSize++;
-        return fileSize;
+        cursor.add(1);
+        return cursor.get();
     }
 
-    private int computeLineNUmberTableSize(ClassEntry classEntry) {
+    private int computeLineNUmberTableSize() {
         /*
          * Sigh -- we have to do this by generating the content even though we cannot write it into
          * a byte[].
          */
-        return writeLineNumberTable(null, classEntry, null, 0);
+        return writeLineNumberTable(null, null, 0);
     }
 
     @Override
@@ -296,38 +283,31 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
         byte[] buffer = getContent();
 
-        Cursor cursor = new Cursor();
-        enableLog(context, cursor.get());
-        log(context, "  [0x%08x] DEBUG_LINE", cursor.get());
+        int pos = 0;
 
-        instanceClassStream().forEach(classEntry -> {
-            int pos = cursor.get();
-            int startPos = pos;
-            assert getLineIndex(classEntry) == startPos;
-            log(context, "  [0x%08x] Compile Unit for %s", pos, classEntry.getFileName());
-            pos = writeHeader(classEntry, buffer, pos);
-            log(context, "  [0x%08x] headerSize = 0x%08x", pos, pos - startPos);
-            int dirTablePos = pos;
-            pos = writeDirTable(context, classEntry, buffer, pos);
-            log(context, "  [0x%08x] dirTableSize = 0x%08x", pos, pos - dirTablePos);
-            int fileTablePos = pos;
-            pos = writeFileTable(context, classEntry, buffer, pos);
-            log(context, "  [0x%08x] fileTableSize = 0x%08x", pos, pos - fileTablePos);
-            int lineNumberTablePos = pos;
-            pos = writeLineNumberTable(context, classEntry, buffer, pos);
-            log(context, "  [0x%08x] lineNumberTableSize = 0x%x", pos, pos - lineNumberTablePos);
-            log(context, "  [0x%08x] size = 0x%x", pos, pos - startPos);
-            cursor.set(pos);
-        });
-        assert cursor.get() == buffer.length;
+        enableLog(context, pos);
+        log(context, "  [0x%08x] DEBUG_LINE", pos);
+        pos = writeHeader(buffer, pos);
+        log(context, "  [0x%08x] headerSize = 0x%08x", pos, pos);
+        int dirTablePos = pos;
+        pos = writeDirTable(context, buffer, pos);
+        log(context, "  [0x%08x] dirTableSize = 0x%08x", pos, pos - dirTablePos);
+        int fileTablePos = pos;
+        pos = writeFileTable(context, buffer, pos);
+        log(context, "  [0x%08x] fileTableSize = 0x%08x", pos, pos - fileTablePos);
+        int lineNumberTablePos = pos;
+        pos = writeLineNumberTable(context, buffer, pos);
+        log(context, "  [0x%08x] lineNumberTableSize = 0x%x", pos, pos - lineNumberTablePos);
+        log(context, "  [0x%08x] size = 0x%x", pos, pos);
+        assert pos == buffer.length;
     }
 
-    private int writeHeader(ClassEntry classEntry, byte[] buffer, int p) {
+    private int writeHeader(byte[] buffer, int p) {
         int pos = p;
         /*
          * 4 ubyte length field.
          */
-        pos = writeInt(getLineSectionSize(classEntry) - 4, buffer, pos);
+        pos = writeInt(buffer.length - 4, buffer, pos);
         /*
          * 2 ubyte version is always 2.
          */
@@ -335,7 +315,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
-        int prologueSize = getLinePrologueSize(classEntry) - (4 + 2 + 4);
+        int prologueSize = getLinePrologueSize() - (4 + 2 + 4);
         pos = writeInt(prologueSize, buffer, pos);
         /*
          * 1 ubyte min instruction length is always 1.
@@ -391,57 +371,58 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeDirTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
-        int pos = p;
-        verboseLog(context, "  [0x%08x] Dir  Name", pos);
+    private int writeDirTable(DebugContext context, byte[] buffer, int p) {
+        verboseLog(context, "  [0x%08x] Dir Name", p);
         /*
-         * Write out the list of dirs referenced form this file entry.
+         * Write out the list of dirs
          */
-        int dirIdx = 1;
-        for (DirEntry dir : classEntry.getLocalDirs()) {
-            /*
-             * write nul terminated string text.
-             */
-            verboseLog(context, "  [0x%08x] %-4d %s", pos, dirIdx, dir.getPath());
-            pos = writeUTF8StringBytes(dir.getPathString(), buffer, pos);
-            dirIdx++;
-        }
+        Cursor cursor = new Cursor(p);
+        dirStream().forEach(dirEntry -> {
+            int dirIdx = dirEntry.getIdx();
+            if (dirIdx > 0) {
+                String dirPath = dirEntry.getPathString();
+                verboseLog(context, "  [0x%08x] %-4d %s", cursor.get(), dirIdx, dirPath);
+                cursor.set(writeUTF8StringBytes(dirPath, buffer, cursor.get()));
+            }
+        });
         /*
          * Separate dirs from files with a nul.
          */
-        pos = writeByte((byte) 0, buffer, pos);
-        return pos;
+        cursor.set(writeByte((byte) 0, buffer, cursor.get()));
+        return cursor.get();
     }
 
-    private int writeFileTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
-        int pos = p;
-        int fileIdx = 1;
-        verboseLog(context, "  [0x%08x] Entry Dir  Name", pos);
-        for (FileEntry localEntry : classEntry.getLocalFiles()) {
-            /*
-             * We need the file name minus path, the associated dir index, and 0 for time stamps.
-             */
-            String baseName = localEntry.getFileName();
-            DirEntry dirEntry = localEntry.getDirEntry();
-            int dirIdx = classEntry.localDirsIdx(dirEntry);
+    private int writeFileTable(DebugContext context, byte[] buffer, int p) {
+        verboseLog(context, "  [0x%08x] Entry Dir  Name", p);
+        /*
+         * Write out the list of files
+         */
+        Cursor cursor = new Cursor(p);
+        fileStream().forEach(fileEntry -> {
+            int pos = cursor.get();
+            String baseName = fileEntry.getFileName();
+            DirEntry dirEntry = fileEntry.getDirEntry();
+            int fileIdx = fileEntry.getIdx();
+            int dirIdx = dirEntry.getIdx();
             verboseLog(context, "  [0x%08x] %-5d %-5d %s", pos, fileIdx, dirIdx, baseName);
             pos = writeUTF8StringBytes(baseName, buffer, pos);
             pos = writeULEB(dirIdx, buffer, pos);
             pos = writeULEB(0, buffer, pos);
             pos = writeULEB(0, buffer, pos);
-            fileIdx++;
-        }
+            cursor.set(pos);
+
+        });
         /*
          * Terminate files with a nul.
          */
-        pos = writeByte((byte) 0, buffer, pos);
-        return pos;
+        cursor.set(writeByte((byte) 0, buffer, cursor.get()));
+        return cursor.get();
     }
 
     private long debugLine = 1;
     private int debugCopyCount = 0;
 
-    private int writeCompiledMethodLineInfo(DebugContext context, ClassEntry classEntry, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
+    private int writeCompiledMethodLineInfo(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {
         int pos = p;
         Range primaryRange = compiledEntry.getPrimary();
         // the compiled method might be a substitution and not in the file of the class entry
@@ -452,7 +433,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             return pos;
         }
         String file = fileEntry.getFileName();
-        int fileIdx = classEntry.localFilesIdx(fileEntry);
+        int fileIdx = fileEntry.getIdx();
         /*
          * Each primary represents a method i.e. a contiguous sequence of subranges. For normal
          * methods we expect the first leaf range to start at offset 0 covering the method prologue.
@@ -468,7 +449,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             if (line > 0) {
                 FileEntry firstFileEntry = prologueRange.getFileEntry();
                 if (firstFileEntry != null) {
-                    fileIdx = classEntry.localFilesIdx(firstFileEntry);
+                    fileIdx = firstFileEntry.getIdx();
                 }
             }
         }
@@ -519,7 +500,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                 continue;
             }
             String subfile = subFileEntry.getFileName();
-            int subFileIdx = classEntry.localFilesIdx(subFileEntry);
+            int subFileIdx = subFileEntry.getIdx();
             assert subFileIdx > 0;
             long subLine = subrange.getLine();
             long subAddressLo = subrange.getLo();
@@ -637,24 +618,17 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeLineNumberTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
-        int pos = p;
-        /*
-         * The class file entry should always be first in the local files list.
-         */
-        assert classEntry.localFilesIdx() == 1;
-        String className = classEntry.getTypeName();
-        String fileName = classEntry.getFileName();
-        String classLabel = classEntry.hasCompiledEntries() ? "compiled class" : "non-compiled class";
-        log(context, "  [0x%08x] %s %s", pos, classLabel, className);
-        log(context, "  [0x%08x] %s file %s", pos, className, fileName);
-        // generate for both non-deopt and deopt entries so they share the file + dir table
-        pos = classEntry.compiledEntries().reduce(pos,
-                        (p1, compiledEntry) -> writeCompiledMethodLineInfo(context, classEntry, compiledEntry, buffer, p1),
-                        (oldPos, newPos) -> newPos);
-        log(context, "  [0x%08x] processed %s %s", pos, classLabel, className);
-
-        return pos;
+    private int writeLineNumberTable(DebugContext context, byte[] buffer, int p) {
+        Cursor cursor = new Cursor(p);
+        compiledMethodsStream().forEach(compiledMethod -> {
+            int pos = cursor.get();
+            String methodName = compiledMethod.getPrimary().getFullMethodNameWithParams();
+            String fileName = compiledMethod.getClassEntry().getFullFileName();
+            log(context, "  [0x%08x] %s %s", pos, methodName, fileName);
+            pos = writeCompiledMethodLineInfo(context, compiledMethod, buffer, pos);
+            cursor.set(pos);
+        });
+        return cursor.get();
     }
 
     private static SubRange prologueLeafRange(CompiledMethodEntry compiledEntry) {
@@ -868,6 +842,15 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private static boolean isFixedAdvancePC(long addressDiff) {
         return addressDiff >= 0 && addressDiff < 0xffff;
+    }
+
+    protected int getLinePrologueSize() {
+        return linePrologueSize;
+    }
+
+    protected void setLinePrologueSize(int size) {
+        assert linePrologueSize == 0 : "prologue size set twice!";
+        linePrologueSize = size;
     }
 
     /**
