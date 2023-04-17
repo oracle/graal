@@ -295,7 +295,7 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
         }
     }
 
-    @Uninterruptible(reason = "Allow interruptible calls to visitFrame.", calleeMustBe = false)
+    @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     private static boolean visitRawFrame(BuildStackTraceVisitor visitor, CodePointer ip, CodeInfo tetheredCodeInfo) {
         return visitor.visitFrame(WordFactory.nullPointer(), ip, tetheredCodeInfo, null);
     }
