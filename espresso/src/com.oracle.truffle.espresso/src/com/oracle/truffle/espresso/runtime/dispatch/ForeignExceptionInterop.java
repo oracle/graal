@@ -35,15 +35,17 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class ForeignExceptionInterop extends ThrowableInterop {
 
-    private static Object getRawForeignObject(StaticObject object) {
+    public static Object getRawForeignObject(StaticObject object) {
         Meta meta = object.getKlass().getMeta();
         assert object.getKlass() == meta.polyglot.ForeignException;
         return meta.java_lang_Throwable_backtrace.getObject(object).rawForeignObject(object.getKlass().getContext().getLanguage());
     }
 
     @ExportMessage
-    public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
-        return ExceptionType.RUNTIME_ERROR;
+    public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject object) throws UnsupportedMessageException {
+        object.checkNotForeign();
+        Object rawForeignException = getRawForeignObject(object);
+        return InteropLibrary.getUncached().getExceptionType(rawForeignException);
     }
 
     @ExportMessage

@@ -59,6 +59,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
@@ -107,7 +108,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
          * value.
          */
         static Object unwrapForeign(EspressoLanguage language, StaticObject object) {
-            return object.isForeignObject() ? object.rawForeignObject(language) : object;
+            if (object.isForeignObject()) {
+                return object.rawForeignObject(language);
+            }
+            if (object.getKlass() != null && object.getKlass() == object.getKlass().getMeta().polyglot.ForeignException) {
+                return ForeignExceptionInterop.getRawForeignObject(object);
+            }
+            return object;
         }
 
         @TruffleBoundary
