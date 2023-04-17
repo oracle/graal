@@ -59,6 +59,8 @@ import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.ImmediateKind;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionImmediate;
 
 public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
@@ -79,7 +81,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
     public List<? extends VariableElement> additionalArguments() {
         return List.of(
                         new CodeVariableElement(nodeType, "$root"),
-                        new CodeVariableElement(context.getType(Object[].class), "$objs"),
+                        new CodeVariableElement(context.getType(short[].class), "$bc"),
                         new CodeVariableElement(context.getType(int.class), "$bci"),
                         new CodeVariableElement(context.getType(int.class), "$sp"));
     }
@@ -95,9 +97,9 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         int index = execution.getIndex();
 
-        boolean th = buildChildExecution(b, frame, index, targetValue.getTypeMirror());
+        boolean throwsUnexpectedResult = buildChildExecution(b, frame, index, targetValue.getTypeMirror());
 
-        return new ChildExecutionResult(b.build(), th);
+        return new ChildExecutionResult(b.build(), throwsUnexpectedResult);
     }
 
     private boolean buildChildExecution(CodeTreeBuilder b, CodeTree frame, int idx, TypeMirror resultType) {
@@ -107,48 +109,36 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
             String slotString = "$sp - " + (instr.signature.valueCount - index);
 
-            boolean canThrow;
-
-            if (instr.signature.valueBoxingElimination[index]) {
-                if (ElementUtils.isObject(resultType)) {
-                    b.startCall("doPopObject");
-                    canThrow = false;
-                } else {
-                    b.startCall("doPopPrimitive" + ElementUtils.firstLetterUpperCase(resultType.toString()));
-                    canThrow = true;
-                }
-
-                b.tree(frame);
-                b.string("$root");
-                b.string(slotString);
-                b.string("this.op_childValue" + index + "_boxing_");
-                b.string("$objs");
-                b.end();
-
-                return canThrow;
-            } else {
-                TypeMirror targetType = instr.signature.getParameterType(index);
-                if (!ElementUtils.isObject(targetType)) {
-                    b.cast(targetType);
-                }
-                b.startCall(frame, "getObject");
-                b.string(slotString);
-                b.end();
-                return false;
+            TypeMirror targetType = instr.signature.getParameterType(index);
+            if (!ElementUtils.isObject(targetType)) {
+                b.cast(targetType);
             }
+            b.startCall(frame, "getObject");
+            b.string(slotString);
+            b.end();
+            return false;
         }
 
         index -= instr.signature.valueCount;
 
         if (index < instr.signature.localSetterCount) {
-            b.string("this.op_localSetter" + index + "_");
+            List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.LOCAL_SETTER);
+            InstructionImmediate imm = imms.get(index);
+            b.startStaticCall(context.getTypes().LocalSetter, "get");
+            b.string("$bc[$bci + " + imm.offset + "]");
+            b.end();
             return false;
         }
 
         index -= instr.signature.localSetterCount;
 
         if (index < instr.signature.localSetterRangeCount) {
-            b.string("this.op_localSetterRange" + index + "_");
+            List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.LOCAL_SETTER_RANGE_START);
+            InstructionImmediate imm = imms.get(index);
+            b.startStaticCall(context.getTypes().LocalSetterRange, "get");
+            b.string("$bc[$bci + " + imm.offset + "]"); // start
+            b.string("$bc[$bci + " + (imm.offset + 1) + "]"); // length
+            b.end();
             return false;
         }
 

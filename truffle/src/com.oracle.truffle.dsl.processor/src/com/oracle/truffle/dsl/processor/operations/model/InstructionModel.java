@@ -81,24 +81,34 @@ public class InstructionModel implements InfoDumpable {
     }
 
     public enum ImmediateKind {
-        INTEGER,
-        BYTECODE_INDEX,
-        CONSTANT,
-        LOCAL_SETTER,
-        LOCAL_SETTER_RANGE,
-        NODE
+        INTEGER("int"),
+        BYTECODE_INDEX("bci"),
+        CONSTANT("const"),
+        LOCAL_SETTER("setter"),
+        LOCAL_SETTER_RANGE_START("setter_range_start"),
+        LOCAL_SETTER_RANGE_LENGTH("setter_range_length"),
+        NODE("node");
+
+        final String shortName;
+
+        private ImmediateKind(String shortName) {
+            this.shortName = shortName;
+        }
     }
 
     public static class InstructionImmediate {
+        public final int offset;
         public final ImmediateKind kind;
         public final String name;
 
-        public InstructionImmediate(ImmediateKind kind, String name) {
+        public InstructionImmediate(int offset, ImmediateKind kind, String name) {
+            this.offset = offset;
             this.kind = kind;
             this.name = name;
         }
     }
 
+    // TODO: clean this up; may not be needed any more
     public static class InstructionField {
         public final TypeMirror type;
         public final String name;
@@ -204,6 +214,7 @@ public class InstructionModel implements InfoDumpable {
     public void dump(Dumper dumper) {
         dumper.print("Instruction %s", name);
         dumper.field("kind", kind);
+        dumper.field("encoding", prettyPrintEncoding());
         if (nodeType != null) {
             dumper.field("nodeType", nodeType.getSimpleName());
         }
@@ -242,15 +253,26 @@ public class InstructionModel implements InfoDumpable {
         return immediates.size() > 0;
     }
 
-    public void addImmediate(ImmediateKind kind, String name) {
-        immediates.add(new InstructionImmediate(kind, name));
+    public InstructionModel addImmediate(ImmediateKind kind, String name) {
+        immediates.add(new InstructionImmediate(1 + immediates.size(), kind, name));
+        return this;
     }
 
     public List<InstructionImmediate> getImmediates() {
         return immediates;
     }
 
-    public int instructionWidth() {
+    public List<InstructionImmediate> getImmediates(ImmediateKind kind) {
+        return immediates.stream().filter(imm -> imm.kind == kind).toList();
+    }
+
+    public InstructionImmediate getImmediate(ImmediateKind kind) {
+        List<InstructionImmediate> immediates = getImmediates(kind);
+        assert immediates.size() == 1;
+        return immediates.get(0);
+    }
+
+    public int getInstructionLength() {
         return 1 + immediates.size();
     }
 
@@ -265,5 +287,19 @@ public class InstructionModel implements InfoDumpable {
     @Override
     public String toString() {
         return String.format("Instruction(%s)", name);
+    }
+
+    public String prettyPrintEncoding() {
+        StringBuilder b = new StringBuilder("[");
+        b.append(id);
+        for (InstructionImmediate imm : immediates) {
+            b.append(", ");
+            b.append(imm.kind.shortName);
+            b.append(" (");
+            b.append(imm.name);
+            b.append(")");
+        }
+        b.append("]");
+        return b.toString();
     }
 }
