@@ -284,8 +284,8 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
             }
 
             Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
             try {
+                CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
                 if (!visitRawFrame(visitor, ip, tetheredCodeInfo)) {
                     break;
                 }
