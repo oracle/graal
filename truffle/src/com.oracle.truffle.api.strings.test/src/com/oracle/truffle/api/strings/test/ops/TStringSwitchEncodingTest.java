@@ -46,6 +46,7 @@ import static org.junit.runners.Parameterized.Parameter;
 import java.util.Arrays;
 import java.util.EnumSet;
 
+import com.oracle.truffle.api.strings.test.TStringTestUtil;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -108,6 +109,7 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
                                             expected = 0xfffd;
                                         } else if (targetEncoding == TruffleString.Encoding.UTF_8) {
                                             expected = 0xfffd;
+                                            Assert.assertEquals(codepoint, TStringTestUtil.utf8DecodeValid(b, it.getByteIndex()));
                                         }
                                     }
                                     Assert.assertEquals(expected, it.nextUncached());
