@@ -69,12 +69,12 @@ final class TruffleAST implements JavaMethodContext {
     private final List<ASTNode> nodes = new ArrayList<>();
     private final TruffleCompilationTask task;
     private final CompilableTruffleAST compilable;
-    private final TruffleCompilerConfiguration config;
+    private final PartialEvaluator partialEvaluator;
     private final CallTree callTree;
     private int currentId = 0;
 
-    private TruffleAST(TruffleCompilerConfiguration config, TruffleCompilationTask task, CompilableTruffleAST compilable, CallTree callTree) {
-        this.config = config;
+    private TruffleAST(PartialEvaluator partialEvaluator, TruffleCompilationTask task, CompilableTruffleAST compilable, CallTree callTree) {
+        this.partialEvaluator = partialEvaluator;
         this.compilable = compilable;
         this.callTree = callTree;
         this.task = task;
@@ -84,12 +84,16 @@ final class TruffleAST implements JavaMethodContext {
         buildTree(rootNode, root, root.block);
     }
 
-    static TruffleAST create(TruffleCompilerConfiguration config, TruffleCompilationTask task, CompilableTruffleAST compilable, CallTree callTree) {
+    static TruffleAST create(PartialEvaluator config, TruffleCompilationTask task, CompilableTruffleAST compilable, CallTree callTree) {
         return new TruffleAST(config, task, compilable, callTree);
     }
 
     private JavaConstant readRootNode(CompilableTruffleAST c) {
-        return constantReflection().readFieldValue(config.types().OptimizedCallTarget_rootNode, c.asJavaConstant());
+        return constantReflection().readFieldValue(types().OptimizedCallTarget_rootNode, c.asJavaConstant());
+    }
+
+    private KnownTruffleTypes types() {
+        return partialEvaluator.getTypes();
     }
 
     @Override
@@ -114,7 +118,7 @@ final class TruffleAST implements JavaMethodContext {
         if (callTree == null) {
             return;
         }
-        if (config.types().OptimizedDirectCallNode.equals(metaAccess().lookupJavaType(node))) {
+        if (types().OptimizedDirectCallNode.equals(metaAccess().lookupJavaType(node))) {
             CallNode found = null;
             for (CallNode callNode : parent.block.callNode.getChildren()) {
                 if (callNode.getCallNode().equals(node)) {
@@ -164,7 +168,7 @@ final class TruffleAST implements JavaMethodContext {
             ConstantReflectionProvider constantReflection = constantReflection();
             for (ResolvedJavaField field : type.getInstanceFields(true)) {
                 String label = field.getName();
-                ConstantFieldInfo info = config.runtime().getConstantFieldInfo(field);
+                ConstantFieldInfo info = partialEvaluator.getConstantFieldInfo(field);
                 if (info == null) {
                     continue;
                 } else if (info.isChild()) {
@@ -187,11 +191,11 @@ final class TruffleAST implements JavaMethodContext {
     }
 
     private MetaAccessProvider metaAccess() {
-        return config.lastTier().providers().getMetaAccess();
+        return partialEvaluator.config.lastTier().providers().getMetaAccess();
     }
 
     private ConstantReflectionProvider constantReflection() {
-        return config.lastTier().providers().getConstantReflection();
+        return partialEvaluator.config.lastTier().providers().getConstantReflection();
     }
 
     private ASTNode addNode(ASTNode parent, TruffleAST.ASTBlock blockParent, JavaConstant node, String edgeLabel) {
@@ -277,7 +281,7 @@ final class TruffleAST implements JavaMethodContext {
                 properties.put("sourceLanguage", position.getLanguage());
                 properties.put("sourceDescription", position.getDescription());
                 properties.put("nodeSourcePosition",
-                                new NodeSourcePosition(new SourceLanguagePositionImpl(position), null, config.types().OptimizedCallTarget_profiledPERoot, -1));
+                                new NodeSourcePosition(new SourceLanguagePositionImpl(position), null, types().OptimizedCallTarget_profiledPERoot, -1));
             }
             this.properties.putAll(task.getDebugProperties(node));
             block.nodes.add(this);
