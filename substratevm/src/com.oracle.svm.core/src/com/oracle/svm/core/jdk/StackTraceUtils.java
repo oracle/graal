@@ -306,11 +306,7 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
             // cutoff
             return false;
         }
-        if (deoptimizedFrame != null) {
-            // unsupported
-            trace = null;
-            return false;
-        }
+        VMError.guarantee(deoptimizedFrame == null, "Deoptimization not supported");
         add(ip.rawValue());
         return true;
     }
