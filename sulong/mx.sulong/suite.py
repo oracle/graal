@@ -263,7 +263,6 @@ suite = {
       "subDir" : "tests",
       "native" : True,
       "vpath" : True,
-      "defaultBuild" : False,
       "results" : ["bin/"],
       "buildDependencies" : [
         "SULONG_BOOTSTRAP_TOOLCHAIN",
@@ -1788,7 +1787,6 @@ suite = {
 
     "SULONG_TEST" : {
       "subDir" : "tests",
-      "defaultBuild" : False,
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
         "com.oracle.truffle.llvm.tests.types",
@@ -1838,6 +1836,7 @@ suite = {
       "distDependencies" : ["SULONG_TEST"],
       "license" : "BSD-new",
       "testDistribution" : True,
+      "defaultBuild" : False,
     },
 
     "LLIR_TEST_GEN_SOURCES" : {
@@ -2007,7 +2006,6 @@ suite = {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
-      "defaultBuild" : False,
       "layout" : {
         "./" : ["dependency:com.oracle.truffle.llvm.tests.tck.native/*"],
       },
