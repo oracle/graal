@@ -25,11 +25,21 @@ package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
+import java.lang.management.MemoryType;
+import java.lang.management.MemoryUsage;
 import java.nio.ByteBuffer;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -73,8 +83,8 @@ public final class Management extends NativeEnv {
     // Partial/incomplete implementation disclaimer!
     //
     // This is a partial implementation of the {@link java.lang.management} APIs. Some APIs go
-    // beyond Espresso reach e.g. GC stats. Espresso could implement the hard bits by just
-    // forwarding to the host implementation, but this approach is not feasible:
+    // beyond Espresso reach e.g. GC stats. Espresso implements the hard bits by just
+    // forwarding to the host implementation, but this approach is not ideal:
     // - In some cases it's not possible to gather stats per-context e.g. host GC stats are VM-wide.
     // - SubstrateVM implements a bare-minimum subset of the management APIs.
     //
@@ -391,66 +401,215 @@ public final class Management extends NativeEnv {
         return getVM().JVM_GetVmArguments(language);
     }
 
-    @ManagementImpl
-    public @JavaType(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused) {
-        Klass memoryPoolMXBean = getMeta().resolveSymbolOrFail(Symbol.Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL, StaticObject.NULL);
-        return memoryPoolMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int value) {
-                // (String name, boolean isHeap, long uThreshold, long gcThreshold)
-                return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryPool.invokeDirect(null,
-                                /* String name */ getMeta().toGuestString("foo"),
-                                /* boolean isHeap */ true,
-                                /* long uThreshold */ -1L,
-                                /* long gcThreshold */ 0L);
-            }
-        });
+    private final ConcurrentHashMap<MemoryPoolMXBean, StaticObject> memoryPools = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, StaticObject> memoryPoolsByName = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<StaticObject, MemoryPoolMXBean> reverseMemoryPools = new ConcurrentHashMap<>();
+    @CompilationFinal private Klass memoryPoolMXBeanKlass;
+
+    private Klass getMemoryPoolMXBeanKlass() {
+        if (memoryPoolMXBeanKlass == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memoryPoolMXBeanKlass = getMeta().resolveSymbolOrFail(Symbol.Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL, StaticObject.NULL);
+        }
+        return memoryPoolMXBeanKlass;
     }
 
     @ManagementImpl
-    public @JavaType(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject pool) {
-        Klass memoryManagerMXBean = getMeta().resolveSymbolOrFail(Symbol.Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL, StaticObject.NULL);
-        return memoryManagerMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int value) {
-                // (String name, String type)
-                return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryManager.invokeDirect(null,
-                                /* String name */ getMeta().toGuestString("foo"));
+    @TruffleBoundary
+    public @JavaType(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject manager, @Inject Meta meta) {
+        if (StaticObject.isNull(manager)) {
+            if (memoryPoolsByName.isEmpty()) {
+                List<MemoryPoolMXBean> hostBeans = ManagementFactory.getMemoryPoolMXBeans();
+                return getMemoryPoolMXBeanKlass().allocateReferenceArray(hostBeans.size(), new IntFunction<StaticObject>() {
+                    @Override
+                    public StaticObject apply(int i) {
+                        MemoryPoolMXBean hostBean = hostBeans.get(i);
+                        StaticObject guestBean = memoryPools.computeIfAbsent(hostBean, h -> {
+                            getLogger().fine(() -> "GetMemoryPools: creating " + h.getName());
+                            StaticObject name = meta.toGuestString(h.getName());
+                            boolean isHeap = h.getType() == MemoryType.HEAP;
+                            long usageThreshold = h.isUsageThresholdSupported() ? 0 : -1;
+                            long gcThreshold = h.isCollectionUsageThresholdSupported() ? 0 : -1;
+                            return (StaticObject) meta.sun_management_ManagementFactory_createMemoryPool.invokeDirect(null, name, isHeap, usageThreshold, gcThreshold);
+                        });
+                        MemoryPoolMXBean hostProbe = reverseMemoryPools.putIfAbsent(guestBean, hostBean);
+                        assert hostProbe == null || hostProbe == hostBean;
+                        StaticObject guestProbe = memoryPoolsByName.putIfAbsent(hostBean.getName(), guestBean);
+                        assert guestProbe == null || guestProbe == guestBean;
+                        return guestBean;
+                    }
+                });
+            } else {
+                Iterator<StaticObject> iterator = memoryPoolsByName.values().iterator();
+                return getMemoryPoolMXBeanKlass().allocateReferenceArray(memoryPoolsByName.size(), new IntFunction<StaticObject>() {
+                    @Override
+                    public StaticObject apply(@SuppressWarnings("unused") int i) {
+                        return iterator.next();
+                    }
+                });
             }
-        });
+        } else {
+            MemoryManagerMXBean hostBean = reverseMemoryManagers.get(manager);
+            if (hostBean == null) {
+                return StaticObject.NULL;
+            }
+            String[] poolNames = hostBean.getMemoryPoolNames();
+            // initialize map
+            GetMemoryPools(StaticObject.NULL, meta);
+            return getMemoryPoolMXBeanKlass().allocateReferenceArray(poolNames.length, new IntFunction<StaticObject>() {
+                @Override
+                public StaticObject apply(int i) {
+                    String name = poolNames[i];
+                    StaticObject guestBean = memoryPoolsByName.get(name);
+                    getLogger().fine(() -> "GetMemoryPools: found " + name + " by name");
+                    assert guestBean != null;
+                    return guestBean;
+                }
+            });
+        }
+    }
+
+    private final ConcurrentHashMap<MemoryManagerMXBean, StaticObject> memoryManagers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, StaticObject> memoryManagersByName = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<StaticObject, MemoryManagerMXBean> reverseMemoryManagers = new ConcurrentHashMap<>();
+    @CompilationFinal private Klass memoryManagerMXBeanKlass;
+
+    private Klass getMemoryManagerMXBeanKlass() {
+        if (memoryManagerMXBeanKlass == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memoryManagerMXBeanKlass = getMeta().resolveSymbolOrFail(Symbol.Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL, StaticObject.NULL);
+        }
+        return memoryManagerMXBeanKlass;
     }
 
     @ManagementImpl
-    public @JavaType(Object.class) StaticObject GetMemoryPoolUsage(@JavaType(Object.class) StaticObject pool) {
+    @TruffleBoundary
+    public @JavaType(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject pool, @Inject Meta meta) {
+        if (StaticObject.isNull(pool)) {
+            if (memoryManagersByName.isEmpty()) {
+                List<MemoryManagerMXBean> hostBeans = ManagementFactory.getMemoryManagerMXBeans();
+                return getMemoryManagerMXBeanKlass().allocateReferenceArray(hostBeans.size(), new IntFunction<StaticObject>() {
+                    @Override
+                    public StaticObject apply(int i) {
+                        MemoryManagerMXBean hostBean = hostBeans.get(i);
+                        Function<MemoryManagerMXBean, StaticObject> factory;
+                        if (hostBean instanceof GarbageCollectorMXBean) {
+                            factory = h -> {
+                                getLogger().fine(() -> "GetMemoryManagers: creating " + h.getName());
+                                // TODO use GarbageCollectorExtImpl
+                                return (StaticObject) meta.sun_management_ManagementFactory_createGarbageCollector.invokeDirect(null, meta.toGuestString(h.getName()), StaticObject.NULL);
+                            };
+                        } else {
+                            factory = h -> {
+                                getLogger().fine(() -> "GetMemoryManagers: creating " + h.getName());
+                                return (StaticObject) meta.sun_management_ManagementFactory_createMemoryManager.invokeDirect(null, meta.toGuestString(h.getName()));
+                            };
+                        }
+                        StaticObject guestBean = memoryManagers.computeIfAbsent(hostBean, factory);
+                        MemoryManagerMXBean hostProbe = reverseMemoryManagers.putIfAbsent(guestBean, hostBean);
+                        assert hostProbe == null || hostProbe == hostBean;
+                        StaticObject guestProbe = memoryManagersByName.putIfAbsent(hostBean.getName(), guestBean);
+                        assert guestProbe == null || guestProbe == guestBean;
+                        return guestBean;
+                    }
+                });
+            } else {
+                Iterator<StaticObject> iterator = memoryManagersByName.values().iterator();
+                return getMemoryManagerMXBeanKlass().allocateReferenceArray(memoryManagersByName.size(), new IntFunction<StaticObject>() {
+                    @Override
+                    public StaticObject apply(@SuppressWarnings("unused") int i) {
+                        return iterator.next();
+                    }
+                });
+            }
+        } else {
+            MemoryPoolMXBean hostBean = reverseMemoryPools.get(pool);
+            if (hostBean == null) {
+                return StaticObject.NULL;
+            }
+            String[] managerNames = hostBean.getMemoryManagerNames();
+            // initialize map
+            GetMemoryManagers(StaticObject.NULL, meta);
+            return getMemoryManagerMXBeanKlass().allocateReferenceArray(managerNames.length, new IntFunction<StaticObject>() {
+                @Override
+                public StaticObject apply(int i) {
+                    String name = managerNames[i];
+                    StaticObject guestBean = memoryManagersByName.get(name);
+                    getLogger().fine(() -> "GetMemoryManagers: found " + name + " by name");
+                    assert guestBean != null;
+                    return guestBean;
+                }
+            });
+        }
+    }
+
+    @CompilationFinal private Method memoryUsageInit;
+
+    private Method getMemoryUsageInit() {
+        if (memoryUsageInit == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            memoryUsageInit = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
+                            getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
+        }
+        return memoryUsageInit;
+    }
+
+    @ManagementImpl
+    @TruffleBoundary
+    public @JavaType(Object.class) StaticObject GetMemoryPoolUsage(@JavaType(Object.class) StaticObject pool, @Inject Meta meta) {
         if (StaticObject.isNull(pool)) {
             return StaticObject.NULL;
         }
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
-                        getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance(getContext());
-        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
-        return instance;
+        MemoryPoolMXBean hostBean = reverseMemoryPools.get(pool);
+        if (hostBean == null) {
+            return StaticObject.NULL;
+        }
+        return asGuestUsage(hostBean.getUsage(), meta);
+    }
+
+    private StaticObject asGuestUsage(MemoryUsage usage, Meta meta) {
+        StaticObject guestUsage = meta.java_lang_management_MemoryUsage.allocateInstance(getContext());
+        getMemoryUsageInit().invokeDirect(guestUsage, usage.getInit(), usage.getUsed(), usage.getCommitted(), usage.getMax());
+        return guestUsage;
     }
 
     @ManagementImpl
-    public @JavaType(Object.class) StaticObject GetPeakMemoryPoolUsage(@JavaType(Object.class) StaticObject pool) {
+    @TruffleBoundary
+    public @JavaType(Object.class) StaticObject GetPeakMemoryPoolUsage(@JavaType(Object.class) StaticObject pool, @Inject Meta meta) {
         if (StaticObject.isNull(pool)) {
             return StaticObject.NULL;
         }
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
-                        getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance(getContext());
-        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
-        return instance;
+        MemoryPoolMXBean hostBean = reverseMemoryPools.get(pool);
+        if (hostBean == null) {
+            return StaticObject.NULL;
+        }
+        return asGuestUsage(hostBean.getPeakUsage(), meta);
     }
 
     @ManagementImpl
-    public @JavaType(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
-        Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
-                        getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance(getContext());
-        init.invokeDirect(instance, 0L, 0L, 0L, 0L);
-        return instance;
+    @TruffleBoundary
+    public @JavaType(Object.class) StaticObject GetPoolCollectionUsage(@JavaType(Object.class) StaticObject pool, @Inject Meta meta) {
+        if (StaticObject.isNull(pool)) {
+            return StaticObject.NULL;
+        }
+        MemoryPoolMXBean hostBean = reverseMemoryPools.get(pool);
+        if (hostBean == null) {
+            return StaticObject.NULL;
+        }
+        return asGuestUsage(hostBean.getCollectionUsage(), meta);
+    }
+
+    @ManagementImpl
+    @TruffleBoundary
+    public @JavaType(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap, @Inject Meta meta) {
+        MemoryUsage usage;
+        MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        if (heap) {
+            usage = memoryMXBean.getHeapMemoryUsage();
+        } else {
+            usage = memoryMXBean.getNonHeapMemoryUsage();
+        }
+        return asGuestUsage(usage, meta);
     }
 
     @ManagementImpl
