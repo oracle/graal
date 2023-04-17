@@ -653,7 +653,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         return backend;
     }
 
-    protected final Providers getProviders() {
+    protected Providers getProviders() {
         return providers;
     }
 
