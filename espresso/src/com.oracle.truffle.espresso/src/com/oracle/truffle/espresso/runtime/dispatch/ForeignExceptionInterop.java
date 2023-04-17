@@ -42,7 +42,7 @@ public class ForeignExceptionInterop extends ThrowableInterop {
     }
 
     @ExportMessage
-    public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject object) throws UnsupportedMessageException {
+    public static ExceptionType getExceptionType(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
         Object rawForeignException = getRawForeignObject(object);
         return InteropLibrary.getUncached().getExceptionType(rawForeignException);

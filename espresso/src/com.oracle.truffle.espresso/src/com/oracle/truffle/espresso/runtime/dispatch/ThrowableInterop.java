@@ -38,7 +38,8 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public class ThrowableInterop extends EspressoInterop {
 
     @ExportMessage
-    public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) throws UnsupportedMessageException {
+    @SuppressWarnings("unused")
+    public static ExceptionType getExceptionType(StaticObject receiver) throws UnsupportedMessageException {
         return ExceptionType.RUNTIME_ERROR;
     }
 

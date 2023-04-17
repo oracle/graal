@@ -995,8 +995,7 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization
         public StaticObject doEspresso(StaticObject value,
-                        @Cached InstanceOf.Dynamic instanceOf,
-                        @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+                        @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
             if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), targetType)) {
                 return value; // pass through, NULL coercion not needed.
             }
