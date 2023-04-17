@@ -402,7 +402,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             }
 
             for (int i = 0; i < signature.localSetterRangeCount; i++) {
-                instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE, "local_setter_range" + i);
+                instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_START, "local_setter_range_start" + i);
+                instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_LENGTH, "local_setter_range_length" + i);
             }
             instr.addImmediate(ImmediateKind.NODE, "node");
         }

@@ -65,6 +65,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMi
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
+import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
 
@@ -124,9 +125,9 @@ public class OperationsModel extends Template implements InfoDumpable {
 
     public void addDefault() {
         popInstruction = instruction(InstructionKind.POP, "pop");
-        branchInstruction = instruction(InstructionKind.BRANCH, "branch");
-        branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false");
-        throwInstruction = instruction(InstructionKind.THROW, "throw");
+        branchInstruction = instruction(InstructionKind.BRANCH, "branch").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
+        branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
+        throwInstruction = instruction(InstructionKind.THROW, "throw").addImmediate(ImmediateKind.INTEGER, "exception_local");
 
         blockOperation = operation(OperationKind.BLOCK, "Block") //
                         .setTransparent(true) //
@@ -177,38 +178,38 @@ public class OperationsModel extends Template implements InfoDumpable {
         operation(OperationKind.LOAD_CONSTANT, "LoadConstant") //
                         .setNumChildren(0) //
                         .setOperationArguments(context.getType(Object.class)) //
-                        .setInstruction(instruction(InstructionKind.LOAD_CONSTANT, "load.constant"));
+                        .setInstruction(instruction(InstructionKind.LOAD_CONSTANT, "load.constant").addImmediate(ImmediateKind.CONSTANT, "constant"));
         operation(OperationKind.LOAD_ARGUMENT, "LoadArgument") //
                         .setNumChildren(0) //
                         .setOperationArguments(context.getType(int.class)) //
-                        .setInstruction(instruction(InstructionKind.LOAD_ARGUMENT, "load.argument"));
+                        .setInstruction(instruction(InstructionKind.LOAD_ARGUMENT, "load.argument").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.LOAD_LOCAL, "LoadLocal") //
                         .setNumChildren(0) //
                         .setOperationArguments(types.OperationLocal) //
-                        .setInstruction(instruction(InstructionKind.LOAD_LOCAL, "load.local"));
+                        .setInstruction(instruction(InstructionKind.LOAD_LOCAL, "load.local").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setOperationArguments(types.OperationLocal) //
-                        .setInstruction(instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat"));
+                        .setInstruction(instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.STORE_LOCAL, "StoreLocal") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setVoid(true) //
                         .setOperationArguments(types.OperationLocal) //
-                        .setInstruction(instruction(InstructionKind.STORE_LOCAL, "store.local"));
+                        .setInstruction(instruction(InstructionKind.STORE_LOCAL, "store.local").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized") //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, true) //
                         .setVoid(true) //
                         .setOperationArguments(types.OperationLocal) //
-                        .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat"));
+                        .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.RETURN, "Return") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setInstruction(instruction(InstructionKind.RETURN, "return"));
         if (enableYield) {
-            yieldInstruction = instruction(InstructionKind.YIELD, "yield");
+            yieldInstruction = instruction(InstructionKind.YIELD, "yield").addImmediate(ImmediateKind.CONSTANT, "location");
             operation(OperationKind.YIELD, "Yield") //
                             .setNumChildren(1) //
                             .setChildrenMustBeValues(true) //

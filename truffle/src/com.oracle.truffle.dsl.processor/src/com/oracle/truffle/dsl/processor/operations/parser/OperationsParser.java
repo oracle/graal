@@ -197,6 +197,9 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
                                 mir);
             }
         }
+        // TODO: remove this line when we actually support BE.
+        beTypes.clear();
+
         model.boxingEliminatedTypes = beTypes;
 
         // optimization decisions & tracing
