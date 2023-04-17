@@ -1244,17 +1244,18 @@ suite = {
 
     "TRUFFLE_SL" : {
       "subDir" : "src",
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.sl",
+      },
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.sl",
       ],
       "exclude" : [
-        "mx:JUNIT",
         "truffle:ANTLR4",
       ],
       "distDependencies" : [
           "TRUFFLE_API",
-          "TRUFFLE_TCK",
       ],
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,
