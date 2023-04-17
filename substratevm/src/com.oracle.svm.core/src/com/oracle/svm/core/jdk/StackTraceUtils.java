@@ -256,7 +256,7 @@ public class StackTraceUtils {
 final class RawStackTraceVisitor extends StackFrameVisitor {
 
     private int index = 0;
-    private final static int MAX_NATIVE_STACK_TRACE_DEPTH = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
+    private final int limit = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
 
     /*
      * Empirical data suggests that most stack traces tend to be relatively short (<100). We choose
@@ -302,7 +302,7 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
 
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        if (index >= MAX_NATIVE_STACK_TRACE_DEPTH) {
+        if (index >= limit) {
             // cutoff
             return false;
         }
@@ -317,7 +317,7 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
 
     private void add(long value) {
         if (index == trace.length) {
-            trace = Arrays.copyOf(trace, Math.min(trace.length * 2, MAX_NATIVE_STACK_TRACE_DEPTH));
+            trace = Arrays.copyOf(trace, Math.min(trace.length * 2, limit));
         }
         trace[index++] = value;
     }
