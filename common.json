@@ -4,7 +4,7 @@
     "Jsonnet files should not include this file directly but use ci/common.jsonnet instead."
   ],
 
-  "mx_version": "6.19.0",
+  "mx_version": "6.19.3",
 
   "COMMENT.jdks": "When adding or removing JDKs keep in sync with JDKs in ci/common.jsonnet",
   "jdks": {
