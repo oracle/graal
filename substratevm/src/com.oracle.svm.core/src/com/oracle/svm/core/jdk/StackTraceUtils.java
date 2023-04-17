@@ -318,10 +318,6 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
         trace[index++] = value;
     }
 
-    boolean hasTrace() {
-        return trace != null;
-    }
-
     long[] getArray() {
         VMError.guarantee(trace != null, "No trace");
         // trim to size

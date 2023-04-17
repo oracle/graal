@@ -293,11 +293,9 @@ final class Target_java_lang_Throwable {
         if (!RuntimeCompilation.isEnabled()) {
             RawStackTraceVisitor visitor = new RawStackTraceVisitor();
             JavaThreads.visitStackTrace(Thread.currentThread(), visitor);
-            if (visitor.hasTrace()) {
-                backtrace = visitor.getArray();
-                stackTrace = null;
-                return this;
-            }
+            backtrace = visitor.getArray();
+            stackTrace = null;
+            return this;
         }
         stackTrace = JavaThreads.getStackTrace(true, Thread.currentThread());
         return this;
