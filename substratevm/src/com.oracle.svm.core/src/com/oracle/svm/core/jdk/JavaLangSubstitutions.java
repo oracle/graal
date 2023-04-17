@@ -280,39 +280,61 @@ final class Target_java_lang_StringUTF16 {
 final class Target_java_lang_Throwable {
 
     @Alias @RecomputeFieldValue(kind = Reset)//
-    private Object backtrace;
+    Object backtrace;
 
     @Alias @RecomputeFieldValue(kind = Reset)//
     StackTraceElement[] stackTrace;
 
     @Alias String detailMessage;
 
+    /**
+     * Records the execution stack in an internal format. The information is transformed into
+     * {@link StackTraceElement} array in
+     * {@link Target_java_lang_StackTraceElement#of(Object, int)}.
+     * 
+     * @param dummy to change signature
+     */
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
-    private Target_java_lang_Throwable fillInStackTrace() {
-        if (!RuntimeCompilation.isEnabled()) {
-            RawStackTraceVisitor visitor = new RawStackTraceVisitor();
-            JavaThreads.visitStackTrace(Thread.currentThread(), visitor);
-            backtrace = visitor.getArray();
-            stackTrace = null;
+    private Target_java_lang_Throwable fillInStackTrace(int dummy) {
+        /*
+         * Start out by clearing the backtrace for this object, in case the VM runs out of memory
+         * while allocating the stack trace.
+         */
+        backtrace = null;
+
+        if (RuntimeCompilation.isEnabled()) {
+            /*
+             * Runtime compilation not yet optimized. Store the eagerly constructed stack trace in
+             * `backtrace`. We directly use `stackTrace` because it is overwritten by the caller.
+             */
+            backtrace = JavaThreads.getStackTrace(true, Thread.currentThread());
             return this;
         }
-        stackTrace = JavaThreads.getStackTrace(true, Thread.currentThread());
+
+        RawStackTraceVisitor visitor = new RawStackTraceVisitor();
+        JavaThreads.visitStackTrace(Thread.currentThread(), visitor);
+        backtrace = visitor.getArray();
         return this;
     }
+}
 
+@TargetClass(java.lang.StackTraceElement.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
+final class Target_java_lang_StackTraceElement {
+    /**
+     * Constructs the {@link StackTraceElement} array from a backtrace.
+     *
+     * @param x backtrace stored in {@link Target_java_lang_Throwable#backtrace}
+     * @param depth ignored
+     */
     @Substitute
-    private StackTraceElement[] getOurStackTrace() {
-        if (stackTrace != null) {
+    static StackTraceElement[] of(Object x, int depth) {
+        if (x instanceof StackTraceElement[] stackTrace) {
+            /* Stack trace eagerly created. */
             return stackTrace;
-        } else if (backtrace != null) {
-            Object backtraceCopy = backtrace;
-            backtrace = null;
-            stackTrace = RawStackTraceVisitor.decodeBacktrace(backtraceCopy);
-            return stackTrace;
-        } else {
-            return new StackTraceElement[0];
         }
+        return RawStackTraceVisitor.decodeBacktrace(x);
     }
 }
 
