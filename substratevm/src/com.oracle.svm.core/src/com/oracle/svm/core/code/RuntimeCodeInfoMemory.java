@@ -85,6 +85,7 @@ public class RuntimeCodeInfoMemory {
         nativeMetadataSize = WordFactory.zero();
     }
 
+    @Uninterruptible(reason = "Manipulate the counters atomically with regard to GC.")
     public <T extends CodeInfo> void addToSizeCounters(T codeInfo) {
         codeSize.add(CodeInfoAccess.getCodeSize(codeInfo));
         codeAndDataMemorySize.add(CodeInfoAccess.getCodeAndDataMemorySize(codeInfo));
@@ -109,7 +110,6 @@ public class RuntimeCodeInfoMemory {
         // uninterruptible method that is called below.
         assert !Heap.getHeap().isAllocationDisallowed();
         assert info.isNonNull();
-        addToSizeCounters(info);
         lock.lock();
         try {
             add0(info);
@@ -137,6 +137,7 @@ public class RuntimeCodeInfoMemory {
 
     @Uninterruptible(reason = "Manipulate hashtable atomically with regard to GC.")
     private void add0(CodeInfo info) {
+        addToSizeCounters(info);
         if (table.isNull()) {
             table = NonmovableArrays.createWordArray(32);
         }
