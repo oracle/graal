@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -93,6 +94,7 @@ public final class FrameStateBuilder implements SideEffectsState {
     protected final ValueNode[] stack;
     private ValueNode[] lockedObjects;
     private boolean canVerifyKind;
+    private boolean verifyState;
 
     /**
      * @see BytecodeFrame#rethrowException
@@ -147,10 +149,31 @@ public final class FrameStateBuilder implements SideEffectsState {
         this.graph = graph;
         this.clearNonLiveLocals = !shouldRetainLocalVariables;
         this.canVerifyKind = true;
+        this.verifyState = true;
     }
 
     public void disableKindVerification() {
         canVerifyKind = false;
+    }
+
+    /**
+     * Disables verification of the frame states built by this builder.
+     *
+     * @return a value indicating whether state verification was enabled before the call
+     */
+    public boolean disableStateVerification() {
+        boolean wasEnabled = verifyState;
+        verifyState = false;
+        return wasEnabled;
+    }
+
+    /**
+     * Enables verification of frame states built by this builder.
+     *
+     * @param enable a value indicating whether state verification should be enabled
+     */
+    public void setStateVerification(boolean enable) {
+        verifyState = enable;
     }
 
     public void initializeFromArgumentsArray(ValueNode[] arguments) {
@@ -265,6 +288,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         this.lockedObjects = other.lockedObjects.length == 0 ? other.lockedObjects : other.lockedObjects.clone();
         this.rethrowException = other.rethrowException;
         this.canVerifyKind = other.canVerifyKind;
+        this.verifyState = other.verifyState;
 
         assert locals.length == code.getMaxLocals();
         assert stack.length == Math.max(1, code.getMaxStackSize());
@@ -343,7 +367,57 @@ public final class FrameStateBuilder implements SideEffectsState {
             assert outerFrameState == null;
             clearLocals();
         }
+
+        if (verifyState) {
+            verifyStackEffect(bci, pushedValues != null ? pushedValues.length : 0);
+        }
+
         return graph.add(new FrameState(outerFrameState, code, bci, locals, stack, stackSize, pushedSlotKinds, pushedValues, lockedObjects, Arrays.asList(monitorIds), rethrowException, duringCall));
+    }
+
+    /**
+     * Verifies that the stack size of the frame state we're about to build is compatible with the
+     * stack effect of the instruction at {@code bci}.
+     *
+     * @param bci
+     * @param pushedValueCount The number of values to push to the stack before creating the frame
+     *            state; 0 if no values are to be pushed. See
+     *            {@link #create(int, BytecodeParser, boolean, JavaKind[], ValueNode[])}.
+     */
+    private void verifyStackEffect(int bci, int pushedValueCount) {
+        if (parser != null && (!parser.parsingIntrinsic() && parser.graphBuilderConfig.insertFullInfopoints())) {
+            /*
+             * We might be building the state for an infopoint, be less strict than for state
+             * splits.
+             */
+            return;
+        }
+        if (BytecodeFrame.isPlaceholderBci(bci)) {
+            // Not a real instruction.
+            return;
+        }
+        if (code.getCode() == null) {
+            // This can happen during points-to analysis.
+            return;
+        }
+        byte opcode = code.getCode()[bci];
+        if (Bytecodes.isInvoke(opcode)) {
+            // Invoke instructions can pop more values than specified by the minimum stack effect.
+            return;
+        }
+        if (rethrowException) {
+            /*
+             * We seem to be inside explicit exception handling code, with the operation's inputs
+             * already popped off the stack and an exception pushed instead. We can't recover the
+             * original stack size for verification.
+             */
+            return;
+        }
+
+        if (stackSize + pushedValueCount + Bytecodes.stackEffectOf(opcode) < 0) {
+            throw new PermanentBailoutException("At %s, bci %s: opcode %s (%s) has a stack effect of %s, the stack size is %s + %s, this will underflow the bytecode stack.",
+                            code, bci, opcode & 0xff, Bytecodes.nameOf(opcode), Bytecodes.stackEffectOf(opcode), stackSize, pushedValueCount);
+        }
     }
 
     public NodeSourcePosition createBytecodePosition(int bci) {

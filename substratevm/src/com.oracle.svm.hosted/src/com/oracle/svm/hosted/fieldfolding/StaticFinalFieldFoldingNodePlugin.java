@@ -125,9 +125,9 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
 
         ConstantNode[] phiValueNodes = {uninitializedValueNode, initializedValueNode};
         ValuePhiNode phi = new ValuePhiNode(StampTool.meet(Arrays.asList(phiValueNodes)), merge, phiValueNodes);
+        b.addPush(field.getJavaKind(), phi);
         b.setStateAfter(merge);
 
-        b.addPush(field.getJavaKind(), phi);
         return true;
     }
 
