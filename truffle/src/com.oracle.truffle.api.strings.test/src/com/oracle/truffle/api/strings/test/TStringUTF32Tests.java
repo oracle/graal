@@ -47,6 +47,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleStringBuilder;
 
 public class TStringUTF32Tests extends TStringTestBase {
 
@@ -64,5 +65,18 @@ public class TStringUTF32Tests extends TStringTestBase {
         Assert.assertEquals(1, ts.codePointLengthUncached(UTF_32));
         Assert.assertEquals(TruffleString.CodeRange.BROKEN, ts.getCodeRangeUncached(UTF_32));
         Assert.assertFalse(ts.isValidUncached(UTF_32));
+    }
+
+    @Test
+    public void testBroken3() {
+        TruffleStringBuilder sb = TruffleStringBuilder.create(TruffleString.Encoding.UTF_32);
+        sb.appendCodePointUncached(0xD801, 1, true);
+        sb.appendCodePointUncached(0xDC00, 1, true);
+        TruffleString ts1 = sb.toStringUncached();
+        TruffleString ts2 = ts1.switchEncodingUncached(TruffleString.Encoding.UTF_8, true);
+        TruffleString ts4 = ts2.switchEncodingUncached(TruffleString.Encoding.UTF_32, true);
+        Assert.assertEquals(2, ts4.codePointLengthUncached(TruffleString.Encoding.UTF_32));
+        Assert.assertEquals(0xD801, ts4.codePointAtIndexUncached(0, TruffleString.Encoding.UTF_32));
+        Assert.assertEquals(0xDC00, ts4.codePointAtIndexUncached(1, TruffleString.Encoding.UTF_32));
     }
 }

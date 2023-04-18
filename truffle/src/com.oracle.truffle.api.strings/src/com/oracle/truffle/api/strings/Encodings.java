@@ -314,7 +314,11 @@ final class Encodings {
     }
 
     static boolean utf8IsInvalidCodePoint(int codepoint, int nBytes) {
-        return isUTF16Surrogate(codepoint) || codepoint < UTF_8_MIN_CODEPOINT[nBytes] || codepoint > 0x10ffff;
+        return utf8IsInvalidCodePoint(codepoint, nBytes, false);
+    }
+
+    static boolean utf8IsInvalidCodePoint(int codepoint, int nBytes, boolean allowUTF16Surrogates) {
+        return (!allowUTF16Surrogates && isUTF16Surrogate(codepoint)) || codepoint < UTF_8_MIN_CODEPOINT[nBytes] || codepoint > 0x10ffff;
     }
 
     static int invalidCodepointReturnValue(ErrorHandling errorHandling) {
@@ -462,5 +466,9 @@ final class Encodings {
 
     static boolean isValidUnicodeCodepoint(int codepoint) {
         return !isUTF16Surrogate(codepoint) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
+    }
+
+    static boolean isValidUnicodeCodepoint(int codepoint, boolean allowUTF16Surrogates) {
+        return (allowUTF16Surrogates || !isUTF16Surrogate(codepoint)) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
     }
 }

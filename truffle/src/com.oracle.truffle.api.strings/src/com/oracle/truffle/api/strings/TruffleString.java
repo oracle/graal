@@ -6256,7 +6256,7 @@ public final class TruffleString extends AbstractTruffleString {
         final TruffleString switchEncoding(AbstractTruffleString a, Encoding encoding, boolean allowUTF16Surrogates,
                         @Cached InternalSwitchEncodingNode internalNode) {
             // TODO: uncomment once the deprecated execute method is removed
-            // CompilerAsserts.partialEvaluationConstant(errorHandling);
+            // CompilerAsserts.partialEvaluationConstant(allowUTF16Surrogates);
             return internalNode.execute(this, a, encoding, allowUTF16Surrogates);
         }
 

@@ -1628,7 +1628,7 @@ final class TStringInternalNodes {
             TruffleStringIterator it = AbstractTruffleString.forwardIterator(a, arrayA, codeRangeA, sourceEncoding);
             int i = 0;
             while (it.hasNext()) {
-                int codepoint = iteratorNextNode.execute(node, it);
+                int codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                 buffer[i++] = codepoint > 0x7f ? (byte) '?' : (byte) codepoint;
                 TStringConstants.truffleSafePointPoll(node, i);
             }
@@ -1646,7 +1646,7 @@ final class TStringInternalNodes {
             int codeRange = TSCodeRange.get7Bit();
             int i = 0;
             while (it.hasNext()) {
-                int codepoint = iteratorNextNode.execute(node, it);
+                int codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                 byte latin1 = codepoint > 0xff ? (byte) '?' : (byte) codepoint;
                 buffer[i++] = latin1;
                 if (latin1 < 0) {
@@ -1693,7 +1693,7 @@ final class TStringInternalNodes {
             int length = 0;
             int loopCount = 0;
             while (it.hasNext()) {
-                int codepoint = iteratorNextNode.execute(node, it);
+                int codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                 boolean isSurrogate = isUTF16Surrogate(codepoint);
                 boolean isGreaterMax = isGreaterThanMaxUTFCodepoint(codepoint);
                 if (isSurrogate || isGreaterMax) {
@@ -1776,7 +1776,7 @@ final class TStringInternalNodes {
             int codeRange = TSCodeRange.get7Bit();
             while (it.hasNext()) {
                 int curIndex = it.getRawIndex();
-                int codepoint = iteratorNextNode.execute(node, it);
+                int codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                 if (codepoint > 0xff) {
                     buffer = TStringOps.arraycopyOfWithStride(node, buffer, 0, length, 0, codePointLengthA, 1);
                     codeRange = TSCodeRange.get16Bit();
@@ -1795,7 +1795,7 @@ final class TStringInternalNodes {
             }
             while (it.hasNext()) {
                 int curIndex = it.getRawIndex();
-                int codepoint = iteratorNextNode.execute(node, it);
+                int codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                 if (codepoint > 0xffff) {
                     buffer = Arrays.copyOf(buffer, isLarge ? TStringConstants.MAX_ARRAY_SIZE : buffer.length * 2);
                     codeRange = TSCodeRange.commonCodeRange(codeRange, TSCodeRange.getValidMultiByte());
@@ -1821,7 +1821,7 @@ final class TStringInternalNodes {
             }
             int loopCount = 0;
             while (it.hasNext()) {
-                int codepoint = iteratorNextNode.execute(node, it);
+                int codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                 boolean isSurrogate = isUTF16Surrogate(codepoint);
                 boolean isGreaterMax = isGreaterThanMaxUTFCodepoint(codepoint);
                 if (isSurrogate || isGreaterMax) {
@@ -1868,7 +1868,7 @@ final class TStringInternalNodes {
             byte[] buffer = new byte[codePointLengthA << 2];
             int length = 0;
             while (it.hasNext()) {
-                writeToByteArray(buffer, 2, length++, utfReplaceInvalid(iteratorNextNode.execute(node, it), allowUTF16Surrogates));
+                writeToByteArray(buffer, 2, length++, utfReplaceInvalid(iteratorNextNode.execute(node, it, allowUTF16Surrogates), allowUTF16Surrogates));
                 TStringConstants.truffleSafePointPoll(node, length);
             }
             assert length == codePointLengthA;
@@ -1894,7 +1894,7 @@ final class TStringInternalNodes {
             int codepoint = 0;
             while (it.hasNext()) {
                 int curIndex = it.getRawIndex();
-                codepoint = iteratorNextNode.execute(node, it);
+                codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                 if (codepoint > 0xff) {
                     if (isUTF16Surrogate(codepoint)) {
                         buffer = TStringOps.arraycopyOfWithStride(node, buffer, 0, length, 0, codePointLengthA, 2);
@@ -1919,7 +1919,7 @@ final class TStringInternalNodes {
             if (is16Bit(codeRange)) {
                 while (it.hasNext()) {
                     int curIndex = it.getRawIndex();
-                    codepoint = iteratorNextNode.execute(node, it);
+                    codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                     if (codepoint > 0xffff || isUTF16Surrogate(codepoint)) {
                         buffer = TStringOps.arraycopyOfWithStride(node, buffer, 0, length, 1, codePointLengthA, 2);
                         codeRange = Encodings.isValidUnicodeCodepoint(codepoint) ? TSCodeRange.getValidFixedWidth() : TSCodeRange.getBrokenFixedWidth();
@@ -1935,7 +1935,7 @@ final class TStringInternalNodes {
                 return create(a, buffer, length, 1, Encoding.UTF_32, codePointLengthA, codeRange);
             }
             while (it.hasNext()) {
-                codepoint = iteratorNextNode.execute(node, it);
+                codepoint = iteratorNextNode.execute(node, it, allowUTF16Surrogates);
                 boolean isSurrogate = isUTF16Surrogate(codepoint);
                 boolean isGreaterMax = isGreaterThanMaxUTFCodepoint(codepoint);
                 if (isSurrogate || isGreaterMax) {
@@ -1945,7 +1945,7 @@ final class TStringInternalNodes {
                 writeToByteArray(buffer, 2, length++, codepoint);
                 TStringConstants.truffleSafePointPoll(node, length);
             }
-            return create(a, buffer, length, 2, Encoding.UTF_32, codePointLengthA, codeRange);
+            return create(a, buffer, length, 2, Encoding.UTF_32, length, codeRange);
         }
 
         @Specialization(guards = {"isUnsupportedEncoding(sourceEncoding) || isUnsupportedEncoding(targetEncoding)"})
