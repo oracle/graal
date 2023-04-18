@@ -62,7 +62,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ForeignExceptionInterop;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions

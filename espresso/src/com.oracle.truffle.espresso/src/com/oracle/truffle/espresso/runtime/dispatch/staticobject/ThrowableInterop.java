@@ -132,6 +132,7 @@ public class ThrowableInterop extends EspressoInterop {
             EspressoInterop.Nodes.registerMessages(cls);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.IsExceptionNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
@@ -154,6 +155,14 @@ public class ThrowableInterop extends EspressoInterop {
             public boolean isException(StaticObject receiver) {
                 receiver.checkNotForeign();
                 return true;
+            }
+        }
+
+        abstract static class ThrowExceptionNode extends InteropMessage.ThrowException {
+            @Specialization
+            public static RuntimeException throwException(StaticObject object) {
+                object.checkNotForeign();
+                throw object.getKlass().getMeta().throwException(object);
             }
         }
 

@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop;
-import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.ForeignExceptionInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.InterruptedExceptionInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.IterableInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.IteratorInterop;
