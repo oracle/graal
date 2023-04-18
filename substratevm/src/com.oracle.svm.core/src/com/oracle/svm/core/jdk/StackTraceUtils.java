@@ -276,6 +276,9 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
     private static void decodeRawBacktrace(long[] trace, BuildStackTraceVisitor visitor) {
         for (long address : trace) {
+            if (address == 0) {
+                break;
+            }
             CodePointer ip = WordFactory.pointer(address);
             UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
             if (untetheredInfo.isNull()) {
@@ -307,7 +310,9 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
             return false;
         }
         VMError.guarantee(deoptimizedFrame == null, "Deoptimization not supported");
-        add(ip.rawValue());
+        long rawValue = ip.rawValue();
+        VMError.guarantee(rawValue != 0, "Unexpected code pointer: 0");
+        add(rawValue);
         return true;
     }
 
@@ -319,9 +324,11 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
     }
 
     long[] getArray() {
-        VMError.guarantee(trace != null, "No trace");
-        // trim to size
-        return Arrays.copyOf(trace, index);
+        VMError.guarantee(trace != null, "Already acquired");
+        VMError.guarantee(index == trace.length || trace[index] == 0, "Unterminated trace?");
+        long[] tmp = trace;
+        trace = null;
+        return tmp;
     }
 }
 
