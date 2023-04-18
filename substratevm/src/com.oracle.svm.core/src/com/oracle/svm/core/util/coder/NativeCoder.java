@@ -25,11 +25,32 @@
 package com.oracle.svm.core.util.coder;
 
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 
 /** Uses the native, architecture-specific byte order to access {@link ByteStream} data. */
 public class NativeCoder {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int readU1(Pointer ptr) {
+        return ptr.readInt(0) & 0xFF;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int readU2(Pointer ptr) {
+        return ptr.readShort(0) & 0xFFFF;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long readU4(Pointer ptr) {
+        return ptr.readInt(0) & 0xFFFFFFFFL;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord readU8(Pointer ptr) {
+        return ptr.readWord(0);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static byte readByte(ByteStream data) {
         Pointer position = data.getPosition();
