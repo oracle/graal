@@ -193,7 +193,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             for (SpecialRegister reg : SpecialRegister.registers()) {
                 gen.setInitialSpecialRegisterValue(reg, gen.isEntryPoint() ? builder.constantNull(builder.wordType()) : builder.getFunctionParam(reg.getIndex()));
             }
-
             gen.getDebugInfoPrinter().printFunction(graph, this);
         } else {
             assert block.getPredecessorCount() > 0;
@@ -298,6 +297,13 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 throw new GraalError("Block without BlockEndOp: " + block.getEndNode());
             }
             builder.buildBranch(gen.getBlock(block.getFirstSuccessor()));
+        }
+        // Create function parameters if debug info is enabled.
+        if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+            if (block == graph.getLastSchedule().getCFG().getStartBlock()) {
+                builder.createDIFunctionParameters();
+            }
+            builder.insertLocalVarDeclarations();
         }
 
         processedBlocks.add(block);

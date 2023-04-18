@@ -654,6 +654,7 @@ public class NativeImageGenerator {
             // Initialize the heap in the llvm debug info provider to generate types
             if (SubstrateOptions.useLLVMBackend() && (SubstrateOptions.GenerateDebugInfo.getValue() > 0)) {
                 LLVMDebugInfoProvider.initializeHeap(heap);
+                LLVMDebugInfoProvider.generateTypeMap();
             }
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;

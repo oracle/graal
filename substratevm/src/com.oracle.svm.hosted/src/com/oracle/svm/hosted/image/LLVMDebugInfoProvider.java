@@ -26,13 +26,15 @@
 package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
-
+import java.util.HashMap;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import com.oracle.svm.hosted.meta.HostedType;
+
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -41,10 +43,9 @@ import org.graalvm.compiler.debug.DebugContext;
 public class LLVMDebugInfoProvider implements DebugInfoProvider {
     public static NativeImageHeap heap;
     NativeImageDebugInfoProvider dbgInfoHelper;
-
+    public static HashMap<String, HostedType> typeMap = new HashMap<String, HostedType>();
 
     public LLVMDebugInfoProvider() {
-        dbgInfoHelper = null;
     }
 
    public static void initializeHeap(NativeImageHeap heapArg) {
@@ -65,31 +66,82 @@ public class LLVMDebugInfoProvider implements DebugInfoProvider {
        return heapTypeInfo;
    }
 
-   public static class LLVMLocationInfoProvider implements DebugLocationInfo {
-        private Path fullFilePath;
+   public static void generateTypeMap() {
+        Stream<HostedType> typeStream = heap.getUniverse().getTypes().stream();
+        typeStream.forEach(hostedType -> typeMap.put(hostedType.getName(), hostedType));
+    }
+
+    public class LLVMTypeInfoProvider extends LLVMFileInfoProvider implements DebugTypeInfo {
+        HostedType hostedType;
+
+        public LLVMTypeInfoProvider(HostedType hostedType, DebugContext debugContext) {
+            super(hostedType, debugContext);
+            this.hostedType = hostedType;
+        }
+
+        @Override
+        public ResolvedJavaType idType() {
+            // always use the original type for establishing identity
+            return NativeImageDebugInfoProvider.getOriginal(hostedType);
+        }
+
+        @Override
+        public void debugContext(Consumer<DebugContext> action) {
+
+        }
+
+        @Override
+        public String typeName() {
+            return DebugInfoProviderHelper.toJavaName(hostedType);
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return null;
+        }
+
+        @Override
+        public int size() {
+            return DebugInfoProviderHelper.typeSize(hostedType);
+        }
+    }
+    public class LLVMFileInfoProvider implements DebugFileInfo {
+        Path fullFilePath;
+
+        LLVMFileInfoProvider(ResolvedJavaMethod method, DebugContext debugContext) {
+            fullFilePath = DebugInfoProviderHelper.getFullFilePathFromMethod(method, debugContext);
+        }
+
+        LLVMFileInfoProvider(HostedType hostedType, DebugContext debugContext) {
+            fullFilePath = DebugInfoProviderHelper.getFullFilePathFromType(hostedType, debugContext);
+        }
+
+
+        @Override
+        public String fileName() {
+            return DebugInfoProviderHelper.getFileName(fullFilePath);
+        }
+
+        @Override
+        public Path filePath() {
+            return DebugInfoProviderHelper.getFilePath(fullFilePath);
+        }
+
+        @Override
+        public Path cachePath() {
+            return null;
+        }
+}
+
+   public class LLVMLocationInfoProvider extends LLVMFileInfoProvider implements DebugLocationInfo {
         private int bci;
         private ResolvedJavaMethod method;
 
-        public LLVMLocationInfoProvider(DebugContext debugContext, int bci, ResolvedJavaMethod method) {
-            fullFilePath = DebugInfoProviderHelper.getFullFilePathFromMethod(method, debugContext);
+        public LLVMLocationInfoProvider(ResolvedJavaMethod method, int bci, DebugContext debugContext) {
+            super(method, debugContext);
             this.bci = bci;
             this.method = method;
         }
-
-       @Override
-       public String fileName() {
-           return DebugInfoProviderHelper.getFileName(fullFilePath);
-       }
-
-       @Override
-       public Path filePath() {
-           return DebugInfoProviderHelper.getFilePath(fullFilePath);
-       }
-
-       @Override
-       public Path cachePath() {
-           throw unimplemented();
-       }
 
        @Override
        public int line() {

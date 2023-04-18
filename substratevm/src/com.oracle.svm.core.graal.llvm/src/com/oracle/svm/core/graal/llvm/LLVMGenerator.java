@@ -303,7 +303,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         return ((HostedMethod) method).getUniqueShortName();
     }
 
-    private static boolean isEntryPoint(ResolvedJavaMethod method) {
+    public static boolean isEntryPoint(ResolvedJavaMethod method) {
         return ((HostedMethod) method).isEntryPoint();
     }
 
@@ -1248,7 +1248,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             return presentCount > 0;
         }
 
-        static int count() {
+        public static int count() {
             return presentCount;
         }
 

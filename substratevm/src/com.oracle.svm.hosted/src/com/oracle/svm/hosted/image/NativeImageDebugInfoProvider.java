@@ -231,7 +231,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return heap.getObjects().stream().filter(this::acceptObjectInfo).map(this::createDebugDataInfo);
     }
 
-    static ObjectLayout getObjectLayout() {
+    public static ObjectLayout getObjectLayout() {
         return ConfigurationValues.getObjectLayout();
     }
 
@@ -290,7 +290,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return getOriginal(hostedField.getDeclaringClass());
     }
 
-    private static ResolvedJavaType getOriginal(HostedType hostedType) {
+    static ResolvedJavaType getOriginal(HostedType hostedType) {
         /* partially unwrap then traverse through substitutions to the original */
         ResolvedJavaType javaType = hostedType.getWrapped().getWrappedWithoutResolve();
         if (javaType instanceof SubstitutionType) {
@@ -344,20 +344,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedType hostedType) {
-            ResolvedJavaType javaType = getDeclaringClass(hostedType, false);
-            Class<?> clazz = hostedType.getJavaClass();
-            SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
-            try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
-                Path filePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
-                if (filePath == null && hostedType instanceof HostedInstanceClass) {
-                    // conjure up an appropriate, unique file name to keep tools happy
-                    // even though we cannot find a corresponding source
-                    filePath = fullFilePathFromClassName((HostedInstanceClass) hostedType);
-                }
-                fullFilePath = filePath;
-            } catch (Throwable e) {
-                throw debugContext.handle(e);
-            }
+            fullFilePath = DebugInfoProviderHelper.getFullFilePathFromType(hostedType, debugContext);
         }
 
         @SuppressWarnings("try")
@@ -400,7 +387,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
+    static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
         String[] elements = hostedInstanceClass.toJavaName().split("\\.");
         int count = elements.length;
         String name = elements[count - 1];
@@ -453,21 +440,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public int size() {
-            if (hostedType instanceof HostedInstanceClass) {
-                /* We know the actual instance size in bytes. */
-                return ((HostedInstanceClass) hostedType).getInstanceSize();
-            } else if (hostedType instanceof HostedArrayClass) {
-                /* Use the size of header common to all arrays of this type. */
-                return getObjectLayout().getArrayBaseOffset(hostedType.getComponentType().getStorageKind());
-            } else if (hostedType instanceof HostedInterface) {
-                /* Use the size of the header common to all implementors. */
-                return getObjectLayout().getFirstFieldOffset();
-            } else {
-                /* Use the number of bytes needed needed to store the value. */
-                assert hostedType instanceof HostedPrimitiveType;
-                JavaKind javaKind = hostedType.getStorageKind();
-                return (javaKind == JavaKind.Void ? 0 : javaKind.getByteCount());
-            }
+            return DebugInfoProviderHelper.typeSize(hostedType);
         }
     }
 
@@ -839,8 +812,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public int bitCount() {
-            JavaKind javaKind = primitiveType.getStorageKind();
-            return (javaKind == JavaKind.Void ? 0 : javaKind.getBitCount());
+            return DebugInfoProviderHelper.getPrimitiveBitCount(primitiveType);
         }
 
         @Override
@@ -850,26 +822,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public int flags() {
-            char typeChar = primitiveType.getStorageKind().getTypeChar();
-            switch (typeChar) {
-                case 'B':
-                case 'S':
-                case 'I':
-                case 'J': {
-                    return FLAG_NUMERIC | FLAG_INTEGRAL | FLAG_SIGNED;
-                }
-                case 'C': {
-                    return FLAG_NUMERIC | FLAG_INTEGRAL;
-                }
-                case 'F':
-                case 'D': {
-                    return FLAG_NUMERIC;
-                }
-                default: {
-                    assert typeChar == 'V' || typeChar == 'Z';
-                    return 0;
-                }
-            }
+            return DebugInfoProviderHelper.getPrimitiveFlags(primitiveType);
         }
     }
 
@@ -1774,16 +1727,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         private Local[] getLocalsBySlot() {
-            LocalVariableTable lvt = method.getLocalVariableTable();
-            Local[] nonEmptySortedLocals = null;
-            if (lvt != null) {
-                Local[] locals = lvt.getLocalsAt(bci);
-                if (locals != null && locals.length > 0) {
-                    nonEmptySortedLocals = Arrays.copyOf(locals, locals.length);
-                    Arrays.sort(nonEmptySortedLocals, (Local l1, Local l2) -> l1.getSlot() - l2.getSlot());
-                }
-            }
-            return nonEmptySortedLocals;
+            return DebugInfoProviderHelper.getLocalsBySlot(method, bci);
         }
 
         @Override
