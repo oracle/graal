@@ -280,7 +280,7 @@ final class Target_java_lang_StringUTF16 {
 final class Target_java_lang_Throwable {
 
     @Alias @RecomputeFieldValue(kind = Reset)//
-    Object backtrace;
+    private Object backtrace;
 
     @Alias @RecomputeFieldValue(kind = Reset)//
     StackTraceElement[] stackTrace;
@@ -325,7 +325,7 @@ final class Target_java_lang_StackTraceElement {
     /**
      * Constructs the {@link StackTraceElement} array from a backtrace.
      *
-     * @param x backtrace stored in {@link Target_java_lang_Throwable#backtrace}
+     * @param x backtrace stored in {@code Target_java_lang_Throwable#backtrace}
      * @param depth ignored
      */
     @Substitute
