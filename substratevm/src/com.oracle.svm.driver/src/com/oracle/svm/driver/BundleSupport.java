@@ -117,11 +117,12 @@ final class BundleSupport {
     static final String BUNDLE_FILE_EXTENSION = ".nib";
 
     boolean containerizedBuild;
-    String containerizationTool;
-    static final String DEFAULT_CONTAINERIZATION_TOOL = "podman";
-    static final List<String> SUPPORTED_CONTAINERIZATION_TOOLS = List.of("podman", "docker");
+    String containerTool;
+    String containerToolVersion;
+    static final String DEFAULT_CONTAINER_TOOL = "podman";
+    static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
     String containerImage = "graalvm-container";
-    Path dockerfile;
+    Path containerImageFile;
 
     enum BundleOptionVariants {
         create(),
@@ -216,10 +217,10 @@ final class BundleSupport {
                                 break;
                             case tool:
                                 if (optionParts.length == 2 && !optionParts[1].isEmpty()) {
-                                    if (!SUPPORTED_CONTAINERIZATION_TOOLS.contains(optionParts[1])) {
-                                        throw NativeImage.showError(String.format("%s is not supported, please use one of the following tools for containerized builds: %s", optionParts[1], SUPPORTED_CONTAINERIZATION_TOOLS));
+                                    if (!SUPPORTED_CONTAINER_TOOLS.contains(optionParts[1])) {
+                                        throw NativeImage.showError(String.format("%s is not supported, please use one of the following tools for containerized builds: %s", optionParts[1], SUPPORTED_CONTAINER_TOOLS));
                                     }
-                                    bundleSupport.containerizationTool = optionParts[1];
+                                    bundleSupport.containerTool = optionParts[1];
                                 }
                                 break;
                             case container:
@@ -228,7 +229,7 @@ final class BundleSupport {
                                 break;
                             case dockerfile:
                                 if (optionParts.length == 2 && !optionParts[1].isEmpty() && Files.exists(Path.of(optionParts[1])))
-                                    bundleSupport.dockerfile = Path.of(optionParts[1]);
+                                    bundleSupport.containerImageFile = Path.of(optionParts[1]);
                                 break;
                             default:
                                 throw new IllegalArgumentException();
@@ -258,11 +259,11 @@ final class BundleSupport {
     private void initializeContainerImage() {
         // create dockerfile if not available for writing or loading bundle
         try {
-            if (dockerfile == null) {
-                dockerfile = Files.createTempFile("Dockerfile", null);
-                Files.write(dockerfile, ("FROM registry.fedoraproject.org/fedora-minimal:latest" + System.lineSeparator() +
+            if (containerImageFile == null) {
+                containerImageFile = Files.createTempFile("Dockerfile", null);
+                Files.write(containerImageFile, ("FROM registry.fedoraproject.org/fedora-minimal:latest" + System.lineSeparator() +
                         "RUN microdnf -y install gcc g++ zlib-static --nodocs --setopt install_weak_deps=0 && microdnf clean all -y").getBytes());
-                dockerfile.toFile().deleteOnExit();
+                containerImageFile.toFile().deleteOnExit();
             }
         } catch (IOException e) {
             throw NativeImage.showError(e.getMessage());
@@ -270,25 +271,27 @@ final class BundleSupport {
 
         if(writeBundle && nativeImage.isDryRun()) {
             nativeImage.showMessage("Skipping container creation for native-image dry-run.");
-            if(containerizationTool == null) {
-                containerizationTool = DEFAULT_CONTAINERIZATION_TOOL;
+            if(containerTool == null) {
+                containerTool = DEFAULT_CONTAINER_TOOL;
             }
             return;
         }
 
-        if(containerizationTool != null) {
-            if(!hasContainerizationSupport(containerizationTool)) {
+        if(containerTool != null) {
+            containerToolVersion = getContainerToolVersion(containerTool);
+            if(containerToolVersion.equals("")) {
                 throw NativeImage.showError("Configured containerization tool not available.");
-            } else if(containerizationTool.equals("docker") && !isRootlessDocker()) {
+            } else if(containerTool.equals("docker") && !isRootlessDocker()) {
                 throw NativeImage.showError("Only rootless docker is supported for containerized builds.");
             }
         } else {
-            if (hasContainerizationSupport("podman")) {
-                containerizationTool = "podman";
-            } else if (hasContainerizationSupport("docker") && isRootlessDocker()) {
-                containerizationTool = "docker";
-            } else {
-                throw NativeImage.showError(String.format("Please install one of the following tools before running containerized native image builds: %s", SUPPORTED_CONTAINERIZATION_TOOLS));
+            for(String tool : SUPPORTED_CONTAINER_TOOLS) {
+                containerTool = tool;
+                containerToolVersion = getContainerToolVersion(tool);
+                if(!containerToolVersion.equals("")) break;
+            }
+            if (containerToolVersion.equals("")) {
+                throw NativeImage.showError(String.format("Please install one of the following tools before running containerized native image builds: %s", SUPPORTED_CONTAINER_TOOLS));
             }
         }
 
@@ -298,10 +301,29 @@ final class BundleSupport {
     }
 
     private int createContainer() {
+        ProcessBuilder pbCheckForImage = new ProcessBuilder(containerTool, "images", "-q", containerImage + ":latest");
+        ProcessBuilder pb = new ProcessBuilder(containerTool, "build", "-f", containerImageFile.toString(), "-t", containerImage, ".");
         Process p = null;
         try {
-            p = new ProcessBuilder(containerizationTool, "build", "-f", dockerfile.toString(), "-t", containerImage, ".").inheritIO().start();
-            return p.waitFor();
+            p = pbCheckForImage.start();
+            p.waitFor();
+            String imageId = (new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine();
+            if(imageId == null) {
+                pb.inheritIO();
+            } else {
+                nativeImage.showMessage(String.format("Checking container image %s", containerImage));
+            }
+            p = pb.start();
+            int status = p.waitFor();
+            if(status == 0) {
+                Stream<String> result = (new BufferedReader(new InputStreamReader(p.getInputStream()))).lines();
+                p = pbCheckForImage.start();
+                p.waitFor();
+                if(imageId != null && !(new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine().equals(imageId)) {
+                    result.forEach(System.out::println);
+                }
+            }
+            return status;
         } catch (IOException | InterruptedException e) {
             throw NativeImage.showError(e.getMessage());
         } finally {
@@ -311,14 +333,28 @@ final class BundleSupport {
         }
     }
 
-    private boolean hasContainerizationSupport(String tool) {
-        ProcessBuilder pb = new ProcessBuilder("which", tool);
+    private boolean isToolAvailable(String tool) {
+        String[] paths = SubstrateUtil.split(System.getenv("PATH"), ":");
+        for (String path : paths) {
+            try (Stream<Path> walk = Files.walk(Path.of(path))) {
+                if(walk.noneMatch(p -> p.endsWith(tool))) {
+                    return true;
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return false;
+    }
+
+    private String getContainerToolVersion(String tool) {
+        ProcessBuilder pb = new ProcessBuilder(tool, "--version");
         Process p = null;
         try {
             p = pb.start();
             p.waitFor();
             String result = (new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine();
-            return result != null;
+            return result.contains("version") ? result : "";
         } catch (IOException | InterruptedException e) {
             throw NativeImage.showError(e.getMessage());
         } finally {
@@ -463,17 +499,17 @@ final class BundleSupport {
             try (Reader reader = Files.newBufferedReader(containerFile)) {
                 EconomicMap<String, Object> json = JSONParser.parseDict(reader);
                 containerImage = json.get("containerImage").toString();
-                containerizationTool = json.get("tool").toString();
+                containerTool = json.get("tool").toString();
             } catch (IOException e) {
                 throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
             }
             nativeImage.showMessage(String.format("%s %s was specified as container image on bundle creation and will be used for bundle apply. Specify other images with the '%s' option.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage, ExtendedBundleOptions.container));
-            nativeImage.showMessage(String.format("%s %s was specified as containerization tool on bundle creation and will be used for bundle apply. Specify other tools with the '%s' option.", BUNDLE_INFO_MESSAGE_PREFIX, containerizationTool, ExtendedBundleOptions.tool));
+            nativeImage.showMessage(String.format("%s %s was specified as containerization tool on bundle creation and will be used for bundle apply. Specify other tools with the '%s' option.", BUNDLE_INFO_MESSAGE_PREFIX, containerTool, ExtendedBundleOptions.tool));
         }
 
-        dockerfile = stageDir.resolve("Dockerfile");
-        if(!Files.exists(dockerfile)) {
-            dockerfile = null;
+        containerImageFile = stageDir.resolve("Dockerfile");
+        if(!Files.exists(containerImageFile)) {
+            containerImageFile = null;
         }
 
 
@@ -800,16 +836,16 @@ final class BundleSupport {
         if(containerizedBuild) {
             Path containerFile = stageDir.resolve("container.json");
             try (JsonWriter writer = new JsonWriter(containerFile)) {
-                writer.print(Map.of("containerImage", containerImage, "tool", containerizationTool));
+                writer.print(Map.of("containerImage", containerImage, "containerTool", containerTool, "containerToolVersion", containerToolVersion));
             } catch (IOException e) {
                 throw NativeImage.showError("Failed to write bundle-file " + containerFile, e);
             }
 
-            Path dockerfileFile = stageDir.resolve("Dockerfile");
+            Path bundleContainerImageFile= stageDir.resolve("Dockerfile");
             try {
-                Files.copy(dockerfile, dockerfileFile);
+                Files.copy(containerImageFile, bundleContainerImageFile);
             } catch (IOException e) {
-                throw NativeImage.showError("Failed to write bundle-file " + dockerfileFile, e);
+                throw NativeImage.showError("Failed to write bundle-file " + bundleContainerImageFile, e);
             }
         }
 
