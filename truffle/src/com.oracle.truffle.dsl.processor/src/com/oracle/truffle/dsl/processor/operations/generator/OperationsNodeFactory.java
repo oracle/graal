@@ -331,8 +331,13 @@ public class OperationsNodeFactory implements ElementHelpers {
             nodeConsts.prependToClass(el);
             operationNodeGen.add(el);
         }
-
         consts.addElementsTo(operationNodeGen);
+
+        // Define a helper to initialize the cached nodes.
+        operationNodeGen.add(createInitializeCachedNodes());
+
+        // TODO: this method is here for debugging and should probably be omitted before release
+        operationNodeGen.add(createDumpBytecode());
 
         return operationNodeGen;
     }
@@ -408,31 +413,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.statement("clone.interpreter = " + (model.generateUncached ? "UN" : "") + "CACHED_INTERPRETER");
 
         if (!model.generateUncached) {
-            // When we have an uncached interpreter, changeInterpreters instantiates operation Nodes
-            // when switching to cached. If we don't have an uncached interpreter, we need to
-            // initialize these operation Nodes immediately.
-
-            b.startFor().string("int bci = 0; bci < bc.length;").end().startBlock();
-            b.startSwitch().string("bc[bci]").end().startBlock();
-            for (InstructionModel instr : model.getInstructions()) {
-                b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
-
-                switch (instr.kind) {
-                    case CUSTOM:
-                    case CUSTOM_SHORT_CIRCUIT:
-                        b.lineComment("TODO: instantiate " + cachedDataClassName(instr) + " here.");
-                        break;
-                    default:
-                        // do nothing
-                        break;
-                }
-
-                b.statement("bci += " + instr.getInstructionLength());
-                b.statement("break");
-                b.end();
-            }
-            b.end();
-            b.end();
+            b.statement("clone.initializeCachedNodes()");
         }
         b.lineComment("TODO: copy side tables");
 
@@ -752,7 +733,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationIntrospection, "getIntrospectionData");
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.statement("Object[] instructions = new Object[bc.length]");
+        b.statement("List<Object> instructions = new ArrayList<>()");
 
         b.startFor().string("int bci = 0; bci < bc.length;").end().startBlock();
 
@@ -760,7 +741,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         for (InstructionModel instr : model.getInstructions()) {
             b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
-            b.startAssign("instructions[bci]").startNewArray(arrayOf(context.getType(Object.class)), null);
+            b.startStatement().startCall("instructions.add").startNewArray(arrayOf(context.getType(Object.class)), null);
             b.string("bci");
             b.doubleQuote(instr.name);
             b.string("new short[] {" + instr.id + "}");
@@ -795,7 +776,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end();
 
-            b.end(2);
+            b.end(3);
             b.statement("bci += " + instr.getInstructionLength());
             b.statement("break");
             b.end();
@@ -814,7 +795,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         // todo: source info
 
         b.startReturn().startStaticCall(types.OperationIntrospection_Provider, "create");
-        b.string("new Object[]{0, instructions, exHandlersInfo, null}");
+        b.string("new Object[]{0, instructions.toArray(), exHandlersInfo, null}");
         b.end(2);
 
         return ex;
@@ -1011,40 +992,11 @@ public class OperationsNodeFactory implements ElementHelpers {
         // deopt and invalidate before changing state
         b.tree(createTransferToInterpreterAndInvalidate("this"));
 
-        // If we generate an uncached version, when we switch interpreters we need to initialize
-        // the node.
+        // If we generate an uncached version, we need to initialize the cached nodes when switching
+        // from it.
         if (model.generateUncached) {
             b.startIf().string("interpreter == UNCACHED_INTERPRETER").end().startBlock();
-            b.statement("cachedNodes = new Node[numNodes]");
-
-            b.startFor().string("int bci = 0; bci < bc.length; bci++").end().startBlock();
-            b.startSwitch().string("bc[bci]").end().startBlock();
-
-            for (InstructionModel instr : model.getInstructions()) {
-                b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
-                switch (instr.kind) {
-                    case CUSTOM:
-                    case CUSTOM_SHORT_CIRCUIT:
-                        InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
-                        b.statement("int nodeIndex = bc[bci + " + imm.offset + "]");
-                        b.statement(cachedDataClassName(instr) + " node = new " + cachedDataClassName(instr) + "()");
-                        b.statement("cachedNodes[nodeIndex] = insert(node)");
-                        break;
-                    default:
-                        // do nothing
-                        break;
-                }
-                b.statement("bci += " + instr.getInstructionLength());
-                b.statement("break");
-                b.end();
-            }
-
-            b.caseDefault().startBlock();
-            b.statement("break");
-            b.end();
-
-            b.end(); // } switch
-            b.end(); // } for
+            b.statement("initializeCachedNodes()");
             b.end(); // } if
         }
 
@@ -1055,6 +1007,97 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         b.statement("interpreter = toInterpreter");
+
+        return ex;
+    }
+
+    private CodeExecutableElement createInitializeCachedNodes() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "initializeCachedNodes");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.startAssert().string("cachedNodes == null").end();
+        b.statement("cachedNodes = new Node[numNodes]");
+        b.statement("int bci = 0");
+        b.startWhile().string("bci < bc.length").end().startBlock();
+        b.startSwitch().string("bc[bci]").end().startBlock();
+        for (InstructionModel instr : model.getInstructions()) {
+            b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
+            switch (instr.kind) {
+                case CUSTOM:
+                case CUSTOM_SHORT_CIRCUIT:
+                    InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
+                    b.statement("int nodeIndex = bc[bci + " + imm.offset + "]");
+                    b.statement(cachedDataClassName(instr) + " node = new " + cachedDataClassName(instr) + "()");
+                    b.statement("cachedNodes[nodeIndex] = insert(node)");
+                    break;
+                default:
+                    // do nothing
+                    break;
+            }
+            b.statement("bci += " + instr.getInstructionLength());
+            b.statement("break");
+            b.end();
+        }
+
+        b.caseDefault().startBlock();
+        b.statement("break");
+        b.end();
+
+        b.end(); // } switch
+        b.end(); // } while
+        b.startAssert().string("bci == bc.length").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createDumpBytecode() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "dumpBytecode");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.statement("int bci = 0");
+        b.startWhile().string("bci < bc.length").end().startBlock();
+        b.startSwitch().string("bc[bci]").end().startBlock();
+        for (InstructionModel instr : model.getInstructions()) {
+            b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
+
+            // print code
+            b.statement("String result = bci + \"\\t\" + \"" + instr.name + "\"");
+
+            for (InstructionImmediate imm : instr.getImmediates()) {
+                b.statement("result += \" " + imm.name + "=\"");
+                switch (imm.kind) {
+                    case BYTECODE_INDEX:
+                    case INTEGER:
+                    case LOCAL_SETTER:
+                    case LOCAL_SETTER_RANGE_LENGTH:
+                    case LOCAL_SETTER_RANGE_START:
+                        b.statement("result += bc[bci + " + imm.offset + "]");
+                        break;
+                    case CONSTANT:
+                        b.statement("result += constants[bc[bci + " + imm.offset + "]]");
+                        break;
+                    case NODE:
+                        b.statement("result += (cachedNodes == null) ? null : cachedNodes[bc[bci + " + imm.offset + "]]");
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            b.statement("System.out.println(result)");
+
+            b.statement("bci += " + instr.getInstructionLength());
+            b.statement("break");
+            b.end();
+        }
+
+        b.caseDefault().startBlock();
+        b.statement("break");
+        b.end();
+
+        b.end(); // } switch
+        b.end(); // } while
+        b.startAssert().string("bci == bc.length").end();
 
         return ex;
     }
@@ -2307,8 +2350,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.startAssign("result.basicBlockBoundary").string("Arrays.copyOf(basicBlockBoundary, bci)").end();
             }
 
-            // TODO: since Nodes aren't allocated until we move to the cached interp, we need to
-            // remember to adopt them when we create them.
+            if (!model.generateUncached) {
+                // If we don't start out in uncached, we need to initialize the cached nodes from
+                // the start.
+                b.statement("result.initializeCachedNodes()");
+            }
 
             if (model.enableYield) {
                 // TODO: remember the continuations somewhere so we can fix them up without looping
@@ -2409,7 +2455,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.end();
 
                     b.startIf().string("inFinallyTryHandler(ctx)").end().startBlock();
-                    b.statement("finallyTryContext.finallyRelativeBranches.add(bci)");
+                    b.statement("finallyTryContext.finallyRelativeBranches.add(bci + 1)");
                     b.end();
 
                     b.end();
@@ -2513,12 +2559,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             for (int i = 0; i < immediates.size(); i++) {
                 InstructionImmediate immediate = immediates.get(i);
                 args[i] = switch (immediate.kind) {
-                    case BYTECODE_INDEX -> {
-                        // Bytecode indices correspond to child pointers.
-                        // TODO: We should mark these as relative in case we're in a finally
-                        // handler.
-                        yield UNINIT;
-                    }
+                    case BYTECODE_INDEX -> UNINIT;
                     case LOCAL_SETTER -> {
                         String arg = "localSetter" + localSetterIndex;
                         b.startAssign("int " + arg);
@@ -2591,11 +2632,11 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.statement("int branchTarget = " + UNINIT);
             b.statement("int node = allocateNode()");
-            // TODO: we should mark these as relative.
             b.lineComment("Add this location to a work list to be processed once the branch target is known.");
             b.statement("int[] sites = (int[]) ((Object[]) data)[0]");
             b.statement("sites = Arrays.copyOf(sites, sites.length + 1)");
-            b.statement("sites[sites.length-1] = bci");
+            InstructionImmediate branchIndex = instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
+            b.statement("sites[sites.length-1] = bci + " + branchIndex.offset);
             b.statement("((Object[]) data)[0] = sites");
             return new String[]{"branchTarget", "node"};
         }
@@ -2888,12 +2929,16 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("ContinuationLocationImpl newContinuation = new ContinuationLocationImpl(numYields++, offsetBci + cl.bci, curStack + cl.sp)");
                         b.statement("bc[offsetBci + locationBci] = (short) constantPool.addConstant(newContinuation)");
                         break;
+
                     case CUSTOM:
+                    case CUSTOM_SHORT_CIRCUIT:
                         List<InstructionImmediate> immediates = instr.getImmediates();
                         for (int i = 0; i < immediates.size(); i++) {
                             InstructionImmediate immediate = immediates.get(i);
                             switch (immediate.kind) {
                                 case BYTECODE_INDEX:
+                                    // Custom operations don't have non-local branches/children, so
+                                    // this immediate is *always* relative.
                                     b.statement("bc[offsetBci + handlerBci + " + (i + 1) + "] += offsetBci /* adjust " + immediate.name + " */");
                                 default:
                                     // TODO: do we want to allocate a new copy of the Node? Right
@@ -2902,10 +2947,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                                     break;
                             }
                         }
-                        break;
-
-                    case CUSTOM_SHORT_CIRCUIT:
-                        b.lineComment("TODO");
                         break;
 
                     default:
@@ -4083,11 +4124,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private static String cachedDataClassName(InstructionModel instr) {
         return instr.getInternalName() + "Gen";
-    }
-
-    // TODO: remove, this might be a good lead for code that needs to be changed.
-    private static String uncachedDataClassName(InstructionModel instr) {
-        return cachedDataClassName(instr) + "_UncachedData";
     }
 
     private static String childString(int numChildren) {
