@@ -25,6 +25,12 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import javax.management.MBeanNotificationInfo;
 import javax.management.NotificationEmitter;
 import javax.management.NotificationFilter;
@@ -49,5 +55,21 @@ public abstract class AbstractMXBean implements NotificationEmitter {
     @Override
     public MBeanNotificationInfo[] getNotificationInfo() {
         return new MBeanNotificationInfo[0];
+    }
+
+    public static boolean checkGCBeans(List<? extends MemoryPoolMXBean> memoryPools, List<? extends MemoryManagerMXBean> memoryManagers) {
+        Set<String> memoryManagerNames = new HashSet<>();
+        Set<String> memoryPoolNames = new HashSet<>();
+        for (MemoryPoolMXBean memoryPool : memoryPools) {
+            memoryPoolNames.add(memoryPool.getName());
+        }
+        for (MemoryManagerMXBean memoryManager : memoryManagers) {
+            memoryManagerNames.add(memoryManager.getName());
+            assert memoryPoolNames.containsAll(List.of(memoryManager.getMemoryPoolNames())) : memoryManager.getName();
+        }
+        for (MemoryPoolMXBean memoryPool : memoryPools) {
+            assert memoryManagerNames.containsAll(List.of(memoryPool.getMemoryManagerNames())) : memoryPool.getName();
+        }
+        return true;
     }
 }

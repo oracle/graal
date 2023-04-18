@@ -27,10 +27,8 @@ package com.oracle.svm.core.genscavenge.graal;
 import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
@@ -60,6 +58,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+import com.oracle.svm.core.heap.AbstractMXBean;
 import com.oracle.svm.core.heap.AllocationFeature;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.heap.Heap;
@@ -104,7 +103,7 @@ class GenScavengeGCFeature implements InternalFeature {
         } else {
             garbageCollectors = Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean());
         }
-        assert checkGCBeans(memoryPools, garbageCollectors);
+        assert AbstractMXBean.checkGCBeans(memoryPools, garbageCollectors);
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
@@ -116,22 +115,6 @@ class GenScavengeGCFeature implements InternalFeature {
         if (ImageSingletons.contains(PerfManager.class)) {
             ImageSingletons.lookup(PerfManager.class).register(createPerfData());
         }
-    }
-
-    private static boolean checkGCBeans(List<MemoryPoolMXBean> memoryPools, List<GarbageCollectorMXBean> garbageCollectors) {
-        Set<String> memoryManagerNames = new HashSet<>();
-        Set<String> memoryPoolNames = new HashSet<>();
-        for (MemoryPoolMXBean memoryPool : memoryPools) {
-            memoryPoolNames.add(memoryPool.getName());
-        }
-        for (GarbageCollectorMXBean garbageCollector : garbageCollectors) {
-            memoryManagerNames.add(garbageCollector.getName());
-            assert memoryPoolNames.containsAll(List.of(garbageCollector.getMemoryPoolNames())) : garbageCollector.getName();
-        }
-        for (MemoryPoolMXBean memoryPool : memoryPools) {
-            assert memoryManagerNames.containsAll(List.of(memoryPool.getMemoryManagerNames())) : memoryPool.getName();
-        }
-        return true;
     }
 
     @Override

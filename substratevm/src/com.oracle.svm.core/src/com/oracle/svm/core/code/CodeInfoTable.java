@@ -27,9 +27,10 @@ package com.oracle.svm.core.code;
 import java.lang.management.MemoryManagerMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import com.oracle.svm.core.jdk.management.ManagementSupport;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -45,12 +46,14 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.AbstractMXBean;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -58,6 +61,7 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 import com.oracle.svm.core.util.VMError;
+import com.sun.management.GarbageCollectorMXBean;
 
 import jdk.vm.ci.code.InstalledCode;
 
@@ -299,9 +303,13 @@ class CodeInfoFeature implements InternalFeature {
         ImageSingletons.add(RuntimeCodeCache.class, new RuntimeCodeCache());
         ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
 
+        List<MemoryManagerMXBean> memoryManagers = List.of(new CodeCacheManagerMXBean());
+        List<MemoryPoolMXBean> memoryPools = CodeCachePoolMXBean.getMemoryPools();
+        assert AbstractMXBean.checkGCBeans(memoryPools, memoryManagers);
+
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
-        managementSupport.addPlatformManagedObjectList(MemoryManagerMXBean.class, List.of(new CodeCacheManagerMXBean()));
-        managementSupport.addPlatformManagedObjectList(MemoryPoolMXBean.class, CodeCachePoolMXBean.getMemoryPools());
+        managementSupport.addPlatformManagedObjectList(MemoryManagerMXBean.class, memoryManagers);
+        managementSupport.addPlatformManagedObjectList(MemoryPoolMXBean.class, memoryPools);
     }
 
     @Override
