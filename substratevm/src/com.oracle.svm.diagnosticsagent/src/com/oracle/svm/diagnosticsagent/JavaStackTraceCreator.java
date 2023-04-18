@@ -25,7 +25,7 @@
 package com.oracle.svm.diagnosticsagent;
 
 import static com.oracle.svm.core.jni.JNIObjectHandles.nullHandle;
-import static com.oracle.svm.jvmtiagentbase.Support.check;
+import static com.oracle.svm.jvmtiagentbase.Support.checkPhase;
 
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -42,6 +42,7 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
 import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.Support.WrongPhaseException;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
@@ -61,9 +62,9 @@ public class JavaStackTraceCreator {
     protected void inspectStackTraceElementMethod(@SuppressWarnings("unused") JNIMethodId jMethodID) {
     }
 
-    private int getCurrentThreadStackFrameCount() {
+    private int getCurrentThreadStackFrameCount() throws WrongPhaseException {
         CIntPointer countPointer = StackValue.get(CIntPointer.class);
-        check(jvmti.getFunctions().GetFrameCount().invoke(jvmti, nullHandle(), countPointer));
+        checkPhase(jvmti.getFunctions().GetFrameCount().invoke(jvmti, nullHandle(), countPointer));
         return countPointer.read();
     }
 
@@ -79,14 +80,14 @@ public class JavaStackTraceCreator {
         }
     }
 
-    private static int getFrameSourceLineNumber(JvmtiEnv jvmti, JvmtiFrameInfo frameInfo) {
+    private static int getFrameSourceLineNumber(JvmtiEnv jvmti, JvmtiFrameInfo frameInfo) throws WrongPhaseException {
         CIntPointer entryCountPointer = StackValue.get(CIntPointer.class);
         WordPointer lineEntryTablePointer = StackValue.get(WordPointer.class);
         JvmtiError errorCode = jvmti.getFunctions().GetLineNumberTable().invoke(jvmti, frameInfo.getMethod(), entryCountPointer, lineEntryTablePointer);
         if (errorCode == JvmtiError.JVMTI_ERROR_MUST_POSSESS_CAPABILITY || errorCode == JvmtiError.JVMTI_ERROR_ABSENT_INFORMATION) {
             return LINE_NUMBER_UNAVAILABLE;
         }
-        check(errorCode);
+        checkPhase(errorCode);
 
         int entryCount = entryCountPointer.read();
         Pointer lineEntryTable = lineEntryTablePointer.read();
@@ -104,7 +105,7 @@ public class JavaStackTraceCreator {
         return previousLineNumber;
     }
 
-    private StackTraceElement constructStackTraceElement(JvmtiFrameInfo frameInfo) {
+    private StackTraceElement constructStackTraceElement(JvmtiFrameInfo frameInfo) throws WrongPhaseException {
         JNIObjectHandle declaringClass = Support.getMethodDeclaringClass(frameInfo.getMethod());
 
         String methodName = Support.getMethodNameOr(frameInfo.getMethod(), "");
@@ -122,12 +123,17 @@ public class JavaStackTraceCreator {
         return new StackTraceElement(declaringClassName, methodName, fileName, lineNumber);
     }
 
-    public JNIObjectHandle getStackTraceArray() {
+    public JNIObjectHandle getStackTraceArray() throws WrongPhaseException {
         int threadStackFrameCount = getCurrentThreadStackFrameCount();
         int frameInfoSize = SizeOf.get(JvmtiFrameInfo.class);
         Pointer stackFramesPtr = UnmanagedMemory.malloc(frameInfoSize * threadStackFrameCount);
         CIntPointer readStackFramesPtr = StackValue.get(CIntPointer.class);
-        check(jvmti.getFunctions().GetStackTrace().invoke(jvmti, nullHandle(), 0, threadStackFrameCount, (WordPointer) stackFramesPtr, readStackFramesPtr));
+        try {
+            checkPhase(jvmti.getFunctions().GetStackTrace().invoke(jvmti, nullHandle(), 0, threadStackFrameCount, (WordPointer) stackFramesPtr, readStackFramesPtr));
+        } catch (WrongPhaseException exception) {
+            UnmanagedMemory.free(stackFramesPtr);
+            throw exception;
+        }
         VMError.guarantee(readStackFramesPtr.read() == threadStackFrameCount);
 
         NativeImageDiagnosticsAgent agent = JvmtiAgentBase.singleton();
