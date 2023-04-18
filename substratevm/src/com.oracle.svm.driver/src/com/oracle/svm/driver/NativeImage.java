@@ -1559,11 +1559,11 @@ public class NativeImage {
         Path argFile = createVMInvocationArgumentFile(arguments);
         Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
         List<String> command = new ArrayList<>();
-        if(useBundle() && bundleSupport.containerizedBuild) {
+        if(useBundle() && bundleSupport.useContainer) {
             List<String> containerCommand = List.of(bundleSupport.containerTool, "run", "--network=none", "--rm",
-                    "--mount", "type=bind,source=" + config.getJavaHome() + ",target=/graalvm,readonly",
-                    "--mount", "type=bind,source=" + bundleSupport.inputDir + ",target=" + Path.of("/").resolve(bundleSupport.inputDir.getFileName()) + ",readonly",
-                    "--mount", "type=bind,source=" + bundleSupport.outputDir + ",target=" + Path.of("/").resolve(bundleSupport.outputDir.getFileName()),
+                    "--mount", "type=bind,source=" + config.getJavaHome() + ",target=" + bundleSupport.containerGraalVMHome + ",readonly",
+                    "--mount", "type=bind,source=" + bundleSupport.inputDir + ",target=" + bundleSupport.containerRootDir.resolve(bundleSupport.inputDir.getFileName()) + ",readonly",
+                    "--mount", "type=bind,source=" + bundleSupport.outputDir + ",target=" + bundleSupport.containerRootDir.resolve(bundleSupport.outputDir.getFileName()),
                     "--mount", "type=bind,source=" + argFile + ",target=" + argFile + ",readonly",
                     "--mount", "type=bind,source=" + builderArgFile + ",target=" + builderArgFile + ",readonly",
                     bundleSupport.containerImage);
