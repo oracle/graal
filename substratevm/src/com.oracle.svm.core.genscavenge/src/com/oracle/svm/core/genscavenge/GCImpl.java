@@ -313,7 +313,7 @@ public final class GCImpl implements GC {
     }
 
     private void verifyBeforeGC() {
-        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+        if (SubstrateGCOptions.VerifyHeap.getValue() && SerialGCOptions.VerifyBeforeGC.getValue()) {
             Timer verifyBeforeTimer = timers.verifyBefore.open();
             try {
                 boolean success = true;
@@ -332,7 +332,7 @@ public final class GCImpl implements GC {
     }
 
     private void verifyAfterGC() {
-        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+        if (SubstrateGCOptions.VerifyHeap.getValue() && SerialGCOptions.VerifyAfterGC.getValue()) {
             Timer verifyAfterTime = timers.verifyAfter.open();
             try {
                 boolean success = true;
