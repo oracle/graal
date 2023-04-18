@@ -306,7 +306,8 @@ final class Target_java_lang_Throwable {
         if (RuntimeCompilation.isEnabled()) {
             /*
              * Runtime compilation not yet optimized. Store the eagerly constructed stack trace in
-             * `backtrace`. We directly use `stackTrace` because it is overwritten by the caller.
+             * `backtrace`. We cannot directly use `stackTrace` because it is overwritten by the
+             * caller.
              */
             backtrace = JavaThreads.getStackTrace(true, Thread.currentThread());
             return this;
