@@ -230,6 +230,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVM.LLVMSetFunctionCallConv(func, cc.value);
     }
 
+    public void setInstructionCallingConvention(LLVMValueRef instr, LLVMCallingConvention cc) {
+        LLVM.LLVMSetInstructionCallConv(instr, cc.value);
+    }
+
     public enum LLVMCallingConvention {
         GraalCallingConvention(487);
 
