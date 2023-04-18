@@ -530,19 +530,19 @@ public class FrameInfoDecoder {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static int decodeBci(long encodedBci) {
-        assert encodedBci > 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
+        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
         long result = (encodedBci >> ENCODED_BCI_SHIFT) - ENCODED_BCI_ADDEND;
         assert result >= Integer.MIN_VALUE && result <= Integer.MAX_VALUE;
         return (int) result;
     }
 
     protected static boolean decodeDuringCall(long encodedBci) {
-        assert encodedBci > 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
+        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
         return (encodedBci & ENCODED_BCI_DURING_CALL_MASK) != 0;
     }
 
     protected static boolean decodeRethrowException(long encodedBci) {
-        assert encodedBci > 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
+        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
         return (encodedBci & ENCODED_BCI_RETHROW_EXCEPTION_MASK) != 0;
     }
 
