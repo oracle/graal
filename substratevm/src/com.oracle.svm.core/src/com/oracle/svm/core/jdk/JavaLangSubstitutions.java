@@ -305,9 +305,9 @@ final class Target_java_lang_Throwable {
 
         if (DeoptimizationSupport.enabled()) {
             /*
-             * Runtime compilation and deoptimized frames not yet optimized. Store the eagerly
-             * constructed stack trace in `backtrace`. We cannot directly use `stackTrace` because
-             * it is overwritten by the caller.
+             * Runtime compilation and deoptimized frames are not yet optimized. Eagerly construct a
+             * stack trace and store it in backtrace. We cannot directly use `stackTrace` because it
+             * is overwritten by the caller.
              */
             backtrace = JavaThreads.getStackTrace(true, Thread.currentThread());
             return this;
