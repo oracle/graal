@@ -293,6 +293,14 @@ public abstract class CodeGenTool {
         codeBuffer.emitBreakLabel(label);
     }
 
+    /**
+     * Generates a break statement at the end of a loop or a switch case statement, used to kill the
+     * implicit loop back-edge.
+     */
+    public void genBlockEndBreak() {
+        genBreak();
+    }
+
     public void genLabel(String label) {
         codeBuffer.emitLabel(label);
     }

@@ -656,7 +656,7 @@ public class StackifierIRWalker extends IRWalker {
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ), stackifierData);
             }
-            genBlockEndBreak();
+            codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         if (hasdefault) {
@@ -667,7 +667,7 @@ public class StackifierIRWalker extends IRWalker {
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()), stackifierData);
             }
-            genBlockEndBreak();
+            codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         codeGenTool.genScopeEnd();
@@ -785,13 +785,13 @@ public class StackifierIRWalker extends IRWalker {
             assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
             lowerTypeSwitchCase(switchNode, succ, i, succKeys);
             generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ), stackifierData);
-            genBlockEndBreak();
+            codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         if (hasdefault) {
             lowerTypeSwitchDefaultCase(switchNode);
             generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()), stackifierData);
-            genBlockEndBreak();
+            codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
     }
@@ -817,14 +817,6 @@ public class StackifierIRWalker extends IRWalker {
         codeGenTool.genWhileTrueHeader();
     }
 
-    /**
-     * Generates a break statement at the end of a loop or a switch case statement, used to kill the
-     * implicit loop back-edge. See comment in {@link #genLoopEnd} for further explanation.
-     */
-    protected void genBlockEndBreak() {
-        codeGenTool.genBreak();
-    }
-
     private void genLoopEnd(HIRBlock header) {
         assert header.isLoopHeader();
         String label = getLabel(header);
@@ -837,7 +829,7 @@ public class StackifierIRWalker extends IRWalker {
          * to be suppressed (i.e. made unreachable) with the break statement to guarantee that the
          * generated loop has the same semantics as the Graal IR.
          */
-        genBlockEndBreak();
+        codeGenTool.genBlockEndBreak();
         codeGenTool.genScopeEnd();
         codeGenTool.genComment("End of loop " + label);
     }

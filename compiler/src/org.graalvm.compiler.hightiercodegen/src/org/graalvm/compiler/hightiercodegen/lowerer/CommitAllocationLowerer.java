@@ -41,9 +41,15 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class CommitAllocationLowerer {
 
     static class Materialization {
-        public VirtualObjectNode object;
-        public List<ValueNode> values;
-        public boolean containsVirtual;
+        Materialization(VirtualObjectNode object, List<ValueNode> values, boolean containsVirtual) {
+            this.object = object;
+            this.values = values;
+            this.containsVirtual = containsVirtual;
+        }
+
+        public final VirtualObjectNode object;
+        public final List<ValueNode> values;
+        public final boolean containsVirtual;
     }
 
     /** See the comment inside {@link #lower}. */
@@ -69,19 +75,18 @@ public class CommitAllocationLowerer {
         List<Materialization> mats = new ArrayList<>();
         int valindex = 0;
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
-            Materialization mat = new Materialization();
-            mat.object = commit.getVirtualObjects().get(objIndex);
-            mat.values = new ArrayList<>();
+            List<ValueNode> values = new ArrayList<>();
             VirtualObjectNode virtual = commit.getVirtualObjects().get(objIndex);
             int entryCount = virtual.entryCount();
+            boolean containsVirtual = false;
             for (int i = 0; i < entryCount; i++) {
                 ValueNode value = commit.getValues().get(valindex++);
                 if (value instanceof VirtualObjectNode) {
-                    mat.containsVirtual = true;
+                    containsVirtual = true;
                 }
-                mat.values.add(value);
+                values.add(value);
             }
-            mats.add(mat);
+            mats.add(new Materialization(virtual, values, containsVirtual));
         }
         return mats;
     }

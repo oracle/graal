@@ -313,6 +313,7 @@ public abstract class SwitchNode extends ControlSplitNode {
                 /*
                  * We allow NaN if the node is in unreachable code that will eventually fall away,
                  * or else an error will be thrown during lowering since we keep the node around.
+                 * See analogous case in BranchProbabilityNode.
                  */
                 return;
             }
