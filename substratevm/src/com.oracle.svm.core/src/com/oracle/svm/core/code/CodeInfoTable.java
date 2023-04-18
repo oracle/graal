@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.core.code;
 
+import java.lang.management.MemoryManagerMXBean;
+import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.core.jdk.management.ManagementSupport;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -295,6 +298,10 @@ class CodeInfoFeature implements InternalFeature {
         ImageSingletons.add(RuntimeCodeInfoHistory.class, new RuntimeCodeInfoHistory());
         ImageSingletons.add(RuntimeCodeCache.class, new RuntimeCodeCache());
         ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
+
+        ManagementSupport managementSupport = ManagementSupport.getSingleton();
+        managementSupport.addPlatformManagedObjectList(MemoryManagerMXBean.class, List.of(new CodeCacheManagerMXBean()));
+        managementSupport.addPlatformManagedObjectList(MemoryPoolMXBean.class, CodeCachePoolMXBean.getMemoryPools());
     }
 
     @Override

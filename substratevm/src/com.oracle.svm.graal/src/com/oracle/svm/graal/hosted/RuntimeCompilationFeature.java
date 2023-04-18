@@ -26,11 +26,6 @@ package com.oracle.svm.graal.hosted;
 
 import static com.oracle.svm.core.util.VMError.guarantee;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.MemoryManagerMXBean;
-import java.lang.management.MemoryPoolMXBean;
-import java.lang.management.MemoryType;
-import java.lang.management.MemoryUsage;
 import java.lang.reflect.Executable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,9 +40,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import javax.management.ObjectName;
-
-import com.oracle.svm.core.heap.AbstractMXBean;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -63,16 +55,12 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
 import org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -84,11 +72,6 @@ import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.code.CodeInfo;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.RuntimeCodeCache;
-import com.oracle.svm.core.code.RuntimeCodeInfoMemory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.RuntimeCompilationCanaryFeature;
@@ -99,7 +82,6 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -134,7 +116,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.services.Services;
-import sun.management.Util;
 
 /**
  * The main handler for running the Graal compiler in the Substrate VM at run time. This feature
@@ -394,159 +375,6 @@ public abstract class RuntimeCompilationFeature {
         config.registerObjectReplacer(objectReplacer);
 
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
-
-        ManagementSupport managementSupport = ManagementSupport.getSingleton();
-        managementSupport.addPlatformManagedObjectList(MemoryPoolMXBean.class, List.of(new RuntimeCodeCacheMXBean()));
-        managementSupport.addPlatformManagedObjectList(MemoryManagerMXBean.class, List.of(new CodeCacheMXBean()));
-    }
-
-    private static final class CodeCacheMXBean implements MemoryManagerMXBean {
-        @Override
-        public String getName() {
-            return "code cache";
-        }
-
-        @Override
-        public boolean isValid() {
-            return true;
-        }
-
-        @Override
-        public String[] getMemoryPoolNames() {
-            return new String[]{"runtime code cache"};
-        }
-
-        @Override
-        public ObjectName getObjectName() {
-            return Util.newObjectName(ManagementFactory.MEMORY_MANAGER_MXBEAN_DOMAIN_TYPE, getName());
-        }
-    }
-
-    private static final class RuntimeCodeCacheMXBean extends AbstractMXBean implements MemoryPoolMXBean, RuntimeCodeCache.CodeInfoVisitor {
-        private UnsignedWord runtimeCodeInfoSize;
-        private long peakUsage;
-
-        @Platforms(Platform.HOSTED_ONLY.class)
-        RuntimeCodeCacheMXBean() {
-            reset();
-        }
-
-        @Override
-        public String getName() {
-            return "runtime code cache";
-        }
-
-        @Override
-        public MemoryType getType() {
-            return MemoryType.NON_HEAP;
-        }
-
-        @Override
-        public MemoryUsage getUsage() {
-            reset();
-            RuntimeCodeInfoMemory.singleton().walkRuntimeMethods(this);
-            long used = getRuntimeCodeInfoSize().rawValue();
-            if (used > peakUsage) {
-                peakUsage = used;
-            }
-            return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, used, UNDEFINED_MEMORY_USAGE);
-        }
-
-        @Override
-        public MemoryUsage getPeakUsage() {
-            getUsage();
-            return new MemoryUsage(UNDEFINED_MEMORY_USAGE, peakUsage, peakUsage, UNDEFINED_MEMORY_USAGE);
-        }
-
-        @Override
-        public void resetPeakUsage() {
-            peakUsage = 0;
-        }
-
-        @Override
-        public boolean isValid() {
-            return true;
-        }
-
-        @Override
-        public String[] getMemoryManagerNames() {
-            return new String[]{"code cache"};
-        }
-
-        @Override
-        public long getUsageThreshold() {
-            throw new UnsupportedOperationException("Usage threshold is not supported");
-        }
-
-        @Override
-        public void setUsageThreshold(long threshold) {
-            throw new UnsupportedOperationException("Usage threshold is not supported");
-        }
-
-        @Override
-        public boolean isUsageThresholdExceeded() {
-            throw new UnsupportedOperationException("Usage threshold is not supported");
-        }
-
-        @Override
-        public long getUsageThresholdCount() {
-            throw new UnsupportedOperationException("Usage threshold is not supported");
-        }
-
-        @Override
-        public boolean isUsageThresholdSupported() {
-            return false;
-        }
-
-        @Override
-        public long getCollectionUsageThreshold() {
-            throw new UnsupportedOperationException("Collection usage threshold is not supported");
-        }
-
-        @Override
-        public void setCollectionUsageThreshold(long threshold) {
-            throw new UnsupportedOperationException("Collection usage threshold is not supported");
-        }
-
-        @Override
-        public boolean isCollectionUsageThresholdExceeded() {
-            throw new UnsupportedOperationException("Collection usage threshold is not supported");
-        }
-
-        @Override
-        public long getCollectionUsageThresholdCount() {
-            throw new UnsupportedOperationException("Collection usage threshold is not supported");
-        }
-
-        @Override
-        public MemoryUsage getCollectionUsage() {
-            return new MemoryUsage(UNDEFINED_MEMORY_USAGE, 0, 0, UNDEFINED_MEMORY_USAGE);
-        }
-
-        @Override
-        public boolean isCollectionUsageThresholdSupported() {
-            return false;
-        }
-
-        @Override
-        public ObjectName getObjectName() {
-            return Util.newObjectName(ManagementFactory.MEMORY_POOL_MXBEAN_DOMAIN_TYPE, getName());
-        }
-
-        public UnsignedWord getRuntimeCodeInfoSize() {
-            return runtimeCodeInfoSize;
-        }
-
-        public void reset() {
-            runtimeCodeInfoSize = WordFactory.zero();
-        }
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public boolean visitCode(CodeInfo codeInfo) {
-            runtimeCodeInfoSize = runtimeCodeInfoSize.add(CodeInfoAccess.getCodeAndDataMemorySize(codeInfo)).add(CodeInfoAccess.getNativeMetadataSize(codeInfo));
-            return true;
-        }
     }
 
     private void installRuntimeConfig(BeforeAnalysisAccessImpl config) {
