@@ -1560,7 +1560,7 @@ public class NativeImage {
         Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
         List<String> command = new ArrayList<>();
         if(useBundle() && bundleSupport.containerizedBuild) {
-            List<String> containerCommand = List.of(bundleSupport.containerizationTool, "run", "--network=none", "--rm",
+            List<String> containerCommand = List.of(bundleSupport.containerTool, "run", "--network=none", "--rm",
                     "--mount", "type=bind,source=" + config.getJavaHome() + ",target=/graalvm,readonly",
                     "--mount", "type=bind,source=" + bundleSupport.inputDir + ",target=" + Path.of("/").resolve(bundleSupport.inputDir.getFileName()) + ",readonly",
                     "--mount", "type=bind,source=" + bundleSupport.outputDir + ",target=" + Path.of("/").resolve(bundleSupport.outputDir.getFileName()),
