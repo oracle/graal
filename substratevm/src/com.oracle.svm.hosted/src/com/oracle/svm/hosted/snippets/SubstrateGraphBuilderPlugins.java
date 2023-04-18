@@ -320,11 +320,13 @@ public class SubstrateGraphBuilderPlugins {
                 // Wildcard cases
                 if (!(p.endsWith(".*") || p.endsWith(".**"))) {
                     // Pattern is a classname (possibly empty) with a trailing wildcard
-                    final String className = p.substring(poffset, nameLen - 1);
+                    String className = p.substring(poffset, nameLen - 1);
+                    // This is only for JDK < 21 support
+                    final String jdkVersionSpecificClassName = Runtime.version().feature() < 21 ? className + "$" : className;
                     if (!negate) {
-                        if (className.endsWith(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
+                        if (jdkVersionSpecificClassName.endsWith(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
                             try {
-                                String lambdaHolderName = className.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0];
+                                String lambdaHolderName = jdkVersionSpecificClassName.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0];
                                 RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
                             } catch (ClassNotFoundException e) {
                                 // no class, no registration
