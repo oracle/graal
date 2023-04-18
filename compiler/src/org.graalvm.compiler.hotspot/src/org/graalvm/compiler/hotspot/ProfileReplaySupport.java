@@ -83,6 +83,8 @@ public final class ProfileReplaySupport {
         // @formatter:off
         @Option(help = "Save per compilation profile information.", type = OptionType.User)
         public static final OptionKey<Boolean> SaveProfiles = new OptionKey<>(false);
+        @Option(help = "Allow multiple compilations of the same method by overriding existing profiles.", type = OptionType.User)
+        public static final OptionKey<Boolean> OverrideProfiles = new OptionKey<>(false);
         @Option(help = "Path for saving compilation profiles. "
                         + "If the value is omitted the debug dump path will be used.", type = OptionType.User)
         public static final OptionKey<String> SaveProfilesPath = new OptionKey<>(null);
@@ -233,7 +235,7 @@ public final class ProfileReplaySupport {
                         String fileName = PathUtilities.sanitizeFileName(method.format("%h.%n(%p)%r") + ".glog");
                         String dirName = Options.SaveProfilesPath.getValue(debug.getOptions());
                         path = Paths.get(dirName).resolve(fileName).toString();
-                        if (new File(path).exists()) {
+                        if (new File(path).exists() && !Options.OverrideProfiles.getValue(debug.getOptions())) {
                             throw new InternalError("Profile file for path " + path + " exists already");
                         }
                     } else {
