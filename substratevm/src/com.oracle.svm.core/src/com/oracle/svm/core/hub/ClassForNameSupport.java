@@ -55,14 +55,13 @@ public final class ClassForNameSupport {
             return; // must be defined at runtime before it can be looked up
         }
         String name = clazz.getName();
-        if (!singleton().knownClasses.containsKey(name) || !(singleton().knownClasses.get(name) instanceof Throwable)) {
-            /*
-             * If the class has already been seen as throwing an error, we don't overwrite this
-             * error
-             */
-            VMError.guarantee(!singleton().knownClasses.containsKey(name) || singleton().knownClasses.get(name) == clazz);
-            singleton().knownClasses.put(name, clazz);
-        }
+        Object currentValue = singleton().knownClasses.get(name);
+        VMError.guarantee(currentValue == null || currentValue == clazz || currentValue instanceof Throwable,
+                        "Invalid Class.forName value for %s: %s", name, currentValue);
+        /*
+         * If the class has already been seen as throwing an error, we don't overwrite this error
+         */
+        singleton().knownClasses.putIfAbsent(name, clazz);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
