@@ -46,14 +46,14 @@ import java.util.stream.Collectors;
 
 public final class Instruction {
 
-    // [int index, String name, short[] bytes, Object[][] arguments, Object[][] subinstructions?]
+    // [int bci, String name, short[] bytes, Object[][] arguments, Object[][] subinstructions?]
     private final Object[] data;
 
     Instruction(Object[] data) {
         this.data = data;
     }
 
-    public int getIndex() {
+    public int getBci() {
         return (int) data[0];
     }
 
@@ -96,7 +96,7 @@ public final class Instruction {
 
     private String toString(String prefix) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("%s[%04x] ", prefix, getIndex()));
+        sb.append(String.format("%s[%04x] ", prefix, getBci()));
 
         byte[] bytes = getBytes();
         for (int i = 0; i < REASONABLE_INSTRUCTION_LENGTH; i++) {

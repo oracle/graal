@@ -121,8 +121,8 @@ public class TestOperationsParserTest {
         b.endAppenderOperation();
     }
 
-    private static void assertInstructionEquals(Instruction instr, int index, String name) {
-        assertEquals(index, instr.getIndex());
+    private static void assertInstructionEquals(Instruction instr, int bci, String name) {
+        assertEquals(bci, instr.getBci());
         assertEquals(name, instr.getName());
     }
 
@@ -2416,13 +2416,15 @@ public class TestOperationsParserTest {
         assertEquals(node.getSourceSection().getCharIndex(), 0);
         assertEquals(node.getSourceSection().getCharLength(), 8);
 
+        // load constant
         assertEquals(node.getSourceSectionAtBci(0).getSource(), source);
         assertEquals(node.getSourceSectionAtBci(0).getCharIndex(), 7);
         assertEquals(node.getSourceSectionAtBci(0).getCharLength(), 1);
 
-        assertEquals(node.getSourceSectionAtBci(1).getSource(), source);
-        assertEquals(node.getSourceSectionAtBci(1).getCharIndex(), 0);
-        assertEquals(node.getSourceSectionAtBci(1).getCharLength(), 8);
+        // return
+        assertEquals(node.getSourceSectionAtBci(2).getSource(), source);
+        assertEquals(node.getSourceSectionAtBci(2).getCharIndex(), 0);
+        assertEquals(node.getSourceSectionAtBci(2).getCharLength(), 8);
     }
 
     @Test
@@ -2531,13 +2533,17 @@ public class TestOperationsParserTest {
         };
 
         for (int i = 0; i < expected.length; i++) {
-            if (expected[i] == null) {
-                assertEquals("Mismatch at bci " + i, root.getSourceSectionAtBci(i), null);
-            } else {
-                assertNotNull("Mismatch at bci " + i, root.getSourceSectionAtBci(i));
-                assertEquals("Mismatch at bci " + i, root.getSourceSectionAtBci(i).getSource(), sources[expected[i][0]]);
-                assertEquals("Mismatch at bci " + i, root.getSourceSectionAtBci(i).getCharIndex(), expected[i][1]);
-                assertEquals("Mismatch at bci " + i, root.getSourceSectionAtBci(i).getCharLength(), expected[i][2]);
+            // Each Void operation is encoded as two shorts: the Void opcode, and a node index.
+            // The source section for both should match the expected value.
+            for (int j = i*2; j < i*2 + 2; j++) {
+                if (expected[i] == null) {
+                    assertEquals("Mismatch at bci " + j, root.getSourceSectionAtBci(j), null);
+                } else {
+                    assertNotNull("Mismatch at bci " + j, root.getSourceSectionAtBci(j));
+                    assertEquals("Mismatch at bci " + j, root.getSourceSectionAtBci(j).getSource(), sources[expected[i][0]]);
+                    assertEquals("Mismatch at bci " + j, root.getSourceSectionAtBci(j).getCharIndex(), expected[i][1]);
+                    assertEquals("Mismatch at bci " + j, root.getSourceSectionAtBci(j).getCharLength(), expected[i][2]);
+                }
             }
         }
     }
@@ -2659,11 +2665,11 @@ public class TestOperationsParserTest {
 
         assertEquals(5, data.getInstructions().size());
         assertInstructionEquals(data.getInstructions().get(0), 0, "load.argument");
-        assertInstructionEquals(data.getInstructions().get(1), 1, "load.argument");
-        assertInstructionEquals(data.getInstructions().get(2), 2, "c.AddOperation");
-        assertInstructionEquals(data.getInstructions().get(3), 3, "return");
+        assertInstructionEquals(data.getInstructions().get(1), 2, "load.argument");
+        assertInstructionEquals(data.getInstructions().get(2), 4, "c.AddOperation");
+        assertInstructionEquals(data.getInstructions().get(3), 6, "return");
         // todo: with DCE, this pop will go away (since return is considered as returning a value)
-        assertInstructionEquals(data.getInstructions().get(4), 4, "pop");
+        assertInstructionEquals(data.getInstructions().get(4), 7, "pop");
     }
 
     @Test
