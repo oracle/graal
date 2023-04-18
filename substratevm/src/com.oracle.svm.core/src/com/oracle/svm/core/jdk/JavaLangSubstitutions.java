@@ -70,7 +70,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
@@ -303,11 +303,11 @@ final class Target_java_lang_Throwable {
          */
         backtrace = null;
 
-        if (RuntimeCompilation.isEnabled()) {
+        if (DeoptimizationSupport.enabled()) {
             /*
-             * Runtime compilation not yet optimized. Store the eagerly constructed stack trace in
-             * `backtrace`. We cannot directly use `stackTrace` because it is overwritten by the
-             * caller.
+             * Runtime compilation and deoptimized frames not yet optimized. Store the eagerly
+             * constructed stack trace in `backtrace`. We cannot directly use `stackTrace` because
+             * it is overwritten by the caller.
              */
             backtrace = JavaThreads.getStackTrace(true, Thread.currentThread());
             return this;
