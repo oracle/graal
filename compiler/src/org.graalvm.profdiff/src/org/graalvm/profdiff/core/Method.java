@@ -199,12 +199,19 @@ public class Method {
         writer.increaseIndent();
         Iterable<CompilationUnit> sortedCompilationUnits = () -> compilationUnits.stream().sorted(Comparator.comparingLong(compilationUnit -> -compilationUnit.getPeriod())).iterator();
         for (CompilationUnit compilationUnit : sortedCompilationUnits) {
-            writer.write(compilationUnit.getCompilationIdAndMultiMethodKey());
-            if (experiment.isProfileAvailable()) {
-                writer.writeln(" (" + compilationUnit.createExecutionSummary() + ((compilationUnit.isHot()) ? ") *hot*" : ")"));
-            } else {
-                writer.writeln();
+            writer.write(compilationUnit.getCompilationId());
+            if (compilationUnit.getMultiMethodKey() != null) {
+                writer.write(" of multi-method ");
+                writer.write(compilationUnit.getMultiMethodKey());
             }
+            if (experiment.isProfileAvailable()) {
+                writer.write(" consumed ");
+                writer.write(compilationUnit.createExecutionSummary());
+                if (compilationUnit.isHot()) {
+                    writer.write(" *hot*");
+                }
+            }
+            writer.writeln();
             if (compilationUnit instanceof CompilationFragment) {
                 CompilationFragment fragment = (CompilationFragment) compilationUnit;
                 boolean first = true;
@@ -264,5 +271,15 @@ public class Method {
         String methodName = multiMethodName.substring(0, separatorBegin) + multiMethodName.substring(keyEnd);
         String multiMethodKey = multiMethodName.substring(keyBegin, keyEnd);
         return Pair.create(methodName, multiMethodKey);
+    }
+
+    /**
+     * Returns a method name (removing the multi-method key) from the given multi-method name.
+     *
+     * @param multiMethodName the name of a multi method (optionally containing a multi-method key)
+     * @return method name corresponding to the given multi-method
+     */
+    public static String removeMultiMethodKey(String multiMethodName) {
+        return splitMultiMethodName(multiMethodName).getLeft();
     }
 }

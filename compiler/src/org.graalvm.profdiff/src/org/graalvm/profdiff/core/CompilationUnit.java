@@ -183,14 +183,37 @@ public class CompilationUnit {
     }
 
     /**
-     * Returns the compilation ID extended with the multi-method key if this is a compilation of a
-     * multi-method.
+     * Returns the kind of this compilation (whether it is a compilation unit or a fragment).
      */
-    public String getCompilationIdAndMultiMethodKey() {
-        if (multiMethodKey == null) {
-            return compilationId;
+    protected String getCompilationKind() {
+        return "unit";
+    }
+
+    /**
+     * Formats a header identifying this compilation unit.
+     *
+     * Includes the {@link #getCompilationKind() kind}, {@link #getMultiMethodKey() multi-method
+     * key}, {@link #createExecutionSummary() exeuction summary}, and {@link ExperimentId}. For
+     * example:
+     *
+     * <pre>
+     * Compilation unit 15614 consumed 27.77% of Graal execution, 1.37% of total in experiment 1
+     * </pre>
+     *
+     * @return a header identifying this compilation unit
+     */
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Compilation ").append(getCompilationKind()).append(' ').append(getCompilationId());
+        if (multiMethodKey != null) {
+            sb.append(" of multi-method ").append(multiMethodKey);
         }
-        return compilationId + ' ' + multiMethodKey;
+        if (method.getExperiment().isProfileAvailable()) {
+            sb.append(" consumed ").append(createExecutionSummary());
+        }
+        sb.append(" in experiment ").append(method.getExperiment().getExperimentId());
+        return sb.toString();
     }
 
     /**
@@ -215,19 +238,13 @@ public class CompilationUnit {
     }
 
     /**
-     * Writes the header of the compilation unit (compilation ID, multi-method key, execution
-     * summary, experiment ID) and either the optimization-context tree or the optimization and
-     * inlining tree to the destination writer. The execution summary is omitted when proftool data
-     * is not {@link Experiment#isProfileAvailable() available} to the experiment.
+     * Writes the {@link #toString() header} of this compilation unit and either the
+     * optimization-context tree or the optimization and inlining tree to the destination writer.
      *
      * @param writer the destination writer
      */
     public void write(Writer writer) throws ExperimentParserError {
-        writer.write("Compilation " + getCompilationIdAndMultiMethodKey());
-        if (method.getExperiment().isProfileAvailable()) {
-            writer.write(" (" + createExecutionSummary() + ")");
-        }
-        writer.writeln(" in experiment " + method.getExperiment().getExperimentId());
+        writer.writeln(toString());
         writer.increaseIndent();
         TreePair treePair = loader.load();
         treePair.getInliningTree().preprocess(writer.getOptionValues());
