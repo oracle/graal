@@ -909,6 +909,9 @@ public class NativeImage {
 
     private void processClasspathNativeImageMetaInf(Path classpathEntry) {
         try {
+            if (classpathEntry.startsWith(Path.of("/input"))) {
+                classpathEntry = bundleSupport.rootDir.resolve(Path.of("/").relativize(classpathEntry));
+            }
             NativeImageMetaInfWalker.walkMetaInfForCPEntry(classpathEntry, metaInfProcessor);
         } catch (NativeImageMetaInfWalker.MetaInfWalkException e) {
             throw showError(e.getMessage(), e.cause);
@@ -1427,7 +1430,7 @@ public class NativeImage {
         return result;
     }
 
-    protected static String createVMInvocationArgumentFile(List<String> arguments) {
+    protected Path createVMInvocationArgumentFile(List<String> arguments) {
         try {
             Path argsFile = Files.createTempFile("vminvocation", ".args");
             StringJoiner joiner = new StringJoiner("\n");
@@ -1448,19 +1451,19 @@ public class NativeImage {
             String joinedOptions = joiner.toString();
             Files.write(argsFile, joinedOptions.getBytes());
             argsFile.toFile().deleteOnExit();
-            return "@" + argsFile;
+            return argsFile;
         } catch (IOException e) {
             throw showError(e.getMessage());
         }
     }
 
-    protected static String createImageBuilderArgumentFile(List<String> imageBuilderArguments) {
+    protected Path createImageBuilderArgumentFile(List<String> imageBuilderArguments) {
         try {
             Path argsFile = Files.createTempFile("native-image", ".args");
             String joinedOptions = String.join("\0", imageBuilderArguments);
             Files.write(argsFile, joinedOptions.getBytes());
             argsFile.toFile().deleteOnExit();
-            return NativeImageGeneratorRunner.IMAGE_BUILDER_ARG_FILE_OPTION + argsFile.toString();
+            return argsFile;
         } catch (IOException e) {
             throw showError(e.getMessage());
         }
@@ -1553,10 +1556,22 @@ public class NativeImage {
         List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalImageModulePath);
 
         /* Construct ProcessBuilder command from final arguments */
+        Path argFile = createVMInvocationArgumentFile(arguments);
+        Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
         List<String> command = new ArrayList<>();
+        if(useBundle() && bundleSupport.containerizedBuild) {
+            List<String> containerCommand = List.of(bundleSupport.containerizationTool, "run", "--network=none", "--rm",
+                    "--mount", "type=bind,source=" + config.getJavaHome() + ",target=/graalvm,readonly",
+                    "--mount", "type=bind,source=" + bundleSupport.inputDir + ",target=" + Path.of("/").resolve(bundleSupport.inputDir.getFileName()) + ",readonly",
+                    "--mount", "type=bind,source=" + bundleSupport.outputDir + ",target=" + Path.of("/").resolve(bundleSupport.outputDir.getFileName()),
+                    "--mount", "type=bind,source=" + argFile + ",target=" + argFile + ",readonly",
+                    "--mount", "type=bind,source=" + builderArgFile + ",target=" + builderArgFile + ",readonly",
+                    bundleSupport.containerImage);
+            command.addAll(containerCommand);
+        }
         command.add(javaExecutable);
-        command.add(createVMInvocationArgumentFile(arguments));
-        command.add(createImageBuilderArgumentFile(finalImageBuilderArgs));
+        command.add("@" + argFile);
+        command.add(NativeImageGeneratorRunner.IMAGE_BUILDER_ARG_FILE_OPTION + builderArgFile);
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(command);
         Map<String, String> environment = pb.environment();
