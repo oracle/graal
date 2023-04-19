@@ -303,9 +303,9 @@ final class EngineAccessor extends Accessor {
             }
             // Search guest languages and tools.
             // 1) Use TruffleLanguageProvider lookup
-            LanguageCache.loadService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            LanguageCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
             // 2) Use TruffleInstrumentProvider lookup
-            InstrumentCache.loadService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            InstrumentCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 // 3) Use ServiceLoader lookup for open Truffle or for Truffle in unnamed module.

@@ -59,7 +59,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import com.oracle.truffle.api.library.EagerExportProvider;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -139,7 +138,6 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.library.LibraryFactory;
-
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -453,9 +451,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
-        registerHierarchyForReflectiveLookupAndInstantiation(config, DefaultExportProvider.class);
-        registerHierarchyForReflectiveLookupAndInstantiation(config, EagerExportProvider.class);
-        registerHierarchyForReflectiveLookupAndInstantiation(config, TruffleFile.FileTypeDetector.class);
+        config.registerHierarchyForReflectiveInstantiation(DefaultExportProvider.class);
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
 
         registerDynamicObjectFields(config);
@@ -484,13 +480,6 @@ public final class TruffleBaseFeature implements InternalFeature {
             boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
             return assertionsEnabled;
         }
-    }
-
-    private static void registerHierarchyForReflectiveLookupAndInstantiation(BeforeAnalysisAccessImpl config, Class<?> clazz) {
-        config.findSubclasses(clazz).stream().filter((c) -> !Modifier.isAbstract(c.getModifiers())).forEach((c) -> {
-            RuntimeReflection.register(c);
-            RuntimeReflection.registerForReflectiveInstantiation(c);
-        });
     }
 
     @Override

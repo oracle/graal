@@ -43,7 +43,6 @@ package com.oracle.truffle.api.provider;
 import com.oracle.truffle.api.impl.Accessor;
 
 import java.util.Collection;
-import java.util.stream.Stream;
 
 final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport {
 
@@ -63,7 +62,7 @@ final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport
     }
 
     @Override
-    public <T> Stream<T> loadService(TruffleLanguageProvider provider, Class<T> type) {
-        return provider.loadService(type);
+    public <T> Iterable<T> loadTruffleService(TruffleLanguageProvider provider, Class<T> type) {
+        return provider.loadTruffleService(type);
     }
 }

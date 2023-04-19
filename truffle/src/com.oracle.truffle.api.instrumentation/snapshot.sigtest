@@ -463,6 +463,14 @@ meth public abstract !hasdefault java.lang.String version()
 meth public abstract !hasdefault java.lang.String website()
 meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
 
+CLSS public abstract com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider
+cons protected init()
+meth protected abstract <%0 extends java.lang.Object> java.lang.Iterable<{%%0}> loadTruffleService(java.lang.Class<{%%0}>)
+meth protected abstract java.lang.Object create()
+meth protected abstract java.lang.String getInstrumentClassName()
+meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
+supr java.lang.Object
+
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
 innr public abstract interface static !annotation Child

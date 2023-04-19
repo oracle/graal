@@ -266,10 +266,10 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
                 generateGetServicesClassNames(registration, builder, context);
                 break;
             }
-            case "loadService": {
+            case "loadTruffleService": {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleLanguage_Registration);
-                generateLoadService(registration, builder, context, Map.of("defaultExportProviders", types.DefaultExportProvider, //
+                generateLoadTruffleService(registration, builder, context, Map.of("defaultExportProviders", types.DefaultExportProvider, //
                                 "eagerExportProviders", types.EagerExportProvider, //
                                 "fileTypeDetectors", types.TruffleFile_FileTypeDetector));
                 break;

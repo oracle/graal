@@ -132,10 +132,10 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
                 generateGetServicesClassNames(registration, builder, context);
                 break;
             }
-            case "loadService": {
+            case "loadTruffleService": {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleInstrument_Registration);
-                generateLoadService(registration, builder, context, Map.of("defaultExportProviders", types.DefaultExportProvider,
+                generateLoadTruffleService(registration, builder, context, Map.of("defaultExportProviders", types.DefaultExportProvider,
                                 "eagerExportProviders", types.EagerExportProvider));
                 break;
             }

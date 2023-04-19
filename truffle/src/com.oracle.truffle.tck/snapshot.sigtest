@@ -76,7 +76,7 @@ meth public abstract java.lang.Class<?> value()
 
 CLSS public abstract com.oracle.truffle.api.provider.TruffleLanguageProvider
 cons protected init()
-meth protected abstract <%0 extends java.lang.Object> java.util.stream.Stream<{%%0}> loadService(java.lang.Class<{%%0}>)
+meth protected abstract <%0 extends java.lang.Object> java.lang.Iterable<{%%0}> loadTruffleService(java.lang.Class<{%%0}>)
 meth protected abstract java.lang.Object create()
 meth protected abstract java.lang.String getLanguageClassName()
 meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
@@ -165,7 +165,7 @@ meth public abstract int value()
 
 CLSS public final com.oracle.truffle.tck.TruffleTestInvokerTruffleTestInvokerLanguageProvider
 cons public init()
-meth protected <%0 extends java.lang.Object> java.util.stream.Stream<{%%0}> loadService(java.lang.Class<{%%0}>)
+meth protected <%0 extends java.lang.Object> java.lang.Iterable<{%%0}> loadTruffleService(java.lang.Class<{%%0}>)
 meth protected java.lang.Object create()
 meth protected java.lang.String getLanguageClassName()
 meth protected java.util.Collection<java.lang.String> getServicesClassNames()

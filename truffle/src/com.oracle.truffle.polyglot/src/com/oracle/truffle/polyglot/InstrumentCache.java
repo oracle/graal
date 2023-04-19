@@ -150,8 +150,12 @@ final class InstrumentCache {
         }
     }
 
-    static <T> Stream<T> loadService(Class<T> type) {
-        return load().stream().flatMap((c) -> c.providerAdapter.loadService(type));
+    static <T> Iterable<T> loadTruffleService(Class<T> type) {
+        List<T> result = new ArrayList<>();
+        for (InstrumentCache cache : load()) {
+            cache.providerAdapter.loadTruffleService(type).forEach(result::add);
+        }
+        return result;
     }
 
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
@@ -286,7 +290,7 @@ final class InstrumentCache {
 
         Collection<String> getServicesClassNames();
 
-        <T> Stream<T> loadService(Class<T> type);
+        <T> Iterable<T> loadTruffleService(Class<T> type);
     }
 
     @SuppressWarnings("deprecation")
@@ -320,8 +324,8 @@ final class InstrumentCache {
         }
 
         @Override
-        public <T> Stream<T> loadService(Class<T> type) {
-            return Stream.empty();
+        public <T> Iterable<T> loadTruffleService(Class<T> type) {
+            return List.of();
         }
     }
 
@@ -355,8 +359,8 @@ final class InstrumentCache {
         }
 
         @Override
-        public <T> Stream<T> loadService(Class<T> type) {
-            return EngineAccessor.INSTRUMENT_PROVIDER.loadService(provider, type);
+        public <T> Iterable<T> loadTruffleService(Class<T> type) {
+            return EngineAccessor.INSTRUMENT_PROVIDER.loadTruffleService(provider, type);
         }
     }
 }

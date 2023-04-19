@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,10 +51,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.ServiceConfigurationError;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
@@ -88,7 +85,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
 import com.oracle.truffle.dsl.processor.model.Template;
@@ -254,7 +250,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         }
     }
 
-    static void generateLoadService(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context, Map<String, DeclaredType> registrationAttrToServiceType) {
+    static void generateLoadTruffleService(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context, Map<String, DeclaredType> registrationAttrToServiceType) {
         Map<String, List<TypeMirror>> registrationAttrToImpls = new HashMap<>();
         for (String registrationAttr : registrationAttrToServiceType.keySet()) {
             List<TypeMirror> impls = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, registrationAttr);
@@ -262,36 +258,25 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 registrationAttrToImpls.put(registrationAttr, impls);
             }
         }
-        DeclaredType stream = context.getDeclaredType(Stream.class);
+        DeclaredType list = context.getDeclaredType(List.class);
         if (registrationAttrToImpls.isEmpty()) {
-            builder.startReturn().startStaticCall(stream, "empty").end(2);
+            builder.startReturn().startStaticCall(list, "of").end(2);
         } else {
-            TypeMirror strStream = new DeclaredCodeTypeMirror((TypeElement) stream.asElement(), List.of(context.getDeclaredType(String.class)));
-            builder.declaration(strStream, "implFqns", (String) null);
             String paramName = builder.findMethod().getParameters().get(0).getSimpleName().toString();
-            builder.startSwitch().startCall(paramName, "getName").end(2).startBlock();
+            boolean elseIf = false;
             for (Map.Entry<String, List<TypeMirror>> entry : registrationAttrToImpls.entrySet()) {
-                builder.startCase().doubleQuote(binaryName(registrationAttrToServiceType.get(entry.getKey()), context)).end().startCaseBlock();
-                builder.startStatement().string("implFqns", " = ").startStaticCall(stream, "of");
+                elseIf = builder.startIf(elseIf);
+                builder.string(paramName).string(" == ").string(ElementUtils.getQualifiedName(registrationAttrToServiceType.get(entry.getKey()))).string(".class").end(1);
+                builder.startBlock();
+                builder.startReturn().startStaticCall(list, "of");
                 for (TypeMirror impl : entry.getValue()) {
-                    builder.doubleQuote(binaryName(impl, context));
+                    builder.startCall(paramName, "cast").startNew(impl).end(2);
                 }
-                builder.end(2);
-                builder.startStatement().string("break").end(2);
+                builder.end(3);
             }
-            builder.caseDefault().startCaseBlock();
-            builder.startStatement().string("implFqns", " = ").startStaticCall(stream, "empty");
-            builder.end(4);
-            builder.startReturn().startCall("implFqns", "map").startGroup().string("(fqn) -> ").startBlock();
-            builder.startTryBlock();
-            DeclaredType clz = context.getDeclaredType(Class.class);
-            builder.declaration(clz, "clazz", builder.create().startStaticCall(clz, "forName").string("fqn").end().build());
-            builder.declaration(context.getDeclaredType(Constructor.class), "constructor", builder.create().startCall("clazz", "getDeclaredConstructor").end().build());
-            builder.startReturn().startCall(paramName, "cast").startCall("constructor", "newInstance").end(3);
+            builder.startElseBlock();
+            builder.startReturn().startStaticCall(list, "of").end(2);
             builder.end();
-            builder.startCatchBlock(context.getDeclaredType(ReflectiveOperationException.class), "e");
-            builder.startThrow().startNew(context.getDeclaredType(ServiceConfigurationError.class)).startGroup().doubleQuote("Failed to instantiate ").string(" + ", "fqn").end().string("e").end(2);
-            builder.end(5);
         }
     }
 

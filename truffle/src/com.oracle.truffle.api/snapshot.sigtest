@@ -1286,6 +1286,14 @@ meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
 
+CLSS public abstract com.oracle.truffle.api.provider.TruffleLanguageProvider
+cons protected init()
+meth protected abstract <%0 extends java.lang.Object> java.lang.Iterable<{%%0}> loadTruffleService(java.lang.Class<{%%0}>)
+meth protected abstract java.lang.Object create()
+meth protected abstract java.lang.String getLanguageClassName()
+meth protected abstract java.util.Collection<java.lang.String> getServicesClassNames()
+supr java.lang.Object
+
 CLSS public abstract com.oracle.truffle.api.source.Source
 fld public final static java.lang.CharSequence CONTENT_NONE
 innr public SourceBuilder

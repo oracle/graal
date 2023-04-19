@@ -219,8 +219,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
     }
 
-    static <T> Stream<T> loadService(Class<T> type) {
-        return languages().values().stream().flatMap((c) -> c.providerAdapter.loadService(type));
+    static <T> Iterable<T> loadTruffleService(Class<T> type) {
+        List<T> result = new ArrayList<>();
+        for (LanguageCache cache : languages().values()) {
+            cache.providerAdapter.loadTruffleService(type).forEach(result::add);
+        }
+        return result;
     }
 
     static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
@@ -610,7 +614,13 @@ final class LanguageCache implements Comparable<LanguageCache> {
     List<? extends FileTypeDetector> getFileTypeDetectors() {
         List<FileTypeDetector> result = fileTypeDetectors;
         if (result == null) {
-            result = providerAdapter.createFileTypeDetectors();
+            Iterable<FileTypeDetector> detectors = providerAdapter.loadTruffleService(FileTypeDetector.class);
+            if (detectors instanceof List) {
+                result = (List<FileTypeDetector>) detectors;
+            } else {
+                result = new ArrayList<>();
+                detectors.forEach(result::add);
+            }
             fileTypeDetectors = result;
         }
         return result;
@@ -662,8 +672,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        protected <T> Stream<T> loadService(Class<T> type) {
-            return Stream.empty();
+        protected <T> Iterable<T> loadTruffleService(Class<T> type) {
+            return List.of();
         }
     }
 
@@ -672,13 +682,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
         TruffleLanguage<?> create();
 
-        List<FileTypeDetector> createFileTypeDetectors();
-
         String getLanguageClassName();
 
         Collection<String> getServicesClassNames();
 
-        <T> Stream<T> loadService(Class<T> type);
+        <T> Iterable<T> loadTruffleService(Class<T> type);
     }
 
     @SuppressWarnings("deprecation")
@@ -702,11 +710,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        public List<FileTypeDetector> createFileTypeDetectors() {
-            return provider.createFileTypeDetectors();
-        }
-
-        @Override
         public String getLanguageClassName() {
             return provider.getLanguageClassName();
         }
@@ -716,8 +719,13 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        public <T> Stream<T> loadService(Class<T> type) {
-            return Stream.empty();
+        @SuppressWarnings("unchecked")
+        public <T> Iterable<T> loadTruffleService(Class<T> type) {
+            if (FileTypeDetector.class == type) {
+                return (Iterable<T>) provider.createFileTypeDetectors();
+            } else {
+                return List.of();
+            }
         }
     }
 
@@ -741,11 +749,6 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        public List<FileTypeDetector> createFileTypeDetectors() {
-            return EngineAccessor.LANGUAGE_PROVIDER.loadService(provider, FileTypeDetector.class).toList();
-        }
-
-        @Override
         public String getLanguageClassName() {
             return EngineAccessor.LANGUAGE_PROVIDER.getLanguageClassName(provider);
         }
@@ -755,8 +758,8 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
 
         @Override
-        public <T> Stream<T> loadService(Class<T> type) {
-            return EngineAccessor.LANGUAGE_PROVIDER.loadService(provider, type);
+        public <T> Iterable<T> loadTruffleService(Class<T> type) {
+            return EngineAccessor.LANGUAGE_PROVIDER.loadTruffleService(provider, type);
         }
     }
 }
