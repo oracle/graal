@@ -377,21 +377,6 @@ public final class InlineSupport {
             return true;
         }
 
-        static RuntimeException invalidAccessError(Class<?> expectedClass, Object node) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (node == null) {
-                throw new NullPointerException(formatInvalidAccessError(expectedClass, node));
-            } else {
-                throw new ClassCastException(formatInvalidAccessError(expectedClass, node));
-            }
-        }
-
-        private static String formatInvalidAccessError(Class<?> expectedClass, Object node) {
-            return String.format("Invalid parameter type passed to updater. Instance of type '%s' expected but was '%s'. " + //
-                            "Did you pass the wrong node to an execute method of an inlined cached node? Or, did you pass the node to the bound inline context node from one specialization to another?",
-                            getEnclosingSimpleName(expectedClass), node != null ? getEnclosingSimpleName(node.getClass()) : "null");
-        }
-
         static RuntimeException invalidValue(Class<?> expectedClass, Object value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             String message = String.format("Invalid parameter type passed to set. Instance of type '%s' expected but was '%s'. ",
@@ -1406,39 +1391,23 @@ public final class InlineSupport {
             return handle.varType();
         }
 
-        /*
-         * For method handles only an assertion is needed on the fast-path for it to be safe.
-         */
-        final boolean validateImpl(Object node) {
-            if (!receiverClass.isInstance(node)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            }
-            return true;
-        }
-
         final boolean getBoolean(Object node) {
-            assert validateImpl(node);
             return (boolean) handle.get(node);
         }
 
         final byte getByte(Object node) {
-            assert validateImpl(node);
             return (byte) handle.get(node);
         }
 
         final short getShort(Object node) {
-            assert validateImpl(node);
             return (short) handle.get(node);
         }
 
         final char getChar(Object node) {
-            assert validateImpl(node);
             return (char) handle.get(node);
         }
 
         final int getInt(Object node) {
-            assert validateImpl(node);
             return (int) handle.get(node);
         }
 
@@ -1447,72 +1416,58 @@ public final class InlineSupport {
         }
 
         final long getLong(Object node) {
-            assert validateImpl(node);
             return (long) handle.get(node);
         }
 
         final double getDouble(Object node) {
-            assert validateImpl(node);
             return (double) handle.get(node);
         }
 
         final void setBoolean(Object node, boolean v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setByte(Object node, byte v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setShort(Object node, short v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setChar(Object node, char v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setInt(Object node, int v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setFloat(Object node, float v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setLong(Object node, long v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setDouble(Object node, double v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setObject(Object node, Object v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final Object getObject(Object node) {
-            assert validateImpl(node);
             return handle.get(node);
         }
 
         final Object getObjectVolatile(Object node) {
-            assert validateImpl(node);
             return handle.getVolatile(node);
         }
 
         final boolean compareAndSetObject(Object node, Object expect, Object update) {
-            assert validateImpl(node);
             return handle.compareAndSet(node, expect, update);
         }
 
