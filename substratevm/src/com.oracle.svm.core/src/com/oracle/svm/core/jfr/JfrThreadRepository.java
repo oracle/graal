@@ -86,6 +86,10 @@ public final class JfrThreadRepository implements JfrRepository {
             Thread thread = PlatformThreads.fromVMThread(isolateThread);
             if (thread != null) {
                 registerThread(thread);
+                // Re-register vthreads that are already mounted.
+                if (PlatformThreads.isCarrier(thread)) {
+                    registerThread(PlatformThreads.getVThread(thread));
+                }
             }
         }
     }

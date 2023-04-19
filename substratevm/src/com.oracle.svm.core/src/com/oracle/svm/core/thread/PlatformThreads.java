@@ -25,6 +25,7 @@
 package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
 import static com.oracle.svm.core.thread.JavaThreads.fromTarget;
 import static com.oracle.svm.core.thread.JavaThreads.isCurrentThreadVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
@@ -503,6 +504,17 @@ public abstract class PlatformThreads {
         assert thread == carrier || (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread));
         toTarget(carrier).vthread = (thread != carrier) ? thread : null;
         currentVThreadId.set(JavaThreads.getThreadId(thread));
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static boolean isCarrier(Thread thread) {
+        return toTarget(thread).vthread != null;
+    }
+
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public static Thread getVThread(Thread thread) {
+        Target_java_lang_Thread tjlt = toTarget(thread);
+        return (tjlt.vthread != null) ? tjlt.vthread : thread;
     }
 
     @Uninterruptible(reason = "Called during isolate initialization")
