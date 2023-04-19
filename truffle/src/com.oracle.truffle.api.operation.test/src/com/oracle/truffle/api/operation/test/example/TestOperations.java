@@ -92,7 +92,12 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         super(language, frameDescriptor);
     }
 
-    protected String testData;
+    public String testData;
+
+    // Expose the protected cloneUninitialized method for testing.
+    public TestOperations doCloneUninitialized() {
+        return (TestOperations) cloneUninitialized();
+    }
 
     private static class TestException extends AbstractOperationsTruffleException {
         private static final long serialVersionUID = -9143719084054578413L;

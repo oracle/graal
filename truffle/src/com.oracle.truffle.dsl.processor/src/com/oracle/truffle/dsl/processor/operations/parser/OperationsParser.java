@@ -273,7 +273,6 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         }
 
         // apply optimization decisions
-
         if (model.enableOptimizations) {
             model.optimizationDecisions = parseDecisions(model, model.decisionsFilePath, decisionsOverrideFilesPath);
 
@@ -295,7 +294,6 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         }
 
         // serialization fields
-
         if (model.enableSerialization) {
             List<VariableElement> serializedFields = new ArrayList<>();
             TypeElement type = model.getTemplateType();
@@ -308,13 +306,8 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
                         continue;
                     }
 
-                    boolean visible = model.getTemplateType() == type && !field.getModifiers().contains(Modifier.PRIVATE);
                     boolean inTemplateType = model.getTemplateType() == type;
-                    if (inTemplateType) {
-                        visible = !field.getModifiers().contains(Modifier.PRIVATE);
-                    } else {
-                        visible = ElementUtils.isVisible(model.getTemplateType(), field);
-                    }
+                    boolean visible = inTemplateType ? !field.getModifiers().contains(Modifier.PRIVATE) : ElementUtils.isVisible(model.getTemplateType(), field);
 
                     if (!visible) {
                         model.addError(inTemplateType ? field : null, errorPrefix() +
