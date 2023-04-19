@@ -1203,7 +1203,7 @@ public final class InlineSupport {
          * the DSL. Any further parent lookups are invalid.
          */
         @TruffleBoundary
-        private boolean validateForParentLookup(Object inlineContext, Node parent) {
+        private boolean validateForParentLookup(Object inlineTarget, Node parent) {
             if (CompilerDirectives.inCompiledCode()) {
                 return true;
             }
@@ -1215,9 +1215,9 @@ public final class InlineSupport {
              * nodes in the parent chain are specialization data classes too. If code has not yet
              * been recompiled with the latest DSL version we do not provide bad errors.
              */
-            if (inlineContext instanceof SpecializationDataNode) {
+            if (inlineTarget instanceof SpecializationDataNode) {
                 if (!(parent instanceof SpecializationDataNode)) {
-                    throw invalidReceiver(inlineContext);
+                    throw invalidReceiver(inlineTarget);
                 }
             }
             return true;
@@ -1238,10 +1238,10 @@ public final class InlineSupport {
                             getEnclosingSimpleName(receiverClass)));
         }
 
-        private RuntimeException invalidReceiver(Object inlineContext) {
+        private RuntimeException invalidReceiver(Object inlineTarget) {
             throw new ClassCastException(String.format("Invalid inline context node passed to an inlined field. A receiver of type '%s' was expected but is '%s'. " + //
                             "Did you pass the wrong node to an execute method of an inlined cached node?",
-                            getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(((Node) inlineContext).getClass())));
+                            getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(((Node) inlineTarget).getClass())));
         }
 
         final Class<?> getFieldClass() {
