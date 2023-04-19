@@ -842,11 +842,8 @@ public abstract class PlatformThreads {
         return StackTraceUtils.asyncGetStackTrace(thread);
     }
 
-    static void visitStackTrace(Thread thread, Pointer callerSP, StackFrameVisitor visitor) {
-        assert !isVirtual(thread);
-        if (thread != currentThread.get()) {
-            throw VMError.unimplemented("only current thread supported");
-        }
+    static void visitCurrentStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        assert !isVirtual(Thread.currentThread());
         StackTraceUtils.visitCurrentThreadStackFrames(callerSP, WordFactory.nullPointer(), visitor);
     }
 

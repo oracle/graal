@@ -84,7 +84,7 @@ public interface VirtualThreads {
      */
     StackTraceElement[] getVirtualOrPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP);
 
-    void visitVirtualOrPlatformThreadStackTrace(Thread thread, Pointer callerSP, StackFrameVisitor visitor);
+    void visitCurrentVirtualOrPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor);
 
     StackTraceElement[] getVirtualOrPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP);
 }

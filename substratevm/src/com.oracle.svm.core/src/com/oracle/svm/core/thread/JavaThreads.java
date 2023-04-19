@@ -217,7 +217,7 @@ public final class JavaThreads {
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
-    public static void visitStackTrace(Thread thread, StackFrameVisitor visitor) {
+    public static void visitCurrentStackFrames(StackFrameVisitor visitor) {
         /*
          * If our own thread's stack was requested, we can walk it without a VMOperation using a
          * stack pointer. It is intentional that we use the caller stack pointer: the calling
@@ -226,9 +226,9 @@ public final class JavaThreads {
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
 
         if (supportsVirtual()) { // NOTE: also for platform threads!
-            VirtualThreads.singleton().visitVirtualOrPlatformThreadStackTrace(thread, callerSP, visitor);
+            VirtualThreads.singleton().visitCurrentVirtualOrPlatformThreadStackFrames(callerSP, visitor);
         } else {
-            PlatformThreads.visitStackTrace(thread, callerSP, visitor);
+            PlatformThreads.visitCurrentStackFrames(callerSP, visitor);
         }
     }
 

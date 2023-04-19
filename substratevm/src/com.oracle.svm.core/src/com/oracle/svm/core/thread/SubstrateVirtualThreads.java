@@ -249,13 +249,10 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
     }
 
     @Override
-    public void visitVirtualOrPlatformThreadStackTrace(Thread thread, Pointer callerSP, StackFrameVisitor visitor) {
-        if (!isVirtual(thread)) {
-            PlatformThreads.visitStackTrace(thread, callerSP, visitor);
+    public void visitCurrentVirtualOrPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        if (!isVirtual(Thread.currentThread())) {
+            PlatformThreads.visitCurrentStackFrames(callerSP, visitor);
             return;
-        }
-        if (thread != Thread.currentThread()) {
-            throw VMError.unimplemented("only current thread supported");
         }
         Pointer endSP = current().getBaseSP();
         if (endSP.isNull()) {

@@ -317,7 +317,7 @@ final class Target_java_lang_Throwable {
         }
 
         RawStackTraceVisitor visitor = new RawStackTraceVisitor();
-        JavaThreads.visitStackTrace(Thread.currentThread(), visitor);
+        JavaThreads.visitCurrentStackFrames(visitor);
         backtrace = visitor.getArray();
         return this;
     }

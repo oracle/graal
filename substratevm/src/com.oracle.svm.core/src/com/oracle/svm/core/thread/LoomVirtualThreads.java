@@ -162,15 +162,12 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     @Override
-    public void visitVirtualOrPlatformThreadStackTrace(Thread thread, Pointer callerSP, StackFrameVisitor visitor) {
-        if (!isVirtual(thread)) {
-            visitPlatformThreadStackTrace(thread, callerSP, visitor);
+    public void visitCurrentVirtualOrPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        if (!isVirtual(Thread.currentThread())) {
+            visitCurrentPlatformThreadStackFrames(callerSP, visitor);
             return;
         }
-        if (thread != Thread.currentThread()) {
-            throw VMError.unimplemented("only current thread supported");
-        }
-        visitVirtualThreadStackTrace(thread, callerSP, visitor);
+        visitCurrentVirtualThreadStackFrames(callerSP, visitor);
     }
 
     @Override
@@ -197,17 +194,14 @@ final class LoomVirtualThreads implements VirtualThreads {
         return StackTraceUtils.getThreadStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
     }
 
-    private static void visitVirtualThreadStackTrace(Thread thread, Pointer callerSP, StackFrameVisitor visitor) {
-        Thread carrier = cast(thread).carrierThread;
+    private static void visitCurrentVirtualThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        Thread carrier = cast(Thread.currentThread()).carrierThread;
         if (carrier == null) {
             return;
         }
         Pointer endSP = getCarrierSPOrElse(carrier, WordFactory.nullPointer());
         if (endSP.isNull()) {
             return;
-        }
-        if (carrier != PlatformThreads.currentThread.get()) {
-            throw VMError.unimplemented("only current thread supported");
         }
         StackTraceUtils.visitCurrentThreadStackFrames(callerSP, endSP, visitor);
     }
@@ -253,11 +247,8 @@ final class LoomVirtualThreads implements VirtualThreads {
         return StackTraceUtils.asyncGetStackTrace(thread);
     }
 
-    private static void visitPlatformThreadStackTrace(Thread thread, Pointer callerSP, StackFrameVisitor visitor) {
-        if (thread != PlatformThreads.currentThread.get()) {
-            throw VMError.unimplemented("only current thread supported");
-        }
-        Pointer startSP = getCarrierSPOrElse(thread, callerSP);
+    private static void visitCurrentPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        Pointer startSP = getCarrierSPOrElse(Thread.currentThread(), callerSP);
         StackTraceUtils.visitCurrentThreadStackFrames(startSP, WordFactory.nullPointer(), visitor);
     }
 
