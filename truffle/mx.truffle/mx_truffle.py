@@ -170,11 +170,13 @@ def _path_args(depNames=None):
 def _open_module_exports_args():
     """
     Gets the VM args for exporting all Truffle API packages on JDK9 or later.
+    The default Truffle moduleInfo is opened but closed version is deployed into graalvm.
+    To run benchmarks on the graalvm we need to open the closed Truffle packages.
     """
     assert mx.get_jdk().javaCompliance >= '1.9'
     truffle_api_dist = mx.distribution('TRUFFLE_API')
     truffle_api_module_name = truffle_api_dist.moduleInfo['name']
-    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo:open')['exports']
+    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo')['exports']
     args = []
     for export in module_info_open_exports:
         if ' to ' in export: # Qualified exports
