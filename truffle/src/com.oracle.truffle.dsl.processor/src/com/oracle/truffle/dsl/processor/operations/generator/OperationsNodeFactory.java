@@ -417,9 +417,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Some fields should be manually reinitialized to default values.
         b.statement("clone.interpreter = " + (model.generateUncached ? "UN" : "") + "CACHED_INTERPRETER");
         b.statement("clone.cachedNodes = null");
-        b.statement("clone.uncachedExecuteCount = 16");
 
-        if (!model.generateUncached) {
+        if (model.generateUncached) {
+            b.statement("clone.uncachedExecuteCount = 16");
+        } else {
             b.statement("clone.initializeCachedNodes()");
         }
 
