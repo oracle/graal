@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.operation.test.example;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.util.ArrayList;
@@ -2670,6 +2671,56 @@ public class TestOperationsParserTest {
         assertInstructionEquals(data.getInstructions().get(3), 6, "return");
         // todo: with DCE, this pop will go away (since return is considered as returning a value)
         assertInstructionEquals(data.getInstructions().get(4), 7, "pop");
+    }
+
+    @Test
+    public void testCloneUninitializedAdd() {
+        // return arg0 + arg1;
+
+        TestOperations testOperations = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadArgument(1);
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+        RootCallTarget root = testOperations.getCallTarget();
+
+        // Run enough times to trigger cached execution.
+        for (int i = 0; i < 16; i++) {
+            assertEquals(42L, root.call(20L, 22L));
+            assertEquals("foobar", root.call("foo", "bar"));
+            assertEquals(100L, root.call(120L, -20L));
+        }
+
+        TestOperations cloned = testOperations.doCloneUninitialized();
+        assertNotEquals(testOperations.getCallTarget(), cloned.getCallTarget());
+        root = cloned.getCallTarget();
+
+        // Run enough times to trigger cached execution again. The transition should work without crashing.
+        for (int i = 0; i < 16; i++) {
+            assertEquals(42L, root.call(20L, 22L));
+            assertEquals("foobar", root.call("foo", "bar"));
+            assertEquals(100L, root.call(120L, -20L));
+        }
+    }
+
+    @Test
+    public void testCloneUninitializedFields() {
+        TestOperations testOperations = parseNode(b -> {
+            b.beginRoot(LANGUAGE);
+            emitReturn(b, 0);
+            b.endRoot();
+        });
+        testOperations.testData = "The quick brown fox jumps over the lazy dog";
+
+        TestOperations cloned = testOperations.doCloneUninitialized();
+        assertEquals("User field was not copied to the uninitialized clone.", testOperations.testData, cloned.testData);
     }
 
     @Test

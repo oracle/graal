@@ -165,6 +165,15 @@ public abstract class RootNode extends ExecutableNode {
         this.frameDescriptor = frameDescriptor == null ? new FrameDescriptor() : frameDescriptor;
     }
 
+    /** @since 0.8 or earlier */
+    @Override
+    public Node copy() {
+        RootNode root = (RootNode) super.copy();
+        root.frameDescriptor = frameDescriptor;
+        resetFieldsAfterCopy(root);
+        return root;
+    }
+
     private static void resetFieldsAfterCopy(RootNode root) {
         root.callTarget = null;
         root.instrumentationBits = 0;

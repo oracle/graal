@@ -336,7 +336,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Define a helper to initialize the cached nodes.
         operationNodeGen.add(createInitializeCachedNodes());
 
-        // TODO: this method is here for debugging and should probably be omitted before release
+        // TODO: this method is here for debugging and should probably be omitted before we release
         operationNodeGen.add(createDumpBytecode());
 
         return operationNodeGen;
@@ -408,14 +408,20 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(operationNodeGen.asType(), "clone", "(" + operationNodeGen.getSimpleName() + ") this.copy()");
+        b.declaration(operationNodeGen.asType(), "clone");
+        b.startAssign("clone");
+        b.cast(operationNodeGen.asType(), "this.copy()");
+        b.end();
 
+        // The base copy method performs a shallow copy of all fields.
+        // Some fields should be manually reinitialized to default values.
         b.statement("clone.interpreter = " + (model.generateUncached ? "UN" : "") + "CACHED_INTERPRETER");
+        b.statement("clone.cachedNodes = null");
+        b.statement("clone.uncachedExecuteCount = 16");
 
         if (!model.generateUncached) {
             b.statement("clone.initializeCachedNodes()");
         }
-        b.lineComment("TODO: copy side tables");
 
         b.startReturn().string("clone").end();
 
@@ -1264,6 +1270,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             if (model.enableYield) {
+                builderContextSensitiveState.add(new CodeVariableElement(Set.of(PRIVATE), generic(ArrayList.class, types.ContinuationLocation), "continuationLocations"));
                 builderContextInsensitiveState.add(builderContextInsensitiveState.size() - 1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numYields"));
             }
         }
@@ -1957,7 +1964,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 /*
                  * We initialize the fields declared on builderState here when beginRoot is called.
                  */
-
                 buildContextSensitiveFieldInitializer(b);
                 b.statement("operationStack = new OperationStackEntry[8]");
                 b.statement("opSeqNum = 0");
@@ -2357,14 +2363,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             if (model.enableYield) {
-                // TODO: remember the continuations somewhere so we can fix them up without looping
-                // over the entire constants array.
-                b.startFor().string("int i = 0; i < result.constants.length; i++").end().startBlock();
-                b.statement("Object constant = result.constants[i]");
-                b.startIf().string("constant instanceof ContinuationLocationImpl").end().startBlock();
-                b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) constant");
-                b.statement("cl.rootNode = new ContinuationRoot(language, result.getFrameDescriptor(), result, (cl.sp << 16) | cl.bci)");
-                b.end();
+                b.startFor().string("ContinuationLocation location : continuationLocations").end().startBlock();
+                b.statement("ContinuationLocationImpl locationImpl = (ContinuationLocationImpl) location");
+                b.statement("locationImpl.rootNode = new ContinuationRoot(language, result.getFrameDescriptor(), result, (locationImpl.sp << 16) | locationImpl.bci)");
                 b.end();
             }
 
@@ -2463,6 +2464,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 }
                 case YIELD -> {
                     b.statement("ContinuationLocation continuation = new ContinuationLocationImpl(numYields++, bci + 2, curStack)");
+                    b.statement("continuationLocations.add(continuation)");
                     yield new String[]{"constantPool.addConstant(continuation)"};
                 }
                 case CUSTOM_SIMPLE -> buildCustomInitializer(b, operation, operation.instruction);
@@ -2928,6 +2930,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("assert cl.bci == locationBci + 1");
                         b.statement("ContinuationLocationImpl newContinuation = new ContinuationLocationImpl(numYields++, offsetBci + cl.bci, curStack + cl.sp)");
                         b.statement("bc[offsetBci + locationBci] = (short) constantPool.addConstant(newContinuation)");
+                        b.statement("continuationLocations.add(newContinuation)");
                         break;
 
                     case CUSTOM:
@@ -2939,10 +2942,13 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 case BYTECODE_INDEX:
                                     // Custom operations don't have non-local branches/children, so
                                     // this immediate is *always* relative.
-                                    b.statement("bc[offsetBci + handlerBci + " + (i + 1) + "] += offsetBci /* adjust " + immediate.name + " */");
+                                    b.statement("bc[offsetBci + handlerBci + " + immediate.offset + "] += offsetBci /* adjust " + immediate.name + " */");
+                                    break;
+                                case NODE:
+                                    // Allocate a separate Node for each handler.
+                                    b.statement("bc[offsetBci + handlerBci + " + immediate.offset + "] = (short) allocateNode()");
+                                    break;
                                 default:
-                                    // TODO: do we want to allocate a new copy of the Node? Right
-                                    // now, we reuse the same one across all handlers.
                                     // do nothing
                                     break;
                             }
@@ -3309,6 +3315,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("unresolvedLabels = new HashMap<>()");
             if (model.enableTracing) {
                 b.statement("basicBlockBoundary = new boolean[33]");
+            }
+            if (model.enableYield) {
+                b.statement("continuationLocations = new ArrayList<>()");
             }
         }
     }
