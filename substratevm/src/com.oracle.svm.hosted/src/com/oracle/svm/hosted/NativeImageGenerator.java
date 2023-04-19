@@ -247,7 +247,6 @@ import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysisEngine;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.analysis.SubstrateUnsupportedFeatures;
-import com.oracle.svm.hosted.annotation.AnnotationSupport;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
@@ -982,8 +981,7 @@ public class NativeImageGenerator {
                     SnippetReflectionProvider originalSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SubstitutionProcessor cEnumProcessor,
                     ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions) {
         UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(options, originalSnippetReflection, annotationSubstitutions);
-        SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
-                        annotationSubstitutions, additionalSubstitutions);
+        SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(cEnumProcessor, automaticSubstitutions, annotationSubstitutions, additionalSubstitutions);
 
         SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions, loader.platform);
 
@@ -1014,13 +1012,12 @@ public class NativeImageGenerator {
         return new UnsafeAutomaticSubstitutionProcessor(options, annotationSubstitutions, originalSnippetReflection);
     }
 
-    public static SubstitutionProcessor createAnalysisSubstitutionProcessor(MetaAccessProvider originalMetaAccess, SnippetReflectionProvider originalSnippetReflection,
+    public static SubstitutionProcessor createAnalysisSubstitutionProcessor(
                     SubstitutionProcessor cEnumProcessor, SubstitutionProcessor automaticSubstitutions, SubstitutionProcessor annotationSubstitutions,
                     List<SubstitutionProcessor> additionalSubstitutionProcessors) {
         List<SubstitutionProcessor> allProcessors = new ArrayList<>();
         SubstitutionProcessor cFunctionSubstitutions = new CFunctionSubstitutionProcessor();
-        allProcessors.addAll(Arrays.asList(new AnnotationSupport(originalMetaAccess, originalSnippetReflection),
-                        annotationSubstitutions, cFunctionSubstitutions, automaticSubstitutions, cEnumProcessor));
+        allProcessors.addAll(Arrays.asList(annotationSubstitutions, cFunctionSubstitutions, automaticSubstitutions, cEnumProcessor));
         allProcessors.addAll(additionalSubstitutionProcessors);
         return SubstitutionProcessor.chainUpInOrder(allProcessors.toArray(new SubstitutionProcessor[0]));
     }
