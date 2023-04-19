@@ -469,7 +469,7 @@ public class StackifierIRWalker extends IRWalker {
          * the caught object is set to Throwable, and only changed if the exception edge indeed is
          * an ExceptionObjectNode
          */
-        if (excpSucc.getBeginNode() instanceof ExceptionObjectNode excpObj) {
+        if (excpSucc.getBeginNode()instanceof ExceptionObjectNode excpObj) {
             caughtObjectType = excpObj.stamp(NodeView.DEFAULT).javaType(codeGenTool.getProviders().getMetaAccess());
         }
         codeGenTool.genCatchBlockPrefix(caughtObjectName, caughtObjectType);
@@ -836,6 +836,6 @@ public class StackifierIRWalker extends IRWalker {
 
     private static String getLabel(HIRBlock block) {
         assert block.isLoopHeader();
-        return LABEL_PREFIX + (int) block.getId();
+        return LABEL_PREFIX + block.getId();
     }
 }
