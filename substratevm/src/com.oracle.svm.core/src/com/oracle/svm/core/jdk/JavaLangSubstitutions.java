@@ -282,10 +282,13 @@ final class Target_java_lang_Throwable {
     @Alias @RecomputeFieldValue(kind = Reset)//
     private Object backtrace;
 
-    @Alias @RecomputeFieldValue(kind = Reset)//
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ThrowableStackTraceFieldValueTransformer.class)//
     StackTraceElement[] stackTrace;
 
     @Alias String detailMessage;
+
+    @Alias//
+    static StackTraceElement[] UNASSIGNED_STACK;
 
     /**
      * Records the execution stack in an internal format. The information is transformed into
@@ -317,6 +320,19 @@ final class Target_java_lang_Throwable {
         JavaThreads.visitStackTrace(Thread.currentThread(), visitor);
         backtrace = visitor.getArray();
         return this;
+    }
+}
+
+final class ThrowableStackTraceFieldValueTransformer implements FieldValueTransformer {
+
+    private final static StackTraceElement[] UNASSIGNED_STACK = ReflectionUtil.readStaticField(Throwable.class, "UNASSIGNED_STACK");
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        if (originalValue == null) { // Immutable stack
+            return null;
+        }
+        return UNASSIGNED_STACK;
     }
 }
 
