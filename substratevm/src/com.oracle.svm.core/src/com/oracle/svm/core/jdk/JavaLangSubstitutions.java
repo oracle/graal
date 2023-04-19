@@ -280,15 +280,17 @@ final class Target_java_lang_StringUTF16 {
 final class Target_java_lang_Throwable {
 
     @Alias @RecomputeFieldValue(kind = Reset)//
-    private Object backtrace;
+    Object backtrace;
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ThrowableStackTraceFieldValueTransformer.class)//
     StackTraceElement[] stackTrace;
 
     @Alias String detailMessage;
 
+    // Checkstyle: stop
     @Alias//
-    static StackTraceElement[] UNASSIGNED_STACK;
+    private static StackTraceElement[] UNASSIGNED_STACK = null;
+    // Checkstyle: resume
 
     /**
      * Records the execution stack in an internal format. The information is transformed into
@@ -325,7 +327,7 @@ final class Target_java_lang_Throwable {
 
 final class ThrowableStackTraceFieldValueTransformer implements FieldValueTransformer {
 
-    private final static StackTraceElement[] UNASSIGNED_STACK = ReflectionUtil.readStaticField(Throwable.class, "UNASSIGNED_STACK");
+    private static final StackTraceElement[] UNASSIGNED_STACK = ReflectionUtil.readStaticField(Throwable.class, "UNASSIGNED_STACK");
 
     @Override
     public Object transform(Object receiver, Object originalValue) {
@@ -342,11 +344,29 @@ final class Target_java_lang_StackTraceElement {
     /**
      * Constructs the {@link StackTraceElement} array from a backtrace.
      *
-     * @param x backtrace stored in {@code Target_java_lang_Throwable#backtrace}
+     * @param x backtrace stored in {@link Target_java_lang_Throwable#backtrace}
      * @param depth ignored
      */
     @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
     static StackTraceElement[] of(Object x, int depth) {
+        if (x instanceof StackTraceElement[] stackTrace) {
+            /* Stack trace eagerly created. */
+            return stackTrace;
+        }
+        return RawStackFrameVisitor.decodeBacktrace(x);
+    }
+
+    /**
+     * Constructs the {@link StackTraceElement} array from a {@link Throwable}.
+     *
+     * @param t the {@link Throwable} object
+     * @param depth ignored
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
+    static StackTraceElement[] of(Target_java_lang_Throwable t, int depth) {
+        Object x = t.backtrace;
         if (x instanceof StackTraceElement[] stackTrace) {
             /* Stack trace eagerly created. */
             return stackTrace;
