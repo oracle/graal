@@ -153,6 +153,18 @@ public class HostInliningPhase extends AbstractInliningPhase {
         return method;
     }
 
+    private boolean isInInterpreter(InliningPhaseContext context, ResolvedJavaMethod method) {
+        return context.types().isInInterpreter(translateMethod(method));
+    }
+
+    private boolean isInInterpreterFastPath(InliningPhaseContext context, ResolvedJavaMethod method) {
+        return context.types().isInInterpreterFastPath(translateMethod(method));
+    }
+
+    private boolean isTransferToInterpreterMethod(InliningPhaseContext context, ResolvedJavaMethod method) {
+        return context.types().isTransferToInterpreterMethod(translateMethod(method));
+    }
+
     @Override
     protected final void run(StructuredGraph graph, HighTierContext highTierContext) {
         ResolvedJavaMethod method = graph.method();
@@ -405,7 +417,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                 for (Node input : condition.inputs()) {
                     if (input instanceof Invoke) {
                         ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
-                        if (targetMethod != null && context.types().isInInterpreter(targetMethod)) {
+                        if (targetMethod != null && isInInterpreter(context, targetMethod)) {
                             inInterpreterBlocks.add(ifNode.falseSuccessor());
                             break;
                         }
@@ -430,7 +442,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                         for (Node input : condition.inputs()) {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
-                                if (targetMethod != null && context.types().isInInterpreter(targetMethod)) {
+                                if (targetMethod != null && isInInterpreter(context, targetMethod)) {
                                     HIRBlock dominatedSilbling = block.getFirstDominated();
                                     while (dominatedSilbling != null) {
                                         inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
@@ -455,7 +467,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                 }
 
                 boolean deoptimized = caller.deoptimized || isBlockOrDominatorContainedIn(block, deoptimizedBlocks);
-                if (context.types().isTransferToInterpreterMethod(newTargetMethod)) {
+                if (isTransferToInterpreterMethod(context, newTargetMethod)) {
                     /*
                      * If we detect a deopt we mark the entire block as a deoptimized block. It is
                      * probably rare that a deopt is found in the middle of a block, but that deopt
@@ -589,7 +601,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
                     continue;
                 }
 
-                if (context.types().isTransferToInterpreterMethod(targetMethod)) {
+                if (isTransferToInterpreterMethod(context, targetMethod)) {
                     return BackPropagation.DEOPT;
                 } else if (invoke.getInvokeKind().isDirect()) {
                     if (!targetMethod.canBeInlined()) {
@@ -902,14 +914,14 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        if (context.types().isTransferToInterpreterMethod(targetMethod)) {
+        if (isTransferToInterpreterMethod(context, targetMethod)) {
             /*
              * Always inline the transfer to interpreter method.
              */
             return true;
         }
 
-        if (context.types().isInInterpreter(targetMethod) || context.types().isInInterpreterFastPath(targetMethod)) {
+        if (isInInterpreter(context, targetMethod) || isInInterpreterFastPath(context, targetMethod)) {
             /*
              * Always inline inInterpreter method.
              */
