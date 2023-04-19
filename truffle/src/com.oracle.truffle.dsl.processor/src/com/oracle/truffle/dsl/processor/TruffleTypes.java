@@ -187,6 +187,7 @@ public class TruffleTypes {
     public static final String Cached_Shared_Name = "com.oracle.truffle.api.dsl.Cached.Shared";
     public static final String CreateCast_Name = "com.oracle.truffle.api.dsl.CreateCast";
     public static final String DSLSupport_Name = "com.oracle.truffle.api.dsl.DSLSupport";
+    public static final String DSLSupport_SpecializationDataNode_Name = "com.oracle.truffle.api.dsl.DSLSupport.SpecializationDataNode";
     public static final String Executed_Name = "com.oracle.truffle.api.dsl.Executed";
     public static final String ExecuteTracingSupport_Name = "com.oracle.truffle.api.dsl.ExecuteTracingSupport";
     public static final String Fallback_Name = "com.oracle.truffle.api.dsl.Fallback";
@@ -247,6 +248,7 @@ public class TruffleTypes {
     public final DeclaredType Cached_Shared = c.getDeclaredType(Cached_Shared_Name);
     public final DeclaredType CreateCast = c.getDeclaredType(CreateCast_Name);
     public final DeclaredType DSLSupport = c.getDeclaredType(DSLSupport_Name);
+    public final DeclaredType DSLSupport_SpecializationDataNode = c.getDeclaredType(DSLSupport_SpecializationDataNode_Name);
     public final DeclaredType Executed = c.getDeclaredType(Executed_Name);
     public final DeclaredType ExecuteTracingSupport = c.getDeclaredType(ExecuteTracingSupport_Name);
     public final DeclaredType Fallback = c.getDeclaredType(Fallback_Name);
