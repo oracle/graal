@@ -262,7 +262,7 @@ final class RawStackTraceVisitor extends StackFrameVisitor {
      * Empirical data suggests that most stack traces tend to be relatively short (<100). We choose
      * the initial size so that these cases do not need to reallocate the array.
      */
-    private static final int INITIAL_TRACE_SIZE = 128;
+    private static final int INITIAL_TRACE_SIZE = 80;
     private long[] trace = new long[INITIAL_TRACE_SIZE];
 
     static StackTraceElement[] decodeBacktrace(Object backtrace) {
