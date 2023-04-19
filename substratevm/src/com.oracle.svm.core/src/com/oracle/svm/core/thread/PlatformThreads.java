@@ -847,7 +847,7 @@ public abstract class PlatformThreads {
         if (thread != currentThread.get()) {
             throw VMError.unimplemented("only current thread supported");
         }
-        StackTraceUtils.visitStackTrace(callerSP, WordFactory.nullPointer(), visitor);
+        StackTraceUtils.visitCurrentThreadStackFrames(callerSP, WordFactory.nullPointer(), visitor);
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {

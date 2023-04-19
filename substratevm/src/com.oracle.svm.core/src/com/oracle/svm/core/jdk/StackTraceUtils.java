@@ -82,11 +82,11 @@ public class StackTraceUtils {
      */
     public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP, Pointer endSP) {
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
-        JavaStackWalker.walkCurrentThread(startSP, endSP, visitor);
+        visitCurrentThreadStackFrames(startSP, endSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
-    public static void visitStackTrace(Pointer startSP, Pointer endSP, StackFrameVisitor visitor) {
+    public static void visitCurrentThreadStackFrames(Pointer startSP, Pointer endSP, StackFrameVisitor visitor) {
         JavaStackWalker.walkCurrentThread(startSP, endSP, visitor);
     }
 

@@ -209,7 +209,7 @@ final class LoomVirtualThreads implements VirtualThreads {
         if (carrier != PlatformThreads.currentThread.get()) {
             throw VMError.unimplemented("only current thread supported");
         }
-        StackTraceUtils.visitStackTrace(callerSP, endSP, visitor);
+        StackTraceUtils.visitCurrentThreadStackFrames(callerSP, endSP, visitor);
     }
 
     private static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
@@ -258,7 +258,7 @@ final class LoomVirtualThreads implements VirtualThreads {
             throw VMError.unimplemented("only current thread supported");
         }
         Pointer startSP = getCarrierSPOrElse(thread, callerSP);
-        StackTraceUtils.visitStackTrace(startSP, WordFactory.nullPointer(), visitor);
+        StackTraceUtils.visitCurrentThreadStackFrames(startSP, WordFactory.nullPointer(), visitor);
     }
 
     private static StackTraceElement[] getPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
