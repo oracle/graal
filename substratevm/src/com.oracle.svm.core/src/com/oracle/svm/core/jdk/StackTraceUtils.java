@@ -253,7 +253,7 @@ public class StackTraceUtils {
 
 }
 
-final class RawStackTraceVisitor extends StackFrameVisitor {
+final class RawStackFrameVisitor extends StackFrameVisitor {
 
     private int index = 0;
     private final int limit = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
