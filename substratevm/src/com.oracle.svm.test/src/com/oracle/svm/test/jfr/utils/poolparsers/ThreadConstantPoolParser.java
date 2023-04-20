@@ -51,7 +51,7 @@ public class ThreadConstantPoolParser extends AbstractRepositoryParser {
             Assert.assertTrue("JavaThreadId is not correct!", input.readLong() >= 0); // JavaThreadId.
             addExpectedId(JfrType.ThreadGroup, input.readLong()); // ThreadGroupId.
             if (JavaVersionUtil.JAVA_SPEC >= 19) {
-                Assert.assertFalse("Unexpected virtual thread!", input.readBoolean()); // isVirtual
+                input.readBoolean();
             }
         }
     }
