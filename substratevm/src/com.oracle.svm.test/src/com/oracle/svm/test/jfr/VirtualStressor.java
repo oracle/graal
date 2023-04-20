@@ -33,6 +33,7 @@ import java.util.List;
  * Class to help run multiple virtual threads executing some task.
  */
 public class VirtualStressor {
+    @SuppressWarnings("preview")
     public static void execute(int numberOfThreads, Runnable task) throws Exception {
         List<Thread> threads = new ArrayList<>();
         for (int n = 0; n < numberOfThreads; ++n) {
@@ -44,6 +45,7 @@ public class VirtualStressor {
         }
     }
 
+    @SuppressWarnings("preview")
     public static List<Thread> executeAsync(int numberOfThreads, Runnable task) throws Exception {
         List<Thread> threads = new ArrayList<>();
         for (int n = 0; n < numberOfThreads; ++n) {
