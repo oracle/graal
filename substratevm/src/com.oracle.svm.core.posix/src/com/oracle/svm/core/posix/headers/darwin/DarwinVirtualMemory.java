@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,11 +60,26 @@ public class DarwinVirtualMemory {
     @CConstant
     public static native int VM_REGION_SUBMAP_INFO_COUNT_64();
 
+    @CConstant
+    public static native int VM_INHERIT_SHARE();
+
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native WordPointer mach_task_self();
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native int vm_allocate(WordPointer targetTask, WordBase address, UnsignedWord size, int anywhere);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native int vm_deallocate(WordPointer targetTask, WordBase address, UnsignedWord size);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int vm_copy(WordPointer targetTask, WordBase sourceAddress, UnsignedWord count, WordBase destAddress);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native int vm_remap(WordPointer targetTask, WordBase targetAddress, UnsignedWord size, WordBase mask, int anywhere,
+                    WordPointer sourceTask, WordBase sourceAddress, int copy,
+                    CIntPointer currentProtection, CIntPointer maxProtection,
+                    int inheritance);
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native int mach_vm_region(WordPointer task, WordPointer address, WordPointer size, int flavor, vm_region_basic_info_data_64_t info, CIntPointer infoCnt,
