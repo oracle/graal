@@ -132,6 +132,8 @@ final class NodeClassImpl extends NodeClass {
         } else if (field.getAnnotation(Children.class) != null) {
             checkChildrenField(field);
             return new NodeFieldData(NodeFieldKind.CHILDREN, field);
+        } else if (NodeCloneable.class.isAssignableFrom(field.getType())) {
+            return new NodeFieldData(NodeFieldKind.CLONEABLE, field);
         } else {
             return new NodeFieldData(NodeFieldKind.DATA, field);
         }
@@ -239,7 +241,7 @@ final class NodeClassImpl extends NodeClass {
 
     @Override
     protected boolean isCloneableField(Object field) {
-        return ((NodeFieldData) field).clonable;
+        return ((NodeFieldData) field).kind == NodeFieldKind.CLONEABLE;
     }
 
     @Override
@@ -250,6 +252,7 @@ final class NodeClassImpl extends NodeClass {
     enum NodeFieldKind {
         CHILD,
         CHILDREN,
+        CLONEABLE,
         DATA
     }
 
@@ -260,7 +263,6 @@ final class NodeClassImpl extends NodeClass {
         final String name;
         final Class<?> declaringClass;
         final long offset;
-        final boolean clonable;
 
         @SuppressWarnings("deprecation"/* JDK-8277863 */)
         NodeFieldData(NodeFieldKind kind, Field field) {
@@ -269,7 +271,6 @@ final class NodeClassImpl extends NodeClass {
             this.name = field.getName();
             this.declaringClass = field.getDeclaringClass();
             this.offset = UNSAFE.objectFieldOffset(field);
-            this.clonable = kind == NodeFieldKind.DATA && NodeCloneable.class.isAssignableFrom(field.getType());
         }
 
         long getOffset() {
@@ -353,13 +354,11 @@ final class NodeClassImpl extends NodeClass {
         }
 
         public int getOrder() {
-            if (kind == NodeFieldKind.CHILD || kind == NodeFieldKind.CHILDREN) {
-                return 0;
-            } else if (clonable) {
-                return 1;
-            } else {
-                return 2;
-            }
+            return switch (kind) {
+                case CHILD, CHILDREN -> 0;
+                case CLONEABLE -> 1;
+                default -> 2;
+            };
         }
 
         @Override
