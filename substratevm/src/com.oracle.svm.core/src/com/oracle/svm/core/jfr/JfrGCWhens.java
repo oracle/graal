@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,39 +25,38 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
+import java.util.Arrays;
 
-/**
- * Maps JFR types against their IDs in the JDK.
- */
-public enum JfrType {
-    Class("java.lang.Class"),
-    String("java.lang.String"),
-    Thread("java.lang.Thread"),
-    ThreadState("jdk.types.ThreadState"),
-    ThreadGroup("jdk.types.ThreadGroup"),
-    StackTrace("jdk.types.StackTrace"),
-    ClassLoader("jdk.types.ClassLoader"),
-    Method("jdk.types.Method"),
-    Symbol("jdk.types.Symbol"),
-    Module("jdk.types.Module"),
-    Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType"),
-    GCCause("jdk.types.GCCause"),
-    GCName("jdk.types.GCName"),
-    GCWhen("jdk.types.GCWhen"),
-    VirtualSpace("jdk.types.VirtualSpace"),
-    VMOperation("jdk.types.VMOperationType"),
-    MonitorInflationCause("jdk.types.InflateCause");
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    private final long id;
+public class JfrGCWhens {
+    private JfrGCWhen[] whens;
 
-    JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupType(name);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrGCWhens() {
+        whens = new JfrGCWhen[0];
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
-        return id;
+    @Fold
+    public static JfrGCWhens singleton() {
+        return ImageSingletons.lookup(JfrGCWhens.class);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized JfrGCWhen addGCWhen(String when) {
+        int id = whens.length;
+        JfrGCWhen result = new JfrGCWhen(id, when);
+
+        JfrGCWhen[] newArr = Arrays.copyOf(whens, id + 1);
+        newArr[id] = result;
+        whens = newArr;
+        return result;
+    }
+
+    public JfrGCWhen[] getWhens() {
+        return whens;
     }
 }

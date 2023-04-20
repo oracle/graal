@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +23,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-/**
- * Maps JFR types against their IDs in the JDK.
- */
-public enum JfrType {
-    Class("java.lang.Class"),
-    String("java.lang.String"),
-    Thread("java.lang.Thread"),
-    ThreadState("jdk.types.ThreadState"),
-    ThreadGroup("jdk.types.ThreadGroup"),
-    StackTrace("jdk.types.StackTrace"),
-    ClassLoader("jdk.types.ClassLoader"),
-    Method("jdk.types.Method"),
-    Symbol("jdk.types.Symbol"),
-    Module("jdk.types.Module"),
-    Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType"),
-    GCCause("jdk.types.GCCause"),
-    GCName("jdk.types.GCName"),
-    GCWhen("jdk.types.GCWhen"),
-    VirtualSpace("jdk.types.VirtualSpace"),
-    VMOperation("jdk.types.VMOperationType"),
-    MonitorInflationCause("jdk.types.InflateCause");
+import java.io.IOException;
 
-    private final long id;
+import org.junit.Assert;
 
-    JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupType(name);
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+
+public class GCWhenConstantPoolParser extends AbstractSerializerParser {
+    public GCWhenConstantPoolParser(JfrFileParser parser) {
+        super(parser);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
-        return id;
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int count = input.readInt();
+        Assert.assertTrue(count > 0);
+        for (int i = 0; i < count; i++) {
+            addFoundId(input.readInt()); // Id.
+            Assert.assertFalse("GC when is empty!", input.readUTF().isEmpty());
+        }
     }
 }

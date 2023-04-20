@@ -60,6 +60,8 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ThreadConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadGroupConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.VMOperationConstantPoolParser;
+import com.oracle.svm.test.jfr.utils.poolparsers.GCWhenConstantPoolParser;
+
 
 public class JfrFileParser {
     private final Path path;
@@ -88,6 +90,7 @@ public class JfrFileParser {
         addParser(JfrType.GCCause, new GCCauseConstantPoolParser(this));
         addParser(JfrType.VMOperation, new VMOperationConstantPoolParser(this));
         addParser(JfrType.MonitorInflationCause, new MonitorInflationCauseConstantPoolParser(this));
+        addParser(JfrType.GCWhen, new GCWhenConstantPoolParser(this));
     }
 
     private void addParser(JfrType type, ConstantPoolParser parser) {

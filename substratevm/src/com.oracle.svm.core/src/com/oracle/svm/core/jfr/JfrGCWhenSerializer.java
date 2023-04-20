@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,39 +24,22 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.Uninterruptible;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-/**
- * Maps JFR types against their IDs in the JDK.
- */
-public enum JfrType {
-    Class("java.lang.Class"),
-    String("java.lang.String"),
-    Thread("java.lang.Thread"),
-    ThreadState("jdk.types.ThreadState"),
-    ThreadGroup("jdk.types.ThreadGroup"),
-    StackTrace("jdk.types.StackTrace"),
-    ClassLoader("jdk.types.ClassLoader"),
-    Method("jdk.types.Method"),
-    Symbol("jdk.types.Symbol"),
-    Module("jdk.types.Module"),
-    Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType"),
-    GCCause("jdk.types.GCCause"),
-    GCName("jdk.types.GCName"),
-    GCWhen("jdk.types.GCWhen"),
-    VirtualSpace("jdk.types.VirtualSpace"),
-    VMOperation("jdk.types.VMOperationType"),
-    MonitorInflationCause("jdk.types.InflateCause");
-
-    private final long id;
-
-    JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupType(name);
+public class JfrGCWhenSerializer implements JfrSerializer {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrGCWhenSerializer() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
-        return id;
+    @Override
+    public void write(JfrChunkWriter writer) {
+        JfrGCWhen[] gcWhens = JfrGCWhens.singleton().getWhens();
+        writer.writeCompressedLong(JfrType.GCWhen.getId());
+        writer.writeCompressedLong(gcWhens.length);
+        for (JfrGCWhen when : gcWhens) {
+            writer.writeCompressedLong(when.getId());
+            writer.writeString(when.getWhen());
+        }
     }
 }

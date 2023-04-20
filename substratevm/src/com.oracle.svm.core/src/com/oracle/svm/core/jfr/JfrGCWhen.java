@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,39 +25,27 @@
  */
 package com.oracle.svm.core.jfr;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.Uninterruptible;
 
-/**
- * Maps JFR types against their IDs in the JDK.
- */
-public enum JfrType {
-    Class("java.lang.Class"),
-    String("java.lang.String"),
-    Thread("java.lang.Thread"),
-    ThreadState("jdk.types.ThreadState"),
-    ThreadGroup("jdk.types.ThreadGroup"),
-    StackTrace("jdk.types.StackTrace"),
-    ClassLoader("jdk.types.ClassLoader"),
-    Method("jdk.types.Method"),
-    Symbol("jdk.types.Symbol"),
-    Module("jdk.types.Module"),
-    Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType"),
-    GCCause("jdk.types.GCCause"),
-    GCName("jdk.types.GCName"),
-    GCWhen("jdk.types.GCWhen"),
-    VirtualSpace("jdk.types.VirtualSpace"),
-    VMOperation("jdk.types.VMOperationType"),
-    MonitorInflationCause("jdk.types.InflateCause");
+public class JfrGCWhen {
+    private final int id;
+    private final String when;
 
-    private final long id;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected JfrGCWhen(int id, String when) {
+        this.id = id;
+        this.when = when;
+    }
 
-    JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookupType(name);
+    public String getWhen() {
+        return when;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
+    public int getId() {
         return id;
     }
 }

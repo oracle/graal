@@ -166,6 +166,7 @@ public class JfrFeature implements InternalFeature {
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
         ImageSingletons.add(JfrGCNames.class, new JfrGCNames());
         ImageSingletons.add(SamplerStackWalkVisitor.class, new SamplerStackWalkVisitor());
+        ImageSingletons.add(JfrGCWhens.class, new JfrGCWhens());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
@@ -173,6 +174,7 @@ public class JfrFeature implements InternalFeature {
         JfrSerializerSupport.get().register(new JfrGCCauseSerializer());
         JfrSerializerSupport.get().register(new JfrGCNameSerializer());
         JfrSerializerSupport.get().register(new JfrVMOperationNameSerializer());
+        JfrSerializerSupport.get().register(new JfrGCWhenSerializer());
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
