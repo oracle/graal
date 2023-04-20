@@ -269,33 +269,36 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
         final long[] trace = (long[]) backtrace;
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(true,
                         SubstrateOptions.MaxJavaStackTraceDepth.getValue());
-        decodeRawBacktrace(trace, visitor);
-        return visitor.trace.toArray(new StackTraceElement[0]);
-    }
-
-    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private static void decodeRawBacktrace(long[] trace, BuildStackTraceVisitor visitor) {
         for (long address : trace) {
             if (address == 0) {
                 break;
             }
             CodePointer ip = WordFactory.pointer(address);
-            UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
-            if (untetheredInfo.isNull()) {
-                /* Unknown frame. Must not happen for AOT-compiled code. */
-                VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
-            }
-
-            Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            try {
-                CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-                if (!visitRawFrame(visitor, ip, tetheredCodeInfo)) {
-                    break;
-                }
-            } finally {
-                CodeInfoAccess.releaseTether(untetheredInfo, tether);
+            if (decodeRawIp(visitor, ip)) {
+                break;
             }
         }
+        return visitor.trace.toArray(new StackTraceElement[0]);
+    }
+
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
+    private static boolean decodeRawIp(BuildStackTraceVisitor visitor, CodePointer ip) {
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (untetheredInfo.isNull()) {
+            /* Unknown frame. Must not happen for AOT-compiled code. */
+            VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
+        }
+
+        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+        try {
+            CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
+            if (!visitRawFrame(visitor, ip, tetheredCodeInfo)) {
+                return true;
+            }
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredInfo, tether);
+        }
+        return false;
     }
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
