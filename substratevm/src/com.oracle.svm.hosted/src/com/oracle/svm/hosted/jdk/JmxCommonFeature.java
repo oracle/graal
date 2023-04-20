@@ -213,7 +213,9 @@ public class JmxCommonFeature implements InternalFeature {
         };
 
         String[] methods = {
-                        "com.sun.management.GcInfo", "java.lang.management.MemoryUsage", "java.lang.management.MonitorInfo",
+                        "com.sun.management.GcInfo", "java.lang.management.LockInfo",
+                        "java.lang.management.MemoryUsage", "java.lang.management.MonitorInfo",
+                        "java.lang.management.MemoryNotificationInfo",
                         "javax.management.remote.rmi.RMIConnection",
                         "javax.management.remote.rmi.RMIServer",
                         "java.lang.management.ThreadInfo", "jdk.management.jfr.ConfigurationInfo",
