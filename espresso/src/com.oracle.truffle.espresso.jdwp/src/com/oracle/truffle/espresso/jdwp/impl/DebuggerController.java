@@ -445,11 +445,11 @@ public final class DebuggerController implements ContextsListener {
                     }
                 }
                 // immediately suspend the event thread
-                suspend(null, eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), null, true);
+                suspend(eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), true);
                 break;
             case SuspendStrategy.EVENT_THREAD:
                 // immediately suspend the event thread
-                suspend(null, eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), null, true);
+                suspend(eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), true);
                 break;
         }
     }
@@ -485,7 +485,7 @@ public final class DebuggerController implements ContextsListener {
             // to a dead VM from a JDWP client point of view
             if (eventListener.vmDied()) {
                 // we're asked to suspend
-                suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), null, true);
+                suspend(context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), true);
             }
         }
         // Creating a new thread, because the reset method
@@ -558,7 +558,7 @@ public final class DebuggerController implements ContextsListener {
         truffleContext = con;
     }
 
-    public void suspend(CallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs, SteppingInfo steppingInfo, boolean forceSuspend) {
+    public void suspend(Object thread, byte suspendPolicy, List<Callable<Void>> jobs, boolean forceSuspend) {
         fine(() -> "suspending from callback in thread: " + getThreadName(thread));
 
         // before sending any events to debugger, make sure to mark
@@ -575,8 +575,7 @@ public final class DebuggerController implements ContextsListener {
                 break;
             case SuspendStrategy.EVENT_THREAD:
                 fine(() -> "Suspend EVENT_THREAD");
-                runJobs(jobs);
-                suspendEventThread(currentFrame, thread, steppingInfo, forceSuspend);
+                suspendEventThread(thread, forceSuspend, jobs);
                 break;
             case SuspendStrategy.ALL:
                 fine(() -> "Suspend ALL");
@@ -591,14 +590,10 @@ public final class DebuggerController implements ContextsListener {
                                 DebuggerController.this.suspend(activeThread);
                             }
                         }
-                        // send any breakpoint events here, since now all threads that are
-                        // expected to be suspended
-                        // have increased suspension count
-                        runJobs(jobs);
                     }
                 });
                 suspendThread.start();
-                suspendEventThread(currentFrame, thread, steppingInfo, forceSuspend);
+                suspendEventThread(thread, forceSuspend, jobs);
                 break;
         }
     }
@@ -613,12 +608,12 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    private void suspendEventThread(CallFrame currentFrame, Object thread, SteppingInfo info, boolean forceSuspend) {
+    private void suspendEventThread(Object thread, boolean forceSuspend, List<Callable<Void>> jobs) {
         fine(() -> "Suspending event thread: " + getThreadName(thread) + " with new suspension count: " + threadSuspension.getSuspensionCount(thread));
-        lockThread(thread, forceSuspend, true, info, currentFrame);
+        lockThread(thread, forceSuspend, true, jobs);
     }
 
-    private void lockThread(Object thread, boolean forceSuspend, boolean isFirstCall, SteppingInfo info, CallFrame currentFrame) {
+    private void lockThread(Object thread, boolean forceSuspend, boolean isFirstCall, List<Callable<Void>> jobs) {
         SimpleLock lock = getSuspendLock(thread);
         // in case a thread job is already posted on this thread
         checkThreadJobsAndRun(thread, forceSuspend);
@@ -630,11 +625,7 @@ public final class DebuggerController implements ContextsListener {
             try {
                 if (lock.isLocked() && isFirstCall) {
                     threadSuspension.suspendThread(thread);
-                    // if during stepping, send a step completed event back to the debugger
-                    if (info != null) {
-                        assert currentFrame != null;
-                        eventListener.stepCompleted(info, currentFrame);
-                    }
+                    runJobs(jobs);
                 }
                 while (lock.isLocked()) {
                     fine(() -> "lock.wait() for thread: " + getThreadName(thread));
@@ -687,7 +678,7 @@ public final class DebuggerController implements ContextsListener {
             } else {
                 job.runJob();
             }
-            lockThread(thread, forceSuspend, false, null, null);
+            lockThread(thread, forceSuspend, false, Collections.emptyList());
         }
     }
 
@@ -953,9 +944,18 @@ public final class DebuggerController implements ContextsListener {
                     }
                 });
             }
+            if (steppingInfo != null) {
+                jobs.add(new Callable<>() {
+                    @Override
+                    public Void call() {
+                        eventListener.stepCompleted(steppingInfo, callFrames[0]);
+                        return null;
+                    }
+                });
+            }
 
             // now, suspend the current thread until resumed by e.g. a debugger command
-            suspend(callFrames[0], currentThread, suspendPolicy, jobs, steppingInfo, hit || steppingInfo != null);
+            suspend(currentThread, suspendPolicy, jobs, hit || steppingInfo != null);
         }
 
         private boolean matchLocation(Pattern[] patterns, CallFrame callFrame) {
