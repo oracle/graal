@@ -218,7 +218,7 @@ public abstract class LoopFragment {
                     }
                     TTY.printf("GR-42126 data: node map of length %s with %s null entires%n", rawValues.length, nullEntries);
                     if (rawValues.length < 1000) {
-                        printNodeMap(nm);
+                        TTY.printf("GR-42126 data:%s%n", Arrays.toString(rawValues));
                     }
                 } else {
                     TTY.printf("GR-42126 data: graph size %s,loop begin node count %s, map size %s, map type %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count(),
@@ -234,11 +234,6 @@ public abstract class LoopFragment {
         } else {
             // TODO (gd) apply fix ?
         }
-    }
-
-    private static void printNodeMap(NodeMap<?> map) {
-        Object[] rawValues = map.rawValues();
-        TTY.printf("GR-42126 data:[%s]%n", Arrays.toString(rawValues));
     }
 
     private static void checkNoNulls(Iterable<Node> nodes) {
