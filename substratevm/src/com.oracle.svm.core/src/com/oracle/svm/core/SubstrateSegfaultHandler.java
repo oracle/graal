@@ -192,7 +192,7 @@ public abstract class SubstrateSegfaultHandler {
         if (addr != 0) {
             long delta = addr - CurrentIsolate.getIsolate().rawValue();
             String sign = (delta >= 0 ? "+" : "-");
-            log.string("(heapBase ").string(sign).signed(delta).string(")");
+            log.string("(heapBase ").string(sign).string(" ").signed(Math.abs(delta)).string(")");
         }
     }
 

@@ -245,10 +245,12 @@ public class SubstrateDiagnostics {
 
         FatalErrorState fatalErrorState = fatalErrorState();
         Log log = fatalErrorState.log;
-        if (fatalErrorState.diagnosticThunkIndex > 0) {
+        if (fatalErrorState.diagnosticThunkIndex >= 0) {
             // An error must have happened earlier as the code for printing diagnostics was invoked
             // recursively.
             log.resetIndentation().newline();
+        } else {
+            fatalErrorState.diagnosticThunkIndex = 0;
         }
 
         // Print the various sections of the diagnostics and skip all sections that were already
@@ -463,7 +465,7 @@ public class SubstrateDiagnostics {
         @Platforms(Platform.HOSTED_ONLY.class)
         public FatalErrorState() {
             diagnosticThread = new AtomicWord<>();
-            diagnosticThunkIndex = 0;
+            diagnosticThunkIndex = -1;
             invocationCount = 0;
             log = null;
 
@@ -478,7 +480,7 @@ public class SubstrateDiagnostics {
         @SuppressWarnings("hiding")
         public boolean trySet(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
             if (diagnosticThread.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread())) {
-                assert diagnosticThunkIndex == 0;
+                assert diagnosticThunkIndex == -1;
                 assert invocationCount == 0;
                 this.log = log;
 
@@ -501,7 +503,7 @@ public class SubstrateDiagnostics {
             errorContext.setRegisterContext(WordFactory.nullPointer());
             errorContext.setFrameHasCalleeSavedRegisters(false);
 
-            diagnosticThunkIndex = 0;
+            diagnosticThunkIndex = -1;
             invocationCount = 0;
 
             diagnosticThread.set(WordFactory.nullPointer());
