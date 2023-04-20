@@ -117,14 +117,20 @@ final class BundleSupport {
     static final String BUNDLE_OPTION = "--bundle";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
 
-    final Path containerRootDir = Path.of("/");
     final Path containerGraalVMHome = Path.of("/graalvm");
     boolean useContainer;
-    String containerTool;
-    String containerToolVersion;
+    private String containerTool;
+    private String bundleContainerTool;
+    private String containerToolVersion;
+    private String bundleContainerToolVersion;
     private static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
-    String containerImage = "graalvm-container";
-    Path dockerfile;
+    private String containerImage;
+    private static final String DEFAULT_CONTAINER_IMAGE = "graalvm-container";
+    private Path dockerfile;
+    private final String containerToolJsonKey = "containerTool";
+    private final String containerToolVersionJsonKey = "containerToolVersion";
+    private final String containerImageJsonKey = "containerImage";
+
 
     enum BundleOptionVariants {
         create(),
@@ -263,10 +269,14 @@ final class BundleSupport {
 
             if(bundleSupport.useContainer) {
                 if (!OS.LINUX.isCurrent()) {
-                    nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX, "Containerized builds only supported for Linux, skipping containerized build.");
+                    nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX, "Skipping containerized build, only supported for Linux.");
                     bundleSupport.useContainer = false;
                 } else {
-                    bundleSupport.initializeContainerImage();
+                    if(nativeImage.isDryRun()) {
+                        nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping container creation for native-image bundle with dry-run option.");
+                    } else {
+                        bundleSupport.initializeContainerImage();
+                    }
                 }
             }
 
@@ -281,7 +291,7 @@ final class BundleSupport {
     private void initializeContainerImage() {
         // create Dockerfile if not available for writing or loading bundle
         try {
-            // TODO load dockerfile by graalvm version
+            // TODO load graalvm docker base
             if (dockerfile == null) {
                 dockerfile = Files.createTempFile("Dockerfile", null);
                 Files.write(dockerfile, ("FROM registry.fedoraproject.org/fedora-minimal:latest" + System.lineSeparator() +
@@ -292,9 +302,8 @@ final class BundleSupport {
             throw NativeImage.showError(e.getMessage());
         }
 
-        if(nativeImage.isDryRun()) {
-            nativeImage.showMessage(BUNDLE_INFO_MESSAGE_PREFIX + "Skipping container creation for native-image bundle with dry-run option.");
-            return;
+        if(bundleContainerTool != null && containerTool == null) {
+            containerTool = bundleContainerTool;
         }
 
         if(containerTool != null) {
@@ -304,6 +313,15 @@ final class BundleSupport {
                 throw NativeImage.showError("Only rootless docker is supported for containerized builds.");
             }
             containerToolVersion = getContainerToolVersion(containerTool);
+
+            if(bundleContainerTool != null) {
+                String bundleFileName = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION).toString();
+                if (!containerTool.equals(bundleContainerTool)) {
+                    NativeImage.showWarning(String.format("The given bundle file %s was created with container tool '%s' (using '%s').", bundleFileName, bundleContainerTool, containerTool));
+                } else if (containerToolVersion != null && bundleContainerToolVersion != null && !containerToolVersion.equals(bundleContainerToolVersion)) {
+                    NativeImage.showWarning(String.format("The given bundle file %s was created with %s version '%s' (installed '%s').", bundleFileName, containerTool, bundleContainerToolVersion, containerToolVersion));
+                }
+            }
         } else {
             for(String tool : SUPPORTED_CONTAINER_TOOLS) {
                 if(isToolAvailable(tool)) {
@@ -319,6 +337,10 @@ final class BundleSupport {
             if (containerTool == null) {
                 throw NativeImage.showError(String.format("Please install one of the following tools before running containerized native image builds: %s", SUPPORTED_CONTAINER_TOOLS));
             }
+        }
+
+        if(containerImage == null) {
+            containerImage = DEFAULT_CONTAINER_IMAGE;
         }
 
         int exitStatusCode = createContainer();
@@ -395,7 +417,7 @@ final class BundleSupport {
             p = pb.start();
             p.waitFor();
             String result = (new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine();
-            return result.contains("version") ? result : "";
+            return result.contains("version") ? result : null;
         } catch (IOException | InterruptedException e) {
             throw NativeImage.showError(e.getMessage());
         } finally {
@@ -420,6 +442,17 @@ final class BundleSupport {
                 p.destroy();
             }
         }
+    }
+
+    List<String> createContainerCommand(Path argFile, Path builderArgFile) {
+        Path containerRoot = Path.of("/");
+        return List.of(containerTool, "run", "--network=none", "--rm",
+                "--mount", "type=bind,source=" + nativeImage.config.getJavaHome() + ",target=" + containerGraalVMHome + ",readonly",
+                "--mount", "type=bind,source=" + inputDir + ",target=" + containerRoot.resolve(rootDir.relativize(inputDir)) + ",readonly",
+                "--mount", "type=bind,source=" + outputDir + ",target=" + containerRoot.resolve(rootDir.relativize(outputDir)),
+                "--mount", "type=bind,source=" + argFile + ",target=" + argFile + ",readonly",
+                "--mount", "type=bind,source=" + builderArgFile + ",target=" + builderArgFile + ",readonly",
+                containerImage);
     }
 
     private BundleSupport(NativeImage nativeImage) {
@@ -539,13 +572,17 @@ final class BundleSupport {
         if(Files.exists(containerFile)) {
             try (Reader reader = Files.newBufferedReader(containerFile)) {
                 EconomicMap<String, Object> json = JSONParser.parseDict(reader);
-                containerImage = json.get("containerImage").toString();
-                containerTool = json.get("tool").toString();
+                if(json.get(containerImageJsonKey) != null) containerImage =  json.get(containerImageJsonKey).toString();
+                if(json.get(containerToolJsonKey) != null) bundleContainerTool = json.get(containerToolJsonKey).toString();
+                if(json.get(containerToolVersionJsonKey) != null) bundleContainerToolVersion = json.get(containerToolVersionJsonKey).toString();
             } catch (IOException e) {
                 throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
             }
-            nativeImage.showMessage(String.format("%sUsing %s as container image. Specify other image with option '%s'.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage, ExtendedBundleOptions.image));
-            nativeImage.showMessage(String.format("%sUsing %s as container tool. Specify other tool with option '%s'.", BUNDLE_INFO_MESSAGE_PREFIX, containerTool, ExtendedBundleOptions.container));
+            if(containerImage != null) nativeImage.showMessage(String.format("%sUsing container image %s. Specify other image with option '%s'.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage, ExtendedBundleOptions.image));
+            if(bundleContainerTool != null) {
+                String containerToolVersionString = bundleContainerToolVersion == null ? "" : String.format(" version: %s", bundleContainerToolVersion);
+                nativeImage.showMessage(String.format("%sUsing %s%s. Specify other container tool with option '%s'.", BUNDLE_INFO_MESSAGE_PREFIX, bundleContainerTool, containerToolVersionString, ExtendedBundleOptions.container));
+            }
         }
 
         dockerfile = stageDir.resolve("Dockerfile");
@@ -589,7 +626,7 @@ final class BundleSupport {
             return before;
         }
         if (after.startsWith(nativeImage.config.getJavaHome())) {
-            return useContainer ? containerGraalVMHome.resolve(nativeImage.config.getJavaHome().relativize(after)) : after;
+            return after;
         }
         nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordCanonicalization src: " + before + ", dst: " + after);
         pathCanonicalizations.put(before, after);
@@ -601,6 +638,14 @@ final class BundleSupport {
         nativeImage.showVerboseMessage(after != null && nativeImage.isVVerbose(), "RestoreCanonicalization src: " + before + ", dst: " + after);
         return after;
     }
+
+    void replacePathsForContainerBuild(List<String> arguments) {
+        arguments.replaceAll(arg -> arg
+                .replace(nativeImage.config.getJavaHome().toString(), containerGraalVMHome.toString())
+                .replace(rootDir.toString(), "")
+        );
+    }
+
 
     Path substituteAuxiliaryPath(Path origPath, BundleMember.Role bundleMemberRole) {
         Path destinationDir = switch (bundleMemberRole) {
@@ -616,7 +661,7 @@ final class BundleSupport {
 
     Path substituteImagePath(Path origPath) {
         pathSubstitutions.put(origPath, rootDir.relativize(imagePathOutputDir));
-        return useContainer ? containerRootDir.resolve(rootDir.relativize(imagePathOutputDir)) : imagePathOutputDir;
+        return imagePathOutputDir;
     }
 
     Path substituteClassPath(Path origPath) {
@@ -657,12 +702,12 @@ final class BundleSupport {
         Path previousRelativeSubstitutedPath = pathSubstitutions.get(origPath);
         if (previousRelativeSubstitutedPath != null) {
             nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RestoreSubstitution src: " + origPath + ", dst: " + previousRelativeSubstitutedPath);
-            return (useContainer ? containerRootDir : rootDir).resolve(previousRelativeSubstitutedPath);
+            return rootDir.resolve(previousRelativeSubstitutedPath);
         }
 
         if (origPath.startsWith(nativeImage.config.getJavaHome())) {
             /* If origPath comes from native-image itself, substituting is not needed. */
-            return useContainer ? containerGraalVMHome.resolve(nativeImage.config.getJavaHome().relativize(origPath)) : origPath;
+            return origPath;
         }
 
         boolean forbiddenPath = false;
@@ -727,7 +772,7 @@ final class BundleSupport {
         Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
         nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
         pathSubstitutions.put(origPath, relativeSubstitutedPath);
-        return useContainer ? containerRootDir.resolve(relativeSubstitutedPath) : substitutedPath;
+        return substitutedPath;
     }
 
     Path originalPath(Path substitutedPath) {
@@ -875,18 +920,27 @@ final class BundleSupport {
         }
 
         if(useContainer) {
-            Path containerFile = stageDir.resolve("container.json");
-            try (JsonWriter writer = new JsonWriter(containerFile)) {
-                writer.print(Map.of("containerImage", containerImage, "containerTool", containerTool == null ? "" : containerTool, "containerToolVersion", containerToolVersion == null ? "" : containerToolVersion));
-            } catch (IOException e) {
-                throw NativeImage.showError("Failed to write bundle-file " + containerFile, e);
+            Map<String, Object> containerInfo = new HashMap<>();
+            if(containerImage != null) containerInfo.put(containerImageJsonKey, containerImage);
+            if(containerTool != null) containerInfo.put(containerToolJsonKey, containerTool);
+            if(containerToolVersion != null) containerInfo.put(containerToolVersionJsonKey, containerToolVersion);
+
+            if(!containerInfo.isEmpty()) {
+                Path containerFile = stageDir.resolve("container.json");
+                try (JsonWriter writer = new JsonWriter(containerFile)) {
+                    writer.print(containerInfo);
+                } catch (IOException e) {
+                    throw NativeImage.showError("Failed to write bundle-file " + containerFile, e);
+                }
             }
 
-            Path bundleDockerfile = stageDir.resolve("Dockerfile");
-            try {
-                Files.copy(dockerfile, bundleDockerfile);
-            } catch (IOException e) {
-                throw NativeImage.showError("Failed to write bundle-file " + bundleDockerfile, e);
+            if(dockerfile != null) {
+                Path bundleDockerfile = stageDir.resolve("Dockerfile");
+                try {
+                    Files.copy(dockerfile, bundleDockerfile);
+                } catch (IOException e) {
+                    throw NativeImage.showError("Failed to write bundle-file " + bundleDockerfile, e);
+                }
             }
         }
 
