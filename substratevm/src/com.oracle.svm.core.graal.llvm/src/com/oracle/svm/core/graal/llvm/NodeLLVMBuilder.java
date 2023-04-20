@@ -716,7 +716,8 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public void visitFullInfopointNode(FullInfopointNode i) {
-        throw unimplemented("the LLVM backend doesn't support debug info generation");
+        i.getDebug().log("Ignoring fullinfo point node");
+        //throw unimplemented("the LLVM backend doesn't support debug info generation");
     }
 
     @Override
