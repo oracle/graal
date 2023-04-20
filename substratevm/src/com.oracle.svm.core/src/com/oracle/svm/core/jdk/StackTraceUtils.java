@@ -326,6 +326,17 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
         trace[index++] = value;
     }
 
+    /**
+     * Gets the raw backtrace array.
+     *
+     * Tradeoff question: should we make a copy of the trace array to trim it to length index?
+     * <ul>
+     * <li>Benefit: lower memory footprint for exceptions that are long-lived.
+     * <li>Downside: more work for copying for every exception.
+     * </ul>
+     * Currently, we do not trim the array. The assumption is that most exception stack traces are
+     * short-lived and are never moved by the GC.
+     */
     long[] getArray() {
         VMError.guarantee(trace != null, "Already acquired");
         VMError.guarantee(index == trace.length || trace[index] == 0, "Unterminated trace?");
