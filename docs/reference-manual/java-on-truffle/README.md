@@ -1,5 +1,5 @@
 ---
-layout: docs-experimental
+layout: docs
 toc_group: espresso
 link_title: Java on Truffle
 permalink: /reference-manual/java-on-truffle/
@@ -24,7 +24,7 @@ Besides complete language interoperability, with Java on Truffle you can:
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
 - run in the context of a native executable while still allowing dynamically-loaded bytecodes.
 
-Java on Truffle is an experimental technology in GraalVM, but already passes the Java Compatibility Kit (JCK or TCK for Java SE).
+Java on Truffle passes the Java Compatibility Kit (JCK or TCK for Java SE).
 
 ## Install Java on Truffle
 
@@ -63,8 +63,6 @@ java -truffle --java.JavaHome=/path/to/java/home -version
 ```
 
 ## Performance Considerations
-
-Java on Trufle is an experimental technology in GraalVM, and peak performance is currently 2-3x slower than HotSpot.
 
 The startup time will not match the speed offered by the regular GraalVM just-in-time (JIT) execution yet, but having created a fully working Java on Truffle runtime, the development team is now focusing on performance.
 You can still influence the performance by passing the following options to `java -truffle`:
