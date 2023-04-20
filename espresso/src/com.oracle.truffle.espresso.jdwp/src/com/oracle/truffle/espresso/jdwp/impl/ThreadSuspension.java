@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,11 @@
  */
 package com.oracle.truffle.espresso.jdwp.impl;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+
+import com.oracle.truffle.api.CompilerDirectives;
 
 public final class ThreadSuspension {
 
@@ -110,5 +110,9 @@ public final class ThreadSuspension {
 
     public synchronized void removeHardSuspendedThread(Object thread) {
         hardSuspendedThreads.remove(thread);
+    }
+
+    public synchronized boolean isHardSuspended(Object thread) {
+        return hardSuspendedThreads.contains(thread);
     }
 }
