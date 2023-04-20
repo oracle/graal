@@ -77,11 +77,11 @@ public class StackTraceUtils {
      * Captures the stack trace of the current thread. In almost any context, calling
      * {@link JavaThreads#getStackTrace} for {@link Thread#currentThread()} is preferable.
      *
-     * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if max
-     * depth > 0, or all if max depth <= 0.
+     * Captures at most {@link SubstrateOptions#maxJavaStackTraceDepth()} stack trace elements if
+     * max depth > 0, or all if max depth <= 0.
      */
     public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP, Pointer endSP) {
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.maxJavaStackTraceDepth());
         visitCurrentThreadStackFrames(startSP, endSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
@@ -94,8 +94,8 @@ public class StackTraceUtils {
      * Captures the stack trace of a thread (potentially the current thread) while stopped at a
      * safepoint. Used by {@link Thread#getStackTrace()} and {@link Thread#getAllStackTraces()}.
      *
-     * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if max
-     * depth > 0, or all if max depth <= 0.
+     * Captures at most {@link SubstrateOptions#maxJavaStackTraceDepth()} stack trace elements if
+     * max depth > 0, or all if max depth <= 0.
      */
     @NeverInline("Potentially starting a stack walk in the caller frame")
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread) {
@@ -108,14 +108,14 @@ public class StackTraceUtils {
 
     public static StackTraceElement[] getThreadStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
         JavaStackWalker.walkThread(isolateThread, endSP, visitor, null);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
     public static StackTraceElement[] getThreadStackTraceAtSafepoint(Pointer startSP, Pointer endSP, CodePointer startIP) {
         assert VMOperation.isInProgressAtSafepoint();
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
         JavaStackWalker.walkThreadAtSafepoint(startSP, endSP, startIP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
@@ -256,7 +256,7 @@ public class StackTraceUtils {
 final class RawStackFrameVisitor extends StackFrameVisitor {
 
     private int index = 0;
-    private final int limit = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
+    private final int limit = SubstrateOptions.maxJavaStackTraceDepth();
 
     /*
      * Empirical data suggests that most stack traces tend to be relatively short (<100). We choose
@@ -268,7 +268,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
     static StackTraceElement[] decodeBacktrace(Object backtrace) {
         final long[] trace = (long[]) backtrace;
         BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(true,
-                        SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+                        SubstrateOptions.maxJavaStackTraceDepth());
         for (long address : trace) {
             if (address == 0) {
                 break;

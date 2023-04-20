@@ -317,8 +317,29 @@ public class SubstrateOptions {
     @Option(help = "The size of each internal thread stack, in bytes.", type = OptionType.Expert)//
     public static final HostedOptionKey<Long> InternalThreadStackSize = new HostedOptionKey<>(2L * 1024 * 1024);
 
+    /**
+     * Cached value of {@link #MaxJavaStackTraceDepth}. Also used as default value.
+     */
+    private static int maxJavaStackTraceDepth = 1024;
     @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
-    public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(1024);
+    static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(maxJavaStackTraceDepth) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            maxJavaStackTraceDepth = newValue;
+        }
+    };
+
+    /**
+     * Cached accessor for {@link #MaxJavaStackTraceDepth}.
+     */
+    public static int maxJavaStackTraceDepth() {
+        return maxJavaStackTraceDepth;
+    }
+
+    public static void updateMaxJavaStackTraceDepth(EconomicMap<OptionKey<?>, Object> runtimeValues, int newValue) {
+        SubstrateOptions.MaxJavaStackTraceDepth.update(runtimeValues, newValue);
+    }
 
     /* Same option name and specification as the Java HotSpot VM. */
     @Option(help = "Maximum total size of NIO direct-buffer allocations")//
