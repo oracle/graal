@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.api.nodes;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -69,18 +69,6 @@ final class NodeClassImpl extends NodeClass {
         if (!Node.class.isAssignableFrom(clazz)) {
             throw new IllegalArgumentException();
         }
-        List<NodeFieldData> fieldsList = new ArrayList<>();
-        collectInstanceFields(clazz, fieldsList);
-
-        Collections.sort(fieldsList, new Comparator<NodeFieldData>() {
-            public int compare(NodeFieldData o1, NodeFieldData o2) {
-                return Integer.compare(order(o1), order(o2));
-            }
-
-            private int order(NodeFieldData nodeField) {
-                return isChildField(nodeField) ? 0 : (isChildrenField(nodeField) ? 0 : (isCloneableField(nodeField) ? 1 : 2));
-            }
-        });
 
         if (clazz.getAnnotation(DenyReplace.class) != null) {
             if (!Modifier.isFinal(clazz.getModifiers())) {
@@ -91,7 +79,7 @@ final class NodeClassImpl extends NodeClass {
             replaceAllowed = true;
         }
 
-        this.fields = fieldsList.toArray(EMPTY_NODE_FIELD_ARRAY);
+        this.fields = collectInstanceFields(clazz);
         this.clazz = clazz;
     }
 
@@ -100,22 +88,40 @@ final class NodeClassImpl extends NodeClass {
         return replaceAllowed;
     }
 
-    private static void collectInstanceFields(Class<? extends Object> clazz, List<NodeFieldData> fieldsList) {
-        if (clazz.getSuperclass() != null) {
-            collectInstanceFields(clazz.getSuperclass(), fieldsList);
+    private static NodeFieldData[] collectInstanceFields(Class<? extends Object> clazz) {
+        Class<?> superclass = clazz.getSuperclass();
+        NodeFieldData[] inheritedFields = EMPTY_NODE_FIELD_ARRAY;
+        if (superclass != null && Node.class.isAssignableFrom(superclass)) {
+            var nodeClassOfSuperclass = (NodeClassImpl) NodeClass.get(superclass.asSubclass(Node.class));
+            inheritedFields = nodeClassOfSuperclass.fields;
         }
+
+        List<NodeFieldData> ownFields = new ArrayList<>();
         Field[] declaredFields = clazz.getDeclaredFields();
         for (Field field : declaredFields) {
             if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
                 continue;
             }
 
-            NodeFieldData nodeField;
             if (field.getDeclaringClass() == Node.class && (field.getName().equals("parent"))) {
                 continue;
             }
-            nodeField = createField(field);
-            fieldsList.add(nodeField);
+            NodeFieldData nodeField = createField(field);
+            ownFields.add(nodeField);
+        }
+
+        if (ownFields.isEmpty()) {
+            /*
+             * If this node class doesn't declare any relevant own fields, we can simply reuse the
+             * superclass's array instance.
+             */
+            assert Arrays.stream(inheritedFields).sorted(Comparator.comparingInt(NodeFieldData::getOrder)).toList().equals(List.of(inheritedFields));
+            return inheritedFields;
+        } else {
+            NodeFieldData[] combined = Arrays.copyOf(inheritedFields, inheritedFields.length + ownFields.size());
+            System.arraycopy(ownFields.toArray(), 0, combined, inheritedFields.length, ownFields.size());
+            Arrays.sort(combined, Comparator.comparingInt(NodeFieldData::getOrder));
+            return combined;
         }
     }
 
@@ -343,6 +349,16 @@ final class NodeClassImpl extends NodeClass {
                 return (Unsafe) theUnsafeInstance.get(Unsafe.class);
             } catch (Exception e) {
                 throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+            }
+        }
+
+        public int getOrder() {
+            if (kind == NodeFieldKind.CHILD || kind == NodeFieldKind.CHILDREN) {
+                return 0;
+            } else if (clonable) {
+                return 1;
+            } else {
+                return 2;
             }
         }
 
