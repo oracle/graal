@@ -41,15 +41,14 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
  * The common structure of the chunks of memory which make up the heap. HeapChunks are aggregated
@@ -82,11 +81,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
  */
 public final class HeapChunk {
     private HeapChunk() { // all static
-    }
-
-    static class Options {
-        // Accessed via reflection by legacy code (see GR-40046).
-        public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = SerialAndEpsilonGCOptions.HeapChunkHeaderPadding;
     }
 
     static class HeaderPaddingSizeProvider implements IntUnaryOperator {
