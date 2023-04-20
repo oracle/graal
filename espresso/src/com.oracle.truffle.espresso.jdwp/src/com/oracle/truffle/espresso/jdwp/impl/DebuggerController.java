@@ -615,16 +615,10 @@ public final class DebuggerController implements ContextsListener {
 
     private void suspendEventThread(CallFrame currentFrame, Object thread, SteppingInfo info, boolean forceSuspend) {
         fine(() -> "Suspending event thread: " + getThreadName(thread) + " with new suspension count: " + threadSuspension.getSuspensionCount(thread));
-
-        // if during stepping, send a step completed event back to the debugger
-        if (info != null) {
-            eventListener.stepCompleted(info, currentFrame);
-        }
-
-        lockThread(thread, forceSuspend, true);
+        lockThread(thread, forceSuspend, true, info, currentFrame);
     }
 
-    private void lockThread(Object thread, boolean forceSuspend, boolean isFirstCall) {
+    private void lockThread(Object thread, boolean forceSuspend, boolean isFirstCall, SteppingInfo info, CallFrame currentFrame) {
         SimpleLock lock = getSuspendLock(thread);
         // in case a thread job is already posted on this thread
         checkThreadJobsAndRun(thread, forceSuspend);
@@ -636,6 +630,11 @@ public final class DebuggerController implements ContextsListener {
             try {
                 if (lock.isLocked() && isFirstCall) {
                     threadSuspension.suspendThread(thread);
+                    // if during stepping, send a step completed event back to the debugger
+                    if (info != null) {
+                        assert currentFrame != null;
+                        eventListener.stepCompleted(info, currentFrame);
+                    }
                 }
                 while (lock.isLocked()) {
                     fine(() -> "lock.wait() for thread: " + getThreadName(thread));
@@ -688,7 +687,7 @@ public final class DebuggerController implements ContextsListener {
             } else {
                 job.runJob();
             }
-            lockThread(thread, forceSuspend, false);
+            lockThread(thread, forceSuspend, false, null, null);
         }
     }
 
