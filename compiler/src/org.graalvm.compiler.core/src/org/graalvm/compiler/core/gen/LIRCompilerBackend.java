@@ -145,7 +145,7 @@ public class LIRCompilerBackend {
             assert startBlock.getPredecessorCount() == 0;
 
             CodeEmissionOrder<?> blockOrder = backend.newBlockOrder(blocks.length, startBlock);
-            char[] linearScanOrder = LinearScanOrder.computeLinearScanOrder(blocks.length, startBlock);
+            int[] linearScanOrder = LinearScanOrder.computeLinearScanOrder(blocks.length, startBlock);
             LIR lir = new LIR(schedule.getCFG(), linearScanOrder, graph.getOptions(), graph.getDebug());
             if (ComputeCodeEmissionOrder.Options.EarlyCodeEmissionOrder.getValue(graph.getOptions())) {
                 lir.setCodeEmittingOrder(blockOrder.computeCodeEmittingOrder(graph.getOptions(), ComputationTime.BEFORE_CONTROL_FLOW_OPTIMIZATIONS));

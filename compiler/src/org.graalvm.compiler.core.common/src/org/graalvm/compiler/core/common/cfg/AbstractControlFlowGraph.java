@@ -33,13 +33,13 @@ public interface AbstractControlFlowGraph<T extends BasicBlock<T>> {
      * index can mean a block's id was not initialized or the block was deleted later on by control
      * flow optimizations.
      */
-    char INVALID_BLOCK_ID = Character.MAX_VALUE;
+    int INVALID_BLOCK_ID = Integer.MAX_VALUE;
 
     /**
      * Last valid block index used by the compiler. A compilation unit with more basic blocks would
      * trigger bailouts or compilation exceptions.
      */
-    char LAST_VALID_BLOCK_INDEX = Character.MAX_VALUE - 1;
+    int LAST_VALID_BLOCK_INDEX = Integer.MAX_VALUE - 1;
 
     /**
      * Returns the list blocks contained in this control flow graph.

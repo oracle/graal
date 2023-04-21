@@ -71,7 +71,7 @@ public class BasicBlockInterpreter extends IRWalker {
      * Map used for block interpreter dispatching during code generation. The integer is used for
      * the case identifier of the switch.
      */
-    private final HashMap<HIRBlock, Character> blockLookup;
+    private final HashMap<HIRBlock, Integer> blockLookup;
 
     /**
      * Determines if next blocks with pred.count==1 in basic block interpreter should be inlined.
@@ -261,7 +261,7 @@ public class BasicBlockInterpreter extends IRWalker {
 
             int gotoTarget = -1;
             if (currentBlock.getSuccessorCount() > 0) {
-                Character ic = blockLookup.get(currentBlock.getFirstSuccessor());
+                Integer ic = blockLookup.get(currentBlock.getFirstSuccessor());
                 assert ic != null;
                 gotoTarget = ic;
             }

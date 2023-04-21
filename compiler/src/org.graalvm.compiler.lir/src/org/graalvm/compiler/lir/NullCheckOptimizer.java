@@ -39,11 +39,11 @@ public final class NullCheckOptimizer extends PostAllocationOptimizationPhase {
     @Override
     protected void run(TargetDescription target, LIRGenerationResult lirGenRes, PostAllocationOptimizationContext context) {
         LIR ir = lirGenRes.getLIR();
-        char[] blockIndices = ir.getBlocks();
+        int[] blockIndices = ir.getBlocks();
         NullCheckOptimizer.foldNullChecks(ir, blockIndices, target.implicitNullCheckLimit);
     }
 
-    private static void foldNullChecks(LIR ir, char[] blockIds, int implicitNullCheckLimit) {
+    private static void foldNullChecks(LIR ir, int[] blockIds, int implicitNullCheckLimit) {
         for (int blockId : blockIds) {
             if (LIR.isBlockDeleted(blockId)) {
                 continue;

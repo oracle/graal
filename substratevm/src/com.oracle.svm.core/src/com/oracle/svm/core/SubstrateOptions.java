@@ -499,7 +499,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
 
     @Option(help = "The maximum number of nodes in a graph allowed after trivial inlining.")//
-    public static final HostedOptionKey<Integer> MaxNodesAfterTrivialInlining = new HostedOptionKey<>(40000);
+    public static final HostedOptionKey<Integer> MaxNodesAfterTrivialInlining = new HostedOptionKey<>(Integer.MAX_VALUE);
 
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
