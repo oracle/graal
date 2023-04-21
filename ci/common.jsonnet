@@ -208,6 +208,24 @@ local common_json = import "../common.json";
     ],
   },
 
+  // OS specific file handling
+  os_utils:: {
+    local lib_format = {
+      "windows": "%s.dll",
+      "linux":   "lib%s.so",
+      "darwin":  "lib%s.dylib"
+    },
+
+    # Converts unixpath to an OS specific path
+    os_path(unixpath):: if self.os == "windows" then std.strReplace(unixpath, "/", "\\") else unixpath,
+
+    # Converts unixpath to an OS specific path for an executable
+    os_exe(unixpath)::  if self.os == "windows" then self.os_path(unixpath) + ".exe" else unixpath,
+
+    # Converts a base library name to an OS specific file name
+    os_lib(name)::      lib_format[self.os] % name,
+  },
+
   local ol7 = {
     docker+: {
       image: "buildslave_ol7",
