@@ -27,7 +27,7 @@ package org.graalvm.compiler.core;
 import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAsFailure;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
-import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMCompilationFailureRate;
+import static org.graalvm.compiler.core.GraalCompilerOptions.SystemicCompilationFailureRate;
 import static org.graalvm.compiler.core.GraalCompilerOptions.MaxCompilationProblemsPerAction;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
@@ -42,6 +42,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.Formatter;
 import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -420,10 +421,12 @@ public abstract class CompilationWrapper<T> {
     }
 
     /**
-     * Does the current compilation failure rate exceed the limit specified by
-     * {@link GraalCompilerOptions#ExitVMCompilationFailureRate}?
+     * Issue a warning if the current compilation failure rate exceed the limit specified by
+     * {@link GraalCompilerOptions#SystemicCompilationFailureRate}.
+     *
+     * @return whether the VM should exit
      */
-    private static boolean isCompilationFailureRateTooHigh(OptionValues options, Throwable cause) {
+    private static boolean detectCompilationFailureRateTooHigh(OptionValues options, Throwable cause) {
         if (isNonFailureBailout(options, cause)) {
             return false;
         }
@@ -435,12 +438,13 @@ public abstract class CompilationWrapper<T> {
         }
 
         int rate = (int) (failed * 100 / total);
-        int maxRate = ExitVMCompilationFailureRate.getValue(options);
-        if (maxRate == 0) {
+        int maxRateValue = SystemicCompilationFailureRate.getValue(options);
+        if (maxRateValue == 0) {
             // Systemic compilation failure detection is disabled.
             return false;
         }
 
+        int maxRate = Math.min(100, Math.abs(maxRateValue));
         long now = System.currentTimeMillis();
         long start = getCompilationPeriodStart(now);
 
@@ -449,10 +453,20 @@ public abstract class CompilationWrapper<T> {
 
         // Wait for period to expire or some minimum amount of compilations
         // before detecting systemic failure.
-        if (rate > maxRate && (periodExpired || total > MIN_COMPILATIONS_FOR_FAILURE_DETECTION)) {
-            TTY.printf("Warning: Systemic Graal compilation failure detected: %d of %d (%d%%) of compilations failed during last %d ms [max rate set by %s is %d%%]%n",
-                            failed, total, rate, period, ExitVMCompilationFailureRate.getName(), maxRate);
-            return true;
+        if (rate > maxRate && (periodExpired && total > MIN_COMPILATIONS_FOR_FAILURE_DETECTION)) {
+            Formatter msg = new Formatter();
+            String option = SystemicCompilationFailureRate.getName();
+            msg.format("Warning: Systemic Graal compilation failure detected: %d of %d (%d%%) of compilations failed during last %d ms [max rate set by %s is %d%%]. ",
+                            failed, total, rate, period, option, maxRateValue);
+            msg.format("To mitigate systemic compilation failure detection, set %s to a higher value. ", option);
+            msg.format("To disable systemic compilation failure detection, set %s to 0. ", option);
+            msg.format("To get more information on compilation failures, set %s to Print or Diagnose. ", CompilationFailureAction.getName());
+            TTY.println(msg.toString());
+            if (maxRateValue < 0) {
+                // A negative value means the VM should be exited
+                return true;
+            }
+            periodExpired = true;
         }
 
         if (periodExpired) {
@@ -469,13 +483,14 @@ public abstract class CompilationWrapper<T> {
 
     /**
      * Adjusts {@code initialAction} if necessary based on
+     * {@link GraalCompilerOptions#SystemicCompilationFailureRate} and
      * {@link GraalCompilerOptions#MaxCompilationProblemsPerAction}.
      */
     private ExceptionAction adjustAction(OptionValues initialOptions, ExceptionAction initialAction, Throwable cause) {
         ExceptionAction action = initialAction;
         int maxProblems = MaxCompilationProblemsPerAction.getValue(initialOptions);
         if (action != ExceptionAction.ExitVM) {
-            if (isCompilationFailureRateTooHigh(initialOptions, cause)) {
+            if (detectCompilationFailureRateTooHigh(initialOptions, cause)) {
                 return ExceptionAction.ExitVM;
             }
             synchronized (problemsHandledPerAction) {
