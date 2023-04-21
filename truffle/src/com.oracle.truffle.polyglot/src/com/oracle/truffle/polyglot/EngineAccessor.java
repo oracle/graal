@@ -159,7 +159,8 @@ final class EngineAccessor extends Accessor {
         if (loaders == null) {
             return null;
         }
-        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(loaders.size());
+        List<AbstractClassLoaderSupplier> suppliers = new ArrayList<>(1 + loaders.size());
+        suppliers.add(new ModulePathLoaderSupplier(ClassLoader.getSystemClassLoader()));
         for (ClassLoader loader : loaders) {
             suppliers.add(new StrongClassLoaderSupplier(loader));
         }
@@ -167,8 +168,7 @@ final class EngineAccessor extends Accessor {
     }
 
     private static List<AbstractClassLoaderSupplier> defaultLoaders() {
-        return Arrays.<AbstractClassLoaderSupplier> asList(
-                        new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
+        return List.of(new StrongClassLoaderSupplier(EngineAccessor.class.getClassLoader()),
                         new StrongClassLoaderSupplier(ClassLoader.getSystemClassLoader()),
                         new WeakClassLoaderSupplier(Thread.currentThread().getContextClassLoader()));
     }
@@ -2034,11 +2034,14 @@ final class EngineAccessor extends Accessor {
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {
-
         private final int hashCode;
 
         AbstractClassLoaderSupplier(ClassLoader loader) {
             this.hashCode = loader == null ? 0 : loader.hashCode();
+        }
+
+        boolean accepts(@SuppressWarnings("unused") Class<?> clazz) {
+            return true;
         }
 
         @Override
@@ -2059,7 +2062,7 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    static final class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
+    static class StrongClassLoaderSupplier extends AbstractClassLoaderSupplier {
 
         private final ClassLoader classLoader;
 
@@ -2071,6 +2074,18 @@ final class EngineAccessor extends Accessor {
         @Override
         public ClassLoader get() {
             return classLoader;
+        }
+    }
+
+    static final class ModulePathLoaderSupplier extends StrongClassLoaderSupplier {
+
+        ModulePathLoaderSupplier(ClassLoader classLoader) {
+            super(classLoader);
+        }
+
+        @Override
+        boolean accepts(Class<?> clazz) {
+            return clazz.getModule().isNamed();
         }
     }
 

@@ -51,10 +51,11 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -64,7 +65,6 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -79,6 +79,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
+import com.oracle.truffle.polyglot.EngineAccessor.ModulePathLoaderSupplier;
 import org.graalvm.polyglot.SandboxPolicy;
 
 /**
@@ -243,27 +244,41 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private static synchronized Map<String, LanguageCache> createLanguages(List<AbstractClassLoaderSupplier> suppliers) {
         List<LanguageCache> caches = new ArrayList<>();
-        for (Supplier<ClassLoader> supplier : suppliers) {
+        Set<String> ids = new HashSet<>();
+        List<LanguageCache> modulePathCaches = new ArrayList<>();
+        Set<String> modulePathIds = new HashSet<>();
+        for (AbstractClassLoaderSupplier supplier : suppliers) {
             ClassLoader loader = supplier.get();
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
-            loadProviders(loader).forEach((p) -> loadLanguageImpl(p, caches));
-            loadDeprecatedProviders(loader).forEach((p) -> loadLanguageImpl(p, caches));
-        }
-        Map<String, LanguageCache> cacheToId = new LinkedHashMap<>();
-        for (LanguageCache languageCache : caches) {
-            LanguageCache prev = cacheToId.put(languageCache.getId(), languageCache);
-            if (prev != null && (!prev.getClassName().equals(languageCache.getClassName()) || !hasSameCodeSource(prev, languageCache))) {
-                String message = String.format("Duplicate language id %s. First language [%s]. Second language [%s].",
-                                languageCache.getId(),
-                                formatLanguageLocation(prev),
-                                formatLanguageLocation(languageCache));
-                throw new IllegalStateException(message);
+            List<LanguageCache> cachesCollector;
+            Set<String> idsCollector;
+            if (supplier instanceof ModulePathLoaderSupplier) {
+                cachesCollector = modulePathCaches;
+                idsCollector = modulePathIds;
+            } else {
+                cachesCollector = caches;
+                idsCollector = ids;
             }
+            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, cachesCollector, idsCollector));
+            loadDeprecatedProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, cachesCollector, idsCollector));
         }
+
+        // Compute languages that are loaded both from module-path and graalvm locator.
+        // Languages on the module-path are preferred. Languages duplicated in the graalvm locator
+        // and languages that depend on them are ignored.
+        ids.retainAll(modulePathIds);
+        // Add languages loaded by the graalvm locator depending on ignored duplicated languages.
+        if (!ids.isEmpty()) {
+            computeIgnoredDependentLanguages(ids, caches);
+        }
+
+        Map<String, LanguageCache> idToCache = new LinkedHashMap<>();
+        addToCacheByIdMap(idToCache, modulePathCaches, Set.of());
+        addToCacheByIdMap(idToCache, caches, ids);
         int languageId = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
-        for (LanguageCache cache : cacheToId.values()) {
+        for (LanguageCache cache : idToCache.values()) {
             cache.staticIndex = ++languageId;
         }
         /*
@@ -271,7 +286,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
          * array out of bounds.
          */
         maxStaticIndex = Math.max(maxStaticIndex, languageId);
-        return cacheToId;
+        return idToCache;
     }
 
     @SuppressWarnings("deprecation")
@@ -296,14 +311,50 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into) {
+    private static void computeIgnoredDependentLanguages(Set<String> ignoredLanguages, List<LanguageCache> caches) {
+        Deque<String> todo = new ArrayDeque<>(ignoredLanguages);
+        while (!todo.isEmpty()) {
+            String ignoredLanguage = todo.removeFirst();
+            for (LanguageCache cache : caches) {
+                String languageId = cache.getId();
+                if (cache.getDependentLanguages().contains(ignoredLanguage) && !ignoredLanguages.contains(languageId)) {
+                    ignoredLanguages.add(languageId);
+                    todo.add(languageId);
+                }
+            }
+        }
+    }
+
+    private static void addToCacheByIdMap(Map<String, LanguageCache> idToCache, List<LanguageCache> caches, Set<String> ignoreSet) {
+        for (LanguageCache languageCache : caches) {
+            String languageId = languageCache.getId();
+            if (ignoreSet.contains(languageId)) {
+                if (idToCache.containsKey(languageId)) {
+                    emitWarning("The language %s is loaded by both the graalmv locator and the JVM module-path. The JVM module-path is preferred.", languageId);
+                } else {
+                    emitWarning("The language %s loaded by the graalvm locator depends on the language that was ignored due to duplication on the module path. " +
+                                    "To resolve this, use %s on the module path.", languageId, languageId);
+                }
+                continue;
+            }
+            LanguageCache prev = idToCache.put(languageId, languageCache);
+            if (prev != null && (!prev.getClassName().equals(languageCache.getClassName()) || !hasSameCodeSource(prev, languageCache))) {
+                String message = String.format("Duplicate language id %s. First language [%s]. Second language [%s].",
+                                languageCache.getId(),
+                                formatLanguageLocation(prev),
+                                formatLanguageLocation(languageCache));
+                throw new IllegalStateException(message);
+            }
+        }
+    }
+
+    private static void loadLanguageImpl(ProviderAdapter providerAdapter, List<LanguageCache> into, Set<String> idsCollector) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         ModuleUtils.exportTransitivelyTo(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
-            PrintStream out = System.err;
-            out.println("Provider " + providerClass + " is missing @Registration annotation.");
+            emitWarning("Provider %s is missing @Registration annotation.", providerClass);
             return;
         }
         String className = providerAdapter.getLanguageClassName();
@@ -350,14 +401,13 @@ final class LanguageCache implements Comparable<LanguageCache> {
         boolean interactive = reg.interactive();
         boolean internal = reg.internal();
         boolean needsAllEncodings = reg.needsAllEncodings();
-        Set<String> servicesClassNames = new TreeSet<>();
-        for (String service : providerAdapter.getServicesClassNames()) {
-            servicesClassNames.add(service);
-        }
+        Set<String> servicesClassNames = new TreeSet<>(providerAdapter.getServicesClassNames());
         SandboxPolicy sandboxPolicy = reg.sandbox();
-        into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
+        LanguageCache cache = new LanguageCache(id, name, implementationName, version, className, languageHome,
                         characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
-                        servicesClassNames, reg.contextPolicy(), providerAdapter, reg.website(), sandboxPolicy));
+                        servicesClassNames, reg.contextPolicy(), providerAdapter, reg.website(), sandboxPolicy);
+        into.add(cache);
+        idsCollector.add(id);
     }
 
     private static String getLanguageHomeFromURLConnection(String languageId, URLConnection connection) {
@@ -446,7 +496,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
         assert TruffleOptions.AOT : "Only supported during image generation";
-        nativeImageCache.putAll(createLanguages(Arrays.asList(new StrongClassLoaderSupplier(imageClassLoader))));
+        nativeImageCache.putAll(createLanguages(List.of(new StrongClassLoaderSupplier(imageClassLoader))));
         nativeImageMimes.putAll(createMimes());
         for (LanguageCache languageCache : nativeImageCache.values()) {
             try {
@@ -458,8 +508,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                     }
                 }
             } catch (ReflectiveOperationException roe) {
-                PrintStream out = System.err;
-                out.println("Failed to lookup patchContext method. " + roe);
+                emitWarning("Failed to lookup patchContext method due to ", roe);
             }
         }
     }
@@ -637,6 +686,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     SandboxPolicy getSandboxPolicy() {
         return sandboxPolicy;
+    }
+
+    private static void emitWarning(String message, Object... args) {
+        PrintStream out = System.err;
+        out.printf("[engine] " + message + "%n", args);
     }
 
     private static final class HostLanguageProvider extends TruffleLanguageProvider {

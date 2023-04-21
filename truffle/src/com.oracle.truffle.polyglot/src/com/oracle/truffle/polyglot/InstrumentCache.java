@@ -42,9 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -54,7 +52,6 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -63,6 +60,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
+import com.oracle.truffle.polyglot.EngineAccessor.ModulePathLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 import org.graalvm.polyglot.SandboxPolicy;
 
@@ -89,7 +87,7 @@ final class InstrumentCache {
      */
     @SuppressWarnings("unused")
     private static void initializeNativeImageState(ClassLoader imageClassLoader) {
-        nativeImageCache.addAll(doLoad(Arrays.asList(new StrongClassLoaderSupplier(imageClassLoader))));
+        nativeImageCache.addAll(doLoad(List.of(new StrongClassLoaderSupplier(imageClassLoader))));
     }
 
     /**
@@ -161,16 +159,19 @@ final class InstrumentCache {
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
+        Set<String> ids = new HashSet<>();
+        Set<String> modulePathIds = new HashSet<>();
         ClassLoader truffleClassLoader = InstrumentCache.class.getClassLoader();
         boolean usesTruffleClassLoader = false;
-        for (Supplier<ClassLoader> supplier : suppliers) {
+        for (AbstractClassLoaderSupplier supplier : suppliers) {
             ClassLoader loader = supplier.get();
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
+            Set<String> idsCollector = supplier instanceof ModulePathLoaderSupplier ? modulePathIds : ids;
             usesTruffleClassLoader |= truffleClassLoader == loader;
-            loadProviders(loader).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
-            loadDeprecatedProviders(loader).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, idsCollector));
+            loadDeprecatedProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, idsCollector));
         }
         // Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
         // module. If the ClassLoader does not define module it has no ServiceCatalog. The
@@ -180,14 +181,17 @@ final class InstrumentCache {
             Module truffleModule = InstrumentCache.class.getModule();
             loadProviders(truffleClassLoader).//
                             filter((p) -> p.getProviderClass().getModule().equals(truffleModule)).//
-                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, modulePathIds));
         }
-        Collections.sort(list, new Comparator<InstrumentCache>() {
-            @Override
-            public int compare(InstrumentCache o1, InstrumentCache o2) {
-                return o1.getId().compareTo(o2.getId());
-            }
-        });
+        // Compute instruments that are loaded both from module-path and graalvm locator.
+        // Instruments on the module-path are preferred. Instruments duplicated in the graalvm
+        // locator
+        // are ignored.
+        ids.retainAll(modulePathIds);
+        for (String ignoredId : ids) {
+            emitWarning("The instrument %s is loaded by both the graalmv locator and the JVM module-path. The JVM module-path is preferred.", ignoredId);
+        }
+        list.sort(Comparator.comparing(InstrumentCache::getId));
         return list;
     }
 
@@ -200,14 +204,13 @@ final class InstrumentCache {
         return StreamSupport.stream(ServiceLoader.load(TruffleInstrumentProvider.class, loader).spliterator(), false).map(NewProvider::new);
     }
 
-    private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
+    private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed, Set<? super String> idsCollector) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         ModuleUtils.exportTransitivelyTo(providerModule);
         Registration reg = providerClass.getAnnotation(Registration.class);
         if (reg == null) {
-            PrintStream out = System.err;
-            out.println("Provider " + providerClass + " is missing @Registration annotation.");
+            emitWarning("Provider %s is missing @Registration annotation.", providerClass);
             return;
         }
         String className = providerAdapter.getInstrumentClassName();
@@ -234,6 +237,7 @@ final class InstrumentCache {
             classNamesUsed.add(className);
             list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, providerAdapter, website, sandboxPolicy));
         }
+        idsCollector.add(id);
     }
 
     private static boolean isValidLoader(ClassLoader loader) {
@@ -279,6 +283,11 @@ final class InstrumentCache {
 
     SandboxPolicy getSandboxPolicy() {
         return sandboxPolicy;
+    }
+
+    private static void emitWarning(String message, Object... args) {
+        PrintStream out = System.err;
+        out.printf("[engine] " + message + "%n", args);
     }
 
     private interface ProviderAdapter {

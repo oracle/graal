@@ -87,6 +87,7 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 
@@ -392,14 +393,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @Override
     public Class<?> loadLanguageClass(String className) {
-        for (Supplier<ClassLoader> supplier : EngineAccessor.locatorOrDefaultLoaders()) {
+        for (AbstractClassLoaderSupplier supplier : EngineAccessor.locatorOrDefaultLoaders()) {
             ClassLoader loader = supplier.get();
             if (loader != null) {
                 try {
                     Class<?> clazz = loader.loadClass(className);
-                    Module clazzModule = clazz.getModule();
-                    ModuleUtils.exportTransitivelyTo(clazzModule);
-                    return clazz;
+                    if (supplier.accepts(clazz)) {
+                        Module clazzModule = clazz.getModule();
+                        ModuleUtils.exportTransitivelyTo(clazzModule);
+                        return clazz;
+                    }
                 } catch (ClassNotFoundException e) {
                 }
             }
