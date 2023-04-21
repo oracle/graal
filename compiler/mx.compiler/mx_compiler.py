@@ -503,9 +503,9 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # A few iterations to increase the chance of catching compilation errors
     default_iterations = 2
-    daily_weekly_jobs_ratio = 6
-    scala_daily_scaling_factor = 7
-    scala_dacapo_daily_scaling_factor = 11
+    daily_weekly_jobs_ratio = 2
+    scala_daily_scaling_factor = 4
+    scala_dacapo_daily_scaling_factor = 10
     default_iterations_reduction = 0.5
     scala_weekly_scaling_factor = scala_daily_scaling_factor * daily_weekly_jobs_ratio
     scala_dacapo_weekly_scaling_factor = scala_dacapo_daily_scaling_factor * daily_weekly_jobs_ratio
