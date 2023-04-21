@@ -24,19 +24,12 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 public class BoxDeoptimizationTest extends GraalCompilerTest {
-
-    private static void checkJDK() {
-        Assume.assumeTrue(JAVA_SPEC >= 13);
-    }
 
     public static void testIntegerSnippet() {
         Object[] values = {42, -42, new Exception()};
@@ -47,7 +40,6 @@ public class BoxDeoptimizationTest extends GraalCompilerTest {
 
     @Test
     public void testInteger() {
-        checkJDK();
         test("testIntegerSnippet");
     }
 
@@ -62,7 +54,6 @@ public class BoxDeoptimizationTest extends GraalCompilerTest {
 
     @Test
     public void testLong() {
-        checkJDK();
         test("testLongSnippet");
     }
 
@@ -75,7 +66,6 @@ public class BoxDeoptimizationTest extends GraalCompilerTest {
 
     @Test
     public void testChar() {
-        checkJDK();
         test("testCharSnippet");
     }
 
@@ -88,7 +78,6 @@ public class BoxDeoptimizationTest extends GraalCompilerTest {
 
     @Test
     public void testShort() {
-        checkJDK();
         test("testShortSnippet");
     }
 
@@ -101,7 +90,6 @@ public class BoxDeoptimizationTest extends GraalCompilerTest {
 
     @Test
     public void testByte() {
-        checkJDK();
         test("testByteSnippet");
     }
 
@@ -114,7 +102,6 @@ public class BoxDeoptimizationTest extends GraalCompilerTest {
 
     @Test
     public void testBoolean() {
-        checkJDK();
         test("testBooleanSnippet");
     }
 }
