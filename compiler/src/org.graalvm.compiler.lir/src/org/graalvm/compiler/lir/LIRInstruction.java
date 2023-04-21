@@ -211,11 +211,6 @@ public abstract class LIRInstruction {
         ALLOWED_FLAGS.put(DEF, EnumSet.of(REG, STACK, COMPOSITE, ILLEGAL, HINT));
     }
 
-    /**
-     * The flags of the base and index value of an address.
-     */
-    protected static final EnumSet<OperandFlag> ADDRESS_FLAGS = EnumSet.of(REG, ILLEGAL);
-
     private final LIRInstructionClass<?> instructionClass;
 
     /**

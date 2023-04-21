@@ -27,14 +27,12 @@ package org.graalvm.compiler.lir;
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.OUTGOING;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -83,7 +81,6 @@ public class StandardOp {
      */
     public static final class LabelOp extends LIRInstruction implements LabelHoldingOp {
         public static final LIRInstructionClass<LabelOp> TYPE = LIRInstructionClass.create(LabelOp.class);
-        public static final EnumSet<OperandFlag> incomingFlags = EnumSet.of(REG, STACK);
 
         /**
          * In the LIR, every register and variable must be defined before it is used. For method
@@ -182,12 +179,6 @@ public class StandardOp {
         public boolean isPhiIn() {
             return getPhiSize() > 0;
         }
-
-        public void forEachIncomingValue(InstructionValueProcedure proc) {
-            for (int i = 0; i < incomingValues.length; i++) {
-                incomingValues[i] = proc.doValue(this, incomingValues[i], OperandMode.DEF, incomingFlags);
-            }
-        }
     }
 
     /**
@@ -195,7 +186,6 @@ public class StandardOp {
      */
     public static class JumpOp extends LIRInstruction implements BlockEndOp {
         public static final LIRInstructionClass<JumpOp> TYPE = LIRInstructionClass.create(JumpOp.class);
-        public static final EnumSet<OperandFlag> outgoingFlags = EnumSet.of(REG, STACK, CONST, OUTGOING);
 
         @Alive({REG, STACK, CONST, OUTGOING}) private Value[] outgoingValues;
 
@@ -526,34 +516,6 @@ public class StandardOp {
         @Override
         public void emitCode(CompilationResultBuilder crb) {
             // do nothing, just keep value alive until at least here
-        }
-    }
-
-    public static final class StackMove extends LIRInstruction implements ValueMoveOp {
-        public static final LIRInstructionClass<StackMove> TYPE = LIRInstructionClass.create(StackMove.class);
-
-        @Def({STACK, HINT}) protected AllocatableValue result;
-        @Use({STACK}) protected AllocatableValue input;
-
-        public StackMove(AllocatableValue result, AllocatableValue input) {
-            super(TYPE);
-            this.result = result;
-            this.input = input;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb) {
-            throw new GraalError(this + " should have been removed");
-        }
-
-        @Override
-        public AllocatableValue getInput() {
-            return input;
-        }
-
-        @Override
-        public AllocatableValue getResult() {
-            return result;
         }
     }
 
