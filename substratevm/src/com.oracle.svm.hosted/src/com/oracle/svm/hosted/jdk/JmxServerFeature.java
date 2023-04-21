@@ -92,11 +92,17 @@ public class JmxServerFeature implements InternalFeature {
         dynamicProxySupport.addProxyClass(access.findClassByName("javax.management.remote.rmi.RMIServer"));
     }
 
+    /**
+     * This method configures reflection metadata only required by a JMX server.
+     * <ul>
+     * <li>Here we register all the custom substrate MXBeans. They won't be accounted for by the
+     * native image tracing agent so a user may not know they need to register them.</li>
+     * <li>We also register com.sun.jmx.remote.protocol.rmi.ServerProvider which can be reflectively
+     * looked up on a code path starting from javax.management.remote.JMXConnectorServerFactory.
+     * newJMXConnectorServer(JMXServiceURL, Map<String,?>, MBeanServer)</li>
+     * </ul>
+     */
     private static void configureReflection(BeforeAnalysisAccess access) {
-        /*
-         * Register all the custom substrate MXBeans. They won't be accounted for by the native
-         * image tracing agent so a user may not know they need to register them.
-         */
         Set<PlatformManagedObject> platformManagedObjects = ManagementSupport.getSingleton().getPlatformManagedObjects();
         for (PlatformManagedObject p : platformManagedObjects) {
 
