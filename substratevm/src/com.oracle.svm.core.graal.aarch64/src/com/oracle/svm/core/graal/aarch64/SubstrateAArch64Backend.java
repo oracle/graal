@@ -174,6 +174,8 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
+import java.util.function.BiConsumer;
+
 public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGenerationProvider {
 
     protected static CompressEncoding getCompressEncoding() {
@@ -235,21 +237,28 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
          * know when the callTarget uses the StubCallingConvention.
          */
         @Temp({REG}) private Value linkReg;
+        private final BiConsumer<CompilationResultBuilder, Integer> offsetRecorder;
 
         public SubstrateAArch64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value targetAddress,
-                        LIRFrameState state, Value javaFrameAnchor, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp) {
+                        LIRFrameState state, Value javaFrameAnchor, int newThreadStatus, boolean destroysCallerSavedRegisters, Value exceptionTemp,
+                        BiConsumer<CompilationResultBuilder, Integer> offsetRecorder) {
             super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
             this.javaFrameAnchor = javaFrameAnchor;
             this.newThreadStatus = newThreadStatus;
             this.destroysCallerSavedRegisters = destroysCallerSavedRegisters;
             this.exceptionTemp = exceptionTemp;
             this.linkReg = lr.asValue(LIRKind.value(AArch64Kind.QWORD));
+            this.offsetRecorder = offsetRecorder;
         }
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             maybeTransitionToNative(crb, masm, javaFrameAnchor, state, newThreadStatus);
-            super.emitCode(crb, masm);
+            Register target = asRegister(targetAddress);
+            int offset = AArch64Call.indirectCall(crb, masm, target, callTarget, state);
+            if (offsetRecorder != null) {
+                offsetRecorder.accept(crb, offset);
+            }
         }
 
         @Override
@@ -541,7 +550,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 RegisterValue targetRegister = AArch64.lr.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
                 append(new SubstrateAArch64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL,
-                                getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL, null));
             } else {
                 assert targetAddress == null;
                 append(new SubstrateAArch64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL,
@@ -640,8 +649,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
     }
 
-    public final class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
-
+    public class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
         public SubstrateAArch64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AArch64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
         }
@@ -714,6 +722,10 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             }
         }
 
+        public BiConsumer<CompilationResultBuilder, Integer> getOffsetRecorder(@SuppressWarnings("unused") IndirectCallTargetNode callTargetNode) {
+            return null;
+        }
+
         @Override
         protected void emitInvoke(LoweredCallTargetNode callTarget, Value[] parameters, LIRFrameState callState, Value result) {
             verifyCallTarget(callTarget);
@@ -739,7 +751,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             gen.emitMove(targetAddress, operand(callTarget.computedAddress()));
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             append(new SubstrateAArch64IndirectCallOp(targetMethod, result, parameters, temps, targetAddress, callState, setupJavaFrameAnchor(callTarget),
-                            getNewThreadStatus(callTarget), getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget)));
+                            getNewThreadStatus(callTarget), getDestroysCallerSavedRegisters(targetMethod), getExceptionTemp(callTarget), getOffsetRecorder(callTarget)));
         }
 
         protected void emitComputedIndirectCall(ComputedIndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState) {
@@ -1062,7 +1074,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 case 64:
                     return JavaConstant.LONG_0;
                 default:
-                    throw VMError.shouldNotReachHere();
+                    throw VMError.shouldNotReachHereUnexpectedInput(size); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -1219,7 +1231,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         public LIRKind getNarrowPointerKind() {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

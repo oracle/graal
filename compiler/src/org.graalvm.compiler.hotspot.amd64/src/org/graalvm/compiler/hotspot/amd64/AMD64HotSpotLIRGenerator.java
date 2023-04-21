@@ -265,7 +265,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
                 return r;
             }
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(regConfig); // ExcludeFromJacocoGeneratedReport
     }
 
     private Register pollOnReturnScratchRegister;

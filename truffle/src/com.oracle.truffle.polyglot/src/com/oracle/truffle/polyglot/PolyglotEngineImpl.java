@@ -1180,7 +1180,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 for (PolyglotContextImpl context : localContexts) {
                     assert !Thread.holdsLock(context);
                     synchronized (context) {
-                        if (context.hasActiveOtherThread(false) && !context.state.isClosing()) {
+                        if (context.hasActiveOtherThread(false, false) && !context.state.isClosing()) {
                             throw PolyglotEngineException.illegalState(String.format("One of the context instances is currently executing. " +
                                             "Set cancelIfExecuting to true to stop the execution on this thread."));
                         }
@@ -1471,7 +1471,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private static boolean waitForThreads(PolyglotContextImpl context, long startMillis, Duration timeout) {
         long cancelTimeoutMillis = timeout != Duration.ZERO ? timeout.toMillis() : 0;
         boolean success = true;
-        if (!context.waitForThreads(startMillis, cancelTimeoutMillis)) {
+        if (!context.waitForAllThreads(startMillis, cancelTimeoutMillis)) {
             success = false;
         }
         return success;
@@ -2030,7 +2030,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
          * thread. The slow path acquires context lock to ensure ordering for context operations
          * like close.
          */
-        prev = context.enterThreadChanged(true, enterReverted, pollSafepoint, false, false);
+        prev = context.enterThreadChanged(enterReverted, pollSafepoint, false, false, false);
         assert verifyContext(context);
         return prev;
     }
@@ -2079,7 +2079,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 return;
             }
         }
-        context.leaveThreadChanged(prev, true, entered, false);
+        context.leaveThreadChanged(prev, entered, false);
     }
 
     static final class LogConfig {

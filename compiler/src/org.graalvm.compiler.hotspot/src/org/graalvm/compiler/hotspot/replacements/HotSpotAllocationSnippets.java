@@ -533,7 +533,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             case Total:
                 return "bytes";
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(ProfileAllocationsContext.getValue(options)); // ExcludeFromJacocoGeneratedReport
         }
     }
 

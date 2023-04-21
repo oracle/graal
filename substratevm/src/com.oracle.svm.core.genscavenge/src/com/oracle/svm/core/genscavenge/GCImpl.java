@@ -323,7 +323,7 @@ public final class GCImpl implements GC {
                 if (!success) {
                     String kind = getGCKind();
                     Log.log().string("Heap verification failed before ").string(kind).string(" garbage collection.").newline();
-                    VMError.shouldNotReachHere();
+                    VMError.shouldNotReachHereAtRuntime();
                 }
             } finally {
                 verifyBeforeTimer.close();
@@ -342,7 +342,7 @@ public final class GCImpl implements GC {
                 if (!success) {
                     String kind = getGCKind();
                     Log.log().string("Heap verification failed after ").string(kind).string(" garbage collection.").newline();
-                    VMError.shouldNotReachHere();
+                    VMError.shouldNotReachHereAtRuntime();
                 }
             } finally {
                 verifyAfterTime.close();

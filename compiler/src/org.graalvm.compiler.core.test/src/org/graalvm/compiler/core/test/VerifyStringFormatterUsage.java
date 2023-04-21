@@ -288,7 +288,7 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
             case Long:
                 return 0L;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(stackKind); // ExcludeFromJacocoGeneratedReport
         }
     }
 

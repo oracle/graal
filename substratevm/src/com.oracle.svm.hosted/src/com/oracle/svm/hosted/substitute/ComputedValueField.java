@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.StaticFieldB
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.TranslateFieldOffset;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
@@ -187,8 +188,15 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
 
     @Override
     public boolean isValueAvailable() {
+        /*
+         * Note that we use isHostedUniverseBuild on purpose to define "available after analysis":
+         * many field value transformers require field offsets to be available, i.e., the hosted
+         * universe to be built. This ensures that such field value transformers do not have their
+         * value available when strengthening graphs after analysis, i.e., when applying analysis
+         * results back into the IR.
+         */
         return constantValue != null || isValueAvailableBeforeAnalysis() ||
-                        (isValueAvailableOnlyAfterAnalysis && BuildPhaseProvider.isAnalysisFinished()) ||
+                        (isValueAvailableOnlyAfterAnalysis && BuildPhaseProvider.isHostedUniverseBuilt()) ||
                         (isValueAvailableOnlyAfterCompilation && BuildPhaseProvider.isCompilationFinished());
     }
 
@@ -258,7 +266,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
             case Long:
                 return JavaConstant.forLong(value);
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(getJavaKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 

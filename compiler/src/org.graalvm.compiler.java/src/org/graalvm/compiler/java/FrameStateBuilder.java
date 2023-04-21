@@ -33,7 +33,7 @@ import static org.graalvm.compiler.bytecode.Bytecodes.DUP_X2;
 import static org.graalvm.compiler.bytecode.Bytecodes.POP;
 import static org.graalvm.compiler.bytecode.Bytecodes.POP2;
 import static org.graalvm.compiler.bytecode.Bytecodes.SWAP;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.nodes.FrameState.TWO_SLOT_MARKER;
 import static org.graalvm.compiler.nodes.util.GraphUtil.originalValue;
 
@@ -336,7 +336,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             return outerFrameState.duplicateModified(graph, outerFrameState.bci, true, false, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{stack[0]}, null);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw shouldNotReachHereUnexpectedValue(bci); // ExcludeFromJacocoGeneratedReport
         }
 
         if (bci == BytecodeFrame.AFTER_EXCEPTION_BCI) {
@@ -360,7 +360,7 @@ public final class FrameStateBuilder implements SideEffectsState {
             return FrameState.toSourcePosition(outerFrameState);
         }
         if (bci == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
-            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw shouldNotReachHereUnexpectedValue(bci); // ExcludeFromJacocoGeneratedReport
         }
         if (parser.intrinsicContext != null && (parent == null || parent.intrinsicContext != parser.intrinsicContext)) {
             // When parsing an intrinsic put in a substitution marker showing the original method as
@@ -961,7 +961,7 @@ public final class FrameStateBuilder implements SideEffectsState {
                 break;
             }
             default:
-                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
     }
 

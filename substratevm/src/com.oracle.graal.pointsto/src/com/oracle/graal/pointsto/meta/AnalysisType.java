@@ -1044,7 +1044,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * available to implement it for JIT compilation at image run time. So we want to make sure
          * that Graal is not using this method, and only resolveConcreteMethod instead.
          */
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

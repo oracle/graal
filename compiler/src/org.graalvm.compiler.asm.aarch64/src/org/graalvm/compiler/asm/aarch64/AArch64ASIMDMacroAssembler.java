@@ -59,7 +59,7 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
                 return eVal;
         }
 
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(eSize); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -82,7 +82,7 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
             /* Moving not(not(imm64)). */
             mvniVI(size, reg, ~imm64);
         } else {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(imm64); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -271,7 +271,7 @@ public class AArch64ASIMDMacroAssembler extends AArch64ASIMDAssembler {
                 masm.neon.rev64VV(size, ElementSize.Byte, dst, src);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(eSize); // ExcludeFromJacocoGeneratedReport
         }
     }
 

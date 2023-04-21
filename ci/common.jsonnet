@@ -39,15 +39,17 @@ local common_json = import "../common.json";
     },
     for name in std.objectFields(jdks_data)
   } + {
+    local latestJDKCE = self["labsjdk-ce-20"],
+    local latestJDKEE = self["labsjdk-ee-20"],
     # Some convenient JDK aliases which don't require ["name"] for frequently-used JDKs
     labsjdk17ce: self["labsjdk-ce-17"],
     labsjdk17ee: self["labsjdk-ee-17"],
 
-    labsjdk19ce: self["labsjdk-ce-19"],
-    labsjdk19ee: self["labsjdk-ee-19"],
+    labsjdk20ce: latestJDKCE,
+    labsjdk20ee: latestJDKEE,
 
-    labsjdk20ce: self["labsjdk-ce-20"],
-    labsjdk20ee: self["labsjdk-ee-20"],
+    labsjdkLatestCE: latestJDKCE,
+    labsjdkLatestEE: latestJDKEE,
   },
 
   # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)

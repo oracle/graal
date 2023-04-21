@@ -138,7 +138,7 @@ public class LinearScan {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    private final char[] sortedBlocks;
+    private final int[] sortedBlocks;
 
     /**
      * @see #intervals()
@@ -194,7 +194,7 @@ public class LinearScan {
     private final LIRGenerationResult res;
 
     @SuppressWarnings("this-escape")
-    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, char[] sortedBlocks,
+    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, int[] sortedBlocks,
                     boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.res = res;
@@ -798,7 +798,7 @@ public class LinearScan {
                 try (Indent indent2 = debug.logAndIndent("Basic Blocks")) {
                     for (int i = 0; i < blockCount(); i++) {
                         BasicBlock<?> block = blockAt(i);
-                        debug.log("B%d [%d, %d, %s] ", (int) block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
+                        debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
                     }
                 }
             }
@@ -904,7 +904,7 @@ public class LinearScan {
         return frameMapBuilder;
     }
 
-    public char[] sortedBlocks() {
+    public int[] sortedBlocks() {
         return sortedBlocks;
     }
 

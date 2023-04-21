@@ -220,7 +220,7 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public Signature lookupSignature(int index) {
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -246,6 +246,6 @@ class ClassfileConstantPool implements ConstantPool, ConstantPoolPatch {
         if (opcode == Bytecodes.INVOKEVIRTUAL) {
             return null;
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
     }
 }

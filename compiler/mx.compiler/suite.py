@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.18.2",
+  "mxversion": "6.19.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -452,21 +452,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "17+",
-      "workingSets" : "Graal",
-    },
-
-    "org.graalvm.libgraal.jni.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.processor",
-        "org.graalvm.libgraal.jni.annotation",
-      ],
-      "requires" : [
-        "java.compiler" # javax.annotation.processing.*
-      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
       "workingSets" : "Graal",
@@ -1841,8 +1826,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.libgraal.jni.processor",
-        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+        "org.graalvm.compiler.processor",
       ],
       "requires" : [
         "java.compiler" # javax.annotation.processing.*
@@ -2061,7 +2045,6 @@ suite = {
     "GRAAL_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.libgraal.jni.processor",
         "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor",
       ],
       "distDependencies" : ["GRAAL_PROCESSOR"],

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
@@ -156,7 +156,7 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
 
     @Override
     public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        throw shouldNotReachHere();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -219,17 +219,17 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
 
     @Override
     public Constant getEncoding() {
-        throw shouldNotReachHere();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        throw shouldNotReachHere();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public SpeculationLog getSpeculationLog() {
-        throw shouldNotReachHere();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

@@ -1124,7 +1124,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             return installedCode;
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHere("Bailout limit reached"); // ExcludeFromJacocoGeneratedReport
     }
 
     /**

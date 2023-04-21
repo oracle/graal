@@ -142,7 +142,7 @@ public class LIRInstructionClass<T> extends LIRIntrospection<T> {
             } else if (field.isAnnotationPresent(LIRInstruction.Def.class)) {
                 result.addAll(Arrays.asList(field.getAnnotation(LIRInstruction.Def.class).value()));
             } else {
-                GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                GraalError.shouldNotReachHereUnexpectedValue(field); // ExcludeFromJacocoGeneratedReport
             }
             return result;
         }

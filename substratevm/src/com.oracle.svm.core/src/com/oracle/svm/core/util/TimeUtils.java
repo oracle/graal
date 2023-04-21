@@ -37,7 +37,8 @@ public class TimeUtils {
     public static final long microsPerSecond = 1_000_000L;
     public static final long nanosPerSecond = 1_000_000_000L;
     public static final long nanosPerMilli = nanosPerSecond / millisPerSecond;
-    public static final long microsPerNano = nanosPerSecond / microsPerSecond;
+    public static final long nanosPerMicro = nanosPerSecond / microsPerSecond;
+    public static final long microsPerMilli = microsPerSecond / millisPerSecond;
 
     /** Convert the given number of seconds to milliseconds. */
     public static long secondsToMillis(long seconds) {
@@ -50,6 +51,11 @@ public class TimeUtils {
         return multiplyOrMaxValue(seconds, nanosPerSecond);
     }
 
+    /** Convert the given number of milliseconds to microseconds. */
+    public static long millisToMicros(long millis) {
+        return multiplyOrMaxValue(millis, microsPerMilli);
+    }
+
     /** Convert the given number of milliseconds to nanoseconds. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long millisToNanos(long millis) {
@@ -59,7 +65,7 @@ public class TimeUtils {
     /** Convert the given number of microseconds to nanoseconds. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long microsToNanos(long micros) {
-        return multiplyOrMaxValue(micros, microsPerNano);
+        return multiplyOrMaxValue(micros, nanosPerMicro);
     }
 
     /** Nanoseconds since a previous {@link System#nanoTime()} call. */

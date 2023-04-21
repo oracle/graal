@@ -354,7 +354,7 @@ public class AMD64VectorMove {
             case DOUBLE:
                 return VMOVSD;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -434,7 +434,7 @@ public class AMD64VectorMove {
                 break;
 
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(input.getJavaKind()); // ExcludeFromJacocoGeneratedReport
         }
         VexMoveOp op = getScalarMoveOp((AMD64Kind) result.getPlatformKind());
         op.emit(masm, AVXSize.XMM, asRegister(result), address);

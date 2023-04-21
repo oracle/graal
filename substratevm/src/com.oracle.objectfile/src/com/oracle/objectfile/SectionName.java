@@ -36,9 +36,9 @@ import com.oracle.objectfile.ObjectFile.Format;
  */
 public abstract class SectionName {
 
-    private static class ProgbitsSectionName extends SectionName {
+    public static class ProgbitsSectionName extends SectionName {
 
-        ProgbitsSectionName(String name) {
+        public ProgbitsSectionName(String name) {
             super(name);
         }
 

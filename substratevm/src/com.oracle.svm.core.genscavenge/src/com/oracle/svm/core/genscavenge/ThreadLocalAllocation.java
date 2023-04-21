@@ -78,11 +78,10 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
- * from allocation snippets, so they can not do anything fancy.
- * 
- * It happens that prefetch instructions access memory outside the TLAB. At the moment, this is not
- * an issue as we only support architectures where the prefetch instructions never cause a segfault,
- * even if they try to access memory that is not accessible.
+ * from allocation snippets, so they can not do anything fancy. q It happens that prefetch
+ * instructions access memory outside the TLAB. At the moment, this is not an issue as we only
+ * support architectures where the prefetch instructions never cause a segfault, even if they try to
+ * access memory that is not accessible.
  */
 public final class ThreadLocalAllocation {
     @RawStructure
@@ -119,7 +118,8 @@ public final class ThreadLocalAllocation {
 
         @RawFieldOffset
         static int offsetOfAllocationTop() {
-            throw VMError.unimplemented(); // replaced
+            // replaced
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
 
         @RawField
@@ -130,7 +130,8 @@ public final class ThreadLocalAllocation {
 
         @RawFieldOffset
         static int offsetOfAllocationEnd() {
-            throw VMError.unimplemented(); // replaced
+            // replaced
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -183,7 +184,7 @@ public final class ThreadLocalAllocation {
      * If the executed code is too complex, then it can happen that we unexpectedly change some
      * shared global state as a side effect of an allocation. This may result in issues that look
      * similar to races but that can even happen in single-threaded environments, e.g.:
-     * 
+     *
      * <pre>
      * {@code
      * private static Object singleton;
@@ -191,10 +192,10 @@ public final class ThreadLocalAllocation {
      * private static synchronized Object createSingleton() {
      *     if (singleton == null) {
      *         Object o = new Object();
-     *         // If the allocation above enters the allocation slow path code, and executes a complex
-     *         // slow path hook, then it is possible that createSingleton() gets recursively execute
-     *         // by the current thread. So, the assertion below may fail because the singleton got
-     *         // already initialized by the same thread in the meanwhile.
+     *         // If the allocation above enters the allocation slow path code, and executes a
+     *         // complex slow path hook, then it is possible that createSingleton() gets
+     *         // recursively execute by the current thread. So, the assertion below may fail
+     *         // because the singleton got already initialized by the same thread in the meanwhile.
      *         assert singleton == null;
      *         singleton = o;
      *     }

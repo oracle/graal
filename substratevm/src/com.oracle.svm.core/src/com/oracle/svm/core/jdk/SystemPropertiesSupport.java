@@ -299,7 +299,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     }
 
     protected String tmpdirValue() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented();
     }
 
     protected String javaLibraryPathValue() {

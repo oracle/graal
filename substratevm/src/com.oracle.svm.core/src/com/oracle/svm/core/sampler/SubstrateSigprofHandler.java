@@ -195,7 +195,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             Isolate isolate = getSignalHandlerIsolate();
             if (isolate.isNull()) {
-                /* It may happen that the initial isolate exited. */
+                /* It is not the initial isolate or the initial isolate already exited. */
                 return false;
             }
 

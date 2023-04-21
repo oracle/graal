@@ -136,7 +136,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     @SuppressWarnings("unused")
     public void appendInside(LoopEx loop) {
-        GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        GraalError.unimplemented("intentional"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

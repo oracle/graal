@@ -380,13 +380,13 @@ final class Target_javax_crypto_JarVerifier {
     @Substitute
     @TargetElement(onlyWith = ContainsVerifyJars.class)
     private String verifySingleJar(URL var1) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     @TargetElement(onlyWith = ContainsVerifyJars.class)
     private void verifyJars(URL var1, List<String> var2) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }
 

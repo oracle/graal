@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
@@ -537,7 +537,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
 
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
         }
 
         if (relocatable && !isKnownImmutableConstant(constant)) {
@@ -636,7 +636,7 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (type.isArray()) {
             return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object), true);
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
         }
     }
 

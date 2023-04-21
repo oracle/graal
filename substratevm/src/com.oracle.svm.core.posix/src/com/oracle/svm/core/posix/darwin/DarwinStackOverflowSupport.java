@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,8 +84,9 @@ final class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
             CIntPointer count = StackValue.get(CIntPointer.class);
             count.write(VM_REGION_SUBMAP_INFO_COUNT_64());
 
-            if (mach_vm_region(task, address, size, VM_REGION_BASIC_INFO_64(), info, count, dummyobject) != 0) {
-                throw VMError.shouldNotReachHere();
+            int machVMRegion = mach_vm_region(task, address, size, VM_REGION_BASIC_INFO_64(), info, count, dummyobject);
+            if (machVMRegion != 0) {
+                throw VMError.shouldNotReachHereUnexpectedInput(machVMRegion); // ExcludeFromJacocoGeneratedReport
             }
 
             if (isProtected(info.protection())) {

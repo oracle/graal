@@ -280,7 +280,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 mov(64, dst, address.getBase());
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -2053,7 +2053,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 break;
             }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(type); // ExcludeFromJacocoGeneratedReport
         }
     }
 

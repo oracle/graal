@@ -44,10 +44,10 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-          lineStart = 5664,
-          lineEnd   = 5746,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
-          sha1      = "00fb0bbf3d9eee0ceaf2ef39aaeae214b9c91c59")
+          lineStart = 5670,
+          lineEnd   = 5752,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "cb807f6ece0a42ba5abae88477e8899436d09a4e")
 // @formatter:on
 public final class AMD64BitSwapOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64BitSwapOp> TYPE = LIRInstructionClass.create(AMD64BitSwapOp.class);
@@ -193,7 +193,7 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
                 masm.bswapq(dst);
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHereUnexpectedValue(dstValue.getPlatformKind());
         }
     }
 }

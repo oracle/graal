@@ -103,7 +103,7 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
             throw EspressoError.shouldNotReachHere();
         }
         if (getContext().multiThreadingEnabled()) {
-            hostToGuestReferenceDrainThread = env.createThread(drain);
+            hostToGuestReferenceDrainThread = env.newTruffleThreadBuilder(drain).build();
             hostToGuestReferenceDrainThread.setName("Reference Drain");
         }
     }

@@ -106,6 +106,8 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint.Interrupter;
+import com.oracle.truffle.api.TruffleSafepoint.InterruptibleFunction;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -417,6 +419,8 @@ public abstract class Accessor {
 
         public abstract void leaveContextAsPolyglotThread(Object polyglotContext, Object[] prev);
 
+        public abstract <T, R> R leaveAndEnter(Object polyglotContext, Interrupter interrupter, InterruptibleFunction<T, R> runWhileOutsideContext, T object);
+
         public abstract Object enterIfNeeded(Object polyglotContext);
 
         public abstract void leaveIfNeeded(Object polyglotContext, Object prev);
@@ -449,15 +453,7 @@ public abstract class Accessor {
 
         public abstract boolean isCreateThreadAllowed(Object polyglotLanguageContext);
 
-        public final Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group) {
-            return createThread(polyglotLanguageContext, runnable, innerContextImpl, group, 0);
-        }
-
-        public final Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl) {
-            return createThread(polyglotLanguageContext, runnable, innerContextImpl, null, 0);
-        }
-
-        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize);
+        public abstract Thread createThread(Object polyglotLanguageContext, Runnable runnable, Object innerContextImpl, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave);
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 

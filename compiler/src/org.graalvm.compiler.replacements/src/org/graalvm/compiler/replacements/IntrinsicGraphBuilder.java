@@ -250,12 +250,12 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void handleReplacedInvoke(CallTargetNode callTarget, JavaKind resultType) {
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -320,12 +320,12 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public IntrinsicContext getIntrinsic() {
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public BailoutException bailout(String string) {
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

@@ -113,7 +113,7 @@ public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders
                 } else if (usage instanceof ConditionalNode) {
                     processConditional(binary.getX(), binary.isXNegated(), binary.getY(), binary.isYNegated(), (ConditionalNode) usage);
                 } else {
-                    throw GraalError.shouldNotReachHere("Usage = " + usage); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(usage); // ExcludeFromJacocoGeneratedReport
                 }
             }
         }

@@ -438,7 +438,7 @@ public final class DFAGenerator implements JsonConvertible {
             if (isGenericCG()) {
                 transition.getTarget().incPredecessors();
             }
-            if (state.isUnAnchoredFinalState() && !successorState.isFinalState()) {
+            if (state.isUnAnchoredFinalState() && !successorState.isUnAnchoredFinalState()) {
                 simpleCGMustCopy = true;
             }
         }

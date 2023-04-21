@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.ameta;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.UninitializedStaticFieldValueReader;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability.ValueAvailability;
@@ -62,7 +61,17 @@ public interface ReadableJavaField extends ResolvedJavaField {
              * is initialized in the hosting HotSpot VM can still be initialized at run time.
              */
             if (field.isStatic()) {
-                return UninitializedStaticFieldValueReader.readUninitializedStaticValue(field, value -> GraalAccess.getOriginalSnippetReflection().forObject(value));
+                /*
+                 * Use the value from the constant pool attribute for the static field. That is the
+                 * value before the class initializer is executed.
+                 */
+                JavaConstant constantValue = field.getConstantValue();
+                if (constantValue != null) {
+                    return constantValue;
+                } else {
+                    return JavaConstant.defaultForKind(field.getJavaKind());
+                }
+
             } else {
                 /*
                  * Classes that are initialized at run time must not have instances in the image

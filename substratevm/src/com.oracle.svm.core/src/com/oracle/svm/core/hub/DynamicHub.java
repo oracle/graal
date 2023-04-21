@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -325,12 +325,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /** The simple binary name of this class, as returned by {@code Class.getSimpleBinaryName0}. */
     private final String simpleBinaryName;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setModule(Module module) {
-        assert module != null;
-        this.module = module;
-    }
-
     private final DynamicHubCompanion companion;
 
     private String signature;
@@ -365,6 +359,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
                     boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass) {
         this.hostedJavaClass = hostedJavaClass;
+        this.module = hostedJavaClass.getModule();
         this.name = name;
         this.hubType = hubType;
         this.referenceType = referenceType.getValue();
@@ -875,7 +870,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         } else if (declaringClass instanceof LinkageError) {
             throw (LinkageError) declaringClass;
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(declaringClass); // ExcludeFromJacocoGeneratedReport
         }
     }
 

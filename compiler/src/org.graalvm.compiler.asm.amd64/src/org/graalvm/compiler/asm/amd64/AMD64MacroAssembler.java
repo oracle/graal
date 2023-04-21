@@ -1081,7 +1081,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                     case S8:
                         return extendMode == ExtendMode.SIGN_EXTEND ? VexRMOp.VPMOVSXBQ : VexRMOp.VPMOVZXBQ;
                 }
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(strideDst); // ExcludeFromJacocoGeneratedReport
             case S2:
                 switch (strideDst) {
                     case S4:
@@ -1089,11 +1089,11 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                     case S8:
                         return extendMode == ExtendMode.SIGN_EXTEND ? VexRMOp.VPMOVSXWQ : VexRMOp.VPMOVZXWQ;
                 }
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(strideDst); // ExcludeFromJacocoGeneratedReport
             case S4:
                 return extendMode == ExtendMode.SIGN_EXTEND ? VexRMOp.VPMOVSXDQ : VexRMOp.VPMOVZXDQ;
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(strideSrc); // ExcludeFromJacocoGeneratedReport
     }
 
     public final void loadAndExtendSSE(ExtendMode extendMode, Register dst, Stride strideDst, AMD64Address src, Stride strideSrc) {
@@ -1123,7 +1123,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                         }
                         return;
                 }
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(strideDst); // ExcludeFromJacocoGeneratedReport
             case S2:
                 switch (strideDst) {
                     case S4:
@@ -1141,7 +1141,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                         }
                         return;
                 }
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(strideDst); // ExcludeFromJacocoGeneratedReport
             case S4:
                 if (signExtend) {
                     pmovsxdq(dst, src);
@@ -1150,7 +1150,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                 }
                 return;
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(strideSrc); // ExcludeFromJacocoGeneratedReport
     }
 
     public final void loadAndExtendSSE(ExtendMode extendMode, Register dst, Stride strideDst, Register src, Stride strideSrc) {
@@ -1180,7 +1180,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                         }
                         return;
                 }
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(strideDst); // ExcludeFromJacocoGeneratedReport
             case S2:
                 switch (strideDst) {
                     case S4:
@@ -1198,7 +1198,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                         }
                         return;
                 }
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(strideDst); // ExcludeFromJacocoGeneratedReport
             case S4:
                 if (signExtend) {
                     pmovsxdq(dst, src);
@@ -1207,7 +1207,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
                 }
                 return;
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(strideSrc); // ExcludeFromJacocoGeneratedReport
     }
 
     public final void packuswb(AVXSize size, Register dst, Register src) {

@@ -159,7 +159,7 @@ public final class AArch64Address extends AbstractAddress {
             case IMMEDIATE_PAIR_PRE_INDEXED:
                 return bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(mode); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -178,7 +178,7 @@ public final class AArch64Address extends AbstractAddress {
             case IMMEDIATE_PAIR_PRE_INDEXED:
                 return NumUtil.isSignedNbit(7, immediate);
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(mode); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -366,7 +366,7 @@ public final class AArch64Address extends AbstractAddress {
             case LD4_MULTIPLE_4R:
                 return regByteSize * 4;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(instruction); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -470,7 +470,7 @@ public final class AArch64Address extends AbstractAddress {
                 assert extendType == null;
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(addressingMode); // ExcludeFromJacocoGeneratedReport
         }
 
         return true;
@@ -617,7 +617,7 @@ public final class AArch64Address extends AbstractAddress {
                 addressEncoding = String.format("[X%d], X%d", base.encoding, offset.encoding);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(addressingMode); // ExcludeFromJacocoGeneratedReport
         }
         return String.format("%s: %s", addressingMode.toString(), addressEncoding);
     }

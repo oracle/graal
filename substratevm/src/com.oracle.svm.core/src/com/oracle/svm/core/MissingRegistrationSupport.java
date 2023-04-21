@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,34 +24,36 @@
  */
 package com.oracle.svm.core;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-/**
- * Wrapper for the {@link InvocationHandler} used by the JDK for annotations. During image
- * generation, it makes the annotation properties available by delegating to the JDK invocation
- * handler. At run time, the properties are stored directly in the annotation objects. See the
- * hosted class AnnotationSupport for details.
- */
-public final class SubstrateAnnotationInvocationHandler implements InvocationHandler {
+import com.oracle.svm.core.option.OptionClassFilter;
 
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    private final InvocationHandler hostedInvocationHandler;
+public class MissingRegistrationSupport {
+    private final OptionClassFilter classFilter;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateAnnotationInvocationHandler(InvocationHandler hostedInvocationHandler) {
-        this.hostedInvocationHandler = hostedInvocationHandler;
+    public MissingRegistrationSupport(OptionClassFilter classFilter) {
+        this.classFilter = classFilter;
     }
 
-    @Override
-    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        if (SubstrateUtil.HOSTED) {
-            return hostedInvocationHandler.invoke(proxy, method, args);
-        } else {
-            throw new IllegalArgumentException("InvocationHandler for annotations must not be used. Method: " + method.toString());
-        }
+    @Fold
+    public static MissingRegistrationSupport singleton() {
+        return ImageSingletons.lookup(MissingRegistrationSupport.class);
+    }
+
+    public boolean reportMissingRegistrationErrors(StackTraceElement responsibleClass) {
+        return reportMissingRegistrationErrors(responsibleClass.getModuleName(), getPackageName(responsibleClass.getClassName()), responsibleClass.getClassName());
+    }
+
+    public boolean reportMissingRegistrationErrors(String moduleName, String packageName, String className) {
+        return classFilter.isIncluded(moduleName, packageName, className) != null;
+    }
+
+    private static String getPackageName(String className) {
+        int lastDot = className.lastIndexOf('.');
+        return (lastDot != -1) ? className.substring(0, lastDot) : "";
     }
 }

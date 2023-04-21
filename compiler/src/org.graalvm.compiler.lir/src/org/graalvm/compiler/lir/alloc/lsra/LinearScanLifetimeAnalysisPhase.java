@@ -375,7 +375,7 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                             liveIn.clone(); // trimToSize()
 
                             if (debug.isLogEnabled()) {
-                                debug.log("block %d: livein = %s,  liveout = %s", (int) block.getId(), liveIn, blockSets.liveOut);
+                                debug.log("block %d: livein = %s,  liveout = %s", block.getId(), liveIn, blockSets.liveOut);
                             }
                         }
                     }

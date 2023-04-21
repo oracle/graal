@@ -314,8 +314,9 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         DebugContext debug = accessImpl.getDebugContext();
         try (Scope s = debug.scope("link");
                         Activation a = debug.activate()) {
-            if (FileUtils.executeCommand(linkerCommand) != 0) {
-                VMError.shouldNotReachHere();
+            int cmdResult = FileUtils.executeCommand(linkerCommand);
+            if (cmdResult != 0) {
+                VMError.shouldNotReachHereUnexpectedInput(cmdResult); // ExcludeFromJacocoGeneratedReport
             }
             BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY_SHIM, shimLibrary);
             debug.log("%s: OK", shimLibrary.getFileName());

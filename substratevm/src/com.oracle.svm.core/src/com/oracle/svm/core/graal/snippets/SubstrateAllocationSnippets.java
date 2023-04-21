@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,6 +97,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -306,12 +307,15 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
             throw new InstantiationException("Can only allocate instance objects for concrete classes.");
         } else if (!hub.isInstantiated()) {
+            if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors()) {
+                MissingReflectionRegistrationUtils.forClass(hub.getTypeName());
+            }
             throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
                             " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         } else if (LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
             throw new InstantiationException("Cannot allocate objects of special hybrid types.");
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(hub); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -345,7 +349,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             throw new IllegalArgumentException("Class " + DynamicHub.toClass(elementType).getTypeName() + "[] is instantiated reflectively but was never registered." +
                             "Register the class by adding \"unsafeAllocated\" for the class in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         } else {
-            VMError.shouldNotReachHere();
+            VMError.shouldNotReachHereUnexpectedInput(elementType); // ExcludeFromJacocoGeneratedReport
         }
     }
 

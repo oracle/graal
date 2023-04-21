@@ -34,6 +34,7 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getType;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getVal;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
 import java.util.ArrayList;
@@ -768,7 +769,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         } else if (register.equals(ReservedRegisters.singleton().getFrameRegister())) {
             value = builder.buildReadRegister(builder.register(ReservedRegisters.singleton().getFrameRegister().name));
         } else {
-            throw VMError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw VMError.shouldNotReachHereUnexpectedInput(register); // ExcludeFromJacocoGeneratedReport
         }
         return new LLVMVariable(value);
     }
@@ -788,7 +789,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 buildInlineSetRegister(ReservedRegisters.singleton().getHeapBaseRegister().name, getVal(src));
             }
         } else {
-            throw VMError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw VMError.shouldNotReachHereUnexpectedInput(dst); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1386,12 +1387,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             LLVMValueRef convert;
             switch (op.getCategory()) {
                 case FloatingPointToInteger:
-                    /* NaNs are converted to 0 in Java, but are undefined in LLVM */
-                    LLVMValueRef value = getVal(inputVal);
-                    LLVMValueRef isNan = builder.buildCompare(Condition.NE, value, value, true);
-                    LLVMValueRef converted = builder.buildFPToSI(getVal(inputVal), destType);
-                    LLVMValueRef zero = builder.constantInteger(0, LLVMIRBuilder.integerTypeWidth(destType));
-                    convert = builder.buildSelect(isNan, zero, converted);
+                    convert = builder.buildSaturatingFloatingPointToInteger(op, getVal(inputVal));
                     break;
                 case IntegerToFloatingPoint:
                     convert = builder.buildSIToFP(getVal(inputVal), destType);
@@ -1784,7 +1780,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                     case Void:
                     case Illegal:
                     default:
-                        throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw shouldNotReachHereUnexpectedValue(types[i]); // ExcludeFromJacocoGeneratedReport
                 }
 
                 printfArgs.add(values[i]);

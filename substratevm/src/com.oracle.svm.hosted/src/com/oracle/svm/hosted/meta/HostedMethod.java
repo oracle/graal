@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
@@ -258,12 +258,12 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean hasCodeOffsetInImage() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public int getCodeOffsetInImage() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -502,7 +502,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public void reprofile() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -517,12 +517,12 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
 
     @Override
     public boolean isDefault() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public SpeculationLog getSpeculationLog() {
-        throw shouldNotReachHere();
+        throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

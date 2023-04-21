@@ -207,7 +207,7 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
             SimpleVirtualStackSlot stackSlot = (SimpleVirtualStackSlot) value;
             return new SimpleVirtualStackSlotAlias(newKind, stackSlot);
         } else {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(value); // ExcludeFromJacocoGeneratedReport
         }
     }
 

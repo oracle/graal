@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.18.2",
+  "mxversion": "6.19.3",
   "name" : "sdk",
   "version" : "23.1.0",
   "release" : False,
@@ -625,6 +625,65 @@ suite = {
       "maven": False,
       "license" : "Apache-2.0-LLVM",
       "defaultBuild" : False,
+    },
+    "LLVM_NINJA_TOOLCHAIN": {
+      "native": True,
+      "platformDependent": True,
+      "os": {
+        "linux": {
+          "layout": {
+            "toolchain.ninja": {
+              "source_type": "string",
+              "value": '''
+include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+CC=<path:LLVM_TOOLCHAIN>/bin/clang
+CXX=<path:LLVM_TOOLCHAIN>/bin/clang++
+AR=<path:LLVM_TOOLCHAIN>/bin/llvm-ar
+LDFLAGS=-fuse-ld=lld
+'''
+            },
+          },
+          "dependencies": [
+            "mx:GCC_NINJA_TOOLCHAIN",
+          ],
+        },
+        "darwin": {
+          "layout": {
+            "toolchain.ninja": {
+              "source_type": "string",
+              "value": '''
+include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+CC=xcrun <path:LLVM_TOOLCHAIN>/bin/clang
+CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
+AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
+'''
+            },
+          },
+          "dependencies": [
+            "mx:GCC_NINJA_TOOLCHAIN",
+          ],
+        },
+        "windows": {
+          "layout": {
+            "toolchain.ninja": {
+              "source_type": "string",
+              "value": '''
+include <ninja-toolchain:MSVC_NINJA_TOOLCHAIN>
+CL=<path:LLVM_TOOLCHAIN>\\bin\\clang-cl
+LINK=<path:LLVM_TOOLCHAIN>\\bin\\lld-link
+LIB=<path:LLVM_TOOLCHAIN>\\bin\\llvm-lib
+ML=<path:LLVM_TOOLCHAIN>\\bin\\llvm-ml
+'''
+            },
+          },
+          "dependencies": [
+            "mx:MSVC_NINJA_TOOLCHAIN",
+          ],
+        },
+      },
+      "dependencies": [
+        "LLVM_TOOLCHAIN",
+      ],
     },
   },
 }

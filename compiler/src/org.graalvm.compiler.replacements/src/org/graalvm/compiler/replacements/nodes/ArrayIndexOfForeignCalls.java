@@ -152,7 +152,7 @@ public class ArrayIndexOfForeignCalls {
                     case S4:
                         return valueCount == 2 ? STUB_INDEX_OF_RANGE_1_S4 : STUB_INDEX_OF_RANGE_2_S4;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
             case WithMask:
                 switch (stride) {
@@ -163,7 +163,7 @@ public class ArrayIndexOfForeignCalls {
                     case S4:
                         return STUB_INDEX_OF_WITH_MASK_S4;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
             case FindTwoConsecutive:
                 switch (stride) {
@@ -174,7 +174,7 @@ public class ArrayIndexOfForeignCalls {
                     case S4:
                         return STUB_INDEX_OF_TWO_CONSECUTIVE_S4;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
             case FindTwoConsecutiveWithMask:
                 switch (stride) {
@@ -185,7 +185,7 @@ public class ArrayIndexOfForeignCalls {
                     case S4:
                         return STUB_INDEX_OF_TWO_CONSECUTIVE_WITH_MASK_S4;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
             case Table:
                 switch (stride) {
@@ -196,10 +196,10 @@ public class ArrayIndexOfForeignCalls {
                     case S4:
                         return STUB_INDEX_OF_TABLE_S4;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(indexOfNode.getVariant()); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

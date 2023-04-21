@@ -60,13 +60,13 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
           lineStart = 3073,
           lineEnd   = 3117,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
-          sha1      = "c38d6d5e61b39b8ea0e05b4e7336e661b56bb861")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "ab70559cefe0dc177a290d417047955fba3ad1fc")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 6825,
-          lineEnd   = 7138,
-          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
-          sha1      = "8e058ecf6bb3c36578673881de7b36a4cf804842")
+          lineStart = 6819,
+          lineEnd   = 7132,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "2e4ea1436904cbd5a933eb8c687296d9bbefe4f0")
 // @formatter:on
 public final class AMD64BigIntegerSquareToLenOp extends AMD64LIRInstruction {
 

@@ -101,12 +101,12 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * @return the value on the top of the stack
      */
     default ValueNode pop(JavaKind slotKind) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     @SuppressWarnings("unused")
     default ValueNode[] popArguments(int argSize) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -481,7 +481,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      * @return a begin node that precedes the actual exception instantiation code.
      */
     default AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionKind exceptionKind, ValueNode... exceptionArguments) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -496,7 +496,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      *            {@code plugin}
      */
     default void replacePlugin(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args, PluginReplacementNode.ReplacementFunction replacementFunction) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -513,7 +513,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
      */
     default void replacePluginWithException(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args,
                     PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction replacementFunction) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 }
 

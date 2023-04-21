@@ -90,12 +90,12 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
 
     @Override
     public int getArrayIndexScale(JavaKind elementKind) {
-        throw shouldNotReachHere();
+        throw shouldNotReachHere("should not be reached during analysis");
     }
 
     @Override
     public int getArrayBaseOffset(JavaKind elementKind) {
-        throw shouldNotReachHere();
+        throw shouldNotReachHere("should not be reached during analysis");
     }
 
     @Override

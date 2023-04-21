@@ -181,7 +181,7 @@ public class Fields {
         } else if (obj instanceof char[]) {
             objCopy = Arrays.copyOf((char[]) obj, ((char[]) obj).length);
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHereUnexpectedValue(obj);
         }
         return objCopy;
     }
@@ -251,7 +251,7 @@ public class Fields {
         } else if (type == Byte.TYPE) {
             return UNSAFE.getByte(object, offset);
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHereUnexpectedValue(type);
         }
     }
 
@@ -323,7 +323,7 @@ public class Fields {
         } else if (type == Byte.TYPE) {
             UNSAFE.putByte(object, offset, (byte) value);
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHereUnexpectedValue(type);
         }
     }
 

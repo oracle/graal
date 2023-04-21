@@ -641,7 +641,7 @@ public final class Target_java_lang_Thread {
         } else {
             Target_jdk_internal_misc_PreviewFeatures.ensureEnabled(); // throws
         }
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Substitute
@@ -649,7 +649,7 @@ public final class Target_java_lang_Thread {
     static Thread startVirtualThreadWithoutLoom(Runnable task) {
         Objects.requireNonNull(task);
         ofVirtualWithoutLoom(); // throws
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Substitute

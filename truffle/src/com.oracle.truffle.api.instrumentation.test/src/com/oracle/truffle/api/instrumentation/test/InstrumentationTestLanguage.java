@@ -2020,7 +2020,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 asyncInfo = null;
             }
             final InstrumentContext context = InstrumentContext.get(this);
-            Thread t = context.env.createThread(new Runnable() {
+            Thread t = context.env.newTruffleThreadBuilder(new Runnable() {
                 @Override
                 public void run() {
                     RootCallTarget target = InstrumentContext.get(null).callFunctions.callTargets.get(identifier);
@@ -2030,7 +2030,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                         target.call(new Object[0]);
                     }
                 }
-            });
+            }).build();
             t.setUncaughtExceptionHandler(getPolyglotThreadUncaughtExceptionHandler(context));
             synchronized (context.spawnedThreads) {
                 context.spawnedThreads.add(t);

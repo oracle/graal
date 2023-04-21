@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,7 @@ import org.graalvm.polyglot.io.ByteSequence;
  *
  * The starting point is {@link Source#newBuilder(String, java.io.File)} method.
  *
- * <h3>Read from an URL</h3>
+ * <h3>Read from a URL</h3>
  *
  * One can read remote or in JAR resources using the {@link Source#newBuilder(String, java.net.URL)}
  * factory: <br>
@@ -124,9 +124,9 @@ import org.graalvm.polyglot.io.ByteSequence;
  *
  * @see Context#eval(Source) To evaluate sources.
  * @see Source#findLanguage(File) To detect a language using a File
- * @see Source#findLanguage(URL) To detect a language using an URL.
+ * @see Source#findLanguage(URL) To detect a language using a URL.
  * @see Source#findMimeType(File) To detect a MIME type using a File.
- * @see Source#findMimeType(URL) To detect a MIME type using an URL.
+ * @see Source#findMimeType(URL) To detect a MIME type using a URL.
  * @since 19.0
  */
 public final class Source {
@@ -634,7 +634,7 @@ public final class Source {
      * Returns the probed MIME type for a given url, or <code>null</code> if no MIME type could be
      * resolved. Typically the MIME type is identified using the file extension, connection
      * meta-data and/or using it contents. Returns <code>null</code> if the language of the given
-     * file could not be detected. Probing the language of an URL may require to open a new URL
+     * file could not be detected. Probing the language of a URL may require to open a new URL
      * connection.
      *
      * @throws IOException if an error opening the url occurred.

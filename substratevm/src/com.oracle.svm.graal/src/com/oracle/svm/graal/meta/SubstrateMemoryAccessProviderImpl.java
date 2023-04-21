@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -174,7 +174,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
                 rawValue = isVolatile ? BarrieredAccess.readLongVolatile(baseObject, offset) : BarrieredAccess.readLong(baseObject, offset);
                 break;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(bits); // ExcludeFromJacocoGeneratedReport
         }
         return toConstant(kind, rawValue);
     }
@@ -198,7 +198,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
             case Double:
                 return JavaConstant.forDouble(Double.longBitsToDouble(rawValue));
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 }
