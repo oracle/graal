@@ -97,6 +97,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -306,6 +307,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
             throw new InstantiationException("Can only allocate instance objects for concrete classes.");
         } else if (!hub.isInstantiated()) {
+            if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors()) {
+                MissingReflectionRegistrationUtils.forClass(hub.getTypeName());
+            }
             throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
                             " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
         } else if (LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
