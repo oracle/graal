@@ -2080,6 +2080,9 @@ public class NativeImage {
         NativeImageArgsProcessor argsProcessor = new NativeImageArgsProcessor(null);
         for (String arg : getNativeImageArgs()) {
             argsProcessor.accept(arg);
+            if (arg.matches("--enable-monitoring=(.*,)*(jfr|all)(,.*)*\\Z")) {
+                imageBuilderJavaArgs.add("-XX:StartFlightRecording"); // use JFR at image build time
+            }
         }
         return argsProcessor.apply(false);
     }
