@@ -103,8 +103,6 @@ public interface VirtualizerTool extends CoreProviders {
 
     void setEnsureVirtualized(VirtualObjectNode virtualObject, boolean ensureVirtualized);
 
-    boolean getEnsureVirtualized(VirtualObjectNode virtualObject);
-
     // operations on the current node
 
     /**
