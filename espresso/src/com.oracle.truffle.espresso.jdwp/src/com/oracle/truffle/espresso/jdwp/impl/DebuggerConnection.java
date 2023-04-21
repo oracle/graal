@@ -68,7 +68,7 @@ public final class DebuggerConnection implements Commands {
                 return;
             }
             // only a JDWP resume/resumeAll command can resume this thread
-            controller.suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.singletonList(job), null, false);
+            controller.suspend(context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.singletonList(job), true);
         }
     }
 
