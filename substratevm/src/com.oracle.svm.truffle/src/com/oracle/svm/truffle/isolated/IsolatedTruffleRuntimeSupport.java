@@ -35,10 +35,13 @@ import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.graal.isolated.CompilerHandle;
 import com.oracle.svm.graal.isolated.CompilerIsolateThread;
+import com.oracle.svm.graal.isolated.ImageHeapObjects;
+import com.oracle.svm.graal.isolated.ImageHeapRef;
 import com.oracle.svm.graal.isolated.IsolatedCodeInstallBridge;
 import com.oracle.svm.graal.isolated.IsolatedCompileClient;
 import com.oracle.svm.graal.isolated.IsolatedCompileContext;
@@ -52,9 +55,22 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public final class IsolatedTruffleRuntimeSupport {
     public static Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
-        @SuppressWarnings("unchecked")
-        ClientHandle<OptimizedAssumption> assumptionHandle = (ClientHandle<OptimizedAssumption>) ((IsolatedObjectConstant) optimizedAssumptionConstant).getHandle();
-        ClientHandle<Consumer<OptimizedAssumptionDependency>> consumerHandle = registerOptimizedAssumptionDependency0(IsolatedCompileContext.get().getClient(), assumptionHandle);
+        ClientHandle<Consumer<OptimizedAssumptionDependency>> consumerHandle;
+        if (optimizedAssumptionConstant instanceof IsolatedObjectConstant) {
+            @SuppressWarnings("unchecked")
+            ClientHandle<OptimizedAssumption> assumptionHandle = (ClientHandle<OptimizedAssumption>) ((IsolatedObjectConstant) optimizedAssumptionConstant).getHandle();
+            consumerHandle = registerOptimizedAssumptionDependency0(IsolatedCompileContext.get().getClient(), assumptionHandle);
+        } else {
+            /*
+             * Assumptions can be image heap objects referenced by direct object constants in
+             * encoded graphs, so translate those to the object in the client isolate. This is in
+             * line with what we do elsewhere such as in IsolateAwareConstantReflectionProvider. As
+             * in those cases, it is crucial that such assumption constants are accessed only via
+             * the appropriate isolate-aware providers during compilation.
+             */
+            ImageHeapRef<OptimizedAssumption> assumptionRef = ImageHeapObjects.ref(SubstrateObjectConstant.asObject(OptimizedAssumption.class, optimizedAssumptionConstant));
+            consumerHandle = registerImageHeapOptimizedAssumptionDependency0(IsolatedCompileContext.get().getClient(), assumptionRef);
+        }
         if (consumerHandle.equal(IsolatedHandles.nullHandle())) {
             return null;
         }
@@ -76,6 +92,18 @@ public final class IsolatedTruffleRuntimeSupport {
                     @SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<OptimizedAssumption> assumptionHandle) {
 
         OptimizedAssumption assumption = IsolatedCompileClient.get().unhand(assumptionHandle);
+        return registerOptimizedAssumptionDependency1(assumption);
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static ClientHandle<Consumer<OptimizedAssumptionDependency>> registerImageHeapOptimizedAssumptionDependency0(
+                    @SuppressWarnings("unused") ClientIsolateThread client, ImageHeapRef<OptimizedAssumption> assumptionRef) {
+
+        OptimizedAssumption assumption = ImageHeapObjects.deref(assumptionRef);
+        return registerOptimizedAssumptionDependency1(assumption);
+    }
+
+    private static ClientHandle<Consumer<OptimizedAssumptionDependency>> registerOptimizedAssumptionDependency1(OptimizedAssumption assumption) {
         Consumer<OptimizedAssumptionDependency> observer = assumption.registerDependency();
         return IsolatedCompileClient.get().hand(observer);
     }
