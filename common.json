@@ -10,7 +10,7 @@
   "jdks": {
     "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
 
-    "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.6",  "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
+    "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.7",  "build_id": "8", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b10", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b10-debug", "platformspecific": true },
     "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.7+4-jvmci-23.0-b10-sulong", "platformspecific": true },
