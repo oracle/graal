@@ -223,23 +223,31 @@ public class GraalHotSpotVMConfigAccess {
 
     static void reportError(String rawErrorMessage) {
         String value = System.getenv("JVMCI_CONFIG_CHECK");
-        Formatter errorMessage = new Formatter().format(rawErrorMessage);
-        String javaHome = getProperty("java.home");
-        String vmName = getProperty("java.vm.name");
-        errorMessage.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
-        errorMessage.format("this error or to \"warn\" to emit a warning and continue execution.%n");
-        errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
-        errorMessage.format("Currently used VM configuration is: %s%n", vmName);
+        if (!JVMCI && value == null) {
+            // We cannot control when VM config updates are made in non-JVMCI
+            // JDKs so disable this check by default.
+            value = "ignore";
+        }
         if ("ignore".equals(value)) {
             return;
-        } else if ("warn".equals(value) || JDK_PRERELEASE) {
-            System.err.println(errorMessage.toString());
-        } else if (!JVMCI && Assertions.assertionsEnabled()) {
-            // We cannot control when VM config updates are made in non JVMCI JDKs so
-            // only issue a warning and only when assertions are enabled.
-            System.err.println(errorMessage.toString());
-        } else if (JVMCI) {
-            throw new JVMCIError(errorMessage.toString());
+        }
+        boolean warn = "warn".equals(value) || JDK_PRERELEASE;
+        Formatter message = new Formatter().format(rawErrorMessage);
+        String javaHome = getProperty("java.home");
+        String vmName = getProperty("java.vm.name");
+        if (warn) {
+            message.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
+            message.format("this warning and continue execution.%n");
+        } else {
+            message.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
+            message.format("this error or to \"warn\" to emit a warning and continue execution.%n");
+        }
+        message.format("Currently used Java home directory is %s.%n", javaHome);
+        message.format("Currently used VM configuration is: %s%n", vmName);
+        if (warn) {
+            System.err.println(message.toString());
+        } else {
+            throw new JVMCIError(message.toString());
         }
     }
 
