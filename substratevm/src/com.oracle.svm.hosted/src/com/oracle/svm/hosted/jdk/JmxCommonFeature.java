@@ -121,6 +121,27 @@ public class JmxCommonFeature implements InternalFeature {
         configureProxy(access);
     }
 
+    /**
+     * This method handles proxy registrations for PlatformMXBeans. We are able to do the
+     * registrations for PlatformMXBeans because they are known and there are a finite number of
+     * them. If a user wishes to register a custom standard MBean with the MBeanServer, they will
+     * have to provide their own proxy configuration in a JSON file. This documented in the remote
+     * JMX guide.
+     *
+     * <P>
+     * PlatformMXBeans require proxy configuration so that JMX client implementations can use
+     * proxies to simplify the client's interaction with MBeans on the server (in a different
+     * application). Using proxies makes the connection/sending/receiving of data transparent.
+     * </P>
+     *
+     * <P>
+     * Proxy registration also registers the methods of these MXBeans for reflection. This is
+     * important because they are accessed in many places in the JMX infrastructure ie.
+     * com.sun.jmx.remote.internal.rmi.ProxyRef#invoke , com.sun.jmx.mbeanserver.MXBeanIntrospector,
+     * com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory, com.sun.jmx.mbeanserver.MXBeanProxy,
+     * javax.management.MBeanServerInvocationHandler#isLocal
+     * </P>
+     */
     private static void configureProxy(BeforeAnalysisAccess access) {
         DynamicProxyRegistry dynamicProxySupport = ImageSingletons.lookup(DynamicProxyRegistry.class);
         dynamicProxySupport.addProxyClass(access.findClassByName("com.sun.management.GarbageCollectorMXBean"), access.findClassByName("javax.management.NotificationEmitter"));
@@ -146,6 +167,18 @@ public class JmxCommonFeature implements InternalFeature {
         JNIRuntimeAccess.register(ReflectionUtil.lookupMethod(Arrays.class, "asList", Object[].class));
     }
 
+    /**
+     * This configuration is required to send data between JMX client and server.
+     *
+     * Only MXBeans (which use javax.management.openmbean.OpenType) and standard MBeans are
+     * currently supported. To support MXBeans there must be metadata configuration for OpenTypes
+     * (ie. javax.management.openmbean.SimpleType, javax.management.openmbean.TabularType,
+     * javax.management.openmbean.CompositeData, javax.management.openmbean.ArrayType). These
+     * OpenTypes are reflectively accessed at multiple points in the remote JMX infrastructure (See
+     * sun.management.MappedMXBeanType, com.sun.jmx.mbeanserver.MXBeanMapping#makeOpenClass(Type,
+     * OpenType<?>) )
+     *
+     */
     private static void configureSerialization(BeforeAnalysisAccess access) {
         String[] classes = {
                         "[B", "com.oracle.svm.core.jdk.UnsupportedFeatureError",
@@ -201,6 +234,27 @@ public class JmxCommonFeature implements InternalFeature {
         }
     }
 
+    /**
+     * This method configures reflection metadata shared between both JMX client and server.
+     * <ul>
+     * <li>All <i>*Skel</i> and <i>*Stub</i> classes must be registered for reflection along with
+     * their constructors. See sun.rmi.server.Util#createSkeleton(Remote) and
+     * sun.rmi.server.Util#stubClassExists(Class) for reflection use example.</li>
+     *
+     * <li>All methods of <i>*Info</i> classes with static <i>from</i> methods must be registered
+     * for reflection. See for example com.sun.management.GcInfo#from(CompositeData) and
+     * java.lang.management.MemoryUsage#from(CompositeData). This is because these classes have
+     * their methods reflectively accessed from their static <i>from</i> methods. Remote JMX
+     * infrastructure uses the following pattern: the <i>*Info</i> classes have a corresponding
+     * "CompositeData" class which is used to construct them using the static <i>from</i>method.
+     * (ie. SomeInfo would correspond to SomeInfoCompositeData extends LazyCompositeData).</li>
+     *
+     * <li>javax.management.remote.rmi.RMIServer requires registration of all its methods as they
+     * are used from javax.management.remote.rmi.RMIServerImpl_Stub.</li>
+     * <li>javax.management.remote.rmi.RMIConnection requires registration of all its methods as
+     * they are used from javax.management.remote.rmi.RMIConnectionImpl_Stub.</li>
+     * </ul>
+     */
     private static void configureReflection(BeforeAnalysisAccess access) {
         String[] classes = {
                         "com.sun.management.internal.OperatingSystemImpl",
