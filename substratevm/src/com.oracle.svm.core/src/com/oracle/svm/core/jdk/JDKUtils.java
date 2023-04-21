@@ -25,6 +25,7 @@
 package com.oracle.svm.core.jdk;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.VMError;
 
 public final class JDKUtils {
 
@@ -37,7 +38,31 @@ public final class JDKUtils {
         return SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).detailMessage;
     }
 
+    /**
+     * Gets the materialized {@link StackTraceElement} array stored in a {@link Throwable} object.
+     * Must only be called if {@link #isStackTraceValid} is {@code true}.
+     */
     public static StackTraceElement[] getRawStackTrace(Throwable ex) {
+        VMError.guarantee(isStackTraceValid(ex));
         return SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).stackTrace;
+    }
+
+    /**
+     * Returns {@code true} if the {@linkplain #getRawStackTrace stack trace} stored a
+     * {@link Throwable} object is valid. If not, {@link #getBacktrace} must be used to access the
+     * java stack trace frames.
+     */
+    public static boolean isStackTraceValid(Throwable ex) {
+        StackTraceElement[] stackTrace = SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).stackTrace;
+        return stackTrace != Target_java_lang_Throwable.UNASSIGNED_STACK && stackTrace != null;
+    }
+
+    /**
+     * Gets the raw backtrace of a {@link Throwable} object. Must only be called if
+     * {@link #isStackTraceValid} is {@code false}.
+     */
+    public static Object getBacktrace(Throwable ex) {
+        VMError.guarantee(!isStackTraceValid(ex));
+        return SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).backtrace;
     }
 }

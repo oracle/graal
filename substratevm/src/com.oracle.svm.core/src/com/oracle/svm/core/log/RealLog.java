@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
@@ -39,12 +40,21 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.JDKUtils;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.util.VMError;
 
 public class RealLog extends Log {
@@ -626,25 +636,105 @@ public class RealLog extends Log {
          * is better than printing nothing.
          */
         String detailMessage = JDKUtils.getRawMessage(t);
-        StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
 
         string(t.getClass().getName()).string(": ").string(detailMessage);
-        if (stackTrace != null) {
-            int i;
-            for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
-                StackTraceElement element = stackTrace[i];
-                if (element != null) {
-                    newline();
-                    string("    at ").string(element.getClassName()).string(".").string(element.getMethodName());
-                    string("(").string(element.getFileName()).string(":").signed(element.getLineNumber()).string(")");
+        if (!JDKUtils.isStackTraceValid(t)) {
+            int remaining = visitBacktrace(t, maxFrames);
+            printRemaining(remaining);
+        } else {
+            StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
+            if (stackTrace != null) {
+                int i;
+                for (i = 0; i < stackTrace.length && i < maxFrames; i++) {
+                    StackTraceElement element = stackTrace[i];
+                    if (element != null) {
+                        printJavaFrame(element.getClassName(), element.getMethodName(), element.getFileName(), element.getLineNumber());
+                    }
                 }
-            }
-            int remaining = stackTrace.length - i;
-            if (remaining > 0) {
-                newline().string("    ... ").unsigned(remaining).string(" more");
+                int remaining = stackTrace.length - i;
+                printRemaining(remaining);
             }
         }
         newline();
         return this;
+    }
+
+    private void printJavaFrame(String className, String methodName, String fileName, int lineNumber) {
+        newline();
+        string("    at ").string(className).string(".").string(methodName);
+        string("(").string(fileName).string(":").signed(lineNumber).string(")");
+    }
+
+    private void printRemaining(int remaining) {
+        if (remaining > 0) {
+            newline().string("    ... ").unsigned(remaining).string(" more");
+        }
+    }
+
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "We know PrintStackTraceVisitor does not allocate.")
+    private int visitBacktrace(Throwable t, int maxFrames) {
+        int framesProcessed = 0;
+        int maxJavaStackTraceDepth = SubstrateOptions.maxJavaStackTraceDepth();
+        Object backtrace = JDKUtils.getBacktrace(t);
+        if (backtrace != null) {
+            final long[] trace = (long[]) backtrace;
+            for (long address : trace) {
+                if (address == 0) {
+                    break;
+                }
+                framesProcessed = decodeRawIp(address, framesProcessed, maxFrames, maxJavaStackTraceDepth);
+                if (framesProcessed == maxJavaStackTraceDepth) {
+                    break;
+                }
+            }
+        }
+        return framesProcessed - maxFrames;
+    }
+
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
+    private int decodeRawIp(long address, int oldFramesProcessed, int maxFrames, int maxJavaStackTraceDepth) {
+        int framesProcessed = oldFramesProcessed;
+        CodePointer ip = WordFactory.pointer(address);
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (untetheredInfo.isNull()) {
+            /* Unknown frame. Must not happen for AOT-compiled code. */
+            VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
+        }
+
+        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+        try {
+            CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
+            framesProcessed = decodeRawFrame(ip, tetheredCodeInfo, framesProcessed, maxFrames, maxJavaStackTraceDepth);
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredInfo, tether);
+        }
+        return framesProcessed;
+    }
+
+    @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
+    private int decodeRawFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesProcessed, int maxFrames, int maxJavaStackTraceDepth) {
+        int framesProcessed = oldFramesProcessed;
+        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(tetheredCodeInfo, ip);
+        for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
+            if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {
+                /* Always ignore the frame. It is an internal frame of the VM. */
+                continue;
+            }
+            if (framesProcessed == 0 && Throwable.class.isAssignableFrom(frameInfo.getSourceClass())) {
+                /*
+                 * We are still in the constructor invocation chain at the beginning of the stack
+                 * trace, which is also filtered by the Java HotSpot VM.
+                 */
+                continue;
+            }
+            if (framesProcessed < maxFrames) {
+                printJavaFrame(frameInfo.getSourceClassName(), frameInfo.getSourceMethodName(), frameInfo.getSourceFileName(), frameInfo.getSourceLineNumber());
+            }
+            framesProcessed++;
+            if (framesProcessed == maxJavaStackTraceDepth) {
+                break;
+            }
+        }
+        return framesProcessed;
     }
 }

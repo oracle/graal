@@ -266,13 +266,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
     private long[] trace = new long[INITIAL_TRACE_SIZE];
 
     static StackTraceElement[] decodeBacktrace(Object backtrace) {
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(true,
-                        SubstrateOptions.maxJavaStackTraceDepth());
-        visitBacktrace(backtrace, visitor);
-        return visitor.trace.toArray(new StackTraceElement[0]);
-    }
-
-    static void visitBacktrace(Object backtrace, JavaStackFrameVisitor visitor) {
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(true, SubstrateOptions.maxJavaStackTraceDepth());
         final long[] trace = (long[]) backtrace;
         for (long address : trace) {
             if (address == 0) {
@@ -283,10 +277,11 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
                 break;
             }
         }
+        return visitor.trace.toArray(new StackTraceElement[0]);
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private static boolean decodeRawIp(JavaStackFrameVisitor visitor, CodePointer ip) {
+    private static boolean decodeRawIp(BuildStackTraceVisitor visitor, CodePointer ip) {
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
             /* Unknown frame. Must not happen for AOT-compiled code. */
@@ -306,7 +301,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
     }
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
-    private static boolean visitRawFrame(JavaStackFrameVisitor visitor, CodePointer ip, CodeInfo tetheredCodeInfo) {
+    private static boolean visitRawFrame(BuildStackTraceVisitor visitor, CodePointer ip, CodeInfo tetheredCodeInfo) {
         return visitor.visitFrame(WordFactory.nullPointer(), ip, tetheredCodeInfo, null);
     }
 
