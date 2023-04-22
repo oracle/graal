@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -33,6 +33,7 @@ project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
 
 if(WIN32)
    include_directories(include/win)
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations")
 elseif(APPLE)
    link_libraries(-lm)
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations")

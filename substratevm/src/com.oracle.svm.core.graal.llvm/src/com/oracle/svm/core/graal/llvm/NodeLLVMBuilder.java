@@ -557,7 +557,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         newArgs[0] = anchor;
         newArgs[1] = callee;
         System.arraycopy(args, 0, newArgs, 2, args.length);
-        return emitCallInstruction(invoke, nativeABI, wrapper, patchpointId, newArgs);
+        LLVMValueRef wrapperCall = emitCallInstruction(invoke, nativeABI, wrapper, patchpointId, newArgs);
+        builder.setInstructionCallingConvention(wrapperCall, LLVMIRBuilder.LLVMCallingConvention.GraalCallingConvention);
+        return wrapperCall;
     }
 
     private LLVMValueRef emitCallInstruction(Invoke invoke, boolean nativeABI, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {

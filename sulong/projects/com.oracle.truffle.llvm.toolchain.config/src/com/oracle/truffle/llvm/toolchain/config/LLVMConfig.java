@@ -39,11 +39,11 @@ public abstract class LLVMConfig {
     private LLVMConfig() {}
 
     /** LLVM version string. */
-    public static final String VERSION = "15.0.6";
+    public static final String VERSION = "16.0.1";
     /** Major version of the LLVM API. */
-    public static final int VERSION_MAJOR = 15;
+    public static final int VERSION_MAJOR = 16;
     /** Minor version of the LLVM API. */
     public static final int VERSION_MINOR = 0;
     /** Patch version of the LLVM API. */
-    public static final int VERSION_PATCH = 6;
+    public static final int VERSION_PATCH = 1;
 }

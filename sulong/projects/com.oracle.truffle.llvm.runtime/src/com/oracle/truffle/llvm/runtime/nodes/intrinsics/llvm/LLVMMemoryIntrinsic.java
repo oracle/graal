@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,11 +33,14 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMAlignedAllocNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMPosixMemalignNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -138,20 +141,16 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
         }
     }
 
-    @NodeChild(type = LLVMExpressionNode.class)
-    @NodeChild(type = LLVMExpressionNode.class)
-    @NodeChild(type = LLVMExpressionNode.class)
-    public abstract static class LLVMPosixMemalign extends LLVMMemoryIntrinsic {
-        @Child private LLVMPointerStoreNode writePointer = LLVMPointerStoreNode.create();
+    @NodeChild(value = "alignment", type = LLVMExpressionNode.class)
+    @NodeChild(value = "size", type = LLVMExpressionNode.class)
+    public abstract static class LLVMAlignedAlloc extends LLVMMemoryIntrinsic {
+
+        abstract LLVMPointer execute(VirtualFrame frame);
 
         @Specialization
-        protected int doVoid(LLVMPointer memptr, @SuppressWarnings("unused") int alignment, int size,
+        LLVMPointer doAlloc(long alignment, long size,
                         @Cached BranchProfile outOfMemory) {
             try {
-                if (size == 0) {
-                    writePointer.executeWithTarget(memptr, LLVMNativePointer.createNull());
-                    return 0;
-                }
                 LLVMNativePointer address = getLanguage().getLLVMMemory().allocateMemory(this, size);
 
                 /*
@@ -160,35 +159,37 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
                  * alignments that are bigger 16 bytes.
                  */
                 assert ((address.asNative()) & (alignment - 1)) == 0 : "Memory allocation alignment is not 16 bytes.";
-                writePointer.executeWithTarget(memptr, address);
-                return 0;
+
+                return address;
             } catch (OutOfMemoryError | ArithmeticException e) {
                 outOfMemory.enter();
-                return 1;
+                return LLVMNativePointer.createNull();
             }
+        }
+    }
+
+    @NodeChild(value = "memptr", type = LLVMExpressionNode.class)
+    public abstract static class LLVMPosixMemalign extends LLVMMemoryIntrinsic {
+
+        @Child private LLVMPointerStoreNode writePointer = LLVMPointerStoreNode.create();
+        @Child private LLVMAlignedAlloc alignedAlloc;
+
+        public static LLVMPosixMemalign create(LLVMExpressionNode memptr, LLVMExpressionNode alignment, LLVMExpressionNode size) {
+            return LLVMPosixMemalignNodeGen.create(alignment, size, memptr);
+        }
+
+        LLVMPosixMemalign(LLVMExpressionNode alignment, LLVMExpressionNode size) {
+            this.alignedAlloc = LLVMAlignedAllocNodeGen.create(alignment, size);
         }
 
         @Specialization
-        protected int doVoid(LLVMPointer memptr, @SuppressWarnings("unused") long alignment, long size,
-                        @Cached BranchProfile outOfMemory) {
-            try {
-                if (size == 0) {
-                    writePointer.executeWithTarget(memptr, LLVMNativePointer.createNull());
-                    return 0;
-                }
-                LLVMNativePointer address = getLanguage().getLLVMMemory().allocateMemory(this, size);
-
-                /*
-                 * The current default alignment for allocateMemory in Unsafe is 16 bytes. Which is
-                 * the assumption for the alignment here. Sulong does not currently support
-                 * alignments that are bigger 16 bytes.
-                 */
-                assert ((address.asNative()) & (alignment - 1)) == 0 : "Memory allocation alignment is not 16 bytes.";
-                writePointer.executeWithTarget(memptr, address);
-                return 0;
-            } catch (OutOfMemoryError | ArithmeticException e) {
-                outOfMemory.enter();
+        protected int doVoid(VirtualFrame frame, LLVMPointer memptr) {
+            LLVMPointer ret = alignedAlloc.execute(frame);
+            if (ret.isNull()) {
                 return 1;
+            } else {
+                writePointer.executeWithTarget(memptr, ret);
+                return 0;
             }
         }
     }
