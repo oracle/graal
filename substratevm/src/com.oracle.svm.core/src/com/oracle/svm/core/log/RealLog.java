@@ -671,7 +671,6 @@ public class RealLog extends Log {
         }
     }
 
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "We know PrintStackTraceVisitor does not allocate.")
     private int visitBacktrace(Throwable t, int maxFrames) {
         int framesProcessed = 0;
         int maxJavaStackTraceDepth = SubstrateOptions.maxJavaStackTraceDepth();
