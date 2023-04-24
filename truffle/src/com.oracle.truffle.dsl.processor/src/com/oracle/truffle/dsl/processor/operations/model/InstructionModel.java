@@ -108,21 +108,6 @@ public class InstructionModel implements InfoDumpable {
         }
     }
 
-    // TODO: clean this up; may not be needed any more
-    public static class InstructionField {
-        public final TypeMirror type;
-        public final String name;
-        public final boolean needInUncached;
-        public final boolean needLocationFixup;
-
-        public InstructionField(TypeMirror type, String name, boolean needInUncached, boolean needLocationFixup) {
-            this.type = type;
-            this.name = name;
-            this.needInUncached = needInUncached;
-            this.needLocationFixup = needLocationFixup;
-        }
-    }
-
     public static final class Signature {
         private final ProcessorContext context = ProcessorContext.getInstance();
         // Number of value parameters (includes the variadic parameter, if it exists).
@@ -199,8 +184,7 @@ public class InstructionModel implements InfoDumpable {
 
     // Immediate values that get encoded in the bytecode.
     public final List<InstructionImmediate> immediates = new ArrayList<>();
-    // Fields that should be stored on the generated node.
-    public final List<InstructionField> fields = new ArrayList<>();
+
     public boolean continueWhen;
 
     public List<InstructionModel> subInstructions;
