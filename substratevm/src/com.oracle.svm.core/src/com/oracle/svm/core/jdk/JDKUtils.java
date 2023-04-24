@@ -58,7 +58,7 @@ public final class JDKUtils {
     }
 
     /**
-     * Gets the raw backtrace of a {@link Throwable} object. Must only be called if
+     * Gets the internal backtrace of a {@link Throwable} object. Must only be called if
      * {@link #isStackTraceValid} returns (or would return) {@code false}.
      */
     public static Object getBacktrace(Throwable ex) {
