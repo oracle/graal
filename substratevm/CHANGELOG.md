@@ -4,6 +4,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## Version 23.1.0
 * (GR-35746) Lower the default aligned chunk size from 1 MB to 512 KB for the serial and epsilon GCs, reducing memory usage and image size in many cases.
+* (GR-45673) Improve the memory footprint of the Native Image build process. The builder now takes available memory into account to reduce memory pressure when many other processes are running on the same machine. It also consumes less memory in many cases and is therefore also less likely to fail due to out-of-memory errors. At the same time, we have raised its memory limit from 14GB to 32GB.
 
 ## Version 23.0.0
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.
