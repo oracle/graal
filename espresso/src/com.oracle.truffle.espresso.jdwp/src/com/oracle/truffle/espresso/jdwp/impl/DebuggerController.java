@@ -795,6 +795,9 @@ public final class DebuggerController implements ContextsListener {
                 // the risk of being suspended
                 return;
             }
+            if (!instrument.hasConnection()) {
+                return;
+            }
             Object currentThread = getContext().asGuestThread(hostThread);
             fine(() -> "Suspended at: " + event.getSourceSection() + " in thread: " + getThreadName(currentThread));
 
