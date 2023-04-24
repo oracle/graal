@@ -42,6 +42,7 @@
 from __future__ import print_function
 import os
 import os.path
+import re
 
 import mx
 
@@ -126,6 +127,12 @@ class ToolchainTestBuildTask(mx.BuildTask):
         if os.path.exists(self.subject.get_output_root()):
             mx.rmtree(self.subject.get_output_root())
 
+_known_gcc_packages = [
+    (r"/usr/lib/gcc/x86_64-redhat-linux/([0-9]+)", "Oracle Linux or Redhat", r"yum install gcc-c++"),
+    (r"/opt/rh/gcc-toolset-([0-9]+)/.*", "Oracle Linux or Redhat with gcc-toolset", r"yum install gcc-toolset-\1-libstdc++-devel"),
+    (r"/usr/lib/gcc/x86_64-linux-gnu/([0-9]+)", "Ubuntu", r"apt install libstdc++-\1-dev")
+]
+
 def check_multiple_gcc_issue(clang):
     mx.log_error("The LLVM C++ compiler does not work. Do you have the libstdc++ development package installed?")
 
@@ -150,5 +157,12 @@ def check_multiple_gcc_issue(clang):
             mx.log(f"\t{c}")
         mx.log(f"It decided to use this version:\n\t{selected}")
         mx.log("Make sure you have the libstdc++-dev package for that specific version installed.")
+
+    if selected:
+        for (regex, dist, suggestion) in _known_gcc_packages:
+            m = re.fullmatch(regex, selected)
+            if m:
+                mx.log(f"Based on the GCC path, I'm guessing you're running on {dist}.\nTry running '{m.expand(suggestion)}'.")
+                break
 
     mx.abort(1)
