@@ -318,27 +318,19 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Long> InternalThreadStackSize = new HostedOptionKey<>(2L * 1024 * 1024);
 
     /**
-     * Cached value of {@link #MaxJavaStackTraceDepth}. Also used as default value.
+     * Cached value of {@link ConcealedOptions#MaxJavaStackTraceDepth}. Also used as default value.
      */
     private static int maxJavaStackTraceDepth = 1024;
-    @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
-    static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(maxJavaStackTraceDepth) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            super.onValueUpdate(values, oldValue, newValue);
-            maxJavaStackTraceDepth = newValue;
-        }
-    };
 
     /**
-     * Cached accessor for {@link #MaxJavaStackTraceDepth}.
+     * Cached accessor for {@link ConcealedOptions#MaxJavaStackTraceDepth}.
      */
     public static int maxJavaStackTraceDepth() {
         return maxJavaStackTraceDepth;
     }
 
     public static void updateMaxJavaStackTraceDepth(EconomicMap<OptionKey<?>, Object> runtimeValues, int newValue) {
-        SubstrateOptions.MaxJavaStackTraceDepth.update(runtimeValues, newValue);
+        ConcealedOptions.MaxJavaStackTraceDepth.update(runtimeValues, newValue);
     }
 
     /* Same option name and specification as the Java HotSpot VM. */
@@ -771,6 +763,16 @@ public class SubstrateOptions {
         /** Use {@link com.oracle.svm.core.jvmstat.PerfManager#usePerfData()} instead. */
         @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
         public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, Immutable);
+
+        /** Use {@link SubstrateOptions#maxJavaStackTraceDepth()} instead. */
+        @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
+        public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(maxJavaStackTraceDepth) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
+                super.onValueUpdate(values, oldValue, newValue);
+                maxJavaStackTraceDepth = newValue;
+            }
+        };
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
