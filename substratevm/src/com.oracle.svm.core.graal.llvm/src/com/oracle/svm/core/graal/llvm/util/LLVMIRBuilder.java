@@ -1248,46 +1248,62 @@ public class LLVMIRBuilder implements AutoCloseable {
     public void buildDebugInfoForInstr(ValueNode node, LLVMValueRef instr) {
         NodeSourcePosition position = node.getNodeSourcePosition();
         // If the subprogram is null, the debuginfo inside the function is ignored.
-        if ((position != null) && (this.diSubProgram != null)) {
-            DebugContext debugContext = node.getDebug();
-            LLVMDebugInfoProvider.LLVMLocationInfo dbgLocInfo =
-                    dbgInfoProvider.new LLVMLocationInfo(position.getMethod(), position.getBCI(), debugContext);
-            String filename = dbgLocInfo.fileName();
-            // The llvm-link verifier doesn't allow null filenames for subprograms
-            if (!filename.equals("")) {
-                String directory = "";
-                if (dbgLocInfo.filePath() != null) {
-                    directory = dbgLocInfo.filePath().toString();
-                }
-                int lineNum = dbgLocInfo.line();
-                LLVMMetadataRef diFile = getDiFile(filename, directory);
-                LLVMMetadataRef subProgram = getSubProgram(diFile, position.getMethod());
-                LLVMMetadataRef diLocation;
-                // Means the method is inlined
-                if (position.getMethod() != this.mainMethod) {
-                    // TODO: Is it possible to get the location where a method is inlined?
-                    LLVMMetadataRef inlinedAt = LLVM.LLVMDIBuilderCreateDebugLocation(context, 0, 0,
-                            this.diSubProgram, null);
-                    diLocation = LLVM.LLVMDIBuilderCreateDebugLocation(context, lineNum, 0,
-                            subProgram, inlinedAt);
-                } else {
-                    diLocation = LLVM.LLVMDIBuilderCreateDebugLocation(context, lineNum, 0,
-                            subProgram, null);
-                }
-                LLVM.LLVMSetCurrentDebugLocation2(builder, diLocation);
-                // Call instructions require the following API call for the debug info to be set corectly, not really sure why
-                if ((LLVM.LLVMIsACallInst(instr) != null) || (LLVM.LLVMIsAInvokeInst(instr) != null)) {
-                    LLVM.LLVMSetInstDebugLocation(builder, instr);
-                }
-                // Check if this llvm instruction corresponds to any local variables declared
-                if (DebugInfoProviderHelper.getLocalsBySlot(position.getMethod(), position.getBCI()) != null) {
-                    createDILocalVariable(node, instr, diLocation, subProgram, lineNum, position.getBCI(), position.getMethod());
+        if (this.diSubProgram != null) {
+            if ((position != null)) {
+                DebugContext debugContext = node.getDebug();
+                LLVMDebugInfoProvider.LLVMLocationInfo dbgLocInfo =
+                        dbgInfoProvider.new LLVMLocationInfo(position.getMethod(), position.getBCI(), debugContext);
+                String filename = dbgLocInfo.fileName();
+                // The llvm-link verifier doesn't allow null filenames for subprograms
+                if (!filename.equals("")) {
+                    String directory = "";
+                    if (dbgLocInfo.filePath() != null) {
+                        directory = dbgLocInfo.filePath().toString();
+                    }
+                    int lineNum = dbgLocInfo.line();
+                    LLVMMetadataRef diFile = getDiFile(filename, directory);
+                    LLVMMetadataRef subProgram = getSubProgram(diFile, position.getMethod());
+                    LLVMMetadataRef diLocation;
+                    // Means the method is inlined
+                    if (position.getMethod() != this.mainMethod) {
+                        // TODO: Is it possible to get the location where a method is inlined?
+                        LLVMMetadataRef inlinedAt = LLVM.LLVMDIBuilderCreateDebugLocation(context, 0, 0,
+                                this.diSubProgram, null);
+                        diLocation = LLVM.LLVMDIBuilderCreateDebugLocation(context, lineNum, 0,
+                                subProgram, inlinedAt);
+                    } else {
+                        diLocation = LLVM.LLVMDIBuilderCreateDebugLocation(context, lineNum, 0,
+                                subProgram, null);
+                    }
+                    LLVM.LLVMSetCurrentDebugLocation2(builder, diLocation);
+                    // Call instructions require the following API call for the debug info to be set corectly, not really sure why
+                    if ((LLVM.LLVMIsACallInst(instr) != null) || (LLVM.LLVMIsAInvokeInst(instr) != null)) {
+                        LLVM.LLVMSetInstDebugLocation(builder, instr);
+                    }
+                    // Check if this llvm instruction corresponds to any local variables declared
+                    if (DebugInfoProviderHelper.getLocalsBySlot(position.getMethod(), position.getBCI()) != null) {
+                        createDILocalVariable(node, instr, diLocation, subProgram, lineNum, position.getBCI(), position.getMethod());
+                    }
+                    return;
                 }
             }
+            // Set placeholder debug information to make llvm-link verifier pass
+            setPlaceHolderDiLocation(instr);
         }
         // Ignoring adding debug info for instructions with no positions, so if there are inlinable call instructions without
         // position, they will be caught by the asserts of the llvm-linker.
   }
+
+    // Set placeholder debug information to make llvm-link verifier pass
+    public void setPlaceHolderDiLocation(LLVMValueRef instr) {
+        if (((LLVM.LLVMIsACallInst(instr) != null) || (LLVM.LLVMIsAInvokeInst(instr) != null)) &&
+                (this.diSubProgram != null)) {
+            LLVMMetadataRef diLocation = LLVM.LLVMDIBuilderCreateDebugLocation(context, 0, 0,
+                    this.diSubProgram, null);
+            LLVM.LLVMSetCurrentDebugLocation2(builder, diLocation);
+            LLVM.LLVMSetInstDebugLocation(builder, instr);
+        }
+    }
 
     public LLVMValueRef functionEntryCount(LLVMValueRef count) {
         String functionEntryCountName = "function_entry_count";

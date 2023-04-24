@@ -878,6 +878,10 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 setSpecialRegisterValue(reg, builder.buildExtractValue(result, reg.index));
             }
             int numReturnValues = LLVMIRBuilder.countElementTypes(typeOf(result));
+            // Set placeholder debug information to make llvm-link verifier pass
+            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                builder.setPlaceHolderDiLocation(result);
+            }
             return numReturnValues > SpecialRegister.count() ? builder.buildExtractValue(result, SpecialRegister.count()) : result;
         }
         return result;
@@ -911,6 +915,10 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             for (SpecialRegister reg : SpecialRegister.registers()) {
                 assert reg.index < numReturnValues;
                 setSpecialRegisterValue(reg, builder.buildExtractValue(result, reg.index));
+            }
+            // Set placeholder debug information to make llvm-link verifier pass
+            if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                builder.setPlaceHolderDiLocation(result);
             }
             result = numReturnValues > SpecialRegister.count() ? builder.buildExtractValue(result, SpecialRegister.count()) : result;
             builder.buildBranch(successor);

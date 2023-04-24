@@ -260,7 +260,7 @@ public class DebugInfoProviderHelper {
         return (javaKind == JavaKind.Void ? 0 : javaKind.getBitCount());
     }
 
-    // Compute the DWARF encoding for a primitive type. Copied from DwarfInfoSectionImpl
+    // Compute the DWARF encoding for a primitive type. (Copied from DwarfInfoSectionImpl)
     public static byte computeEncoding(int flags, int bitCount) {
         assert bitCount > 0;
         if ((flags & DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_NUMERIC) != 0) {
