@@ -102,7 +102,8 @@ public class CompilationUnit {
 
     /**
      * The key of the compiled multi-method. {@code null} if this is not a compilation of a
-     * multi-method.
+     * multi-method. If the key contains an additional suffix due to name collision prevention, the
+     * suffix is a part of the multi-method key.
      */
     private final String multiMethodKey;
 
