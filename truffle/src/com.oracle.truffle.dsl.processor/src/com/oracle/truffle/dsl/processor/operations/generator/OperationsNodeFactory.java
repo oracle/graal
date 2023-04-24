@@ -3519,27 +3519,22 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 switch (instr.kind) {
                     case BRANCH:
-                        b.statement("int nextBci = bc[bci +  1]");
-
                         if (isUncached) {
-                            b.startIf().string("nextBci <= bci").end().startBlock();
+                            b.startIf().string("bc[bci +  1] <= bci").end().startBlock();
 
                             b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("$this.changeInterpreters(CACHED_INTERPRETER)");
-                            b.statement("return (sp << 16) | nextBci");
+                            b.statement("return (sp << 16) | bc[bci +  1]");
                             b.end();
 
                             b.end();
                         }
-
-                        b.statement("bci = nextBci");
+                        b.statement("bci = bc[bci +  1]");
                         b.statement("continue loop");
                         break;
                     case BRANCH_FALSE:
-                        b.statement("Object operand = frame.getObject(sp - 1)");
-                        b.statement("assert operand instanceof Boolean");
-                        b.startIf().string("operand == Boolean.TRUE").end().startBlock();
+                        b.startIf().string("(Boolean) frame.getObject(sp - 1) == Boolean.TRUE").end().startBlock();
                         b.statement("sp -= 1");
                         b.statement("bci += 2");
                         b.statement("continue loop");
@@ -3556,26 +3551,21 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case INSTRUMENTATION_LEAVE:
                         break;
                     case LOAD_ARGUMENT:
-                        b.statement("int argIndex = bc[bci + 1]");
-                        b.statement("frame.setObject(sp, frame.getArguments()[argIndex])");
+                        b.statement("frame.setObject(sp, frame.getArguments()[bc[bci + 1]])");
                         b.statement("sp += 1");
                         break;
                     case LOAD_CONSTANT:
-                        b.statement("int constantPoolIndex = bc[bci + 1]");
-                        b.statement("frame.setObject(sp, constants[constantPoolIndex])");
+                        b.statement("frame.setObject(sp, constants[bc[bci + 1]])");
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        b.statement("int localIndex = bc[bci + 1]");
-                        b.statement("frame.setObject(sp, " + localFrame + ".getObject(localIndex))");
+                        b.statement("frame.setObject(sp, " + localFrame + ".getObject(bc[bci + 1]))");
                         b.statement("sp += 1");
                         break;
                     }
                     case LOAD_LOCAL_MATERIALIZED:
-                        b.statement("int localIndex = bc[bci + 1]");
-                        b.statement("VirtualFrame matFrame = (VirtualFrame) frame.getObject(sp - 1)");
-                        b.statement("frame.setObject(sp - 1, matFrame.getObject(localIndex))");
+                        b.statement("frame.setObject(sp - 1, ((VirtualFrame) frame.getObject(sp - 1)).getObject(bc[bci + 1]))");
                         break;
                     case POP:
                         b.statement("frame.clear(sp - 1)");
@@ -3595,29 +3585,23 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case STORE_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        b.statement("int localIndex = bc[bci + 1]");
-                        b.statement(localFrame + ".setObject(localIndex, frame.getObject(sp - 1))");
+                        b.statement(localFrame + ".setObject(bc[bci + 1], frame.getObject(sp - 1))");
                         b.statement("frame.clear(sp - 1)");
                         b.statement("sp -= 1");
                         break;
                     }
                     case STORE_LOCAL_MATERIALIZED:
-                        b.statement("int localIndex = bc[bci + 1]");
-                        b.statement("VirtualFrame matFrame = (VirtualFrame) frame.getObject(sp - 2)");
-                        b.statement("matFrame.setObject(localIndex, frame.getObject(sp - 1))");
+                        b.statement("((VirtualFrame) frame.getObject(sp - 2)).setObject(bc[bci + 1], frame.getObject(sp - 1))");
                         b.statement("frame.clear(sp - 1)");
                         b.statement("frame.clear(sp - 2)");
                         b.statement("sp -= 2");
                         break;
                     case THROW:
-                        b.statement("int localIndex = bc[bci + 1]");
-                        b.statement("throw sneakyThrow((Throwable) frame.getObject(localIndex))");
+                        b.statement("throw sneakyThrow((Throwable) frame.getObject(bc[bci + 1]))");
                         break;
                     case YIELD:
-                        b.statement("int constantPoolIndex = bc[bci + 1]");
-                        b.statement("ContinuationLocation location = (ContinuationLocation) constants[constantPoolIndex]");
                         b.statement("frame.copyTo(numLocals, generatorFrame, numLocals, (sp - 1 - numLocals))");
-                        b.statement("frame.setObject(sp - 1, location.createResult(generatorFrame, frame.getObject(sp - 1)))");
+                        b.statement("frame.setObject(sp - 1, ((ContinuationLocation) constants[bc[bci + 1]]).createResult(generatorFrame, frame.getObject(sp - 1)))");
                         b.statement("return (((sp - 1) << 16) | 0xffff)");
                         break;
                     case SUPERINSTRUCTION:

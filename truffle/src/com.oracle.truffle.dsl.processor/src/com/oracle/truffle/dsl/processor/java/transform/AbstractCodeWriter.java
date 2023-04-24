@@ -877,7 +877,6 @@ public abstract class AbstractCodeWriter extends CodeElementScanner<Void, Void> 
                 linePrefix = null;
                 lineWrappingAtWords = false;
                 maxLineLength = prevMaxLineLength;
-                writeLn();
                 indentLineWrapping = true;
                 write(" */");
                 writeLn();
