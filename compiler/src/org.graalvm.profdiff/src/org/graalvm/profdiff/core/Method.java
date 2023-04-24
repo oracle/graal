@@ -254,8 +254,8 @@ public class Method {
             return Pair.create(multiMethodName, null);
         }
         int keyBegin = separatorBegin + StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR.length();
-        int keyEnd = multiMethodName.indexOf('(', keyBegin);
-        if (keyEnd == -1) {
+        int keyEnd = multiMethodName.lastIndexOf('(');
+        if (keyEnd == -1 || keyBegin > keyEnd) {
             throw new IllegalArgumentException("Malformed multi-method name: " + multiMethodName);
         }
         String methodName = multiMethodName.substring(0, separatorBegin) + multiMethodName.substring(keyEnd);
