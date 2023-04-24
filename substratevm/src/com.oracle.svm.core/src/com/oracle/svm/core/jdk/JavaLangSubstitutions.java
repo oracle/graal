@@ -341,7 +341,7 @@ final class Target_java_lang_Throwable {
     }
 
     /**
-     * Records the execution stack in an internal format. The information is transformed into
+     * Records the execution stack in an internal format. The information is transformed into a
      * {@link StackTraceElement} array in
      * {@link Target_java_lang_StackTraceElement#of(Object, int)}.
      *

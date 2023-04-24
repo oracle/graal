@@ -40,7 +40,7 @@ public final class JDKUtils {
 
     /**
      * Gets the materialized {@link StackTraceElement} array stored in a {@link Throwable} object.
-     * Must only be called if {@link #isStackTraceValid} is {@code true}.
+     * Must only be called if {@link #isStackTraceValid} returns (or would return) {@code true}.
      */
     public static StackTraceElement[] getRawStackTrace(Throwable ex) {
         VMError.guarantee(isStackTraceValid(ex));
@@ -48,9 +48,9 @@ public final class JDKUtils {
     }
 
     /**
-     * Returns {@code true} if the {@linkplain #getRawStackTrace stack trace} stored a
+     * Returns {@code true} if the {@linkplain #getRawStackTrace stack trace} stored in a
      * {@link Throwable} object is valid. If not, {@link #getBacktrace} must be used to access the
-     * java stack trace frames.
+     * Java stack trace frames.
      */
     public static boolean isStackTraceValid(Throwable ex) {
         StackTraceElement[] stackTrace = SubstrateUtil.cast(ex, Target_java_lang_Throwable.class).stackTrace;
@@ -59,7 +59,7 @@ public final class JDKUtils {
 
     /**
      * Gets the raw backtrace of a {@link Throwable} object. Must only be called if
-     * {@link #isStackTraceValid} is {@code false}.
+     * {@link #isStackTraceValid} returns (or would return) {@code false}.
      */
     public static Object getBacktrace(Throwable ex) {
         VMError.guarantee(!isStackTraceValid(ex));
