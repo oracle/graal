@@ -98,10 +98,13 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
         /* Register sa_sigaction signal handler */
         structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER() | Signal.SA_RESTART());
         structSigAction.sa_sigaction(dispatcher);
-        synchronized (Target_jdk_internal_misc_Signal.class) {
-            // ensure this does not race with other signal installation
-            Signal.sigaction(Signal.SignalEnum.SIGPROF.getCValue(), structSigAction, WordFactory.nullPointer());
-        }
+        /*
+         * Note this can race with other signals being installed. However, using Java
+         * synchronization is disallowed within a VMOperation. If race-free execution becomes
+         * necessary, then a VMMutex will be needed and additional code will need to be
+         * made @Uniterruptible so that a thread owning the VMMutex cannot block at a safepoint.
+         */
+        Signal.sigaction(Signal.SignalEnum.SIGPROF.getCValue(), structSigAction, WordFactory.nullPointer());
     }
 
     @Override
