@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,15 +26,20 @@ package org.graalvm.compiler.lir.gen;
 
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
+import static org.graalvm.compiler.lir.LIRValueUtil.isStackSlotValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
+import static org.graalvm.compiler.lir.LIRValueUtil.stripCast;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,7 +60,6 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LIRVerifier;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
@@ -329,6 +333,32 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         currentPosition = position;
     }
 
+    private static boolean verify(final LIRInstruction op) {
+        op.visitEachInput(LIRGenerator::allowed);
+        op.visitEachAlive(LIRGenerator::allowed);
+        op.visitEachState(LIRGenerator::allowed);
+        op.visitEachTemp(LIRGenerator::allowed);
+        op.visitEachOutput(LIRGenerator::allowed);
+
+        op.verify();
+        return true;
+    }
+
+    // @formatter:off
+    private static void allowed(Object op, Value val, LIRInstruction.OperandMode mode, EnumSet<LIRInstruction.OperandFlag> flags) {
+        Value value = stripCast(val);
+        if ((isVariable(value) && flags.contains(LIRInstruction.OperandFlag.REG)) ||
+            (isRegister(value) && flags.contains(LIRInstruction.OperandFlag.REG)) ||
+            (isStackSlotValue(value) && flags.contains(LIRInstruction.OperandFlag.STACK)) ||
+            (isConstantValue(value) && flags.contains(LIRInstruction.OperandFlag.CONST) && mode != LIRInstruction.OperandMode.DEF) ||
+            (isIllegal(value) && flags.contains(LIRInstruction.OperandFlag.ILLEGAL))) {
+            return;
+        }
+        throw new GraalError("Invalid LIR%n  Instruction: %s%n  Mode: %s%n  Flags: %s%n  Unexpected value: %s %s",
+                        op, mode, flags, value.getClass().getSimpleName(), value);
+    }
+    // @formatter:on
+
     @Override
     public <I extends LIRInstruction> I append(I op) {
         LIR lir = res.getLIR();
@@ -336,7 +366,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             TTY.println(op.toStringWithIdPrefix());
             TTY.println();
         }
-        assert LIRVerifier.verify(op);
+        assert verify(op);
         ArrayList<LIRInstruction> lirForBlock = lir.getLIRforBlock(getCurrentBlock());
         op.setPosition(currentPosition);
         lirForBlock.add(op);
