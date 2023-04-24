@@ -639,8 +639,8 @@ public class RealLog extends Log {
 
         string(t.getClass().getName()).string(": ").string(detailMessage);
         if (!JDKUtils.isStackTraceValid(t)) {
-            int remaining = visitBacktrace(t, maxFrames);
-            printRemaining(remaining);
+            int remaining = printBacktrace(JDKUtils.getBacktrace(t), maxFrames);
+            printRemainingFramesCount(remaining);
         } else {
             StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
             if (stackTrace != null) {
@@ -652,7 +652,7 @@ public class RealLog extends Log {
                     }
                 }
                 int remaining = stackTrace.length - i;
-                printRemaining(remaining);
+                printRemainingFramesCount(remaining);
             }
         }
         newline();
@@ -665,23 +665,27 @@ public class RealLog extends Log {
         string("(").string(fileName).string(":").signed(lineNumber).string(")");
     }
 
-    private void printRemaining(int remaining) {
+    private void printRemainingFramesCount(int remaining) {
         if (remaining > 0) {
             newline().string("    ... ").unsigned(remaining).string(" more");
         }
     }
 
-    private int visitBacktrace(Throwable t, int maxFrames) {
+    /**
+     * Prints the backtrace stored in {@code Throwable#backtrace}. Keep in sync with
+     * {@code com.oracle.svm.core.jdk.BacktraceVisitor#decodeBacktrace}.
+     */
+    private int printBacktrace(Object backtrace, int maxFrames) {
         int framesProcessed = 0;
         int maxJavaStackTraceDepth = SubstrateOptions.maxJavaStackTraceDepth();
-        Object backtrace = JDKUtils.getBacktrace(t);
         if (backtrace != null) {
             final long[] trace = (long[]) backtrace;
             for (long address : trace) {
                 if (address == 0) {
                     break;
                 }
-                framesProcessed = decodeRawIp(address, framesProcessed, maxFrames, maxJavaStackTraceDepth);
+                CodePointer ip = WordFactory.pointer(address);
+                framesProcessed = printCodePointer(ip, framesProcessed, maxFrames, maxJavaStackTraceDepth);
                 if (framesProcessed == maxJavaStackTraceDepth) {
                     break;
                 }
@@ -691,9 +695,8 @@ public class RealLog extends Log {
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private int decodeRawIp(long address, int oldFramesProcessed, int maxFrames, int maxJavaStackTraceDepth) {
+    private int printCodePointer(CodePointer ip, int oldFramesProcessed, int maxFrames, int maxJavaStackTraceDepth) {
         int framesProcessed = oldFramesProcessed;
-        CodePointer ip = WordFactory.pointer(address);
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
             /* Unknown frame. Must not happen for AOT-compiled code. */
@@ -703,7 +706,7 @@ public class RealLog extends Log {
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
             CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            framesProcessed = decodeRawFrame(ip, tetheredCodeInfo, framesProcessed, maxFrames, maxJavaStackTraceDepth);
+            framesProcessed = printFrame(ip, tetheredCodeInfo, framesProcessed, maxFrames, maxJavaStackTraceDepth);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
@@ -711,7 +714,7 @@ public class RealLog extends Log {
     }
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
-    private int decodeRawFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesProcessed, int maxFrames, int maxJavaStackTraceDepth) {
+    private int printFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesProcessed, int maxFrames, int maxJavaStackTraceDepth) {
         int framesProcessed = oldFramesProcessed;
         CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(tetheredCodeInfo, ip);
         for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
