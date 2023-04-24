@@ -366,7 +366,7 @@ final class Target_java_lang_Throwable {
             return this;
         }
 
-        RawStackFrameVisitor visitor = new RawStackFrameVisitor();
+        BacktraceVisitor visitor = new BacktraceVisitor();
         JavaThreads.visitCurrentStackFrames(visitor);
         backtrace = visitor.getArray();
         return this;
@@ -402,7 +402,7 @@ final class Target_java_lang_StackTraceElement {
             /* Stack trace eagerly created. */
             return stackTrace;
         }
-        return RawStackFrameVisitor.decodeBacktrace(x);
+        return BacktraceVisitor.decodeBacktrace(x);
     }
 
     /**
@@ -419,7 +419,7 @@ final class Target_java_lang_StackTraceElement {
             /* Stack trace eagerly created. */
             return stackTrace;
         }
-        return RawStackFrameVisitor.decodeBacktrace(x);
+        return BacktraceVisitor.decodeBacktrace(x);
     }
 }
 

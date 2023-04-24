@@ -253,7 +253,11 @@ public class StackTraceUtils {
 
 }
 
-final class RawStackFrameVisitor extends StackFrameVisitor {
+/**
+ * Visits the stack frames and collects a backtrace in an internal format to be stored in
+ * {@link Target_java_lang_Throwable#backtrace}.
+ */
+final class BacktraceVisitor extends StackFrameVisitor {
 
     private int index = 0;
     private final int limit = SubstrateOptions.maxJavaStackTraceDepth();
@@ -273,7 +277,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
                 break;
             }
             CodePointer ip = WordFactory.pointer(address);
-            if (decodeRawIp(visitor, ip)) {
+            if (decodeCodePointer(visitor, ip)) {
                 break;
             }
         }
@@ -281,7 +285,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private static boolean decodeRawIp(BuildStackTraceVisitor visitor, CodePointer ip) {
+    private static boolean decodeCodePointer(BuildStackTraceVisitor visitor, CodePointer ip) {
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
             /* Unknown frame. Must not happen for AOT-compiled code. */
@@ -291,7 +295,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
             CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            if (!visitRawFrame(visitor, ip, tetheredCodeInfo)) {
+            if (!visitFrame(visitor, ip, tetheredCodeInfo)) {
                 return true;
             }
         } finally {
@@ -301,7 +305,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
     }
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
-    private static boolean visitRawFrame(BuildStackTraceVisitor visitor, CodePointer ip, CodeInfo tetheredCodeInfo) {
+    private static boolean visitFrame(BuildStackTraceVisitor visitor, CodePointer ip, CodeInfo tetheredCodeInfo) {
         return visitor.visitFrame(WordFactory.nullPointer(), ip, tetheredCodeInfo, null);
     }
 
@@ -326,7 +330,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
     }
 
     /**
-     * Gets the raw backtrace array.
+     * Gets the backtrace array.
      *
      * Tradeoff question: should we make a copy of the trace array to trim it to length index?
      * <ul>
