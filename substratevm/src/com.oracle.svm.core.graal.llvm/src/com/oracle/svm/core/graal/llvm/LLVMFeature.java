@@ -25,8 +25,13 @@
 package com.oracle.svm.core.graal.llvm;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.UniqueShortNameProvider;
+import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
+import com.oracle.svm.hosted.image.NativeImageBFDNameProvider;
+import com.oracle.svm.hosted.image.sources.SourceManager;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
@@ -116,6 +121,31 @@ public class LLVMFeature implements Feature, InternalFeature {
         ImageSingletons.add(TargetGraphBuilderPlugins.class, new LLVMGraphBuilderPlugins());
 
         ImageSingletons.add(SubstrateSuitesCreatorProvider.class, new SubstrateSuitesCreatorProvider());
+        /*
+         * Ensure that the Linux debug unique short name provider is registered when generating
+         * debug info. (Copied from NativeImageDebugInfoFeature)
+         */
+        if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+            if (!UniqueShortNameProviderDefaultImpl.UseDefault.useDefaultProvider()) {
+                if (!ImageSingletons.contains(UniqueShortNameProvider.class)) {
+                    // configure a BFD mangler to provide unique short names for method and field
+                    // symbols
+                    FeatureImpl.AfterRegistrationAccessImpl accessImpl = (FeatureImpl.AfterRegistrationAccessImpl) access;
+                    // the Graal system loader will not duplicate JDK builtin loader classes
+                    ClassLoader systemLoader = ClassLoader.getSystemClassLoader();
+                    // the Graal app loader and image loader and their parent loader will not duplicate
+                    // classes
+                    ClassLoader appLoader = accessImpl.getApplicationClassLoader();
+                    ClassLoader imageLoader = accessImpl.getImageClassLoader().getClassLoader();
+                    ClassLoader imageLoaderParent = imageLoader.getParent();
+                    // the app and image loader should both have the same parent
+                    assert imageLoaderParent == appLoader.getParent();
+                    // ensure the mangle ignores prefix generation for Graal loaders
+                    List<ClassLoader> ignored = List.of(systemLoader, imageLoaderParent, appLoader, imageLoader);
+                    ImageSingletons.add(UniqueShortNameProvider.class, new NativeImageBFDNameProvider(ignored));
+                }
+            }
+        }
     }
 
     @Override
@@ -129,6 +159,12 @@ public class LLVMFeature implements Feature, InternalFeature {
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         lowerings.put(LoadExceptionObjectNode.class, new LLVMLoadExceptionObjectLowering());
     }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        ImageSingletons.add(SourceManager.class, new SourceManager());
+    }
+
 
     static class LLVMVersionChecker {
         private static final int MIN_LLVM_VERSION = 8;

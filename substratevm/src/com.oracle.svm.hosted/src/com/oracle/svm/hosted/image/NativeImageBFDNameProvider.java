@@ -53,9 +53,9 @@ import java.util.List;
  * classloader id otherwise the mangled name will not be recognised and demangled successfully.
  * TODO: Namespace embedding is not yet implemented.
  */
-class NativeImageBFDNameProvider implements UniqueShortNameProvider {
+public class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
-    NativeImageBFDNameProvider(List<ClassLoader> ignore) {
+    public NativeImageBFDNameProvider(List<ClassLoader> ignore) {
         this.ignoredLoaders = ignore;
     }
 

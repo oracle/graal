@@ -57,7 +57,7 @@ class NativeImageDebugInfoFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.GenerateDebugInfo.getValue() > 0;
+        return (SubstrateOptions.GenerateDebugInfo.getValue() > 0) && (!SubstrateOptions.useLLVMBackend());
     }
 
     @Override
