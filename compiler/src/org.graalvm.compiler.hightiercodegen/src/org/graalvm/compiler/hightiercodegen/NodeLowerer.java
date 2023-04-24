@@ -109,6 +109,9 @@ import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.word.WordCastNode;
 
+/**
+ * This class is responsible for generating code for individual {@link Node}s in the graph.
+ */
 public abstract class NodeLowerer {
 
     protected final CodeGenTool codeGenTool;

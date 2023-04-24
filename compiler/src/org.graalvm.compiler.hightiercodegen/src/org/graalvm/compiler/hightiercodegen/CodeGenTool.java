@@ -44,6 +44,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Abstract interface for code generation. Its methods operate at a generally higher level of
+ * abstraction (e.g. {@link #genArrayLoad}, {@link #genFunctionCall}) compared to
+ * {@link CodeBuffer}, which is mainly concerned with emitting individual tokens.
+ */
 public abstract class CodeGenTool {
 
     protected final CodeBuffer codeBuffer;
@@ -56,7 +61,7 @@ public abstract class CodeGenTool {
 
     /**
      * Used for generating method-scoped unique IDs.
-     *
+     * <p>
      * Its value is reset to 0 in {@link CodeGenTool#prepareForMethod(StructuredGraph)}.
      */
     private int methodScopeUniqueID = 0;
@@ -67,7 +72,7 @@ public abstract class CodeGenTool {
     }
 
     /**
-     * Generates an efficient representation of an integer value literal.
+     * Generates an efficient representation of an integral literal.
      */
     public static String getEfficientIntLiteral(long i) {
         StringBuilder sb = new StringBuilder();
@@ -109,7 +114,7 @@ public abstract class CodeGenTool {
 
     /**
      * Generate a unique ID within the scope of the current method.
-     *
+     * <p>
      * Invariant: each call of this method will return a different value for the current method
      * under lowering.
      */
@@ -351,7 +356,7 @@ public abstract class CodeGenTool {
 
     /**
      * Generates a comma-separated list of the given inputs.
-     *
+     * <p>
      * If an input is a {@link Node}, it is lowered in place, otherwise the object is converted to a
      * string.
      */

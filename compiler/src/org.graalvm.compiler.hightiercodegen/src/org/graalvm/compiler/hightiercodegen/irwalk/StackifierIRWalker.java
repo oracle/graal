@@ -69,6 +69,10 @@ import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Generates code by using the Stackifier algorithm to handle control flow. See
+ * {@link #lower(DebugContext)} for an example.
+ */
 public class StackifierIRWalker extends IRWalker {
     public static final String LABEL_PREFIX = "looplabel_";
     protected final BlockNestingVerifier blockNestingVerifier;

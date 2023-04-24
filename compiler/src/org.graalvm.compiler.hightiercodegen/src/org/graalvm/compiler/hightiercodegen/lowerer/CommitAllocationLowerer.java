@@ -38,6 +38,9 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
+/**
+ * Generates code for a {@link CommitAllocationNode} and its associated {@link VirtualObjectNode}s.
+ */
 public class CommitAllocationLowerer {
 
     static class Materialization {

@@ -40,10 +40,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Facilitate lowering of various objects.
- *
- * Methods that want to accept multiple different types for lowering, especially as part of a list
- * of arguments, can accept {@link Emitter} instead of having to creating many overloaded methods.
+ * This class holds utility methods to create instances of {@link IEmitter} to generate various code
+ * constructs, such as identifiers and literals of various types.
  */
 public class Emitter implements IEmitter {
     private static final Emitter NULL = new Emitter(CodeGenTool::genNull);

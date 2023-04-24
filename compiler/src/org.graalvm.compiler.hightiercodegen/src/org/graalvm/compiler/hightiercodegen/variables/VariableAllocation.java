@@ -137,6 +137,10 @@ public abstract class VariableAllocation {
                     return false;
                 }
 
+                /*
+                 * Unscheduled nodes such as ValueProxies are not in the nodeToBlockMap, so for
+                 * safety in this case we disable inlining.
+                 */
                 if (thisNodeBlock == null) {
                     return false;
                 }

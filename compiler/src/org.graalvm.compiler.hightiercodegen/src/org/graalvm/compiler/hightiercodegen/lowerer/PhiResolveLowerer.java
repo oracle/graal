@@ -31,12 +31,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 
 /**
- *
  * Resolves phi's on end node lowering. This component is responsible for scheduling phi-to-phi
  * assignments at control flow merges. If there is a situation like a=b,b=a, no valid scheduling
  * without tmp vars exists that satisfies this relation. Therefore, phi resolving introduces
  * additional variables during code gen.
- *
  */
 public class PhiResolveLowerer {
     private final AbstractEndNode end;
