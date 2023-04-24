@@ -183,15 +183,15 @@ public final class WindowsVMLockSupport extends VMLockSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static void checkResult(int result, String functionName) {
+    static void checkNot0(int result, String functionName) {
         if (result == 0) {
-            fatalError(functionName);
+            fatalError(result, functionName);
         }
     }
 
     @Uninterruptible(reason = "Error handling is interruptible.", calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
-    private static void fatalError(String functionName) {
+    static void fatalError(int result, String functionName) {
         /*
          * Functions are called very early and late during our execution, so there is not much we
          * can do when they fail.
@@ -200,7 +200,7 @@ public final class WindowsVMLockSupport extends VMLockSupport {
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         int lastError = WinBase.GetLastError();
-        Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
+        Log.log().string(functionName).string(" failed and returned ").zhex(result).string(" (lastError=").hex(lastError).string(")").newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
@@ -289,7 +289,7 @@ final class WindowsVMCondition extends VMCondition {
     @Override
     public void block() {
         mutex.clearCurrentThreadOwner();
-        WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()), "SleepConditionVariableCS");
+        WindowsVMLockSupport.checkNot0(Process.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()), "SleepConditionVariableCS");
         mutex.setOwnerToCurrentThread();
     }
 
@@ -297,7 +297,7 @@ final class WindowsVMCondition extends VMCondition {
     @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     public void blockNoTransition() {
         mutex.clearCurrentThreadOwner();
-        WindowsVMLockSupport.checkResult(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
+        WindowsVMLockSupport.checkNot0(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
         mutex.setOwnerToCurrentThread();
     }
@@ -306,7 +306,7 @@ final class WindowsVMCondition extends VMCondition {
     @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     public void blockNoTransitionUnspecifiedOwner() {
         mutex.clearUnspecifiedOwner();
-        WindowsVMLockSupport.checkResult(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
+        WindowsVMLockSupport.checkNot0(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
         mutex.setOwnerToUnspecified();
     }
@@ -328,7 +328,7 @@ final class WindowsVMCondition extends VMCondition {
         }
 
         /* Check for other errors from the timed wait. */
-        WindowsVMLockSupport.checkResult(timedwaitResult, "SleepConditionVariableCS");
+        WindowsVMLockSupport.checkNot0(timedwaitResult, "SleepConditionVariableCS");
 
         /* Return the remaining waiting time. */
         return endTimeInNanos - System.nanoTime();
@@ -352,7 +352,7 @@ final class WindowsVMCondition extends VMCondition {
         }
 
         /* Check for other errors from the timed wait. */
-        WindowsVMLockSupport.checkResult(timedwaitResult, "SleepConditionVariableCSNoTrans");
+        WindowsVMLockSupport.checkNot0(timedwaitResult, "SleepConditionVariableCSNoTrans");
 
         /* Return the remaining waiting time. */
         return endTimeInNanos - System.nanoTime();
@@ -389,12 +389,15 @@ final class WindowsVMSemaphore extends VMSemaphore {
 
     @Override
     public void await() {
-        WindowsVMLockSupport.checkResult(SynchAPI.WaitForSingleObject(hSemaphore, SynchAPI.INFINITE()), "WaitForSingleObject");
+        int ret = SynchAPI.WaitForSingleObject(hSemaphore, SynchAPI.INFINITE());
+        if (ret != SynchAPI.WAIT_OBJECT_0()) {
+            WindowsVMLockSupport.fatalError(ret, "WaitForSingleObject");
+        }
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
-        WindowsVMLockSupport.checkResult(SynchAPI.NoTransitions.ReleaseSemaphore(hSemaphore, 1, WordFactory.nullPointer()), "ReleaseSemaphore");
+        WindowsVMLockSupport.checkNot0(SynchAPI.NoTransitions.ReleaseSemaphore(hSemaphore, 1, WordFactory.nullPointer()), "ReleaseSemaphore");
     }
 }

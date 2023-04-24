@@ -653,11 +653,6 @@ suite = {
             "subDir": "src",
             "native": "static_lib",
             "os_arch": {
-                "solaris": {
-                    "<others>": {
-                        "ignore": "solaris is not supported",
-                    },
-                },
                 "windows": {
                     "<others>": {
                         "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN", "-DJDK_VER=<jdk_ver>"],
@@ -705,6 +700,60 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "ignore": "only needed on darwin",
+                    },
+                },
+            },
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.native.darwin.iohelper": {
+            "subDir": "src",
+            "native": "static_lib",
+            "os_arch": {
+                "darwin": {
+                    "<others>": {
+                        "cflags": ["-ObjC", "-fPIC", "-O1", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only needed on darwin",
+                    },
+                },
+            },
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.native.linux.iohelper": {
+            "subDir": "src",
+            "native": "static_lib",
+            "os_arch" : {
+                "linux": {
+                    "<others>" : {
+                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0", "-D_GNU_SOURCE"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only needed on linux",
+                    },
+                },
+            },
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.native.windows.iohelper": {
+            "subDir": "src",
+            "native": "static_lib",
+            "os_arch": {
+                "windows": {
+                    "amd64" : {
+                        "cflags": ["-MD", "-Zi", "-O2"],
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "ignore": "only needed on windows",
                     },
                 },
             },
@@ -1484,6 +1533,10 @@ suite = {
                     "dependency:com.oracle.svm.native.darwin/*",
                     "dependency:com.oracle.svm.native.jvm.posix/*",
                     "dependency:com.oracle.svm.native.jvm.windows/*",
+                    "dependency:com.oracle.svm.native.linux.iohelper/*",
+                    "dependency:com.oracle.svm.native.darwin.iohelper/*",
+                    "dependency:com.oracle.svm.native.windows.iohelper/*",
+
                 ],
             },
             "description" : "SubstrateVM image builder native components",
