@@ -113,8 +113,8 @@ public final class PythonRegexParser implements RegexParser {
             prevKind = token == null ? null : token.kind;
             token = lexer.next();
             switch (token.kind) {
-                case a:
-                case z:
+                case A:
+                case Z:
                     astBuilder.addPositionAssertion(token);
                     break;
                 case caret:

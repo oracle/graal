@@ -44,10 +44,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.charset.ClassSetContents;
+import com.oracle.truffle.regex.charset.ClassSetContentsAccumulator;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
@@ -55,13 +59,13 @@ import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.util.JavaStringUtil;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.collections.EconomicSet;
 
 public abstract class RegexLexer {
 
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'S', 'W', 'd', 's', 'w');
-    private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\u000b', '\f', '\r', ' ');
+    protected static final TBitSet DEFAULT_WHITESPACE = TBitSet.valueOf('\t', '\n', '\u000b', '\f', '\r', ' ');
     public final RegexSource source;
     /**
      * The source of the input pattern.
@@ -98,6 +102,17 @@ public abstract class RegexLexer {
     protected abstract boolean featureEnabledAZPositionAssertions();
 
     /**
+     * Returns {@code true} if {@code \z} position assertion is supported.
+     */
+    protected abstract boolean featureEnabledZLowerCaseAssertion();
+
+    /**
+     * Returns {@code true} if {@code \w} and {@code \W} word boundary position assertions are
+     * supported.
+     */
+    protected abstract boolean featureEnabledWordBoundaries();
+
+    /**
      * Returns {@code true} if empty minimum values in bounded quantifiers (e.g. {@code {,1}}) are
      * allowed and treated as zero.
      */
@@ -108,6 +123,34 @@ public abstract class RegexLexer {
      * of the character set, even if it is the closing bracket {@code ']'}.
      */
     protected abstract boolean featureEnabledCharClassFirstBracketIsLiteral();
+
+    /**
+     * Returns {@code true} if nested character classes are supported. This is required for
+     * {@link #featureEnabledPOSIXCharClasses()} .
+     */
+    protected abstract boolean featureEnabledNestedCharClasses();
+
+    /**
+     * Returns {@code true} if POSIX character classes, character equivalence classes, and the POSIX
+     * Collating Element Operator are supported. Requires
+     * {@link #featureEnabledNestedCharClasses()}.
+     */
+    protected abstract boolean featureEnabledPOSIXCharClasses();
+
+    /**
+     * Returns the POSIX character class associated to the given name.
+     */
+    protected abstract CodePointSet getPOSIXCharClass(String name);
+
+    /**
+     * Checks if the given string is a valid collation element.
+     */
+    protected abstract void validatePOSIXCollationElement(String sequence);
+
+    /**
+     * Checks if the given string is a valid equivalence class.
+     */
+    protected abstract void validatePOSIXEquivalenceClass(String sequence);
 
     /**
      * Returns {@code true} if forward references are allowed.
@@ -125,9 +168,28 @@ public abstract class RegexLexer {
     protected abstract boolean featureEnabledLineComments();
 
     /**
+     * Returns {@code true} if white space in the pattern is ignored. This is relevant only if line
+     * comments are not supported.
+     */
+    protected abstract boolean featureEnabledIgnoreWhiteSpace();
+
+    /**
+     * The set of codepoints to consider as whitespace in comments and "ignore white space" mode.
+     */
+    protected abstract TBitSet getWhitespace();
+
+    /**
      * Returns {@code true} if octal escapes (e.g. {@code \012}) are supported.
      */
     protected abstract boolean featureEnabledOctalEscapes();
+
+    /**
+     * Returns {@code true} if any constructs that alter a capture group's function, such as
+     * non-capturing groups {@code (?:)} or look-around assertions {@code (?=)}, are supported. If
+     * this flag is {@code false}, groups starting with a question mark {@code (?} do not have any
+     * special meaning.
+     */
+    protected abstract boolean featureEnabledSpecialGroups();
 
     /**
      * Returns {@code true} if unicode property escapes (e.g. {@code \p{...}}) are supported.
@@ -189,6 +251,12 @@ public abstract class RegexLexer {
     protected abstract CodePointSet getPredefinedCharClass(char c);
 
     /**
+     * The maximum value allowed while parsing bounded quantifiers. Larger values will cause a call
+     * to {@link #handleBoundedQuantifierOverflow(long, long)}.
+     */
+    protected abstract long boundedQuantifierMaxValue();
+
+    /**
      * Handle {@code {2,1}}.
      */
     protected abstract RegexSyntaxException handleBoundedQuantifierOutOfOrder();
@@ -199,6 +267,19 @@ public abstract class RegexLexer {
     protected abstract Token handleBoundedQuantifierSyntaxError();
 
     /**
+     * Handle integer overflows in quantifier bounds, e.g. {@code {2147483649}}. If this method
+     * returns a non-null value, it will be returned instead of the current quantifier.
+     */
+    protected abstract Token handleBoundedQuantifierOverflow(long min, long max);
+
+    /**
+     * Handle integer overflows in quantifier bounds, e.g. {@code {2147483649}}. If this method
+     * returns a non-null value, it will be returned instead of the current quantifier. This method
+     * is called when no explicit {@code max} value is present.
+     */
+    protected abstract Token handleBoundedQuantifierOverflowMin(long min, long max);
+
+    /**
      * Handle out of order character class range elements, e.g. {@code [b-a]}.
      */
     protected abstract RegexSyntaxException handleCCRangeOutOfOrder(int startPos);
@@ -206,7 +287,7 @@ public abstract class RegexLexer {
     /**
      * Handle non-codepoint character class range elements, e.g. {@code [\w-a]}.
      */
-    protected abstract void handleCCRangeWithPredefCharClass(int startPos);
+    protected abstract void handleCCRangeWithPredefCharClass(int startPos, ClassSetContents firstAtom, ClassSetContents secondAtom);
 
     /**
      * Handle complement of class set expressions containing strings, e.g. {@code [^\q{abc}]} or
@@ -373,6 +454,8 @@ public abstract class RegexLexer {
                     }
                 }
             } while (p != position);
+        } else if (featureEnabledIgnoreWhiteSpace()) {
+            skipWhitespace();
         }
         if (featureEnabledGroupComments()) {
             while (consumingLookahead("(?#")) {
@@ -396,13 +479,13 @@ public abstract class RegexLexer {
     }
 
     private void skipWhitespace() {
-        while (!atEnd() && isWhitespace(curChar())) {
+        while (!atEnd()) {
+            char curChar = curChar();
+            if (!getWhitespace().get(curChar)) {
+                break;
+            }
             advance();
         }
-    }
-
-    private static boolean isWhitespace(char curChar) {
-        return WHITESPACE.get(curChar);
     }
 
     public Token next() throws RegexSyntaxException {
@@ -717,37 +800,39 @@ public abstract class RegexLexer {
                 return Token.createA();
             } else if (c == 'Z') {
                 return Token.createZ();
+            } else if (featureEnabledZLowerCaseAssertion() && c == 'z') {
+                return Token.createZLowerCase();
             }
         }
-        switch (c) {
-            case 'b':
+        if (featureEnabledWordBoundaries()) {
+            if (c == 'b') {
                 return Token.createWordBoundary();
-            case 'B':
+            } else if (c == 'B') {
                 return Token.createNonWordBoundary();
-            default:
-                // Here we differentiate the case when parsing one of the six basic pre-defined
-                // character classes (\w, \W, \d, \D, \s, \S) and Unicode character property
-                // escapes. Both result in sets of characters, but in the former case, we can skip
-                // the case-folding step in the `charClass` method and call `Token::createCharClass`
-                // directly.
-                if (isPredefCharClass(c)) {
-                    return Token.createCharClass(getPredefinedCharClass(c));
-                } else if (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P')) {
-                    ClassSetContents unicodePropertyContents = parseUnicodeCharacterProperty(c == 'P');
-                    if (featureEnabledClassSetExpressions()) {
-                        return Token.createClassSetExpression(unicodePropertyContents);
-                    } else {
-                        assert unicodePropertyContents.isCodePointSetOnly();
-                        return charClass(unicodePropertyContents.getCodePointSet());
-                    }
-                } else {
-                    return charClass(parseEscapeChar(c, false));
-                }
+            }
+        }
+        // Here we differentiate the case when parsing one of the six basic pre-defined
+        // character classes (\w, \W, \d, \D, \s, \S) and Unicode character property
+        // escapes. Both result in sets of characters, but in the former case, we can skip
+        // the case-folding step in the `charClass` method and call `Token::createCharClass`
+        // directly.
+        if (isPredefCharClass(c)) {
+            return Token.createCharClass(getPredefinedCharClass(c));
+        } else if (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P')) {
+            ClassSetContents unicodePropertyContents = parseUnicodeCharacterProperty(c == 'P');
+            if (featureEnabledClassSetExpressions()) {
+                return Token.createClassSetExpression(unicodePropertyContents);
+            } else {
+                assert unicodePropertyContents.isCodePointSetOnly();
+                return charClass(unicodePropertyContents.getCodePointSet());
+            }
+        } else {
+            return charClass(parseEscapeChar(c, false));
         }
     }
 
     private Token parseGroupBegin() throws RegexSyntaxException {
-        if (consumingLookahead("?")) {
+        if (featureEnabledSpecialGroups() && consumingLookahead("?")) {
             if (atEnd()) {
                 throw handleUnfinishedGroupQ();
             }
@@ -832,8 +917,8 @@ public abstract class RegexLexer {
     }
 
     private Token parseQuantifier(char c) throws RegexSyntaxException {
-        final int min;
-        final int max;
+        final long min;
+        final long max;
         if (c == '{') {
             if (lookahead("}")) {
                 return handleBoundedQuantifierSyntaxError();
@@ -847,20 +932,38 @@ public abstract class RegexLexer {
                     return handleBoundedQuantifierSyntaxError();
                 }
             } else {
-                min = parseIntSaturated(0, lengthMin, -1);
+                min = parseIntSaturated(0, lengthMin, -1, boundedQuantifierMaxValue());
             }
             if (consumingLookahead(",}")) {
                 max = -1;
+                if (min == -1 || min > Integer.MAX_VALUE) {
+                    Token ret = handleBoundedQuantifierOverflowMin(min, max);
+                    if (ret != null) {
+                        return ret;
+                    }
+                }
             } else if (consumingLookahead("}")) {
                 max = min;
+                if (min == -1 || min > Integer.MAX_VALUE) {
+                    Token ret = handleBoundedQuantifierOverflowMin(min, max);
+                    if (ret != null) {
+                        return ret;
+                    }
+                }
             } else {
                 if (!consumingLookahead(",")) {
                     return handleBoundedQuantifierSyntaxError();
                 }
                 final int lengthMax = countDecimalDigits();
-                max = parseIntSaturated(0, lengthMax, -1);
+                max = parseIntSaturated(0, lengthMax, -1, boundedQuantifierMaxValue());
                 if (!consumingLookahead("}")) {
                     return handleBoundedQuantifierSyntaxError();
+                }
+                if (min == -1 || max == -1 || min > Integer.MAX_VALUE || max > Integer.MAX_VALUE) {
+                    Token ret = handleBoundedQuantifierOverflow(min, max);
+                    if (ret != null) {
+                        return ret;
+                    }
                 }
                 if (isQuantifierOutOfOrder(min, max, resetIndex, lengthMin, lengthMax)) {
                     throw handleBoundedQuantifierOutOfOrder();
@@ -870,11 +973,11 @@ public abstract class RegexLexer {
             min = c == '+' ? 1 : 0;
             max = c == '?' ? 1 : -1;
         }
-        return Token.createQuantifier(min, max, !consumingLookahead("?"));
+        return Token.createQuantifier((int) min, (int) max, !consumingLookahead("?"));
     }
 
-    private boolean isQuantifierOutOfOrder(int parsedMin, int parsedMax, int startMin, int lengthMin, int lengthMax) {
-        if (Integer.compareUnsigned(parsedMin, parsedMax) > 0) {
+    private boolean isQuantifierOutOfOrder(long parsedMin, long parsedMax, int startMin, int lengthMin, int lengthMax) {
+        if (Long.compareUnsigned(parsedMin, parsedMax) > 0) {
             return true;
         } else if (parsedMin == -1 && parsedMax == -1) {
             int startMax = startMin + lengthMin + 1;
@@ -889,16 +992,20 @@ public abstract class RegexLexer {
     }
 
     protected int parseIntSaturated(int firstDigit, int length, int returnOnOverflow) {
+        return (int) parseIntSaturated(firstDigit, length, returnOnOverflow, Integer.MAX_VALUE);
+    }
+
+    protected long parseIntSaturated(int firstDigit, int length, int returnOnOverflow, long maxValue) {
         int fromIndex = position;
         position += length;
-        int ret = firstDigit;
+        long ret = firstDigit;
         for (int i = fromIndex; i < fromIndex + length; i++) {
             int nextDigit = pattern.charAt(i) - '0';
-            if (ret > Integer.MAX_VALUE / 10) {
+            if (ret > maxValue / 10) {
                 return returnOnOverflow;
             }
             ret *= 10;
-            if (ret > Integer.MAX_VALUE - nextDigit) {
+            if (ret > maxValue - nextDigit) {
                 return returnOnOverflow;
             }
             ret += nextDigit;
@@ -945,8 +1052,62 @@ public abstract class RegexLexer {
                 assert featureEnabledClassSetExpressions() || contents.isCodePointSetOnly();
                 return contents;
             }
+        } else if (featureEnabledNestedCharClasses() && c == '[') {
+            if (atEnd()) {
+                throw handleUnmatchedLeftBracket();
+            }
+            if (featureEnabledPOSIXCharClasses()) {
+                return parsePOSIXCharClassElement();
+            }
         }
         return null;
+    }
+
+    private ClassSetContents parsePOSIXCharClassElement() {
+        int resetIndex = position;
+        char delim = consumeChar();
+        if (delim == ':' || delim == '.' || delim == '=') {
+            int end = pattern.indexOf(getPosixCharClassEndStr(delim), position);
+            if (end >= 0) {
+                String name = pattern.substring(position, end);
+                position = end + 2;
+                switch (delim) {
+                    case ':':
+                        return ClassSetContents.createCharacterClass(getPOSIXCharClass(name));
+                    case '.':
+                        if (JavaStringUtil.isSingleCodePoint(name)) {
+                            return ClassSetContents.createPOSIXCollationElement(name.codePointAt(0));
+                        } else {
+                            validatePOSIXCollationElement(name);
+                            return ClassSetContents.createPOSIXCollationElement(name);
+                        }
+                    case '=':
+                        if (JavaStringUtil.isSingleCodePoint(name)) {
+                            return ClassSetContents.createPOSIXCollationEquivalenceClass(name.codePointAt(0));
+                        } else {
+                            validatePOSIXCollationElement(name);
+                            return ClassSetContents.createPOSIXCollationEquivalenceClass(name);
+                        }
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere();
+                }
+            }
+        }
+        position = resetIndex;
+        return ClassSetContents.createCharacter('[');
+    }
+
+    private static String getPosixCharClassEndStr(char delim) {
+        switch (delim) {
+            case ':':
+                return ":]";
+            case '.':
+                return ".]";
+            case '=':
+                return "=]";
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
     }
 
     private int parseCharClassAtomCodePoint(char c) throws RegexSyntaxException {
@@ -963,47 +1124,48 @@ public abstract class RegexLexer {
         }
     }
 
+    private ClassSetContents parseCharClassAtom(char c) throws RegexSyntaxException {
+        ClassSetContents cc = parseCharClassAtomPredefCharClass(c);
+        if (cc != null) {
+            return cc;
+        }
+        return ClassSetContents.createCharacter(parseCharClassAtomCodePoint(c));
+    }
+
     private void parseCharClassRange(char c) throws RegexSyntaxException {
         int startPos = position - 1;
         charClassCurAtomStartIndex = position - 1;
-        ClassSetContents firstAtomCSC = parseCharClassAtomPredefCharClass(c);
-        CodePointSet firstAtomCC = firstAtomCSC == null ? null : firstAtomCSC.getCodePointSet();
-        int firstAtomCP = firstAtomCC == null ? parseCharClassAtomCodePoint(c) : -1;
+        ClassSetContents firstAtom = parseCharClassAtom(c);
         if (consumingLookahead("-")) {
             if (atEnd() || lookahead("]")) {
-                addCharClassAtom(firstAtomCC, firstAtomCP);
+                addCharClassAtom(firstAtom);
                 curCharClass.addRange('-', '-');
             } else {
                 char nextC = consumeChar();
                 charClassCurAtomStartIndex = position - 1;
-                ClassSetContents secondAtomCSC = parseCharClassAtomPredefCharClass(nextC);
-                CodePointSet secondAtomCC = secondAtomCSC == null ? null : secondAtomCSC.getCodePointSet();
-                int secondAtomCP = secondAtomCC == null ? parseCharClassAtomCodePoint(nextC) : -1;
+                ClassSetContents secondAtom = parseCharClassAtom(nextC);
                 // Runtime Semantics: CharacterRangeOrUnion(firstAtom, secondAtom)
-                if (firstAtomCC != null || secondAtomCC != null) {
-                    handleCCRangeWithPredefCharClass(startPos);
-                    addCharClassAtom(firstAtomCC, firstAtomCP);
-                    addCharClassAtom(secondAtomCC, secondAtomCP);
+                if (!firstAtom.isAllowedInRange() || !secondAtom.isAllowedInRange()) {
+                    handleCCRangeWithPredefCharClass(startPos, firstAtom, secondAtom);
+                    addCharClassAtom(firstAtom);
+                    addCharClassAtom(secondAtom);
                     curCharClass.addRange('-', '-');
                 } else {
-                    if (secondAtomCP < firstAtomCP) {
+                    if (secondAtom.getCodePoint() < firstAtom.getCodePoint()) {
                         throw handleCCRangeOutOfOrder(startPos);
                     } else {
-                        curCharClass.addRange(firstAtomCP, secondAtomCP);
+                        curCharClass.addRange(firstAtom.getCodePoint(), secondAtom.getCodePoint());
                     }
                 }
             }
         } else {
-            addCharClassAtom(firstAtomCC, firstAtomCP);
+            addCharClassAtom(firstAtom);
         }
     }
 
-    private void addCharClassAtom(CodePointSet preDefCharClass, int codePoint) {
-        if (preDefCharClass != null) {
-            curCharClass.addSet(preDefCharClass);
-        } else {
-            curCharClass.addRange(codePoint, codePoint);
-        }
+    private void addCharClassAtom(ClassSetContents atom) {
+        assert atom.isCodePointSetOnly();
+        curCharClass.addSet(atom.getCodePointSet());
     }
 
     private ClassSetContents parseEscapeCharClass(char c) throws RegexSyntaxException {
@@ -1289,10 +1451,6 @@ public abstract class RegexLexer {
 
     public RegexSyntaxException syntaxError(String msg) {
         return RegexSyntaxException.createPattern(source, msg, getLastAtomPosition());
-    }
-
-    @FunctionalInterface
-    protected interface ErrorHandler extends Runnable {
     }
 
     private static boolean isPredefCharClass(char c) {

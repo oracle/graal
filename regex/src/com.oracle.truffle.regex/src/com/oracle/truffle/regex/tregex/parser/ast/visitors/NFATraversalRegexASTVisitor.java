@@ -47,13 +47,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import com.oracle.truffle.regex.tregex.nfa.ASTStepVisitor;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
+import com.oracle.truffle.regex.tregex.nfa.ASTStepVisitor;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -69,7 +70,6 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.util.TBitSet;
-import org.graalvm.collections.EconomicSet;
 
 /**
  * Special AST visitor that will find all immediate successors of a given Term when the AST is seen
@@ -506,7 +506,7 @@ public abstract class NFATraversalRegexASTVisitor {
     /**
      * Advances past the given {@link Term} and updates {@link #cur the current node}.
      * 
-     * @return {@true} if a successor was reached in this step (possible if
+     * @return {@code true} if a successor was reached in this step (possible if
      *         {@link #advanceEmptyGuard} returns {@code true} and we have the quantified group as
      *         the successor)
      */
@@ -901,6 +901,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     }
                 }
             }
+            pushRecursiveBackrefUpdates(group);
             if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
             }
@@ -914,6 +915,7 @@ public abstract class NFATraversalRegexASTVisitor {
             if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 popQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
             }
+            popRecursiveBackrefUpdates(group);
             if (group.hasQuantifier()) {
                 Quantifier quantifier = group.getQuantifier();
                 if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
@@ -936,6 +938,22 @@ public abstract class NFATraversalRegexASTVisitor {
         curPath.pop();
     }
 
+    private void pushRecursiveBackrefUpdates(Group group) {
+        if (ast.getOptions().getFlavor().supportsRecursiveBackreferences() && ast.getProperties().hasRecursiveBackReferences()) {
+            if (group.isCapturing() && ast.isGroupRecursivelyReferenced(group.getGroupNumber())) {
+                pushQuantifierGuard(QuantifierGuard.createUpdateRecursiveBackref(group.getGroupNumber()));
+            }
+        }
+    }
+
+    private void popRecursiveBackrefUpdates(Group group) {
+        if (ast.getOptions().getFlavor().supportsRecursiveBackreferences() && ast.getProperties().hasRecursiveBackReferences()) {
+            if (group.isCapturing() && ast.isGroupRecursivelyReferenced(group.getGroupNumber())) {
+                popQuantifierGuard(QuantifierGuard.createUpdateRecursiveBackref(group.getGroupNumber()));
+            }
+        }
+    }
+
     private void pushGroupPassThrough(Group group, int groupAltIndex) {
         curPath.add(createPathElement(group) | PATH_GROUP_ACTION_PASS_THROUGH | (groupAltIndex << PATH_GROUP_ALT_INDEX_OFFSET));
         if (useQuantifierGuards()) {
@@ -950,6 +968,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     }
                 }
             }
+            pushRecursiveBackrefUpdates(group);
             if (ast.getOptions().getFlavor().matchesTransitionsStepByStep() && group.isCapturing()) {
                 pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
                 pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
@@ -971,6 +990,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 popQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
                 popQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
             }
+            popRecursiveBackrefUpdates(group);
             if (group.hasQuantifier()) {
                 Quantifier quantifier = group.getQuantifier();
                 if (quantifier.hasIndex()) {
