@@ -255,9 +255,7 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
             return;
         }
         Pointer endSP = current().getBaseSP();
-        if (endSP.isNull()) {
-            throw VMError.shouldNotReachHere("unexpected null endSP");
-        }
+        VMError.guarantee(endSP.isNonNull(), "unexpected null endSP");
         StackTraceUtils.visitCurrentThreadStackFrames(callerSP, endSP, visitor);
     }
 

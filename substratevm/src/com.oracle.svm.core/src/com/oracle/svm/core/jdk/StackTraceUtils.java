@@ -285,7 +285,7 @@ final class RawStackFrameVisitor extends StackFrameVisitor {
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
             /* Unknown frame. Must not happen for AOT-compiled code. */
-            VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
+            throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
         }
 
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
