@@ -231,8 +231,8 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return heap.getObjects().stream().filter(this::acceptObjectInfo).map(this::createDebugDataInfo);
     }
 
-    public static ObjectLayout getObjectLayout() {
-        return ConfigurationValues.getObjectLayout();
+    static ObjectLayout getObjectLayout() {
+        return DebugInfoProviderHelper.getObjectLayout();
     }
 
     /**
@@ -253,81 +253,28 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return -1;
     }
 
-    /*
-     * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
-     * getSourceFilename to the wrapped class so for consistency we need to do type names and path
-     * lookup relative to the doubly unwrapped HostedType.
-     *
-     * However, note that the result of the unwrap on the AnalysisType may be a SubstitutionType
-     * which wraps both an original type and the annotated type that substitutes it. Unwrapping
-     * normally returns the AnnotatedType which we need to use to resolve the file name. However, we
-     * need to use the original to name the owning type to ensure that names found in method param
-     * and return types resolve correctly.
-     */
     protected static ResolvedJavaType getDeclaringClass(HostedType hostedType, boolean wantOriginal) {
-        // unwrap to the underlying class eihter the original or target class
-        if (wantOriginal) {
-            return getOriginal(hostedType);
-        }
-        // we want any substituted target if there is one. directly unwrapping will
-        // do what we want.
-        return hostedType.getWrapped().getWrapped();
+       return DebugInfoProviderHelper.getDeclaringClass(hostedType, wantOriginal);
     }
 
     protected static ResolvedJavaType getDeclaringClass(HostedMethod hostedMethod, boolean wantOriginal) {
-        if (wantOriginal) {
-            return getOriginal(hostedMethod.getDeclaringClass());
-        }
-        // we want a substituted target if there is one. if there is a substitution at the end of
-        // the method chain fetch the annotated target class
-        ResolvedJavaMethod javaMethod = getAnnotatedOrOriginal(hostedMethod);
-        return javaMethod.getDeclaringClass();
+        return DebugInfoProviderHelper.getDeclaringClass(hostedMethod, wantOriginal);
     }
 
     @SuppressWarnings("unused")
     protected static ResolvedJavaType getDeclaringClass(HostedField hostedField, boolean wantOriginal) {
         /* for now fields are always reported as belonging to the original class */
-        return getOriginal(hostedField.getDeclaringClass());
+        return DebugInfoProviderHelper.getDeclaringClass(hostedField, wantOriginal);
     }
 
-    static ResolvedJavaType getOriginal(HostedType hostedType) {
-        /* partially unwrap then traverse through substitutions to the original */
-        ResolvedJavaType javaType = hostedType.getWrapped().getWrappedWithoutResolve();
-        if (javaType instanceof SubstitutionType) {
-            return ((SubstitutionType) javaType).getOriginal();
-        } else if (javaType instanceof CustomSubstitutionType<?, ?>) {
-            return ((CustomSubstitutionType<?, ?>) javaType).getOriginal();
-        } else if (javaType instanceof LambdaSubstitutionType) {
-            return ((LambdaSubstitutionType) javaType).getOriginal();
-        } else if (javaType instanceof InjectedFieldsType) {
-            return ((InjectedFieldsType) javaType).getOriginal();
-        }
-        return javaType;
+    private static ResolvedJavaType getOriginal(HostedType hostedType) {
+        return DebugInfoProviderHelper.getOriginal(hostedType);
     }
 
     private static ResolvedJavaMethod getAnnotatedOrOriginal(HostedMethod hostedMethod) {
-        ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
-        // This method is only used when identifying the modifiers or the declaring class
-        // of a HostedMethod. Normally the method unwraps to the underlying JVMCI method
-        // which is the one that provides bytecode to the compiler as well as, line numbers
-        // and local info. If we unwrap to a SubstitutionMethod then we use the annotated
-        // method, not the JVMCI method that the annotation refers to since that will be the
-        // one providing the bytecode etc used by the compiler. If we unwrap to any other,
-        // custom substitution method we simply use it rather than dereferencing to the
-        // original. The difference is that the annotated method's bytecode will be used to
-        // replace the original and the debugger needs to use it to identify the file and access
-        // permissions. A custom substitution may exist alongside the original, as is the case
-        // with some uses for reflection. So, we don't want to conflate the custom substituted
-        // method and the original. In this latter case the method code will be synthesized without
-        // reference to the bytecode of the original. Hence there is no associated file and the
-        // permissions need to be determined from the custom substitution method itself.
-
-        if (javaMethod instanceof SubstitutionMethod) {
-            SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
-            javaMethod = substitutionMethod.getAnnotated();
-        }
-        return javaMethod;
+        return DebugInfoProviderHelper.getAnnotatedOrOriginal(hostedMethod);
     }
+
 
     private static int getOriginalModifiers(HostedMethod hostedMethod) {
         return getAnnotatedOrOriginal(hostedMethod).getModifiers();
@@ -360,15 +307,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedField hostedField) {
-            ResolvedJavaType javaType = getDeclaringClass(hostedField, false);
-            HostedType hostedType = hostedField.getDeclaringClass();
-            Class<?> clazz = hostedType.getJavaClass();
-            SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
-            try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
-                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
-            } catch (Throwable e) {
-                throw debugContext.handle(e);
-            }
+            fullFilePath = DebugInfoProviderHelper.getFullFilePathFromField(hostedField, debugContext);
         }
 
         @Override
@@ -424,7 +363,7 @@ public class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         public String toJavaName(@SuppressWarnings("hiding") HostedType hostedType) {
-            return getDeclaringClass(hostedType, true).toJavaName();
+            return DebugInfoProviderHelper.toJavaName(hostedType);
         }
 
         @Override

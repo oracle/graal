@@ -26,6 +26,7 @@
 package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.HashMap;
@@ -33,9 +34,14 @@ import java.util.HashMap;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
+import com.oracle.svm.hosted.meta.HostedArrayClass;
+import com.oracle.svm.hosted.meta.HostedClass;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedInstanceClass;
+import com.oracle.svm.hosted.meta.HostedPrimitiveType;
 import com.oracle.svm.hosted.meta.HostedType;
 
-
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
@@ -44,6 +50,7 @@ public class LLVMDebugInfoProvider implements DebugInfoProvider {
     public static NativeImageHeap heap;
     NativeImageDebugInfoProvider dbgInfoHelper;
     public static HashMap<String, HostedType> typeMap = new HashMap<String, HostedType>();
+    public DebugContext debugContext;
 
     public LLVMDebugInfoProvider() {
     }
@@ -61,28 +68,219 @@ public class LLVMDebugInfoProvider implements DebugInfoProvider {
         throw unimplemented();
     }
 
-   public Stream<HostedType> typeInfoProvider2() {
-       Stream<HostedType> heapTypeInfo = heap.getUniverse().getTypes().stream();
-       return heapTypeInfo;
-   }
-
    public static void generateTypeMap() {
         Stream<HostedType> typeStream = heap.getUniverse().getTypes().stream();
         typeStream.forEach(hostedType -> typeMap.put(hostedType.getName(), hostedType));
     }
 
-    public class LLVMTypeInfoProvider extends LLVMFileInfoProvider implements DebugTypeInfo {
+    public class LLVMDebugFieldInfo extends LLVMDebugFileInfo implements DebugFieldInfo {
+        HostedField field;
+
+        LLVMDebugFieldInfo(HostedField field) {
+            super(field);
+            this.field = field;
+        }
+
+        public HostedField getField() {
+            return field;
+        }
+
+        @Override
+        public String name() {
+            return field.getName();
+        }
+
+        @Override
+        public ResolvedJavaType valueType() {
+            return DebugInfoProviderHelper.getOriginal(field.getType());
+        }
+
+        @Override
+        public int modifiers() {
+            throw unimplemented();
+        }
+
+        @Override
+        public int offset() {
+            return field.getOffset();
+        }
+
+        @Override
+        public int size() {
+            return DebugInfoProviderHelper.getObjectLayout().sizeInBytes(field.getType().getStorageKind());
+        }
+
+        public boolean isEnumerator() {
+            return ((field.getType() instanceof HostedClass) && (((HostedClass) (field.getType())).isEnum()));
+        }
+    }
+
+    public class LLVMDebugPrimitiveTypeInfo extends LLVMDebugTypeInfo implements DebugPrimitiveTypeInfo {
+        private final HostedPrimitiveType primitiveType;
+        public LLVMDebugPrimitiveTypeInfo(HostedPrimitiveType primitiveType) {
+            super(primitiveType);
+            this.primitiveType = primitiveType;
+
+        }
+        @Override
+        public int bitCount() {
+            return DebugInfoProviderHelper.getPrimitiveBitCount(primitiveType);
+        }
+
+        @Override
+        public char typeChar() {
+            throw unimplemented();
+        }
+
+        @Override
+        public int flags() {
+            return DebugInfoProviderHelper.getPrimitiveFlags(primitiveType);
+        }
+
+        public byte computeEncoding() {
+            return DebugInfoProviderHelper.computeEncoding(flags(), bitCount());
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.PRIMITIVE;
+        }
+    }
+
+
+    public class LLVMDebugEnumTypeInfo extends LLVMDebugInstanceTypeInfo implements DebugEnumTypeInfo {
+        public LLVMDebugEnumTypeInfo(HostedInstanceClass enumClass) {
+            super(enumClass);
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.ENUM;
+        }
+    }
+
+
+    public class LLVMDebugInstanceTypeInfo extends LLVMDebugTypeInfo implements DebugInstanceTypeInfo {
+
+        public LLVMDebugInstanceTypeInfo(HostedType hostedType) {
+            super(hostedType);
+        }
+
+        @Override
+        public int headerSize() {
+            throw unimplemented();
+        }
+
+        @Override
+        public String loaderName() {
+            throw unimplemented();
+        }
+
+        @Override
+        public Stream<DebugFieldInfo> fieldInfoProvider() {
+            Stream<DebugFieldInfo> instanceFieldsStream =
+                    Arrays.stream(hostedType.getInstanceFields(false)).map(this::createDebugFieldInfo);
+            if (hostedType instanceof HostedInstanceClass && hostedType.getStaticFields().length > 0) {
+                Stream<DebugFieldInfo> staticFieldsStream = Arrays.stream(hostedType.getStaticFields()).map(this::createDebugStaticFieldInfo);
+                return Stream.concat(instanceFieldsStream, staticFieldsStream);
+            } else {
+                return instanceFieldsStream;
+            }
+        }
+
+        public Stream<DebugFieldInfo> staticFieldInfoProvider() {
+            if (hostedType instanceof HostedInstanceClass && hostedType.getStaticFields().length > 0) {
+                Stream<DebugFieldInfo> staticFieldsStream =
+                        Arrays.stream(hostedType.getStaticFields()).map(this::createDebugStaticFieldInfo);
+                return staticFieldsStream;
+            } else {
+                return null;
+            }
+        }
+
+        private LLVMDebugFieldInfo createDebugFieldInfo(HostedField field) {
+            return new LLVMDebugFieldInfo(field);
+        }
+
+        private LLVMDebugFieldInfo createDebugStaticFieldInfo(ResolvedJavaField field) {
+            return new LLVMDebugFieldInfo((HostedField) field);
+        }
+
+        @Override
+        public Stream<DebugMethodInfo> methodInfoProvider() {
+            throw unimplemented();
+        }
+
+        @Override
+        public ResolvedJavaType superClass() {
+            return hostedType.getSuperclass();
+        }
+
+        @Override
+        public Stream<ResolvedJavaType> interfaces() {
+            throw unimplemented();
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.INSTANCE;
+        }
+    }
+
+    public class LLVMDebugArrayTypeInfo extends LLVMDebugTypeInfo implements DebugArrayTypeInfo {
+        private HostedArrayClass arrayClass;
+
+        public LLVMDebugArrayTypeInfo(HostedArrayClass arrayClass) {
+            super(arrayClass);
+            this.arrayClass = arrayClass;
+        }
+
+        public int arrayDimension() {
+            return arrayClass.getArrayDimension();
+        }
+
+        public HostedType baseType() {
+            return arrayClass.getBaseType();
+        }
+
+        @Override
+        public int baseSize() {
+            return size();
+        }
+
+        @Override
+        public int lengthOffset() {
+            throw unimplemented();
+        }
+
+        @Override
+        public ResolvedJavaType elementType() {
+            throw unimplemented();
+        }
+
+        @Override
+        public Stream<DebugFieldInfo> fieldInfoProvider() {
+            throw unimplemented();
+        }
+
+        @Override
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.ARRAY;
+        }
+    }
+
+    public class LLVMDebugTypeInfo extends LLVMDebugFileInfo implements DebugTypeInfo {
         HostedType hostedType;
 
-        public LLVMTypeInfoProvider(HostedType hostedType, DebugContext debugContext) {
-            super(hostedType, debugContext);
+        public LLVMDebugTypeInfo(HostedType hostedType) {
+            super(hostedType);
             this.hostedType = hostedType;
         }
 
         @Override
         public ResolvedJavaType idType() {
             // always use the original type for establishing identity
-            return NativeImageDebugInfoProvider.getOriginal(hostedType);
+            return DebugInfoProviderHelper.getOriginal(hostedType);
         }
 
         @Override
@@ -105,15 +303,19 @@ public class LLVMDebugInfoProvider implements DebugInfoProvider {
             return DebugInfoProviderHelper.typeSize(hostedType);
         }
     }
-    public class LLVMFileInfoProvider implements DebugFileInfo {
+    public class LLVMDebugFileInfo implements DebugFileInfo {
         Path fullFilePath;
 
-        LLVMFileInfoProvider(ResolvedJavaMethod method, DebugContext debugContext) {
+        LLVMDebugFileInfo(ResolvedJavaMethod method, DebugContext debugContext) {
             fullFilePath = DebugInfoProviderHelper.getFullFilePathFromMethod(method, debugContext);
         }
 
-        LLVMFileInfoProvider(HostedType hostedType, DebugContext debugContext) {
+        LLVMDebugFileInfo(HostedType hostedType) {
             fullFilePath = DebugInfoProviderHelper.getFullFilePathFromType(hostedType, debugContext);
+        }
+
+        LLVMDebugFileInfo(HostedField hostedField) {
+            fullFilePath = DebugInfoProviderHelper.getFullFilePathFromField(hostedField, debugContext);
         }
 
 
@@ -133,11 +335,11 @@ public class LLVMDebugInfoProvider implements DebugInfoProvider {
         }
 }
 
-   public class LLVMLocationInfoProvider extends LLVMFileInfoProvider implements DebugLocationInfo {
+   public class LLVMLocationInfo extends LLVMDebugFileInfo implements DebugLocationInfo {
         private int bci;
         private ResolvedJavaMethod method;
 
-        public LLVMLocationInfoProvider(ResolvedJavaMethod method, int bci, DebugContext debugContext) {
+        public LLVMLocationInfo(ResolvedJavaMethod method, int bci, DebugContext debugContext) {
             super(method, debugContext);
             this.bci = bci;
             this.method = method;

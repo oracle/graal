@@ -29,14 +29,21 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.sources.SourceManager;
+import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedInterface;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedPrimitiveType;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
+import com.oracle.svm.hosted.substitute.SubstitutionType;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
@@ -46,6 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.Arrays;
 
@@ -76,7 +84,7 @@ public class DebugInfoProviderHelper {
     public static Path getFullFilePathFromMethod(ResolvedJavaMethod method, DebugContext debugContext) {
         ResolvedJavaType javaType;
         if (method instanceof HostedMethod) {
-            javaType = NativeImageDebugInfoProvider.getDeclaringClass((HostedMethod) method, false);
+            javaType = getDeclaringClass((HostedMethod) method, false);
         } else {
             javaType = method.getDeclaringClass();
         }
@@ -95,7 +103,7 @@ public class DebugInfoProviderHelper {
     }
 
     public static Path getFullFilePathFromType(HostedType hostedType, DebugContext debugContext) {
-        ResolvedJavaType javaType = NativeImageDebugInfoProvider.getDeclaringClass(hostedType, false);
+        ResolvedJavaType javaType = getDeclaringClass(hostedType, false);
         Class<?> clazz = hostedType.getJavaClass();
         SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
         Path fullFilePath;
@@ -104,13 +112,44 @@ public class DebugInfoProviderHelper {
             if (filePath == null && hostedType instanceof HostedInstanceClass) {
                 // conjure up an appropriate, unique file name to keep tools happy
                 // even though we cannot find a corresponding source
-                filePath = NativeImageDebugInfoProvider.fullFilePathFromClassName((HostedInstanceClass) hostedType);
+                filePath = fullFilePathFromClassName((HostedInstanceClass) hostedType);
             }
             fullFilePath = filePath;
         } catch (Throwable e) {
             throw debugContext.handle(e);
         }
         return fullFilePath;
+    }
+
+    public static Path getFullFilePathFromField(HostedField hostedField, DebugContext debugContext) {
+        ResolvedJavaType javaType = getDeclaringClass(hostedField, false);
+        HostedType hostedType = hostedField.getDeclaringClass();
+        Class<?> clazz = hostedType.getJavaClass();
+        SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
+        Path fullFilePath;
+        try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
+            fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+        } catch (Throwable e) {
+            throw debugContext.handle(e);
+        }
+        return fullFilePath;
+    }
+
+    private static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
+        String[] elements = hostedInstanceClass.toJavaName().split("\\.");
+        int count = elements.length;
+        String name = elements[count - 1];
+        while (name.startsWith("$")) {
+            name = name.substring(1);
+        }
+        if (name.contains("$")) {
+            name = name.substring(0, name.indexOf('$'));
+        }
+        if (name.equals("")) {
+            name = "_nofile_";
+        }
+        elements[count - 1] = name + ".java";
+        return FileSystems.getDefault().getPath("", elements);
     }
 
     public static int getLineNumber(ResolvedJavaMethod method, int bci) {
@@ -140,7 +179,7 @@ public class DebugInfoProviderHelper {
         String name = targetMethod.getName();
         if (name.equals("<init>")) {
             if (method instanceof HostedMethod) {
-                name = NativeImageDebugInfoProvider.getDeclaringClass((HostedMethod) method, true).toJavaName();
+                name = getDeclaringClass((HostedMethod) method, true).toJavaName();
                 if (name.indexOf('.') >= 0) {
                     name = name.substring(name.lastIndexOf('.') + 1);
                 }
@@ -172,7 +211,7 @@ public class DebugInfoProviderHelper {
     }
 
     public static String toJavaName(@SuppressWarnings("hiding") HostedType hostedType) {
-        return NativeImageDebugInfoProvider.getDeclaringClass(hostedType, true).toJavaName();
+        return getDeclaringClass(hostedType, true).toJavaName();
     }
 
     public static int typeSize(HostedType hostedType) {
@@ -181,10 +220,10 @@ public class DebugInfoProviderHelper {
             return ((HostedInstanceClass) hostedType).getInstanceSize();
         } else if (hostedType instanceof HostedArrayClass) {
             /* Use the size of header common to all arrays of this type. */
-            return NativeImageDebugInfoProvider.getObjectLayout().getArrayBaseOffset(hostedType.getComponentType().getStorageKind());
+            return getObjectLayout().getArrayBaseOffset(hostedType.getComponentType().getStorageKind());
         } else if (hostedType instanceof HostedInterface) {
             /* Use the size of the header common to all implementors. */
-            return NativeImageDebugInfoProvider.getObjectLayout().getFirstFieldOffset();
+            return getObjectLayout().getFirstFieldOffset();
         } else {
             /* Use the number of bytes needed needed to store the value. */
             assert hostedType instanceof HostedPrimitiveType;
@@ -221,7 +260,7 @@ public class DebugInfoProviderHelper {
         return (javaKind == JavaKind.Void ? 0 : javaKind.getBitCount());
     }
 
-    // Compute the DWARF encoding for a primitive type
+    // Compute the DWARF encoding for a primitive type. Copied from DwarfInfoSectionImpl
     public static byte computeEncoding(int flags, int bitCount) {
         assert bitCount > 0;
         if ((flags & DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_NUMERIC) != 0) {
@@ -247,4 +286,84 @@ public class DebugInfoProviderHelper {
             return DwarfDebugInfo.DW_ATE_boolean;
         }
     }
+
+    /*
+     * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
+     * getSourceFilename to the wrapped class so for consistency we need to do type names and path
+     * lookup relative to the doubly unwrapped HostedType.
+     *
+     * However, note that the result of the unwrap on the AnalysisType may be a SubstitutionType
+     * which wraps both an original type and the annotated type that substitutes it. Unwrapping
+     * normally returns the AnnotatedType which we need to use to resolve the file name. However, we
+     * need to use the original to name the owning type to ensure that names found in method param
+     * and return types resolve correctly.
+     */
+    public static ResolvedJavaType getDeclaringClass(HostedType hostedType, boolean wantOriginal) {
+        // unwrap to the underlying class eihter the original or target class
+        if (wantOriginal) {
+            return getOriginal(hostedType);
+        }
+        // we want any substituted target if there is one. directly unwrapping will
+        // do what we want.
+        return hostedType.getWrapped().getWrapped();
+    }
+
+    public static ResolvedJavaType getDeclaringClass(HostedMethod hostedMethod, boolean wantOriginal) {
+        if (wantOriginal) {
+            return getOriginal(hostedMethod.getDeclaringClass());
+        }
+        // we want a substituted target if there is one. if there is a substitution at the end of
+        // the method chain fetch the annotated target class
+        ResolvedJavaMethod javaMethod = getAnnotatedOrOriginal(hostedMethod);
+        return javaMethod.getDeclaringClass();
+    }
+
+    public static ResolvedJavaType getDeclaringClass(HostedField hostedField, boolean wantOriginal) {
+        /* for now fields are always reported as belonging to the original class */
+        return getOriginal(hostedField.getDeclaringClass());
+    }
+
+    public static ResolvedJavaType getOriginal(HostedType hostedType) {
+        /* partially unwrap then traverse through substitutions to the original */
+        ResolvedJavaType javaType = hostedType.getWrapped().getWrappedWithoutResolve();
+        if (javaType instanceof SubstitutionType) {
+            return ((SubstitutionType) javaType).getOriginal();
+        } else if (javaType instanceof CustomSubstitutionType<?, ?>) {
+            return ((CustomSubstitutionType<?, ?>) javaType).getOriginal();
+        } else if (javaType instanceof LambdaSubstitutionType) {
+            return ((LambdaSubstitutionType) javaType).getOriginal();
+        } else if (javaType instanceof InjectedFieldsType) {
+            return ((InjectedFieldsType) javaType).getOriginal();
+        }
+        return javaType;
+    }
+
+    public static ResolvedJavaMethod getAnnotatedOrOriginal(HostedMethod hostedMethod) {
+        ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
+        // This method is only used when identifying the modifiers or the declaring class
+        // of a HostedMethod. Normally the method unwraps to the underlying JVMCI method
+        // which is the one that provides bytecode to the compiler as well as, line numbers
+        // and local info. If we unwrap to a SubstitutionMethod then we use the annotated
+        // method, not the JVMCI method that the annotation refers to since that will be the
+        // one providing the bytecode etc used by the compiler. If we unwrap to any other,
+        // custom substitution method we simply use it rather than dereferencing to the
+        // original. The difference is that the annotated method's bytecode will be used to
+        // replace the original and the debugger needs to use it to identify the file and access
+        // permissions. A custom substitution may exist alongside the original, as is the case
+        // with some uses for reflection. So, we don't want to conflate the custom substituted
+        // method and the original. In this latter case the method code will be synthesized without
+        // reference to the bytecode of the original. Hence there is no associated file and the
+        // permissions need to be determined from the custom substitution method itself.
+
+        if (javaMethod instanceof SubstitutionMethod) {
+            SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
+            javaMethod = substitutionMethod.getAnnotated();
+        }
+        return javaMethod;
+    }
+
+    public static ObjectLayout getObjectLayout() {
+        return ConfigurationValues.getObjectLayout();
+    }
+
 }
