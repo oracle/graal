@@ -1420,6 +1420,15 @@ suite = {
       "maven" : False,
     },
 
+    "TRUFFLE_ANTLR4_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for ANTLR4",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/language-antlr4.properties",
+      },
+      "maven" : False,
+    },
+
     "LOCATOR": {
       "subDir": "src",
       "moduleInfo" : {
