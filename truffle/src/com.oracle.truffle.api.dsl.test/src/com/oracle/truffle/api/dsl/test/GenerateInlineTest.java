@@ -447,7 +447,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
     @Test
     public void testErrorRuntimeUsage() {
         assertFails(() -> ErrorRuntimeUsageNodeGen.create().execute(), ClassCastException.class, (e) -> {
-            assertEquals("Invalid parameter type passed to updater. Instance of type 'GenerateInlineTestFactory.ErrorRuntimeUsageNodeGen' expected but was 'GenerateInlineTestFactory.ErrorRuntimeNodeGen.Inlined'. " +
+            assertEquals("Invalid inline context node passed to an inlined field. A receiver of type 'GenerateInlineTestFactory.ErrorRuntimeUsageNodeGen' was expected but is 'GenerateInlineTestFactory.ErrorRuntimeNodeGen.Inlined'. " +
                             "Did you pass the wrong node to an execute method of an inlined cached node?",
                             e.getMessage());
         });
@@ -1200,7 +1200,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         @Specialization
         static Object doInt(@Cached FailEarlyNode node) {
             assertFails(() -> node.execute(node), ClassCastException.class, (e) -> {
-                assertTrue(e.getMessage(), e.getMessage().contains("Invalid parameter type passed to updater."));
+                assertTrue(e.getMessage(), e.getMessage().contains("Invalid inline context node passed to an inlined field"));
             });
             return "doInt";
         }
@@ -2633,7 +2633,7 @@ public class GenerateInlineTest extends AbstractPolyglotTest {
         try {
             userNode.execute(1, false);
         } catch (ClassCastException e) {
-            assertTrue(e.getMessage(), e.getMessage().contains("Invalid parameter type passed to updater"));
+            assertTrue(e.getMessage(), e.getMessage().contains("Invalid inline context node passed to an inlined field"));
             thrown = true;
         }
         assertTrue(String.format("Node %s did not throw when it used wrong inlineTarget. Is the UseInlinedByDefault really inlined?", testCaseName), thrown);

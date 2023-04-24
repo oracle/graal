@@ -43,18 +43,21 @@ package com.oracle.truffle.polyglot;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
-import com.oracle.truffle.api.TruffleOptionDescriptors;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.SandboxPolicy;
+
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 
 final class OptionValuesImpl implements OptionValues {
 
@@ -64,6 +67,7 @@ final class OptionValuesImpl implements OptionValues {
     private final SandboxPolicy sandboxPolicy;
     private final Map<OptionKey<?>, Object> values;
     private final Map<OptionKey<?>, String> unparsedValues;
+    private volatile Set<OptionKey<?>> validAssertKeys;
 
     OptionValuesImpl(OptionDescriptors descriptors, SandboxPolicy sandboxPolicy, boolean preserveUnparsedValues) {
         Objects.requireNonNull(descriptors);
@@ -178,12 +182,26 @@ final class OptionValuesImpl implements OptionValues {
     }
 
     private <T> boolean contains(OptionKey<T> optionKey) {
-        for (OptionDescriptor descriptor : descriptors) {
-            if (descriptor.getKey() == optionKey) {
-                return true;
-            }
+        /*
+         * Iterating the keys is too slow so we use a cached set to speed up the check.
+         */
+        Set<OptionKey<?>> keys = this.validAssertKeys;
+        if (keys == null) {
+            keys = initializeValidAssertKeys();
         }
-        return false;
+        return keys.contains(optionKey);
+    }
+
+    private synchronized Set<OptionKey<?>> initializeValidAssertKeys() {
+        Set<OptionKey<?>> keys = validAssertKeys;
+        if (keys == null) {
+            keys = new HashSet<>();
+            for (OptionDescriptor descriptor : descriptors) {
+                keys.add(descriptor.getKey());
+            }
+            validAssertKeys = keys;
+        }
+        return keys;
     }
 
     @Override
