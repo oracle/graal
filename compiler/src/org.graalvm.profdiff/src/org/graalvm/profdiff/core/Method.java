@@ -29,6 +29,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
@@ -44,17 +45,6 @@ import org.graalvm.profdiff.core.optimization.Optimization;
  * this method.
  */
 public class Method {
-
-    /**
-     * Separates method names from multi-method keys.
-     *
-     * For example, consider method {@code java.util.HashMap.size()}. A specialized variant of the
-     * method may be created for different compilation scenarios. When a variant of the method is
-     * created, it is named {@code java.util.HashMap.size%%key()}. The sequence after the separator
-     * ({@code "key"} in this case) is the multi-method key of the variant.
-     */
-    public static final String MULTI_METHOD_KEY_SEPARATOR = "%%";
-
     /**
      * The full signature of the compiled root method including parameter types as reported in the
      * optimization log.
@@ -83,7 +73,7 @@ public class Method {
      * @param experiment the experiment to which the method belongs
      */
     public Method(String methodName, Experiment experiment) {
-        if (methodName.contains(MULTI_METHOD_KEY_SEPARATOR)) {
+        if (methodName.contains(StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR)) {
             throw new IllegalArgumentException("The provided argument is a multi-method name: " + methodName);
         }
         compilationUnits = new ArrayList<>();
@@ -259,11 +249,11 @@ public class Method {
      * @return the method name and multi-method key
      */
     public static Pair<String, String> splitMultiMethodName(String multiMethodName) {
-        int separatorBegin = multiMethodName.indexOf(MULTI_METHOD_KEY_SEPARATOR);
+        int separatorBegin = multiMethodName.indexOf(StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR);
         if (separatorBegin == -1) {
             return Pair.create(multiMethodName, null);
         }
-        int keyBegin = separatorBegin + MULTI_METHOD_KEY_SEPARATOR.length();
+        int keyBegin = separatorBegin + StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR.length();
         int keyEnd = multiMethodName.indexOf('(', keyBegin);
         if (keyEnd == -1) {
             throw new IllegalArgumentException("Malformed multi-method name: " + multiMethodName);

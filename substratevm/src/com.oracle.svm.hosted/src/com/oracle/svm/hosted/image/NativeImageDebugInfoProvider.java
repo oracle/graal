@@ -49,6 +49,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordBase;
 
@@ -1093,7 +1094,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (method instanceof HostedMethod) {
                 return ((HostedMethod) method).isDeoptTarget();
             }
-            return name().endsWith(HostedMethod.MULTI_METHOD_KEY_SEPARATOR);
+            return name().endsWith(StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR);
         }
 
         @Override
