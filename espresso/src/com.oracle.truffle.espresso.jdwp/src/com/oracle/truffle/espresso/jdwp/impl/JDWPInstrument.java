@@ -219,4 +219,8 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         }
         return connection.isDebuggerThread(thread);
     }
+
+    boolean hasConnection() {
+        return connection != null;
+    }
 }
