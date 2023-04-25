@@ -3324,32 +3324,17 @@ def graalvm_version(version_type):
         """
         :rtype: (str, str, str)
         """
-        full_version = None
-        version = None
-        qualifier = None
-        build = None
-
-        out = mx.LinesOutputCapture()
+        out = mx.OutputCapture()
         with mx.DisableJavaDebugging():
-            code = mx_sdk_vm.base_jdk().run_java(['-version'], out=out, err=out)
+            code = mx_sdk_vm.base_jdk().run_java(['-Xlog:disable', join(dirname(__file__), 'JDKVersionInfo.java')], out=out, err=out)
         if code == 0:
-            for line in out.lines:
-                version_match = re.search(r'version "(?P<full_version>(?P<version>[0-9.]+)(-(?P<qualifier>.+))?)"', line)
-                if version_match is not None:
-                    assert full_version is None
-                    full_version = version_match.group('full_version')
-                    version = version_match.group('version')
-                    qualifier = version_match.group('qualifier')
-                elif full_version is not None:
-                    build_match = re.search(r'Runtime Environment .*\(.*build ' + full_version + r'\+(?P<build>[0-9]+)', line)
-                    if build_match is not None:
-                        assert build is None
-                        build = build_match.group('build')
-            if version is None or build is None:
-                raise mx.abort('VM info extraction failed. Output:\n' + '\n'.join(out.lines))
-            return version, qualifier, build
-        else:
-            raise mx.abort('VM info extraction failed. Exit code: ' + str(code))
+            m = re.search(r'JDK_VERSION_INFO="(?P<feature>[^\|]*)\|(?P<pre>[^\|]*)\|(?P<build>[^\|]*)"', out.data, re.DOTALL)
+            if m:
+                version, qualifier, build = m.group('feature', 'pre', 'build')
+                if qualifier == '':
+                    qualifier = None
+                return version, qualifier, build
+        raise mx.abort(f'VM info extraction failed. Exit code: {code}\nOutput: {out.data}')
 
     if version_type == 'graalvm':
         return _suite.release_version()
