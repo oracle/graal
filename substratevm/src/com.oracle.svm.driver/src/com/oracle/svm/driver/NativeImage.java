@@ -80,7 +80,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionUtils;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.VMError;
@@ -275,7 +274,6 @@ public class NativeImage {
     private String printFlagsWithExtraHelpOptionQuery = null;
 
     final Registry optionRegistry;
-    private LinkedHashSet<EnabledOption> enabledLanguages;
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
     private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
@@ -828,18 +826,6 @@ public class NativeImage {
         if (!enabledOptions.isEmpty()) {
             addPlainImageBuilderArg(oHFallbackThreshold + SubstrateOptions.NoFallback);
         }
-
-        /* Determine if truffle is needed- any MacroOption of kind Language counts */
-        enabledLanguages = optionRegistry.getEnabledOptions(OptionUtils.MacroOptionKind.Language);
-
-        /* Provide more memory for image building if we have more than one language. */
-        if (enabledLanguages.size() > 1) {
-            long baseMemRequirements = SubstrateOptionsParser.parseLong("4g");
-            long memRequirements = baseMemRequirements + enabledLanguages.size() * SubstrateOptionsParser.parseLong("1g");
-            /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
-            addImageBuilderJavaArgs(oXmx + memRequirements);
-        }
-
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity()); // legacy
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.image-build-time.PreinitializeContexts=", ",", Function.identity());
     }
