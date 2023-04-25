@@ -197,24 +197,6 @@ def _unittest_config_participant(config):
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-    # The arguments below are only actually needed if Truffle is deployed as a
-    # module. However, that's determined by the compiler suite which may not
-    # be present. In that case, adding these options results in annoying
-    # but harmless messages from the VM:
-    #
-    #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
-    #
-
-    # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
-
-    # This is required for the call to setAccessible in
-    # TruffleTCK.testValueWithSource to work.
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
-
-    # Needed for object model tests.
-    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
-
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
         config = _unittest_config_participant_tck(config)
