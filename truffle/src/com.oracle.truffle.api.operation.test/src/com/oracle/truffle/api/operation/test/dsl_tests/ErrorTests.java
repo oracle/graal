@@ -103,23 +103,39 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("Operations class requires a (TruffleLanguage<C>, FrameDescriptor) constructor.")
+    @ExpectError("Operations class should declare a constructor that has signature (TruffleLanguage<C>, FrameDescriptor) or (TruffleLanguage<C>, FrameDescriptor.Builder). The constructor should be visible to subclasses.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
-    public abstract class MustHaveFDConstructor extends RootNode implements OperationRootNode {
-        protected MustHaveFDConstructor(TruffleLanguage<?> language, FrameDescriptor.Builder builder) {
-            super(language, builder.build());
+    public abstract class HiddenConstructor extends RootNode implements OperationRootNode {
+        private HiddenConstructor(TruffleLanguage<?> language, FrameDescriptor descriptor) {
+            super(language, descriptor);
         }
     }
 
+    @ExpectError("Operations class should declare a constructor that has signature (TruffleLanguage<C>, FrameDescriptor) or (TruffleLanguage<C>, FrameDescriptor.Builder). The constructor should be visible to subclasses.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     public abstract class InvalidConstructor extends RootNode implements OperationRootNode {
-        protected InvalidConstructor(TruffleLanguage<?> language, FrameDescriptor builder) {
-            super(language, builder);
+        protected InvalidConstructor() {
+            super(null);
         }
 
-        @ExpectError("Invalid constructor declaration, expected (TruffleLanguage<C>, FrameDescriptor) or (TruffleLanguage<C>, FrameDescriptor.Builder). Remove this constructor.")
+        protected InvalidConstructor(String name) {
+            super(null);
+        }
+
         protected InvalidConstructor(TruffleLanguage<?> language) {
             super(language);
+        }
+
+        protected InvalidConstructor(TruffleLanguage<?> language, String name) {
+            super(language);
+        }
+
+        protected InvalidConstructor(FrameDescriptor frameDescriptor, TruffleLanguage<?> language) {
+            super(language, frameDescriptor);
+        }
+
+        protected InvalidConstructor(FrameDescriptor.Builder builder, TruffleLanguage<?> language) {
+            super(language, builder.build());
         }
     }
 

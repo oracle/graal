@@ -84,15 +84,20 @@ import com.oracle.truffle.api.operation.Variadic;
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScOr", continueWhen = false)
 public abstract class TestOperations extends RootNode implements OperationRootNode {
 
-    protected TestOperations(TruffleLanguage<?> language, FrameDescriptor.Builder frameDescriptor) {
-        super(language, frameDescriptor.build());
-    }
-
     protected TestOperations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
-    public String testData;
+    protected String name;
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
 
     // Expose the protected cloneUninitialized method for testing.
     public TestOperations doCloneUninitialized() {

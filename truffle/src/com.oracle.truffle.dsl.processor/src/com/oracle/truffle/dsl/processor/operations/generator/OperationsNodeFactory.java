@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor.operations.generator;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.addSuppressWarnings;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
-import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createShouldNotReachHere;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.addField;
@@ -227,9 +226,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Define a static block with any necessary initialization code.
         operationNodeGen.add(createStaticConstructor());
 
-        // Define the root node's constructors.
-        operationNodeGen.add(createFrameDescriptorConstructor());
-        operationNodeGen.add(createFrameDescriptorBuliderConstructor());
+        // Define the generated node's constructor.
+        operationNodeGen.add(createConstructor());
 
         // Define the execute method.
         operationNodeGen.add(createExecute());
@@ -485,25 +483,21 @@ public class OperationsNodeFactory implements ElementHelpers {
         return ctor;
     }
 
-    private CodeExecutableElement createFrameDescriptorConstructor() {
-        CodeExecutableElement ctor = GeneratorUtils.createSuperConstructor(operationNodeGen, model.fdConstructor);
-        ctor.getModifiers().clear();
-        ctor.getModifiers().add(PRIVATE);
-        return ctor;
-    }
+    private CodeExecutableElement createConstructor() {
+        CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, operationNodeGen.getSimpleName().toString());
+        ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+        ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
 
-    private CodeExecutableElement createFrameDescriptorBuliderConstructor() {
-        CodeExecutableElement ctor;
-        if (model.fdBuilderConstructor == null) {
-            ctor = new CodeExecutableElement(Set.of(PRIVATE), null, operationNodeGen.getSimpleName().toString());
-            ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
-            ctor.addParameter(new CodeVariableElement(new GeneratedTypeMirror("", "FrameDescriptor.Builder"), "builder"));
-            ctor.createBuilder().statement("this(language, builder.build())");
+        CodeTreeBuilder b = ctor.getBuilder();
+
+        b.startStatement().startCall("super");
+        b.string("language");
+        if (model.fdBuilderConstructor != null) {
+            b.string("builder");
         } else {
-            ctor = GeneratorUtils.createSuperConstructor(operationNodeGen, model.fdBuilderConstructor);
-            ctor.getModifiers().clear();
-            ctor.getModifiers().add(PRIVATE);
+            b.string("builder.build()");
         }
+        b.end(2);
 
         return ctor;
     }
@@ -1923,6 +1917,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createBegin(OperationModel operation) {
+            if (operation.kind == OperationKind.ROOT) {
+                return createBeginRoot(operation);
+            }
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
 
             int argIndex = 0;
@@ -1955,38 +1952,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            if (operation.kind == OperationKind.ROOT) {
-                b.startIf().string("bc != null").end().startBlock(); // {
-                b.startAssign("savedState").startNew(savedState.asType());
-                b.variables(builderState);
-                b.end(2);
-                b.end(); // }
-
-                /*
-                 * We initialize the fields declared on builderState here when beginRoot is called.
-                 */
-                buildContextSensitiveFieldInitializer(b);
-                b.statement("operationStack = new OperationStackEntry[8]");
-                b.statement("opSeqNum = 0");
-                b.statement("operationSp = 0");
-                b.statement("numLocals = 0");
-                b.statement("numLabels = 0");
-
-                if (model.hasBoxingElimination()) {
-                    b.statement("stackValueBciStack = new int[8]");
-                    b.statement("stackValueBciSp = 0");
-                }
-
-                b.startIf().string("withSource").end().startBlock();
-                b.statement("sourceIndexStack = new int[1]");
-                b.statement("sourceIndexSp = 0");
-                b.statement("sourceLocationStack = new int[12]");
-                b.statement("sourceLocationSp = 0");
-                b.end();
-            } else {
-                b.startStatement().startCall("beforeChild").end(2);
-            }
-
+            b.startStatement().startCall("beforeChild").end(2);
             b.startStatement().startCall("beginOperation");
             b.tree(createOperationConstant(operation));
             buildOperationBeginData(b, operation);
@@ -2058,6 +2024,56 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createBeginRoot(OperationModel rootOperation) {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "beginRoot");
+            ex.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+            CodeTreeBuilder b = ex.getBuilder();
+
+            if (model.enableSerialization) {
+                b.startIf().string("serialization != null").end().startBlock();
+                createSerializeBegin(rootOperation, b);
+                b.statement("return");
+                b.end();
+            }
+
+            b.startIf().string("bc != null").end().startBlock(); // {
+            b.startAssign("savedState").startNew(savedState.asType());
+            b.variables(builderState);
+            b.end(2);
+            b.end(); // }
+
+            /*
+             * We initialize the fields declared on builderState here when beginRoot is called.
+             */
+            buildContextSensitiveFieldInitializer(b);
+            b.statement("operationStack = new OperationStackEntry[8]");
+            b.statement("opSeqNum = 0");
+            b.statement("operationSp = 0");
+            b.statement("numLocals = 0");
+            b.statement("numLabels = 0");
+
+            if (model.hasBoxingElimination()) {
+                b.statement("stackValueBciStack = new int[8]");
+                b.statement("stackValueBciSp = 0");
+            }
+
+            b.startIf().string("withSource").end().startBlock();
+            b.statement("sourceIndexStack = new int[1]");
+            b.statement("sourceIndexSp = 0");
+            b.statement("sourceLocationStack = new int[12]");
+            b.statement("sourceLocationSp = 0");
+            b.end();
+
+            b.startStatement().startCall("beginOperation");
+            b.tree(createOperationConstant(rootOperation));
+            b.startNewArray(new ArrayCodeTypeMirror(context.getType(Object.class)), null);
+            b.string("false"); // TODO: are we using this?
+            b.string("language");
+            b.end(3);
+
+            return ex;
+        }
+
         private void createSerializeBegin(OperationModel operation, CodeTreeBuilder b) {
             serializationWrapException(b, () -> {
 
@@ -2065,7 +2081,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 int i = 0;
                 for (TypeMirror argType : operation.operationArguments) {
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
-                        b.statement("serialization.language = arg" + i);
+                        b.statement("serialization.language = language");
                     } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
                         serializationElements.writeShort(after, "(short) ((OperationLocalImpl) arg" + i + ").index");
                     } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
@@ -2097,9 +2113,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private void buildOperationBeginData(CodeTreeBuilder b, OperationModel operation) {
             switch (operation.kind) {
-                case ROOT:
-                    b.string("new Object[]{false, arg0}");
-                    break;
                 case BLOCK:
                 case INSTRUMENT_TAG:
                 case SOURCE:
@@ -2182,27 +2195,20 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private Element createEnd(OperationModel operation) {
+        private CodeExecutableElement createEnd(OperationModel operation) {
+            if (operation.kind == OperationKind.ROOT) {
+                // endRoot is handled specially.
+                return createEndRoot(operation);
+            }
+
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "end" + operation.name);
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.enableSerialization) {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
-
-                    if (operation.kind == OperationKind.ROOT) {
-                        b.startStatement();
-                        b.type(operationNodeGen.asType()).string(" node = ").startNew(operationNodeGen.asType()).string("serialization.language").string("FrameDescriptor.newBuilder()").end();
-                        b.end();
-                        b.statement("node.buildIndex = buildIndex++");
-                        serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
-                        b.statement("builtNodes.add(node)");
-                        b.statement("return node");
-                    } else {
-                        serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
-                        b.statement("return");
-                    }
-
+                    serializationElements.writeShort(b, serializationElements.codeEnd[operation.id]);
+                    b.statement("return");
                 });
                 b.end();
             }
@@ -2216,11 +2222,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startStatement().startCall("endOperation");
             b.tree(createOperationConstant(operation));
             b.end(2);
-
-            if (operation.kind == OperationKind.ROOT) {
-                // endRoot is handled specially.
-                return createEndRoot(ex, b);
-            }
 
             if (operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
                 // Short-circuiting operations should have at least one child.
@@ -2326,12 +2327,33 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private Element createEndRoot(CodeExecutableElement ex, CodeTreeBuilder b) {
+        private CodeExecutableElement createEndRoot(OperationModel rootOperation) {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "endRoot");
+            CodeTreeBuilder b = ex.getBuilder();
+
+            if (model.enableSerialization) {
+                b.startIf().string("serialization != null").end().startBlock();
+                serializationWrapException(b, () -> {
+                    b.startStatement();
+                    b.type(operationNodeGen.asType()).string(" node = ");
+                    b.startNew(operationNodeGen.asType());
+                    b.string("serialization.language");
+                    b.string("FrameDescriptor.newBuilder()");
+                    b.end(2);
+
+                    b.statement("node.buildIndex = buildIndex++");
+                    serializationElements.writeShort(b, serializationElements.codeEnd[rootOperation.id]);
+                    b.statement("builtNodes.add(node)");
+                    b.statement("return node");
+                });
+                b.end();
+            }
+
             ex.setReturnType(model.templateType.asType());
 
-            b.declaration(types.TruffleLanguage, "language");
-
-            b.startAssign("language").cast(types.TruffleLanguage).string("((Object[]) operationStack[operationSp].data)[1]").end();
+            b.startStatement().startCall("endOperation");
+            b.tree(createOperationConstant(rootOperation));
+            b.end(2);
 
             b.declaration(operationNodeGen.asType(), "result", (CodeTree) null);
             b.startIf().string("isReparse").end().startBlock(); // {
@@ -2341,14 +2363,22 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end().startElseBlock(); // } {
 
-            b.declaration(types.FrameDescriptor_Builder, "fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
+            b.declaration("Object[]", "rootData", "((Object[]) operationStack[operationSp].data)");
+            b.startStatement();
+            b.type(types.TruffleLanguage).string("language = ");
+            b.cast(types.TruffleLanguage).string("rootData[1]");
+            b.end();
 
+            b.declaration(types.FrameDescriptor_Builder, "fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
             b.startStatement().startCall("fdb.addSlots");
             b.string("numLocals + maxStack");
             b.staticReference(types.FrameSlotKind, "Illegal");
             b.end(2);
 
-            b.startAssign("result").startNew(operationNodeGen.asType()).string("language").string("fdb").end(2);
+            b.startAssign("result").startNew(operationNodeGen.asType());
+            b.string("language");
+            b.string("fdb");
+            b.end(2);
 
             b.startAssign("result.nodes").string("nodes").end();
             b.startAssign("result.bc").string("Arrays.copyOf(bc, bci)").end();
@@ -2392,6 +2422,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             b.startIf().string("savedState == null").end().startBlock(); // {
+            b.lineComment("this signifies that there is no root node currently being built");
             b.statement("bc = null");
             b.end().startElseBlock(); // } {
             for (CodeVariableElement state : builderState) {
@@ -3359,6 +3390,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startStaticCall(context.getType(List.class), "of").string("nodes").end();
             b.end();
             b.end(2);
+
+            // TODO: shouldn't we be somehow re-processing the input? Right now this is a no-op.
 
             return ex;
         }

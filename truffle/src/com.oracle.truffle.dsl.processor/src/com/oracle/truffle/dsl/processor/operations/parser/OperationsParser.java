@@ -52,7 +52,9 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -67,6 +69,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -114,38 +117,56 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             model.addError(typeElement, "Operations class must directly or indirectly implement %s.", getSimpleName(types.OperationRootNode));
         }
 
-        for (ExecutableElement ctor : ElementFilter.constructorsIn(typeElement.getEnclosedElements())) {
-            boolean isValid = ctor.getParameters().size() == 2;
-
-            isValid = isValid && ElementUtils.isAssignable(ctor.getParameters().get(0).asType(), types.TruffleLanguage);
-
-            isValid = isValid && (ctor.getModifiers().contains(Modifier.PUBLIC) || ctor.getModifiers().contains(Modifier.PROTECTED));
-
-            if (isValid) {
-                TypeMirror paramType2 = ctor.getParameters().get(1).asType();
-                if (ElementUtils.isAssignable(paramType2, types.FrameDescriptor)) {
-                    model.fdConstructor = ctor;
-                } else if (ElementUtils.isAssignable(paramType2, types.FrameDescriptor_Builder)) {
-                    model.fdBuilderConstructor = ctor;
-                } else {
-                    isValid = false;
-                }
+        // Find the appropriate constructor.
+        List<ExecutableElement> viableConstructors = ElementFilter.constructorsIn(typeElement.getEnclosedElements()).stream().filter(ctor -> {
+            if (!(ctor.getModifiers().contains(Modifier.PUBLIC) || ctor.getModifiers().contains(Modifier.PROTECTED))) {
+                // not visible
+                return false;
             }
-
-            if (!isValid) {
-                model.addError(ctor, "Invalid constructor declaration, expected (%s, %s) or (%s, %s.%s). Remove this constructor.",
-                                getSimpleName(types.TruffleLanguage),
-                                getSimpleName(types.FrameDescriptor),
-                                getSimpleName(types.TruffleLanguage),
-                                getSimpleName(types.FrameDescriptor),
-                                getSimpleName(types.FrameDescriptor_Builder));
+            List<? extends VariableElement> params = ctor.getParameters();
+            if (params.size() != 2) {
+                // not the right number of params
+                return false;
             }
+            if (!ElementUtils.isAssignable(params.get(0).asType(), types.TruffleLanguage)) {
+                // wrong first parameter type
+                return false;
+            }
+            TypeMirror secondParameterType = ctor.getParameters().get(1).asType();
+            boolean isFrameDescriptor = ElementUtils.isAssignable(secondParameterType, types.FrameDescriptor);
+            boolean isFrameDescriptorBuilder = ElementUtils.isAssignable(secondParameterType, types.FrameDescriptor_Builder);
+            // second parameter type should be FrameDescriptor or FrameDescriptor.Builder
+            return isFrameDescriptor || isFrameDescriptorBuilder;
+        }).collect(Collectors.toList());
+
+        if (viableConstructors.isEmpty()) {
+            model.addError(typeElement, "Operations class should declare a constructor that has signature (%s, %s) or (%s, %s.%s). The constructor should be visible to subclasses.",
+                            getSimpleName(types.TruffleLanguage),
+                            getSimpleName(types.FrameDescriptor),
+                            getSimpleName(types.TruffleLanguage),
+                            getSimpleName(types.FrameDescriptor),
+                            getSimpleName(types.FrameDescriptor_Builder));
+            return model;
         }
 
-        if (model.fdConstructor == null) {
-            model.addError(typeElement, "Operations class requires a (%s, %s) constructor.",
-                            getSimpleName(types.TruffleLanguage),
-                            getSimpleName(types.FrameDescriptor));
+        Map<String, List<ExecutableElement>> constructorsByFDType = viableConstructors.stream().collect(Collectors.groupingBy(ctor -> {
+            TypeMirror secondParameterType = ctor.getParameters().get(1).asType();
+            if (ElementUtils.isAssignable(secondParameterType, types.FrameDescriptor)) {
+                return TruffleTypes.FrameDescriptor_Name;
+            } else {
+                return TruffleTypes.FrameDescriptor_Builder_Name;
+            }
+        }));
+
+        // Prioritize a constructor that takes a FrameDescriptor.Builder.
+        if (constructorsByFDType.containsKey(TruffleTypes.FrameDescriptor_Builder_Name)) {
+            List<ExecutableElement> ctors = constructorsByFDType.get(TruffleTypes.FrameDescriptor_Builder_Name);
+            assert ctors.size() == 1;
+            model.fdBuilderConstructor = ctors.get(0);
+        } else {
+            List<ExecutableElement> ctors = constructorsByFDType.get(TruffleTypes.FrameDescriptor_Name);
+            assert ctors.size() == 1;
+            model.fdConstructor = ctors.get(0);
         }
 
         if (model.hasErrors()) {
