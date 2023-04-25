@@ -46,7 +46,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoQueryResult;
+import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
@@ -55,6 +55,8 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jdk.JDKUtils;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public class RealLog extends Log {
@@ -639,7 +641,7 @@ public class RealLog extends Log {
 
         string(t.getClass().getName()).string(": ").string(detailMessage);
         if (!JDKUtils.isStackTraceValid(t)) {
-            int remaining = printBacktrace(JDKUtils.getBacktrace(t), maxFrames);
+            int remaining = printBacktrackSynchronized(t, maxFrames);
             printRemainingFramesCount(remaining);
         } else {
             StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
@@ -657,6 +659,34 @@ public class RealLog extends Log {
         }
         newline();
         return this;
+    }
+
+    private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
+    private static final VMMutex FRAME_INFO_CURSOR_MUTEX = new VMMutex("RealLog.frameInfoCursorMutex");
+
+    private int printBacktrackSynchronized(Throwable t, int maxFrames) {
+        if (VMOperation.isInProgress()) {
+            if (FRAME_INFO_CURSOR_MUTEX.hasOwner()) {
+                /*
+                 * The FrameInfoCursor is locked. We cannot safely print the stack trace. Do nothing
+                 * and accept that we will not get a stack track.
+                 */
+                return 0;
+            }
+            /*
+             * The FrameInfoCursor is not locked. We can safely print stack trace without
+             * synchronization because we VMOperation is single threaded.
+             */
+            return printBacktrace(JDKUtils.getBacktrace(t), maxFrames);
+        } else {
+            /* Not in a VMOperation. Need to lock the FrameInfoCursor. */
+            FRAME_INFO_CURSOR_MUTEX.lock();
+            try {
+                return printBacktrace(JDKUtils.getBacktrace(t), maxFrames);
+            } finally {
+                FRAME_INFO_CURSOR_MUTEX.unlock();
+            }
+        }
     }
 
     private void printJavaFrame(String className, String methodName, String fileName, int lineNumber) {
@@ -716,8 +746,9 @@ public class RealLog extends Log {
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     private int printFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesProcessed, int maxFrames, int maxJavaStackTraceDepth) {
         int framesProcessed = oldFramesProcessed;
-        CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(tetheredCodeInfo, ip);
-        for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
+        frameInfoCursor.initialize(tetheredCodeInfo, ip);
+        while (frameInfoCursor.advance()) {
+            FrameInfoQueryResult frameInfo = frameInfoCursor.get();
             if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {
                 /* Always ignore the frame. It is an internal frame of the VM. */
                 continue;
