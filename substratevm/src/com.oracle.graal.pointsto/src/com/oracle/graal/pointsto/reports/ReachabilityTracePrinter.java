@@ -27,32 +27,55 @@ package com.oracle.graal.pointsto.reports;
 import java.io.PrintWriter;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisElement;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.util.ReflectionUtil;
 
 public final class ReachabilityTracePrinter {
-    public static void printTraceForTypes(BigBang bb, String reportsPath, String imageName) {
+    public static void printTraceForTypes(String typesTraceOpt, BigBang bb, String reportsPath, String imageName) {
         ReportUtils.report("trace for types", reportsPath, "trace_types_" + imageName, "txt",
-                writer -> printTraceForTypesImpl(bb, writer));
+                writer -> printTraceForTypesImpl(typesTraceOpt, bb, writer));
     }
 
-    public static void printTraceForMethods(BigBang bb, String reportsPath, String imageName) {
+    public static void printTraceForMethods(String methodsTraceOpt, BigBang bb, String reportsPath, String imageName) {
         ReportUtils.report("trace for methods", reportsPath, "trace_methods_" + imageName, "txt",
-                        writer -> printTraceForMethodsImpl(bb, writer));
+                        writer -> printTraceForMethodsImpl(methodsTraceOpt, bb, writer));
     }
 
-    public static void printTraceForFields(BigBang bb, String reportsPath, String imageName) {
+    public static void printTraceForFields(String fieldsTraceOpt, BigBang bb, String reportsPath, String imageName) {
         ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + imageName, "txt",
-                writer -> printTraceForFieldsImpl(bb, writer));
+                writer -> printTraceForFieldsImpl(fieldsTraceOpt, bb, writer));
     }
 
-    private static void printTraceForTypesImpl(BigBang bb, PrintWriter writer) {
+    private static void printTraceForTypesImpl(String typesTraceOpt, BigBang bb, PrintWriter writer) {
+        String[] classNames = typesTraceOpt.split(",");
+        AnalysisMetaAccess metaAccess = bb.getMetaAccess();
+        for (String className : classNames) {
+            Class<?> clazz = ReflectionUtil.lookupClass(false, className);
+            AnalysisType type = metaAccess.lookupJavaType(clazz);
+
+            if (type.isAllocated()) {
+                String header = "Type " + type.toJavaName() + " is marked as allocated";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getAllocatedReason(), header);
+                writer.println(trace);
+            } else if (type.isInHeap()) {
+                String header = "Type " + type.toJavaName() + " is marked as in-heap";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getInHeapReason(), header);
+                writer.println(trace);
+            } else if (type.isReachable()) {
+                String header = "Type " + type.toJavaName() + " is marked as reachable";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getReachableReason(), header);
+                writer.println(trace);
+            }
+        }
+    }
+
+    private static void printTraceForMethodsImpl(String methodsTraceOpt, BigBang bb, PrintWriter writer) {
 
     }
 
-    private static void printTraceForMethodsImpl(BigBang bb, PrintWriter writer) {
-
-    }
-
-    private static void printTraceForFieldsImpl(BigBang bb, PrintWriter writer) {
+    private static void printTraceForFieldsImpl(String fieldsTraceOpt, BigBang bb, PrintWriter writer) {
 
     }
 }

@@ -55,16 +55,19 @@ public class AnalysisReporter {
                 AnalysisHeapHistogramPrinter.print(bb, reportsPath, baseImageName);
             }
 
-            if (!AnalysisReportsOptions.PrintTypeReachabilityTrace.getValue(options).isEmpty()) {
-                ReachabilityTracePrinter.printTraceForTypes(bb, reportsPath, baseImageName);
+            String typesTraceOpt = AnalysisReportsOptions.PrintTypeReachabilityTrace.getValue(options);
+            if (!typesTraceOpt.isEmpty()) {
+                ReachabilityTracePrinter.printTraceForTypes(typesTraceOpt, bb, reportsPath, baseImageName);
             }
 
-            if (!AnalysisReportsOptions.PrintMethodReachabilityTrace.getValue(options).isEmpty()) {
-                ReachabilityTracePrinter.printTraceForMethods(bb, reportsPath, baseImageName);
+            String methodsTraceOpt = AnalysisReportsOptions.PrintMethodReachabilityTrace.getValue(options);
+            if (!methodsTraceOpt.isEmpty()) {
+                ReachabilityTracePrinter.printTraceForMethods(methodsTraceOpt, bb, reportsPath, baseImageName);
             }
 
-            if (!AnalysisReportsOptions.PrintFieldReachabilityTrace.getValue(options).isEmpty()) {
-                ReachabilityTracePrinter.printTraceForFields(bb, reportsPath, baseImageName);
+            String fieldsTraceOpt = AnalysisReportsOptions.PrintFieldReachabilityTrace.getValue(options);
+            if (!fieldsTraceOpt.isEmpty()) {
+                ReachabilityTracePrinter.printTraceForFields(fieldsTraceOpt, bb, reportsPath, baseImageName);
             }
 
             if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {
