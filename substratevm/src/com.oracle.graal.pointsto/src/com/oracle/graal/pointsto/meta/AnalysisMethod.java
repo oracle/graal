@@ -553,7 +553,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public WrappedSignature getSignature() {
-        return getUniverse().lookup(wrapped.getSignature(), getDeclaringClass().getWrappedWithResolve());
+        return getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
     }
 
     @Override
@@ -669,7 +669,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public ConstantPool getConstantPool() {
-        return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass().getWrappedWithResolve());
+        return getUniverse().lookup(wrapped.getConstantPool(), wrapped.getDeclaringClass());
     }
 
     @Override

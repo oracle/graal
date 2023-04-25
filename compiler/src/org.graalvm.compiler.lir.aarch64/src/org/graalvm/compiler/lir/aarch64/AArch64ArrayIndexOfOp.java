@@ -128,10 +128,10 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                     case S4:
                         return 11;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(variant); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -353,7 +353,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                     vecTmp[5] = asRegister(vectorTemp[10]);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             vecArray1 = asRegister(vectorTemp[0]);
@@ -626,7 +626,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64ComplexVectorOp {
                         masm.neon.andVVV(FullReg, vecArray2, vecArray2, vecTmp[1]);
                         break;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
                 break;
         }

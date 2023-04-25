@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,7 +138,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
             } else if (newX.stamp(view) instanceof AbstractPointerStamp && newY.stamp(view) instanceof AbstractPointerStamp) {
                 return new IntegerEqualsNode(newX, newY);
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere(newX.stamp(view) + " " + newY.stamp(view)); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -234,6 +234,15 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                     // x == (x - y) => y == 0
                     return create(subNode.getY(), ConstantNode.forIntegerStamp(view.stamp(subNode), 0), view);
                 }
+            }
+
+            if (forX instanceof NotNode notY && notY.getValue() == forY) {
+                // ~y == y => false
+                return LogicConstantNode.contradiction();
+            }
+            if (forY instanceof NotNode notX && forX == notX.getValue()) {
+                // x == ~x => false
+                return LogicConstantNode.contradiction();
             }
 
             return super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY, view);

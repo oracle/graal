@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,7 @@ public class FallbackExecutor {
         command.add("-D" + ImageInfo.PROPERTY_IMAGE_KIND_KEY + "=fallback-" + ImageInfo.PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE);
         Path fallbackImageDir = Paths.get(ProcessProperties.getExecutableName()).getParent();
         if (fallbackImageDir == null) {
-            VMError.shouldNotReachHere();
+            VMError.shouldNotReachHereUnexpectedInput("fallback image directory");
         }
         String pathPrefix = fallbackImageDir.toAbsolutePath().normalize().toString();
         String relativeClasspath = Options.FallbackExecutorClasspath.getValue();

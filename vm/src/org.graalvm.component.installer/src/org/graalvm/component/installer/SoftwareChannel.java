@@ -69,7 +69,7 @@ public interface SoftwareChannel {
     interface Factory {
         /**
          * True, if the channel is willing to handle the URL. URL is passed as a String so that
-         * custom protocols may be used without registering an URLStreamHandlerFactory.
+         * custom protocols may be used without registering a URLStreamHandlerFactory.
          * 
          * @param source the definition of the channel including label
          * @param input input parameters

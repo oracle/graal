@@ -157,8 +157,8 @@ public class AnalysisError extends Error {
         throw new FieldNotPresentError(bb, objectFlow, context, field, type);
     }
 
-    public static RuntimeException shouldNotReachHere() {
-        throw new AnalysisError("should not reach here");
+    public static RuntimeException shouldNotReachHereUnexpectedInput(Object input) {
+        throw new AnalysisError("should not reach here: unexpected input: " + input);
     }
 
     public static RuntimeException shouldNotReachHere(String msg) {

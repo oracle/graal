@@ -40,8 +40,8 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.hpp",
           lineStart = 197,
           lineEnd   = 203,
-          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
-          sha1      = "1029d272e60ddee63adc32dc356c8ab3b3596dd8")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "f1f7051b93fb7037a3f7baf2cfc25681979ac6dc")
 // @formatter:on
 public final class AMD64FloatToHalfFloatOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64FloatToHalfFloatOp> TYPE = LIRInstructionClass.create(AMD64FloatToHalfFloatOp.class);

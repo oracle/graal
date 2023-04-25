@@ -312,7 +312,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
     private void assertPartialEvalEqualsAndRunsCorrect(RootNode program, String input) {
         assertMatches(program, input);
         final OptimizedCallTarget compilable = (OptimizedCallTarget) program.getCallTarget();
-        partialEval(compilable, new Object[]{input}, getCompilationId(compilable));
+        partialEval(compilable, new Object[]{input});
         // fail on Exceptions only for now
     }
 

@@ -31,6 +31,7 @@ import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.OPEN_LABSJDK_RELEAS
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -55,6 +56,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -175,6 +177,7 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -218,6 +221,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.ServiceCatalogSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.OptionClassFilter;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.riscv64.RISCV64CPUFeatureAccess;
@@ -245,7 +249,6 @@ import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysisEngine;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.analysis.SubstrateUnsupportedFeatures;
-import com.oracle.svm.hosted.annotation.AnnotationSupport;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
@@ -864,6 +867,10 @@ public class NativeImageGenerator {
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
                 ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
+                OptionClassFilter missingRegistrationClassFilter = OptionClassFilterBuilder.createFilter(loader, SubstrateOptions.ThrowMissingRegistrationErrors,
+                                SubstrateOptions.ThrowMissingRegistrationErrorsPaths);
+                ImageSingletons.add(MissingRegistrationSupport.class, new MissingRegistrationSupport(missingRegistrationClassFilter));
+
                 if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(options)) {
                     ImageSingletons.add(ImageBuildStatistics.class, new ImageBuildStatistics());
                 }
@@ -980,8 +987,7 @@ public class NativeImageGenerator {
                     SnippetReflectionProvider originalSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, SubstitutionProcessor cEnumProcessor,
                     ClassInitializationSupport classInitializationSupport, List<SubstitutionProcessor> additionalSubstitutions) {
         UnsafeAutomaticSubstitutionProcessor automaticSubstitutions = createAutomaticUnsafeSubstitutions(options, originalSnippetReflection, annotationSubstitutions);
-        SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
-                        annotationSubstitutions, additionalSubstitutions);
+        SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(cEnumProcessor, automaticSubstitutions, annotationSubstitutions, additionalSubstitutions);
 
         SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions, loader.platform);
 
@@ -1012,13 +1018,12 @@ public class NativeImageGenerator {
         return new UnsafeAutomaticSubstitutionProcessor(options, annotationSubstitutions, originalSnippetReflection);
     }
 
-    public static SubstitutionProcessor createAnalysisSubstitutionProcessor(MetaAccessProvider originalMetaAccess, SnippetReflectionProvider originalSnippetReflection,
+    public static SubstitutionProcessor createAnalysisSubstitutionProcessor(
                     SubstitutionProcessor cEnumProcessor, SubstitutionProcessor automaticSubstitutions, SubstitutionProcessor annotationSubstitutions,
                     List<SubstitutionProcessor> additionalSubstitutionProcessors) {
         List<SubstitutionProcessor> allProcessors = new ArrayList<>();
         SubstitutionProcessor cFunctionSubstitutions = new CFunctionSubstitutionProcessor();
-        allProcessors.addAll(Arrays.asList(new AnnotationSupport(originalMetaAccess, originalSnippetReflection),
-                        annotationSubstitutions, cFunctionSubstitutions, automaticSubstitutions, cEnumProcessor));
+        allProcessors.addAll(Arrays.asList(annotationSubstitutions, cFunctionSubstitutions, automaticSubstitutions, cEnumProcessor));
         allProcessors.addAll(additionalSubstitutionProcessors);
         return SubstitutionProcessor.chainUpInOrder(allProcessors.toArray(new SubstitutionProcessor[0]));
     }
@@ -1283,7 +1288,7 @@ public class NativeImageGenerator {
                     TargetDescription target, boolean supportsStubBasedPlugins) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
-        WordOperationPlugin wordOperationPlugin = new SubstrateWordOperationPlugins(providers.getSnippetReflection(), providers.getWordTypes(),
+        WordOperationPlugin wordOperationPlugin = new SubstrateWordOperationPlugins(providers.getSnippetReflection(), providers.getConstantReflection(), providers.getWordTypes(),
                         providers.getPlatformConfigurationProvider().getBarrierSet());
 
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
@@ -1735,63 +1740,70 @@ public class NativeImageGenerator {
     }
 
     private void printTypes() {
+        String reportsPath = SubstrateOptions.reportsPath();
+        ReportUtils.report("print types", reportsPath, "universe_analysis", "txt",
+                        writer -> printTypes(writer));
+    }
+
+    private void printTypes(PrintWriter writer) {
+
         for (HostedType type : hUniverse.getTypes()) {
-            System.out.format("%8d %s  ", type.getTypeID(), type.toJavaName(true));
+            writer.format("%8d %s  ", type.getTypeID(), type.toJavaName(true));
             if (type.getSuperclass() != null) {
-                System.out.format("extends %d %s  ", type.getSuperclass().getTypeID(), type.getSuperclass().toJavaName(false));
+                writer.format("extends %d %s  ", type.getSuperclass().getTypeID(), type.getSuperclass().toJavaName(false));
             }
             if (type.getInterfaces().length > 0) {
-                System.out.print("implements ");
+                writer.print("implements ");
                 String sep = "";
                 for (HostedInterface interf : type.getInterfaces()) {
-                    System.out.format("%s%d %s", sep, interf.getTypeID(), interf.toJavaName(false));
+                    writer.format("%s%d %s", sep, interf.getTypeID(), interf.toJavaName(false));
                     sep = ", ";
                 }
-                System.out.print("  ");
+                writer.print("  ");
             }
 
             if (type.getWrapped().isInstantiated()) {
-                System.out.print("instantiated  ");
+                writer.print("instantiated  ");
             }
             if (type.getWrapped().isReachable()) {
-                System.out.print("reachable  ");
+                writer.print("reachable  ");
             }
 
-            System.out.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
-            System.out.format("type check slots %s  ", slotsToString(type.getTypeCheckSlots()));
+            writer.format("type check start %d range %d slot # %d ", type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot());
+            writer.format("type check slots %s  ", slotsToString(type.getTypeCheckSlots()));
             // if (type.findLeafConcreteSubtype() != null) {
-            // System.out.format("unique %d %s ", type.findLeafConcreteSubtype().getTypeID(),
+            // writer.format("unique %d %s ", type.findLeafConcreteSubtype().getTypeID(),
             // type.findLeafConcreteSubtype().toJavaName(false));
             // }
 
             int le = type.getHub().getLayoutEncoding();
             if (LayoutEncoding.isPrimitive(le)) {
-                System.out.print("primitive  ");
+                writer.print("primitive  ");
             } else if (LayoutEncoding.isInterface(le)) {
-                System.out.print("interface  ");
+                writer.print("interface  ");
             } else if (LayoutEncoding.isAbstract(le)) {
-                System.out.print("abstract  ");
+                writer.print("abstract  ");
             } else if (LayoutEncoding.isPureInstance(le)) {
-                System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceAllocationSize(le).rawValue());
+                writer.format("instance size %d  ", LayoutEncoding.getPureInstanceAllocationSize(le).rawValue());
             } else if (LayoutEncoding.isArrayLike(le)) {
                 String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
                 String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
-                System.out.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
+                writer.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
                                 LayoutEncoding.getArrayIndexScale(le));
 
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(le); // ExcludeFromJacocoGeneratedReport
             }
 
-            System.out.println();
+            writer.println();
 
             for (HostedType sub : type.getSubTypes()) {
-                System.out.format("               s %d %s%n", sub.getTypeID(), sub.toJavaName(false));
+                writer.format("               s %d %s%n", sub.getTypeID(), sub.toJavaName(false));
             }
             if (type.isInterface()) {
                 for (HostedMethod method : hUniverse.getMethods()) {
                     if (method.getDeclaringClass().equals(type)) {
-                        printMethod(method, -1);
+                        printMethod(writer, method, -1);
                     }
                 }
 
@@ -1801,41 +1813,42 @@ public class NativeImageGenerator {
                 fields = Arrays.copyOf(fields, fields.length);
                 Arrays.sort(fields, Comparator.comparing(HostedField::toString));
                 for (HostedField field : fields) {
-                    System.out.println("               f " + field.getLocation() + ": " + field.format("%T %n"));
+                    writer.println("               f " + field.getLocation() + ": " + field.format("%T %n"));
                 }
                 HostedMethod[] vtable = type.getVTable();
                 for (int i = 0; i < vtable.length; i++) {
                     if (vtable[i] != null) {
-                        printMethod(vtable[i], i);
+                        printMethod(writer, vtable[i], i);
                     }
                 }
                 for (HostedMethod method : hUniverse.getMethods()) {
                     if (method.getDeclaringClass().equals(type) && !method.hasVTableIndex()) {
-                        printMethod(method, -1);
+                        printMethod(writer, method, -1);
                     }
                 }
             }
         }
+
     }
 
-    private static void printMethod(HostedMethod method, int vtableIndex) {
+    private static void printMethod(PrintWriter writer, HostedMethod method, int vtableIndex) {
         if (vtableIndex != -1) {
-            System.out.print("               v " + vtableIndex + " ");
+            writer.print("               v " + vtableIndex + " ");
         } else {
-            System.out.print("               m ");
+            writer.print("               m ");
         }
         if (method.hasVTableIndex()) {
-            System.out.print(method.getVTableIndex() + " ");
+            writer.print(method.getVTableIndex() + " ");
         }
-        System.out.print(method.format("%r %n(%p)") + ": " + method.getImplementations().length + " [");
+        writer.print(method.format("%r %n(%p)") + ": " + method.getImplementations().length + " [");
         if (method.getImplementations().length <= 10) {
             String sep = "";
             for (HostedMethod impl : method.getImplementations()) {
-                System.out.print(sep + impl.getDeclaringClass().toJavaName(false));
+                writer.print(sep + impl.getDeclaringClass().toJavaName(false));
                 sep = ", ";
             }
         }
-        System.out.println("]");
+        writer.println("]");
     }
 
     private static String slotsToString(short[] slots) {

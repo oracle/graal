@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -118,11 +118,10 @@ public final class SulongEngineOption {
     @Option(name = "llvm.OSR",
             category = OptionCategory.EXPERT,
             help = "Mode to use for on-stack-replacement of loops.",
-            usageSyntax = "CFG|BYTECODE|NONE")
+            usageSyntax = "BYTECODE|NONE")
     public static final OptionKey<OSRMode> OSR_MODE = new OptionKey<>(OSRMode.BYTECODE);
 
     public enum OSRMode {
-        CFG,
         BYTECODE,
         NONE;
     }

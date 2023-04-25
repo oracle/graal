@@ -98,7 +98,7 @@ public enum MemoryExtendKind {
             case 64:
                 return MemoryExtendKind.ZERO_64;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(extendSize); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -111,7 +111,7 @@ public enum MemoryExtendKind {
             case 64:
                 return MemoryExtendKind.SIGN_64;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(extendSize); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

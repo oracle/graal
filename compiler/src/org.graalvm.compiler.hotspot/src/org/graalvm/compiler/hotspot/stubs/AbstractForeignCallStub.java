@@ -275,7 +275,7 @@ public abstract class AbstractForeignCallStub extends Stub {
     private ResolvedJavaMethod getGraphMethod() {
         ResolvedJavaMethod thisMethod = null;
         MetaAccessProvider metaAccess = providers.getMetaAccess();
-        for (ResolvedJavaMethod method : metaAccess.lookupJavaType(AbstractForeignCallStub.class).getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : metaAccess.lookupJavaType(AbstractForeignCallStub.class).getDeclaredMethods(false)) {
             if (method.getName().equals("getGraph")) {
                 if (thisMethod == null) {
                     thisMethod = method;

@@ -498,7 +498,7 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
     'xalan':    ['--report-unsupported-elements-at-runtime',
-                 '--initialize-at-build-time=org.apache.crimson.parser.Parser2'],
+                 '--initialize-at-build-time=org.apache.crimson.parser.Parser2,org.apache.crimson.parser.Parser2$Catalog,org.apache.crimson.parser.Parser2$NullHandler'],
     # There are two main issues with fop:
     # 1. LoggingFeature is enabled by default, causing the LogManager configuration to be parsed at build-time. However
     #    DaCapo Harness sets the `java.util.logging.config.file` property at run-time. Therefore, we set

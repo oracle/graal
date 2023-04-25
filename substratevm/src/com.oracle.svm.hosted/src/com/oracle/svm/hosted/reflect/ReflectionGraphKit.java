@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -305,7 +305,7 @@ public class ReflectionGraphKit extends HostedGraphKit {
                     case Double:
                         return graph.addOrUniqueWithInputs(FloatConvertNode.create(FloatConvert.I2D, unboxedValue, NodeView.DEFAULT));
                     default:
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.shouldNotReachHereUnexpectedInput(toStackKind); // ExcludeFromJacocoGeneratedReport
                 }
             case Long:
                 switch (toStackKind) {
@@ -314,17 +314,17 @@ public class ReflectionGraphKit extends HostedGraphKit {
                     case Double:
                         return graph.addOrUniqueWithInputs(FloatConvertNode.create(FloatConvert.L2D, unboxedValue, NodeView.DEFAULT));
                     default:
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.shouldNotReachHereUnexpectedInput(toStackKind); // ExcludeFromJacocoGeneratedReport
                 }
             case Float:
                 switch (toStackKind) {
                     case Double:
                         return graph.addOrUniqueWithInputs(FloatConvertNode.create(FloatConvert.F2D, unboxedValue, NodeView.DEFAULT));
                     default:
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.shouldNotReachHereUnexpectedInput(toStackKind); // ExcludeFromJacocoGeneratedReport
                 }
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(fromStackKind); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

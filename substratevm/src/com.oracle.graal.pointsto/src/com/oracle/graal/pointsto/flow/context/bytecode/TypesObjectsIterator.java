@@ -84,7 +84,7 @@ final class TypesObjectsIterator {
         if (state instanceof ContextSensitiveMultiTypeState) {
             return ((ContextSensitiveMultiTypeState) state).objects;
         }
-        throw AnalysisError.shouldNotReachHere();
+        throw AnalysisError.shouldNotReachHereUnexpectedInput(state);
     }
 
     /**

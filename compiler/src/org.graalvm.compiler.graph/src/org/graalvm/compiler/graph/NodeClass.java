@@ -26,6 +26,7 @@ package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.core.common.Fields.translateInto;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.graph.Edges.translateInto;
 import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
@@ -569,7 +570,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         } else if (o instanceof boolean[]) {
             return Arrays.hashCode((boolean[]) o);
         } else {
-            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw shouldNotReachHereUnexpectedValue(o); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -646,7 +647,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         } else if (e1 instanceof boolean[]) {
             return Arrays.equals((boolean[]) e1, (boolean[]) e2);
         } else {
-            throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw shouldNotReachHere(e1 + " " + e2); // ExcludeFromJacocoGeneratedReport
         }
     }
 

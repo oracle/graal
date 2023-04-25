@@ -1266,7 +1266,7 @@ public class HeapDumpWriter {
                  * de-duplicate the symbols, but doing so is not crucial. We also don't support the
                  * method signature at the moment.
                  */
-                String methodName = frame.getSourceMethodName();
+                String methodName = getSourceMethodName(frame);
                 String methodSignature = "";
                 String sourceFileName = getSourceFileName(frame);
                 writeSymbol(methodName);
@@ -1274,7 +1274,8 @@ public class HeapDumpWriter {
                 writeSymbol(sourceFileName);
 
                 /* Write the FRAME record. */
-                ClassInfo classInfo = metadata.getClassInfo(frame.getSourceClass());
+                Class<?> sourceClass = getSourceClass(frame);
+                ClassInfo classInfo = metadata.getClassInfo(sourceClass);
                 int lineNumber = getLineNumber(frame);
                 writeFrame(classInfo.getSerialNum(), lineNumber, methodName, methodSignature, sourceFileName);
             }
@@ -1293,15 +1294,31 @@ public class HeapDumpWriter {
             endTopLevelRecord();
         }
 
-        private String getSourceFileName(FrameInfoQueryResult frame) {
-            String sourceFileName = frame.getSourceFileName();
-            if (sourceFileName == null || sourceFileName.isEmpty()) {
-                sourceFileName = "Unknown Source";
+        private static String getSourceMethodName(FrameInfoQueryResult frame) {
+            String result = frame.getSourceMethodName();
+            if (result == null || result.isEmpty()) {
+                return "unknownMethod";
             }
-            return sourceFileName;
+            return result;
         }
 
-        private int getLineNumber(FrameInfoQueryResult frame) {
+        private static String getSourceFileName(FrameInfoQueryResult frame) {
+            String result = frame.getSourceFileName();
+            if (result == null || result.isEmpty()) {
+                return "unknown file";
+            }
+            return result;
+        }
+
+        private static Class<?> getSourceClass(FrameInfoQueryResult frame) {
+            Class<?> result = frame.getSourceClass();
+            if (result == null) {
+                return UnknownClass.class;
+            }
+            return result;
+        }
+
+        private static int getLineNumber(FrameInfoQueryResult frame) {
             if (frame.isNativeMethod()) {
                 return LINE_NUM_NATIVE_METHOD;
             }
@@ -1409,5 +1426,8 @@ public class HeapDumpWriter {
             writeInt(-1); // empty stack
             endSubRecord(recordSize);
         }
+    }
+
+    private static class UnknownClass {
     }
 }

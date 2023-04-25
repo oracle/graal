@@ -499,7 +499,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
 
     @Option(help = "The maximum number of nodes in a graph allowed after trivial inlining.")//
-    public static final HostedOptionKey<Integer> MaxNodesAfterTrivialInlining = new HostedOptionKey<>(40000);
+    public static final HostedOptionKey<Integer> MaxNodesAfterTrivialInlining = new HostedOptionKey<>(Integer.MAX_VALUE);
 
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
@@ -841,16 +841,7 @@ public class SubstrateOptions {
     public static int getPageSize() {
         int value = PageSize.getValue();
         if (value == 0) {
-            try {
-                /*
-                 * On JDK 17 and later, this is just a final field access that can never fail. But
-                 * on JDK 11, it is a native method call with some corner cases that can throw an
-                 * exception.
-                 */
-                return Unsafe.getUnsafe().pageSize();
-            } catch (IllegalArgumentException e) {
-                return 4096;
-            }
+            return Unsafe.getUnsafe().pageSize();
         }
         assert value > 0;
         return value;
@@ -906,7 +897,12 @@ public class SubstrateOptions {
     @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
-    @Option(help = "Throw Native Image-specific exceptions when encountering an unregistered reflection call.", type = OptionType.User)//
-    public static final HostedOptionKey<Boolean> ThrowMissingRegistrationErrors = new HostedOptionKey<>(false);
+    @Option(help = "file:doc-files/MissingRegistrationHelp.txt")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
+    @Option(help = "file:doc-files/MissingRegistrationPathsHelp.txt")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
 }

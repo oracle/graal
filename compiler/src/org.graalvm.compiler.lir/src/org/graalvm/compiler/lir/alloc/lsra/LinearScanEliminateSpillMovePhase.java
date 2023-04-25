@@ -106,7 +106,7 @@ public class LinearScanEliminateSpillMovePhase extends LinearScanAllocationPhase
             }
 
             LIRInsertionBuffer insertionBuffer = new LIRInsertionBuffer();
-            for (char blockId : allocator.sortedBlocks()) {
+            for (int blockId : allocator.sortedBlocks()) {
                 BasicBlock<?> block = allocator.getLIR().getBlockById(blockId);
                 try (Indent indent1 = debug.logAndIndent("Handle %s", block)) {
                     ArrayList<LIRInstruction> instructions = allocator.getLIR().getLIRforBlock(block);

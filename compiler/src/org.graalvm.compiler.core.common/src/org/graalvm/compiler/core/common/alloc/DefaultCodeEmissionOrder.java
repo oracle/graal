@@ -64,7 +64,7 @@ public class DefaultCodeEmissionOrder<T extends BasicBlock<T>> implements CodeEm
      *         about the data structures
      */
     @Override
-    public char[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime) {
+    public int[] computeCodeEmittingOrder(OptionValues options, ComputationTime computationTime) {
         BlockList<T> order = new BlockList<>(originalBlockCount);
         BitSet visitedBlocks = new BitSet(originalBlockCount);
         PriorityQueue<T> worklist = BasicBlockOrderUtils.initializeWorklist(startBlock, visitedBlocks);

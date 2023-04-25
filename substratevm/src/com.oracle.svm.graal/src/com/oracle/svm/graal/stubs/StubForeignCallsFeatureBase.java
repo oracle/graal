@@ -178,6 +178,6 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
         if (arch instanceof AArch64) {
             return ((AArch64) arch).getFeatures();
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unsupportedArchitecture(arch); // ExcludeFromJacocoGeneratedReport
     }
 }

@@ -103,7 +103,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private boolean sealed;
 
     // Reflection data
-    private final Map<Class<?>, Object[]> registeredRecordComponents = new ConcurrentHashMap<>();
+    private final Map<Class<?>, RecordComponent[]> registeredRecordComponents = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
     private final Map<Class<?>, Integer> enabledQueriesFlags = new ConcurrentHashMap<>();
     private final Map<AnalysisField, Field> registeredFields = new ConcurrentHashMap<>();
@@ -946,7 +946,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public Object[] getRecordComponents(Class<?> type) {
+    public RecordComponent[] getRecordComponents(Class<?> type) {
         assert sealed;
         return registeredRecordComponents.get(type);
     }

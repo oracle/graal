@@ -78,15 +78,15 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
     }
 
     protected S openCalleeScope(S outer) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     protected void commitCalleeScope(S outer, S callee) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     protected void abortCalleeScope(S outer, S callee) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -99,6 +99,6 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
      * current list of usages. The list of usages is often but not always empty.
      */
     protected boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, S scope, Node node) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 }

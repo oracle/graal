@@ -26,14 +26,10 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.Map;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,10 +55,8 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         final OptimizedCallTarget compilable = target;
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
-        try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
-            TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
-            compiler.doCompile(debug, compilation, options, new TestTruffleCompilationTask(), null);
-        }
+        TestTruffleCompilationTask task = new TestTruffleCompilationTask();
+        compiler.doCompile(task, compilable, options, null);
         Assert.assertTrue(target.isValid());
         target.call(0);
         Assert.assertTrue(target.isValid());
@@ -71,7 +65,6 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
     }
 
     private static class TestTruffleCompilationTask implements TruffleCompilationTask {
-        TruffleInlining inlining = new TruffleInlining();
 
         @Override
         public boolean isCancelled() {
@@ -81,11 +74,6 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         @Override
         public boolean isLastTier() {
             return true;
-        }
-
-        @Override
-        public TruffleInliningData inliningData() {
-            return inlining;
         }
 
         @Override

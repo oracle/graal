@@ -28,7 +28,7 @@
 
 from __future__ import print_function
 import os
-from os.path import join, exists, getmtime, basename, dirname, isdir
+from os.path import join, exists, basename, dirname, isdir
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
@@ -45,7 +45,6 @@ import mx_sdk_vm
 import mx
 import mx_gate
 from mx_gate import Task
-from mx import SafeDirectoryUpdater
 
 import mx_unittest
 from mx_unittest import unittest, parse_split_args
@@ -84,48 +83,17 @@ jdk = mx.get_jdk(tag='default')
 #: 3-tuple (major, minor, build) of JVMCI version, if any, denoted by `jdk`
 _jdk_jvmci_version = None
 
-if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '11':
-    mx.abort('Graal requires JDK11 or later, got ' + str(jdk) +
+if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '17':
+    mx.abort('Graal requires JDK17 or later, got ' + str(jdk) +
              '. This check can be bypassed by setting env var JDK_VERSION_CHECK=ignore')
 
 def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
-
-    This runs a version of org.graalvm.compiler.hotspot.JVMCIVersionCheck that is "moved"
-    to the unnamed package. Without this, on JDK 10+, the class in the jdk.internal.vm.compiler
-    module will be run instead of the version on the class path.
     """
-    unqualified_name = 'JVMCIVersionCheck'
-    qualified_name = 'org.graalvm.compiler.hotspot.' + unqualified_name
-    binDir = mx.ensure_dir_exists(join(_suite.get_output_root(), '.jdk' + str(jdk.version)))
-
-    if isinstance(_suite, mx.BinarySuite):
-        dists = [d for d in _suite.dists if d.name == 'GRAAL_HOTSPOT']
-        assert len(dists) == 1, 'could not find GRAAL_HOTSPOT distribution'
-        d = dists[0]
-        assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
-        source_timestamp = getmtime(d.sourcesPath)
-        def source_supplier():
-            with zipfile.ZipFile(d.sourcesPath, 'r') as zf:
-                return zf.read(qualified_name.replace('.', '/') + '.java')
-    else:
-        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', qualified_name.replace('.', '/') + '.java')
-        source_timestamp = getmtime(source_path)
-        def source_supplier():
-            with open(source_path, 'r') as fp:
-                return fp.read()
-
-    unqualified_class_file = join(binDir, unqualified_name + '.class')
-    if not exists(unqualified_class_file) or getmtime(unqualified_class_file) < source_timestamp:
-        with SafeDirectoryUpdater(binDir, create=True) as sdu:
-            unqualified_source_path = join(sdu.directory, unqualified_name + '.java')
-            with open(unqualified_source_path, 'w') as fp:
-                fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
-            mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
-
+    source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
     out = mx.OutputCapture()
-    mx.run([jdk.java, '-cp', binDir, unqualified_name], out=out)
+    mx.run([jdk.java, source_path], out=out)
     global _jdk_jvmci_version
     if out.data:
         _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
@@ -503,9 +471,9 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
 
     # A few iterations to increase the chance of catching compilation errors
     default_iterations = 2
-    daily_weekly_jobs_ratio = 6
-    scala_daily_scaling_factor = 7
-    scala_dacapo_daily_scaling_factor = 11
+    daily_weekly_jobs_ratio = 2
+    scala_daily_scaling_factor = 4
+    scala_dacapo_daily_scaling_factor = 10
     default_iterations_reduction = 0.5
     scala_weekly_scaling_factor = scala_daily_scaling_factor * daily_weekly_jobs_ratio
     scala_dacapo_weekly_scaling_factor = scala_dacapo_daily_scaling_factor * daily_weekly_jobs_ratio
@@ -1012,7 +980,7 @@ def collate_metrics(args):
                 writer.writerow([n] + [str(v) for v in series] + [units[n]])
         mx.log('Collated metrics into ' + collated_filename)
 
-def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None):
+def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None, **kw_args):
     graaljdk = jdk or get_graaljdk()
     vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
@@ -1023,7 +991,7 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
     with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
         try:
             cmd = mx.apply_command_mapper_hooks(cmd, command_mapper_hooks)
-            return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, timeout=timeout, cwd=cwd, env=env)
+            return mx.run(cmd, out=u.out, err=u.err, **kw_args)
         finally:
             # Collate AggratedMetricsFile
             for a in vm_args:

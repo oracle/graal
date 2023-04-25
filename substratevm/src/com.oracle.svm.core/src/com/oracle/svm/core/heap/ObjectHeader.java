@@ -25,12 +25,15 @@
 package com.oracle.svm.core.heap;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -61,20 +64,46 @@ public abstract class ObjectHeader {
     public abstract Word encodeAsUnmanagedObjectHeader(DynamicHub hub);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract DynamicHub dynamicHubFromObjectHeader(Word header);
+    public DynamicHub dynamicHubFromObjectHeader(Word header) {
+        return (DynamicHub) extractPotentialDynamicHubFromHeader(header).toObject();
+    }
 
     public static DynamicHub readDynamicHubFromObject(Object o) {
         return KnownIntrinsics.readHub(o);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract Word readHeaderFromPointer(Pointer ptr);
+    public static Word readHeaderFromPointer(Pointer objectPointer) {
+        if (getReferenceSize() == Integer.BYTES) {
+            return WordFactory.unsigned(objectPointer.readInt(getHubOffset()));
+        } else {
+            return objectPointer.readWord(getHubOffset());
+        }
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract DynamicHub readDynamicHubFromPointer(Pointer ptr);
+    public static Word readHeaderFromObject(Object o) {
+        if (getReferenceSize() == Integer.BYTES) {
+            return WordFactory.unsigned(ObjectAccess.readInt(o, getHubOffset()));
+        } else {
+            return ObjectAccess.readWord(o, getHubOffset());
+        }
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract Pointer readPotentialDynamicHubFromPointer(Pointer ptr);
+    public DynamicHub readDynamicHubFromPointer(Pointer ptr) {
+        Word header = readHeaderFromPointer(ptr);
+        return dynamicHubFromObjectHeader(header);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer readPotentialDynamicHubFromPointer(Pointer ptr) {
+        Word potentialHeader = readHeaderFromPointer(ptr);
+        return extractPotentialDynamicHubFromHeader(potentialHeader);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract Pointer extractPotentialDynamicHubFromHeader(Word header);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract void initializeHeaderOfNewObject(Pointer ptr, Word header);
@@ -82,11 +111,13 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean pointsToObjectHeader(Pointer ptr) {
         Pointer potentialDynamicHub = readPotentialDynamicHubFromPointer(ptr);
-        if (Heap.getHeap().isInImageHeap(potentialDynamicHub)) {
-            Pointer potentialHubOfDynamicHub = readPotentialDynamicHubFromPointer(potentialDynamicHub);
-            return potentialHubOfDynamicHub.equal(Word.objectToUntrackedPointer(DynamicHub.class));
-        }
-        return false;
+        return isDynamicHub(potentialDynamicHub);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isEncodedObjectHeader(Word potentialHeader) {
+        Pointer potentialDynamicHub = extractPotentialDynamicHubFromHeader(potentialHeader);
+        return isDynamicHub(potentialDynamicHub);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -98,8 +129,27 @@ public abstract class ObjectHeader {
     @Uninterruptible(reason = "Prevent a GC interfering with the object's identity hash state.", callerMustBe = true)
     public abstract void setIdentityHashFromAddress(Pointer ptr, Word currentHeader);
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private boolean isDynamicHub(Pointer potentialDynamicHub) {
+        if (Heap.getHeap().isInImageHeap(potentialDynamicHub)) {
+            Pointer potentialHubOfDynamicHub = readPotentialDynamicHubFromPointer(potentialDynamicHub);
+            return potentialHubOfDynamicHub.equal(Word.objectToUntrackedPointer(DynamicHub.class));
+        }
+        return false;
+    }
+
+    @Fold
+    protected static int getReferenceSize() {
+        return ConfigurationValues.getObjectLayout().getReferenceSize();
+    }
+
     @Fold
     protected static int getCompressionShift() {
         return ReferenceAccess.singleton().getCompressEncoding().getShift();
+    }
+
+    @Fold
+    protected static int getHubOffset() {
+        return ConfigurationValues.getObjectLayout().getHubOffset();
     }
 }

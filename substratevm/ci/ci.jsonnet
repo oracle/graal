@@ -54,6 +54,7 @@
   local jdk_name_to_dict = {
     "jdk17"+: common.labsjdk17,
     "jdk20"+: common.labsjdk20,
+    "jdk21"+: common.oraclejdk21,
   },
 
   local default_os_arch = {
@@ -112,7 +113,7 @@
       "linux:amd64:jdk20": gate + t("30:00"),
     }),
     "basics": mxgate("build,helloworld,native_unittests,truffle_unittests,debuginfotest,hellomodule") + maven + jsonschema + platform_spec(no_jobs) + platform_spec({
-      "linux:amd64:jdk20": gate + gdb("10.2") + t("55:00"),
+      "linux:amd64:jdk21": gate + gdb("10.2") + t("55:00"),
       "windows:amd64:jdk17": gate + t("1:30:00"),
     }) + variants({
       "optlevel:quickbuild": {

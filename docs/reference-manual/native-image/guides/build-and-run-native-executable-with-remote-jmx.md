@@ -122,7 +122,9 @@ You can configure JMX to apply all the usual properties as shown in [this guide]
 
     ```shell
     $JAVA_HOME/bin/gu install visualvm
-    $JAVA_HOME/bin/visualvm
+    ```
+    ```shell
+    $JAVA_HOME/bin/jvisualvm 
     ```
 
 2. Make sure you have the **VisualVM-MBeans plugin** installed (go to Tools, then Plugins, under Available Plugins, select "VisualVM-MBeans", and click Install).

@@ -66,6 +66,7 @@ public class JfrFileParser {
     private final HashMap<Long, ConstantPoolParser> supportedConstantPools = new HashMap<>();
     private final ArrayList<AbstractSerializerParser> serializerParsers = new ArrayList<>();
 
+    @SuppressWarnings("this-escape")
     public JfrFileParser(Path path) {
         this.path = path;
 
@@ -138,7 +139,7 @@ public class JfrFileParser {
 
         long startingTime = input.readRawLong();
         assertTrue("Starting time is invalid!", startingTime > 0);
-        assertTrue("Starting time is bigger than current time!", startingTime < JfrTicks.currentTimeNanos());
+        assertTrue("Starting time is bigger than current time!", startingTime <= JfrTicks.currentTimeNanos());
         input.readRawLong(); // Duration.
         assertTrue("Chunk start tick is invalid!", input.readRawLong() > 0);
         assertTrue("Tick frequency is invalid!", input.readRawLong() > 0);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -186,7 +186,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 break;
 
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(config); // ExcludeFromJacocoGeneratedReport
 
         }
         attributesMap = RegisterAttributes.createMap(this, AMD64.allRegisters);
@@ -209,7 +209,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             case Void:
                 return null;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -240,7 +240,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     public boolean shouldUseBasePointer() {
@@ -298,7 +298,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                         }
                         break;
                     default:
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
                 }
             }
 

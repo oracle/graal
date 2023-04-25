@@ -26,12 +26,11 @@ package org.graalvm.compiler.truffle.runtime.debug;
 
 import java.util.Map;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -55,7 +54,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
             String label = String.format("split %3s-%08x-%-4s ", splitCount++, 0xFFFF_FFFFL & callNode.getCurrentCallTarget().hashCode(), callNode.getCallCount());
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();
             debugProperties.put("SourceSection", extractSourceSection(callNode));
-            TruffleCompilerRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
+            GraalTruffleRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
         }
     }
 
@@ -66,7 +65,7 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
             String label = String.format("split failed " + reason);
             final Map<String, Object> debugProperties = callTarget.getDebugProperties();
             debugProperties.put("SourceSection", extractSourceSection(callNode));
-            TruffleCompilerRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
+            GraalTruffleRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
         }
     }
 

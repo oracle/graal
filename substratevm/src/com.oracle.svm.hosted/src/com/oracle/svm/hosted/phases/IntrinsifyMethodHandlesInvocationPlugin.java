@@ -130,6 +130,7 @@ import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -485,7 +486,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         @Override
         public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -602,7 +603,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         /* We do all the word type rewriting because parameters to the lambda can be word types. */
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()),
+        ConstantReflectionProvider originalConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
+        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, originalConstantReflection,
+                        new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()),
                         parsingProviders.getPlatformConfigurationProvider().getBarrierSet());
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);

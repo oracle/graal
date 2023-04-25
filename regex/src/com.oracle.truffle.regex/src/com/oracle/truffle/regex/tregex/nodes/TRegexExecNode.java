@@ -217,12 +217,13 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             return true;
         }
         assert !(runnerNode instanceof NFARegexSearchNode);
-        RegexResult btResult = regressionTestRun(frame, nfaNode, input, fromIndex);
-        if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
+        RegexResult nfaResult = regressionTestRun(frame, nfaNode, input, fromIndex);
+        if (resultsEqual(result, nfaResult, getNumberOfCaptureGroups())) {
             return true;
         }
         Loggers.LOG_INTERNAL_ERRORS.severe(
-                        () -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nNFA executor Result: %s\nDFA Result:         %s", getSource().toStringEscaped(), input, fromIndex, btResult, result));
+                        () -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nNFA executor Result: %s\nDFA Result:         %s", getSource().toStringEscaped(), input, fromIndex, nfaResult,
+                                        result));
         return false;
     }
 

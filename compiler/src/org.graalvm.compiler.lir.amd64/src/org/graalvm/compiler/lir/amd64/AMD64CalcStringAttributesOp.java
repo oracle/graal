@@ -161,7 +161,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             case UTF_32:
                 return 8;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(encoding); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -227,7 +227,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
                 emitUTF32(crb, asm, arr, len, off, ret, vec1);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(encoding); // ExcludeFromJacocoGeneratedReport
         }
     }
 

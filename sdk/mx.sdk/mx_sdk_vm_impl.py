@@ -42,7 +42,7 @@
 from __future__ import print_function
 
 from abc import ABCMeta
-from argparse import ArgumentParser
+from argparse import ArgumentParser, RawTextHelpFormatter
 from collections import OrderedDict
 from zipfile import ZipFile
 import hashlib
@@ -57,6 +57,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import textwrap
 import zipfile
 
 import mx
@@ -102,6 +103,8 @@ _lib_prefix = mx.add_lib_prefix("")
 _graalvm_base_name = 'GraalVM'
 _registered_graalvm_components = {}
 _project_name = 'graal'
+
+_base_jdk_version_info = None
 
 default_components = []
 
@@ -433,9 +436,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                         found_el = True
                     elif found_el:
                         assert el.tag == 'string'
-                        graalvm_bundle_name = '{} {}'.format(self.base_name, self.vm_config_name.upper()) if self.vm_config_name is not None else name.lower()
-                        graalvm_bundle_name += ' ' + graalvm_version()
-                        el.text = graalvm_bundle_name
+                        el.text = graalvm_vendor_version()
                         bio = io.BytesIO()
                         root.write(bio)  # When porting to Python 3, we can use root.write(StringIO(), encoding="unicode")
                         plist_src = {
@@ -886,6 +887,12 @@ class GraalVmLayoutDistribution(BaseGraalVmLayoutDistribution, LayoutSuper):  # 
                 "version": base_jdk_info[1]
             }
 
+    def remoteName(self, platform=None):
+        remote_name = super(GraalVmLayoutDistribution, self).remoteName(platform=platform)
+        # maven artifactId cannot contain '+'
+        # Example: 'graalvm-community-openjdk-17.0.7+4.1-linux-amd64' -> 'graalvm-community-openjdk-17.0.7-4.1-linux-amd64'
+        return remote_name.replace('+', '-')
+
     def getBuildTask(self, args):
         return GraalVmLayoutDistributionTask(args, self, 'latest_graalvm', 'latest_graalvm_home')
 
@@ -933,9 +940,23 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
                 vm_config_name = config_name.replace('-', '_')
                 break
 
-        if vm_dist_name:
-            base_dir = '{base_name}_{vm_dist_name}_java{jdk_version}'.format(base_name=base_name, vm_dist_name=vm_dist_name, jdk_version=_src_jdk_version)
-            name = base_dir
+        if vm_dist_name is not None:
+            # Examples (later we call `.lower().replace('_', '-')`):
+            # GraalVM_community_openjdk_17.0.7+4.1
+            # GraalVM_jdk_17.0.7+4.1
+            # GraalVM_jit_jdk_17.0.7+4.1
+            base_dir = '{base_name}{vm_dist_name}_{jdk_type}_{version}'.format(
+                base_name=base_name,
+                vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
+                jdk_type='jdk' if mx_sdk_vm.ee_implementor() else 'openjdk',
+                version=graalvm_version(version_type='base-dir')
+            )
+            name_prefix = '{base_name}{vm_dist_name}_java{jdk_version}'.format(
+                base_name=base_name,
+                vm_dist_name=('_' + vm_dist_name) if vm_dist_name else '',
+                jdk_version=_src_jdk_version
+            )
+            name = '{name_prefix}{stage_suffix}'.format(name_prefix=name_prefix, stage_suffix='_stage1' if stage1 else '')
         else:
             components_sorted_set = sorted(components_set)
             if mx.get_opts().verbose:
@@ -950,8 +971,9 @@ def _get_graalvm_configuration(base_name, components=None, stage1=False):
             short_sha1_digest = m.hexdigest()[:10]  # to keep paths short
             base_dir = '{base_name}_{hash}_java{jdk_version}'.format(base_name=base_name, hash=short_sha1_digest, jdk_version=_src_jdk_version)
             name = '{base_dir}{stage_suffix}'.format(base_dir=base_dir, stage_suffix='_stage1' if stage1 else '')
+            base_dir += '_' + _suite.release_version()
         name = name.upper()
-        base_dir = base_dir.lower().replace('_', '-') + '-' + _suite.release_version()
+        base_dir = base_dir.lower().replace('_', '-')
 
         _graal_vm_configs_cache[key] = name, base_dir, vm_config_name
     return _graal_vm_configs_cache[key]
@@ -1057,6 +1079,11 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
             _add(getattr(self.subject_distribution, 'buildDependencies', []), self.layout)
             self._layout_initialized = True
         return super(DebuginfoDistribution, self)._walk_layout()
+
+    def remoteName(self, platform=None):
+        remote_name = super(DebuginfoDistribution, self).remoteName(platform=platform)
+        # maven artifactId cannot contain '+'
+        return remote_name.replace('+', '-')
 
 
 def get_graalvm_os():
@@ -1599,7 +1626,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def build(self):
         def with_source(dep):
             return not isinstance(dep, mx.Dependency) or (_include_sources(dep.qualifiedName()) and dep.isJARDistribution() and not dep.is_stripped())
-        vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
+        vendor_info = {'vendor-version': graalvm_vendor_version()}
         out_dir = self.subject.output_directory()
 
         if _jlink_libraries():
@@ -1668,7 +1695,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             'components: {}'.format(', '.join(sorted(_components_set()))),
             'include sources: {}'.format(_include_sources_str()),
             'strip jars: {}'.format(mx.get_opts().strip_jars),
-            'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
+            'vendor-version: {}'.format(graalvm_vendor_version()),
             'source jimage: {}'.format(src_jimage),
             'use_upgrade_module_path: {}'.format(mx.get_env('GRAALVM_JIMAGE_USE_UPGRADE_MODULE_PATH', None))
         ]
@@ -2400,17 +2427,13 @@ def _format_properties(data):
 
 
 def _get_component_stability(component):
-    if _src_jdk_version not in (11, 17):
-        return "experimental"
-    if mx.is_darwin() and mx.get_arch() == 'aarch64':
+    if _src_jdk_version not in (17, 20):
         return "experimental"
     return component.stability
 
 
 def _get_core_stability():
-    if _src_jdk_version not in (11, 17):
-        return "experimental"
-    if mx.is_darwin() and mx.get_arch() == 'aarch64':
+    if _src_jdk_version not in (17, 20):
         return "experimental"
     return "supported"
 
@@ -3287,8 +3310,81 @@ def graalvm_dist_name():
     return get_final_graalvm_distribution().name
 
 
-def graalvm_version():
-    return _suite.release_version()
+def graalvm_version(version_type):
+    """
+    Example: 17.0.1-dev+4.1
+    :type version_type: str
+    :rtype: str
+    """
+    global _base_jdk_version_info
+
+    assert version_type in ['graalvm', 'vendor', 'base-dir'], version_type
+
+    def base_jdk_version_info():
+        """
+        :rtype: (str, str, str)
+        """
+        full_version = None
+        version = None
+        qualifier = None
+        build = None
+
+        out = mx.LinesOutputCapture()
+        with mx.DisableJavaDebugging():
+            code = mx_sdk_vm.base_jdk().run_java(['-version'], out=out, err=out)
+        if code == 0:
+            for line in out.lines:
+                version_match = re.search(r'version "(?P<full_version>(?P<version>[0-9.]+)(-(?P<qualifier>.+))?)"', line)
+                if version_match is not None:
+                    assert full_version is None
+                    full_version = version_match.group('full_version')
+                    version = version_match.group('version')
+                    qualifier = version_match.group('qualifier')
+                elif full_version is not None:
+                    build_match = re.search(r'Runtime Environment .*\(.*build ' + full_version + r'\+(?P<build>[0-9]+)', line)
+                    if build_match is not None:
+                        assert build is None
+                        build = build_match.group('build')
+            if version is None or build is None:
+                raise mx.abort('VM info extraction failed. Output:\n' + '\n'.join(out.lines))
+            return version, qualifier, build
+        else:
+            raise mx.abort('VM info extraction failed. Exit code: ' + str(code))
+
+    if version_type == 'graalvm':
+        return _suite.release_version()
+    else:
+        if _base_jdk_version_info is None:
+            _base_jdk_version_info = base_jdk_version_info()
+
+        jdk_version, jdk_qualifier, jdk_build = _base_jdk_version_info
+        if version_type == 'vendor':
+            pre_release_id = '' if _suite.is_release() else '-dev'
+            if jdk_qualifier:
+                pre_release_id += '.' if pre_release_id else '-'
+                pre_release_id += jdk_qualifier
+        else:
+            assert version_type == 'base-dir', version_type
+            pre_release_id = ''
+        # Examples:
+        #
+        # ```
+        # openjdk version "17.0.7" 2023-04-18
+        # OpenJDK Runtime Environment (build 17.0.7+4-jvmci-23.0-b10)
+        # ```
+        # -> `17.0.7-dev+4.1`
+        #
+        # ```
+        # openjdk version "21-ea" 2023-09-19
+        # OpenJDK Runtime Environment (build 21-ea+16-1326)
+        # ```
+        # -> `21-dev.ea+16.1`
+        return '{jdk_version}{pre_release_id}{jdk_build}.{release_build}'.format(
+            jdk_version=jdk_version,
+            pre_release_id=pre_release_id,
+            jdk_build='+' + jdk_build,
+            release_build=mx_sdk_vm.release_build
+        )
 
 
 def graalvm_home(stage1=False, fatalIfMissing=False):
@@ -3322,9 +3418,13 @@ def print_graalvm_dist_name(args):
 
 def print_graalvm_version(args):
     """print the GraalVM version"""
-    parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version')
-    _ = parser.parse_args(args)
-    print(graalvm_version())
+    parser = ArgumentParser(prog='mx graalvm-version', description='Print the GraalVM version', formatter_class=RawTextHelpFormatter)
+    parser.add_argument('--type', default='graalvm', choices=['graalvm', 'vendor', 'base-dir'], help=textwrap.dedent("""\
+        'graalvm' taken from the 'suite.py' file of the 'sdk' suite;
+        'vendor' is an extension of the base-JDK version;
+        'base-dir' similar to 'vendor', without extra identifiers like 'dev' or 'ea';"""))
+    args = parser.parse_args(args)
+    print(graalvm_version(args.type))
 
 
 def print_graalvm_home(args):
@@ -3645,14 +3745,19 @@ def graalvm_vm_name(graalvm_dist, jdk):
     out = _decode(subprocess.check_output([jdk.java, '-version'], stderr=subprocess.STDOUT)).rstrip()
     match = re.search(r'^(?P<base_vm_name>[a-zA-Z() ]+64-Bit Server VM )', out.split('\n')[-1])
     vm_name = match.group('base_vm_name') if match else ''
-    return vm_name + graalvm_vendor_version(graalvm_dist)
+    return vm_name + graalvm_vendor_version()
 
-def graalvm_vendor_version(graalvm_dist):
+def graalvm_vendor_version():
     """
-    :type jdk_home: str
     :rtype str:
     """
-    return 'Oracle GraalVM' if get_graalvm_edition() == 'ee' else 'GraalVM CE'
+    # Examples:
+    # GraalVM CE 17.0.1+4.1
+    # Oracle GraalVM 17.0.1+4.1
+    return '{vendor} {version}'.format(
+        vendor=('Oracle ' + _graalvm_base_name) if mx_sdk_vm.ee_implementor() else (_graalvm_base_name + ' CE'),
+        version=graalvm_version(version_type='vendor')
+    )
 
 
 # GR-37542 current debug info on darwin bloats binary (stripping to a separate .dSYM folder is not implemented) and

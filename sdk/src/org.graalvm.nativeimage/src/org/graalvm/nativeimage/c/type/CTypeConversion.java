@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,9 @@ import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.impl.CTypeConversionSupport;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 /**
  * Utility methods to convert between Java types and C types.
@@ -228,52 +226,21 @@ public final class CTypeConversion {
      *
      * @since 19.0
      */
-    public static final class CCharPointerPointerHolder implements AutoCloseable {
-
-        private final CTypeConversion.CCharPointerHolder[] ccpHolderArray;
-        private final PinnedObject pinnedCCPArray;
-
-        /** Construct a pinned CCharPointers[] from a CharSequence[]. */
-        private CCharPointerPointerHolder(CharSequence[] csArray) {
-            /* An array to hold the pinned null-terminated C strings. */
-            ccpHolderArray = new CTypeConversion.CCharPointerHolder[csArray.length + 1];
-            /* An array to hold the &char[0] behind the corresponding C string. */
-            final CCharPointer[] ccpArray = new CCharPointer[csArray.length + 1];
-            for (int i = 0; i < csArray.length; i += 1) {
-                /* Null-terminate and pin each of the CharSequences. */
-                ccpHolderArray[i] = CTypeConversion.toCString(csArray[i]);
-                /* Save the CCharPointer of each of the CharSequences. */
-                ccpArray[i] = ccpHolderArray[i].get();
-            }
-            /* Null-terminate the CCharPointer[]. */
-            ccpArray[csArray.length] = WordFactory.nullPointer();
-            /* Pin the CCharPointer[] so I can get the &ccpArray[0]. */
-            pinnedCCPArray = PinnedObject.create(ccpArray);
-        }
-
+    public abstract static class CCharPointerPointerHolder implements AutoCloseable {
         /**
          * Returns the C pointer to pointers of null-terminated C char[] arrays.
          *
          * @since 19.0
          */
-        public CCharPointerPointer get() {
-            return pinnedCCPArray.addressOfArrayElement(0);
-        }
+        public abstract CCharPointerPointer get();
 
         /**
-         * Discards the C pointers.
+         * Discards the C pointer.
          *
          * @since 19.0
          */
         @Override
-        public void close() {
-            /* Close the pins on each of the pinned C strings. */
-            for (int i = 0; i < ccpHolderArray.length - 1; i += 1) {
-                ccpHolderArray[i].close();
-            }
-            /* Close the pin on the pinned CCharPointer[]. */
-            pinnedCCPArray.close();
-        }
+        public abstract void close();
     }
 
     /**
@@ -283,7 +250,7 @@ public final class CTypeConversion {
      * @since 19.0
      */
     public static CCharPointerPointerHolder toCStrings(CharSequence[] javaStrings) {
-        return new CCharPointerPointerHolder(javaStrings);
+        return ImageSingletons.lookup(CTypeConversionSupport.class).toCStrings(javaStrings);
     }
 
     /**

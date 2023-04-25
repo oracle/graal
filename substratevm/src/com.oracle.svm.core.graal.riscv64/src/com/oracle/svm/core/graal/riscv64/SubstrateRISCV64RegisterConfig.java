@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.graal.riscv64;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.allRegisters;
 import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f10;
 import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f11;
@@ -149,7 +149,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
                 break;
 
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(config); // ExcludeFromJacocoGeneratedReport
 
         }
 
@@ -173,7 +173,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
             case Void:
                 return null;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -204,7 +204,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     private int javaStackParameterAssignment(ValueKindFactory<?> valueKindFactory, AllocatableValue[] locations, int index, JavaKind kind, int currentStackOffset, boolean isOutgoing) {
@@ -260,7 +260,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
                         }
                         break;
                     default:
-                        throw shouldNotReachHere();
+                        throw shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
                 }
 
             }
@@ -275,7 +275,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
                         locations[i] = StackSlot.get(valueKind, currentStackOffset, !type.outgoing);
                         currentStackOffset = currentStackOffset + alignment;
                     } else {
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.unsupportedPlatform(); // ExcludeFromJacocoGeneratedReport
                     }
                 } else {
                     currentStackOffset = javaStackParameterAssignment(valueKindFactory, locations, i, kind, currentStackOffset, type.outgoing);
@@ -290,7 +290,7 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray filterAllocatableRegisters(PlatformKind kind, RegisterArray registers) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
 }

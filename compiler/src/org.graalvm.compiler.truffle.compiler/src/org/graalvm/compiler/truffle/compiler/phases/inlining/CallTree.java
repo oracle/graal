@@ -26,10 +26,11 @@ package org.graalvm.compiler.truffle.compiler.phases.inlining;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -52,7 +53,7 @@ public final class CallTree extends Graph {
         this.graphManager = new GraphManager(partialEvaluator, postPartialEvaluationSuite, context);
         useSize = context.options.get(PolyglotCompilerOptions.InliningUseSize);
         // Should be kept as the last call in the constructor, as this is an argument.
-        this.root = CallNode.makeRoot(this, context);
+        this.root = CallNode.makeRoot(context, this);
     }
 
     int nextId() {
@@ -82,7 +83,7 @@ public final class CallTree extends Graph {
     void trace() {
         Boolean details = context.options.get(PolyglotCompilerOptions.TraceInliningDetails);
         if (context.options.get(PolyglotCompilerOptions.TraceInlining) || details) {
-            TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
+            TruffleCompilerRuntime runtime = TruffleCompilerEnvironment.get().runtime();
             runtime.logEvent(root.getDirectCallTarget(), 0, "Inline start", root.getName(), root.getStringProperties(), null);
             traceRecursive(runtime, root, details, 0);
             runtime.logEvent(root.getDirectCallTarget(), 0, "Inline done", root.getName(), root.getStringProperties(), null);
@@ -117,15 +118,15 @@ public final class CallTree extends Graph {
         root.finalizeGraph();
     }
 
-    void collectTargetsToDequeue(TruffleInliningData provider) {
-        root.collectTargetsToDequeue(provider);
+    void collectTargetsToDequeue(TruffleCompilationTask task) {
+        root.collectTargetsToDequeue(task);
     }
 
-    public void updateTracingInfo(TruffleInliningData inliningPlan) {
+    public void updateTracingInfo(TruffleCompilationTask task) {
         final int inlinedWithoutRoot = inlined - 1;
-        inliningPlan.setCallCounts(inlinedWithoutRoot + frontierSize, inlinedWithoutRoot);
+        task.setCallCounts(inlinedWithoutRoot + frontierSize, inlinedWithoutRoot);
         if (loggingInlinedTargets()) {
-            root.collectInlinedTargets(inliningPlan);
+            root.collectInlinedTargets(task);
         }
     }
 

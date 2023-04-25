@@ -53,8 +53,8 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
           lineStart = 907,
           lineEnd   = 999,
-          commit    = "9d76ac8a4453bc51d9dca2ad6c60259cfb2c4203",
-          sha1      = "6897adbbb852fe319f6425dda3aa1623920f8a30")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "beab5f4817b620d98201e17dc1e07f680177b147")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 

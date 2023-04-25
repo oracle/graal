@@ -90,7 +90,7 @@ public interface JfrBuffer extends Buffer {
 
     @RawFieldOffset
     static int offsetOfCommittedPos() {
-        throw VMError.unimplemented(); // replaced
+        throw VMError.intentionallyUnimplemented(); // replaced
     }
 
     /**

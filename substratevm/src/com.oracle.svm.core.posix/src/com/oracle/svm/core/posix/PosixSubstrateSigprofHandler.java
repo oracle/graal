@@ -98,20 +98,26 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
         /* Register sa_sigaction signal handler */
         structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER() | Signal.SA_RESTART());
         structSigAction.sa_sigaction(dispatcher);
+        /*
+         * Note this can race with other signals being installed. However, using Java
+         * synchronization is disallowed within a VMOperation. If race-free execution becomes
+         * necessary, then a VMMutex will be needed and additional code will need to be
+         * made @Uniterruptible so that a thread owning the VMMutex cannot block at a safepoint.
+         */
         Signal.sigaction(Signal.SignalEnum.SIGPROF.getCValue(), structSigAction, WordFactory.nullPointer());
     }
 
     @Override
     protected void updateInterval() {
-        updateInterval(newIntervalMillis);
+        updateInterval(TimeUtils.millisToMicros(newIntervalMillis));
     }
 
-    private static void updateInterval(long ms) {
+    public static void updateInterval(long us) {
         Time.itimerval newValue = UnsafeStackValue.get(Time.itimerval.class);
-        newValue.it_value().set_tv_sec(ms / TimeUtils.millisPerSecond);
-        newValue.it_value().set_tv_usec((ms % TimeUtils.millisPerSecond) * 1000);
-        newValue.it_interval().set_tv_sec(ms / TimeUtils.millisPerSecond);
-        newValue.it_interval().set_tv_usec((ms % TimeUtils.millisPerSecond) * 1000);
+        newValue.it_value().set_tv_sec(us / TimeUtils.microsPerSecond);
+        newValue.it_value().set_tv_usec(us % TimeUtils.microsPerSecond);
+        newValue.it_interval().set_tv_sec(us / TimeUtils.microsPerSecond);
+        newValue.it_interval().set_tv_usec(us % TimeUtils.microsPerSecond);
 
         int status = Time.NoTransitions.setitimer(Time.TimerTypeEnum.ITIMER_PROF, newValue, WordFactory.nullPointer());
         PosixUtils.checkStatusIs0(status, "setitimer(which, newValue, oldValue): wrong arguments.");

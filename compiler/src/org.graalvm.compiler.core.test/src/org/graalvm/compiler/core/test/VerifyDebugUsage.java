@@ -122,7 +122,8 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$InvalidDumpUsagePhase.run",
                     "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode",
                     "com.oracle.graal.pointsto.phases.InlineBeforeAnalysis.decodeGraph",
-                    "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpBasic"));
+                    "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpBasic",
+                    "org.graalvm.compiler.truffle.compiler.phases.inlining.GraphManager.peRoot"));
 
     /**
      * The set of methods allowed to call a {@code Debug.dump(...)} method with the {@code level}
@@ -140,7 +141,8 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     "org.graalvm.compiler.replacements.SnippetTemplate.instantiate",
                     "org.graalvm.compiler.replacements.SnippetTemplate.<init>",
                     "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode",
-                    "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpInfo"));
+                    "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpInfo",
+                    "org.graalvm.compiler.truffle.compiler.phases.inlining.GraphManager.pe"));
 
     @Override
     protected void verifyParameters(MetaAccessProvider metaAccess1, StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType,

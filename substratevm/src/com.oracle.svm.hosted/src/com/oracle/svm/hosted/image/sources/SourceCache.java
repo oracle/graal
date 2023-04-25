@@ -91,6 +91,7 @@ public class SourceCache {
             Path javaHomePath = Paths.get("", javaHome);
             Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
             if (!srcZipPath.toFile().exists()) {
+                System.out.printf("Warning: Unable to locate JDK sources file '%s'. Source line debug will not be available for JDK classes%n", srcZipPath);
                 return;
             }
             try {
@@ -143,7 +144,7 @@ public class SourceCache {
                         } else if (srcFile.isDirectory()) { // Support for `MX_BUILD_EXPLODED=true`
                             srcRoots.add(new SourceRoot(srcPath));
                         } else {
-                            throw VMError.shouldNotReachHere();
+                            throw VMError.shouldNotReachHereUnexpectedInput(srcFile);
                         }
                     }
                 } else {
@@ -297,7 +298,13 @@ public class SourceCache {
         if (moduleName != null) {
             for (String specialRootModule : SourceRoots.specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
-                    for (Path srcRoot : SourceRoots.specialSrcRoots.get(specialRootModule)) {
+                    // handle this module specially as it has intermediate dirs
+                    List<Path> specialModulePathList = SourceRoots.specialSrcRoots.get(specialRootModule);
+                    // if we have no src.zip then there will be no entry in the hash table
+                    if (specialModulePathList == null) {
+                        break;
+                    }
+                    for (Path srcRoot : specialModulePathList) {
                         String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
                         if (filePath.toString().startsWith(srcRootGroup)) {
                             Path sourcePath = extendPath(srcRoot, filePath);
@@ -362,7 +369,12 @@ public class SourceCache {
             for (String specialRootModule : SourceRoots.specialRootModules) {
                 if (moduleName.equals(specialRootModule)) {
                     // handle this module specially as it has intermediate dirs
-                    for (Path srcRoot : SourceRoots.specialSrcRoots.get(specialRootModule)) {
+                    List<Path> specialModulePathList = SourceRoots.specialSrcRoots.get(specialRootModule);
+                    // if we have no src.zip then there will be no entry in the hash table
+                    if (specialModulePathList == null) {
+                        break;
+                    }
+                    for (Path srcRoot : specialModulePathList) {
                         String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
                         if (filePath.toString().startsWith(srcRootGroup)) {
                             Path sourcePath = extendPath(srcRoot, filePath);

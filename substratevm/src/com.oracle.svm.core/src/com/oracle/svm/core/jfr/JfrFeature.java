@@ -176,8 +176,9 @@ public class JfrFeature implements InternalFeature {
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
+        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Used by FlightRecorder");
         if (HOSTED_ENABLED) {
-            RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
             rci.initializeAtBuildTime("jdk.management.jfr", "Allow FlightRecorder to be used at image build time");
             rci.initializeAtBuildTime("com.sun.jmx.mbeanserver", "Allow FlightRecorder to be used at image build time");
             rci.initializeAtBuildTime("com.sun.jmx.defaults", "Allow FlightRecorder to be used at image build time");

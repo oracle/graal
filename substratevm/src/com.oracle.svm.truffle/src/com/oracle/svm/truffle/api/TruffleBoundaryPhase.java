@@ -64,11 +64,8 @@ public class TruffleBoundaryPhase extends Phase {
                 FixedNode originalNext = exceptionObject.next();
                 if (!(originalNext instanceof DeoptimizeNode) && invoke.callTarget().targetMethod() != null) {
                     ResolvedJavaMethod targetMethod = invoke.callTarget().targetMethod();
-                    TruffleBoundary truffleBoundary = targetMethod.getAnnotation(TruffleBoundary.class);
-                    if (truffleBoundary != null) {
-                        if (truffleBoundary.transferToInterpreterOnException()) {
-                            addDeoptimizeNode(graph, originalNext, targetMethod);
-                        }
+                    if (((TruffleMethod) targetMethod).getTruffleMethodInfo().isTruffleBoundaryTransferToInterpreterOnException()) {
+                        addDeoptimizeNode(graph, originalNext, targetMethod);
                     }
                 }
             }

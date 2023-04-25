@@ -72,7 +72,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
@@ -194,8 +193,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaType resolve(ResolvedJavaType type) {
         if (type instanceof SubstitutionType) {
             return ((SubstitutionType) type).getAnnotated();
-        } else if (type instanceof AnnotationSubstitutionType) {
-            return ((AnnotationSubstitutionType) type).getOriginal();
         } else if (type instanceof InjectedFieldsType) {
             return ((InjectedFieldsType) type).getOriginal();
         }

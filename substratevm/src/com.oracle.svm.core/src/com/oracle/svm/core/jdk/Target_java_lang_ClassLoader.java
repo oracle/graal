@@ -43,7 +43,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.LazyFinalReference;
@@ -51,12 +50,6 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.loader.ClassLoaderValue;
 import jdk.internal.loader.NativeLibrary;
-
-@TargetClass(className = "jdk.internal.loader.Resource")
-@SuppressWarnings("unused")
-final class Target_jdk_internal_loader_Resource {
-
-}
 
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
@@ -203,7 +196,6 @@ public final class Target_java_lang_ClassLoader {
      * This substitution is a temporary workaround for GR-33896 until GR-36494 is merged.
      */
     @Substitute //
-    @TargetElement(onlyWith = JDK17OrLater.class) //
     @SuppressWarnings({"unused"}) //
     ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
         ConcurrentHashMap<?, ?> result = classLoaderValueMap;
@@ -330,7 +322,6 @@ public final class Target_java_lang_ClassLoader {
     private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("unused")
     private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String name, byte[] b, int off, int len, ProtectionDomain pd, boolean initialize, int flags, Object classData) {
         throw VMError.unsupportedFeature("Defining hidden classes at runtime is not supported.");
@@ -338,8 +329,7 @@ public final class Target_java_lang_ClassLoader {
 
     // JDK-8265605
     @Delete
-    @TargetElement(onlyWith = JDK17OrLater.class, name = "findBootstrapClass")
-    private static native Class<?> findBootstrapClassJDK17OrLater(String name);
+    private static native Class<?> findBootstrapClass(String name);
 
     @Delete
     private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();

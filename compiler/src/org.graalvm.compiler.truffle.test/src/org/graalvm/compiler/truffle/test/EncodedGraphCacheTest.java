@@ -30,18 +30,16 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
@@ -140,32 +138,12 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         DebugContext debug = new DebugContext.Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
-            CompilationIdentifier compilationId = getTruffleCompilerFromRuntime(target).createCompilationIdentifier(target);
-            getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, compilationId,
-                            new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
-                                private TruffleInliningData inlining = new TruffleInlining();
-
-                                @Override
-                                public boolean isCancelled() {
-                                    return false;
-                                }
-
-                                @Override
-                                public boolean isLastTier() {
-                                    return true;
-                                }
-
-                                @Override
-                                public TruffleInliningData inliningData() {
-                                    return inlining;
-                                }
-
-                                @Override
-                                public boolean hasNextTier() {
-                                    return false;
-                                }
-                            }), null);
-            assertTrue(target.isValid());
+            TruffleCompilerImpl compiler = getTruffleCompilerFromRuntime(target);
+            TruffleCompilationTask task = newTask();
+            try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
+                getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, compilation.getCompilationId(), task, null);
+                assertTrue(target.isValid());
+            }
             return target;
         }
     }

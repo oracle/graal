@@ -221,7 +221,7 @@ public class DynamicHubInitializer {
         try {
             signature = (String) getSignature.invoke(javaClass);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
         hub.setSignature(signature);
     }

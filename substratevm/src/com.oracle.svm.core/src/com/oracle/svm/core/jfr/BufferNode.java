@@ -62,7 +62,7 @@ public interface BufferNode extends PointerBase {
 
     @RawFieldOffset
     static int offsetOfLock() {
-        throw VMError.unimplemented(); // replaced
+        throw VMError.intentionallyUnimplemented(); // replaced
     }
 
     @RawField

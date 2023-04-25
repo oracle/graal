@@ -32,7 +32,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-44110) Native Image now targets `x86-64-v3` by default on AMD64 and supports a new `-march` option. Use `-march=compatibility` for best compatibility (previous default) or `-march=native` for best performance if the native executable is deployed on the same machine or on a machine with the same CPU features. To list all available machine types, use `-march=list`.
 * (GR-43971) Add native-image option `-E<env-var-key>[=<env-var-value>]` and support environment variable capturing in bundles. Previously almost all environment variables were available in the builder. To temporarily revert back to the old behaviour, env setting `NATIVE_IMAGE_DEPRECATED_BUILDER_SANITATION=true` can be used. The old behaviour will be removed in a future release.
 * (GR-43382) The build output now includes a section with recommendations that help you get the best out of Native Image.
-* (GR-44722) The output of `native-image --version` and various Java properties (e.g. `java.vm.version`) have been aligned with the OpenJDK. To distinguish between GraalVM CE, Oracle GraalVM, and GraalVM distributions from other vendors, please refer to `java.vm.vendor`.
+* (GR-44722) The output of `native-image --version` and various Java properties (e.g. `java.vm.version`) have been aligned with the OpenJDK. To distinguish between GraalVM CE, Oracle GraalVM, and GraalVM distributions from other vendors, please refer to `java.vm.vendor` or `java.vendor.version`.
 
 ## Version 22.3.0
 * (GR-35721) Remove old build output style and the `-H:±BuildOutputUseNewStyle` option.

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -57,8 +57,10 @@ include $(TOP)/Makefile.common
 ifeq ($(OS), darwin)
 # NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
 #   However, it does include the bundle if linked with -flto, although the warning still says otherwise.
+EMBED_BC=-flto -Wl,-bitcode_bundle,-lto_library,$(shell ${LLVM_CONFIG} --libdir)/libLTO.dylib
+
 %$(SO_EXT): %.bc
-	$(QUIETLY) $(CLANG) -flto -Wl,-bitcode_bundle -dynamiclib -Wall -Wextra -Werror -Wno-unused-command-line-argument $(LDFLAGS) -g -o $@ $<
+	$(QUIETLY) $(CLANG) $(EMBED_BC) -dynamiclib -Wall -Wextra -Werror -Wno-unused-command-line-argument $(LDFLAGS) -g -o $@ $<
 else
 
 # Rules for shared objects

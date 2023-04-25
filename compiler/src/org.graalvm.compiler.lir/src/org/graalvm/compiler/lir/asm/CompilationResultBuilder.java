@@ -466,7 +466,7 @@ public class CompilationResultBuilder {
      */
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
-        char[] order = lir.codeEmittingOrder();
+        int[] order = lir.codeEmittingOrder();
         assert order[currentBlockIndex] == edge.getSourceBlock().getId();
         BasicBlock<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
@@ -579,7 +579,7 @@ public class CompilationResultBuilder {
         }
         boolean emitComment = debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || Options.PrintLIRWithAssembly.getValue(getOptions());
         if (emitComment) {
-            blockComment(String.format("block B%d %s", (int) block.getId(), block.getLoop()));
+            blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir.getLIRforBlock(block)) {

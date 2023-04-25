@@ -25,7 +25,6 @@
 package org.graalvm.compiler.nodes.cfg;
 
 import static org.graalvm.compiler.core.common.cfg.BasicBlock.BLOCK_ID_COMPARATOR;
-import static org.graalvm.compiler.core.common.cfg.BasicBlock.safeCast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +33,6 @@ import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BasicBlockSet;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
@@ -62,8 +60,8 @@ import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.HIRBlock.UnmodifiableBlock;
 import org.graalvm.compiler.nodes.cfg.HIRBlock.ModifiableBlock;
+import org.graalvm.compiler.nodes.cfg.HIRBlock.UnmodifiableBlock;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -183,7 +181,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     private void identifyBlocks(boolean makeEditable) {
-        char numBlocks = 0;
+        int numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             GraalError.guarantee(begin.predecessor() != null || (begin instanceof StartNode || begin instanceof AbstractMergeNode), "Disconnected control flow %s encountered", begin);
             HIRBlock block = makeEditable ? new ModifiableBlock(begin, this) : new UnmodifiableBlock(begin, this);
@@ -191,7 +189,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             numBlocks++;
             if (numBlocks > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
                 throw new RetryableBailoutException("Graph too large to safely compile in reasonable time. Graph contains more than %d basic blocks",
-                                (int) AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX);
+                                AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX);
             }
         }
         reversePostOrder = ReversePostOrder.identifyBlocks(this, numBlocks);
@@ -651,7 +649,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         HIRBlock[] stack = new HIRBlock[size];
         stack[0] = block;
         int tos = 0;
-        char myNumber = 0;
+        int myNumber = 0;
 
         do {
             HIRBlock cur = stack[tos];
@@ -669,9 +667,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     cur.setMaxChildDomNumber(myNumber);
                     --tos;
                 }
-                myNumber = BasicBlock.addExact(myNumber, 1);
+                myNumber = myNumber + 1;
             } else {
-                cur.setMaxChildDomNumber(safeCast(dominated.getMaxChildDominatorNumber()));
+                cur.setMaxChildDomNumber(dominated.getMaxChildDominatorNumber());
                 --tos;
             }
         } while (tos >= 0);

@@ -27,9 +27,7 @@ package org.graalvm.compiler.truffle.compiler;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.ConstantFieldInfo;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -94,7 +92,7 @@ public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProv
     }
 
     private ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        return cachedConstantFieldInfo.computeIfAbsent(field, f -> TruffleCompilerRuntime.getRuntime().getConstantFieldInfo(f));
+        return cachedConstantFieldInfo.computeIfAbsent(field, f -> TruffleCompilerEnvironment.get().runtime().getConstantFieldInfo(f));
     }
 
     private <T> T readConstantFieldFast(ResolvedJavaField field, ConstantFieldTool<T> tool) {
@@ -107,7 +105,7 @@ public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProv
 
     private JavaConstant verifyFieldValue(ResolvedJavaField field, JavaConstant constant, ConstantFieldInfo info) {
         assert !info.isChild() || constant.isNull() ||
-                        TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.nodes.Node").isAssignableFrom(metaAccess.lookupJavaType(constant)) : String.format(
+                        types.Node.isAssignableFrom(metaAccess.lookupJavaType(constant)) : String.format(
                                         "@Child field value must be a Node: %s, but was: %s", field, constant);
         assert !info.isChildren() || constant.isNull() ||
                         metaAccess.lookupJavaType(constant).isArray() : String.format("@Children field value must be an array: %s, but was: %s", field, constant);

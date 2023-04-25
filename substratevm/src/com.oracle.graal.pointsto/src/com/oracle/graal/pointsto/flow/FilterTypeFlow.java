@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.graph.NodeSourcePosition;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -47,10 +45,6 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     private final boolean isAssignable;
     /** True if the filter allows null, false otherwise. */
     private final boolean includeNull;
-
-    public FilterTypeFlow(NodeSourcePosition position, AnalysisType filterType, boolean isAssignable, boolean includeNull) {
-        this(position, filterType, false, isAssignable, includeNull);
-    }
 
     public FilterTypeFlow(BytecodePosition position, AnalysisType filterType, boolean isExact, boolean isAssignable, boolean includeNull) {
         super(position, filterType);

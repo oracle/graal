@@ -81,7 +81,7 @@ public interface StaticDeoptimizingNode extends ValueNodeInterface {
             case None:
                 return GuardNode.GuardPriority.None;
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(getAction()); // ExcludeFromJacocoGeneratedReport
     }
 
     static DeoptimizationAction mergeActions(DeoptimizationAction a1, DeoptimizationAction a2) {

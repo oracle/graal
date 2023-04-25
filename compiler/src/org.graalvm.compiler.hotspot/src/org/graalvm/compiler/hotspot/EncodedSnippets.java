@@ -520,7 +520,7 @@ public class EncodedSnippets {
             if (resolvedType == null) {
                 throw new NoClassDefFoundError("Can't resolve " + type.getName() + " with " + accessingClass.getName());
             }
-            for (ResolvedJavaMethod method : methodName.equals("<init>") ? resolvedType.getDeclaredConstructors() : resolvedType.getDeclaredMethods()) {
+            for (ResolvedJavaMethod method : methodName.equals("<init>") ? resolvedType.getDeclaredConstructors(false) : resolvedType.getDeclaredMethods(false)) {
                 if (method.getName().equals(methodName) && method.getSignature().toMethodDescriptor().equals(signature)) {
                     return method;
                 }

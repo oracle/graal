@@ -103,7 +103,7 @@ public class AArch64Convert {
                     masm.fcvt(toSize, fromSize, result, input);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

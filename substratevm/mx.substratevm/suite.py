@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "6.17.0",
+    "mxversion": "6.19.0",
     "name": "substratevm",
     "version" : "23.1.0",
     "release" : False,
@@ -270,6 +270,7 @@ suite = {
                     "sun.util.calendar",
                     "sun.util.locale.provider",
                     "sun.util.resources",
+                    "jdk.internal.access",
                     "jdk.internal.event",
                     "jdk.internal.loader",
                     "jdk.internal.logger",
@@ -428,6 +429,11 @@ suite = {
                 "LLVM_PLATFORM_SPECIFIC_SHADOWED",
                 "JAVACPP_PLATFORM_SPECIFIC_SHADOWED",
             ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.misc",
+                ],
+            },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "17+",
             "annotationProcessors": [
@@ -595,6 +601,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal",
+                    "jdk.internal.access",
                     "jdk.internal.event",
                     "jdk.internal.loader",
                     "jdk.internal.misc",

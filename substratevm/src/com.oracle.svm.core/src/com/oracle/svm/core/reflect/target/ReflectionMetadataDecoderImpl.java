@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -357,7 +356,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
             field.constructor(declaringClass, name, negative ? Object.class : type, modifiers, false, -1, null, null);
             return SubstrateUtil.cast(field, Field.class);
         }
-        boolean trustedFinal = (JavaVersionUtil.JAVA_SPEC >= 17) ? buf.getU1() == 1 : false;
+        boolean trustedFinal = buf.getU1() == 1;
         String signature = decodeName(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);

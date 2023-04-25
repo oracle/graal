@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.Proxy;
 import java.net.SocketAddress;
@@ -42,7 +39,6 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -129,11 +125,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
                             method(a, "java.net.DatagramPacket", "init"));
         }
 
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketCheckOldImpl,
-                            method(a, "java.net.DatagramSocket", "checkOldImpl"));
-        }
-
         if (JavaVersionUtil.JAVA_SPEC < 19) {
             /* Removed by https://bugs.openjdk.java.net/browse/JDK-8253119 */
             String plainDatagramSocketImpl = isWindows() ? "TwoStacksPlainDatagramSocketImpl" : "PlainDatagramSocketImpl";
@@ -185,14 +176,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
         /* Java_java_net_Inet6Address_init */
         RuntimeJNIAccess.register(constructor(a, "java.net.Inet6Address"));
         RuntimeJNIAccess.register(fields(a, "java.net.Inet6Address", "holder6"));
-        if (JavaVersionUtil.JAVA_SPEC <= 11) { // JDK-8216417
-            Class<?> c = clazz(a, "java.net.Inet6Address");
-            boolean optional = JavaVersionUtil.JAVA_SPEC == 11; // JDK-8269385
-            Field f = ReflectionUtil.lookupField(optional, c, "cached_scope_id");
-            if (f != null) {
-                RuntimeJNIAccess.register(f);
-            }
-        }
         RuntimeJNIAccess.register(fields(a, "java.net.Inet6Address$Inet6AddressHolder", "ipaddress", "scope_id", "scope_id_set", "scope_ifname"));
     }
 
@@ -225,14 +208,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements InternalFeat
 
     private static void registerDatagramPacketInit(DuringAnalysisAccess a) {
         RuntimeJNIAccess.register(fields(a, "java.net.DatagramPacket", "address", "port", "buf", "offset", "length", "bufLength"));
-    }
-
-    private static void registerDatagramSocketCheckOldImpl(DuringAnalysisAccess a) {
-        a.registerSubtypeReachabilityHandler((access, clazz) -> {
-            if (!Modifier.isAbstract(clazz.getModifiers())) {
-                RuntimeReflection.register(method(access, clazz.getName(), "peekData", DatagramPacket.class));
-            }
-        }, clazz(a, "java.net.DatagramSocketImpl"));
     }
 
     private static void registerPlainDatagramSocketImplInit(DuringAnalysisAccess a) {

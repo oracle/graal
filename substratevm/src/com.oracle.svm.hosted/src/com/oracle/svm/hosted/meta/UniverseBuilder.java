@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,7 +73,6 @@ import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
@@ -257,7 +256,7 @@ public class UniverseBuilder {
             hType = new HostedArrayClass(hUniverse, aType, kind, storageKind, superType, sInterfaces, componentType);
 
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(aType); // ExcludeFromJacocoGeneratedReport
         }
 
         HostedType existing = hUniverse.types.put(aType, hType);
@@ -453,10 +452,6 @@ public class UniverseBuilder {
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
         HostedConfiguration.instance().findAllFieldsForLayout(hUniverse, hMetaAccess, hUniverse.fields, rawFields, allFields, clazz);
-
-        if (clazz.getAnnotation(DeoptimizedFrame.ReserveDeoptScratchSpace.class) != null) {
-            reserve(usedBytes, DeoptimizedFrame.getScratchSpaceOffset(), layout.getDeoptScratchSpace());
-        }
 
         if (mustReserveLengthField(clazz)) {
             int lengthOffset = layout.getArrayLengthOffset();
@@ -1048,7 +1043,7 @@ public class UniverseBuilder {
             } else if (type.isPrimitive()) {
                 layoutHelper = LayoutEncoding.forPrimitive();
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
             }
 
             /*

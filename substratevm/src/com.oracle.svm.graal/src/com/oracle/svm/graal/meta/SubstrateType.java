@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -316,7 +316,7 @@ public class SubstrateType implements SharedType {
 
     @Override
     public ResolvedJavaField[] getStaticFields() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -377,12 +377,12 @@ public class SubstrateType implements SharedType {
 
     @Override
     public boolean isLocal() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public boolean isMember() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -396,17 +396,27 @@ public class SubstrateType implements SharedType {
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
-        throw VMError.unimplemented();
+        return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
-        throw VMError.unimplemented();
+        return getDeclaredMethods(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public ResolvedJavaMethod getClassInitializer() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -437,7 +447,7 @@ public class SubstrateType implements SharedType {
     @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

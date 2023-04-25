@@ -62,9 +62,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
-import jdk.vm.ci.hotspot.HotSpotSignature;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Snippet that lowers {@link TruffleSafepointNode}.
@@ -176,10 +174,7 @@ public final class HotSpotTruffleSafepointLoweringSnippet implements Snippets {
                 this.deferredInit = () -> {
                     long address = config.invokeJavaMethodAddress;
                     GraalError.guarantee(address != 0, "Cannot lower %s as JVMCIRuntime::invoke_static_method_one_arg is missing", address);
-                    ResolvedJavaType handshakeType = TruffleCompilerRuntime.getRuntime().resolveType(providers.getMetaAccess(),
-                                    "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
-                    HotSpotSignature sig = new HotSpotSignature(foreignCalls.getJVMCIRuntime(), "(Ljava/lang/Object;)V");
-                    ResolvedJavaMethod staticMethod = handshakeType.findMethod("doHandshake", sig);
+                    ResolvedJavaMethod staticMethod = HotSpotTruffleCompilerEnvironment.get().types().HotSpotThreadLocalHandshake_doHandshake;
                     foreignCalls.invokeJavaMethodStub(options, providers, THREAD_LOCAL_HANDSHAKE, address, staticMethod);
                 };
             }

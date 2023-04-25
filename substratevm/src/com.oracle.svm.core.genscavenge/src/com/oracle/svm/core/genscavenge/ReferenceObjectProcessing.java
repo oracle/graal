@@ -38,6 +38,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -219,7 +220,7 @@ final class ReferenceObjectProcessing {
 
     private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr) {
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        UnsignedWord header = ohi.readHeaderFromPointer(referentAddr);
+        UnsignedWord header = ObjectHeader.readHeaderFromPointer(referentAddr);
         if (ObjectHeaderImpl.isForwardedHeader(header)) {
             Object forwardedObj = ohi.getForwardedObject(referentAddr);
             ReferenceInternals.setReferent(dr, forwardedObj);

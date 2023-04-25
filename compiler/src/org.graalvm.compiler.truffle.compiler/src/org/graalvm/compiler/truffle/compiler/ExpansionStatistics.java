@@ -48,12 +48,11 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationTier;
 
@@ -263,7 +262,7 @@ final class ExpansionStatistics {
 
             }
         }
-        TruffleCompilerRuntime.getRuntime().log(ast, String.format("%s expansion statistics after %s:%n%s", kind, tier.toString(), writer.toString()));
+        TruffleCompilerEnvironment.get().runtime().log(ast, String.format("%s expansion statistics after %s:%n%s", kind, tier.toString(), writer.toString()));
     }
 
     private static void printHistogramStats(PrintWriter w, String indent, int maxLabelLength, String label, Stats stats) {
@@ -349,7 +348,7 @@ final class ExpansionStatistics {
         try (PrintWriter w = new PrintWriter(writer)) {
             tree.print(w);
         }
-        TruffleCompilerRuntime.getRuntime().log(compilable, String.format("Expansion tree for %s after %s:%n%s", compilable.getName(), tier.toString(), writer.toString()));
+        TruffleCompilerEnvironment.get().runtime().log(compilable, String.format("Expansion tree for %s after %s:%n%s", compilable.getName(), tier.toString(), writer.toString()));
     }
 
     private static String formatQualifiedMethod(ResolvedJavaMethod method) {
@@ -755,7 +754,7 @@ final class ExpansionStatistics {
              * property many times for the methods. If GR-25553 gets to be implemented then we
              * should just use the normal annotation API that is internally cached.
              */
-            return cache.computeIfAbsent(method, (m) -> TruffleCompilerRuntime.getRuntime().isSpecializationMethod(m));
+            return cache.computeIfAbsent(method, (m) -> TruffleCompilerEnvironment.get().runtime().isSpecializationMethod(m));
         }
 
         private void findSpecializationMethodsWithNodeId(Set<ResolvedJavaMethod> specializations, int nodeId, ConcurrentHashMap<ResolvedJavaMethod, Boolean> cache) {

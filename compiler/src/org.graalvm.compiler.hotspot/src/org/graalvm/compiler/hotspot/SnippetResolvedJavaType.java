@@ -31,6 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.compiler.debug.GraalError;
+
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -142,6 +144,10 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
 
     @Override
     public void initialize() {
+    }
+
+    @Override
+    public void link() {
     }
 
     @Override
@@ -294,11 +300,22 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
+        return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+        GraalError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
         if (methods == null) {
             return new ResolvedJavaMethod[0];
         }

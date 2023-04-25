@@ -873,8 +873,9 @@ public class SnippetTemplate {
 
         public static ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess, Class<?> declaringClass, String methodName) {
             ResolvedJavaType type = metaAccess.lookupJavaType(declaringClass);
+            type.link();
             ResolvedJavaMethod result = null;
-            for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
+            for (ResolvedJavaMethod m : type.getDeclaredMethods(false)) {
                 if (m.getName().equals(methodName)) {
                     if (!Assertions.assertionsEnabled()) {
                         return m;
@@ -1489,7 +1490,7 @@ public class SnippetTemplate {
         } while (exploded);
     }
 
-    protected Object[] getConstantArgs(Arguments args) {
+    protected static Object[] getConstantArgs(Arguments args) {
         Object[] constantArgs = args.values.clone();
         for (int i = 0; i < args.info.getParameterCount(); i++) {
             if (!args.info.isConstantParameter(i)) {

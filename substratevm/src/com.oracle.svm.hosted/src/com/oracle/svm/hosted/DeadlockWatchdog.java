@@ -52,6 +52,7 @@ public class DeadlockWatchdog implements Closeable {
         enabled = true;
         if (this.watchdogInterval > 0) {
             thread = new Thread(this::watchdogThread);
+            thread.setDaemon(true);
             thread.start();
         } else {
             thread = null;

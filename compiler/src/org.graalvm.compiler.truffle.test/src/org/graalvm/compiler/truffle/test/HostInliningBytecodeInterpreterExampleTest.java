@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -52,13 +51,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /*
  * If you update the code here, please also update truffle/docs/HostOptimization.md.
  */
-public class HostInliningBytecodeInterpreterExampleTest extends GraalCompilerTest {
+public class HostInliningBytecodeInterpreterExampleTest extends TruffleCompilerImplTest {
 
     @Test
     @SuppressWarnings("try")
     public void test() throws Throwable {
         // call the method to initialize classes
         interpreterSwitch();
+
+        // ensure truffle is initialized
+        getTruffleCompiler();
 
         ResolvedJavaMethod method = getResolvedJavaMethod(BytecodeNode.class, "execute");
         OptionValues options = HostInliningTest.createHostInliningOptions(30000, -1);

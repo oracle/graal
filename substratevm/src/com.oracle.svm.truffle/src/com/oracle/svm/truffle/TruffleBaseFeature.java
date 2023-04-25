@@ -79,6 +79,7 @@ import org.graalvm.home.HomeFinder;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -90,6 +91,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -109,6 +111,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalGraphObjectReplacer;
 import com.oracle.svm.graal.hosted.SubstrateGraalCompilerSetup;
 import com.oracle.svm.graal.hosted.SubstrateProviders;
+import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -423,9 +426,6 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
         metaAccess = config.getMetaAccess();
-        SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class)
-                        .getSubstrateProviders(metaAccess);
-        graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), metaAccess, substrateProviders);
 
         layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
         layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
@@ -435,9 +435,20 @@ public final class TruffleBaseFeature implements InternalFeature {
         }
     }
 
+    void setGraalGraphObjectReplacer(GraalGraphObjectReplacer graalGraphObjectReplacer) {
+        assert this.graalGraphObjectReplacer == null;
+        this.graalGraphObjectReplacer = graalGraphObjectReplacer;
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        if (graalGraphObjectReplacer == null) {
+            BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
+            SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess);
+            graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
+        }
+
         StaticObjectSupport.beforeAnalysis(access);
         markAsUnsafeAccessed = access::registerAsUnsafeAccessed;
 
@@ -455,6 +466,22 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         if (needsAllEncodings) {
             ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+        }
+        Class<?> frameClass = config.findClassByName("com.oracle.truffle.api.impl.FrameWithoutBoxing");
+        config.registerFieldValueTransformer(config.findField(frameClass, "ASSERTIONS_ENABLED"), new AssertionStatusFieldTransformer(frameClass));
+    }
+
+    private static class AssertionStatusFieldTransformer implements FieldValueTransformer {
+        private final Class<?> clazz;
+
+        AssertionStatusFieldTransformer(Class<?> clazz) {
+            this.clazz = clazz;
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            boolean assertionsEnabled = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(clazz);
+            return assertionsEnabled;
         }
     }
 
@@ -669,7 +696,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             /* Trigger computation of uncachedDispatch. */
             factory.getUncached();
         }
-        if (type.getDeclaredAnnotationsByType(ExportLibrary.class).length != 0) {
+        if (type.isAnnotationPresent(ExportLibrary.class) || type.isAnnotationPresent(ExportLibrary.Repeat.class)) {
             /* Eagerly resolve receiver type. */
             invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "lookup",
                             Collections.singleton(Class.class), type.getJavaClass());

@@ -107,28 +107,19 @@ public interface TruffleCompilerListener {
      * and is about to perform compilation of the graph produced by partial evaluation.
      *
      * @param compilable the call target being compiled
-     * @param inliningPlan the inlining plan used during partial evaluation
+     * @param task the compilation task
      * @param graph the graph representing {@code compilable}. The {@code graph} object is only
      *            valid for the lifetime of a call to this method. Invoking any {@link GraphInfo}
      *            method on {@code graph} after this method returns will result in an
      *            {@link IllegalStateException}.
      */
-    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph);
-
-    /**
-     * @deprecated use
-     *             {@link #onSuccess(CompilableTruffleAST, TruffleInliningData, GraphInfo, CompilationResultInfo, int)}
-     */
-    @Deprecated(since = "21.0")
-    default void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo) {
-        onSuccess(compilable, inliningPlan, graph, compilationResultInfo, 0);
-    }
+    void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleCompilationTask task, GraphInfo graph);
 
     /**
      * Notifies this object when compilation of {@code compilable} succeeds.
      *
      * @param compilable the Truffle AST whose compilation succeeded
-     * @param inliningPlan the inlining plan used during partial evaluation
+     * @param task the compilation task
      * @param graph the graph representing {@code compilable}. The {@code graph} object is only
      *            valid for the lifetime of a call to this method. Invoking any {@link GraphInfo}
      *            method on {@code graph} after this method returns will result in an
@@ -139,15 +130,7 @@ public interface TruffleCompilerListener {
      *            method returns will result in an {@link IllegalStateException}.
      * @param tier Which compilation tier was the compilation
      */
-    default void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph, CompilationResultInfo compilationResultInfo, int tier) {
-    }
-
-    /**
-     * @deprecated use {@link #onFailure(CompilableTruffleAST, String, boolean, boolean, int)}
-     */
-    @Deprecated(since = "21.0")
-    default void onFailure(CompilableTruffleAST compilable, String reason, boolean bailout, boolean permanentBailout) {
-        onFailure(compilable, reason, bailout, permanentBailout, 0);
+    default void onSuccess(CompilableTruffleAST compilable, TruffleCompilationTask task, GraphInfo graph, CompilationResultInfo compilationResultInfo, int tier) {
     }
 
     /**
@@ -169,14 +152,6 @@ public interface TruffleCompilerListener {
     }
 
     /**
-     * @deprecated use {@link #onCompilationRetry(CompilableTruffleAST, int)}
-     */
-    @Deprecated(since = "21.0")
-    @SuppressWarnings("unused")
-    default void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
-    }
-
-    /**
      * Notifies this object when compilation of {@code compilable} is re-tried to diagnose a
      * compilation problem.
      *
@@ -184,6 +159,5 @@ public interface TruffleCompilerListener {
      * @param task Which compilation task is in question.
      */
     default void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
-        onCompilationRetry(compilable, task.tier());
     }
 }

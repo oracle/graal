@@ -117,10 +117,11 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -161,6 +162,7 @@ import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -273,9 +275,10 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime,
-                        "TruffleFeature requires SubstrateTruffleRuntime");
-        ((SubstrateTruffleRuntime) Truffle.getRuntime()).resetHosted();
+        UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
+        SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
+        truffleRuntime.resetHosted();
+        RuntimeCompilationFeature.singleton().setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));
     }
 
     @Override
@@ -293,6 +296,8 @@ public class TruffleFeature implements InternalFeature {
         if (!ImageSingletons.contains(TruffleSupport.class)) {
             ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
         }
+
+        ImageSingletons.lookup(TruffleBaseFeature.class).setGraalGraphObjectReplacer(RuntimeCompilationFeature.singleton().getObjectReplacer());
     }
 
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {
@@ -350,6 +355,7 @@ public class TruffleFeature implements InternalFeature {
         // register thread local foreign poll as compiled otherwise the stub won't work
         config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
 
+        TruffleCompilerEnvironment.initialize(new SubstrateTruffleCompilerEnvironment(truffleRuntime));
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
         SubstrateTruffleCompiler truffleCompiler = truffleRuntime.initTruffleCompiler();
@@ -357,7 +363,7 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
-        registerKnownTruffleFields(config, partialEvaluator.getKnownTruffleTypes());
+        registerKnownTruffleFields(config, partialEvaluator.getTypes());
         TruffleSupport.singleton().registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigPrototype();
@@ -737,7 +743,7 @@ public class TruffleFeature implements InternalFeature {
                 method = clazz.getDeclaredMethod(name, parameterTypes);
             }
             if (!blocklistMethods.remove(metaAccess.lookupJavaMethod(method))) {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
             }
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
@@ -919,8 +925,8 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getMetaAccess());
 
         runtimeCompiledMethods = new LinkedHashSet<>();
-        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods()));
-        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods()));
+        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods(false)));
+        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods(false)));
 
         for (RuntimeCompiledMethod runtimeCompiledMethod : RuntimeCompilationFeature.singleton().getRuntimeCompiledMethods()) {
 

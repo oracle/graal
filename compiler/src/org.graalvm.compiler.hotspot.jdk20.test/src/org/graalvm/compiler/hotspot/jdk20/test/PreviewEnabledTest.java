@@ -35,6 +35,8 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
+import jdk.vm.ci.code.InstalledCode;
+
 @AddExports("java.base/jdk.internal.misc")
 public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
 
@@ -44,15 +46,11 @@ public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
     }
 
     public void testGetCarrierThread() {
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
         compileAndInstallSubstitution(Thread.class, "currentCarrierThread");
-
         CarrierThreadTest.test();
     }
 
     public void testScopedValue() {
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
-
         compileAndInstallSubstitution(Thread.class, "setScopedValueCache");
         ScopedValueCacheTest.testScopedValue();
 
@@ -60,9 +58,30 @@ public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
         ScopedValueCacheTest.testScopedValue();
     }
 
+    public void testJFR() {
+        try {
+            // resolve class, profile exceptions
+            VirtualThreadsJFRTest.test();
+            Class<?> clazz = Class.forName("java.lang.VirtualThread");
+            InstalledCode code = getCode(getResolvedJavaMethod(clazz, "mount"), null, true, true, getInitialOptions());
+            assertTrue(code.isValid());
+            VirtualThreadsJFRTest.test();
+            assertTrue(code.isValid());
+        } catch (ClassNotFoundException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    public void testBody() {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
+        testGetCarrierThread();
+        testScopedValue();
+        testJFR();
+    }
+
     @Test
     public void testInSubprocess() throws IOException, InterruptedException {
-        SubprocessTest.launchSubprocess(getClass(), this::testGetCarrierThread, "--enable-preview");
-        SubprocessTest.launchSubprocess(getClass(), this::testGetCarrierThread, "--enable-preview");
+        SubprocessTest.launchSubprocess(getClass(), this::testBody, "--enable-preview", "--add-modules=jdk.incubator.concurrent",
+                        "--add-opens=jdk.incubator.concurrent/jdk.incubator.concurrent=ALL-UNNAMED");
     }
 }

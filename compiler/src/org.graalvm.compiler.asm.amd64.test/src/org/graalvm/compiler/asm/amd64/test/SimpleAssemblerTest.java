@@ -33,6 +33,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.test.AssemblerTest;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.code.DataSection.SerializableData;
@@ -103,6 +104,17 @@ public class SimpleAssemblerTest extends AssemblerTest {
                 ByteBuffer.wrap(rawBytes).order(ByteOrder.nativeOrder()).putDouble(84.72);
                 Data data = new RawData(rawBytes, 8);
                 DataSectionReference ref = compResult.getDataSection().insertData(data);
+
+                // tests Data class
+                assertTrue(data.equals(data));
+                assertFalse(data.equals(new RawData(rawBytes, 8))); // unequal ref
+                assertFalse(data.equals(new RawData(rawBytes, 0)));
+                // test DataSection class
+                DataSection dataSection = compResult.getDataSection();
+                assertTrue(dataSection.toString().length() > 0); // check for NPE
+                assertTrue(dataSection.equals(dataSection));
+                assertFalse(dataSection.equals(ret));
+
                 compResult.recordDataPatch(asm.position(), ref);
                 asm.movdbl(ret, asm.getPlaceholder(-1));
                 asm.ret(0);
@@ -118,5 +130,16 @@ public class SimpleAssemblerTest extends AssemblerTest {
 
     public static double doubleStub() {
         return 0.0;
+    }
+
+    @Test
+    public void testDataSections() {
+        Data serializableData = new SerializableData(JavaConstant.forDouble(84.72), 8);
+        Data serializableData2 = new SerializableData(JavaConstant.forInt(42), 8);
+        assertTrue(serializableData.toString().length() > 0); // just check for NPE
+        assertTrue(serializableData2.toString().length() > 0); // just check for NPE
+
+        DataSection.PackedData packedData = new DataSection.PackedData(0, 8, new Data[]{serializableData});
+        assertTrue(packedData.toString().length() >= 0); // just check for NPE
     }
 }

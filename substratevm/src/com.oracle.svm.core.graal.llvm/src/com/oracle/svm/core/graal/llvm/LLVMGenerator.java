@@ -34,6 +34,7 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getType;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getVal;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
 import java.util.ArrayList;
@@ -63,7 +64,6 @@ import org.graalvm.compiler.core.common.type.IllegalStamp;
 import org.graalvm.compiler.core.common.type.RawPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
@@ -82,7 +82,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -128,8 +127,8 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
-import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
@@ -261,6 +260,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     private void addMainFunction(ResolvedJavaMethod method) {
         builder.setMainFunction(functionName, getLLVMFunctionType(method, true));
+        builder.setTarget(LLVMTargetSpecific.get().getTargetTriple());
         builder.setFunctionLinkage(LinkageType.External);
         builder.setFunctionAttribute(Attribute.NoInline);
         builder.setFunctionAttribute(Attribute.NoRedZone);
@@ -770,7 +770,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         } else if (register.equals(ReservedRegisters.singleton().getFrameRegister())) {
             value = builder.buildReadRegister(builder.register(ReservedRegisters.singleton().getFrameRegister().name));
         } else {
-            throw VMError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw VMError.shouldNotReachHereUnexpectedInput(register); // ExcludeFromJacocoGeneratedReport
         }
         return new LLVMVariable(value);
     }
@@ -790,7 +790,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 buildInlineSetRegister(ReservedRegisters.singleton().getHeapBaseRegister().name, getVal(src));
             }
         } else {
-            throw VMError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw VMError.shouldNotReachHereUnexpectedInput(dst); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1388,12 +1388,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             LLVMValueRef convert;
             switch (op.getCategory()) {
                 case FloatingPointToInteger:
-                    /* NaNs are converted to 0 in Java, but are undefined in LLVM */
-                    LLVMValueRef value = getVal(inputVal);
-                    LLVMValueRef isNan = builder.buildCompare(Condition.NE, value, value, true);
-                    LLVMValueRef converted = builder.buildFPToSI(getVal(inputVal), destType);
-                    LLVMValueRef zero = builder.constantInteger(0, LLVMIRBuilder.integerTypeWidth(destType));
-                    convert = builder.buildSelect(isNan, zero, converted);
+                    convert = builder.buildSaturatingFloatingPointToInteger(op, getVal(inputVal));
                     break;
                 case IntegerToFloatingPoint:
                     convert = builder.buildSIToFP(getVal(inputVal), destType);
@@ -1786,7 +1781,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                     case Void:
                     case Illegal:
                     default:
-                        throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw shouldNotReachHereUnexpectedValue(types[i]); // ExcludeFromJacocoGeneratedReport
                 }
 
                 printfArgs.add(values[i]);
@@ -1812,7 +1807,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public void emitCacheWriteback(Value address) {
-        int cacheLineSize = getDataCacheLineFlushSize();
+        int cacheLineSize = Unsafe.getUnsafe().dataCacheLineFlushSize();
         if (cacheLineSize == 0) {
             throw shouldNotReachHere("cache writeback with cache line size of 0"); // ExcludeFromJacocoGeneratedReport
         }
@@ -1824,29 +1819,5 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     @Override
     public void emitCacheWritebackSync(boolean isPreSync) {
         throw unimplemented("cache sync barrier (GR-30894)"); // ExcludeFromJacocoGeneratedReport
-    }
-
-    private static final int dataCacheLineFlushSize = initDataCacheLineFlushSize();
-
-    /**
-     * Gets the value of {@code jdk.internal.misc.UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE} which
-     * was introduced after JDK 11 by JEP 352.
-     *
-     * This method uses reflection to be compatible with JDK 11 and earlier.
-     */
-    private static int initDataCacheLineFlushSize() {
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            return 0;
-        }
-        try {
-            Class<?> c = Class.forName("jdk.internal.misc.UnsafeConstants");
-            return ReflectionUtil.readStaticField(c, "DATA_CACHE_LINE_FLUSH_SIZE");
-        } catch (ClassNotFoundException e) {
-            throw new GraalError(e, "Expected UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE to exist and be readable");
-        }
-    }
-
-    private static int getDataCacheLineFlushSize() {
-        return dataCacheLineFlushSize;
     }
 }

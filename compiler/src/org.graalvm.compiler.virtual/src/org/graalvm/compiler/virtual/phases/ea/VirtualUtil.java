@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class VirtualUtil {
 
     private VirtualUtil() {
-        GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        GraalError.shouldNotReachHere("intentional"); // ExcludeFromJacocoGeneratedReport
     }
 
     public static boolean assertNonReachable(StructuredGraph graph, List<Node> obsoleteNodes) {

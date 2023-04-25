@@ -71,7 +71,6 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -267,8 +266,8 @@ public class SerializationFeature implements InternalFeature {
 
     private static Stream<? extends ResolvedJavaMethod> allExecutablesDeclaredInClass(ResolvedJavaType t) {
         return Stream.concat(Stream.concat(
-                        Arrays.stream(t.getDeclaredMethods()),
-                        Arrays.stream(t.getDeclaredConstructors())),
+                        Arrays.stream(t.getDeclaredMethods(false)),
+                        Arrays.stream(t.getDeclaredConstructors(false))),
                         t.getClassInitializer() == null ? Stream.empty() : Stream.of(t.getClassInitializer()));
     }
 }
@@ -535,13 +534,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * serialization class consistency, so need to register all constructors, methods and
              * fields.
              */
-            if (SubstrateOptions.ThrowMissingRegistrationErrors.getValue()) {
-                RuntimeReflection.registerAsQueried(serializationTargetClass.getDeclaredConstructors());
-                RuntimeReflection.registerAsQueried(serializationTargetClass.getDeclaredMethods());
-            } else {
-                RuntimeReflection.register(serializationTargetClass.getDeclaredConstructors());
-                RuntimeReflection.register(serializationTargetClass.getDeclaredMethods());
-            }
+            RuntimeReflection.register(serializationTargetClass.getDeclaredConstructors());
+            RuntimeReflection.register(serializationTargetClass.getDeclaredMethods());
             RuntimeReflection.register(serializationTargetClass.getDeclaredFields());
         }
 

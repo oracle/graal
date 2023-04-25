@@ -548,15 +548,15 @@ public abstract class ThreadLocalHandshake {
         }
 
         @Override
-        public <T> void setBlockedWithException(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
+        public <T> void setBlocked(Node location, Interrupter interrupter, Interruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
             assert impl.getCurrent() == this : "Cannot be used from a different thread.";
 
             /*
              * We want to avoid to ever call the Interruptible interface on compiled code paths to
              * make native image avoid marking it as runtime compiled. It is common that
-             * interruptibles are just a method reference to Lock::lockInterruptibly which could no
-             * longer be used otherwise as PE would fail badly for these methods and we would get
-             * black list method errors in native image.
+             * interruptibles are just a method reference to e.g. Lock::lockInterruptibly which
+             * could no longer be used otherwise as PE would fail badly for these methods and we
+             * would get black list method errors in native image.
              *
              * A good workaround is to use our own interface that is a subclass of Interruptible but
              * that must be used to opt-in to compilation.
@@ -568,7 +568,8 @@ public abstract class ThreadLocalHandshake {
             }
         }
 
-        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt, Consumer<Throwable> afterInterrupt) {
+        private <T> void setBlockedCompiled(Node location, Interrupter interrupter, CompiledInterruptible<T> interruptible, T object, Runnable beforeInterrupt,
+                        Consumer<Throwable> afterInterrupt) {
             Interrupter prev = this.blockedAction;
             try {
                 while (true) {
@@ -578,7 +579,6 @@ public abstract class ThreadLocalHandshake {
                         break;
                     } catch (InterruptedException e) {
                         setBlockedAfterInterrupt(location, prev, beforeInterrupt, afterInterrupt);
-                        continue;
                     }
                 }
             } finally {
@@ -597,7 +597,63 @@ public abstract class ThreadLocalHandshake {
                         break;
                     } catch (InterruptedException e) {
                         setBlockedAfterInterrupt(location, prev, beforeInterrupt, afterInterrupt);
-                        continue;
+                    }
+                }
+            } finally {
+                setBlockedImpl(location, prev, false);
+            }
+        }
+
+        @Override
+        public <T, R> R setBlockedFunction(Node location, Interrupter interrupter, InterruptibleFunction<T, R> interruptible, T object, Runnable beforeInterrupt,
+                        Consumer<Throwable> afterInterrupt) {
+            assert impl.getCurrent() == this : "Cannot be used from a different thread.";
+
+            /*
+             * We want to avoid to ever call the InterruptibleFunction interface on compiled code
+             * paths to make native image avoid marking it as runtime compiled. It is common that
+             * interruptibles are just a method reference to e.g. BlockingQueue::take which could no
+             * longer be used otherwise as PE would fail badly for these methods and we would get
+             * black list method errors in native image.
+             *
+             * A good workaround is to use our own interface that is a subclass of
+             * InterruptibleFunction but that must be used to opt-in to compilation.
+             */
+            if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(interruptible) && interruptible instanceof CompiledInterruptibleFunction<?, ?>) {
+                return setBlockedFunctionCompiled(location, interrupter, (CompiledInterruptibleFunction<T, R>) interruptible, object, beforeInterrupt, afterInterrupt);
+            } else {
+                return setBlockedFunctionBoundary(location, interrupter, interruptible, object, beforeInterrupt, afterInterrupt);
+            }
+        }
+
+        private <T, R> R setBlockedFunctionCompiled(Node location, Interrupter interrupter, CompiledInterruptibleFunction<T, R> interruptible, T object, Runnable beforeInterrupt,
+                        Consumer<Throwable> afterInterrupt) {
+            Interrupter prev = this.blockedAction;
+            try {
+                while (true) {
+                    try {
+                        setBlockedImpl(location, interrupter, false);
+                        return interruptible.apply(object);
+                    } catch (InterruptedException e) {
+                        setBlockedAfterInterrupt(location, prev, beforeInterrupt, afterInterrupt);
+                    }
+                }
+            } finally {
+                setBlockedImpl(location, prev, false);
+            }
+        }
+
+        @TruffleBoundary
+        private <T, R> R setBlockedFunctionBoundary(Node location, Interrupter interrupter, InterruptibleFunction<T, R> interruptible, T object, Runnable beforeInterrupt,
+                        Consumer<Throwable> afterInterrupt) {
+            Interrupter prev = this.blockedAction;
+            try {
+                while (true) {
+                    try {
+                        setBlockedImpl(location, interrupter, false);
+                        return interruptible.apply(object);
+                    } catch (InterruptedException e) {
+                        setBlockedAfterInterrupt(location, prev, beforeInterrupt, afterInterrupt);
                     }
                 }
             } finally {

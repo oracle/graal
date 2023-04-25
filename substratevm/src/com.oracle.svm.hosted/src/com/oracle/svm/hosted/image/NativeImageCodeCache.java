@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,9 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
+import java.io.PrintWriter;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -47,6 +49,7 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -164,7 +167,8 @@ public abstract class NativeImageCodeCache {
     }
 
     protected List<Pair<HostedMethod, CompilationResult>> computeCompilationOrder(Map<HostedMethod, CompilationResult> compilationMap) {
-        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).collect(Collectors.toList());
+        return compilationMap.entrySet().stream().map(e -> Pair.create(e.getKey(), e.getValue())).sorted(Comparator.comparing(o -> o.getLeft().wrapped.format("%H.%n(%P):%R")))
+                        .collect(Collectors.toList());
     }
 
     public List<Pair<HostedMethod, CompilationResult>> getOrderedCompilations() {
@@ -586,24 +590,32 @@ public abstract class NativeImageCodeCache {
     public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile);
 
     public void printCompilationResults() {
-        System.out.println("--- compiled methods");
+        String reportsPath = SubstrateOptions.reportsPath();
+        ReportUtils.report("compilation results", reportsPath, "universe_compilation", "txt",
+                        writer -> printCompilationResults(writer));
+    }
+
+    private void printCompilationResults(PrintWriter writer) {
+
+        writer.println("--- compiled methods");
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             HostedMethod method = pair.getLeft();
             CompilationResult result = pair.getRight();
-            System.out.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
+            writer.format("%8d %5d %s: frame %d%n", method.getCodeAddressOffset(), result.getTargetCodeSize(), method.format("%H.%n(%p)"), result.getTotalFrameSize());
         }
-        System.out.println("--- vtables:");
+        writer.println("--- vtables:");
         for (HostedType type : imageHeap.getUniverse().getTypes()) {
             for (int i = 0; i < type.getVTable().length; i++) {
                 HostedMethod method = type.getVTable()[i];
                 if (method != null) {
                     CompilationResult comp = compilationResultFor(type.getVTable()[i]);
                     if (comp != null) {
-                        System.out.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
+                        writer.format("%d %s @ %d: %s = 0x%x%n", type.getTypeID(), type.toJavaName(false), i, method.format("%r %n(%p)"), method.getCodeAddressOffset());
                     }
                 }
             }
         }
+
     }
 
     private static class HostedFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromMethod {
@@ -633,7 +645,7 @@ public abstract class NativeImageCodeCache {
                 } else if (infopoint instanceof Call) {
                     numDuringCallEntryPoints++;
                 } else {
-                    throw shouldNotReachHere();
+                    throw shouldNotReachHereUnexpectedInput(infopoint); // ExcludeFromJacocoGeneratedReport
                 }
             }
         }

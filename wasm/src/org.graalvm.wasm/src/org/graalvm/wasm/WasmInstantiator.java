@@ -126,6 +126,7 @@ public class WasmInstantiator {
     }
 
     private static void recreateLinkActions(WasmModule module) {
+        module.createLinkActions();
         for (int i = 0; i < module.numFunctions(); i++) {
             final WasmFunction function = module.function(i);
             if (function.isImported()) {

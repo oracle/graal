@@ -40,9 +40,9 @@ public class GraalErrorTest {
      * Test that the errors actually fail and provide the correct message.
      */
     public void testErrors() {
-        error("unimplemented", () -> GraalError.unimplemented());
         error("unimplemented: test", () -> GraalError.unimplemented("test"));
-        error("should not reach here", () -> GraalError.shouldNotReachHere());
+        error("unimplemented override", () -> GraalError.unimplementedOverride());
+        error("unimplemented method in parent class, should be overridden", () -> GraalError.unimplementedParent());
         error("should not reach here: test", () -> GraalError.shouldNotReachHere("test"));
         error("test", () -> GraalError.shouldNotReachHere(new Exception("test")));
         error("should not reach here: test", () -> GraalError.shouldNotReachHere(new Exception(), "test"));

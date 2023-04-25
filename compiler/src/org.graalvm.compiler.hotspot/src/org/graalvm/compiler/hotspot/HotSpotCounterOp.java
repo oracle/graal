@@ -154,7 +154,7 @@ public abstract class HotSpotCounterOp extends LIRInstruction {
      * @param increment
      */
     public void patchCounterIncrement(Assembler<?> asm, int[] increment) {
-        throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplemented("will be patched"); // ExcludeFromJacocoGeneratedReport
     }
 
     private static long asLong(JavaConstant value) {

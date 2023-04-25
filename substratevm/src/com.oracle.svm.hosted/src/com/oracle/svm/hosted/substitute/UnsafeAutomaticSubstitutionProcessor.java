@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,7 +72,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -222,17 +221,15 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
 
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                /*
-                 * JDK 17 and later add checks for hidden classes and record classes in
-                 * sun.misc.Unsafe before delegating to jdk.internal.misc.Unsafe. When inlined, the
-                 * checks make control flow too complex to detect offset field assignments.
-                 */
-                Method sunMiscUnsafeObjectFieldOffset = sunMiscUnsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
-                sunMiscUnsafeObjectFieldOffsetMethod = originalMetaAccess.lookupJavaMethod(sunMiscUnsafeObjectFieldOffset);
-                noCheckedExceptionsSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
-                neverInlineSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
-            }
+            /*
+             * The JDK checks for hidden classes and record classes in sun.misc.Unsafe before
+             * delegating to jdk.internal.misc.Unsafe. When inlined, the checks make control flow
+             * too complex to detect offset field assignments.
+             */
+            Method sunMiscUnsafeObjectFieldOffset = sunMiscUnsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
+            sunMiscUnsafeObjectFieldOffsetMethod = originalMetaAccess.lookupJavaMethod(sunMiscUnsafeObjectFieldOffset);
+            noCheckedExceptionsSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
+            neverInlineSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
 
             Method unsafeArrayBaseOffset = unsafeClass.getMethod("arrayBaseOffset", java.lang.Class.class);
             unsafeArrayBaseOffsetMethod = originalMetaAccess.lookupJavaMethod(unsafeArrayBaseOffset);
@@ -481,7 +478,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         }
 
         boolean valid = true;
-        if (JavaVersionUtil.JAVA_SPEC >= 17 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
+        if (isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
             Class<?> declaringClass = field.getDeclaringClass();
             if (declaringClass.isRecord()) {
                 unsuccessfulReasons.add(() -> "The argument to " + methodFormat + " is a field of a record.");
@@ -896,7 +893,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 producer = "subtraction operation " + valueNode;
                 operation = "subtraction";
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(valueNode); // ExcludeFromJacocoGeneratedReport
             }
             Supplier<String> message = () -> "Could not determine the field where the value produced by the " + producer +
                             " for the " + kindAsString(substitutionKind) + " computation is stored. The " + operation +
