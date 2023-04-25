@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.List;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
 /**
@@ -43,18 +44,12 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
 
     private static final int MILLIS = 50;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{"jdk.ThreadCPULoad"};
-    }
-
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        assertEquals(1, events.size());
-    }
-
     @Test
-    public void test() throws Exception {
+    public void test() throws Throwable {
+
+        String[] events = new String[]{"jdk.ThreadCPULoad"};
+        Recording recording = startRecording(events);
+
         Thread thread = new Thread(() -> {
             long time = System.currentTimeMillis() + MILLIS;
             do {
@@ -63,6 +58,12 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         });
         thread.start();
         thread.join();
+
+        stopRecording(recording, TestThreadCPULoadEvent::validateEvents);
+    }
+
+    private static void validateEvents(List<RecordedEvent> events) {
+        assertEquals(1, events.size());
     }
 
     private static void writeToFile() {
