@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public class MethodArgsUtils {
 
     @TruffleBoundary
-    public static CandidateMethodWithArgs matchCandidate(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode.Dynamic toEspressoNode, ToPrimitive.Dynamic toPrimitive) {
+    public static CandidateMethodWithArgs matchCandidate(Method candidate, Object[] arguments, Klass[] parameterKlasses, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         boolean canConvert = true;
         int paramLength = parameterKlasses.length;
         Object[] convertedArgs = new Object[arguments.length];
@@ -64,11 +64,7 @@ public class MethodArgsUtils {
                             for (int l = 0; l < arraySize; l++) {
                                 if (library.isArrayElementReadable(argument, l)) {
                                     Object element = library.readArrayElement(argument, l);
-                                    if (paramType.isPrimitive()) {
-                                        convertedArgs[j + l] = toPrimitive.execute(element, paramType);
-                                    } else {
-                                        convertedArgs[j + l] = toEspressoNode.execute(element, paramType);
-                                    }
+                                    convertedArgs[j + l] = toEspressoNode.execute(element, paramType);
                                 } else {
                                     canConvert = false;
                                     break;
@@ -88,11 +84,7 @@ public class MethodArgsUtils {
                     if (paramType == null) {
                         paramType = parameterKlasses[j];
                     }
-                    if (paramType.isPrimitive()) {
-                        convertedArgs[j] = toPrimitive.execute(argument, paramType);
-                    } else {
-                        convertedArgs[j] = toEspressoNode.execute(argument, paramType);
-                    }
+                    convertedArgs[j] = toEspressoNode.execute(argument, paramType);
                 }
             } catch (UnsupportedTypeException e) {
                 canConvert = false;
@@ -104,7 +96,7 @@ public class MethodArgsUtils {
     }
 
     @TruffleBoundary
-    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode.Dynamic toEspressoNode, ToPrimitive.Dynamic toPrimitive) {
+    public static CandidateMethodWithArgs ensureVarArgsArrayCreated(CandidateMethodWithArgs matched, ToEspressoNode.DynamicToEspresso toEspressoNode) {
         int varArgsIndex = matched.getParameterTypes().length - 1;
         Klass varArgsArrayType = matched.getParameterTypes()[varArgsIndex];
         Klass varArgsType = ((ArrayKlass) varArgsArrayType).getComponentType();
@@ -126,12 +118,7 @@ public class MethodArgsUtils {
         for (int i = varArgsIndex; i < matched.getConvertedArgs().length; i++) {
             Object inputArg = matched.getConvertedArgs()[i];
             try {
-                Object convertedArg;
-                if (varArgsType.isPrimitive()) {
-                    convertedArg = toPrimitive.execute(inputArg, varArgsType);
-                } else {
-                    convertedArg = toEspressoNode.execute(inputArg, varArgsType);
-                }
+                Object convertedArg = toEspressoNode.execute(inputArg, varArgsType);
                 if (!isPrimitive) {
                     Object[] array = varArgsArray.unwrap(matched.getMethod().getLanguage());
                     array[index++] = convertedArg;

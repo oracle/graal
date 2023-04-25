@@ -76,8 +76,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted,
                     @Cached("method") Method.MethodVersion cachedMethod,
                     @Cached("cachedMethod.getMethod().resolveParameterKlasses()") Klass[] parameterKlasses,
-                    @Cached ToEspressoNode.Dynamic toEspressoNode,
-                    @Cached ToPrimitive.Dynamic toPrimitive,
+                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                     @Cached(value = "createDirectCallNode(method.getMethod().getCallTarget())") DirectCallNode directCallNode,
                     @Cached InitCheck initCheck,
                     @Cached BranchProfile badArityProfile)
@@ -94,11 +93,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         Object[] convertedArguments = argsConverted ? arguments : new Object[expectedArity];
         if (!argsConverted) {
             for (int i = 0; i < expectedArity; i++) {
-                if (parameterKlasses[i].isPrimitive()) {
-                    convertedArguments[i] = toPrimitive.execute(arguments[i], parameterKlasses[i]);
-                } else {
-                    convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
-                }
+                convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
             }
         }
 
@@ -114,8 +109,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
 
     @Specialization(replaces = "doCached")
     Object doGeneric(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted,
-                    @Cached ToEspressoNode.Dynamic toEspressoNode,
-                    @Cached ToPrimitive.Dynamic toPrimitive,
+                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                     @Cached IndirectCallNode indirectCallNode)
                     throws ArityException, UnsupportedTypeException {
 
@@ -131,11 +125,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         if (!argsConverted) {
             Klass[] parameterKlasses = getParameterKlasses(method.getMethod());
             for (int i = 0; i < expectedArity; i++) {
-                if (parameterKlasses[i].isPrimitive()) {
-                    convertedArguments[i] = toPrimitive.execute(arguments[i], parameterKlasses[i]);
-                } else {
-                    convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
-                }
+                convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
             }
         }
 

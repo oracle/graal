@@ -50,12 +50,12 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.LookupTypeConverterNode;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -1956,10 +1956,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     abstract static class InvokeMember extends SubstitutionNode {
         static final int LIMIT = 2;
 
-        static ToEspressoNode createToEspressoNode(Klass targetKlass, Meta meta) {
-            return ToEspressoNode.create(targetKlass, meta);
-        }
-
         abstract @JavaType(Object.class) StaticObject execute(
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(String.class) StaticObject member,
@@ -1974,7 +1970,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Bind("getMeta()") Meta meta,
-                        @Cached("createToEspressoNode(meta.java_lang_Object, meta)") ToEspressoNode toEspressoNode,
+                        @Cached ToReference.DynamicToReference toEspressoNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
@@ -1985,7 +1981,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
                 Object result = interop.invokeMember(InteropUtils.unwrapForeign(getLanguage(), receiver), hostMember, hostArguments);
-                return toEspressoNode.execute(result);
+                return toEspressoNode.execute(result, meta.java_lang_Object);
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -2049,7 +2045,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Bind("getMeta()") Meta meta,
-                        @Cached ToEspressoNode.Dynamic toEspressoNode,
+                        @Cached ToReference.DynamicToReference toEspressoNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,

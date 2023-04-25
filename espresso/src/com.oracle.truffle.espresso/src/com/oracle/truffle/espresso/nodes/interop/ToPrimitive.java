@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -34,119 +33,20 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Handles conversions of (potentially) foreign objects to primitive types.
  */
 @NodeInfo(shortName = "Convert value to primitive")
-public abstract class ToPrimitive extends EspressoNode {
-
-    public abstract Object execute(Object value) throws UnsupportedTypeException;
-
-    @GenerateUncached
-    @NodeInfo(shortName = "Dynamic toPrimitive node")
-    public abstract static class Dynamic extends EspressoNode {
-        protected static final int LIMIT = 8;
-
-        public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
-
-        @TruffleBoundary
-        protected static ToPrimitive createToPrimitiveNode(Klass targetType) {
-            if (!targetType.isPrimitive()) {
-                throw new IllegalStateException("ToPrimitive.Dynamic can only be used for primitives");
-            }
-            switch (targetType.getJavaKind()) {
-                case Boolean: {
-                    return ToPrimitiveFactory.ToBooleanNodeGen.create();
-                }
-                case Int: {
-                    return ToPrimitiveFactory.ToIntNodeGen.create();
-                }
-                case Byte: {
-                    return ToPrimitiveFactory.ToByteNodeGen.create();
-                }
-                case Char: {
-                    return ToPrimitiveFactory.ToCharNodeGen.create();
-                }
-                case Short: {
-                    return ToPrimitiveFactory.ToShortNodeGen.create();
-                }
-                case Long: {
-                    return ToPrimitiveFactory.ToLongNodeGen.create();
-                }
-                case Float: {
-                    return ToPrimitiveFactory.ToFloatNodeGen.create();
-                }
-                case Double: {
-                    return ToPrimitiveFactory.ToDoubleNodeGen.create();
-                }
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
-        }
-
-        @TruffleBoundary
-        public static ToPrimitive getUncached(Klass targetType) {
-            if (!targetType.isPrimitive()) {
-                throw new IllegalStateException("ToPrimitive.Dynamic can only be used for primitives");
-            }
-            switch (targetType.getJavaKind()) {
-                case Boolean: {
-                    return ToPrimitiveFactory.ToBooleanNodeGen.getUncached();
-                }
-                case Int: {
-                    return ToPrimitiveFactory.ToIntNodeGen.getUncached();
-                }
-                case Byte: {
-                    return ToPrimitiveFactory.ToByteNodeGen.getUncached();
-                }
-                case Char: {
-                    return ToPrimitiveFactory.ToCharNodeGen.getUncached();
-                }
-                case Short: {
-                    return ToPrimitiveFactory.ToShortNodeGen.getUncached();
-                }
-                case Long: {
-                    return ToPrimitiveFactory.ToLongNodeGen.getUncached();
-                }
-                case Float: {
-                    return ToPrimitiveFactory.ToFloatNodeGen.getUncached();
-                }
-                case Double: {
-                    return ToPrimitiveFactory.ToDoubleNodeGen.getUncached();
-                }
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
-        }
-
-        @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
-        public Object doCached(Object value, @SuppressWarnings("unused") Klass targetType,
-                        @SuppressWarnings("unused") @Cached("targetType") Klass cachedTargetType,
-                        @Cached("createToPrimitiveNode(cachedTargetType)") ToPrimitive toPrimitive) throws UnsupportedTypeException {
-            return toPrimitive.execute(value);
-        }
-
-        @Specialization(replaces = "doCached")
-        public Object doGeneric(Object value, Klass targetType) throws UnsupportedTypeException {
-            // Since we have a cache limit of 8 we cover all cases of primitive types in the cache,
-            // so the generic specialization should never be taken when the node is cached
-            return getUncached(targetType).execute(value);
-        }
-    }
+public abstract class ToPrimitive extends ToEspressoNode {
 
     @NodeInfo(shortName = "To boolean")
     @GenerateUncached
     public abstract static class ToBoolean extends ToPrimitive {
 
         protected static final int LIMIT = 2;
-
-        @Override
-        public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
         boolean doHost(Boolean value) {
@@ -198,9 +98,6 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
-        @Override
-        public abstract Object execute(Object value) throws UnsupportedTypeException;
-
         @Specialization
         int doHost(Integer value) {
             return value;
@@ -250,9 +147,6 @@ public abstract class ToPrimitive extends EspressoNode {
     public abstract static class ToByte extends ToPrimitive {
 
         protected static final int LIMIT = 2;
-
-        @Override
-        public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
         byte doHost(Byte value) {
@@ -304,9 +198,6 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
-        @Override
-        public abstract Object execute(Object value) throws UnsupportedTypeException;
-
         @Specialization
         short doHost(Short value) {
             return value;
@@ -356,9 +247,6 @@ public abstract class ToPrimitive extends EspressoNode {
     public abstract static class ToChar extends ToPrimitive {
 
         protected static final int LIMIT = 2;
-
-        @Override
-        public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
         char doHost(Character value) {
@@ -416,9 +304,6 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
-        @Override
-        public abstract Object execute(Object value) throws UnsupportedTypeException;
-
         @Specialization
         long doHost(Long value) {
             return value;
@@ -469,9 +354,6 @@ public abstract class ToPrimitive extends EspressoNode {
 
         protected static final int LIMIT = 2;
 
-        @Override
-        public abstract Object execute(Object value) throws UnsupportedTypeException;
-
         @Specialization
         float doHost(Float value) {
             return value;
@@ -521,9 +403,6 @@ public abstract class ToPrimitive extends EspressoNode {
     public abstract static class ToDouble extends ToPrimitive {
 
         protected static final int LIMIT = 2;
-
-        @Override
-        public abstract Object execute(Object value) throws UnsupportedTypeException;
 
         @Specialization
         double doHost(Double value) {

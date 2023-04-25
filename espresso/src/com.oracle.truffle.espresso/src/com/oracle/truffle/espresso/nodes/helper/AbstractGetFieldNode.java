@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,8 +42,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
+import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class AbstractGetFieldNode extends EspressoNode {
@@ -562,8 +562,8 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
 
     abstract StaticObject executeGetField(StaticObject receiver);
 
-    ToEspressoNode createToEspressoNode() {
-        return ToEspressoNode.create(typeKlass, typeKlass.getMeta());
+    ToReference createToEspressoNode() {
+        return ToReference.createToReference(typeKlass, typeKlass.getMeta());
     }
 
     @Specialization(guards = "receiver.isEspressoObject()")
@@ -575,7 +575,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     StaticObject doForeign(StaticObject receiver,
                     @Bind("getLanguage()") EspressoLanguage language,
                     @CachedLibrary("receiver.rawForeignObject(language)") InteropLibrary interopLibrary,
-                    @Cached("createToEspressoNode()") ToEspressoNode toEspressoNode,
+                    @Cached("createToEspressoNode()") ToReference toEspressoNode,
                     @Cached BranchProfile error) {
         Meta meta = getMeta();
         Object value = getForeignField(receiver, interopLibrary, language, meta, error);

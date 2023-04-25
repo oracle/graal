@@ -77,7 +77,7 @@ import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
-import com.oracle.truffle.espresso.nodes.interop.ToPrimitive;
+import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
@@ -748,7 +748,7 @@ public class EspressoInterop extends BaseInterop {
         @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "!isStaticObject(value)"})
         static void doEspressoGeneric(StaticObject receiver, long index, Object value,
                         @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("toEspresso") @Cached ToEspressoNode.Dynamic toEspressoNode,
+                        @Shared("toEspresso") @Cached ToReference.DynamicToReference toEspressoNode,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             EspressoLanguage language = EspressoLanguage.get(receiverLib);
             if (index < 0 || receiver.length(language) <= index) {
@@ -909,7 +909,7 @@ public class EspressoInterop extends BaseInterop {
     @ExportMessage
     static void writeMember(StaticObject receiver, String member, Object value,
                     @Cached @Exclusive LookupInstanceFieldNode lookup,
-                    @Shared("toEspresso") @Cached ToEspressoNode.Dynamic toEspressoNode,
+                    @Shared("toEspresso") @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
         receiver.checkNotForeign();
         Field f = lookup.execute(getInteropKlass(receiver), member);
@@ -918,13 +918,7 @@ public class EspressoInterop extends BaseInterop {
                 error.enter();
                 throw UnsupportedMessageException.create();
             }
-            Klass fieldType = f.resolveTypeKlass();
-            Object espressoValue;
-            if (fieldType.isPrimitive()) {
-                espressoValue = ToPrimitive.Dynamic.getUncached(fieldType).execute(value);
-            } else {
-                espressoValue = toEspressoNode.execute(value, fieldType);
-            }
+            Object espressoValue = toEspressoNode.execute(value, f.resolveTypeKlass());
             f.set(receiver, espressoValue);
             return;
         }
@@ -1007,8 +1001,7 @@ public class EspressoInterop extends BaseInterop {
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
                     @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
                     @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached ToEspressoNode.Dynamic toEspressoNode,
-                    @Cached ToPrimitive.Dynamic toPrimitive)
+                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
         try {
@@ -1022,9 +1015,9 @@ public class EspressoInterop extends BaseInterop {
                         assert m.getParameterCount() == arguments.length;
                         return invoke.execute(m, receiver, arguments);
                     } else {
-                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode, toPrimitive);
+                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(m, arguments, m.resolveParameterKlasses(), toEspressoNode);
                         if (matched != null) {
-                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode, toPrimitive);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
                             if (matched != null) {
                                 return invoke.execute(matched.getMethod(), receiver, matched.getConvertedArgs(), true);
                             }
