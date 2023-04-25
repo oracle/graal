@@ -748,7 +748,7 @@ public class EspressoInterop extends BaseInterop {
         @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "!isStaticObject(value)"})
         static void doEspressoGeneric(StaticObject receiver, long index, Object value,
                         @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("toEspresso") @Cached ToReference.DynamicToReference toEspressoNode,
+                        @Cached ToReference.DynamicToReference toEspressoNode,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             EspressoLanguage language = EspressoLanguage.get(receiverLib);
             if (index < 0 || receiver.length(language) <= index) {
@@ -909,7 +909,7 @@ public class EspressoInterop extends BaseInterop {
     @ExportMessage
     static void writeMember(StaticObject receiver, String member, Object value,
                     @Cached @Exclusive LookupInstanceFieldNode lookup,
-                    @Shared("toEspresso") @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
+                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
         receiver.checkNotForeign();
         Field f = lookup.execute(getInteropKlass(receiver), member);
