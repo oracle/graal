@@ -86,6 +86,11 @@ public class RuntimeCodeInfoMemory {
 
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    RuntimeCodeInfoMemory() {
+        lock = new ReentrantLock();
+    }
+
     public void clearSizeCounters() {
         codeSize = WordFactory.zero();
         codeAndDataMemorySize = WordFactory.zero();
@@ -147,16 +152,35 @@ public class RuntimeCodeInfoMemory {
     }
 
     public SizeCounters getSizeCounters() {
-        return new SizeCounters(codeSize, codeAndDataMemorySize, nativeMetadataSize, totalSize);
+        lock.lock();
+        try {
+            return getSizeCounters0();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Read the counters atomically with regard to GC.", calleeMustBe = false)
+    private SizeCounters getSizeCounters0() {
+        return allocCounters(codeSize, codeAndDataMemorySize, nativeMetadataSize, totalSize);
+    }
+
+    private static SizeCounters allocCounters(UnsignedWord code, UnsignedWord codeAndDataMemory, UnsignedWord nativeMetadata, UnsignedWord total) {
+        return new SizeCounters(code, codeAndDataMemory, nativeMetadata, total);
     }
 
     public SizeCounters getPeakSizeCounters() {
-        return new SizeCounters(peakCodeSize, peakCodeAndDataMemorySize, peakNativeMetadataSize, peakTotalSize);
+        lock.lock();
+        try {
+            return getPeakSizeCounters0();
+        } finally {
+            lock.unlock();
+        }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    RuntimeCodeInfoMemory() {
-        lock = new ReentrantLock();
+    @Uninterruptible(reason = "Read the counters atomically with regard to GC.", calleeMustBe = false)
+    private SizeCounters getPeakSizeCounters0() {
+        return allocCounters(peakCodeSize, peakCodeAndDataMemorySize, peakNativeMetadataSize, peakTotalSize);
     }
 
     public int getCount() {
