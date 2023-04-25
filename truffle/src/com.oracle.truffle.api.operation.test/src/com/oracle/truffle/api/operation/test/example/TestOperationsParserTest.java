@@ -76,19 +76,21 @@ public class TestOperationsParserTest {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    private static RootCallTarget parse(OperationParser<TestOperationsGen.Builder> builder) {
-        OperationRootNode operationsNode = parseNode(builder);
+    private static RootCallTarget parse(String rootName, OperationParser<TestOperationsGen.Builder> builder) {
+        OperationRootNode operationsNode = parseNode(rootName, builder);
         return ((RootNode) operationsNode).getCallTarget();
     }
 
-    private static TestOperations parseNode(OperationParser<TestOperationsGen.Builder> builder) {
+    private static TestOperations parseNode(String rootName, OperationParser<TestOperationsGen.Builder> builder) {
         OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        op.setName(rootName);
         return op;
     }
-    private static TestOperations parseNodeWithSource(OperationParser<TestOperationsGen.Builder> builder) {
+    private static TestOperations parseNodeWithSource(String rootName, OperationParser<TestOperationsGen.Builder> builder) {
         OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.WITH_SOURCE, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        op.setName(rootName);
         return op;
     }
 
@@ -128,10 +130,10 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testExampleAdd() {
+    public void testAdd() {
         // return arg0 + arg1;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("add", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -150,14 +152,14 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testExampleMax() {
+    public void testMax() {
         // if (arg0 < arg1) {
         //   return arg1;
         // } else {
         //   return arg0;
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("max", b -> {
             b.beginRoot(LANGUAGE);
             b.beginIfThenElse();
 
@@ -192,7 +194,7 @@ public class TestOperationsParserTest {
         // }
         // return arg0;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("ifThen", b -> {
             b.beginRoot(LANGUAGE);
             b.beginIfThen();
 
@@ -223,7 +225,7 @@ public class TestOperationsParserTest {
     public void testConditional() {
         // return arg0 < 0 ? 0 : arg0;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("conditional", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -254,12 +256,12 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testExampleSumLoop() {
+    public void testSumLoop() {
         // i = 0; j = 0;
         // while (i < arg0) { j = j + i; i = i + 1;}
         // return j;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("sumLoop", b -> {
             b.beginRoot(LANGUAGE);
             OperationLocal locI = b.createLocal();
             OperationLocal locJ = b.createLocal();
@@ -314,7 +316,7 @@ public class TestOperationsParserTest {
         // }
         // return 0;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal local = b.createLocal();
@@ -353,7 +355,7 @@ public class TestOperationsParserTest {
         // }
         // return local1;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("variableBoxingElim", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal local0 = b.createLocal();
@@ -412,7 +414,7 @@ public class TestOperationsParserTest {
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation Root ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
-        parse(b -> {
+        parse("undeclaredLabel", b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
             b.emitBranch(lbl);
@@ -425,7 +427,7 @@ public class TestOperationsParserTest {
         // lbl:
         // return 42;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("unusedLabel", b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
             b.emitLabel(lbl);
@@ -446,7 +448,7 @@ public class TestOperationsParserTest {
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Branch cannot be emitted in the middle of an operation.");
-        parse(b -> {
+        parse("branchInvalidStack", b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
 
@@ -475,7 +477,7 @@ public class TestOperationsParserTest {
         //   arg0.append(2);
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryBasic", b -> {
             b.beginRoot(LANGUAGE);
             b.beginFinallyTry();
                 emitAppend(b, 2);
@@ -501,7 +503,7 @@ public class TestOperationsParserTest {
         //   arg0.append(3);
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryException", b -> {
             b.beginRoot(LANGUAGE);
             b.beginFinallyTry();
                 emitAppend(b, 3);
@@ -531,7 +533,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(3);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryReturn", b -> {
             b.beginRoot(LANGUAGE);
             b.beginFinallyTry();
                 emitAppend(b, 1);
@@ -564,7 +566,7 @@ public class TestOperationsParserTest {
         // lbl:
         // arg0.append(5);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryBranchOut", b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
 
@@ -602,7 +604,7 @@ public class TestOperationsParserTest {
         // lbl:
         // arg0.append(4);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryBranchForwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
 
@@ -648,7 +650,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(5);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryBranchBackwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
             OperationLocal local = b.createLocal();
@@ -716,7 +718,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(6);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryBranchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -759,7 +761,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(6);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryIfThenWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -807,7 +809,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(7);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryIfThenElseWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -855,7 +857,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(9);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryConditionalWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -921,7 +923,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(9);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryLoopWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal local = b.createLocal();
@@ -988,7 +990,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(11);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryShortCircuitOpWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1065,7 +1067,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(7);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryNonThrowingTryCatchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1115,7 +1117,7 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(8);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryThrowingTryCatchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1161,7 +1163,7 @@ public class TestOperationsParserTest {
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation Block ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
-        parse(b -> {
+        parse("finallyTryBranchWithinHandlerNoLabel", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1194,7 +1196,7 @@ public class TestOperationsParserTest {
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation Block ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
-        parse(b -> {
+        parse("finallyTryBranchIntoTry", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1229,7 +1231,7 @@ public class TestOperationsParserTest {
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.");
-        parse(b -> {
+        parse("finallyTryBranchIntoFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1271,7 +1273,7 @@ public class TestOperationsParserTest {
         //   return 0;
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryBranchIntoOuterFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1341,7 +1343,7 @@ public class TestOperationsParserTest {
         //   return 0;
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry(); // a
@@ -1415,7 +1417,7 @@ public class TestOperationsParserTest {
         //   arg0.append(8);
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryBranchWhileInParentHandler", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1466,7 +1468,7 @@ public class TestOperationsParserTest {
         //   arg0.append(5);
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryNestedTry", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1514,7 +1516,7 @@ public class TestOperationsParserTest {
         //   }
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryNestedFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1557,7 +1559,7 @@ public class TestOperationsParserTest {
         //   arg0.append(4);
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryNestedTryThrow", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1600,7 +1602,7 @@ public class TestOperationsParserTest {
         //   }
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryNestedFinallyThrow", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1639,7 +1641,7 @@ public class TestOperationsParserTest {
         //   arg0.append(3);
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryNoExceptReturn", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTryNoExcept();
@@ -1668,7 +1670,7 @@ public class TestOperationsParserTest {
         //   arg0.append(3);
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("finallyTryNoExceptException", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTryNoExcept();
@@ -1693,7 +1695,7 @@ public class TestOperationsParserTest {
         // tee(local, 1);
         // return local;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("teeLocal", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal local = b.createLocal();
@@ -1717,7 +1719,7 @@ public class TestOperationsParserTest {
         // teeRange([local1, local2], [1, 2]));
         // return local2;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("teeLocalRange", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal local1 = b.createLocal();
@@ -1743,7 +1745,7 @@ public class TestOperationsParserTest {
         // yield 2;
         // return 3;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("yield", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginYield();
@@ -1778,7 +1780,7 @@ public class TestOperationsParserTest {
         // local = local + 1;
         // return local;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("yieldLocal", b -> {
             b.beginRoot(LANGUAGE);
             OperationLocal local = b.createLocal();
 
@@ -1827,7 +1829,7 @@ public class TestOperationsParserTest {
     public void testYieldStack() {
         // return (yield 1) + (yield 2);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("yieldStack", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -1870,7 +1872,7 @@ public class TestOperationsParserTest {
         //   yield 4;
         // }
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("yieldFromFinally", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginFinallyTry();
@@ -1911,10 +1913,10 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testExampleNestedFunctions() {
+    public void testNestedFunctions() {
         // return (() -> return 1)();
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("nestedFunctions", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -1948,7 +1950,7 @@ public class TestOperationsParserTest {
 
         // this can be done automatically, or by
         // having `createLocal(boolean accessedFromClosure)` or similar
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("localsNonlocalRead", b -> {
             // x = 1
             // return (lambda: x)()
             b.beginRoot(LANGUAGE);
@@ -1990,7 +1992,7 @@ public class TestOperationsParserTest {
         // ((x) -> x = 2)();
         // return x;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("localsNonlocalWrite", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal xLoc = b.createLocal();
@@ -2038,7 +2040,7 @@ public class TestOperationsParserTest {
         // lbl:
         // return 1;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("branchForward", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLabel lbl = b.createLabel();
@@ -2055,14 +2057,14 @@ public class TestOperationsParserTest {
 
 
     @Test
-    public void testBranchBackwards() {
+    public void testBranchBackward() {
         // x = 0;
         // lbl:
         // if (5 < x) return x;
         // x = x + 1;
         // goto lbl;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("branchBackward", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLabel lbl = b.createLabel();
@@ -2103,12 +2105,12 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testBranchOutwardsValid() {
+    public void testBranchOutwardValid() {
         // { goto lbl; 2 }
         // lbl:
         // return 42;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("branchOutwardValid", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLabel lbl = b.createLabel();
@@ -2129,14 +2131,14 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testBranchOutwardsInvalid() {
+    public void testBranchOutwardInvalid() {
         // return 1 + { goto lbl; 2 }
         // lbl:
         // return 0;
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Branch cannot be emitted in the middle of an operation.");
-        parse(b -> {
+        parse("branchOutwardInvalid", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLabel lbl = b.createLabel();
@@ -2161,13 +2163,13 @@ public class TestOperationsParserTest {
     }
 
     @Test
-    public void testBranchInwards() {
+    public void testBranchInward() {
         // goto lbl;
         // return 1 + { lbl: 2 }
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("OperationLabel must be emitted inside the same operation it was created in.");
-        parse(b -> {
+        parse("branchInward", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLabel lbl = b.createLabel();
@@ -2193,7 +2195,7 @@ public class TestOperationsParserTest {
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("OperationLabel cannot be emitted in the middle of an operation.");
-        parse(b -> {
+        parse("invalidLabelDeclaration", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2218,7 +2220,7 @@ public class TestOperationsParserTest {
 
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.");
-        parse(b -> {
+        parse("branchIntoAnotherBlock", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();
@@ -2239,7 +2241,7 @@ public class TestOperationsParserTest {
     public void testVariadicZeroVarargs()  {
         // return veryComplex(7);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("variadicZeroVarargs", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2258,7 +2260,7 @@ public class TestOperationsParserTest {
     public void testVariadicOneVarargs()  {
         // return veryComplex(7, "foo");
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("variadicOneVarargs", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2278,7 +2280,7 @@ public class TestOperationsParserTest {
     public void testVariadicFewVarargs()  {
         // return veryComplex(7, "foo", "bar", "baz");
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("variadicFewVarargs", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2300,7 +2302,7 @@ public class TestOperationsParserTest {
     public void testVariadicManyVarargs()  {
         // return veryComplex(7, [1330 args]);
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("variadicManyVarArgs", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2323,7 +2325,7 @@ public class TestOperationsParserTest {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation VeryComplexOperation expected at least 1 child, but 0 provided. This is probably a bug in the parser.");
 
-        parse(b -> {
+        parse("variadicTooFewArguments", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2340,7 +2342,7 @@ public class TestOperationsParserTest {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation AddOperation expected exactly 2 children, but 1 provided. This is probably a bug in the parser.");
 
-        parse(b -> {
+        parse("validationTooFewArguments", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2358,7 +2360,7 @@ public class TestOperationsParserTest {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation AddOperation expected exactly 2 children, but 3 provided. This is probably a bug in the parser.");
 
-        parse(b -> {
+        parse("validationTooManyArguments", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2378,7 +2380,7 @@ public class TestOperationsParserTest {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation AddOperation expected a value-producing child at position 0, but a void one was provided. This likely indicates a bug in the parser.");
 
-        parse(b -> {
+        parse("validationNotValueArgument", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2395,7 +2397,7 @@ public class TestOperationsParserTest {
     @Test
     public void testSource() {
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
-        TestOperations node = parseNodeWithSource(b -> {
+        TestOperations node = parseNodeWithSource("source", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);
@@ -2432,7 +2434,7 @@ public class TestOperationsParserTest {
     public void testSourceNoSourceSet() {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("No enclosing Source operation found - each SourceSection must be enclosed in a Source operation.");
-        parseNodeWithSource(b -> {
+        parseNodeWithSource("sourceNoSourceSet", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSourceSection(0, 8);
 
@@ -2455,7 +2457,7 @@ public class TestOperationsParserTest {
     public void testSourceMultipleSources() {
         Source source1 = Source.newBuilder("test", "This is just a piece of test source.", "test1.test").build();
         Source source2 = Source.newBuilder("test", "This is another test source.", "test2.test").build();
-        TestOperations root = parseNodeWithSource(b -> {
+        TestOperations root = parseNodeWithSource("sourceMultipleSources", b -> {
             b.beginRoot(LANGUAGE);
 
             b.emitVoidOperation(); // no source
@@ -2553,7 +2555,7 @@ public class TestOperationsParserTest {
     public void testShortCircuitingAllPass() {
         // return 1 && true && "test";
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("shortCircuitingAllPass", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2574,7 +2576,7 @@ public class TestOperationsParserTest {
     public void testShortCircuitingLastFail() {
         // return 1 && "test" && 0;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("shortCircuitingLastFail", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2595,7 +2597,7 @@ public class TestOperationsParserTest {
     public void testShortCircuitingFirstFail() {
         // return 0 && "test" && 1;
 
-        RootCallTarget root = parse(b -> {
+        RootCallTarget root = parse("shortCircuitingFirstFail", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2616,7 +2618,7 @@ public class TestOperationsParserTest {
     public void testShortCircuitingNoChildren() {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation ScAnd expected at least 1 child, but 0 provided. This is probably a bug in the parser.");
-        parse(b -> {
+        parse("shortCircuitingNoChildren", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2632,7 +2634,7 @@ public class TestOperationsParserTest {
     public void testShortCircuitingNonValueChild() {
         thrown.expect(IllegalStateException.class);
         thrown.expectMessage("Operation ScAnd expected a value-producing child at position 1, but a void one was provided. This likely indicates a bug in the parser.");
-        parse(b -> {
+        parse("shortCircuitingNonValueChild", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2649,7 +2651,7 @@ public class TestOperationsParserTest {
 
     @Test
     public void testIntrospectionData() {
-        TestOperations node = parseNode(b -> {
+        TestOperations node = parseNode("introspectionData", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2677,7 +2679,7 @@ public class TestOperationsParserTest {
     public void testCloneUninitializedAdd() {
         // return arg0 + arg1;
 
-        TestOperations testOperations = parseNode(b -> {
+        TestOperations testOperations = parseNode("cloneUninitializedAdd", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2712,21 +2714,20 @@ public class TestOperationsParserTest {
 
     @Test
     public void testCloneUninitializedFields() {
-        TestOperations testOperations = parseNode(b -> {
+        TestOperations testOperations = parseNode("cloneUninitializedFields", b -> {
             b.beginRoot(LANGUAGE);
             emitReturn(b, 0);
             b.endRoot();
         });
-        testOperations.testData = "The quick brown fox jumps over the lazy dog";
 
         TestOperations cloned = testOperations.doCloneUninitialized();
-        assertEquals("User field was not copied to the uninitialized clone.", testOperations.testData, cloned.testData);
+        assertEquals("User field was not copied to the uninitialized clone.", testOperations.name, cloned.name);
     }
 
     @Test
     @Ignore
     public void testDecisionQuicken() {
-        TestOperations node = parseNode(b -> {
+        TestOperations node = parseNode("decisionQuicken", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -2755,7 +2756,7 @@ public class TestOperationsParserTest {
     @Test
     @Ignore
     public void testDecisionSuperInstruction() {
-        TestOperations node = parseNode(b -> {
+        TestOperations node = parseNode("decisionSuperInstruction", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
