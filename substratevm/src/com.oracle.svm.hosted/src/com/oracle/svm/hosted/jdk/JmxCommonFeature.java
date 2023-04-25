@@ -127,8 +127,8 @@ public class JmxCommonFeature implements InternalFeature {
      * This method handles proxy registrations for PlatformMXBeans. We are able to do the
      * registrations for PlatformMXBeans because they are known and there are a finite number of
      * them. If a user wishes to register a custom standard MBean with the MBeanServer, they will
-     * have to provide their own proxy configuration in a JSON file. This is documented in the remote
-     * JMX guide.
+     * have to provide their own proxy configuration in a JSON file. This is documented in the
+     * remote JMX guide.
      *
      * <P>
      * PlatformMXBeans require proxy configuration so that JMX client implementations can use
