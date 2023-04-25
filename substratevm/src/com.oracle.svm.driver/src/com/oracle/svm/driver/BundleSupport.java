@@ -36,6 +36,8 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -65,6 +67,7 @@ import java.util.stream.Stream;
 
 import com.oracle.svm.core.util.ExitStatus;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.util.json.JSONParser;
 import org.graalvm.util.json.JSONParserException;
 
@@ -125,6 +128,7 @@ final class BundleSupport {
     private String bundleContainerToolVersion;
     private static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
     private String containerImage;
+    private String bundleContainerImage;
     private static final String DEFAULT_CONTAINER_IMAGE = "graalvm-container";
     private Path dockerfile;
     private final String containerToolJsonKey = "containerTool";
@@ -144,8 +148,7 @@ final class BundleSupport {
     enum ExtendedBundleOptions {
         dry_run,
         container,
-        dockerfile,
-        image;
+        dockerfile;
 
         static ExtendedBundleOptions get(String name) {
             return ExtendedBundleOptions.valueOf(name.replace('-', '_'));
@@ -247,13 +250,6 @@ final class BundleSupport {
                                     bundleSupport.dockerfile = Path.of(optionParts[1]);
                                 }
                                 break;
-                            case image:
-                                if (!bundleSupport.useContainer) {
-                                    throw NativeImage.showError("native-image bundle allows image option to be specified only after container option.");
-                                }
-                                if (optionParts.length == 2 && !optionParts[1].isEmpty())
-                                    bundleSupport.containerImage = optionParts[1];
-                                break;
                             default:
                                 throw new IllegalArgumentException();
                         }
@@ -289,6 +285,8 @@ final class BundleSupport {
     }
 
     private void initializeContainerImage() {
+        String bundleFileName = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION).toString();
+
         // create Dockerfile if not available for writing or loading bundle
         try {
             // TODO load graalvm docker base
@@ -315,7 +313,6 @@ final class BundleSupport {
             containerToolVersion = getContainerToolVersion(containerTool);
 
             if(bundleContainerTool != null) {
-                String bundleFileName = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION).toString();
                 if (!containerTool.equals(bundleContainerTool)) {
                     NativeImage.showWarning(String.format("The given bundle file %s was created with container tool '%s' (using '%s').", bundleFileName, bundleContainerTool, containerTool));
                 } else if (containerToolVersion != null && bundleContainerToolVersion != null && !containerToolVersion.equals(bundleContainerToolVersion)) {
@@ -339,8 +336,10 @@ final class BundleSupport {
             }
         }
 
-        if(containerImage == null) {
-            containerImage = DEFAULT_CONTAINER_IMAGE;
+        String imageName = getSignature(dockerfile);
+        containerImage = imageName != null ? imageName : DEFAULT_CONTAINER_IMAGE;
+        if(bundleContainerImage != null && !bundleContainerImage.equals(containerImage)) {
+            NativeImage.showWarning(String.format("The given bundle file %s was created with a different dockerfile.", bundleFileName));
         }
 
         int exitStatusCode = createContainer();
@@ -360,6 +359,22 @@ final class BundleSupport {
         }
     }
 
+    private String getSignature(Path f) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(Files.readAllBytes(f));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : md.digest()) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (IOException e) {
+            return null;
+        } catch (NoSuchAlgorithmException e) {
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
+        }
+    }
+
     private int createContainer() {
         ProcessBuilder pbCheckForImage = new ProcessBuilder(containerTool, "images", "-q", containerImage + ":latest");
         ProcessBuilder pb = new ProcessBuilder(containerTool, "build", "-f", dockerfile.toString(), "-t", containerImage, ".");
@@ -371,7 +386,7 @@ final class BundleSupport {
             if(imageId == null) {
                 pb.inheritIO();
             } else {
-                nativeImage.showMessage(String.format("%sChecking container image %s for reuse.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
+                nativeImage.showMessage(String.format("%sReusing container image %s.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
             }
             p = pb.start();
             int status = p.waitFor();
@@ -380,10 +395,8 @@ final class BundleSupport {
                 p = pbCheckForImage.start();
                 p.waitFor();
                 if(!(new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine().equals(imageId)) {
-                    nativeImage.showMessage(String.format("%sUpdate container image %s.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
+                    nativeImage.showMessage(String.format("%sUpdated container image %s.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
                     result.forEach(System.out::println);
-                } else {
-                    nativeImage.showMessage(String.format("%sReusing container image %s.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
                 }
             }
             return status;
@@ -572,13 +585,12 @@ final class BundleSupport {
         if(Files.exists(containerFile)) {
             try (Reader reader = Files.newBufferedReader(containerFile)) {
                 EconomicMap<String, Object> json = JSONParser.parseDict(reader);
-                if(json.get(containerImageJsonKey) != null) containerImage =  json.get(containerImageJsonKey).toString();
+                if(json.get(containerImageJsonKey) != null) bundleContainerImage =  json.get(containerImageJsonKey).toString();
                 if(json.get(containerToolJsonKey) != null) bundleContainerTool = json.get(containerToolJsonKey).toString();
                 if(json.get(containerToolVersionJsonKey) != null) bundleContainerToolVersion = json.get(containerToolVersionJsonKey).toString();
             } catch (IOException e) {
                 throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
             }
-            if(containerImage != null) nativeImage.showMessage(String.format("%sUsing container image %s. Specify other image with option '%s'.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage, ExtendedBundleOptions.image));
             if(bundleContainerTool != null) {
                 String containerToolVersionString = bundleContainerToolVersion == null ? "" : String.format(" version: %s", bundleContainerToolVersion);
                 nativeImage.showMessage(String.format("%sUsing %s%s. Specify other container tool with option '%s'.", BUNDLE_INFO_MESSAGE_PREFIX, bundleContainerTool, containerToolVersionString, ExtendedBundleOptions.container));
