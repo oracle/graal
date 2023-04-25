@@ -157,8 +157,8 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
             for (TypeFlow<?> flow : flows()) {
                 int slotNum = flow.getSlot();
                 if (slotNum != -1) {
-                    assert flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
-                    AnalysisError.guarantee(isRedo && flow.getSlot() == resultFlows.size(), "Flow already discovered: %s", flow);
+                    assert flow.isClone() || flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
+                    AnalysisError.guarantee((isRedo || flow.isClone()) && flow.getSlot() == resultFlows.size(), "Flow already discovered: %s", flow);
                 } else {
                     flow.setSlot(resultFlows.size());
                 }
