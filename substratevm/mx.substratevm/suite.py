@@ -620,6 +620,13 @@ suite = {
                     "sun.util.locale",
                     "sun.invoke.util",
                 ],
+                "java.management": [
+                    "com.sun.jmx.mbeanserver",
+                    "sun.management",
+                ],
+                "java.rmi": [
+                    "sun.rmi.server",
+                ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
@@ -633,6 +640,11 @@ suite = {
                 "jdk.jfr": [
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
+                ],
+                "java.management.rmi": [
+                    "com.sun.jmx.remote.internal.rmi",
+                    "com.sun.jmx.remote.protocol.rmi",
+                    "javax.management.remote.rmi",
                 ],
             },
             "javaCompliance" : "17+",
