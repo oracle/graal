@@ -60,8 +60,7 @@ public abstract class AbstractMemoryMXBean extends AbstractMXBean implements Mem
     @Override
     public MemoryUsage getNonHeapMemoryUsage() {
         RuntimeCodeInfoMemory.SizeCounters counters = RuntimeCodeInfoMemory.singleton().getSizeCounters();
-        UnsignedWord totalRuntimeCodeSize = counters.codeAndDataMemorySize().add(counters.nativeMetadataSize());
-        long used = totalRuntimeCodeSize.rawValue();
+        long used = counters.totalSize().rawValue();
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, used, UNDEFINED_MEMORY_USAGE);
     }
 
