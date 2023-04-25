@@ -46,11 +46,6 @@ import jdk.vm.ci.meta.Signature;
 public abstract class CodeBuffer {
 
     /**
-     * Prefix for indent.
-     */
-    public static final String INDENT_PREFIX = "\t";
-
-    /**
      * Current indent level.
      */
     protected int scopeIndent = 0;
@@ -129,9 +124,19 @@ public abstract class CodeBuffer {
         codeBytes.write(b, 0, b.length);
     }
 
+    /**
+     * Emit whitespace for one level of indentation.
+     */
+    protected void emitSingleIndent() {
+        emitText("\t");
+    }
+
+    /**
+     * Emit whitespace for the current level of indentation.
+     */
     private void emitIndent() {
         for (int i = 0; i < scopeIndent; i++) {
-            emitText(INDENT_PREFIX);
+            emitSingleIndent();
         }
     }
 
