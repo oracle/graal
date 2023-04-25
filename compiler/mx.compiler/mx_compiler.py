@@ -93,10 +93,13 @@ def _check_jvmci_version(jdk):
     """
     source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
     out = mx.OutputCapture()
-    mx.run([jdk.java, source_path], out=out)
+    mx.run([jdk.java, '-Xlog:disable', source_path], out=out)
     global _jdk_jvmci_version
     if out.data:
-        _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
+        try:
+            _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
+        except ValueError:
+            mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
