@@ -74,8 +74,6 @@ public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
             CodeInfoTable.invalidateNonStackCodeAtSafepoint(codeInfo);
             assert CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_PARTIALLY_FREED;
             freeMemory(codeInfo);
-        } else {
-            RuntimeCodeInfoMemory.singleton().addToSizeCounters(codeInfo);
         }
         return true;
     }

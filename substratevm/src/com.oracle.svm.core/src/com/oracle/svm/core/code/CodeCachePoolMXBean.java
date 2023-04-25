@@ -40,7 +40,6 @@ import com.oracle.svm.core.heap.AbstractMXBean;
 import sun.management.Util;
 
 public abstract class CodeCachePoolMXBean extends AbstractMXBean implements MemoryPoolMXBean {
-    private long peakUsage;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     CodeCachePoolMXBean() {
@@ -48,30 +47,23 @@ public abstract class CodeCachePoolMXBean extends AbstractMXBean implements Memo
 
     protected abstract long getCurrentSize();
 
+    protected abstract long getPeakSize();
+
     @Override
     public MemoryUsage getUsage() {
         long used = getCurrentSize();
-        if (used > peakUsage) {
-            peakUsage = used;
-        }
         return new MemoryUsage(UNDEFINED_MEMORY_USAGE, used, used, UNDEFINED_MEMORY_USAGE);
     }
 
     @Override
     public MemoryUsage getPeakUsage() {
-        // capture peak as a side-effect
-        getUsage();
-        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, peakUsage, peakUsage, UNDEFINED_MEMORY_USAGE);
+        long peak = getPeakSize();
+        return new MemoryUsage(UNDEFINED_MEMORY_USAGE, peak, peak, UNDEFINED_MEMORY_USAGE);
     }
 
     @Override
     public MemoryType getType() {
         return MemoryType.NON_HEAP;
-    }
-
-    @Override
-    public void resetPeakUsage() {
-        peakUsage = 0;
     }
 
     @Override
@@ -156,6 +148,17 @@ public abstract class CodeCachePoolMXBean extends AbstractMXBean implements Memo
         }
 
         @Override
+        protected long getPeakSize() {
+            RuntimeCodeInfoMemory.SizeCounters counters = RuntimeCodeInfoMemory.singleton().getPeakSizeCounters();
+            return counters.codeAndDataMemorySize().rawValue();
+        }
+
+        @Override
+        public void resetPeakUsage() {
+            RuntimeCodeInfoMemory.singleton().clearPeakCodeAndDataCounters();
+        }
+
+        @Override
         public String getName() {
             return CodeCacheManagerMXBean.CODE_CACHE_CODE_AND_DATA_POOL;
         }
@@ -166,6 +169,17 @@ public abstract class CodeCachePoolMXBean extends AbstractMXBean implements Memo
         protected long getCurrentSize() {
             RuntimeCodeInfoMemory.SizeCounters counters = RuntimeCodeInfoMemory.singleton().getSizeCounters();
             return counters.nativeMetadataSize().rawValue();
+        }
+
+        @Override
+        protected long getPeakSize() {
+            RuntimeCodeInfoMemory.SizeCounters counters = RuntimeCodeInfoMemory.singleton().getPeakSizeCounters();
+            return counters.nativeMetadataSize().rawValue();
+        }
+
+        @Override
+        public void resetPeakUsage() {
+            RuntimeCodeInfoMemory.singleton().clearPeakNativeMetadataCounters();
         }
 
         @Override
