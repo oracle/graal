@@ -46,6 +46,7 @@ public class MinimalFuzzedCompilationPlan extends AbstractCompilationPlan {
      */
     private final long randomSeed;
 
+    @SuppressWarnings("this-escape")
     protected MinimalFuzzedCompilationPlan(MinimalFuzzedTierPlan<HighTierContext> minimalHighTier,
                     MinimalFuzzedTierPlan<MidTierContext> minimalMidTier,
                     MinimalFuzzedTierPlan<LowTierContext> minimalLowTier,

@@ -33,9 +33,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.thread.VMThreads;
 
 import jdk.internal.misc.InnocuousThread;
@@ -53,17 +50,6 @@ public final class Target_jdk_internal_ref_Cleaner {
     native void clean();
 }
 
-/**
- * On JDK11+, the cleaner infrastructure is quite different from JDK8:
- * <ul>
- * <li>java.lang.ref.Cleaner: starts a new thread to process its reference queue.</li>
- * <li>jdk.internal.ref.CleanerFactory: provides a common cleaner with a shared cleaner thread. In
- * native-image, we do not necessarily spawn a separate thread for processing references, but may
- * drain the queue after garbage collection.</li>
- * <li>jdk.internal.ref.Cleaner: this only seems to be used by DirectByteBuffer but at least the
- * handling is the same as on JDK 8.
- * </ul>
- */
 @TargetClass(className = "jdk.internal.ref.CleanerFactory")
 final class Target_jdk_internal_ref_CleanerFactory {
     @Alias
@@ -88,39 +74,8 @@ final class Target_jdk_internal_ref_CleanerImpl {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
     Target_jdk_internal_ref_PhantomCleanable phantomCleanableList;
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$WeakCleanableRef")//
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    Target_jdk_internal_ref_WeakCleanable weakCleanableList;
-
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$SoftCleanableRef")//
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    Target_jdk_internal_ref_SoftCleanable softCleanableList;
-
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.ref.ReferenceQueue")//
     public ReferenceQueue<Object> queue;
-
-    /** @see #run() */
-    @Substitute
-    @TargetElement(name = "run", onlyWith = JDK11OrEarlier.class)
-    public void runJDK11() {
-        Thread t = Thread.currentThread();
-        InnocuousThread mlThread = (t instanceof InnocuousThread) ? (InnocuousThread) t : null;
-        while (!phantomCleanableList.isListEmpty() || !weakCleanableList.isListEmpty() || !softCleanableList.isListEmpty()) {
-            if (mlThread != null) {
-                mlThread.eraseThreadLocals();
-            }
-            try {
-                Cleaner.Cleanable ref = (Cleaner.Cleanable) queue.remove(60 * 1000L);
-                if (ref != null) {
-                    ref.clean();
-                }
-            } catch (Throwable e) {
-                if (VMThreads.isTearingDown()) {
-                    return;
-                }
-            }
-        }
-    }
 
     /**
      * This loop executes in a daemon thread and waits until there are no more cleanables (including
@@ -128,7 +83,6 @@ final class Target_jdk_internal_ref_CleanerImpl {
      * so we add a check if the VM is tearing down here.
      */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public void run() {
         Thread t = Thread.currentThread();
         InnocuousThread mlThread = (t instanceof InnocuousThread) ? (InnocuousThread) t : null;
@@ -172,18 +126,4 @@ final class HolderObjectFieldTransformer implements FieldValueTransformer {
     public Object transform(Object receiver, Object originalValue) {
         return receiver;
     }
-}
-
-// Removed by JDK-8251861
-@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrEarlier.class)
-final class Target_jdk_internal_ref_WeakCleanable {
-    @Alias
-    native boolean isListEmpty();
-}
-
-// Removed by JDK-8251861
-@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrEarlier.class)
-final class Target_jdk_internal_ref_SoftCleanable {
-    @Alias
-    native boolean isListEmpty();
 }

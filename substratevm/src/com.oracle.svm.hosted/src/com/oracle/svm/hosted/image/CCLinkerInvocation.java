@@ -280,7 +280,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 Files.write(exportedSymbolsPath, Collections.singleton(exportedSymbols.toString()));
                 additionalPreOptions.add("-Wl,--version-script," + exportedSymbolsPath.toAbsolutePath());
             } catch (IOException e) {
-                VMError.shouldNotReachHere();
+                VMError.shouldNotReachHere(e);
             }
 
             additionalPreOptions.addAll(HostedLibCBase.singleton().getAdditionalLinkerOptions(imageKind));
@@ -311,7 +311,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     cmd.add("-shared");
                     break;
                 default:
-                    VMError.shouldNotReachHere();
+                    VMError.shouldNotReachHereUnexpectedInput(imageKind); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -378,7 +378,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 additionalPreOptions.add("-Wl,-exported_symbols_list");
                 additionalPreOptions.add("-Wl," + exportedSymbolsPath.toAbsolutePath());
             } catch (IOException e) {
-                VMError.shouldNotReachHere();
+                VMError.shouldNotReachHere(e);
             }
 
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
@@ -453,7 +453,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     cmd.add("/LD");
                     break;
                 default:
-                    VMError.shouldNotReachHere();
+                    VMError.shouldNotReachHereUnexpectedInput(imageKind); // ExcludeFromJacocoGeneratedReport
             }
         }
 

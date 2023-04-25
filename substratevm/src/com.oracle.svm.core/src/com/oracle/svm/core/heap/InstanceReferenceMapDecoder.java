@@ -29,11 +29,11 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
-import com.oracle.svm.core.util.TypedMemoryReader;
+import com.oracle.svm.core.util.coder.NativeCoder;
 
 @DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {
@@ -43,7 +43,7 @@ public class InstanceReferenceMapDecoder {
         assert referenceMapEncoding.isNonNull();
 
         Pointer position = NonmovableByteArrayReader.pointerTo(referenceMapEncoding, referenceMapIndex);
-        int entryCount = TypedMemoryReader.getS4(position);
+        int entryCount = position.readInt(0);
         position = position.add(4);
 
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
@@ -53,10 +53,10 @@ public class InstanceReferenceMapDecoder {
         UnsignedWord sizeOfEntries = WordFactory.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
         Pointer end = position.add(sizeOfEntries);
         while (position.belowThan(end)) {
-            int offset = TypedMemoryReader.getS4(position);
+            int offset = position.readInt(0);
             position = position.add(4);
 
-            long count = TypedMemoryReader.getU4(position);
+            long count = NativeCoder.readU4(position);
             position = position.add(4);
 
             Pointer objRef = baseAddress.add(offset);

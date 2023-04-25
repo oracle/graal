@@ -64,6 +64,7 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 public class MidTier extends BaseTier<MidTierContext> {
 
+    @SuppressWarnings("this-escape")
     public MidTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
 

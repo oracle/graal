@@ -60,6 +60,7 @@ public class PostAllocationOptimizationStage extends LIRPhaseSuite<PostAllocatio
         // @formatter:on
     }
 
+    @SuppressWarnings("this-escape")
     public PostAllocationOptimizationStage(OptionValues options) {
         if (Options.LIROptEdgeMoveOptimizer.getValue(options)) {
             appendPhase(new EdgeMoveOptimizer());

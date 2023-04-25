@@ -82,6 +82,7 @@ public abstract class SwitchNode extends ControlSplitNode {
      * @param value the instruction that provides the value to be switched over
      * @param successors the list of successors of this switch
      */
+    @SuppressWarnings("this-escape")
     protected SwitchNode(NodeClass<? extends SwitchNode> c, ValueNode value, AbstractBeginNode[] successors, int[] keySuccessors, SwitchProbabilityData profileData) {
         super(c, StampFactory.forVoid());
         assert value.stamp(NodeView.DEFAULT).getStackKind().isNumericInteger() || value.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp : value.stamp(NodeView.DEFAULT) +

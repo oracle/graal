@@ -132,7 +132,10 @@
     max_jdk_version:: max_jdk_version
   },
 
-  renaissance: self.renaissance_template(),
+  renaissance: self.renaissance_template() + {
+    # [JDK-8303076] [GR-44499] requires extra stack size for C1
+    extra_vm_args+:: if self.platform == "c1" then ["-Xss1090K"] else []
+  },
 
   renaissance_0_11: self.renaissance_template(suite_version="0.11.0", suite_name="renaissance-0-11", max_jdk_version=11) + {
     environment+: {

@@ -33,12 +33,12 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -106,7 +106,7 @@ public final class FloatLessThanNode extends CompareNode {
             } else if (newX.stamp(NodeView.DEFAULT) instanceof IntegerStamp && newY.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
                 return new IntegerLessThanNode(newX, newY);
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHere(newX.stamp(view) + " " + newY.stamp(view)); // ExcludeFromJacocoGeneratedReport
         }
     }
 

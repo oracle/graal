@@ -66,7 +66,7 @@ class IsGraalPredicate extends IsGraalPredicateBase {
 
     @Override
     boolean apply(Class<?> declaringClass) {
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

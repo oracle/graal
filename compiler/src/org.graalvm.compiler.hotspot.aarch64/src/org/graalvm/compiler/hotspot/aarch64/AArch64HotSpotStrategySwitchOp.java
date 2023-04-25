@@ -67,7 +67,7 @@ final class AArch64HotSpotStrategySwitchOp extends AArch64ControlFlow.StrategySw
                 HotSpotMetaspaceConstant meta = (HotSpotMetaspaceConstant) c;
                 crb.recordInlineDataInCode(meta);
                 if (meta.isCompressed()) {
-                    throw GraalError.unimplemented(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.unimplemented("compressed metaspace constant"); // ExcludeFromJacocoGeneratedReport
                 } else {
                     try (AArch64MacroAssembler.ScratchRegister scratchRegister = masm.getScratchRegister()) {
                         Register scratch = scratchRegister.getRegister();

@@ -43,6 +43,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
@@ -109,6 +110,10 @@ public abstract class DebugInfoBase {
      */
     private final StringTable stringTable = new StringTable();
     /**
+     * List of dirs in which files are found to reside.
+     */
+    private final List<DirEntry> dirs = new ArrayList<>();
+    /**
      * Index of all dirs in which files are found to reside either as part of substrate/compiler or
      * user code.
      */
@@ -141,6 +146,11 @@ public abstract class DebugInfoBase {
      * Handle on class entry for java.lang.Object.
      */
     private ClassEntry objectClass;
+    /**
+     * List of all top level compiled methods found in debug info. These ought to arrive via the
+     * debug info API in ascending address range order.
+     */
+    private final List<CompiledMethodEntry> compiledMethods = new ArrayList<>();
     /**
      * List of of files which contain primary or secondary ranges.
      */
@@ -190,16 +200,21 @@ public abstract class DebugInfoBase {
      */
     private int oopAlignShift;
     /**
-     *
      * The compilation directory in which to look for source files as a {@link String}.
      */
     private String cachePath;
+
+    /**
+     * The offset of the first byte beyond the end of the Java compiled code address range.
+     */
+    private int compiledCodeMax;
 
     /**
      * The type entry for java.lang.Class.
      */
     private ClassEntry hubClassEntry;
 
+    @SuppressWarnings("this-escape")
     public DebugInfoBase(ByteOrder byteOrder) {
         this.byteOrder = byteOrder;
         this.useHeapBase = true;
@@ -210,6 +225,13 @@ public abstract class DebugInfoBase {
         this.oopAlignment = 0;
         this.oopAlignShift = 0;
         this.hubClassEntry = null;
+        this.compiledCodeMax = 0;
+        // create and index an empty dir with index 0.
+        ensureDirEntry(EMPTY_PATH);
+    }
+
+    public int compiledCodeMax() {
+        return compiledCodeMax;
     }
 
     /**
@@ -264,6 +286,9 @@ public abstract class DebugInfoBase {
         /* Reference alignment must be 8 bytes. */
         assert oopAlignment == 8;
 
+        /* retrieve limit for Java code address range */
+        compiledCodeMax = debugInfoProvider.compiledCodeMax();
+
         /* Ensure we have a null string and cachePath in the string section. */
         String uniqueNullString = stringTable.uniqueDebugString("");
         if (debugInfoProvider.getCachePath() != null) {
@@ -314,7 +339,7 @@ public abstract class DebugInfoBase {
             MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
             PrimaryRange primaryRange = Range.createPrimary(methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
-            classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
+            addPrimaryRange(primaryRange, debugCodeInfo, classEntry);
             /*
              * Record all subranges even if they have no line or file so we at least get a symbol
              * for them and don't see a break in the address range.
@@ -433,6 +458,11 @@ public abstract class DebugInfoBase {
         return objectClass;
     }
 
+    private void addPrimaryRange(PrimaryRange primaryRange, DebugCodeInfo debugCodeInfo, ClassEntry classEntry) {
+        CompiledMethodEntry compiledMethod = classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
+        indexCompiledMethod(compiledMethod);
+    }
+
     /**
      * Recursively creates subranges based on DebugLocationInfo including, and appropriately
      * linking, nested inline subranges.
@@ -492,27 +522,50 @@ public abstract class DebugInfoBase {
         instanceClassesIndex.put(idType, classEntry);
     }
 
+    private void indexCompiledMethod(CompiledMethodEntry compiledMethod) {
+        assert verifyMethodOrder(compiledMethod);
+        compiledMethods.add(compiledMethod);
+    }
+
+    private boolean verifyMethodOrder(CompiledMethodEntry next) {
+        int size = compiledMethods.size();
+        if (size > 0) {
+            CompiledMethodEntry last = compiledMethods.get(size - 1);
+            PrimaryRange lastRange = last.getPrimary();
+            PrimaryRange nextRange = next.getPrimary();
+            if (lastRange.getHi() > nextRange.getLo()) {
+                assert false : "methods %s [0x%x, 0x%x] and %s [0x%x, 0x%x] presented out of order".formatted(lastRange.getFullMethodName(), lastRange.getLo(), lastRange.getHi(),
+                                nextRange.getFullMethodName(), nextRange.getLo(), nextRange.getHi());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static final Path EMPTY_PATH = Paths.get("");
+
     private FileEntry addFileEntry(String fileName, Path filePath) {
         assert fileName != null;
+        Path dirPath = filePath;
         Path fileAsPath;
         if (filePath != null) {
-            fileAsPath = filePath.resolve(fileName);
+            fileAsPath = dirPath.resolve(fileName);
         } else {
             fileAsPath = Paths.get(fileName);
+            dirPath = EMPTY_PATH;
         }
         FileEntry fileEntry = filesIndex.get(fileAsPath);
         if (fileEntry == null) {
-            DirEntry dirEntry = ensureDirEntry(filePath);
+            DirEntry dirEntry = ensureDirEntry(dirPath);
             /* Ensure file and cachepath are added to the debug_str section. */
             uniqueDebugString(fileName);
             uniqueDebugString(cachePath);
-            fileEntry = new FileEntry(fileName, dirEntry);
+            fileEntry = new FileEntry(fileName, dirEntry, files.size() + 1);
             files.add(fileEntry);
             /* Index the file entry by file path. */
             filesIndex.put(fileAsPath, fileEntry);
         } else {
-            assert (filePath == null ||
-                            fileEntry.getDirEntry().getPath().equals(filePath));
+            assert fileEntry.getDirEntry().getPath().equals(dirPath);
         }
         return fileEntry;
     }
@@ -545,8 +598,9 @@ public abstract class DebugInfoBase {
         if (dirEntry == null) {
             /* Ensure dir path is entered into the debug_str section. */
             uniqueDebugString(filePath.toString());
-            dirEntry = new DirEntry(filePath);
+            dirEntry = new DirEntry(filePath, dirs.size());
             dirsIndex.put(filePath, dirEntry);
+            dirs.add(dirEntry);
         }
         return dirEntry;
     }
@@ -573,9 +627,16 @@ public abstract class DebugInfoBase {
         return instanceClasses;
     }
 
-    @SuppressWarnings("unused")
+    public List<CompiledMethodEntry> getCompiledMethods() {
+        return compiledMethods;
+    }
+
     public List<FileEntry> getFiles() {
         return files;
+    }
+
+    public List<DirEntry> getDirs() {
+        return dirs;
     }
 
     @SuppressWarnings("unused")
@@ -654,17 +715,6 @@ public abstract class DebugInfoBase {
 
     public boolean isHubClassEntry(ClassEntry classEntry) {
         return classEntry.getTypeName().equals(DwarfDebugInfo.HUB_TYPE_NAME);
-    }
-
-    public int classLayoutAbbrevCode(ClassEntry classEntry) {
-        if (useHeapBase & isHubClassEntry(classEntry)) {
-            /*
-             * This layout adds special logic to remove tag bits from indirect pointers to this
-             * type.
-             */
-            return DwarfDebugInfo.DW_ABBREV_CODE_class_layout2;
-        }
-        return DwarfDebugInfo.DW_ABBREV_CODE_class_layout1;
     }
 
     public ClassEntry getHubClassEntry() {

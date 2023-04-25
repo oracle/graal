@@ -26,98 +26,35 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
-import java.util.Map;
 
-import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.runtime.GraalTestTVMCI.GraalTestContext;
-import org.graalvm.graphio.GraphOutput;
 
 import com.oracle.truffle.api.impl.TVMCI;
 import com.oracle.truffle.api.nodes.RootNode;
 
 final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTarget> {
 
-    private final GraalTruffleRuntime truffleRuntime;
-
     static final class GraalTestContext implements Closeable {
-
-        private final String testName;
-        private final GraalTruffleRuntime runtime;
-        private TruffleDebugContext debug;
-        private GraphOutput<Void, ?> output;
-
-        private static GraphOutput<Void, ?> beginGroup(TruffleDebugContext debug, String testName) {
-            GraphOutput<Void, ?> output = null;
-            try {
-                if (debug.isDumpEnabled()) {
-                    output = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
-                    output.beginGroup(null, testName, testName, null, 0, debug.getVersionProperties());
-                    return output;
-                }
-            } catch (IOException e) {
-                if (output != null) {
-                    output.close();
-                }
-            }
-            return null;
-        }
-
-        private GraalTestContext(String testName, GraalTruffleRuntime runtime) {
-            this.testName = testName;
-            this.runtime = runtime;
-        }
-
-        private synchronized void init(OptimizedCallTarget target) {
-            if (debug == null) {
-                final Map<String, Object> optionsMap = GraalTruffleRuntime.getOptionsForCompiler(target);
-                debug = runtime.getTruffleCompiler(target).openDebugContext(optionsMap, null);
-                /*
-                 * Open a dump group around all compilations happening during the execution of a
-                 * unit test. This group will contain one sub-group for every compiled CallTarget of
-                 * the unit test.
-                 */
-                this.output = beginGroup(this.debug, testName);
-            }
-        }
 
         @Override
         public synchronized void close() throws IOException {
-            try {
-                if (output != null) {
-                    try {
-                        output.endGroup();
-                    } finally {
-                        output.close();
-                    }
-                }
-            } finally {
-                debug.close();
-            }
         }
-    }
-
-    GraalTestTVMCI(GraalTruffleRuntime truffleRuntime) {
-        this.truffleRuntime = truffleRuntime;
     }
 
     @Override
     protected GraalTestContext createTestContext(String testName) {
-        return new GraalTestContext(testName, truffleRuntime);
+        return new GraalTestContext();
     }
 
     @Override
     public OptimizedCallTarget createTestCallTarget(GraalTestContext testContext, RootNode testNode) {
-        OptimizedCallTarget target = (OptimizedCallTarget) testNode.getCallTarget();
-        testContext.init(target);
-        return target;
+        return (OptimizedCallTarget) testNode.getCallTarget();
     }
 
     @SuppressWarnings("try")
     @Override
     public void finishWarmup(GraalTestContext testContext, OptimizedCallTarget callTarget) {
-        BackgroundCompileQueue.Priority priority = new BackgroundCompileQueue.Priority(Integer.MAX_VALUE, BackgroundCompileQueue.Priority.Tier.LAST);
-        truffleRuntime.doCompile(testContext.debug, callTarget, CompilationTask.createCompilationTask(priority, new WeakReference<>(callTarget), 0));
+        callTarget.compile(true);
+        callTarget.waitForCompilation();
     }
 }

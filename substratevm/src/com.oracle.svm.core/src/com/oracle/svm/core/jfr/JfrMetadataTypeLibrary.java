@@ -37,6 +37,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.jfr.internal.MetadataRepository;
 import jdk.jfr.internal.PlatformEventType;
 import jdk.jfr.internal.Type;
 import jdk.jfr.internal.TypeLibrary;
@@ -62,6 +63,12 @@ public class JfrMetadataTypeLibrary {
     @SuppressWarnings("unchecked")
     private static Collection<Type> getTypes0() {
         try {
+            /*
+             * Initialize the MetadataRepository class, to ensure that large parts of the JFR
+             * infrastructure are initialized (e.g., the TypeLibrary that we access below).
+             */
+            MetadataRepository.getInstance();
+
             Method getTypes = ReflectionUtil.lookupMethod(TypeLibrary.class, "getTypes");
             if (JavaVersionUtil.JAVA_SPEC >= 21) {
                 return (Collection<Type>) getTypes.invoke(null);

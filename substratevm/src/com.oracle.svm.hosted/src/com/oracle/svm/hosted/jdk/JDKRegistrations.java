@@ -29,14 +29,12 @@ import java.lang.module.ModuleReader;
 import java.lang.module.ResolvedModule;
 import java.util.Optional;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
@@ -51,33 +49,24 @@ class JDKRegistrations extends JNIRegistrationUtil implements InternalFeature {
         rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment", "java.io.File$TempDirectory", "java.nio.file.TempFileHelper", "java.lang.Terminator");
         rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            /*
-             * The class initializer queries and caches state (like "is a tty") - some state on JDK
-             * 17 and even more after JDK 17.
-             */
-            rerunClassInit(a, "java.io.Console");
-        } else {
-            /*
-             * Ensure jdk.internal.access.SharedSecrets.javaIOAccess is initialized before scanning.
-             */
-            ((DuringSetupAccessImpl) a).ensureInitialized("java.io.Console");
-        }
+        /*
+         * The class initializer queries and caches state (like "is a tty") - some state on JDK 17
+         * and even more after JDK 17.
+         */
+        rerunClassInit(a, "java.io.Console");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            /*
-             * Holds system and user library paths derived from the `java.library.path` and
-             * `sun.boot.library.path` system properties.
-             */
-            rerunClassInit(a, "jdk.internal.loader.NativeLibraries$LibraryPaths");
-            /*
-             * Contains lots of state that is only available at run time: loads a native library,
-             * stores a `Random` object and the temporary directory in a static final field.
-             */
-            rerunClassInit(a, "sun.nio.ch.UnixDomainSockets");
+        /*
+         * Holds system and user library paths derived from the `java.library.path` and
+         * `sun.boot.library.path` system properties.
+         */
+        rerunClassInit(a, "jdk.internal.loader.NativeLibraries$LibraryPaths");
+        /*
+         * Contains lots of state that is only available at run time: loads a native library, stores
+         * a `Random` object and the temporary directory in a static final field.
+         */
+        rerunClassInit(a, "sun.nio.ch.UnixDomainSockets");
 
-            rerunClassInit(a, "java.util.concurrent.ThreadLocalRandom$ThreadLocalRandomProxy");
-        }
+        rerunClassInit(a, "java.util.concurrent.ThreadLocalRandom$ThreadLocalRandomProxy");
 
         /*
          * Re-initialize the registered shutdown hooks, because any hooks registered during native

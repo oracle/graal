@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.jni;
 
-import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -48,6 +47,7 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 
+import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.jni.JNIGeneratedMethodSupport;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
@@ -181,11 +181,9 @@ public class JNIGraphKit extends HostedGraphKit {
      * Used in native-to-Java call wrappers where the method ID has already been used to dispatch,
      * and we would have crashed if something is wrong, so we can avoid null and type checks.
      */
-    private PiNode getUncheckedMethodObject(ValueNode methodId) {
-        InvokeWithExceptionNode methodObj = createInvokeWithExceptionAndUnwind(
-                        findMethod(JNIReflectionDictionary.class, "getObjectFromMethodID", JNIMethodId.class), InvokeKind.Static, getFrameState(), bci(), methodId);
-        ObjectStamp stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(getMetaAccess().lookupJavaType(JNIAccessibleMethod.class)));
-        return createPiNode(methodObj, stamp);
+    private InvokeWithExceptionNode getUncheckedMethodObject(ValueNode methodId) {
+        return createInvokeWithExceptionAndUnwind(findMethod(JNIReflectionDictionary.class, "getMethodByID", JNIMethodId.class),
+                        InvokeKind.Static, getFrameState(), bci(), methodId);
     }
 
     private InvokeWithExceptionNode invokeJNIMethodObjectMethod(String name, ValueNode methodId) {
@@ -212,12 +210,12 @@ public class JNIGraphKit extends HostedGraphKit {
         return createStaticInvoke("rethrowPendingException");
     }
 
-    public InvokeWithExceptionNode pinArrayAndGetAddress(ValueNode array, ValueNode isCopy) {
-        return createStaticInvoke("pinArrayAndGetAddress", array, isCopy);
+    public InvokeWithExceptionNode createArrayViewAndGetAddress(ValueNode array, ValueNode isCopy) {
+        return createStaticInvoke("createArrayViewAndGetAddress", array, isCopy);
     }
 
-    public InvokeWithExceptionNode unpinArrayByAddress(ValueNode address) {
-        return createStaticInvoke("unpinArrayByAddress", address);
+    public InvokeWithExceptionNode destroyArrayViewByAddress(ValueNode address, ValueNode mode) {
+        return createStaticInvoke("destroyArrayViewByAddress", address, mode);
     }
 
     public FixedWithNextNode getPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {

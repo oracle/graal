@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -57,7 +58,7 @@ public abstract class BeginStateSplitNode extends AbstractBeginNode implements S
 
     @Override
     public void setStateAfter(FrameState x) {
-        assert x == null || x.isAlive() : "frame state must be in a graph";
+        GraalError.guarantee(x == null || x.isAlive(), "frame state must be in a graph: %s", x);
         updateUsages(stateAfter, x);
         stateAfter = x;
     }

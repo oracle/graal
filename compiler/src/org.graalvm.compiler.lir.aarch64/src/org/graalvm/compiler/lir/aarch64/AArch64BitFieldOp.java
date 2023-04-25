@@ -85,7 +85,7 @@ public class AArch64BitFieldOp extends AArch64LIRInstruction {
                 masm.ubfm(size, dst, src, size - lsb, width - 1);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

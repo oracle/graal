@@ -81,7 +81,7 @@ public class MaterializedFrameTest extends PartialEvaluationTest {
     public void getFrameSlotKind() {
         RootNode rootNode = createRootNode();
         RootCallTarget callTarget = rootNode.getCallTarget();
-        StructuredGraph graph = partialEval((OptimizedCallTarget) callTarget, new Object[]{}, getCompilationId(callTarget));
+        StructuredGraph graph = partialEval((OptimizedCallTarget) callTarget, new Object[]{});
 
         NodeIterable<MethodCallTargetNode> calls = graph.getNodes().filter(MethodCallTargetNode.class);
         assertTrue("Unexpected call(s): " + calls.snapshot(), calls.isEmpty());

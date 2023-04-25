@@ -19,7 +19,7 @@
         "name",
         "graalvm_version",
         "java_version",
-        "vendor",
+        "vendor_version",
         "graal_compiler",
         "c_compiler",
         "garbage_collector"
@@ -33,17 +33,17 @@
         "graalvm_version": {
           "type": "string",
           "default": "",
-          "title": "The GraalVM Native Image version. Deprecated: Please use java_version and vendor instead."
+          "title": "The GraalVM Native Image version. Deprecated: Please use vendor_version or java_version instead."
         },
         "java_version": {
           "type": "string",
           "default": null,
           "title": "The Java version of the Native Image build process. This value is also used for the 'java.vm.version' property within the generated image"
         },
-        "vendor": {
+        "vendor_version": {
           "type": "string",
           "default": null,
-          "title": "The vendor of the VM of the generated image. This value is also used for the 'java.vm.vendor' property within the generated image"
+          "title": "The vendor version of the VM of the generated image. This value is also used for the 'java.vendor.version' property within the generated image"
         },
         "graal_compiler": {
           "type": "object",
@@ -61,9 +61,9 @@
               "title": "The marchine type targeted by Graal"
             },
             "pgo": {
-              "type": "boolean",
-              "default": "",
-              "title": "Whether Profile-Guided Optimizations are enabled or not (Oracle GraalVM only)"
+              "type": ["string", "null"],
+              "default": null,
+              "title": "The name of the PGO mode (or null if PGO is not used) (Oracle GraalVM only)"
             }
           },
           "title": "Information about the Graal compiler"
@@ -82,14 +82,14 @@
       "examples": [
         {
           "name": "helloworld",
-          "graalvm_version": "GraalVM CE 17.0.7+4",
+          "graalvm_version": "GraalVM CE 17.0.7+4.1",
           "graal_compiler": {
             "pgo": false,
             "march": "x86-64-v3",
             "optimization_level": "0"
           },
           "java_version": "17.0.7+4",
-          "vendor": "GraalVM Community",
+          "vendor_version": "GraalVM CE 17.0.7+4.1",
           "c_compiler": "gcc (linux, x86_64, 9.3.0)",
           "garbage_collector": "Serial GC"
         }
@@ -513,13 +513,13 @@
     {
       "general_info": {
         "name": "helloworld",
-        "graalvm_version": "GraalVM CE 17.0.7+4",
+        "graalvm_version": "GraalVM CE 17.0.7+4.1",
         "graal_compiler": {
           "march": "x86-64-v3",
           "optimization_level": "0"
         },
         "java_version": "17.0.7+4",
-        "vendor": "GraalVM Community",
+        "vendor_version": "GraalVM CE 17.0.7+4.1",
         "c_compiler": "gcc (linux, x86_64, 9.3.0)",
         "garbage_collector": "Serial GC"
       },
@@ -582,13 +582,13 @@
     {
       "general_info": {
         "name": "helloworld",
-        "graalvm_version": "GraalVM CE 17.0.7+4",
+        "graalvm_version": "GraalVM CE 17.0.7+4.1",
         "graal_compiler": {
           "march": "x86-64-v3",
           "optimization_level": "0"
         },
         "java_version": "17.0.7+4",
-        "vendor": "GraalVM Community",
+        "vendor_version": "GraalVM CE 17.0.7+4.1",
         "c_compiler": null,
         "garbage_collector": "Serial GC"
       },

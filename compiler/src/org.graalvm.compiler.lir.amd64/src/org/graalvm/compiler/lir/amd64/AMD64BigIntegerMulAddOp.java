@@ -60,18 +60,18 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
           lineStart = 3195,
           lineEnd   = 3247,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
-          sha1      = "f8e50fddbd2c5ccdf258bd713c14e857c5f2926d")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "2f3b577fa7f0ced9cc2514af80d2c2833ab7caf2")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 6888,
-          lineEnd   = 6922,
-          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
-          sha1      = "9925ac20c28f0aec605c339c58617196097ab840")
+          lineStart = 6882,
+          lineEnd   = 6916,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "e68b8c7bdb37d4bd1350c7e1219fdcb419d2618a")
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 7140,
-          lineEnd   = 7317,
-          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
-          sha1      = "90e45105ef8d2750bfd97f0087c446870327c8e2")
+          lineStart = 7134,
+          lineEnd   = 7311,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "d89ad721deb560178359f86e8c6c96ffc6530878")
 // @formatter:on
 public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
 

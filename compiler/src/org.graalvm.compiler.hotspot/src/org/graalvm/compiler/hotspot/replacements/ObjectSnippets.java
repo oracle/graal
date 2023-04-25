@@ -79,6 +79,7 @@ public class ObjectSnippets implements Snippets {
         private final SnippetInfo notifySnippet;
         private final SnippetInfo notifyAllSnippet;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 

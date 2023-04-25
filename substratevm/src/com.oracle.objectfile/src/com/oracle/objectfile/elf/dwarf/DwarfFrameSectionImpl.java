@@ -27,7 +27,6 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
@@ -152,17 +151,8 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodFrames(byte[] buffer, int p) {
         Cursor cursor = new Cursor(p);
-        /* Write frames for normal methods. */
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEach(classEntry -> {
-            classEntry.normalCompiledEntries().forEach(compiledEntry -> {
-                cursor.set(writeMethodFrame(compiledEntry, buffer, cursor.get()));
-            });
-        });
-        /* Now write frames for deopt targets. */
-        instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).forEach(classEntry -> {
-            classEntry.deoptCompiledEntries().forEach(compiledEntry -> {
-                cursor.set(writeMethodFrame(compiledEntry, buffer, cursor.get()));
-            });
+        compiledMethodsStream().forEach(compiledMethod -> {
+            cursor.set(writeMethodFrame(compiledMethod, buffer, cursor.get()));
         });
         return cursor.get();
     }

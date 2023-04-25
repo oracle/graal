@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.threadlocal;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.function.IntSupplier;
 
@@ -59,7 +59,7 @@ public class VMThreadLocalInfo {
         } else if (threadLocalClass == FastThreadLocalObject.class) {
             return Object.class;
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(threadLocalClass); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -109,7 +109,7 @@ public class VMThreadLocalInfo {
         } else if (threadLocalClass == FastThreadLocalBytes.class) {
             storageKind = null;
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(threadLocalClass); // ExcludeFromJacocoGeneratedReport
         }
 
         /* Initialize with illegal value for assertion checking. */

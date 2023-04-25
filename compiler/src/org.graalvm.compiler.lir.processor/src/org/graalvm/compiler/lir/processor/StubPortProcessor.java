@@ -28,12 +28,12 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.net.URLConnection;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -62,6 +62,7 @@ public class StubPortProcessor extends AbstractProcessor {
     static final String STUB_PORT_CLASS_NAME = "org.graalvm.compiler.lir.StubPort";
     static final String STUB_PORTS_CLASS_NAME = "org.graalvm.compiler.lir.StubPorts";
     static final String SYNC_CHECK_ENV_VAR = "HOTSPOT_PORT_SYNC_CHECK";
+    static final String SYNC_DUMP_ENV_VAR = "HOTSPOT_PORT_SYNC_DUMP";
     static final String HTTPS_PROXY_ENV_VAR = "HTTPS_PROXY";
 
     static final int SEARCH_RANGE = 200;
@@ -71,7 +72,7 @@ public class StubPortProcessor extends AbstractProcessor {
         return Set.of(STUB_PORT_CLASS_NAME, STUB_PORTS_CLASS_NAME);
     }
 
-    private void compareDigest(MessageDigest md, AnnotationMirror annotationMirror, Element element, Proxy proxy) throws IOException {
+    private void compareDigest(MessageDigest md, AnnotationMirror annotationMirror, Element element, Proxy proxy) throws IOException, URISyntaxException {
         String path = getAnnotationValue(annotationMirror, "path", String.class);
         int lineStart = getAnnotationValue(annotationMirror, "lineStart", Integer.class);
         int lineEnd = getAnnotationValue(annotationMirror, "lineEnd", Integer.class);
@@ -82,7 +83,7 @@ public class StubPortProcessor extends AbstractProcessor {
         String url = JDK_LATEST + path;
         String sha1Latest;
         try {
-            sha1Latest = digest(proxy, md, url, lineStart, lineEnd);
+            sha1Latest = digest(proxy, md, url, lineStart - 1, lineEnd);
         } catch (FileNotFoundException e) {
             env().getMessager().printMessage(Diagnostic.Kind.ERROR,
                             String.format("Sha1 digest of https://github.com/openjdk/jdk/blob/%s/%s (ported by %s) does not match : " +
@@ -95,23 +96,31 @@ public class StubPortProcessor extends AbstractProcessor {
 
         if (!sha1.equals(sha1Latest)) {
             String urlOld = JDK_COMMIT + commit + '/' + path;
-            String sha1Old = digest(proxy, md, urlOld, lineStart, lineEnd);
+            String sha1Old = digest(proxy, md, urlOld, lineStart - 1, lineEnd);
 
+            Diagnostic.Kind kind = Diagnostic.Kind.ERROR;
             String extraMessage = "";
 
             if (sha1.equals(sha1Old)) {
-                int idx = find(proxy, urlOld, url, lineStart, lineEnd);
+                int idx = find(proxy, urlOld, url, lineStart - 1, lineEnd, SEARCH_RANGE);
                 if (idx != -1) {
+                    int idxInclusive = idx + 1;
+                    kind = Diagnostic.Kind.NOTE;
                     extraMessage = String.format("It may be simply shifted. Try:\n@StubPort(path      = \"%s\",\n" +
                                     "lineStart = %d,\n" +
                                     "lineEnd   = %d,\n" +
                                     "commit    = \"%s\",\n" +
                                     "sha1      = \"%s\")\n",
                                     path,
-                                    idx,
-                                    idx + (lineEnd - lineStart),
-                                    fetchLatestCommit(proxy),
+                                    idxInclusive,
+                                    idxInclusive + (lineEnd - lineStart),
+                                    getLatestCommit(proxy),
                                     sha1);
+                } else {
+                    if (Boolean.parseBoolean(System.getenv(SYNC_DUMP_ENV_VAR))) {
+                        dump(proxy, urlOld, lineStart - 1, lineEnd, element + ".old");
+                        dump(proxy, url, lineStart - 1, lineEnd, element + ".new");
+                    }
                 }
             } else {
                 extraMessage = String.format("New StubPort? Then:\n@StubPort(path      = \"%s\",\n" +
@@ -122,11 +131,11 @@ public class StubPortProcessor extends AbstractProcessor {
                                 path,
                                 lineStart,
                                 lineEnd,
-                                fetchLatestCommit(proxy),
+                                getLatestCommit(proxy),
                                 sha1Latest);
             }
 
-            env().getMessager().printMessage(Diagnostic.Kind.ERROR,
+            env().getMessager().printMessage(kind,
                             String.format("Sha1 digest of https://github.com/openjdk/jdk/blob/%s/%s (ported by %s) does not match " +
                                             "https://github.com/openjdk/jdk/blob/master/%s : expected %s but was %s. %s",
                                             commit,
@@ -139,48 +148,69 @@ public class StubPortProcessor extends AbstractProcessor {
         }
     }
 
-    @SuppressWarnings("deprecation")
-    private static String digest(Proxy proxy, MessageDigest md, String url, int lineStart, int lineEnd) throws IOException {
-        URLConnection connection = new URL(url).openConnection(proxy);
+    private static String digest(Proxy proxy, MessageDigest md, String url, int lineStartExclusive, int lineEnd) throws IOException, URISyntaxException {
+        URLConnection connection = new URI(url).toURL().openConnection(proxy);
         try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
             // Note that in.lines() discards the line separator and the digest
             // will be different from hashing the whole file.
-            in.lines().skip(lineStart).limit(lineEnd - lineStart).map(String::getBytes).forEach(md::update);
+            in.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).map(String::getBytes).forEach(md::update);
         }
         return String.format("%040x", new BigInteger(1, md.digest()));
     }
 
-    @SuppressWarnings("deprecation")
-    private static int find(Proxy proxy, String oldUrl, String newUrl, int lineStart, int lineEnd) throws IOException {
-        URLConnection oldUrlConnection = new URL(oldUrl).openConnection(proxy);
-        URLConnection newUrlConnection = new URL(newUrl).openConnection(proxy);
+    private static int find(Proxy proxy, String oldUrl, String newUrl, int lineStartExclusive, int lineEnd, int searchRange) throws IOException, URISyntaxException {
+        URLConnection oldUrlConnection = new URI(oldUrl).toURL().openConnection(proxy);
+        URLConnection newUrlConnection = new URI(newUrl).toURL().openConnection(proxy);
 
         try (BufferedReader oldUrlIn = new BufferedReader(new InputStreamReader(oldUrlConnection.getInputStream()));
                         BufferedReader newUrlIn = new BufferedReader(new InputStreamReader(newUrlConnection.getInputStream()))) {
-            String oldSnippet = oldUrlIn.lines().skip(lineStart).limit(lineEnd - lineStart).collect(Collectors.joining("\n"));
-            int newLineStart = Math.max(0, lineStart - SEARCH_RANGE);
-            int newLineEnd = lineEnd + SEARCH_RANGE;
-            String newFullFile = newUrlIn.lines().skip(newLineStart).limit(newLineEnd - newLineStart).collect(Collectors.joining("\n"));
+            String oldSnippet = oldUrlIn.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).collect(Collectors.joining("\n"));
+            int newLineStartExclusive = Math.max(0, lineStartExclusive - searchRange);
+            int newLineEnd = lineEnd + searchRange;
+            String newFullFile = newUrlIn.lines().skip(newLineStartExclusive).limit(newLineEnd - newLineStartExclusive).collect(Collectors.joining("\n"));
             int idx = newFullFile.indexOf(oldSnippet);
             if (idx != -1) {
-                return newLineStart + newFullFile.substring(0, idx).split("\n").length;
+                return newLineStartExclusive + newFullFile.substring(0, idx).split("\n").length;
             }
         }
         return -1;
     }
 
-    @SuppressWarnings("deprecation")
-    private static String fetchLatestCommit(Proxy proxy) throws IOException {
-        URLConnection connection = new URL(JDK_LATEST_INFO).openConnection(proxy);
-
+    private static void dump(Proxy proxy, String url, int lineStartExclusive, int lineEnd, String fileName) throws IOException, URISyntaxException {
+        URLConnection connection = new URI(url).toURL().openConnection(proxy);
         try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
-            String result = in.lines().collect(Collectors.joining());
-            int idx = result.indexOf("commits/");
-            if (idx != -1) {
-                return result.substring(idx + 8, idx + 48);
+            String content = in.lines().skip(lineStartExclusive).limit(lineEnd - lineStartExclusive).collect(Collectors.joining("\n"));
+            try (PrintWriter out = new PrintWriter(fileName + ".tmp")) {
+                out.print(content);
+                out.print('\n');
             }
         }
-        return "UNKNOWN";
+    }
+
+    private String latestCommit = null;
+
+    private String getLatestCommit(Proxy proxy) throws IOException, URISyntaxException {
+        if (latestCommit == null) {
+            String result = null;
+
+            URLConnection connection = new URI(JDK_LATEST_INFO).toURL().openConnection(proxy);
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                String result1 = in.lines().collect(Collectors.joining());
+                int idx = result1.indexOf("commits/");
+                if (idx != -1) {
+                    result = result1.substring(idx + 8, idx + 48);
+                }
+            }
+            if (result == null) {
+                result = "UNKNOWN";
+            }
+            synchronized (this) {
+                if (latestCommit == null) {
+                    latestCommit = result;
+                }
+            }
+        }
+        return latestCommit;
     }
 
     @Override
@@ -196,8 +226,8 @@ public class StubPortProcessor extends AbstractProcessor {
                     Proxy proxy = Proxy.NO_PROXY;
                     String proxyEnv = System.getenv(HTTPS_PROXY_ENV_VAR);
 
-                    if (proxyEnv != null) {
-                        URI proxyURI = new URI(System.getenv(HTTPS_PROXY_ENV_VAR));
+                    if (proxyEnv != null && !"".equals(proxyEnv)) {
+                        URI proxyURI = new URI(proxyEnv);
                         proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyURI.getHost(), proxyURI.getPort()));
                     }
 

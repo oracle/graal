@@ -445,11 +445,11 @@ public final class DebuggerController implements ContextsListener {
                     }
                 }
                 // immediately suspend the event thread
-                suspend(null, eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), null, false);
+                suspend(eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), true);
                 break;
             case SuspendStrategy.EVENT_THREAD:
                 // immediately suspend the event thread
-                suspend(null, eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), null, false);
+                suspend(eventThread, SuspendStrategy.EVENT_THREAD, Collections.singletonList(callBack), true);
                 break;
         }
     }
@@ -485,7 +485,7 @@ public final class DebuggerController implements ContextsListener {
             // to a dead VM from a JDWP client point of view
             if (eventListener.vmDied()) {
                 // we're asked to suspend
-                suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), null, false);
+                suspend(context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), true);
             }
         }
         // Creating a new thread, because the reset method
@@ -558,7 +558,7 @@ public final class DebuggerController implements ContextsListener {
         truffleContext = con;
     }
 
-    public void suspend(CallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs, SteppingInfo steppingInfo, boolean breakpointHit) {
+    public void suspend(Object thread, byte suspendPolicy, List<Callable<Void>> jobs, boolean forceSuspend) {
         fine(() -> "suspending from callback in thread: " + getThreadName(thread));
 
         // before sending any events to debugger, make sure to mark
@@ -575,10 +575,7 @@ public final class DebuggerController implements ContextsListener {
                 break;
             case SuspendStrategy.EVENT_THREAD:
                 fine(() -> "Suspend EVENT_THREAD");
-
-                threadSuspension.suspendThread(thread);
-                runJobs(jobs);
-                suspendEventThread(currentFrame, thread, steppingInfo, breakpointHit);
+                suspendEventThread(thread, forceSuspend, jobs);
                 break;
             case SuspendStrategy.ALL:
                 fine(() -> "Suspend ALL");
@@ -593,15 +590,10 @@ public final class DebuggerController implements ContextsListener {
                                 DebuggerController.this.suspend(activeThread);
                             }
                         }
-                        // send any breakpoint events here, since now all threads that are
-                        // expected to be suspended
-                        // have increased suspension count
-                        runJobs(jobs);
                     }
                 });
-                threadSuspension.suspendThread(thread);
                 suspendThread.start();
-                suspendEventThread(currentFrame, thread, steppingInfo, breakpointHit);
+                suspendEventThread(thread, forceSuspend, jobs);
                 break;
         }
     }
@@ -616,29 +608,30 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    private void suspendEventThread(CallFrame currentFrame, Object thread, SteppingInfo info, boolean breakpointHit) {
+    private void suspendEventThread(Object thread, boolean forceSuspend, List<Callable<Void>> jobs) {
         fine(() -> "Suspending event thread: " + getThreadName(thread) + " with new suspension count: " + threadSuspension.getSuspensionCount(thread));
-
-        // if during stepping, send a step completed event back to the debugger
-        if (info != null && !breakpointHit) {
-            eventListener.stepCompleted(info, currentFrame);
-        }
-
-        // no reason to hold a hard suspension status, since now
-        // we have the actual suspension status and suspended information
-        threadSuspension.removeHardSuspendedThread(thread);
-
-        lockThread(thread);
+        lockThread(thread, forceSuspend, true, jobs);
     }
 
-    private void lockThread(Object thread) {
+    private void lockThread(Object thread, boolean forceSuspend, boolean isFirstCall, List<Callable<Void>> jobs) {
         SimpleLock lock = getSuspendLock(thread);
         // in case a thread job is already posted on this thread
-        checkThreadJobsAndRun(thread);
+        checkThreadJobsAndRun(thread, forceSuspend);
         synchronized (lock) {
+            if (!forceSuspend && !threadSuspension.isHardSuspended(thread)) {
+                // thread was resumed from other command, so don't suspend now
+                return;
+            }
             try {
+                if (lock.isLocked() && isFirstCall) {
+                    threadSuspension.suspendThread(thread);
+                    runJobs(jobs);
+                }
                 while (lock.isLocked()) {
                     fine(() -> "lock.wait() for thread: " + getThreadName(thread));
+                    // no reason to hold a hard suspension status, since now
+                    // we have the actual suspension status and suspended information
+                    threadSuspension.removeHardSuspendedThread(thread);
                     lock.wait();
                 }
             } catch (InterruptedException e) {
@@ -648,12 +641,12 @@ public final class DebuggerController implements ContextsListener {
             }
         }
 
-        checkThreadJobsAndRun(thread);
+        checkThreadJobsAndRun(thread, forceSuspend);
         getGCPrevention().releaseActiveWhileSuspended(thread);
         fine(() -> "lock wakeup for thread: " + getThreadName(thread));
     }
 
-    private void checkThreadJobsAndRun(Object thread) {
+    private void checkThreadJobsAndRun(Object thread, boolean forceSuspend) {
         if (threadJobs.containsKey(thread)) {
             // re-acquire the thread lock after completing
             // the job, to avoid the thread resuming.
@@ -685,7 +678,7 @@ public final class DebuggerController implements ContextsListener {
             } else {
                 job.runJob();
             }
-            lockThread(thread);
+            lockThread(thread, forceSuspend, false, Collections.emptyList());
         }
     }
 
@@ -920,6 +913,7 @@ public final class DebuggerController implements ContextsListener {
             if (fieldEvent != null) {
                 FieldBreakpointInfo info = fieldEvent.getInfo();
                 if (info.isAccessBreakpoint()) {
+                    hit = true;
                     jobs.add(new Callable<>() {
                         @Override
                         public Void call() {
@@ -928,6 +922,7 @@ public final class DebuggerController implements ContextsListener {
                         }
                     });
                 } else if (info.isModificationBreakpoint()) {
+                    hit = true;
                     jobs.add(new Callable<>() {
                         @Override
                         public Void call() {
@@ -940,6 +935,7 @@ public final class DebuggerController implements ContextsListener {
             // check if suspended for a method breakpoint
             MethodBreakpointEvent methodEvent = methodBreakpointExpected.remove(Thread.currentThread());
             if (methodEvent != null) {
+                hit = true;
                 jobs.add(new Callable<>() {
                     @Override
                     public Void call() {
@@ -948,9 +944,18 @@ public final class DebuggerController implements ContextsListener {
                     }
                 });
             }
+            if (steppingInfo != null) {
+                jobs.add(new Callable<>() {
+                    @Override
+                    public Void call() {
+                        eventListener.stepCompleted(steppingInfo, callFrames[0]);
+                        return null;
+                    }
+                });
+            }
 
             // now, suspend the current thread until resumed by e.g. a debugger command
-            suspend(callFrames[0], currentThread, suspendPolicy, jobs, steppingInfo, hit);
+            suspend(currentThread, suspendPolicy, jobs, hit || steppingInfo != null);
         }
 
         private boolean matchLocation(Pattern[] patterns, CallFrame callFrame) {

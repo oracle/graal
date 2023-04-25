@@ -53,9 +53,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.jdk.ContinuationsNotSupported;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrLater;
@@ -90,22 +88,9 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     IsolateThread isolateThread;
 
-    /**
-     * Every thread has a boolean for noting whether this thread is interrupted.
-     *
-     * After JDK 11, a field with same name has been introduced and the logic to set / reset it has
-     * moved into Java code. So this injected field and the substitutions that maintain it are no
-     * longer necessary. See {@link #interruptedJDK17OrLater}.
-     */
-    @Inject //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    volatile boolean interruptedJDK11OrEarlier;
-
     @Alias //
-    @TargetElement(name = "interrupted", onlyWith = JDK17OrLater.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    volatile boolean interruptedJDK17OrLater;
+    volatile boolean interrupted;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     long parentThreadId;
@@ -457,15 +442,9 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
     public static boolean interrupted() {
         return JavaThreads.getAndClearInterrupt(Thread.currentThread());
     }
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    @Platforms(InternalPlatform.NATIVE_ONLY.class)
-    private native boolean isInterrupted(boolean clearInterrupted);
 
     /**
      * Marks the thread as interrupted and wakes it up.
@@ -476,14 +455,10 @@ public final class Target_java_lang_Thread {
      */
     @Substitute
     void interrupt0() {
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            interruptedJDK11OrEarlier = true;
-        } else {
-            /*
-             * After JDK 11, the interrupted flag is maintained by the JDK in Java code, i.e.,
-             * already set by the caller. So we do not need to set any flag.
-             */
-        }
+        /*
+         * The interrupted flag is maintained by the JDK in Java code, i.e., already set by the
+         * caller. So we do not need to set any flag.
+         */
 
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* If the VM is single-threaded, this thread can not be blocked. */
@@ -634,7 +609,6 @@ public final class Target_java_lang_Thread {
      * Our implementation in {@code WindowsPlatformThreads} already handles this.
      */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static void clearInterruptEvent() {
     }
 
@@ -667,7 +641,7 @@ public final class Target_java_lang_Thread {
         } else {
             Target_jdk_internal_misc_PreviewFeatures.ensureEnabled(); // throws
         }
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Substitute
@@ -675,7 +649,7 @@ public final class Target_java_lang_Thread {
     static Thread startVirtualThreadWithoutLoom(Runnable task) {
         Objects.requireNonNull(task);
         ofVirtualWithoutLoom(); // throws
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Substitute

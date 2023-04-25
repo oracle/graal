@@ -82,7 +82,7 @@ public class VerifySnippetProbabilities extends VerifyPhase<CoreProviders> {
             Class<?> receiverClass = (Class<?>) KNOWN_PROFILE_INTRINSICS[i];
             String methodName = (String) KNOWN_PROFILE_INTRINSICS[i + 1];
             ResolvedJavaType type = context.getMetaAccess().lookupJavaType(receiverClass);
-            for (ResolvedJavaMethod typeMethod : type.getDeclaredMethods()) {
+            for (ResolvedJavaMethod typeMethod : type.getDeclaredMethods(false)) {
                 if (typeMethod.getName().contains(methodName)) {
                     knownIntrinsicMethods.add(typeMethod);
                 }

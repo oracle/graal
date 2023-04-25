@@ -72,7 +72,7 @@ public class BeginNodeOptimizationTest extends PartialEvaluationTest {
             }
         }
         Listener listener = new Listener();
-        partialEvalWithNodeEventListener((OptimizedCallTarget) target, new Object[]{}, getCompilationId(target), listener);
+        partialEvalWithNodeEventListener((OptimizedCallTarget) target, new Object[]{}, listener);
 
         if (listener.beginCount > beginNodeLimit) {
             Assert.fail("PE added more begin nodes to the graph than expected: limit=" + beginNodeLimit + " actual=" + listener.beginCount);

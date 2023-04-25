@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.graal.llvm.replacements;
 
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -77,7 +77,7 @@ public abstract class LLVMBinaryIntrinsicNode extends LLVMIntrinsicNode {
             case COPYSIGN:
                 return new LLVMCopySignNode(kind, arg1, arg2);
             default:
-                throw shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
         }
     }
 

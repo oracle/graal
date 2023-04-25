@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core.test;
 
+import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
+
 import java.util.Optional;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -31,6 +33,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.SingleRunSubphase;
 import org.junit.Assert;
 import org.junit.Test;
@@ -70,7 +73,8 @@ public class SingleRunSubphaseTest extends GraalCompilerTest {
     @Test
     public void testMultipleRuns() {
         try (AutoCloseable c = new TTY.Filter()) {
-            StructuredGraph graph = parseForCompile(getResolvedJavaMethod("testSnippet"));
+            OptionValues noDumpOnError = new OptionValues(getInitialOptions(), DumpOnError, false);
+            StructuredGraph graph = parseForCompile(getResolvedJavaMethod("testSnippet"), noDumpOnError);
             EmptyPhase phase = new EmptyPhase();
             phase.apply(graph, getProviders());
             // this second call should throw

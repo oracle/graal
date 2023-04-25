@@ -32,6 +32,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionType;
 
+import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ExitStatus;
@@ -208,14 +209,15 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         String javaRuntimeName = System.getProperty("java.runtime.name");
-        String vendorVersion = System.getProperty("java.vendor.version");
-        nativeImage.showMessage("%s %s (%sbuild %s)", javaRuntimeName, vendorVersion, jdkDebugLevel, javaRuntimeVersion);
+        String vendorVersion = VM.getVendorVersion();
+        vendorVersion = vendorVersion.isEmpty() ? "" : " " + vendorVersion;
+        nativeImage.showMessage("%s%s (%sbuild %s)", javaRuntimeName, vendorVersion, jdkDebugLevel, javaRuntimeVersion);
 
         /* Third line: VM information. */
         String javaVMName = System.getProperty("java.vm.name");
         String javaVMVersion = System.getProperty("java.vm.version");
         String javaVMInfo = System.getProperty("java.vm.info");
-        nativeImage.showMessage("%s %s (%sbuild %s, %s)", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
+        nativeImage.showMessage("%s%s (%sbuild %s, %s)", javaVMName, vendorVersion, jdkDebugLevel, javaVMVersion, javaVMInfo);
     }
 
     private static void singleArgumentCheck(ArgumentQueue args, String arg) {

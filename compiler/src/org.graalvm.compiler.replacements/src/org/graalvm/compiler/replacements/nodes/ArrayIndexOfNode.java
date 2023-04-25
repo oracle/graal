@@ -139,6 +139,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
         this(TYPE, stride, variant, runtimeCheckedCPUFeatures, locationIdentity, arrayPointer, arrayOffset, arrayLength, fromIndex, searchValues);
     }
 
+    @SuppressWarnings("this-escape")
     public ArrayIndexOfNode(
                     NodeClass<? extends ArrayIndexOfNode> c,
                     Stride stride,
@@ -188,7 +189,7 @@ public class ArrayIndexOfNode extends PureFunctionStubIntrinsicNode implements C
             case Table:
                 return amd64FeaturesSSE41();
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(variant); // ExcludeFromJacocoGeneratedReport
         }
     }
 

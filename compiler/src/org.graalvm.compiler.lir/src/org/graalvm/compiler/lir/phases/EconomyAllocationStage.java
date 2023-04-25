@@ -31,6 +31,7 @@ import org.graalvm.compiler.lir.stackslotalloc.SimpleStackSlotAllocator;
 import org.graalvm.compiler.options.OptionValues;
 
 public class EconomyAllocationStage extends LIRPhaseSuite<AllocationContext> {
+    @SuppressWarnings("this-escape")
     public EconomyAllocationStage(@SuppressWarnings("unused") OptionValues options) {
         appendPhase(new MarkBasePointersPhase());
 

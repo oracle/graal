@@ -51,6 +51,7 @@ public class InfopointReasonTest extends GraalCompilerTest {
 
     public static final String[] STRINGS = new String[]{"world", "everyone", "you"};
 
+    @SuppressWarnings("this-escape")
     public InfopointReasonTest() {
         // Call testMethod to ensure all method references are resolved.
         testMethod();

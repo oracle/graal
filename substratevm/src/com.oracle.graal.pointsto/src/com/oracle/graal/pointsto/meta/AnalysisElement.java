@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -68,12 +69,12 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     @Override
     public final Annotation[] getAnnotations() {
-        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrapped(), false);
+        throw GraalError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
     }
 
     @Override
     public final Annotation[] getDeclaredAnnotations() {
-        return getUniverse().getAnnotationExtractor().extractAnnotations(getWrapped(), true);
+        throw GraalError.shouldNotReachHere("Getting all annotations is not supported because it initializes all annotation classes and their dependencies");
     }
 
     /**

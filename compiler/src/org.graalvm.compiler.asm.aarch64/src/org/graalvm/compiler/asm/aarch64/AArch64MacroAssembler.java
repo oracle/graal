@@ -67,6 +67,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     // preferred byte alignment for a branch target
     public static final int PREFERRED_BRANCH_TARGET_ALIGNMENT = 16;
 
+    @SuppressWarnings("this-escape")
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
         this.neon = new AArch64ASIMDMacroAssembler(this);
@@ -279,7 +280,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 mov(64, dst, address.getBase());
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -2052,7 +2053,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 break;
             }
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(type); // ExcludeFromJacocoGeneratedReport
         }
     }
 

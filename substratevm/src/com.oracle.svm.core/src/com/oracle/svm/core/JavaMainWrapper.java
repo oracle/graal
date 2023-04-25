@@ -73,7 +73,7 @@ import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.VMError;
 
 @InternalVMMethod
@@ -206,7 +206,7 @@ public class JavaMainWrapper {
          */
         RuntimeSupport.getRuntimeSupport().shutdown();
 
-        Counter.logValues(Log.log());
+        CounterSupport.singleton().logValues(Log.log());
     }
 
     @Uninterruptible(reason = "Thread state not set up yet.")

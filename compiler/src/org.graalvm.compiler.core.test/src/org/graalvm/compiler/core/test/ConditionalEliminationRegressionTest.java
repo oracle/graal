@@ -55,6 +55,7 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
 
     private final SpeculationLog speculationLog;
 
+    @SuppressWarnings("this-escape")
     public ConditionalEliminationRegressionTest() {
         speculationLog = getCodeCache().createSpeculationLog();
     }

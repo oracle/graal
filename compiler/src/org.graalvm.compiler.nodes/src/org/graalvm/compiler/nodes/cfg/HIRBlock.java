@@ -74,7 +74,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
     protected int numBackedges = -1;
 
-    protected char postdominator = INVALID_BLOCK_ID;
+    protected int postdominator = INVALID_BLOCK_ID;
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
 
@@ -210,7 +210,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
 
     public String toString(Verbosity verbosity) {
         StringBuilder sb = new StringBuilder();
-        sb.append('B').append((int) id);
+        sb.append('B').append(id);
         if (verbosity == Verbosity.Name) {
             sb.append("{");
             sb.append(getBeginNode());
@@ -463,8 +463,8 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     public static void computeLoopPredecessors(NodeMap<HIRBlock> nodeMap, ModifiableBlock block, LoopBeginNode loopBeginNode) {
         int forwardEndCount = loopBeginNode.forwardEndCount();
         LoopEndNode[] loopEnds = loopBeginNode.orderedLoopEnds();
-        char firstPredecessor = nodeMap.get(loopBeginNode.forwardEndAt(0)).getId();
-        char[] extraPredecessors = new char[forwardEndCount + loopEnds.length - 1];
+        int firstPredecessor = nodeMap.get(loopBeginNode.forwardEndAt(0)).getId();
+        int[] extraPredecessors = new int[forwardEndCount + loopEnds.length - 1];
         for (int i = 1; i < forwardEndCount; ++i) {
             extraPredecessors[i - 1] = nodeMap.get(loopBeginNode.forwardEndAt(i)).getId();
         }
@@ -486,9 +486,9 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
                 ControlSplitNode split = (ControlSplitNode) blockEndNode;
                 final int splitSuccessorcount = split.getSuccessorCount();
                 int index = 0;
-                char succ0 = INVALID_BLOCK_ID;
-                char succ1 = INVALID_BLOCK_ID;
-                char[] extraSucc = splitSuccessorcount > 2 ? new char[split.getSuccessorCount() - 2] : null;
+                int succ0 = INVALID_BLOCK_ID;
+                int succ1 = INVALID_BLOCK_ID;
+                int[] extraSucc = splitSuccessorcount > 2 ? new int[split.getSuccessorCount() - 2] : null;
                 for (Node sux : blockEndNode.successors()) {
                     ModifiableBlock sucBlock = (ModifiableBlock) cfg.getNodeToBlock().get(sux);
                     if (index == 0) {
@@ -533,8 +533,8 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             } else if (blockBeginNode instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) blockBeginNode;
                 int forwardEndCount = mergeNode.forwardEndCount();
-                char[] extraPred = new char[forwardEndCount - 1];
-                char pred0 = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(0)).getId();
+                int[] extraPred = new int[forwardEndCount - 1];
+                int pred0 = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(0)).getId();
                 for (int i = 1; i < forwardEndCount; ++i) {
                     extraPred[i - 1] = cfg.getNodeToBlock().get(mergeNode.forwardEndAt(i)).getId();
                 }
@@ -560,24 +560,24 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
         /**
          * Index into {@link #getBlocks} of this block's first predecessor.
          */
-        private char firstPredecessor = INVALID_BLOCK_ID;
+        private int firstPredecessor = INVALID_BLOCK_ID;
         /**
          * Indices into {@link #getBlocks} of this block's extra predecessors.
          */
-        private char[] extraPredecessors;
+        private int[] extraPredecessors;
         /**
          * Index into {@link #getBlocks} of this block's first successor.
          */
-        private char firstSuccessor = INVALID_BLOCK_ID;
+        private int firstSuccessor = INVALID_BLOCK_ID;
         /**
          * Index into {@link #getBlocks} of this block's second successor.
          */
-        private char secondSuccessor = INVALID_BLOCK_ID;
+        private int secondSuccessor = INVALID_BLOCK_ID;
 
         /**
          * Indices into {@link #getBlocks} of this block's extra successors.
          */
-        private char[] extraSuccessors;
+        private int[] extraSuccessors;
         private double firstSuccessorProbability;
         private double secondSuccessorProbability;
         private double[] extraSuccessorsProbabilities;
@@ -625,7 +625,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             return getCount(firstSuccessor, secondSuccessor, extraSuccessors);
         }
 
-        private static int getCount(char first, char second, char[] extra) {
+        private static int getCount(int first, int second, int[] extra) {
             if (first == INVALID_BLOCK_ID) {
                 return 0;
             }
@@ -635,15 +635,15 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             return 2 + (extra == null ? 0 : extra.length);
         }
 
-        private static int getCount(char first, char[] extra) {
+        private static int getCount(int first, int[] extra) {
             return first == INVALID_BLOCK_ID ? 0 : 1 + (extra == null ? 0 : extra.length);
         }
 
-        private static char getAtIndex(char first, char[] extra, int index) {
+        private static int getAtIndex(int first, int[] extra, int index) {
             return index == 0 ? first : extra[index - 1];
         }
 
-        private static char getAtIndex(char first, char second, char[] extra, int index) {
+        private static int getAtIndex(int first, int second, int[] extra, int index) {
             if (index == 0) {
                 return first;
             }
@@ -665,23 +665,23 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             return getBlocks()[getAtIndex(firstSuccessor, secondSuccessor, extraSuccessors, succIndex)];
         }
 
-        public void setPredecessor(char firstPredecessor) {
+        public void setPredecessor(int firstPredecessor) {
             this.firstPredecessor = firstPredecessor;
         }
 
         @SuppressWarnings("unchecked")
-        public void setPredecessors(char firstPredecessor, char[] extraPredecessors) {
+        public void setPredecessors(int firstPredecessor, int[] extraPredecessors) {
             this.firstPredecessor = firstPredecessor;
             this.extraPredecessors = extraPredecessors;
         }
 
-        public void setSuccessor(char firstSuccessor) {
+        public void setSuccessor(int firstSuccessor) {
             this.firstSuccessor = firstSuccessor;
             firstSuccessorProbability = 1.0D;
         }
 
         @SuppressWarnings("unchecked")
-        public void setSuccessors(char firstSuccessor, char secondSuccessor, double firstSuccP, double secondSuccP) {
+        public void setSuccessors(int firstSuccessor, int secondSuccessor, double firstSuccP, double secondSuccP) {
             this.firstSuccessor = firstSuccessor;
             this.secondSuccessor = secondSuccessor;
             this.firstSuccessorProbability = firstSuccP;
@@ -689,7 +689,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
         }
 
         @SuppressWarnings("unchecked")
-        public void setSuccessors(char firstSuccessor, char secondSuccessor, char[] extraSuccessors, double firstSuccP, double secondSuccP, double[] restSuccP) {
+        public void setSuccessors(int firstSuccessor, int secondSuccessor, int[] extraSuccessors, double firstSuccP, double secondSuccP, double[] restSuccP) {
             this.firstSuccessor = firstSuccessor;
             this.secondSuccessor = secondSuccessor;
             this.extraSuccessors = extraSuccessors;
@@ -717,7 +717,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             int predecessorCount = getPredecessorCount();
             for (int i = 0; i < getPredecessorCount(); i++) {
                 ModifiableBlock pred = (ModifiableBlock) getPredecessorAt(i);
-                char[] newPredSuccs = new char[pred.getSuccessorCount()];
+                int[] newPredSuccs = new int[pred.getSuccessorCount()];
                 double[] newPredSuccP = new double[pred.getSuccessorCount()];
                 for (int j = 0; j < pred.getSuccessorCount(); j++) {
                     HIRBlock predSuccAt = pred.getSuccessorAt(j);
@@ -763,9 +763,9 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
             }
 
             HIRBlock firstPred = newPreds.get(0);
-            char[] extraPred1 = null;
+            int[] extraPred1 = null;
             if (newPreds.size() - 1 > 0) {
-                extraPred1 = new char[newPreds.size() - 1];
+                extraPred1 = new int[newPreds.size() - 1];
                 for (int i = 1; i < newPreds.size(); i++) {
                     extraPred1[i - 1] = newPreds.get(i).getId();
                 }
@@ -857,7 +857,7 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
                             return cfg1.blockFor(successor);
                         }
                     }
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(split); // ExcludeFromJacocoGeneratedReport
                 }
             } else if (endNode instanceof LoopEndNode) {
                 return cfg1.blockFor(((LoopEndNode) endNode).loopBegin());

@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -48,8 +47,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     private boolean disableEncodedGraphCachePurges;
 
-    public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot, KnownTruffleTypes knownTruffleTypes) {
-        super(config, configForRoot, knownTruffleTypes);
+    public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
+        super(config, configForRoot);
         this.graphCacheRef = new AtomicReference<>();
         this.disableEncodedGraphCachePurges = false;
     }
@@ -71,7 +70,7 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     protected void registerGraphBuilderInvocationPlugins(InvocationPlugins invocationPlugins, boolean canDelayIntrinsification) {
         super.registerGraphBuilderInvocationPlugins(invocationPlugins, canDelayIntrinsification);
         HotSpotTruffleGraphBuilderPlugins.registerCompilationFinalReferencePlugins(invocationPlugins, canDelayIntrinsification,
-                        (HotSpotKnownTruffleTypes) getKnownTruffleTypes());
+                        (HotSpotKnownTruffleTypes) getTypes());
     }
 
     @Override

@@ -138,10 +138,11 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed.LLVMPolygl
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed.LLVMPolyglotFromTyped;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed.LLVMTypeIDNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsicRootNodeFactory.LLVMIntrinsicExpressionNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsic.LLVMPosixMemalign;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMAlignedAllocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMCallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMMallocNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMPosixMemalignNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatDivNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatMulNodeGen;
@@ -584,7 +585,8 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("malloc", (args, nodeFactory) -> LLVMMallocNodeGen.create(args.get(1)));
         add("calloc", (args, nodeFactory) -> LLVMCallocNodeGen.create(nodeFactory.createMemSet(), args.get(1), args.get(2)));
         add("realloc", (args, nodeFactory) -> LLVMReallocNodeGen.create(args.get(1), args.get(2)));
-        add("posix_memalign", (args, nodeFactory) -> LLVMPosixMemalignNodeGen.create(args.get(1), args.get(2), args.get(3)));
+        add("posix_memalign", (args, nodeFactory) -> LLVMPosixMemalign.create(args.get(1), args.get(2), args.get(3)));
+        add("aligned_alloc", (args, nodeFactory) -> LLVMAlignedAllocNodeGen.create(args.get(1), args.get(2)));
         add("free", (args, nodeFactory) -> LLVMFreeNodeGen.create(args.get(1)));
         add("memset", "__memset_chk", (args, nodeFactory) -> LLVMLibcMemsetNodeGen.create(nodeFactory.createMemSet(), args.get(1), args.get(2), args.get(3)));
 

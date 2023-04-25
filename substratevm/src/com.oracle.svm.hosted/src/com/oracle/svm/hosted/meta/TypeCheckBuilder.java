@@ -174,7 +174,8 @@ public class TypeCheckBuilder {
 
     /**
      * Calculating a sorted list based on the height of each node. This allows one to compute many
-     * graph traits in one iteration of the nodes.
+     * graph traits in one iteration of the nodes. When height are same, elements of list are sorted
+     * by name.
      */
     private static List<HostedType> generateHeightOrder(List<HostedType> roots, Map<HostedType, List<HostedType>> subtypeMap) {
 
@@ -188,8 +189,9 @@ public class TypeCheckBuilder {
             generateHeightOrderHelper(0, root, subtypeMap, heightMap, allTypes);
         }
 
-        /* Now create a sorted array from this information. */
-        return allTypes.stream().sorted(Comparator.comparingInt(heightMap::get)).collect(Collectors.toList());
+        /* Create a sorted array from this information. */
+        Comparator<HostedType> comparator = Comparator.<HostedType> comparingInt(heightMap::get).thenComparing(HostedUniverse.TYPE_COMPARATOR);
+        return allTypes.stream().sorted(comparator).collect(Collectors.toList());
     }
 
     /**

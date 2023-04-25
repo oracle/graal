@@ -150,6 +150,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     protected AnalysisMethod[] implementations;
 
+    @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
         id = universe.nextMethodId.getAndIncrement();
@@ -197,6 +198,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
     }
 
+    @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         wrapped = original.wrapped;
         id = original.id;
@@ -551,7 +553,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public WrappedSignature getSignature() {
-        return getUniverse().lookup(wrapped.getSignature(), getDeclaringClass().getWrappedWithResolve());
+        return getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
     }
 
     @Override
@@ -667,7 +669,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public ConstantPool getConstantPool() {
-        return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass().getWrappedWithResolve());
+        return getUniverse().lookup(wrapped.getConstantPool(), wrapped.getDeclaringClass());
     }
 
     @Override

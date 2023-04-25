@@ -24,10 +24,8 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
 public final class VM {
 
@@ -36,26 +34,38 @@ public final class VM {
     public final String vendor;
     public final String vendorUrl;
     public final String vendorVersion;
-    public final String supportURL;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VM(String vmInfo) {
         info = vmInfo;
-        supportURL = System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
-        version = stripJVMCISuffix(System.getProperty("java.runtime.version"));
-        vendor = System.getProperty("org.graalvm.vendor", "GraalVM Community");
-        vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
-        vendorVersion = System.getProperty("org.graalvm.vendorversion", "GraalVM CE");
+        version = getVersion();
+        vendor = getVendor();
+        vendorUrl = getVendorUrl();
+        vendorVersion = getVendorVersion();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static VM getErrorReportingInstance() {
-        if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(VM.class)) {
-            return ImageSingletons.lookup(VM.class);
-        } else {
-            // create a fall back instance
-            return new VM(System.getProperty("java.vm.info", ""));
-        }
+    public static String getSupportUrl() {
+        return System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVendor() {
+        return System.getProperty("org.graalvm.vendor", "GraalVM Community");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVendorUrl() {
+        return System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+    }
+
+    public static String getVendorVersion() {
+        return System.getProperty("org.graalvm.vendorversion", System.getProperty("java.vendor.version", ""));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVersion() {
+        return stripJVMCISuffix(System.getProperty("java.runtime.version"));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

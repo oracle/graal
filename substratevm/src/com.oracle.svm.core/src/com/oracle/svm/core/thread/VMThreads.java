@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -349,9 +349,12 @@ public abstract class VMThreads {
 
         /*
          * Here, all code is uninterruptible because this thread either holds the THREAD_MUTEX (see
-         * the JavaDoc on THREAD_MUTEX) or because the IsolateThread was already freed.
+         * the JavaDoc on THREAD_MUTEX) or because the IsolateThread was already freed. The
+         * THREAD_MUTEX must be locked with an unspecified owner because the IsolateThread is freed
+         * before the mutex is unlocked, so an attaching thread could reuse the memory for its
+         * IsolateThread.
          */
-        lockThreadMutexInNativeCode();
+        lockThreadMutexInNativeCode(true);
         OSThreadHandle threadToCleanup;
         try {
             detachThreadInSafeContext(thread);
@@ -371,7 +374,7 @@ public abstract class VMThreads {
 
             releaseThread(thread);
         } finally {
-            THREAD_MUTEX.unlock();
+            THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
         }
 
         cleanupExitedOsThread(threadToCleanup);
@@ -382,23 +385,32 @@ public abstract class VMThreads {
         return StartedByCurrentIsolate.getAddress(thread).readByte(0) != 0;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void lockThreadMutexInNativeCode() {
+        lockThreadMutexInNativeCode(false);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.")
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
-    static void lockThreadMutexInNativeCode() {
+    private static void lockThreadMutexInNativeCode(boolean unspecifiedOwner) {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
-        lockThreadMutexInNativeCode0();
+        lockThreadMutexInNativeCode0(unspecifiedOwner);
         CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
     }
 
     @Uninterruptible(reason = "Must not stop while in native.")
     @NeverInline("Provide a return address for the Java frame anchor.")
-    private static void lockThreadMutexInNativeCode0() {
-        THREAD_MUTEX.lockNoTransition();
+    private static void lockThreadMutexInNativeCode0(boolean unspecifiedOwner) {
+        if (unspecifiedOwner) {
+            THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
+        } else {
+            THREAD_MUTEX.lockNoTransition();
+        }
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void releaseThread(IsolateThread thread) {
-        THREAD_MUTEX.guaranteeIsOwner("This mutex must be locked to prevent that a GC is triggered while detaching a thread from the heap");
+        THREAD_MUTEX.guaranteeIsOwner("This mutex must be locked to prevent that a GC is triggered while detaching a thread from the heap", true);
         Heap.getHeap().detachThread(thread);
         singleton().freeIsolateThread(thread);
         // After that point, the freed thread must not access Object data in the Java heap.
@@ -537,12 +549,12 @@ public abstract class VMThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void nativeSleep(@SuppressWarnings("unused") int milliseconds) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void yield() {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     // Should not be implemented and will be removed with GR-34388.
@@ -601,8 +613,8 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean ownsThreadMutex() {
-        return THREAD_MUTEX.isOwner();
+    public static void guaranteeOwnsThreadMutex(String message, boolean allowUnspecifiedOwner) {
+        THREAD_MUTEX.guaranteeIsOwner(message, allowUnspecifiedOwner);
     }
 
     public static boolean printLocationInfo(Log log, UnsignedWord value, boolean allowUnsafeOperations) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,11 @@
 #include <sys/types.h>
 
 struct stat64;
+
+int stat64(const char *path, struct stat64 *buf);
+int fstat64(int fd, struct stat64 *buf);
+int lstat64(const char *path, struct stat64 *buf);
+int fstatat64(int fd, const char *path, struct stat64 *buf, int flag);
 
 int __sulong_stat(const char *path, struct stat *buf) {
     return stat(path, buf);

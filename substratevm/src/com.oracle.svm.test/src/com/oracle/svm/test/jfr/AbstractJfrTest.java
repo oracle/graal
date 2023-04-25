@@ -43,10 +43,10 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.util.ModuleSupport;
@@ -57,83 +57,54 @@ import jdk.jfr.consumer.RecordingFile;
 
 /** Base class for JFR unit tests. */
 public abstract class AbstractJfrTest {
-    protected Path jfrFile;
+    private final ArrayList<Path> jfrFiles = new ArrayList<>();
 
     @BeforeClass
     public static void checkForJFR() {
         assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || HasJfrSupport.get());
     }
 
-    @Before
-    public void beforeTest() throws Throwable {
-        JfrFileParser.resetConstantPoolParsers();
-
-        long id = new Random().nextLong(0, Long.MAX_VALUE);
-        jfrFile = File.createTempFile(getClass().getName() + "-" + id, ".jfr").toPath();
-        if (isDebuggingEnabled()) {
-            System.out.println("Recording: " + jfrFile);
-        }
-
-        Configuration defaultConfig = Configuration.getConfiguration("default");
-        startRecording(defaultConfig);
-    }
-
     @After
-    public void afterTest() throws Throwable {
-        try {
-            stopRecording();
-            checkRecording(jfrFile);
-            validateEvents(getEvents());
-        } finally {
-            if (!isDebuggingEnabled()) {
-                Files.deleteIfExists(jfrFile);
+    public void deleteTemporaryFiles() throws Throwable {
+        if (!isDebuggingEnabled()) {
+            for (Path f : jfrFiles) {
+                Files.deleteIfExists(f);
             }
         }
     }
 
-    protected abstract void startRecording(Configuration config) throws Throwable;
+    protected Path createTempJfrFile() throws IOException {
+        long id = new Random().nextLong(0, Long.MAX_VALUE);
+        Path result = File.createTempFile(getClass().getName() + "-" + id, ".jfr").toPath();
+        jfrFiles.add(result);
+        if (isDebuggingEnabled()) {
+            System.out.println("JFR file: " + result);
+        }
+        return result;
+    }
 
-    protected abstract void stopRecording() throws Throwable;
+    protected static Configuration getDefaultConfiguration() throws Throwable {
+        return Configuration.getConfiguration("default");
+    }
 
-    protected abstract String[] getTestedEvents();
-
-    protected abstract void validateEvents(List<RecordedEvent> events) throws Throwable;
-
-    protected void checkRecording(Path path) throws AssertionError {
+    protected static void checkRecording(EventValidator validator, Path path, JfrRecordingState state) throws Throwable {
         try {
-            /* Check if file header and constant pools are adequate. */
-            JfrFileParser.parse(path);
-            /* Check if all event are there. */
-            checkEvents(path);
+            JfrFileParser parser = new JfrFileParser(path);
+            parser.verify();
+
+            List<RecordedEvent> events = getEvents(path, state.testedEvents);
+            checkEvents(events, state.testedEvents);
+            validator.validate(events);
         } catch (Exception e) {
             Assert.fail("Failed to parse recording: " + e.getMessage());
         }
     }
 
-    protected void checkEvents(Path path) {
-        HashSet<String> seenEvents = new HashSet<>();
-        try (RecordingFile recordingFile = new RecordingFile(path)) {
-            while (recordingFile.hasMoreEvents()) {
-                RecordedEvent event = recordingFile.readEvent();
-                String eventName = event.getEventType().getName();
-                seenEvents.add(eventName);
-            }
-        } catch (Exception e) {
-            Assert.fail("Failed to read events: " + e.getMessage());
-        }
-
-        for (String name : getTestedEvents()) {
-            if (!seenEvents.contains(name)) {
-                Assert.fail("Event: " + name + " not found in recording!");
-            }
-        }
-    }
-
-    protected List<RecordedEvent> getEvents() throws IOException {
+    private static List<RecordedEvent> getEvents(Path path, String[] testedEvents) throws IOException {
         /* Only return events that are in the list of tested events. */
         ArrayList<RecordedEvent> result = new ArrayList<>();
-        for (RecordedEvent event : RecordingFile.readAllEvents(jfrFile)) {
-            if (isTestedEvent(event)) {
+        for (RecordedEvent event : RecordingFile.readAllEvents(path)) {
+            if (isTestedEvent(event, testedEvents)) {
                 result.add(event);
             }
         }
@@ -141,13 +112,33 @@ public abstract class AbstractJfrTest {
         return result;
     }
 
-    private boolean isTestedEvent(RecordedEvent event) {
-        for (String tested : getTestedEvents()) {
+    private static boolean isTestedEvent(RecordedEvent event, String[] testedEvents) {
+        for (String tested : testedEvents) {
             if (tested.equals(event.getEventType().getName())) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static void checkEvents(List<RecordedEvent> events, String[] testedEventTypes) {
+        HashSet<String> seenEventTypes = new HashSet<>();
+        for (RecordedEvent event : events) {
+            String eventName = event.getEventType().getName();
+            seenEventTypes.add(eventName);
+        }
+
+        for (String testedEvent : testedEventTypes) {
+            if (!seenEventTypes.contains(testedEvent)) {
+                Assert.fail("Event: " + testedEvent + " not found in recording!");
+            }
+        }
+    }
+
+    protected static void flushAllThreads() {
+        if (HasJfrSupport.get()) {
+            SubstrateJVM.get().flush();
+        }
     }
 
     protected static void waitUntilTrue(BooleanSupplier supplier) throws InterruptedException {
@@ -172,6 +163,29 @@ public abstract class AbstractJfrTest {
         public int compare(RecordedEvent e1, RecordedEvent e2) {
             return e1.getEndTime().compareTo(e2.getEndTime());
         }
+    }
+
+    static class MonitorWaitHelper {
+        public synchronized void doEvent() {
+            try {
+                this.wait(0, 1);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    static class JfrRecordingState {
+        String[] testedEvents;
+
+        JfrRecordingState(String[] testedEvents) {
+            this.testedEvents = testedEvents;
+        }
+    }
+
+    @FunctionalInterface
+    protected interface EventValidator {
+        void validate(List<RecordedEvent> events) throws Throwable;
     }
 }
 

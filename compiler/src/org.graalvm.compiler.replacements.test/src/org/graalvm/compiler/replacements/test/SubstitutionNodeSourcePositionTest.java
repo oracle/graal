@@ -97,6 +97,13 @@ public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
         boolean found = false;
         Assert.assertTrue("must have mappings", !mappings.isEmpty());
         for (SourceMapping mapping : mappings) {
+            // test SourceMapping class
+            assertTrue(mapping.getStartOffset() <= mapping.getEndOffset());
+            assertTrue(mapping.equals(mapping));
+            assertFalse(mapping.equals(resolvedJavaType));
+            assertTrue(mapping.toString().length() > 0); // checks for NPE, not content
+
+            // check mappings
             NodeSourcePosition callee = null;
             for (NodeSourcePosition pos = mapping.getSourcePosition(); pos != null; pos = pos.getCaller()) {
                 ResolvedJavaMethod method = pos.getMethod();

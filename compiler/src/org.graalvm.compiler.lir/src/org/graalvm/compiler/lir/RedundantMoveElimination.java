@@ -172,7 +172,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
         private void initBlockData(LIR lir) {
             DebugContext debug = lir.getDebug();
-            char[] blockIds = lir.linearScanOrder();
+            int[] blockIds = lir.linearScanOrder();
             numRegs = 0;
 
             int maxStackLocations = COMPLEXITY_LIMIT / blockIds.length;
@@ -229,7 +229,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
 
             DebugContext debug = lir.getDebug();
             try (Indent indent = debug.logAndIndent("solve data flow")) {
-                char[] blockIds = lir.linearScanOrder();
+                int[] blockIds = lir.linearScanOrder();
                 int numIter = 0;
                 // Iterate until there are no more changes.
                 int currentValueNum = 1;
@@ -325,7 +325,7 @@ public final class RedundantMoveElimination extends PostAllocationOptimizationPh
         private void eliminateMoves(LIR lir) {
             DebugContext debug = lir.getDebug();
             try (Indent indent = debug.logAndIndent("eliminate moves")) {
-                char[] blockIds = lir.linearScanOrder();
+                int[] blockIds = lir.linearScanOrder();
                 for (int blockId : blockIds) {
                     BasicBlock<?> block = lir.getBlockById(blockId);
                     try (Indent indent2 = debug.logAndIndent("eliminate moves in block %d", block.getId())) {

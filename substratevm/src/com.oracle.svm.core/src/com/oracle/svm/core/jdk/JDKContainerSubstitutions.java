@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.Platform.LINUX;
@@ -38,7 +39,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 
-@TargetClass(className = "jdk.internal.platform.cgroupv1.CgroupV1Subsystem", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.internal.platform.cgroupv1.CgroupV1Subsystem")
 @Platforms(LINUX.class)
 final class Target_jdk_internal_platform_cgroupv1_CgroupV1Subsystem {
     @Alias //
@@ -46,7 +47,7 @@ final class Target_jdk_internal_platform_cgroupv1_CgroupV1Subsystem {
     private static volatile Target_jdk_internal_platform_cgroupv1_CgroupV1Subsystem INSTANCE;
 }
 
-@TargetClass(className = "jdk.internal.platform.cgroupv2.CgroupV2Subsystem", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.internal.platform.cgroupv2.CgroupV2Subsystem")
 @Platforms(LINUX.class)
 final class Target_jdk_internal_platform_cgroupv2_CgroupV2Subsystem {
     @Alias //
@@ -54,7 +55,7 @@ final class Target_jdk_internal_platform_cgroupv2_CgroupV2Subsystem {
     private static volatile Target_jdk_internal_platform_cgroupv2_CgroupV2Subsystem INSTANCE;
 }
 
-@TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents")
 @Platforms(LINUX.class)
 final class Target_jdk_jfr_internal_instrument_JDKEvents {
     @Alias //
@@ -66,7 +67,7 @@ final class Target_jdk_jfr_internal_instrument_JDKEvents {
     private static boolean initializationTriggered;
 }
 
-@TargetClass(className = "jdk.jfr.internal.RequestEngine", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.jfr.internal.RequestEngine", onlyWith = JDK20OrEarlier.class)
 @Platforms(LINUX.class)
 final class Target_jdk_jfr_internal_RequestEngine {
     @Alias //
@@ -79,8 +80,17 @@ final class Target_jdk_jfr_internal_RequestEngine {
     private static List<?> entries;
 }
 
+@TargetClass(className = "jdk.jfr.internal.periodic.JVMEventTask", onlyWith = JDK21OrLater.class)
+@Platforms(LINUX.class)
+final class Target_jdk_jfr_internal_periodic_JVMEventTask {
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReentrantLock.class) //
+    private static Lock lock;
+
+}
+
 // Only present in JDKs without JDK-8268398
-@TargetClass(className = "jdk.jfr.internal.Utils", onlyWith = {JDK17OrEarlier.class, JDK17OrLater.class})
+@TargetClass(className = "jdk.jfr.internal.Utils", onlyWith = JDK17OrEarlier.class)
 @Platforms(LINUX.class)
 final class Target_jdk_jfr_internal_Utils {
     @Alias //
@@ -88,7 +98,7 @@ final class Target_jdk_jfr_internal_Utils {
     private static Target_jdk_internal_platform_Metrics[] metrics;
 }
 
-@TargetClass(className = "jdk.internal.platform.Metrics", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "jdk.internal.platform.Metrics")
 @Platforms(LINUX.class)
 final class Target_jdk_internal_platform_Metrics {
 }

@@ -145,6 +145,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     private EconomicMap<Class<? extends Node>, List<MatchStatement>> matchRules;
     private EconomicMap<Node, Integer> sharedMatchCounts;
 
+    @SuppressWarnings("this-escape")
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, NodeMatchRules nodeMatchRules) {
         this.gen = (LIRGenerator) gen;
         this.nodeMatchRules = nodeMatchRules;
@@ -660,7 +661,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (callTarget instanceof IndirectCallTargetNode) {
             emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
         } else {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(callTarget); // ExcludeFromJacocoGeneratedReport
         }
     }
 

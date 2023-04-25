@@ -86,6 +86,7 @@ public class JTTTest extends GraalCompilerTest {
      */
     Object[] argsToBind;
 
+    @SuppressWarnings("this-escape")
     public JTTTest() {
         Assert.assertNotNull(getCodeCache());
     }

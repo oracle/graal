@@ -75,6 +75,9 @@ final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvoke
 
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
+        /* The receiver state must contain only types that receiverType is assignable from. */
+        assert allAssignable(bb, receiverType, getReceiver().getState());
+
         /* The receiver state has changed. Process the invoke. */
         initializeCallees(bb);
 

@@ -195,6 +195,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
 
         private final G1WriteBarrierLowerer lowerer;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Group.Factory factory, HotSpotProviders providers, GraalHotSpotVMConfig config) {
             super(options, providers);
             this.lowerer = new HotspotG1WriteBarrierLowerer(config, factory);

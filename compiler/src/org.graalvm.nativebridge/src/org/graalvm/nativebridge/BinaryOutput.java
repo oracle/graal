@@ -247,12 +247,26 @@ public abstract class BinaryOutput {
     }
 
     /**
+     * Returns <code>true</code> if a value is a typed value writable using
+     * {@link #writeTypedValue(Object)}, else <code>false</code>.
+     */
+    public static boolean isTypedValue(Object value) {
+        if (value == null) {
+            return true;
+        }
+        return value instanceof Object[] || value == null || value instanceof Boolean || value instanceof Byte ||
+                        value instanceof Short || value instanceof Character || value instanceof Integer ||
+                        value instanceof Long || value instanceof Float || value instanceof Double || value instanceof String;
+    }
+
+    /**
      * Writes the value that is represented by the given object, together with information on the
      * value's data type. Supported types are boxed Java primitive types, {@link String},
      * {@code null}, and arrays of these types.
      *
      * @throws IllegalArgumentException when the {@code value} type is not supported or the
      *             {@code value} is a string which cannot be encoded using modified UTF-8 encoding.
+     * @see #isTypedValue(Object) to find out whether a value can be serialized.
      */
     public final void writeTypedValue(Object value) throws IllegalArgumentException {
         if (value instanceof Object[]) {

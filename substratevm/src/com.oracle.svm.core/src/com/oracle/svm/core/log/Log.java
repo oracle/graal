@@ -203,12 +203,17 @@ public abstract class Log implements AutoCloseable {
     public abstract Log signed(long value);
 
     /**
+     * Prints the value, treated as a signed value, filling spaces before or after.
+     */
+    public abstract Log signed(long value, int fill, int align);
+
+    /**
      * Prints the value, treated as an unsigned value, in decimal format.
      */
     public abstract Log unsigned(WordBase value);
 
     /**
-     * Prints the value, treated as an unsigned value, filing spaces before or after.
+     * Prints the value, treated as an unsigned value, filling spaces before or after.
      */
     public abstract Log unsigned(WordBase value, int fill, int align);
 
@@ -223,7 +228,7 @@ public abstract class Log implements AutoCloseable {
     public abstract Log unsigned(long value);
 
     /**
-     * Prints the value, treated as an unsigned value, filing spaces before or after.
+     * Prints the value, treated as an unsigned value, filling spaces before or after.
      */
     public abstract Log unsigned(long value, int fill, int align);
 
@@ -282,6 +287,16 @@ public abstract class Log implements AutoCloseable {
      * @param numWords number of words to dump
      */
     public abstract Log hexdump(PointerBase from, int wordSize, int numWords);
+
+    /**
+     * Prints a hexdump.
+     *
+     * @param from pointer to memory where dumping should start from
+     * @param wordSize size in bytes that a single word should have
+     * @param numWords number of words to dump
+     * @param bytesPerLine number of bytes that should be printed on one line
+     */
+    public abstract Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine);
 
     /**
      * Change current amount of indentation. Indentation determines the amount of spaces emitted
@@ -444,6 +459,11 @@ public abstract class Log implements AutoCloseable {
         }
 
         @Override
+        public Log signed(long value, int fill, int align) {
+            return this;
+        }
+
+        @Override
         public Log unsigned(WordBase value) {
             return this;
         }
@@ -540,6 +560,11 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log hexdump(PointerBase from, int wordSize, int numWords) {
+            return this;
+        }
+
+        @Override
+        public Log hexdump(PointerBase from, int wordSize, int numWords, int bytesPerLine) {
             return this;
         }
 

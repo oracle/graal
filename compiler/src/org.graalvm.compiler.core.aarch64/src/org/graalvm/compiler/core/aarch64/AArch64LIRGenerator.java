@@ -383,7 +383,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case NE:
                 return ConditionFlag.NE;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(cond); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -413,7 +413,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             case BT:
                 return ConditionFlag.LO;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(cond); // ExcludeFromJacocoGeneratedReport
         }
     }
 

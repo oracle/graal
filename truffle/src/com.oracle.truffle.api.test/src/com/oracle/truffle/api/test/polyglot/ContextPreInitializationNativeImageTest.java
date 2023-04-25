@@ -49,6 +49,7 @@ import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -182,7 +183,7 @@ public class ContextPreInitializationNativeImageTest {
 
         static void alignedOffset(StaticProperty longProperty) throws Exception {
             Field offset = StaticProperty.class.getDeclaredField("offset");
-            offset.setAccessible(true);
+            ReflectionUtils.setAccessible(offset, true);
             assertEquals(0, ((int) offset.get(longProperty)) % 8);
         }
     }

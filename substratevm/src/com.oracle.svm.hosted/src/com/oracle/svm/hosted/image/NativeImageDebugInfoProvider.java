@@ -71,7 +71,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
@@ -212,6 +211,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     @Override
+    public int compiledCodeMax() {
+        return codeCache.getCodeCacheSize();
+    }
+
+    @Override
     public int oopTagsMask() {
         return tagsMask;
     }
@@ -297,8 +301,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         ResolvedJavaType javaType = hostedType.getWrapped().getWrapped();
         if (javaType instanceof SubstitutionType) {
             return ((SubstitutionType) javaType).getOriginal();
-        } else if (javaType instanceof CustomSubstitutionType<?, ?>) {
-            return ((CustomSubstitutionType<?, ?>) javaType).getOriginal();
         } else if (javaType instanceof LambdaSubstitutionType) {
             return ((LambdaSubstitutionType) javaType).getOriginal();
         } else if (javaType instanceof InjectedFieldsType) {

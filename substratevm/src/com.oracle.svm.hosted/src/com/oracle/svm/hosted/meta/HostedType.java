@@ -32,6 +32,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
@@ -374,13 +375,25 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
     }
 
     @Override
-    public HostedMethod[] getDeclaredConstructors() {
-        return universe.lookup(wrapped.getDeclaredConstructors());
+    public ResolvedJavaMethod[] getDeclaredConstructors() {
+        return getDeclaredConstructors(true);
     }
 
     @Override
-    public HostedMethod[] getDeclaredMethods() {
-        return universe.lookup(wrapped.getDeclaredMethods());
+    public HostedMethod[] getDeclaredConstructors(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredConstructors(forceLink));
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods() {
+        return getDeclaredMethods(true);
+    }
+
+    @Override
+    public HostedMethod[] getDeclaredMethods(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredMethods without forcing to link, because linking can throw LinkageError");
+        return universe.lookup(wrapped.getDeclaredMethods(forceLink));
     }
 
     @Override

@@ -50,6 +50,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 public class CountedLoopOverflowTest extends GraalCompilerTest {
     private final SpeculationLog speculationLog;
 
+    @SuppressWarnings("this-escape")
     public CountedLoopOverflowTest() {
         speculationLog = getCodeCache().createSpeculationLog();
     }

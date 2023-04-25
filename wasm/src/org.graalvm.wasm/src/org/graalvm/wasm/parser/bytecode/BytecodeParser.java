@@ -596,7 +596,6 @@ public class BytecodeParser {
                     break;
                 case Bytecode.LABEL_U8:
                 case Bytecode.BR_U8:
-                case Bytecode.BR_IF_U8:
                 case Bytecode.LOCAL_GET_U8:
                 case Bytecode.LOCAL_GET_REF_U8:
                 case Bytecode.LOCAL_SET_U8:
@@ -636,9 +635,11 @@ public class BytecodeParser {
                 case Bytecode.LABEL_U16:
                     offset += 2;
                     break;
-                case Bytecode.IF:
+                case Bytecode.BR_IF_U8: {
+                    offset += 3;
+                    break;
+                }
                 case Bytecode.BR_I32:
-                case Bytecode.BR_IF_I32:
                 case Bytecode.LOCAL_GET_I32:
                 case Bytecode.LOCAL_GET_REF_I32:
                 case Bytecode.LOCAL_SET_I32:
@@ -678,8 +679,14 @@ public class BytecodeParser {
                     offset += 4;
                     break;
                 }
+                case Bytecode.IF:
+                case Bytecode.BR_IF_I32: {
+                    offset += 6;
+                    break;
+                }
                 case Bytecode.I64_CONST_I64:
                 case Bytecode.F64_CONST:
+                case Bytecode.NOTIFY:
                     offset += 8;
                     break;
                 case Bytecode.LABEL_I32:
@@ -748,17 +755,17 @@ public class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F32_U:
                         case Bytecode.I64_TRUNC_SAT_F64_S:
                         case Bytecode.I64_TRUNC_SAT_F64_U:
-                        case Bytecode.DATA_DROP:
-                        case Bytecode.DATA_DROP_UNSAFE:
                         case Bytecode.MEMORY_COPY:
                         case Bytecode.MEMORY64_COPY:
                         case Bytecode.MEMORY_FILL:
                         case Bytecode.MEMORY64_FILL:
                         case Bytecode.MEMORY64_SIZE:
-                        case Bytecode.MEMORY64_GROW:
-                        case Bytecode.ELEM_DROP: {
+                        case Bytecode.MEMORY64_GROW: {
                             break;
                         }
+                        case Bytecode.DATA_DROP:
+                        case Bytecode.DATA_DROP_UNSAFE:
+                        case Bytecode.ELEM_DROP:
                         case Bytecode.MEMORY_INIT:
                         case Bytecode.MEMORY_INIT_UNSAFE:
                         case Bytecode.MEMORY64_INIT:

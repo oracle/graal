@@ -61,6 +61,7 @@ public class LibGraalObject {
      *
      * @param handle handle to an object in a libgraal isolate
      */
+    @SuppressWarnings("this-escape")
     protected LibGraalObject(long handle) {
         this.handle = handle;
         isolate = LibGraalScope.current().getIsolate();

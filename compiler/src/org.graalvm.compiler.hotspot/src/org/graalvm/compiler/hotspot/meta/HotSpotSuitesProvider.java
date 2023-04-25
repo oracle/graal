@@ -68,6 +68,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
 
     protected final SuitesCreator defaultSuitesCreator;
 
+    @SuppressWarnings("this-escape")
     public HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime) {
         this.defaultSuitesCreator = defaultSuitesCreator;
         this.config = config;

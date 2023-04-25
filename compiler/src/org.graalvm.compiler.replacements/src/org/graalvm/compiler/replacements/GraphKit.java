@@ -213,7 +213,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     public ResolvedJavaMethod findMethod(Class<?> declaringClass, String name, boolean isStatic) {
         ResolvedJavaType type = getMetaAccess().lookupJavaType(declaringClass);
         ResolvedJavaMethod method = null;
-        for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod m : type.getDeclaredMethods(false)) {
             if (Modifier.isStatic(m.getModifiers()) == isStatic && m.getName().equals(name)) {
                 assert method == null : "found more than one method in " + declaringClass + " named " + name;
                 method = m;

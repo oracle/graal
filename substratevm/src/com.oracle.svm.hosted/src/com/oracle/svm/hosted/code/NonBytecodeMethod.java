@@ -95,7 +95,7 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
 
     @Override
     public Parameter[] getParameters() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -173,22 +173,22 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
 
     @Override
     public ProfilingInfo getProfilingInfo(boolean includeNormal, boolean includeOSR) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void reprofile() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public Annotation[][] getParameterAnnotations() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public Type[] getGenericParameterTypes() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -218,17 +218,17 @@ public abstract class NonBytecodeMethod implements GraphProvider, ResolvedJavaMe
 
     @Override
     public Constant getEncoding() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public boolean isInVirtualMethodTable(ResolvedJavaType resolved) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public SpeculationLog getSpeculationLog() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

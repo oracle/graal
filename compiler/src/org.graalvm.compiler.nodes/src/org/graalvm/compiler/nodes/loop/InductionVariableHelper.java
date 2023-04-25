@@ -47,7 +47,7 @@ public class InductionVariableHelper {
         } else if (start.getOp() instanceof SubNode) {
             previousOp = start.graph().unique(new AddNode(start.valueNode(), start.rawStride()));
         } else {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(start.getOp()); // ExcludeFromJacocoGeneratedReport
         }
         InductionVariable previousIv = start.getLoop().getInductionVariables().get(previousOp);
         if (previousIv == null) {
@@ -96,7 +96,7 @@ public class InductionVariableHelper {
         } else if (start.getOp() instanceof SubNode) {
             nextOp = start.graph().unique(new SubNode(start.getOp(), start.rawStride()));
         } else {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(start.getOp()); // ExcludeFromJacocoGeneratedReport
         }
         InductionVariable nextIv = start.getLoop().getInductionVariables().get(nextOp);
         if (nextIv == null) {

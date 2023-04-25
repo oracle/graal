@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.17.0",
+  "mxversion": "6.19.3",
   "name" : "sdk",
   "version" : "23.1.0",
   "release" : False,
@@ -166,37 +166,37 @@ suite = {
       ],
     },
     "LLVM_ORG" : {
-      "version" : "15.0.6-4-gaeae49c2d7-bg8671e93c04",
+      "version" : "16.0.1-4-gad8c248269-bg39f02d0d6a",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "digest" : "sha512:10879717ca1e09766c86f1c11789dc8937b211d2319bec8c3a7f08f71585dca0ddd0e819f020233e498334b5df7908500bec3f8f6c695877b87b9c3a8e071c5d",
+            "digest" : "sha512:fdef7aff621c533d30b89c15a3152dd2f6791c99317bb25295e4c9fc9e9b76a341174b55510c6a7e2df7e51be6aad473560927ee5e48605afa884a412147eb8c",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "digest" : "sha512:6b5453d032c5acc0c70bd34781b8f4251a8a2690ffcd7ab5ac0ad267f3062d4396956411f113e83aba637c4012901ea983d45083ac45d099f0a32046744ba163",
+            "digest" : "sha512:3c15573d19cb84aab1aea9ac5e1052b24002d9d46109b496cdd2f3d605177c1592e7fed5a7ba0ee7de1c4aed91e0fdc50c53d5018d364c61f5792d7e8f00bb2c",
           },
           "riscv64": {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-riscv64.tar.gz"],
-            "digest" : "sha512:3bdc5c073a903cb74b4143108fc34b109759fdb715596394e47a92c108cc191b0f32cd52ea49de54e7825cbf7acb6af39b9a1ce1f3a1e00aec144109f1289f64",
+            "digest" : "sha512:7f9b0645be46810b8b6fe41f74151357cbe4f4a3748a8fec5c290a9c686478c54022c28410eee96e35cc104073054fbe057a1683afde8678e2f5a2bf69ce461f",
           },
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "digest" : "sha512:81881ffa363fc2ac90279f85b65bd80b4d878c70b8dba5c7ef8737b397ae156091f71422ee2630b3e65c4f8133d215ca0214c27fc516ad11917600686e7de6c7",
+            "digest" : "sha512:ae96a72ddeecd4bdc972adae01e6894d47d54024f50b996aa9d8df1a683c4a5faab435cd2d94d5fa4c0764f0b2902dbc30171ad254e0da94888ddc0bd018d4f0",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-aarch64.tar.gz"],
-            "digest" : "sha512:bc9df704f94efbd8cb4646b6450b503ee0b745c1fe4038e3563bb21a527d8fbb56689ba124f4e777527d69e6b5d16d2ac4ab294c86f4599c590c1982cbad10b8",
+            "digest" : "sha512:9c57f30d5eed4162373ea9f342981843485dec5ebcefcf97f22e70e9af8a58167fc3eb3a383dfc9a00e061f58b8998fc063483b4f4e6ce5a74a0002f10a4e174",
           }
         },
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "digest" : "sha512:e673283920f6c1ee7ef635ab166aa6fe54b6d6933166555ba3ce5e34b3f235888fbdeab8d56b71835ace7ff8667508e9379784218ab472e6bd8d25982bbbf6a2",
+            "digest" : "sha512:12e95f2b3ea64a059e8b73c67f5a7da6e6b30a068da65acb73da4e86ab2a376065105c84ecb90a7f7e2c31628642aba07f2b738fe18122524184c7b517e36e04",
           }
         },
         "<others>": {
@@ -208,19 +208,19 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "15.0.6-4-gaeae49c2d7-bg8671e93c04",
+      "version" : "16.0.1-4-gad8c248269-bg39f02d0d6a",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "digest" : "sha512:a553bf68d5b93f4c7a9f43978d40e18eec5f0c5b50da1191700d92cf016822b4305a85f02d4ad050915c7c6313e481758bfe8d8a595776e8cfa7f0c39a45bd17",
+      "digest" : "sha512:1520628266c4ca165fe299bcd7b7db087290f1a645bd41fc07779d771db0ba3308067f6caf9c39d7a76f3051023f481052035d78f598f40862bb91b462819afa",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "15.0.6-4-gaeae49c2d7-bg8671e93c04",
+      "version" : "16.0.1-4-gad8c248269-bg39f02d0d6a",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "digest" : "sha512:0fa2843843ebea5cf8d9dd6de699b2c09bcbf0ecaad3caca64258966b2cb09ea3c03ad06b19683b97a7ce2462d679e83fe69c5f54905371e4011211d458f039f",
+      "digest" : "sha512:1bb2f66cc123bb9f0263cd186a8ab7948939f181001e57a7171466534bc89c0ebb17863e90c487f48083f202745ea3d90275a3fa26d793fd2b9f1b62d7e1eabd",
       "license" : "Apache-2.0-LLVM",
     },
   },
@@ -585,8 +585,6 @@ suite = {
             "lib/libclang*.a",
             "lib/liblld*.a",
             "libexec",
-            # the following is added by COMPILER_RT
-            "lib/clang/*/lib/linux/*clang_rt*",
             # Windows libarary excludes
             "lib/*.lib",
           ]
@@ -625,6 +623,65 @@ suite = {
       "maven": False,
       "license" : "Apache-2.0-LLVM",
       "defaultBuild" : False,
+    },
+    "LLVM_NINJA_TOOLCHAIN": {
+      "native": True,
+      "platformDependent": True,
+      "os": {
+        "linux": {
+          "layout": {
+            "toolchain.ninja": {
+              "source_type": "string",
+              "value": '''
+include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+CC=<path:LLVM_TOOLCHAIN>/bin/clang
+CXX=<path:LLVM_TOOLCHAIN>/bin/clang++
+AR=<path:LLVM_TOOLCHAIN>/bin/llvm-ar
+LDFLAGS=-fuse-ld=lld
+'''
+            },
+          },
+          "dependencies": [
+            "mx:GCC_NINJA_TOOLCHAIN",
+          ],
+        },
+        "darwin": {
+          "layout": {
+            "toolchain.ninja": {
+              "source_type": "string",
+              "value": '''
+include <ninja-toolchain:GCC_NINJA_TOOLCHAIN>
+CC=xcrun <path:LLVM_TOOLCHAIN>/bin/clang
+CXX=xcrun <path:LLVM_TOOLCHAIN>/bin/clang++
+AR=xcrun <path:LLVM_TOOLCHAIN>/bin/llvm-ar
+'''
+            },
+          },
+          "dependencies": [
+            "mx:GCC_NINJA_TOOLCHAIN",
+          ],
+        },
+        "windows": {
+          "layout": {
+            "toolchain.ninja": {
+              "source_type": "string",
+              "value": '''
+include <ninja-toolchain:MSVC_NINJA_TOOLCHAIN>
+CL=<path:LLVM_TOOLCHAIN>\\bin\\clang-cl
+LINK=<path:LLVM_TOOLCHAIN>\\bin\\lld-link
+LIB=<path:LLVM_TOOLCHAIN>\\bin\\llvm-lib
+ML=<path:LLVM_TOOLCHAIN>\\bin\\llvm-ml
+'''
+            },
+          },
+          "dependencies": [
+            "mx:MSVC_NINJA_TOOLCHAIN",
+          ],
+        },
+      },
+      "dependencies": [
+        "LLVM_TOOLCHAIN",
+      ],
     },
   },
 }

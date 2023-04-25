@@ -113,6 +113,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
         this(TYPE, descriptor, arguments);
     }
 
+    @SuppressWarnings("this-escape")
     public ForeignCallNode(ForeignCallDescriptor descriptor, Stamp stamp, List<ValueNode> arguments) {
         super(TYPE, stamp);
         this.arguments = new NodeInputList<>(this, arguments);
@@ -120,6 +121,7 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
         assert descriptor.getArgumentTypes().length == this.arguments.size() : "wrong number of arguments to " + this;
     }
 
+    @SuppressWarnings("this-escape")
     protected ForeignCallNode(NodeClass<? extends ForeignCallNode> c, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(c, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);

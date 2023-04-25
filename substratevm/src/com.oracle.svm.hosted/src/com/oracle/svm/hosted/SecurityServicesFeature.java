@@ -58,7 +58,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -88,7 +87,6 @@ import javax.xml.crypto.dsig.XMLSignatureFactory;
 import javax.xml.crypto.dsig.keyinfo.KeyInfoFactory;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -200,7 +198,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private Field oidMapField;
     private Field classCacheField;
     private Field constructorCacheField;
-    private Field classRefField;
 
     private Class<?> jceSecurityClass;
 
@@ -208,24 +205,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
-        disableExperimentalFipsMode(a);
         ImageSingletons.add(SecurityProvidersFilter.class, this);
-    }
-
-    /**
-     * The SunJSSE provider had a experimental feature that bound to a FIPS crypto provider. This
-     * has been removed in JDK-8217835. We disabled explicitly here by calling SunJSSE.isFIPS(). If
-     * it was already enabled that's an error.
-     */
-    private static void disableExperimentalFipsMode(AfterRegistrationAccess a) {
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            try {
-                Boolean isFIPS = (Boolean) method(a, "sun.security.ssl.SunJSSE", "isFIPS").invoke(null);
-                VMError.guarantee(!isFIPS, "SunJSSE is already initialized in experimental FIPS mode.");
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                VMError.shouldNotReachHere(e);
-            }
-        }
     }
 
     @Override
@@ -235,16 +215,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
         verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
         providerListField = access.findField("sun.security.jca.Providers", "providerList");
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
-        }
+        oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
         oidMapField = access.findField(OIDMap.class, "oidMap");
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            classCacheField = access.findField(Service.class, "classCache");
-            constructorCacheField = access.findField(Service.class, "constructorCache");
-        } else {
-            classRefField = access.findField(Service.class, "classRef");
-        }
+        classCacheField = access.findField(Service.class, "classCache");
+        constructorCacheField = access.findField(Service.class, "constructorCache");
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
@@ -284,9 +258,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "sun.security.krb5.Confounder"), "for substitutions");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
-        }
+        rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
 
         /*
          * When SSLContextImpl$DefaultManagersHolder sets-up the TrustManager in its initializer it
@@ -314,7 +286,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         loader = access.getImageClassLoader();
         jceSecurityClass = loader.findClassOrFail("javax.crypto.JceSecurity");
-        verificationCacheCleaner = constructVerificationCacheCleaner(jceSecurityClass);
+        verificationCacheCleaner = constructVerificationCacheCleaner();
 
         /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
         access.ensureInitialized("java.security.cert.TrustAnchor");
@@ -344,15 +316,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             registerServiceReachabilityHandlers(access);
         }
 
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            // https://bugs.openjdk.java.net/browse/JDK-8235710
-            access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
-                            method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
-                            method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
-            /* Ensure native calls to sun_security_ec* will be resolved as builtIn. */
-            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
-        }
-
         if (isPosix()) {
             access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));
             /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
@@ -361,13 +324,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
 
         if (isWindows()) {
             access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, clazz(access, "sun.security.mscapi.SunMSCAPI"));
-            // statically linking sunmscapi conflicts with sunEC
-            // after the removal of sunEC in jdk 17, we can statically link sunmscapi
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                access.registerReachabilityHandler(SecurityServicesFeature::linkSunMSCAPI, clazz(access, "sun.security.mscapi.SunMSCAPI"));
-                /* Resolve calls to sun_security_mscapi* as builtIn. */
-                PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
-            }
+            /* Resolve calls to sun_security_mscapi* as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
         }
     }
 
@@ -431,20 +389,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         }
     }
 
-    private static void linkSunEC(DuringAnalysisAccess a) {
-        NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
-        /* We statically link sunec thus we classify it as builtIn library */
-        PlatformNativeLibrarySupport.singleton();
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunec");
-
-        nativeLibraries.addStaticJniLibrary("sunec");
-        if (isPosix()) {
-            /* Library sunec depends on stdc++ */
-            nativeLibraries.addDynamicNonJniLibrary("stdc++");
-        }
-    }
-
-    private static void linkSunMSCAPI(DuringAnalysisAccess a) {
+    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* We statically link sunmscapi thus we classify it as builtIn library */
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunmscapi");
@@ -453,9 +398,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         /* Library sunmscapi depends on ncrypt and crypt32 */
         nativeLibraries.addDynamicNonJniLibrary("ncrypt");
         nativeLibraries.addDynamicNonJniLibrary("crypt32");
-    }
 
-    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
         registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
@@ -826,18 +769,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         access.rescanRoot(verificationResultsField);
         access.rescanRoot(providerListField);
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            access.rescanRoot(oidTableField);
-        }
+        access.rescanRoot(oidTableField);
         if (filteredProviderList != null) {
             for (Provider provider : filteredProviderList.providers()) {
                 for (Service service : provider.getServices()) {
-                    if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                        access.rescanField(service, classCacheField);
-                        access.rescanField(service, constructorCacheField);
-                    } else {
-                        access.rescanField(service, classRefField);
-                    }
+                    access.rescanField(service, classCacheField);
+                    access.rescanField(service, constructorCacheField);
                 }
             }
         }
@@ -856,37 +793,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     @SuppressWarnings("unchecked")
-    private Function<Object, Object> constructVerificationCacheCleaner(Class<?> jceSecurity) {
+    private Function<Object, Object> constructVerificationCacheCleaner() {
         /*
-         * For JDK 11, the verification cache is a Provider -> Verification result IdentityHashMap.
-         */
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            return obj -> {
-                Map<Provider, Object> verificationResults;
-                synchronized (jceSecurity) {
-                    /*
-                     * Need to synchronize the iteration of JceSecurity.verificationResults. In the
-                     * original implementation verificationResults is always accessed and modified
-                     * via the static synchronized JceSecurity.getVerificationResult().
-                     *
-                     * Note that even if the value of the JceSecurity.verificationResults may be
-                     * modified concurrently it doesn't affect the correctness of the substitution.
-                     * Its value is never cached (by using RecomputeFieldValue.disableCaching) and
-                     * it will eventually reach a stable state, and it will be snapshotted. The
-                     * synchronization ensures that early reads of the field, that may happen
-                     * concurrently while verification results are still being added to the cache,
-                     * don't result in a ConcurrentModificationException.
-                     */
-                    verificationResults = new IdentityHashMap<>((Map<Provider, Object>) obj);
-                }
-                verificationResults.keySet().removeIf(this::shouldRemoveProvider);
-
-                return verificationResults;
-            };
-        }
-        /*
-         * For JDK 17 and later, the verification cache is an IdentityWrapper -> Verification result
-         * ConcurrentHashMap. The IdentityWrapper contains the actual provider in the 'obj' field.
+         * The verification cache is an IdentityWrapper -> Verification result ConcurrentHashMap.
+         * The IdentityWrapper contains the actual provider in the 'obj' field.
          */
         Class<?> identityWrapper = loader.findClassOrFail("javax.crypto.JceSecurity$IdentityWrapper");
         Field providerField = ReflectionUtil.lookupField(identityWrapper, "obj");

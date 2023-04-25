@@ -379,7 +379,7 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                 canon = CanonicalCondition.BT;
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(canonicalCondition); // ExcludeFromJacocoGeneratedReport
         }
         LogicNode logic = createCompareNode(canon, xx, yy, constantReflection, NodeView.DEFAULT);
         if (negate) {

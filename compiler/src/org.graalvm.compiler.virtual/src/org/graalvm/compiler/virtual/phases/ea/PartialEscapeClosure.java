@@ -185,6 +185,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
+    @SuppressWarnings("this-escape")
     public PartialEscapeClosure(ScheduleResult schedule, CoreProviders providers) {
         super(schedule, schedule.getCFG());
         StructuredGraph graph = schedule.getCFG().graph;

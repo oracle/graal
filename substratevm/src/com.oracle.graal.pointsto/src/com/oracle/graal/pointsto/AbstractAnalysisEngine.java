@@ -100,6 +100,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final Timer analysisTimer;
     protected final Timer verifyHeapTimer;
 
+    @SuppressWarnings("this-escape")
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {

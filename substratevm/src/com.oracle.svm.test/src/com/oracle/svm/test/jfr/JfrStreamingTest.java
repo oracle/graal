@@ -27,8 +27,14 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Path;
 import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.junit.After;
 
 import com.oracle.svm.test.jfr.events.EndStreamEvent;
 import com.oracle.svm.test.jfr.events.StartStreamEvent;
@@ -36,44 +42,53 @@ import com.oracle.svm.test.jfr.events.StartStreamEvent;
 import jdk.jfr.Configuration;
 import jdk.jfr.consumer.RecordingStream;
 
-abstract class JfrStreamingTest extends AbstractJfrTest {
-    public static final int JFR_MAX_SIZE = 100 * 1024 * 1024;
+public abstract class JfrStreamingTest extends AbstractJfrTest {
+    private static final int JFR_MAX_SIZE = 100 * 1024 * 1024;
+    private final Map<RecordingStream, JfrStreamState> streamStates = Collections.synchronizedMap(new IdentityHashMap<>());
 
-    protected final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
-    protected RecordingStream stream;
-    private volatile boolean streamStarted = false;
-    private volatile boolean streamEndedSuccessfully = false;
+    @After
+    public void cleanupStreams() {
+        /* Close all streams in case that one remained open due to some error. */
+        for (Entry<RecordingStream, JfrStreamState> entry : streamStates.entrySet()) {
+            entry.getKey().close();
+        }
+    }
 
-    @Override
-    public void startRecording(Configuration config) throws Throwable {
-        stream = new RecordingStream(config);
+    protected RecordingStream startStream(String[] events) throws Throwable {
+        Configuration config = getDefaultConfiguration();
+        RecordingStream stream = new RecordingStream(config);
+        streamStates.put(stream, new JfrStreamState(events));
+
         stream.setMaxSize(JFR_MAX_SIZE);
 
         stream.enable("com.jfr.StartStream");
-        stream.onEvent("com.jfr.StartStream", e -> {
-            streamStarted = true;
-        });
+        stream.onEvent("com.jfr.StartStream", e -> streamStates.get(stream).started = true);
 
         stream.enable("com.jfr.EndStream");
         stream.onEvent("com.jfr.EndStream", e -> {
             stream.close();
-            streamEndedSuccessfully = true;
+            streamStates.get(stream).endedSuccessfully = true;
         });
-        enableEvents();
-        startStream();
+        enableEvents(stream, events);
+        startStream(stream);
+        return stream;
     }
 
-    @Override
-    public void stopRecording() throws Throwable {
+    protected void stopStream(RecordingStream stream, EventValidator validator) throws Throwable {
+        Path jfrFile = createTempJfrFile();
         stream.dump(jfrFile);
-        closeStream();
+        closeStream(stream);
+
+        JfrStreamState state = streamStates.get(stream);
+        checkRecording(validator, jfrFile, state);
     }
 
-    private void startStream() throws InterruptedException {
+    private void startStream(RecordingStream stream) throws InterruptedException {
         stream.startAsync();
+        JfrStreamState state = streamStates.get(stream);
         /* Wait until the started thread can handle events. */
         waitUntilTrue(() -> {
-            if (!streamStarted) {
+            if (!state.started) {
                 StartStreamEvent event = new StartStreamEvent();
                 event.commit();
                 return false;
@@ -82,7 +97,7 @@ abstract class JfrStreamingTest extends AbstractJfrTest {
         });
     }
 
-    private void closeStream() throws InterruptedException {
+    private void closeStream(RecordingStream stream) throws InterruptedException {
         /*
          * We require a signal to close the stream, because if we close the stream immediately after
          * dumping, the dump may not have had time to finish.
@@ -90,24 +105,22 @@ abstract class JfrStreamingTest extends AbstractJfrTest {
         EndStreamEvent event = new EndStreamEvent();
         event.commit();
         stream.awaitTermination(Duration.ofSeconds(10));
-        assertTrue("unable to find stream end event signal in stream", streamEndedSuccessfully);
+        assertTrue("unable to find stream end event signal in stream", streamStates.get(stream).endedSuccessfully);
     }
 
-    private void enableEvents() {
+    private static void enableEvents(RecordingStream stream, String[] events) {
         /* Additionally, enable all events that the test case wants to test explicitly. */
-        String[] events = getTestedEvents();
         for (String event : events) {
             stream.enable(event);
         }
     }
 
-    static class MonitorWaitHelper {
-        public synchronized void doEvent() {
-            try {
-                this.wait(0, 1);
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+    private static class JfrStreamState extends JfrRecordingState {
+        volatile boolean started = false;
+        volatile boolean endedSuccessfully = false;
+
+        JfrStreamState(String[] testedEvents) {
+            super(testedEvents);
         }
     }
 }

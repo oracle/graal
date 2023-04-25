@@ -78,6 +78,7 @@ public class AArch64FrameMap extends FrameMap {
     /**
      * Creates a new frame map for the specified method.
      */
+    @SuppressWarnings("this-escape")
     public AArch64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory) {
         super(codeCache, registerConfig, referenceMapFactory);
         initialSpillSize = frameSetupSize();

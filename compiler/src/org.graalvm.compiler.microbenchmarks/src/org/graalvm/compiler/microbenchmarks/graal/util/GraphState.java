@@ -46,7 +46,7 @@ public abstract class GraphState {
 
     final GraalState graal;
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "this-escape"})
     public GraphState() {
         graal = new GraalState();
         DebugContext debug = graal.debug;

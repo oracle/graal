@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.pthread;
 
+import java.lang.ref.WeakReference;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -38,11 +43,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadStart;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-
-import java.lang.ref.WeakReference;
-import java.util.Collection;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 public final class LLVMPThreadContext {
 
@@ -201,7 +201,7 @@ public final class LLVMPThreadContext {
     public Thread createThread(Runnable runnable) {
         synchronized (threadLock) {
             if (isCreateThreadAllowed) {
-                final Thread thread = env.createThread(runnable);
+                final Thread thread = env.newTruffleThreadBuilder(runnable).build();
                 threadStorage.put(thread.getId(), new WeakReference<>(thread));
                 return thread;
             } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,7 +144,7 @@ public final class Continuation {
 
             Object preparedData = ImageSingletons.lookup(ContinuationSupport.class).prepareCopy(cont);
             ContinuationSupport.enter(cont, topSP, preparedData);
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime();
         } else {
             assert stored == null;
             this.ip = callerIP;
@@ -152,7 +152,7 @@ public final class Continuation {
             this.baseSP = currentSP;
 
             enter2();
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime();
         }
     }
 
@@ -174,7 +174,7 @@ public final class Continuation {
         assert isEmpty();
 
         KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime();
     }
 
     int tryPreempt(Thread thread) {
@@ -212,7 +212,7 @@ public final class Continuation {
         baseSP = WordFactory.nullPointer();
 
         KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime();
     }
 
     public boolean isStarted() {

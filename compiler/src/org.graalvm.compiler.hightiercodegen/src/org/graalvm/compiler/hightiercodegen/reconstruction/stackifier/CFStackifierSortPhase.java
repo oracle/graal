@@ -35,7 +35,6 @@ import java.util.TreeSet;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -45,16 +44,15 @@ import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.Cat
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.IfScopeContainer;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopScopeContainer;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.Scope;
+import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.ScopeContainer;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.SwitchScopeContainer;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.phases.BasePhase;
-
-import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.ScopeContainer;
 
 /**
  * This phase sorts the basic blocks of a {@link ControlFlowGraph} such that the basic blocks from a
@@ -184,7 +182,7 @@ public class CFStackifierSortPhase extends BasePhase<StackifierData> {
          */
         private static HIRBlock getSuccessorAt(HIRBlock current, int index) {
             if (current.isLoopEnd()) {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere("unexpected loop end"); // ExcludeFromJacocoGeneratedReport
             } else {
                 return current.getSuccessorAt(index);
             }
@@ -214,7 +212,7 @@ public class CFStackifierSortPhase extends BasePhase<StackifierData> {
             }
             for (HIRBlock b : sortedBlocks) {
                 blockToNodesMap.put(b, (List<Node>) oldBlockToNodesMap[b.getId()]);
-                b.setId(BasicBlock.safeCast(id));
+                b.setId(id);
                 id++;
             }
         }

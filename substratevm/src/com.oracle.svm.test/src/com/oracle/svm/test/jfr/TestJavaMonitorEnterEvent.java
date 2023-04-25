@@ -26,6 +26,7 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -34,6 +35,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
@@ -46,28 +48,11 @@ public class TestJavaMonitorEnterEvent extends JfrRecordingTest {
     private Thread secondThread;
     private volatile boolean passedCheckpoint;
 
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{JfrEvent.JavaMonitorEnter.getName()};
-    }
-
-    @Override
-    protected void validateEvents(List<RecordedEvent> events) throws Throwable {
-        boolean found = false;
-        for (RecordedEvent event : events) {
-            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
-            if (event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS && secondThread.getName().equals(eventThread)) {
-                // verify previous owner
-                assertTrue("Previous owner is wrong", event.<RecordedThread> getValue("previousOwner").getJavaName().equals(firstThread.getName()));
-                found = true;
-                break;
-            }
-        }
-        assertTrue("Expected monitor blocked event not found", found);
-    }
-
     @Test
-    public void test() throws Exception {
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.JavaMonitorEnter.getName()};
+        Recording recording = startRecording(events);
+
         Runnable first = () -> {
             try {
                 helper.doWork();
@@ -91,6 +76,22 @@ public class TestJavaMonitorEnterEvent extends JfrRecordingTest {
 
         firstThread.join();
         secondThread.join();
+
+        stopRecording(recording, this::validateEvents);
+    }
+
+    private void validateEvents(List<RecordedEvent> events) {
+        boolean found = false;
+        for (RecordedEvent event : events) {
+            String eventThread = event.<RecordedThread> getValue("eventThread").getJavaName();
+            if (event.<RecordedClass> getValue("monitorClass").getName().equals(Helper.class.getName()) && event.getDuration().toMillis() >= MILLIS && secondThread.getName().equals(eventThread)) {
+                // verify previous owner
+                assertEquals("Previous owner is wrong", event.<RecordedThread> getValue("previousOwner").getJavaName(), firstThread.getName());
+                found = true;
+                break;
+            }
+        }
+        assertTrue("Expected monitor blocked event not found", found);
     }
 
     private class Helper {

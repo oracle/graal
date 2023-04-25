@@ -53,7 +53,7 @@ public final class SubWordTestUtil implements Opcodes {
                 snippet.visitInsn(I2C);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 

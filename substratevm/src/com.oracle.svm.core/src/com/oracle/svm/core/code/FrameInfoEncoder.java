@@ -687,7 +687,7 @@ public class FrameInfoEncoder {
             result.data = virtualObject.getId();
             makeVirtualObject(data, virtualObject, isDeoptEntry);
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(value); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -857,7 +857,7 @@ public class FrameInfoEncoder {
                 }
                 return JavaKind.Long;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(byteCount); // ExcludeFromJacocoGeneratedReport
         }
     }
 

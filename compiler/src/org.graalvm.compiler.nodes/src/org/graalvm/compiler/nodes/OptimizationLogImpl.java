@@ -218,6 +218,7 @@ public class OptimizationLogImpl implements OptimizationLog {
 
         @Successor private NodeSuccessorList<OptimizationTreeNode> children;
 
+        @SuppressWarnings("this-escape")
         protected OptimizationPhaseNode(CharSequence phaseName) {
             super(TYPE);
             this.phaseName = phaseName;

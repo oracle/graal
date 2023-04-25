@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.test;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
@@ -95,7 +94,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
                 };
             }
         };
-        partialEval((OptimizedCallTarget) rootNode.getCallTarget(), new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
+        partialEval((OptimizedCallTarget) rootNode.getCallTarget(), new Object[]{});
     }
 
     private static class TestRootNode extends RootNode {
@@ -168,7 +167,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
     private int getBaselineGraphNodeCount(RootNode rootNode) {
         final OptimizedCallTarget baselineGraphTarget = (OptimizedCallTarget) rootNode.getCallTarget();
-        final StructuredGraph baselineGraph = partialEval(baselineGraphTarget, new Object[]{}, getCompilationId(baselineGraphTarget));
+        final StructuredGraph baselineGraph = partialEval(baselineGraphTarget, new Object[]{});
         return NodeCostUtil.computeGraphSize(baselineGraph);
     }
 
@@ -177,7 +176,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalGraphSize", Integer.toString(nodeLimit)).build());
         RootCallTarget target = rootNodeFactory.get().getCallTarget();
         final Object[] arguments = {1};
-        partialEval((OptimizedCallTarget) target, arguments, getCompilationId(target));
+        partialEval((OptimizedCallTarget) target, arguments);
     }
 
 }

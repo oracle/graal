@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.test.SubprocessUtil;
+import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assume;
 import org.junit.Before;
 
@@ -43,14 +44,23 @@ public abstract class SubprocessTest extends GraalCompilerTest {
         Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
     }
 
-    public void launchSubprocess(Runnable runnable, String... args) throws InterruptedException, IOException {
-        launchSubprocess(getClass(), runnable, args);
+    /**
+     * Launches the {@code runnable} in a subprocess, with any extra {@code args} passed as
+     * arguments to the subprocess VM. Checks that the subprocess terminated successfully, i.e., an
+     * exit code different from 0 raises an error.
+     *
+     * @return Inside the subprocess, returns {@code null}. Outside the subprocess, returns a
+     *         {@link Subprocess} instance describing the process after its successful termination.
+     */
+    public SubprocessUtil.Subprocess launchSubprocess(Runnable runnable, String... args) throws InterruptedException, IOException {
+        return launchSubprocess(getClass(), runnable, args);
     }
 
-    public static void launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
+    public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
         String recursionPropName = testClass.getSimpleName() + ".Subprocess";
         if (Boolean.getBoolean(recursionPropName)) {
             runnable.run();
+            return null;
         } else {
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
             vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
@@ -62,9 +72,12 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             }
             SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", testClass.getName());
             if (verbose) {
-                System.err.println(proc.output);
+                for (String line : proc.output) {
+                    System.err.println(line);
+                }
             }
             assertTrue(proc.exitCode == 0, proc.toString() + " failed with exit code " + proc.exitCode);
+            return proc;
         }
     }
 }

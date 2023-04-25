@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.hosted.ProgressReporterJsonHelper.UNAVAILABLE_METRIC;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -80,6 +81,7 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.AnalysisResults;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.GeneralInfo;
@@ -113,7 +115,7 @@ public class ProgressReporter {
 
     private final NativeImageSystemIOWrappers builderIO;
 
-    private final ProgressReporterJsonHelper jsonHelper;
+    public final ProgressReporterJsonHelper jsonHelper;
     private final DirectPrinter linePrinter = new DirectPrinter();
     private final StringBuilder buildOutputLog = new StringBuilder();
     private final StagePrinter<?> stagePrinter;
@@ -183,13 +185,7 @@ public class ProgressReporter {
         } else {
             builderIO = NativeImageSystemIOWrappers.singleton();
         }
-
-        Optional<Path> buildOutputJSONFile = SubstrateOptions.BuildOutputJSONFile.getValue(options).lastValue();
-        if (buildOutputJSONFile.isPresent()) {
-            jsonHelper = new ProgressReporterJsonHelper(buildOutputJSONFile.get());
-        } else {
-            jsonHelper = null;
-        }
+        jsonHelper = new ProgressReporterJsonHelper();
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
         boolean enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
@@ -248,9 +244,9 @@ public class ProgressReporter {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         VM vm = ImageSingletons.lookup(VM.class);
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
-        recordJsonMetric(GeneralInfo.VENDOR, vm.vendor);
-        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion + " " + vm.version); // deprecated
-        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor", "#glossary-java-info").a(": ").a(vm.vendor).println();
+        recordJsonMetric(GeneralInfo.VENDOR_VERSION, vm.vendorVersion);
+        recordJsonMetric(GeneralInfo.GRAALVM_VERSION, vm.vendorVersion); // deprecated
+        l().a(" ").doclink("Java version", "#glossary-java-info").a(": ").a(vm.version).a(", ").doclink("vendor version", "#glossary-java-info").a(": ").a(vm.vendorVersion).println();
         String optimizationLevel = SubstrateOptions.Optimize.getValue();
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
         String march = CPUType.getSelectedOrDefaultMArch();
@@ -692,19 +688,21 @@ public class ProgressReporter {
             l().link(NativeImageOptions.getErrorFilePath(parsedHostedOptions)).println();
             l().println();
             l().a("If you are unable to resolve this problem, please file an issue with the error report at:").println();
-            var supportURL = VM.getErrorReportingInstance().supportURL;
-            l().link(supportURL, supportURL).println();
+            var supportUrl = VM.getSupportUrl();
+            l().link(supportUrl, supportUrl).println();
         }
     }
 
     private void createAdditionalArtifacts(String imageName, NativeImageGenerator generator, Optional<Throwable> error, OptionValues parsedHostedOptions) {
         BuildArtifacts artifacts = BuildArtifacts.singleton();
-        if (error.isEmpty() && jsonHelper != null) {
-            artifacts.add(ArtifactType.BUILD_INFO, jsonHelper.printToFile());
+        Optional<Path> buildOutputJSONFile = SubstrateOptions.BuildOutputJSONFile.getValue(parsedHostedOptions).lastValue();
+        if (error.isEmpty() && buildOutputJSONFile.isPresent()) {
+            artifacts.add(ArtifactType.BUILD_INFO, reportBuildOutput(buildOutputJSONFile.get()));
         }
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
+        ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifacts(artifacts);
         BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
     }
 
@@ -724,6 +722,17 @@ public class ProgressReporter {
         pathToTypes.forEach((path, typeNames) -> {
             l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println();
         });
+    }
+
+    private Path reportBuildOutput(Path jsonOutputFile) {
+        String description = "image statistics in json";
+        return ReportUtils.report(description, jsonOutputFile.toAbsolutePath(), out -> {
+            try {
+                jsonHelper.print(new JsonWriter(out));
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere("Failed to create " + jsonOutputFile, e);
+            }
+        }, false);
     }
 
     private static Path reportImageBuildStatistics() {

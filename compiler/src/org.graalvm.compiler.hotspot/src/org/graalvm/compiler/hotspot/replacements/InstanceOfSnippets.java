@@ -259,6 +259,7 @@ public class InstanceOfSnippets implements Snippets {
 
         private final Counters counters;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers) {
             super(options, providers);
 
@@ -344,7 +345,7 @@ public class InstanceOfSnippets implements Snippets {
                 args.addConst("counters", counters);
                 return args;
             } else {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(replacer); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

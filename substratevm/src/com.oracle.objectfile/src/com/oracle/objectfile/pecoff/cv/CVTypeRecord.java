@@ -26,10 +26,6 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
-import org.graalvm.compiler.debug.GraalError;
-
-import java.util.ArrayList;
-
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.CV_CALL_NEAR_C;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.FUNC_IS_CONSTRUCTOR;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ARGLIST;
@@ -61,6 +57,10 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MPROP_PURE_IVIRTUA
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MPROP_VSF_MASK;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_NOTYPE;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_UINT8;
+
+import java.util.ArrayList;
+
+import org.graalvm.compiler.debug.GraalError;
 
 /*
  * CV Type Record format (little-endian):
@@ -168,17 +168,17 @@ abstract class CVTypeRecord {
 
         @Override
         public int computeSize(int initialPos) {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         protected int computeContents(byte[] buffer, int initialPos) {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public int hashCode() {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override

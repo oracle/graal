@@ -77,7 +77,7 @@ public class MultiThreadedCloseTest extends AbstractPolyglotTest {
             @Override
             protected void initializeContext(CloseContext ctx) throws Exception {
                 ctx.executor = Executors.newCachedThreadPool((r) -> {
-                    return ctx.registerThread(ctx.env.createThread(r, null, ctx.group));
+                    return ctx.registerThread(ctx.env.newTruffleThreadBuilder(r).threadGroup(ctx.group).build());
                 });
                 ctx.executor.submit(() -> {
                     ctx.env.parseInternal(Source.newBuilder(ProxyLanguage.ID, "", "test").build());
@@ -104,9 +104,9 @@ public class MultiThreadedCloseTest extends AbstractPolyglotTest {
 
             @Override
             protected void initializeContext(CloseContext ctx) throws Exception {
-                ctx.registerThread(ctx.env.createThread(() -> {
+                ctx.registerThread(ctx.env.newTruffleThreadBuilder(() -> {
                     ctx.env.parseInternal(Source.newBuilder(ProxyLanguage.ID, "", "test").build());
-                }, null, ctx.group)).start();
+                }).threadGroup(ctx.group).build()).start();
             }
 
             @Override

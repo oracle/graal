@@ -97,7 +97,7 @@ public enum AArch64PermuteOp {
                     masm.neon.uzp2VVV(size, eSize, resultReg, aReg, bReg);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
             }
 
         }

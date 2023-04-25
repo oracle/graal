@@ -82,6 +82,7 @@ public class AMD64FrameMap extends FrameMap {
      */
     protected final boolean preserveFramePointer;
 
+    @SuppressWarnings("this-escape")
     public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean preserveFramePointer) {
         super(codeCache, registerConfig, referenceMapFactory);
         // (negative) offset relative to sp + total frame size

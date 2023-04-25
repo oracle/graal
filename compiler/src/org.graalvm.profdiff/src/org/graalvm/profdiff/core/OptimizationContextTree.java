@@ -34,6 +34,7 @@ import org.graalvm.profdiff.core.inlining.InliningTree;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.core.optimization.Position;
 
 /**
  * An optimization context tree is an inlining tree extended with optimizations placed in their
@@ -175,12 +176,12 @@ public final class OptimizationContextTree {
      * Inserts all optimizations from the given optimization tree to the appropriate context in the
      * optimization-context tree.
      *
-     * The appropriate context is stated by an optimization's
-     * {@link InliningPath#ofEnclosingMethod(Optimization) enclosing method}. The path to the
-     * enclosing method is followed in the optimization-context tree, and the optimization is placed
-     * in the node representing the optimization's enclosing method. It is possible that the
-     * enclosing method is not in the inlining tree. In that case, {@link #longestPrefix the longest
-     * prefix} of the path which is still in the tree is considered instead.
+     * The appropriate context is stated by an optimization's {@link Position#enclosingMethodPath()
+     * enclosing method}. The path to the enclosing method is followed in the optimization-context
+     * tree, and the optimization is placed in the node representing the optimization's enclosing
+     * method. It is possible that the enclosing method is not in the inlining tree. In that case,
+     * {@link #longestPrefix the longest prefix} of the path which is still in the tree is
+     * considered instead.
      *
      * If the path to the enclosing method is duplicated in the inlining tree (i.e. there are
      * multiple inlining-tree nodes corresponding to the path), the optimization is added to each
@@ -197,7 +198,7 @@ public final class OptimizationContextTree {
                 return;
             }
             Optimization optimization = (Optimization) node;
-            InliningPath optimizationPath = InliningPath.ofEnclosingMethod(optimization);
+            InliningPath optimizationPath = optimization.getPosition().enclosingMethodPath();
             int prefixLength = longestPrefix(root, optimizationPath, 0);
             if (prefixLength > 0) {
                 InliningPath longestPathInTree = optimizationPath.prefix(prefixLength);

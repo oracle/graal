@@ -72,6 +72,7 @@ public class StringToBytesSnippets implements Snippets {
 
         private final SnippetInfo create;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
             create = snippet(providers, StringToBytesSnippets.class, "transform");

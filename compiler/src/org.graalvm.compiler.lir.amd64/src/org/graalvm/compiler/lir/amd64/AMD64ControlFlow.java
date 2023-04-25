@@ -932,7 +932,7 @@ public class AMD64ControlFlow {
                     masm.cmovq(cond, asRegister(result), asRegister(other));
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(other.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             AMD64Address addr = (AMD64Address) crb.asAddress(other);
@@ -946,7 +946,7 @@ public class AMD64ControlFlow {
                     masm.cmovq(cond, asRegister(result), addr);
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(other.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -962,7 +962,7 @@ public class AMD64ControlFlow {
                 masm.setq(cond, asRegister(result));
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(result.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -989,7 +989,7 @@ public class AMD64ControlFlow {
             case BT:
                 return ConditionFlag.Below;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(cond); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1008,7 +1008,7 @@ public class AMD64ControlFlow {
             case GT:
                 return ConditionFlag.Above;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(cond); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1031,7 +1031,7 @@ public class AMD64ControlFlow {
             case NoOverflow:
                 return true;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(condition); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

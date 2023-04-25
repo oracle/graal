@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,84 @@
  */
 package org.graalvm.compiler.nodes.test;
 
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
-import static org.junit.Assert.assertEquals;
+import org.junit.Assert;
 import org.junit.Test;
 
-public class AddNodeTest {
+public class AddNodeTest extends GraalCompilerTest {
     @Test
     public void checkTemplateAndName() {
         AddNode add = new AddNode(ConstantNode.forInt(30), ConstantNode.forInt(12));
         NodeClass<? extends Node> addClass = add.getNodeClass();
-        assertEquals("+", addClass.shortName());
-        assertEquals("Using short name as template", "+", addClass.getNameTemplate());
+        Assert.assertEquals("+", addClass.shortName());
+        Assert.assertEquals("Using short name as template", "+", addClass.getNameTemplate());
+    }
+
+    public int addNotLeftSnippet(int x) {
+        return ~x + x;
+    }
+
+    public int addNotRightSnippet(int x) {
+        return x + ~x;
+    }
+
+    @SuppressWarnings("unused")
+    public int addNotReferenceSnippet(int x) {
+        return -1;
+    }
+
+    @Test
+    public void addNot() {
+        testAgainstReference("addNotReferenceSnippet", "addNotLeftSnippet");
+        testAgainstReference("addNotReferenceSnippet", "addNotRightSnippet");
+        test("addNotLeftSnippet", 42);
+        test("addNotLeftSnippet", Integer.MAX_VALUE);
+        test("addNotLeftSnippet", Integer.MIN_VALUE);
+    }
+
+    public static int iteratedAddSnippet(int start, int addend) {
+        int sum = start;
+
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+        sum += addend;
+
+        return sum;
+    }
+
+    public static int iteratedAddLeftAssocSnippet(int start, int addend) {
+        return ((((((((start + addend) + addend) + addend) + addend) + addend) + addend) + addend) + addend);
+    }
+
+    public static int iteratedAddRightAssocSnippet(int start, int addend) {
+        return start + (addend + (addend + (addend + (addend + (addend + (addend + (addend + addend)))))));
+    }
+
+    public static int iteratedAddReferenceSnippet(int start, int addend) {
+        return start + (addend << 3);
+    }
+
+    @Test
+    public void iteratedAdd() {
+        testAgainstReference("iteratedAddReferenceSnippet", "iteratedAddSnippet");
+        testAgainstReference("iteratedAddReferenceSnippet", "iteratedAddLeftAssocSnippet");
+        testAgainstReference("iteratedAddReferenceSnippet", "iteratedAddRightAssocSnippet");
+    }
+
+    private void testAgainstReference(String referenceSnippet, String testSnippet) {
+        StructuredGraph referenceGraph = parseForCompile(getResolvedJavaMethod(referenceSnippet));
+        StructuredGraph testGraph = parseForCompile(getResolvedJavaMethod(testSnippet));
+        createCanonicalizerPhase().apply(testGraph, getDefaultHighTierContext());
+        assertEquals(referenceGraph, testGraph, true, false);
     }
 }

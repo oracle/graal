@@ -219,8 +219,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                     }
                     delayedIntervals = (IntervalDumper) object;
                 }
-            } else if (object instanceof char[]) {
-                cfgPrinter.printCFG(message, (char[]) object);
+            } else if (object instanceof int[]) {
+                cfgPrinter.printCFG(message, (int[]) object);
             }
         } finally {
             cfgPrinter.lir = null;

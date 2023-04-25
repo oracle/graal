@@ -373,6 +373,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         cache.get().clear();
     }
 
+    @SuppressWarnings("this-escape")
     public GraalCompilerTest() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
@@ -1123,7 +1124,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
             return installedCode;
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHere("Bailout limit reached"); // ExcludeFromJacocoGeneratedReport
     }
 
     /**

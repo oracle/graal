@@ -39,7 +39,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -51,8 +50,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -122,6 +120,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Delete
+    @TargetElement(onlyWith = {JDK20OrEarlier.class})
     private static native int getMembers(Class<?> defc, String matchName, String matchSig, int matchFlags, Class<?> caller, int skip, Target_java_lang_invoke_MemberName[] results);
 
     @Substitute
@@ -191,14 +190,6 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @Delete
     private static native int getNamedCon(int which, Object[] name);
 
-    // JDK 11
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
-        return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
-    }
-
     @Delete
     private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
 
@@ -213,10 +204,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @AnnotateOriginal
     static native String refKindName(byte refKind);
 
-    // JDK 17
-
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, int lookupMode, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException {
         Class<?> declaringClass = self.getDeclaringClass();
@@ -356,12 +344,11 @@ final class Util_java_lang_invoke_MethodHandleNatives {
     private static Method verifyAccess;
 
     static boolean verifyAccess(Class<?> refc, Class<?> defc, int mods, Class<?> lookupClass, int allowedModes) {
-        assert JavaVersionUtil.JAVA_SPEC >= 17;
         if (verifyAccess == null) {
             try {
                 verifyAccess = VerifyAccess.class.getDeclaredMethod("isMemberAccessible", Class.class, Class.class, int.class, Class.class, Class.class, int.class);
             } catch (NoSuchMethodException e) {
-                throw shouldNotReachHere();
+                throw shouldNotReachHere(e);
             }
         }
         try {
@@ -381,9 +368,12 @@ final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     @Alias static int MN_IS_TYPE;
     @Alias static int MN_CALLER_SENSITIVE;
     @Alias static int MN_REFERENCE_KIND_SHIFT;
+    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
     @Alias static int MN_REFERENCE_KIND_MASK;
     // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:
+    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
     @Alias static int MN_SEARCH_SUPERCLASSES;
+    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
     @Alias static int MN_SEARCH_INTERFACES;
 
     /**

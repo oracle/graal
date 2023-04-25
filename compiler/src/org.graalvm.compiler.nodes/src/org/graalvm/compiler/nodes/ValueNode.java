@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,16 +27,19 @@ package org.graalvm.compiler.nodes;
 import java.util.Iterator;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeStack;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
+import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.meta.Constant;
@@ -242,7 +245,7 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
         if (this == that) {
             return true;
         }
-        if (this.getNodeClass() != that.getNodeClass() || !this.valueEquals(that)) {
+        if (that == null || !recursiveDataFlowEqualsHelper(this, that)) {
             return false;
         }
 
@@ -284,7 +287,7 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
                 if (thisInput == thatInput) {
                     continue;
                 }
-                if (thisInput == null || thatInput == null || thisInput.getNodeClass() != thatInput.getNodeClass() || !(thisInput instanceof FloatingNode) || !thisInput.valueEquals(thatInput)) {
+                if (thisInput == null || thatInput == null || !recursiveDataFlowEqualsHelper(thisInput, thatInput)) {
                     return false;
                 }
                 these.push(thisInput);
@@ -295,6 +298,34 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
             }
         }
 
+        return true;
+    }
+
+    /**
+     * Determines if the two nodes can be considered "value equals" in the context of
+     * {@link #recursivelyDataFlowEqualsUpTo(FloatingNode, InputType)}. Specifically, checks if the
+     * two nodes are of the same floating, non-identity class, have equal data fields, and are not
+     * memory accesses that we could only consider equal if they were GVN'ed. This method only looks
+     * at node classes and data fields, all inputs must be checked separately.
+     *
+     * @return {@code true} if the two nodes can be considered equal, {@code false} otherwise
+     */
+    private static boolean recursiveDataFlowEqualsHelper(Node thisNode, Node thatNode) {
+        GraalError.guarantee(thisNode != thatNode, "identity should be checked by the caller");
+        if (thisNode == null || thatNode == null || thisNode.getNodeClass() != thatNode.getNodeClass()) {
+            return false;
+        }
+        if (!(thisNode instanceof FloatingNode) || thisNode instanceof NodeWithIdentity) {
+            return false;
+        }
+        if (!thisNode.valueEquals(thatNode)) {
+            return false;
+        }
+        if (thisNode instanceof MemoryAccess access) {
+            if (access.getLocationIdentity().isAny() || access.getLocationIdentity().isMutable()) {
+                return false;
+            }
+        }
         return true;
     }
 }

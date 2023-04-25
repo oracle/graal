@@ -59,6 +59,7 @@ public class PointerTest extends SnippetsTest {
     private static final JavaKind[] KINDS = new JavaKind[]{JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object};
     private final TargetDescription target;
 
+    @SuppressWarnings("this-escape")
     public PointerTest() {
         target = getCodeCache().getTarget();
     }

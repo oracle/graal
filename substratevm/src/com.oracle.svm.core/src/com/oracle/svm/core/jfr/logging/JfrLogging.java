@@ -38,7 +38,6 @@ import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
 public class JfrLogging {
-    private final JfrLogConfiguration configuration;
     private final String[] logLevels;
     private final String[] logTagSets;
     private int levelDecorationFill = 0;
@@ -46,13 +45,12 @@ public class JfrLogging {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrLogging() {
-        configuration = new JfrLogConfiguration();
         logLevels = createLogLevels();
         logTagSets = createLogTagSets();
     }
 
     public void parseConfiguration(String config) {
-        configuration.parse(config);
+        JfrLogConfiguration.parse(config);
     }
 
     public void warnInternal(String message) {
@@ -94,8 +92,8 @@ public class JfrLogging {
 
         LogTag logTag = system ? LogTag.JFR_SYSTEM_EVENT : LogTag.JFR_EVENT;
         int tagSetId = SubstrateUtil.cast(logTag, Target_jdk_jfr_internal_LogTag.class).id;
-        for (int i = 0; i < lines.length; i++) {
-            log(tagSetId, level, lines[i]);
+        for (String line : lines) {
+            log(tagSetId, level, line);
         }
     }
 
