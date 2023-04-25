@@ -156,7 +156,7 @@ public class InfoTreeBuilder {
         }
         List<AccessorInfo> accessorInfos = new ArrayList<>();
 
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             AccessorKind accessorKind = returnsDeclaringClass(method) ? AccessorKind.ADDRESS : getAccessorKind(method);
             boolean isIndexed = getParameterCount(method) > (accessorKind == AccessorKind.SETTER ? 1 : 0);
             AccessorInfo accessorInfo = new AccessorInfo(method, accessorKind, isIndexed, false, false);
@@ -180,7 +180,7 @@ public class InfoTreeBuilder {
         }
         List<AccessorInfo> accessorInfos = new ArrayList<>();
 
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             AccessorKind accessorKind = returnsDeclaringClass(method) ? AccessorKind.ADDRESS : getAccessorKind(method);
             boolean isIndexed = getParameterCount(method) > (accessorKind == AccessorKind.SETTER ? 1 : 0);
             AccessorInfo accessorInfo = new AccessorInfo(method, accessorKind, isIndexed, false, false);
@@ -223,7 +223,7 @@ public class InfoTreeBuilder {
         Map<String, List<AccessorInfo>> bitfieldAccessorInfos = new TreeMap<>();
         List<AccessorInfo> structAccessorInfos = new ArrayList<>();
 
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             final AccessorInfo accessorInfo;
             final String fieldName;
 
@@ -298,7 +298,7 @@ public class InfoTreeBuilder {
         Map<String, List<AccessorInfo>> fieldAccessorInfos = new TreeMap<>();
         List<AccessorInfo> structAccessorInfos = new ArrayList<>();
 
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             final AccessorInfo accessorInfo;
             final String fieldName;
 
@@ -681,7 +681,7 @@ public class InfoTreeBuilder {
                 createEnumConstantInfo(enumInfo, field);
             }
         }
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             if (getMethodAnnotation(method, CEnumValue.class) != null) {
                 createEnumValueInfo(enumInfo, method);
             }

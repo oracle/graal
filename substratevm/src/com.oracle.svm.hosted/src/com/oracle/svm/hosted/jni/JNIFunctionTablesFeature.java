@@ -129,7 +129,7 @@ public class JNIFunctionTablesFeature implements Feature {
         AnalysisType exports = metaAccess.lookupJavaType(JNIInvocationInterface.Exports.class);
         AnalysisType functions = metaAccess.lookupJavaType(JNIFunctions.class);
         AnalysisType functionsJDK19OrLater = JavaVersionUtil.JAVA_SPEC <= 17 ? null : metaAccess.lookupJavaType(JNIFunctionsJDK19OrLater.class);
-        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, functionsJDK19OrLater, exports).filter(type -> type != null).flatMap(type -> Stream.of(type.getDeclaredMethods()));
+        Stream<AnalysisMethod> analysisMethods = Stream.of(invokes, functions, functionsJDK19OrLater, exports).filter(type -> type != null).flatMap(type -> Stream.of(type.getDeclaredMethods(false)));
         Stream<AnalysisMethod> unimplementedMethods = Stream.of((AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJNIEnvArgument.class),
                         (AnalysisMethod) getSingleMethod(metaAccess, UnimplementedWithJavaVMArgument.class));
         Stream.concat(analysisMethods, unimplementedMethods).forEach(method -> {
@@ -147,7 +147,7 @@ public class JNIFunctionTablesFeature implements Feature {
         ArrayList<ResolvedJavaMethod> generated = new ArrayList<>();
         MetaAccessProvider wrappedMetaAccess = metaAccess.getWrapped();
         ResolvedJavaType generatedMethodClass = wrappedMetaAccess.lookupJavaType(JNIFunctions.class);
-        ConstantPool constantPool = generatedMethodClass.getDeclaredMethods()[0].getConstantPool();
+        ConstantPool constantPool = generatedMethodClass.getDeclaredMethods(false)[0].getConstantPool();
         // Generate JNI field accessors
         EnumSet<JavaKind> fldKinds = jniKinds.clone();
         fldKinds.remove(JavaKind.Void);
@@ -195,7 +195,7 @@ public class JNIFunctionTablesFeature implements Feature {
     }
 
     private static ResolvedJavaMethod getSingleMethod(MetaAccessProvider metaAccess, Class<?> holder) {
-        ResolvedJavaMethod[] methods = metaAccess.lookupJavaType(holder).getDeclaredMethods();
+        ResolvedJavaMethod[] methods = metaAccess.lookupJavaType(holder).getDeclaredMethods(false);
         assert methods.length == 1;
         return methods[0];
     }
@@ -210,7 +210,7 @@ public class JNIFunctionTablesFeature implements Feature {
         JNIFunctionTables.singleton().initInvokeInterfaceTable(unimplementedWithJavaVMArgument, access);
 
         HostedType invokes = access.getMetaAccess().lookupJavaType(JNIInvocationInterface.class);
-        for (HostedMethod method : invokes.getDeclaredMethods()) {
+        for (HostedMethod method : invokes.getDeclaredMethods(false)) {
             StructFieldInfo field = findFieldFor(invokeInterfaceMetadata, method.getName());
             int offset = field.getOffsetInfo().getProperty();
             JNIFunctionTables.singleton().initInvokeInterfaceEntry(offset, getStubFunctionPointer(access, method));
@@ -223,14 +223,14 @@ public class JNIFunctionTablesFeature implements Feature {
         tables.initFunctionTable(unimplementedWithJNIEnvArgument, access);
 
         HostedType functions = access.getMetaAccess().lookupJavaType(JNIFunctions.class);
-        for (HostedMethod method : functions.getDeclaredMethods()) {
+        for (HostedMethod method : functions.getDeclaredMethods(false)) {
             StructFieldInfo field = findFieldFor(functionTableMetadata, method.getName());
             int offset = field.getOffsetInfo().getProperty();
             tables.initFunctionEntry(offset, getStubFunctionPointer(access, method));
         }
         if (JavaVersionUtil.JAVA_SPEC > 17) {
             HostedType functionsJDK19OrLater = access.getMetaAccess().lookupJavaType(JNIFunctionsJDK19OrLater.class);
-            for (HostedMethod method : functionsJDK19OrLater.getDeclaredMethods()) {
+            for (HostedMethod method : functionsJDK19OrLater.getDeclaredMethods(false)) {
                 StructFieldInfo field = findFieldFor(functionTableMetadataJDK19OrLater, method.getName());
                 int offset = field.getOffsetInfo().getProperty();
                 tables.initFunctionEntry(offset, getStubFunctionPointer(access, method));

@@ -526,7 +526,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
     private static void installCallBoundaryMethods(HotSpotTruffleCompiler compiler) {
         ResolvedJavaType type = getMetaAccess().lookupJavaType(OptimizedCallTarget.class);
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : type.getDeclaredMethods(false)) {
             if (method.getAnnotation(TruffleCallBoundary.class) != null) {
                 if (compiler != null) {
                     compiler.installTruffleCallBoundaryMethod(method);
@@ -539,7 +539,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
     private static void installReservedOopMethods(HotSpotTruffleCompiler compiler) {
         ResolvedJavaType local = getMetaAccess().lookupJavaType(HotSpotFastThreadLocal.class);
-        for (ResolvedJavaMethod method : local.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : local.getDeclaredMethods(false)) {
             String name = method.getName();
             switch (name) {
                 case "set":

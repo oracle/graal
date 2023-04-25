@@ -57,7 +57,7 @@ public class GraalDirectiveIntrinsificationTest extends GraalCompilerTest {
         }
 
         ResolvedJavaType directives = getMetaAccess().lookupJavaType(GraalDirectives.class);
-        for (ResolvedJavaMethod method : directives.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : directives.getDeclaredMethods(false)) {
             if (method.isStatic()) {
                 // A method's descriptor includes the return type, which we must drop so we can
                 // compare to the binding strings.

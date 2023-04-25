@@ -35,7 +35,7 @@ public final class JNIJavaCallWrapperHolder {
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
         // Each generated call wrapper needs an actual constant pool, so we provide our
         // private constructor's
-        return metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class).getDeclaredConstructors()[0].getConstantPool();
+        return metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class).getDeclaredConstructors(false)[0].getConstantPool();
     }
 
     private JNIJavaCallWrapperHolder() {

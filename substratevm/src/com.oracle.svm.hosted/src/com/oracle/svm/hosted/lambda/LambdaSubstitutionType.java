@@ -29,6 +29,7 @@ import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
@@ -251,12 +252,23 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
 
     @Override
     public ResolvedJavaMethod[] getDeclaredConstructors() {
-        return original.getDeclaredConstructors();
+        return getDeclaredConstructors(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredConstructors(boolean forceLink) {
+        VMError.guarantee(forceLink == false, "only use getDeclaredConstructors without forcing to link, because linking can throw LinkageError");
+        return original.getDeclaredConstructors(forceLink);
     }
 
     @Override
     public ResolvedJavaMethod[] getDeclaredMethods() {
-        return original.getDeclaredMethods();
+        return getDeclaredMethods(true);
+    }
+
+    @Override
+    public ResolvedJavaMethod[] getDeclaredMethods(boolean forceLink) {
+        return original.getDeclaredMethods(forceLink);
     }
 
     @Override
