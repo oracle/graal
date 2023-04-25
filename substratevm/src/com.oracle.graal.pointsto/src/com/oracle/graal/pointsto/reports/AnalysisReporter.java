@@ -40,21 +40,35 @@ import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 public class AnalysisReporter {
     public static void printAnalysisReports(String imageName, OptionValues options, String reportsPath, BigBang bb) {
         if (bb != null) {
+            String baseImageName = ReportUtils.extractImageName(imageName);
+
             if (AnalysisReportsOptions.PrintAnalysisStatistics.getValue(options)) {
-                StatisticsPrinter.print(bb, reportsPath, ReportUtils.extractImageName(imageName));
+                StatisticsPrinter.print(bb, reportsPath, baseImageName);
             }
 
             if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
-                CallTreePrinter.print(bb, reportsPath, ReportUtils.extractImageName(imageName));
+                CallTreePrinter.print(bb, reportsPath, baseImageName);
             }
 
             if (AnalysisReportsOptions.PrintImageObjectTree.getValue(options)) {
-                ObjectTreePrinter.print(bb, reportsPath, ReportUtils.extractImageName(imageName));
-                AnalysisHeapHistogramPrinter.print(bb, reportsPath, ReportUtils.extractImageName(imageName));
+                ObjectTreePrinter.print(bb, reportsPath, baseImageName);
+                AnalysisHeapHistogramPrinter.print(bb, reportsPath, baseImageName);
+            }
+
+            if (!AnalysisReportsOptions.PrintTypeReachabilityTrace.getValue(options).isEmpty()) {
+                ReachabilityTracePrinter.printTraceForTypes(bb, reportsPath, baseImageName);
+            }
+
+            if (!AnalysisReportsOptions.PrintMethodReachabilityTrace.getValue(options).isEmpty()) {
+                ReachabilityTracePrinter.printTraceForMethods(bb, reportsPath, baseImageName);
+            }
+
+            if (!AnalysisReportsOptions.PrintFieldReachabilityTrace.getValue(options).isEmpty()) {
+                ReachabilityTracePrinter.printTraceForFields(bb, reportsPath, baseImageName);
             }
 
             if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {
-                PointsToStats.report(bb, ReportUtils.extractImageName(imageName));
+                PointsToStats.report(bb, baseImageName);
             }
 
             if (PointstoOptions.PrintSynchronizedAnalysis.getValue(options)) {

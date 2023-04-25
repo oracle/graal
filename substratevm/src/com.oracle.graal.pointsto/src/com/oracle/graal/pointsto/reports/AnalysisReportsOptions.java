@@ -74,6 +74,15 @@ public class AnalysisReportsOptions {
     @Option(help = "Suppress the expansion of specified types. See: Reports.md.")//
     public static final OptionKey<String> ImageObjectTreeSuppressTypes = new OptionKey<>("");
 
+    @Option(help = "Print the trace why a type is reachable. See: Reports.md.")//
+    public static final OptionKey<String> PrintTypeReachabilityTrace = new OptionKey<>("");
+
+    @Option(help = "Print the trace why a method is reachable. See: Reports.md.")//
+    public static final OptionKey<String> PrintMethodReachabilityTrace = new OptionKey<>("");
+
+    @Option(help = "Print the trace why a field is reachable. See: Reports.md.")//
+    public static final OptionKey<String> PrintFieldReachabilityTrace = new OptionKey<>("");
+
     enum CallTreeType {
         TXT,
         CSV;
