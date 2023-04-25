@@ -39,8 +39,6 @@ import com.oracle.svm.core.util.VMError;
 
 /** Constants and variables for the size and layout of the heap and behavior of the collector. */
 public final class HeapParameters {
-    private static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     static void initialize() {
         if (!SubstrateUtil.isPowerOf2(getAlignedHeapChunkSize().rawValue())) {
@@ -126,10 +124,22 @@ public final class HeapParameters {
     @Fold
     public static UnsignedWord getLargeArrayThreshold() {
         long largeArrayThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
-        if (largeArrayThreshold == 0) {
-            return getAlignedHeapChunkSize().unsignedDivide(ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD);
+        if (largeArrayThreshold != 0) {
+            return WordFactory.unsigned(largeArrayThreshold);
         } else {
-            return WordFactory.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
+            long alignedChunkSize = SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue();
+            if (alignedChunkSize == SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getDefaultValue()) {
+                /*
+                 * With the default chunk size of 512K, we found that a threshold of 1/4, so 128K,
+                 * gives noticeably better performance for some (Truffle) workloads than 1/8 (64K),
+                 * while fragmentation still does not appear to be a significant problem.
+                 */
+                return WordFactory.unsigned(128 * 1024L);
+            } else {
+                // For a long time, the threshold has been 1/8 of the aligned chunk size.
+                // We preserve that setting for custom chunk sizes.
+                return WordFactory.unsigned(alignedChunkSize).unsignedDivide(8);
+            }
         }
     }
 
