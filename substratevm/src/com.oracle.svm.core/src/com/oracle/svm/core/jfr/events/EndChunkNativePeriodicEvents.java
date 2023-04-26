@@ -177,7 +177,6 @@ public class EndChunkNativePeriodicEvents extends Event {
         return JfrNativeEventWriter.endEvent(data, isLarge);
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emitThreadCPULoad() {
         ThreadCPULoadEvent.emitEvents();
     }
