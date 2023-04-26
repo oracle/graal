@@ -641,7 +641,7 @@ public class RealLog extends Log {
 
         string(t.getClass().getName()).string(": ").string(detailMessage);
         if (!JDKUtils.isStackTraceValid(t)) {
-            int remaining = printBacktrackSynchronized(t, maxFrames);
+            int remaining = printBacktrackLocked(t, maxFrames);
             printRemainingFramesCount(remaining);
         } else {
             StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
@@ -664,7 +664,7 @@ public class RealLog extends Log {
     private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
     private static final VMMutex FRAME_INFO_CURSOR_MUTEX = new VMMutex("RealLog.frameInfoCursorMutex");
 
-    private int printBacktrackSynchronized(Throwable t, int maxFrames) {
+    private int printBacktrackLocked(Throwable t, int maxFrames) {
         if (VMOperation.isInProgress()) {
             if (FRAME_INFO_CURSOR_MUTEX.hasOwner()) {
                 /*
