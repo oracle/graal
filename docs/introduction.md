@@ -112,7 +112,7 @@ The following table lists production-ready and experimental features in GraalVM 
 | LLVM toolchain  | stable       | stable        | stable       | experimental  | not available |
 | JavaScript      | stable       | stable        | stable       | experimental  | stable        |
 | Node.js         | stable       | stable        | stable       | not available | stable        |
-| Java on Truffle | stable       | stable        | experimental | experimental  | experimental  |
+| Java on Truffle | stable       | experimental  | experimental | experimental  | experimental  |
 | Python          | experimental | not available | experimental | not available | not available |
 | Ruby            | experimental | experimental  | experimental | experimental  | not available |
 | R               | experimental | not available | experimental | not available | not available |
