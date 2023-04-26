@@ -234,11 +234,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
+                Throwable cause = e.getCause();
+                if (cause instanceof LinkageError && !(linkAtBuildTime && cause instanceof NoClassDefFoundError)) {
                     /*
-                     * Ignore LinkageError if thrown from eager resolution attempt. This is usually
-                     * followed by a call to ConstantPool.lookupType() which should return an
-                     * UnresolvedJavaType which we know how to deal with.
+                     * Ignore LinkageError if thrown from eager resolution attempt, unless linking
+                     * at build time is enabled and the cause is a NoClassDefFoundError. This is
+                     * usually followed by a call to ConstantPool.lookupType() which should return
+                     * an UnresolvedJavaType which we know how to deal with.
                      */
                 } else {
                     throw e;
