@@ -30,7 +30,9 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Value returned by {@link TruffleCompilerRuntime#getConstantFieldInfo(ResolvedJavaField)}
  * describing how a field read can be constant folded based on Truffle annotations.
  */
-public record ConstantFieldInfo(int rawValue) {
+public final class ConstantFieldInfo {
+
+    private final int rawValue;
 
     /**
      * Denotes a field is annotated by {@code com.oracle.truffle.api.nodes.Node.Child}.
@@ -46,7 +48,7 @@ public record ConstantFieldInfo(int rawValue) {
     private static final ConstantFieldInfo FINAL_DIMENSIONS_ONE = new ConstantFieldInfo(1);
     private static final ConstantFieldInfo FINAL_DIMENSIONS_TWO = new ConstantFieldInfo(2);
 
-    public ConstantFieldInfo(int rawValue) {
+    private ConstantFieldInfo(int rawValue) {
         this.rawValue = rawValue;
     }
 
@@ -96,14 +98,28 @@ public record ConstantFieldInfo(int rawValue) {
         }
     }
 
-    public static ConstantFieldInfo forRawValue(int rawValue) {
-        switch (rawValue) {
-            case -2:
-                return CHILDREN;
-            case -1:
-                return CHILD;
-            default:
-                return forDimensions(rawValue);
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ConstantFieldInfo o) {
+            return this.rawValue == o.rawValue;
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(rawValue);
+    }
+
+    @Override
+    public String toString() {
+        String simpleName = getClass().getSimpleName();
+        if (isChild()) {
+            return simpleName + "[@Child]";
+        } else if (isChildren()) {
+            return simpleName + "[@Children]";
+        } else {
+            return simpleName + "[@CompilationFinal(dimensions=" + getDimensions() + ")]";
         }
     }
 

@@ -211,7 +211,16 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         if (rawValue == Integer.MIN_VALUE) {
             return null;
         }
-        return ConstantFieldInfo.forRawValue(rawValue);
+        switch (rawValue) {
+            case Integer.MIN_VALUE:
+                return null;
+            case -1:
+                return ConstantFieldInfo.CHILD;
+            case -2:
+                return ConstantFieldInfo.CHILDREN;
+            default:
+                return ConstantFieldInfo.forDimensions(rawValue);
+        }
     }
 
     @Override
