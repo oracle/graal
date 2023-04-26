@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -129,9 +129,9 @@ public final class JDWP {
         static class ALL_THREADS {
             public static final int ID = 4;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Object[] allThreads = context.getAllGuestThreads();
+                Object[] allThreads = controller.getVisibleGuestThreads();
                 reply.writeInt(allThreads.length);
 
                 for (Object t : allThreads) {
@@ -196,7 +196,7 @@ public final class JDWP {
                 controller.suspendAll();
 
                 // give threads time to suspend before returning
-                for (Object guestThread : controller.getContext().getAllGuestThreads()) {
+                for (Object guestThread : controller.getVisibleGuestThreads()) {
                     SuspendedInfo info = controller.getSuspendedInfo(guestThread);
                     if (info instanceof UnknownSuspendedInfo) {
                         awaitSuspendedInfo(controller, guestThread, info);
@@ -415,8 +415,10 @@ public final class JDWP {
 
                 // ensure redefinition atomicity by suspending all
                 // guest threads during the redefine transaction
-                Object[] allGuestThreads = context.getAllGuestThreads();
+                Object[] allGuestThreads = controller.getVisibleGuestThreads();
+                Object prev = null;
                 try {
+                    prev = controller.enterTruffleContext();
                     for (Object guestThread : allGuestThreads) {
                         controller.suspend(guestThread);
                     }
@@ -431,6 +433,7 @@ public final class JDWP {
                     for (Object guestThread : allGuestThreads) {
                         controller.resume(guestThread, false);
                     }
+                    controller.leaveTruffleContext(prev);
                 }
                 return new CommandResult(reply);
             }
@@ -1775,7 +1778,7 @@ public final class JDWP {
                     reply.writeInt(entryCount);
 
                     ArrayList<Object> waiters = new ArrayList<>();
-                    for (Object activeThread : context.getAllGuestThreads()) {
+                    for (Object activeThread : controller.getVisibleGuestThreads()) {
                         if (activeThread == monitorOwnerThread) {
                             continue;
                         }
@@ -2542,7 +2545,7 @@ public final class JDWP {
         static class CHILDREN {
             public static final int ID = 3;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -2553,8 +2556,15 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                Object[] children = context.getChildrenThreads(threadGroup);
-                reply.writeInt(children.length);
+                ArrayList<Object> children = new ArrayList<>();
+                for (Object thread : controller.getVisibleGuestThreads()) {
+                    Object otherGroup = context.getThreadGroup(thread);
+                    if (otherGroup == threadGroup) {
+                        children.add(thread);
+                    }
+                }
+
+                reply.writeInt(children.size());
                 for (Object child : children) {
                     reply.writeLong(context.getIds().getIdAsLong(child));
                 }

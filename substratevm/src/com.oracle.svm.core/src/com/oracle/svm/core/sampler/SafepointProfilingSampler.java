@@ -64,6 +64,11 @@ public class SafepointProfilingSampler implements ProfilingSampler {
         return prefixTree;
     }
 
+    @Override
+    public void reset() {
+        prefixTree.reset();
+    }
+
     private void sampleThreadStack() {
         SamplingStackVisitor visitor = new SamplingStackVisitor();
         SamplingStackVisitor.StackTrace data = new SamplingStackVisitor.StackTrace();

@@ -87,8 +87,8 @@ public class TimeUtils {
      */
     public static long delayNanos(boolean isAbsolute, long time) {
         if (isAbsolute) {
-            /* Absolute deadline, in milliseconds. */
-            return millisToNanos(time - System.currentTimeMillis());
+            /* Convert absolute deadline to delay, in milliseconds. */
+            return Math.max(0L, millisToNanos(time - System.currentTimeMillis()));
         } else {
             /* Relative delay, in nanoseconds. */
             return time;

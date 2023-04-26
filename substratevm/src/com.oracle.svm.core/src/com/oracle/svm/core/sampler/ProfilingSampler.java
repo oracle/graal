@@ -33,4 +33,6 @@ public interface ProfilingSampler {
     void registerSampler();
 
     LockFreePrefixTree prefixTree();
+
+    void reset();
 }
