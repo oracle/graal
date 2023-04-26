@@ -1,3 +1,4 @@
+
 /*
  * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -50,9 +51,10 @@ final class Target_jdk_jfr_internal_instrument_JDKEvents {
                     ActiveRecordingEvent.class
     };
 
-    // This is a list of the classes with instrumentation code that should be applied.
-    // Instrumentation code should have already been applied when JFR was enabled during image
-    // build.
+    /*
+     * This is a list of the classes with instrumentation code that should be applied. In Native
+     * Image, instrumentation code is applied during the image build.
+     */
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] instrumentationClasses = new Class<?>[]{};
 

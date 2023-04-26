@@ -29,14 +29,14 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+
 import jdk.jfr.internal.MetadataRepository;
 
-@TargetClass(value = MetadataRepository.class, onlyWith = JfrHostedEnabled.class)
+@TargetClass(value = MetadataRepository.class, onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_MetadataRepository {
     /*
      * Ignore all state of the FlightRecorder maintained when profiling the image generator itself.
      */
-
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
     private static MetadataRepository instance = new MetadataRepository();

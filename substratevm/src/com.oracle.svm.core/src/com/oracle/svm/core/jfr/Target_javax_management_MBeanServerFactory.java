@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "javax.management.MBeanServerFactory", onlyWith = JfrHostedEnabled.class)
+@TargetClass(className = "javax.management.MBeanServerFactory", onlyWith = HasJfrSupport.class)
 final class Target_javax_management_MBeanServerFactory {
 
     /* Reset caches that are used at image build time when FlightRecorder is enabled. */

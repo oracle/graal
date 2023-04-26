@@ -56,7 +56,10 @@ import jdk.jfr.internal.jfc.JFC;
 
 /**
  * Provides basic JFR support. As this support is both platform-dependent and JDK-specific, the
- * current support is limited to Linux & MacOS.
+ * current support is limited to Linux & MacOS. Note that JFR is enabled for the image generator if
+ * the JFR support should be present in the generated native image at run time. This ensures that
+ * the JFR bytecode instrumentation is executed at image build-time and allows us to support events
+ * such as {@code jdk.SocketRead}, {@code jdk.JavaExceptionThrow}, and {@code jdk.FileWrite}.
  *
  * There are two different kinds of JFR events:
  * <ul>
@@ -95,11 +98,6 @@ import jdk.jfr.internal.jfc.JFC;
  */
 @AutomaticallyRegisteredFeature
 public class JfrFeature implements InternalFeature {
-    /*
-     * Note that we could initialize the native part of JFR at image build time and that the native
-     * code sets the FlightRecorder option as a side effect. Therefore, we must ensure that we check
-     * the value of the option before it can be affected by image building.
-     */
     private static final boolean HOSTED_ENABLED = Boolean.parseBoolean(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
 
     @Override
@@ -111,7 +109,7 @@ public class JfrFeature implements InternalFeature {
         boolean systemSupported = osSupported();
         if (HOSTED_ENABLED && !systemSupported) {
             throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
-                            "The image generator can only be profiled on platforms where FlightRecoder is also supported at run time.");
+                            "The image generator can only be profiled on platforms where FlightRecorder is also supported at run time.");
         }
         boolean runtimeEnabled = VMInspectionOptions.hasJfrSupport();
         if (HOSTED_ENABLED && !runtimeEnabled) {
@@ -120,6 +118,9 @@ public class JfrFeature implements InternalFeature {
                                 "This can affect the measurements because it can can make the image larger and image build time longer.");
             }
             runtimeEnabled = true;
+        }
+        if (runtimeEnabled && !HOSTED_ENABLED) {
+            throw UserError.abort("FlightRecorder must be enabled for the image generator if the flight recorder support should be present in the native image at run time.");
         }
         return runtimeEnabled && systemSupported;
     }
@@ -159,7 +160,7 @@ public class JfrFeature implements InternalFeature {
         List<Configuration> knownConfigurations = JFC.getConfigurations();
         JVM.getJVM().createNativeJFR();
 
-        ImageSingletons.add(JfrManager.class, new JfrManager(HOSTED_ENABLED));
+        ImageSingletons.add(JfrManager.class, new JfrManager());
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations));
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
@@ -176,14 +177,12 @@ public class JfrFeature implements InternalFeature {
 
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
 
+        String reason = "Allow FlightRecorder to be used at image build time";
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         rci.initializeAtBuildTime("jdk.management.jfr.internal.FlightRecorderMXBeanProvider$SingleMBeanComponent", "Used by FlightRecorder");
-        if (HOSTED_ENABLED) {
-            rci.initializeAtBuildTime("jdk.management.jfr", "Allow FlightRecorder to be used at image build time");
-            rci.initializeAtBuildTime("com.sun.jmx.mbeanserver", "Allow FlightRecorder to be used at image build time");
-            rci.initializeAtBuildTime("com.sun.jmx.defaults", "Allow FlightRecorder to be used at image build time");
-            rci.initializeAtBuildTime("java.beans", "Allow FlightRecorder to be used at image build time");
-        }
+        rci.initializeAtBuildTime("jdk.management.jfr", reason);
+        rci.initializeAtBuildTime("com.sun.jmx.mbeanserver", reason);
+        rci.initializeAtBuildTime("java.beans", reason);
     }
 
     @Override

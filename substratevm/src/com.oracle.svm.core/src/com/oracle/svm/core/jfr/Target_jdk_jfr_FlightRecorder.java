@@ -30,7 +30,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.jfr.FlightRecorder;
 
-@TargetClass(value = jdk.jfr.FlightRecorder.class, onlyWith = JfrHostedEnabled.class)
+@TargetClass(value = jdk.jfr.FlightRecorder.class, onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_FlightRecorder {
     /*
      * Ignore all state of the FlightRecorder maintained when profiling the image generator itself.
