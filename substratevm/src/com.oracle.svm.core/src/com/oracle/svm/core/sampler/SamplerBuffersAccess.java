@@ -41,20 +41,14 @@ public final class SamplerBuffersAccess {
     }
 
     @Uninterruptible(reason = "Locking no transition.")
-    public static void processActiveBuffers(boolean flushpoint) {
+    public static void processActiveBuffers() {
         SamplerBufferList samplerBufferList = SamplerBufferPool.getSamplerBufferList();
         BufferNode node = samplerBufferList.getHead();
         BufferNode prev = WordFactory.nullPointer();
 
         while (node.isNonNull()) {
             BufferNode next = node.getNext();
-            boolean lockAcquired = BufferNodeAccess.tryLock(node);
-            if (!lockAcquired) {
-                assert flushpoint;
-                // Must block because if nodes are skipped, then flushed events may be missing
-                // stacktrace data
-                BufferNodeAccess.lockNoTransition(node);
-            }
+
             SamplerBuffer buffer = BufferNodeAccess.getSamplerBuffer(node);
             // Try to remove old nodes. If a node's buffer is null, it means it's no longer needed.
             if (buffer.isNull()) {
@@ -64,12 +58,9 @@ public final class SamplerBuffersAccess {
                 continue;
             }
             assert SamplerBufferAccess.verify(buffer);
-            try {
-                // serialize active buffers
-                SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer);
-            } finally {
-                BufferNodeAccess.unlock(node);
-            }
+            // serialize active buffers
+            SubstrateJVM.getStackTraceRepo().serializeStackTraces(buffer);
+
             prev = node;
             node = next;
         }

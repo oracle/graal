@@ -111,7 +111,6 @@ public final class BufferNodeAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static SamplerBuffer getSamplerBuffer(BufferNode node) {
-        assert isLockedByCurrentThread(node) || VMOperation.isInProgressAtSafepoint();
         return (SamplerBuffer) node.getBuffer();
     }
 }

@@ -37,7 +37,6 @@ import com.oracle.svm.core.jfr.JfrThreadState;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.BufferNode;
-import com.oracle.svm.core.jfr.BufferNodeAccess;
 
 public final class SamplerSampleWriter {
     public static final long JFR_STACK_TRACE_END = -1;
@@ -186,34 +185,28 @@ public final class SamplerSampleWriter {
         SamplerBuffer oldBuffer = data.getSamplerBuffer();
         BufferNode oldNode = oldBuffer.getNode();
 
-        // Lock here to avoid race with flushing thread which might be processing
-        BufferNodeAccess.lockNoTransition(oldNode);
-        try {
-            // Signal to thread iterating list that this node can be removed
-            oldNode.setBuffer(WordFactory.nullPointer());
+        // Signal to thread iterating list that this node can be removed
+        oldNode.setBuffer(WordFactory.nullPointer());
 
-            JfrThreadLocal.setSamplerBuffer(newBuffer);
-            UnsignedWord uncommitted = getUncommittedSize(data);
+        JfrThreadLocal.setSamplerBuffer(newBuffer);
+        UnsignedWord uncommitted = getUncommittedSize(data);
 
-            // Copy the uncommitted content of old buffer into new one.
-            UnmanagedMemoryUtil.copy(data.getStartPos(), SamplerBufferAccess.getDataStart(newBuffer), uncommitted);
+        // Copy the uncommitted content of old buffer into new one.
+        UnmanagedMemoryUtil.copy(data.getStartPos(), SamplerBufferAccess.getDataStart(newBuffer), uncommitted);
 
-            // Put in the stack with other unprocessed buffers and send a signal to the JFR
-            // recorder.
-            assert SamplerBufferAccess.verify(oldBuffer);
-            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
-            SubstrateJVM.getRecorderThread().signal();
+        // Put in the stack with other unprocessed buffers and send a signal to the JFR
+        // recorder.
+        assert SamplerBufferAccess.verify(oldBuffer);
+        SubstrateJVM.getSamplerBufferPool().pushFullBuffer(oldBuffer);
+        SubstrateJVM.getRecorderThread().signal();
 
-            // Reinitialize data structure.
-            data.setSamplerBuffer(newBuffer);
-            reset(data);
-            increaseCurrentPos(data, uncommitted);
-            assert SamplerBufferAccess.verify(newBuffer);
-            SamplerBufferPool.getSamplerBufferList().addNode(newBuffer);
-            return true;
-        } finally {
-            BufferNodeAccess.unlock(oldNode);
-        }
+        // Reinitialize data structure.
+        data.setSamplerBuffer(newBuffer);
+        reset(data);
+        increaseCurrentPos(data, uncommitted);
+        assert SamplerBufferAccess.verify(newBuffer);
+        SamplerBufferPool.getSamplerBufferList().addNode(newBuffer);
+        return true;
     }
 
     @Uninterruptible(reason = "Accesses a sampler buffer.", callerMustBe = true)

@@ -157,7 +157,7 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static boolean isExecutionSamplingAllowedInCurrentThread() {
+    public static boolean isExecutionSamplingAllowedInCurrentThread() {
         boolean disallowed = singleton().isSignalHandlerDisabledGlobally.get() > 0 ||
                         isDisabledForCurrentThread.get() > 0 ||
                         SubstrateJVM.getSamplerBufferPool().isLockedByCurrentThread();

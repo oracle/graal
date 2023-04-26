@@ -172,17 +172,11 @@ public class JfrThreadLocal implements ThreadListener {
 
         if (buffer.isNonNull()) {
             BufferNode node = buffer.getNode();
-            // Must lock here to avoid races with a flushing thread processing buffers
-            BufferNodeAccess.lockNoTransition(node);
-            try {
-                // Signal to thread iterating list that this node can be removed
-                node.setBuffer(WordFactory.nullPointer());
-                SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
-                assert SamplerBufferAccess.verify(buffer);
-                samplerBuffer.set(isolateThread, WordFactory.nullPointer());
-            } finally {
-                BufferNodeAccess.unlock(node);
-            }
+            // Signal to thread iterating list that this node can be removed
+            node.setBuffer(WordFactory.nullPointer());
+            SubstrateJVM.getSamplerBufferPool().pushFullBuffer(buffer);
+            assert SamplerBufferAccess.verify(buffer);
+            samplerBuffer.set(isolateThread, WordFactory.nullPointer());
         }
     }
 

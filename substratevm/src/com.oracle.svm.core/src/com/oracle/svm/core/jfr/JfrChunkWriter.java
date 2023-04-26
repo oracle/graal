@@ -516,9 +516,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
      * the SIGPROF handler while we are processing sampler buffers.
      */
     @Uninterruptible(reason = "Prevent JFR recording.")
-    private static void processSamplerBuffers(boolean flushpoint) {
+    private static void processSamplerBuffers() {
         JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
-        SamplerBuffersAccess.processActiveBuffers(flushpoint);
+        SamplerBuffersAccess.processActiveBuffers();
         SamplerBuffersAccess.processFullBuffers();
         JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
     }
@@ -527,7 +527,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     private void flushStorage(boolean flushpoint) {
         if (!flushpoint) {
             // Order first so events emitted during processing remain with the correct chunk.
-            processSamplerBuffers(flushpoint);
+            processSamplerBuffers();
         }
 
         traverseThreadLocalBuffers(getJavaBufferList(), flushpoint);
@@ -537,7 +537,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
         if (flushpoint) {
             // Order last because events in JFR buffers can reference data in sampler buffers.
-            processSamplerBuffers(flushpoint);
+            processSamplerBuffers();
         }
     }
 
