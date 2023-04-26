@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -77,6 +76,13 @@ public final class VMInspectionOptions {
             throw UserError.abort("The `%s` option contains invalid value(s): %s. It can only contain %s.", getDefaultMonitoringCommandArgument(), String.join(", ", enabledFeatures),
                             MONITORING_ALLOWED_VALUES);
         }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean hasJfrSupport(String monitoringFeatures) {
+        LocatableMultiOptionValue.Strings strings = LocatableMultiOptionValue.Strings.buildWithCommaDelimiter();
+        strings.valueUpdate(monitoringFeatures);
+        return strings.values().contains(MONITORING_JFR_NAME);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -139,18 +145,6 @@ public final class VMInspectionOptions {
             throw UserError.abort("The option %s requires the Signal API, but the Signal API is disabled. Please enable with `-H:+%s`.",
                             optionKey.getName(), SubstrateOptions.EnableSignalAPI.getName());
         }
-    }
-
-    static class DeprecatedOptions {
-        @Option(help = "Enables features that allow the VM to be inspected during run time.", type = OptionType.User, //
-                        deprecated = true, deprecationMessage = "Please use --" + ENABLE_MONITORING_OPTION) //
-        static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false) {
-            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-                EnableMonitoringFeatures.update(values, newValue ? "all" : "");
-                DumpRuntimeCompilationOnSignal.update(values, true);
-                super.onValueUpdate(values, oldValue, newValue);
-            }
-        };
     }
 
     private VMInspectionOptions() {
