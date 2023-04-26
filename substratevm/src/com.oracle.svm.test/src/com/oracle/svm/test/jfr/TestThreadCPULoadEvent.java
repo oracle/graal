@@ -35,16 +35,21 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
+import jdk.jfr.consumer.RecordedThread;
 
 /**
  * Test if event ThreadCPULoad is generated after a thread exit.
  */
 public class TestThreadCPULoadEvent extends JfrRecordingTest {
 
-    private static final int MILLIS = 50;
+    private static final int DELAY = 50;
+    private static final String THREAD_NAME_1 = "Thread-1";
+    private static final String THREAD_NAME_2 = "Thread-2";
 
     @Test
     public void test() throws Throwable {
@@ -52,26 +57,53 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         String[] events = new String[]{"jdk.ThreadCPULoad"};
         Recording recording = startRecording(events);
 
-        Thread thread = new Thread(() -> {
-            long time = System.currentTimeMillis() + MILLIS;
-            do {
-                writeToFile();
-            } while (time > System.currentTimeMillis());
-        });
-        thread.start();
-        thread.join();
+        Thread thread1 = createAndStartBusyWaitThread(THREAD_NAME_1, DELAY / 10);
+        Thread thread2 = createAndStartBusyWaitThread(THREAD_NAME_2, DELAY);
+
+        thread1.join();
+        thread2.join();
 
         stopRecording(recording, TestThreadCPULoadEvent::validateEvents);
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertEquals(1, events.size());
-        RecordedEvent event = events.get(0);
-        assertNotNull(event.getThread());
-        float userTime = event.<Float> getValue("user");
-        assertTrue("User time is outside 0..1 range", 0.0 <= userTime && userTime <= 1.0);
-        float systemTime = event.<Float> getValue("system");
-        assertTrue("System time is outside 0..1 range", 0.0 <= systemTime && systemTime <= 1.0);
+        assertEquals(2, events.size());
+        Map<String, Float> systemTimes = new HashMap<>();
+
+        for (RecordedEvent e : events) {
+            float userTime = e.<Float>getValue("user");
+            float systemTime = e.<Float>getValue("system");
+            assertTrue("User time is outside 0..1 range", 0.0 <= userTime && userTime <= 1.0);
+            assertTrue("System time is outside 0..1 range", 0.0 <= systemTime && systemTime <= 1.0);
+            systemTimes.put(e.getThread().getJavaName(), systemTime);
+        }
+
+        assertTrue("Thread-1 system cpu time is greater than Thread-2 system cpu time",
+                systemTimes.get(THREAD_NAME_1) < systemTimes.get(THREAD_NAME_2));
+    }
+
+    private static Thread createAndStartBusyWaitThread(String name, final int delay) {
+        Thread thread = new Thread(() -> {
+            busyWait(delay);
+            sleep(DELAY - delay);
+        });
+        thread.setName(name);
+        thread.start();
+        return thread;
+    }
+
+    private static void busyWait(long delay) {
+        long time = System.currentTimeMillis() + delay;
+        do {
+            writeToFile();
+        } while (time > System.currentTimeMillis());
+    }
+
+    private static void sleep(long delay) {
+        try {
+            Thread.sleep(delay);
+        } catch (InterruptedException ignored) {
+        }
     }
 
     private static void writeToFile() {
