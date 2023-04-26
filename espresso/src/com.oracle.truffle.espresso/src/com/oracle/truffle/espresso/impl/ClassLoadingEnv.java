@@ -69,6 +69,20 @@ public class ClassLoadingEnv implements LanguageAccess {
         return timers;
     }
 
+    private static boolean shouldCacheClass(ClassRegistry.ClassDefinitionInfo info) {
+        /*
+         * Cached class representations must not contain context-dependent objects that cannot be
+         * shared on a language level. Anonymous classes, by definition, contain a Klass
+         * self-reference in the constant pool.
+         */
+        return !info.isAnonymousClass() && !info.isHidden();
+    }
+
+    public boolean shouldCacheClass(ClassRegistry.ClassDefinitionInfo info, StaticObject loader) {
+        return shouldCacheClass(info) && // No cached hidden class
+                        (loaderIsBootOrPlatform(loader) || loaderIsAppLoader(loader));
+    }
+
     public boolean loaderIsBootOrPlatform(StaticObject loader) {
         return StaticObject.isNull(loader) ||
                         (language.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));

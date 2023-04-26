@@ -147,9 +147,10 @@ public final class EspressoLanguageCache {
         return parserKlassProvider.getParserKlass(env, classLoader, typeOrNull, bytes, info);
     }
 
-    public LinkedKlass getOrCreateLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass linkedSuperKlass, LinkedKlass[] linkedInterfaces,
+    public LinkedKlass getOrCreateLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass linkedSuperKlass,
+                    LinkedKlass[] linkedInterfaces,
                     ClassRegistry.ClassDefinitionInfo info) {
         assert isFrozen();
-        return linkedKlassProvider.getLinkedKlass(description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
+        return linkedKlassProvider.getLinkedKlass(env, description, loader, parserKlass, linkedSuperKlass, linkedInterfaces, info);
     }
 }
