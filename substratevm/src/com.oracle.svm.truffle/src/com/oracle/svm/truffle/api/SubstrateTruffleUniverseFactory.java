@@ -76,7 +76,7 @@ public final class SubstrateTruffleUniverseFactory extends SubstrateUniverseFact
     @Platforms(Platform.HOSTED_ONLY.class)
     static PartialEvaluationMethodInfo createPartialEvaluationMethodInfo(TruffleCompilerRuntime runtime, ResolvedJavaMethod method) {
         var info = ((SubstrateTruffleRuntime) runtime).getPartialEvaluationMethodInfo(method);
-        if (info.isInlineable() && Uninterruptible.Utils.isUninterruptible(method)) {
+        if (Uninterruptible.Utils.isUninterruptible(method)) {
             Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
             if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
                 /* The semantics of Uninterruptible would get lost during partial evaluation. */
