@@ -673,19 +673,12 @@ public class RealLog extends Log {
                  */
                 return 0;
             }
-            /*
-             * The FrameInfoCursor is not locked. We can safely print stack trace without
-             * synchronization because we VMOperation is single threaded.
-             */
+        }
+        FRAME_INFO_CURSOR_MUTEX.lock();
+        try {
             return printBacktrace(JDKUtils.getBacktrace(t), maxFrames);
-        } else {
-            /* Not in a VMOperation. Need to lock the FrameInfoCursor. */
-            FRAME_INFO_CURSOR_MUTEX.lock();
-            try {
-                return printBacktrace(JDKUtils.getBacktrace(t), maxFrames);
-            } finally {
-                FRAME_INFO_CURSOR_MUTEX.unlock();
-            }
+        } finally {
+            FRAME_INFO_CURSOR_MUTEX.unlock();
         }
     }
 
