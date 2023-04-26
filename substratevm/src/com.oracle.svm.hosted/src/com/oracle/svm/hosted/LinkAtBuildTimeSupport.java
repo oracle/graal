@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,11 @@ public final class LinkAtBuildTimeSupport {
         @APIOption(name = "link-at-build-time-paths")//
         @Option(help = "file:doc-files/LinkAtBuildTimePathsHelp.txt")//
         public static final HostedOptionKey<AccumulatingLocatableMultiOptionValue.Strings> LinkAtBuildTimePaths = new HostedOptionKey<>(AccumulatingLocatableMultiOptionValue.Strings.build());
+
+        // FIXME: Remove once we have a proper way to handle missing classes through JVMCI (see
+        // https://github.com/oracle/graal/issues/6253)
+        @Option(help = "Fail fast in case of missing classes when linking at build time.") //
+        public static final HostedOptionKey<Boolean> LinkAtBuildTimeFailFast = new HostedOptionKey<>(false);
     }
 
     private final ClassLoaderSupport classLoaderSupport;
@@ -117,5 +122,9 @@ public final class LinkAtBuildTimeSupport {
         }
         Set<OptionOrigin> origins = (Set<OptionOrigin>) reason;
         return origins.stream().map(OptionOrigin::toString).collect(Collectors.joining(" and "));
+    }
+
+    public static boolean failFast() {
+        return Options.LinkAtBuildTimeFailFast.getValue();
     }
 }
