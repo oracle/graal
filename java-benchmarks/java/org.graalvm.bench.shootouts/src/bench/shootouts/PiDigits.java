@@ -58,7 +58,6 @@ package bench.shootouts;
  * contributed by Isaac Gouy
  */
 
-
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
@@ -71,8 +70,7 @@ import java.math.BigInteger;
 public class PiDigits {
 
     static final int L = 10;
-    @Param("500")
-    static int piDigitsN;
+    @Param("500") static int piDigitsN;
 
     @Benchmark
     public static void bench(Blackhole blackhole) {
@@ -187,9 +185,6 @@ class Transformation {
 
     public Transformation compose(Transformation a) {
         return new Transformation(
-                q.multiply(a.q)
-                , (q.multiply(a.r)).add((r.multiply(a.t)))
-                , (s.multiply(a.q)).add((t.multiply(a.s)))
-                , (s.multiply(a.r)).add((t.multiply(a.t))));
+                        q.multiply(a.q), (q.multiply(a.r)).add((r.multiply(a.t))), (s.multiply(a.q)).add((t.multiply(a.s))), (s.multiply(a.r)).add((t.multiply(a.t))));
     }
 }

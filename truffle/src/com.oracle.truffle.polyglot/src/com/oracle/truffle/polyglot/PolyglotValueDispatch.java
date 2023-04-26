@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.RUNTIME;
 
+import java.math.BigInteger;
 import java.nio.ByteOrder;
 import java.time.Duration;
 import java.time.Instant;
@@ -766,6 +767,23 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     protected static long asLongUnsupported(PolyglotLanguageContext context, Object receiver) {
         return invalidCastPrimitive(context, receiver, long.class, "asLong()", "fitsInLong()", "Invalid or lossy primitive coercion.");
+    }
+
+    @Override
+    public BigInteger asBigInteger(Object languageContext, Object receiver) {
+        PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+        Object prev = hostEnter(context);
+        try {
+            return asBigIntegerUnsupported(context, receiver);
+        } catch (Throwable e) {
+            throw guestToHostException(context, e, true);
+        } finally {
+            hostLeave(context, prev);
+        }
+    }
+
+    protected static BigInteger asBigIntegerUnsupported(PolyglotLanguageContext context, Object receiver) {
+        throw cannotConvert(context, receiver, BigInteger.class, "asBigInteger()", "fitsInBigInteger()", "Invalid or lossy coercion.");
     }
 
     @Override
@@ -1749,6 +1767,11 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
 
         @Override
+        public boolean fitsInBigInteger(Object languageContext, Object receiver) {
+            return interop.fitsInBigInteger(receiver);
+        }
+
+        @Override
         public boolean fitsInFloat(Object languageContext, Object receiver) {
             return interop.fitsInFloat(receiver);
         }
@@ -1791,6 +1814,15 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                 return interop.asLong(receiver);
             } catch (UnsupportedMessageException e) {
                 return super.asLong(languageContext, receiver);
+            }
+        }
+
+        @Override
+        public BigInteger asBigInteger(Object languageContext, Object receiver) {
+            try {
+                return interop.asBigInteger(receiver);
+            } catch (UnsupportedMessageException e) {
+                return super.asBigInteger(languageContext, receiver);
             }
         }
 
@@ -2679,6 +2711,36 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
                     return UNCACHED_INTEROP.asLong(receiver);
                 } catch (UnsupportedMessageException e) {
                     return asLongUnsupported(context, receiver);
+                }
+            } catch (Throwable e) {
+                throw guestToHostException(context, e, true);
+            } finally {
+                hostLeave(context, c);
+            }
+        }
+
+        @Override
+        public boolean fitsInBigInteger(Object languageContext, Object receiver) {
+            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+            Object c = hostEnter(context);
+            try {
+                return UNCACHED_INTEROP.fitsInBigInteger(receiver);
+            } catch (Throwable e) {
+                throw guestToHostException(context, e, true);
+            } finally {
+                hostLeave(context, c);
+            }
+        }
+
+        @Override
+        public BigInteger asBigInteger(Object languageContext, Object receiver) {
+            PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
+            Object c = hostEnter(context);
+            try {
+                try {
+                    return UNCACHED_INTEROP.asBigInteger(receiver);
+                } catch (UnsupportedMessageException e) {
+                    return asBigIntegerUnsupported(context, receiver);
                 }
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);

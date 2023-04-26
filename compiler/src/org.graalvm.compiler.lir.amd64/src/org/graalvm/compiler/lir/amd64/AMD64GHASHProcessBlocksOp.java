@@ -68,8 +68,8 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_ghash.cpp",
           lineStart = 35,
           lineEnd   = 535,
-          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
-          sha1      = "f76af2a4acc060dc34bd5c0597228a69145fd66c")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "a0f563cb82a007e3c12d1554e825348b967f868a")
 // @formatter:on
 public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
 
@@ -136,25 +136,25 @@ public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
         }
     }
 
-    private ArrayDataPointerConstant ghashLongSwapMask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant ghashLongSwapMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x0b0a0908, 0x0f0e0d0c, 0x03020100, 0x07060504
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant ghashByteSwapMask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant ghashByteSwapMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x0c0d0e0f, 0x08090a0b, 0x04050607, 0x00010203
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant ghashShuffleMask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant ghashShuffleMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x0f0f0f0f, 0x0f0f0f0f, 0x0f0f0f0f, 0x0f0f0f0f
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant ghashPolynomial = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant ghashPolynomial = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000001, 0x00000000, 0x00000000, 0xc2000000
             // @formatter:on
@@ -519,7 +519,7 @@ public final class AMD64GHASHProcessBlocksOp extends AMD64LIRInstruction {
         masm.vpxor(state, tmp4, tmp1, AVXSize.XMM); // the result is in state
     }
 
-    private void generateHtblOneBlock(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register htbl) {
+    private static void generateHtblOneBlock(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register htbl) {
         Register t = xmm13;
 
         // load the original subkey hash

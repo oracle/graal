@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,9 @@
 package com.oracle.svm.core.graal.llvm;
 
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
+import static org.graalvm.compiler.debug.GraalError.unimplementedOverride;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -135,6 +137,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     private Map<ValuePhiNode, LLVMValueRef> backwardsPhi = new HashMap<>();
     private long nextCGlobalId = 0L;
 
+    @SuppressWarnings("this-escape")
     protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen) {
         this.gen = gen;
         this.builder = gen.getBuilder();
@@ -296,7 +299,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else {
-            throw shouldNotReachHere("node is not LIRLowerable: " + node);
+            throw shouldNotReachHere("node is not LIRLowerable: " + node); // ExcludeFromJacocoGeneratedReport
         }
         debug.log("Operand for %s = %s", node, operand(node));
     }
@@ -347,7 +350,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             }
             return builder.buildICmp(Condition.LE, safepointCount, builder.constantInt(0));
         }
-        throw shouldNotReachHere("logic node: " + condition.getClass().getName());
+        throw shouldNotReachHere("logic node: " + condition.getClass().getName()); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -369,7 +372,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             IntegerTestNode test = (IntegerTestNode) condition;
             conditionalValue = gen.emitIntegerTestMove(operand(test.getX()), operand(test.getY()), trueValue, falseValue);
         } else {
-            throw unimplemented(condition.toString());
+            throw unimplemented(condition.toString()); // ExcludeFromJacocoGeneratedReport
         }
         setResult(conditional, conditionalValue);
     }
@@ -416,7 +419,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 builder.buildIf(cond, gen.getBlock(switchNode.keySuccessor(0)), defaultSuccessor);
                 break;
             default:
-                throw unimplemented();
+                throw shouldNotReachHereUnexpectedValue(numCases); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -492,7 +495,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
             gen.getDebugInfoPrinter().printIndirectCall(targetMethod, callee);
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedValue(callTarget); // ExcludeFromJacocoGeneratedReport
         }
 
         LLVMValueRef call = emitCall(i, callTarget, callee, patchpointId, args);
@@ -517,7 +520,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             LLVMBasicBlockRef handler = gen.getBlock(foreignCallWithExceptionNode.exceptionEdge());
             result = gen.emitForeignCall(linkage, state, successor, handler, args);
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedValue(i); // ExcludeFromJacocoGeneratedReport
         }
 
         if (result != null) {
@@ -554,7 +557,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         newArgs[0] = anchor;
         newArgs[1] = callee;
         System.arraycopy(args, 0, newArgs, 2, args.length);
-        return emitCallInstruction(invoke, nativeABI, wrapper, patchpointId, newArgs);
+        LLVMValueRef wrapperCall = emitCallInstruction(invoke, nativeABI, wrapper, patchpointId, newArgs);
+        builder.setInstructionCallingConvention(wrapperCall, LLVMIRBuilder.LLVMCallingConvention.GraalCallingConvention);
+        return wrapperCall;
     }
 
     private LLVMValueRef emitCallInstruction(Invoke invoke, boolean nativeABI, LLVMValueRef callee, long patchpointId, LLVMValueRef... args) {
@@ -657,17 +662,17 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public void visitSafepointNode(SafepointNode i) {
-        throw unimplemented("the LLVM backend doesn't support deoptimization");
+        throw unimplemented("the LLVM backend doesn't support deoptimization"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void visitFullInfopointNode(FullInfopointNode i) {
-        throw unimplemented("the LLVM backend doesn't support debug info generation");
+        throw unimplemented("the LLVM backend doesn't support debug info generation"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, Stamp compareStamp, double probability) {
-        throw unimplemented("the LLVM backend doesn't support deoptimization");
+        throw unimplemented("the LLVM backend doesn't support deoptimization"); // ExcludeFromJacocoGeneratedReport
     }
 
     /* Value map */
@@ -725,7 +730,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
                 } else if (LLVMIRBuilder.isObjectType(baseType)) {
                     typeOverride = true;
                 } else {
-                    throw shouldNotReachHere(LLVMUtils.dumpValues("unsupported base for address", base));
+                    throw shouldNotReachHere(LLVMUtils.dumpValues("unsupported base for address", base)); // ExcludeFromJacocoGeneratedReport
                 }
 
                 LLVMValueRef intermediate;
@@ -741,7 +746,7 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
             RegisterValue registerValue = (RegisterValue) operand;
             llvmOperand = (LLVMValueWrapper) gen.emitReadRegister(registerValue.getRegister(), registerValue.getValueKind());
         } else {
-            throw shouldNotReachHere("unknown operand: " + operand.toString());
+            throw shouldNotReachHere("unknown operand: " + operand.toString()); // ExcludeFromJacocoGeneratedReport
         }
 
         assert typeOverride || LLVMIRBuilder.compatibleTypes(getLLVMType(node), LLVMIRBuilder.typeOf(llvmOperand.get())) : LLVMUtils.dumpValues(
@@ -754,6 +759,6 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
 
     @Override
     public ValueNode valueForOperand(Value value) {
-        throw unimplemented();
+        throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 }

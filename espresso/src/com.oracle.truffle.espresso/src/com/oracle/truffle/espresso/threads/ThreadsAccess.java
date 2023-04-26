@@ -187,6 +187,22 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
     }
 
+    public StaticObject getThreadGroup(StaticObject thread) {
+        if (getJavaVersion().java19OrLater()) {
+            int state = getState(thread);
+            if (state == State.TERMINATED.value) {
+                return StaticObject.NULL;
+            }
+            if (meta.java_lang_BaseVirtualThread.isAssignableFrom(thread.getKlass())) {
+                return meta.java_lang_Thread$Constants_VTHREAD_GROUP.getObject(meta.java_lang_Thread$Constants.getStatics());
+            }
+            StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
+            return meta.java_lang_Thread$FieldHolder_group.getObject(holder);
+        } else {
+            return meta.java_lang_Thread_threadGroup.getObject(thread);
+        }
+    }
+
     @SuppressWarnings("unused")
     private int updateState(StaticObject self, State state) {
         int old = getState(self);
@@ -316,7 +332,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
      * Creates a thread for the given guest thread. This thread will be ready to be started.
      */
     public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
-        Thread host = getContext().getEnv().createThread(new GuestRunnable(getContext(), guest, exit, dispatch));
+        Thread host = getContext().getEnv().newTruffleThreadBuilder(new GuestRunnable(getContext(), guest, exit, dispatch)).build();
         initializeHiddenFields(guest, host, true);
         // Prepare host thread
         host.setDaemon(isDaemon(guest));

@@ -24,20 +24,17 @@
  */
 package com.oracle.graal.pointsto.reports;
 
+import static com.oracle.graal.pointsto.api.PointstoOptions.TrackAccessChain;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.EnumOptionKey;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 
-import static com.oracle.graal.pointsto.api.PointstoOptions.TrackAccessChain;
-
 public class AnalysisReportsOptions {
 
     @Option(help = "Print analysis results statistics.")//
     public static final OptionKey<Boolean> PrintAnalysisStatistics = new OptionKey<>(false);
-
-    @Option(help = "Analysis results statistics file.")//
-    public static final OptionKey<String> AnalysisStatisticsFile = new OptionKey<>(null);
 
     @Option(help = "Print analysis call tree, a breadth-first tree reduction of the call graph.")//
     public static final OptionKey<Boolean> PrintAnalysisCallTree = new OptionKey<>(false);

@@ -55,7 +55,7 @@ local std_get = (import "../../ci/ci_common/common-utils.libsonnet").std_get;
     table
   ,
   // Removes the 'timelimit' property from an object.
-  // Usually, this is used to remove hard-coded (default) timelimits defined in `common.json`.
+  // Usually, this is used to remove hard-coded (default) timelimits defined in `ci/ci_common/common.jsonnet`.
   // These definitions assume that the os/arch definition comes first and will be refined later.
   // With run-spec, however, this is not true in general because the os/arch is only fixed later
   // in the pipeline. Thus, hard-coded timelimits would override any previous settings. To resolve

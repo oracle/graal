@@ -58,6 +58,8 @@ public final class JfrEvent {
     public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter");
     public static final JfrEvent ThreadPark = create("jdk.ThreadPark");
     public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait");
+    public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate");
+    public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB");
 
     private final long id;
     private final String name;
@@ -85,6 +87,6 @@ public final class JfrEvent {
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit() {
-        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this);
+        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this) && !SubstrateJVM.get().isCurrentThreadExcluded();
     }
 }

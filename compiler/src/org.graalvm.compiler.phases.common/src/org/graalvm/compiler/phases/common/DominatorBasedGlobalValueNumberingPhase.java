@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -51,8 +52,8 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
@@ -158,7 +159,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         final StructuredGraph graph;
         final ControlFlowGraph cfg;
         final LoopsData ld;
-        final NodeBitMap licmNodes;
+        final EconomicMap<LoopBeginNode, NodeBitMap> licmNodesPerLoop;
         final BlockMap<ValueMap> blockMaps;
         final boolean considerLICM;
 
@@ -166,7 +167,10 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             this.cfg = cfg;
             this.ld = ld;
             this.graph = cfg.graph;
-            this.licmNodes = graph.createNodeBitMap();
+            this.licmNodesPerLoop = EconomicMap.create();
+            for (LoopEx lex : ld.loops()) {
+                licmNodesPerLoop.put(lex.loopBegin(), graph.createNodeBitMap());
+            }
             this.blockMaps = new BlockMap<>(cfg);
             this.considerLICM = GraalOptions.EarlyLICM.getValue(graph.getOptions()) && graph.hasLoops();
         }
@@ -272,7 +276,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                     FixedWithNextNode fwn = nodes.get(i);
                     // a previous GVN can remove this node
                     if (fwn != null) {
-                        procesNode(fwn, thisLoopKilledLocations, loopCandidate, blockMap, licmNodes, ld.getCFG());
+                        processNode(fwn, thisLoopKilledLocations, loopCandidate, blockMap, loopCandidate == null ? null : licmNodesPerLoop.get(loopCandidate.loopBegin()), ld.getCFG());
                     }
                 }
             }
@@ -295,7 +299,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             }
         }
 
-        private static void procesNode(FixedWithNextNode cur, LocationSet thisLoopKilledLocations,
+        private static void processNode(FixedWithNextNode cur, LocationSet thisLoopKilledLocations,
                         LoopEx loopCandidate, ValueMap blockMap, NodeBitMap licmNodes, ControlFlowGraph cfg) {
             if (cur instanceof LoopExitNode) {
                 /*
@@ -398,6 +402,9 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
             fwn.setNext(next);
             n.graph().addBeforeFixed(loop.loopBegin().forwardEnd(), toLift);
             liftedNodes.checkAndMarkInc(toLift);
+            // update the position of the block and set it to its new block so further substitutions
+            // query correct definition blocks
+            loop.loopsData().getCFG().getNodeToBlock().set(n, loop.loopsData().getCFG().getNodeToBlock().get(loop.loopBegin().forwardEnd()));
             loop.loopBegin().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, loop.loopBegin().graph(), "After LICM of node %s for loop %s", n, loop);
             earlyGVNLICM.increment(loop.loopBegin().getDebug());
             if (loop.loopBegin().getDebug().isCountEnabled()) {
@@ -444,7 +451,9 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
         if (input == null) {
             return true;
         }
-        return !loop.whole().contains(input) || liftedNodes.contains(input);
+        boolean loopContainsNode = loop.whole().contains(input);
+        boolean wasLifted = liftedNodes.contains(input);
+        return !loopContainsNode || wasLifted;
     }
 
     public static boolean loopKillsLocation(LocationSet thisLoopKilledLocations, LocationIdentity loc) {
@@ -587,15 +596,6 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
 
                 HIRBlock defBlock = cfg.blockFor(edgeDataEqual);
 
-                if (licmNodes.contains(edgeDataEqual)) {
-                    /*
-                     * Note that due to performing LICM on the original CFG the block for this node
-                     * is still inside the loop though we already moved the node to before the loop
-                     */
-                    assert defBlock.getLoop() != null;
-                    defBlock = defBlock.getLoop().getHeader().getDominator();
-                }
-
                 if (invariantInLoop != null) {
                     HIRBlock loopDefBlock = cfg.blockFor(invariantInLoop.loopBegin()).getLoop().getHeader().getDominator();
                     if (loopDefBlock.strictlyDominates(defBlock)) {
@@ -605,7 +605,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends PostRunCanonicaliza
                          * the substitution normally.
                          */
                         if (!tryPerformLICM(invariantInLoop, (FixedNode) edgeDataEqual, licmNodes)) {
-                            GraalError.shouldNotReachHere("tryPerformLICM must succeed for " + edgeDataEqual);
+                            GraalError.shouldNotReachHere("tryPerformLICM must succeed for " + edgeDataEqual); // ExcludeFromJacocoGeneratedReport
                         }
                     } else {
                         GraalError.guarantee(defBlock.dominates(loopDefBlock), "No dominance relation between GVN and LICM locations: %s and %s", defBlock, loopDefBlock);

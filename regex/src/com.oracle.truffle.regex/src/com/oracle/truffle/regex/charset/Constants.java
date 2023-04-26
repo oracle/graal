@@ -62,6 +62,7 @@ public final class Constants {
     public static final CodePointSet UTF8_THREE_BYTE_RANGE = CodePointSet.createNoDedup(0x800, 0xffff);
 
     public static final CodePointSet BMP_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0000, 0xd7ff, 0xe000, 0xffff);
+    public static final CodePointSet ALL_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0000, 0xd7ff, 0xe000, 0x10ffff);
 
     public static final CodePointSet BMP_WITHOUT_LATIN1_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0100, 0xd7ff, 0xe000, 0xffff);
 

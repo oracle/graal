@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.library;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -144,7 +147,8 @@ public class LibraryParser extends AbstractParser<LibraryData> {
         allMethods.add(ElementUtils.findExecutableElement(types.Library, "accepts"));
 
         TypeMirror inferredReceiverType = null;
-        Map<String, LibraryMessage> messages = new HashMap<>();
+
+        Map<String, List<LibraryMessage>> messageByName = new LinkedHashMap<>();
         for (ExecutableElement executable : allMethods) {
             Modifier visibility = ElementUtils.getVisibility(executable.getModifiers());
             if (visibility == Modifier.PRIVATE) {
@@ -158,16 +162,11 @@ public class LibraryParser extends AbstractParser<LibraryData> {
                 // it is automatically implemented.
                 continue;
             }
+            boolean isDeprecated = ElementUtils.isDeprecated(executable);
             String messageName = executable.getSimpleName().toString();
 
-            LibraryMessage message = messages.get(messageName);
-            if (message == null) {
-                message = new LibraryMessage(model, messageName, executable);
-            } else {
-                message.addError("Library message must have a unique name. Two methods with the same name found." +
-                                "If this method is not intended to be a library message then add the private or final modifier to ignore it.");
-                continue;
-            }
+            LibraryMessage message = new LibraryMessage(model, messageName, executable, isDeprecated);
+            messageByName.computeIfAbsent(messageName, (e) -> new ArrayList<>()).add(message);
 
             if (visibility == null) {
                 message.addError("Library messages must be public or protected. Annotate with @GenerateLibrary.Ignore to ignore this method for generation. ");
@@ -192,14 +191,82 @@ public class LibraryParser extends AbstractParser<LibraryData> {
                 }
             }
 
-            LibraryMessage declaredIn = messages.get(messageName);
-            if (declaredIn != null) {
-                message.addError("Messages with the same name are not supported.");
-                continue;
+        }
+
+        // deprecation handling + add messages to model
+        messageByName: for (var entry : messageByName.entrySet()) {
+            List<LibraryMessage> messages = entry.getValue();
+
+            for (LibraryMessage message : messages) {
+                if (message.isDeprecated() && message.isAbstract()) {
+                    message.addError("A deprecated message must not be abstract. Deprecated messages need a default implementation.");
+                    model.getMethods().add(message);
+                    continue messageByName;
+                }
             }
 
-            messages.put(messageName, message);
-            model.getMethods().add(message);
+            if (messages.size() > 1) {
+                List<LibraryMessage> deprecatedMessages = new ArrayList<>();
+                List<LibraryMessage> nonDeprecatedMessages = new ArrayList<>();
+                for (LibraryMessage overload : messages) {
+                    if (overload.isDeprecated()) {
+                        deprecatedMessages.add(overload);
+                    } else {
+                        nonDeprecatedMessages.add(overload);
+                    }
+                }
+                LibraryMessage primaryMessage = null;
+                if (nonDeprecatedMessages.size() > 1) {
+                    for (LibraryMessage message : nonDeprecatedMessages) {
+                        message.addError("Library message must have a unique name. Two methods with the same name found. " +
+                                        "If this method is not intended to be a library message then add the private or final modifier to ignore it. " +
+                                        "Note it is also possible to deprecate all messages except one using the @Deprecated annotation in order to evolve APIs in a compatible way.");
+                    }
+                    model.getMethods().addAll(nonDeprecatedMessages);
+                    continue; // next group
+                } else if (nonDeprecatedMessages.size() == 1) {
+                    primaryMessage = nonDeprecatedMessages.get(0);
+
+                    for (LibraryMessage message : deprecatedMessages) {
+                        if (!primaryMessage.canBeDeprecatedFrom(message)) {
+                            message.addError("Could not delegate from this deprecated message to method %s. Method parameters are not compatible.",
+                                            ElementUtils.getReadableSignature(primaryMessage.getExecutable()));
+                            model.getMethods().add(message);
+                            continue messageByName;
+                        }
+                    }
+
+                } else {
+                    outer: for (LibraryMessage m1 : deprecatedMessages) {
+                        for (LibraryMessage m2 : deprecatedMessages) {
+                            if (!m1.canBeDeprecatedFrom(m2)) {
+                                continue outer;
+                            }
+                        }
+                        primaryMessage = m1;
+                    }
+
+                    if (primaryMessage == null) {
+                        for (LibraryMessage message : deprecatedMessages) {
+                            message.addError(
+                                            "Could not determine primary overload for all deprecated messages. " +
+                                                            "There must be one library message with the same name that all other messages can delegate to.");
+                        }
+                        model.getMethods().addAll(deprecatedMessages);
+                        continue; // next group
+                    }
+
+                    deprecatedMessages.remove(primaryMessage);
+                }
+                for (LibraryMessage deprecated : deprecatedMessages) {
+                    deprecated.setDeprecatedReplacement(primaryMessage);
+                }
+
+                primaryMessage.setDeprecatedOverloads(deprecatedMessages);
+                model.getMethods().add(primaryMessage);
+            } else {
+                model.getMethods().addAll(messages);
+            }
         }
 
         if (!model.hasErrors() && model.getMethods().size() <= 1) {
@@ -211,17 +278,8 @@ public class LibraryParser extends AbstractParser<LibraryData> {
             AnnotationMirror abstractMirror = ElementUtils.findAnnotationMirror(message.getExecutable(), types.GenerateLibrary_Abstract);
             if (abstractMirror != null) {
                 message.setAbstract(true);
-                AnnotationValue value = ElementUtils.getAnnotationValue(abstractMirror, "ifExported");
-                for (String ifExported : ElementUtils.getAnnotationValueList(String.class, abstractMirror, "ifExported")) {
-                    LibraryMessage ifExportedMessage = messages.get(ifExported);
-                    if (ifExportedMessage == message) {
-                        message.addError(abstractMirror, value, "The ifExported condition links to itself. Remove that condition to resolve this problem.");
-                    } else if (ifExportedMessage == null) {
-                        message.addError(abstractMirror, value, "The ifExported condition links to an unknown message '%s'. Only valid library messages may be linked.", ifExported);
-                    } else {
-                        message.getAbstractIfExported().add(ifExportedMessage);
-                    }
-                }
+                message.getAbstractIfExported().addAll(parseAbstractIfExported(message, abstractMirror, "ifExported", messageByName));
+                message.getAbstractIfExportedAsWarning().addAll(parseAbstractIfExported(message, abstractMirror, "ifExportedAsWarning", messageByName));
             }
         }
 
@@ -266,7 +324,32 @@ public class LibraryParser extends AbstractParser<LibraryData> {
             model.setObjectExports(objectExports);
         }
 
+        for (LibraryMessage message : model.getMethods()) {
+            // must be first to guarantee message lookup ordering
+            model.getAllMethods().add(message);
+            model.getAllMethods().addAll(message.getDeprecatedOverloads());
+        }
+
         return model;
+    }
+
+    private static Set<LibraryMessage> parseAbstractIfExported(LibraryMessage message, AnnotationMirror abstractMirror, String ifExportedAttribute, Map<String, List<LibraryMessage>> messages) {
+        Set<LibraryMessage> abstractIfExportedMessages = new LinkedHashSet<>();
+        AnnotationValue value = ElementUtils.getAnnotationValue(abstractMirror, ifExportedAttribute);
+        List<String> valueList = ElementUtils.getAnnotationValueList(String.class, abstractMirror, ifExportedAttribute);
+        for (String ifExported : valueList) {
+            List<LibraryMessage> ifExportedMessages = messages.get(ifExported);
+            LibraryMessage ifExportedMessage = ifExportedMessages != null ? ifExportedMessages.get(0) : null;
+
+            if (ifExportedMessage == message) {
+                message.addError(abstractMirror, value, "The %s condition links to itself. Remove that condition to resolve this problem.", ifExportedAttribute);
+            } else if (ifExportedMessage == null) {
+                message.addError(abstractMirror, value, "The %s condition links to an unknown message '%s'. Only valid library messages may be linked.", ifExportedAttribute, ifExported);
+            } else {
+                abstractIfExportedMessages.add(ifExportedMessage);
+            }
+        }
+        return abstractIfExportedMessages;
     }
 
     private static void parseAssertions(Element element, AnnotationMirror mirror, TypeElement type, LibraryData model) {

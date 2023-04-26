@@ -32,9 +32,10 @@ import com.oracle.svm.core.Uninterruptible;
 
 @CContext(JNIHeaderDirectives.class)
 public final class JNIVersion {
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isSupported(int version) {
-        return (JavaVersionUtil.JAVA_SPEC > 17 && version == JNIVersionJDK19OrLater.JNI_VERSION_19()) ||
+        return (JavaVersionUtil.JAVA_SPEC >= 20 && version == JNIVersionJDK20OrLater.JNI_VERSION_20()) ||
+                        (JavaVersionUtil.JAVA_SPEC >= 19 && version == JNIVersionJDK19OrLater.JNI_VERSION_19()) ||
                         version == JNI_VERSION_10() ||
                         version == JNI_VERSION_9() ||
                         version == JNI_VERSION_1_8() ||

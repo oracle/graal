@@ -131,6 +131,7 @@ CLSS public final com.oracle.truffle.api.HostCompilerDirectives
 innr public abstract interface static !annotation BytecodeInterpreterSwitch
 innr public abstract interface static !annotation BytecodeInterpreterSwitchBoundary
 innr public abstract interface static !annotation InliningCutoff
+meth public static boolean inInterpreterFastPath()
 supr java.lang.Object
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitch
@@ -176,6 +177,7 @@ meth public abstract !hasdefault java.lang.String deprecationMessage()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String usageSyntax()
 meth public abstract !hasdefault org.graalvm.options.OptionStability stability()
+meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
 meth public abstract java.lang.String help()
 meth public abstract org.graalvm.options.OptionCategory category()
 
@@ -216,7 +218,9 @@ hfds RUNTIME
 CLSS public final com.oracle.truffle.api.TruffleContext
 innr public final Builder
 intf java.lang.AutoCloseable
+meth public <%0 extends java.lang.Object, %1 extends java.lang.Object> {%%1} leaveAndEnter(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$InterruptibleFunction<{%%0},{%%1}>,{%%0})
 meth public <%0 extends java.lang.Object> {%%0} leaveAndEnter(com.oracle.truffle.api.nodes.Node,java.util.function.Supplier<{%%0}>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public boolean equals(java.lang.Object)
 meth public boolean initializeInternal(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public boolean initializePublic(com.oracle.truffle.api.nodes.Node,java.lang.String)
@@ -488,6 +492,7 @@ meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.lang.
 meth public com.oracle.truffle.api.TruffleFile getTruffleFileInternal(java.net.URI,java.util.function.Predicate<com.oracle.truffle.api.TruffleFile>)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
+meth public com.oracle.truffle.api.TruffleThreadBuilder newTruffleThreadBuilder(java.lang.Runnable)
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
@@ -511,9 +516,13 @@ meth public java.lang.String[] getApplicationArguments()
 meth public java.lang.Thread createSystemThread(java.lang.Runnable)
 meth public java.lang.Thread createSystemThread(java.lang.Runnable,java.lang.ThreadGroup)
 meth public java.lang.Thread createThread(java.lang.Runnable)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public java.lang.Thread createThread(java.lang.Runnable,com.oracle.truffle.api.TruffleContext)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public java.lang.Thread createThread(java.lang.Runnable,com.oracle.truffle.api.TruffleContext,java.lang.ThreadGroup)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public java.lang.Thread createThread(java.lang.Runnable,com.oracle.truffle.api.TruffleContext,java.lang.ThreadGroup,long)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public java.lang.Throwable asHostException(java.lang.Throwable)
 meth public java.time.ZoneId getTimeZone()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.InstrumentInfo> getInstruments()
@@ -523,6 +532,7 @@ meth public java.util.Map<java.lang.String,java.lang.Object> getConfig()
 meth public java.util.Map<java.lang.String,java.lang.String> getEnvironment()
 meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(java.lang.Thread[],com.oracle.truffle.api.ThreadLocalAction)
 meth public org.graalvm.options.OptionValues getOptions()
+meth public org.graalvm.polyglot.SandboxPolicy getSandboxPolicy()
 meth public void addToHostClassPath(com.oracle.truffle.api.TruffleFile)
 meth public void exportSymbol(java.lang.String,java.lang.Object)
 meth public void registerOnDispose(java.io.Closeable)
@@ -589,6 +599,7 @@ meth public abstract !hasdefault java.lang.String website()
 meth public abstract !hasdefault java.lang.String[] byteMimeTypes()
 meth public abstract !hasdefault java.lang.String[] characterMimeTypes()
 meth public abstract !hasdefault java.lang.String[] dependentLanguages()
+meth public abstract !hasdefault org.graalvm.polyglot.SandboxPolicy sandbox()
 
 CLSS public final com.oracle.truffle.api.TruffleLogger
 meth public <%0 extends java.lang.Throwable> {%%0} throwing(java.lang.String,java.lang.String,{%%0})
@@ -633,6 +644,10 @@ supr java.lang.Object
 hfds DEFAULT_VALUE,MAX_CLEANED_REFS,OFF_VALUE,ROOT_NAME,children,childrenLock,levelNum,levelNumStable,levelObj,loggerCache,loggersRefQueue,name,parent
 hcls AbstractLoggerRef,ChildLoggerRef,LoggerCache
 
+CLSS public abstract interface com.oracle.truffle.api.TruffleOptionDescriptors
+intf org.graalvm.options.OptionDescriptors
+meth public abstract org.graalvm.polyglot.SandboxPolicy getSandboxPolicy(java.lang.String)
+
 CLSS public final com.oracle.truffle.api.TruffleOptions
 fld public final static boolean AOT
 fld public final static boolean DetailedRewriteReasons
@@ -665,14 +680,18 @@ meth public int getPriority()
 CLSS public abstract com.oracle.truffle.api.TruffleSafepoint
 cons protected init(com.oracle.truffle.api.impl.Accessor$EngineSupport)
 innr public abstract interface static CompiledInterruptible
+innr public abstract interface static CompiledInterruptibleFunction
 innr public abstract interface static Interrupter
 innr public abstract interface static Interruptible
-meth public abstract <%0 extends java.lang.Object> void setBlockedWithException(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.util.function.Consumer<java.lang.Throwable>)
+innr public abstract interface static InterruptibleFunction
+meth public <%0 extends java.lang.Object> void setBlockedWithException(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.util.function.Consumer<java.lang.Throwable>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+meth public abstract <%0 extends java.lang.Object, %1 extends java.lang.Object> {%%1} setBlockedFunction(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$InterruptibleFunction<{%%0},{%%1}>,{%%0},java.lang.Runnable,java.util.function.Consumer<java.lang.Throwable>)
+meth public abstract <%0 extends java.lang.Object> void setBlocked(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.util.function.Consumer<java.lang.Throwable>)
 meth public abstract boolean hasPendingSideEffectingActions()
 meth public abstract boolean setAllowActions(boolean)
 meth public abstract boolean setAllowSideEffects(boolean)
-meth public final <%0 extends java.lang.Object> void setBlocked(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.lang.Runnable)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.1")
+meth public static <%0 extends java.lang.Object, %1 extends java.lang.Object> {%%1} setBlockedThreadInterruptibleFunction(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$InterruptibleFunction<{%%0},{%%1}>,{%%0})
 meth public static <%0 extends java.lang.Object> void setBlockedThreadInterruptible(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0})
 meth public static com.oracle.truffle.api.TruffleSafepoint getCurrent()
 meth public static void poll(com.oracle.truffle.api.nodes.Node)
@@ -686,6 +705,12 @@ CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$Co
 intf com.oracle.truffle.api.TruffleSafepoint$Interruptible<{com.oracle.truffle.api.TruffleSafepoint$CompiledInterruptible%0}>
 meth public abstract void apply({com.oracle.truffle.api.TruffleSafepoint$CompiledInterruptible%0}) throws java.lang.InterruptedException
 
+CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$CompiledInterruptibleFunction<%0 extends java.lang.Object, %1 extends java.lang.Object>
+ outer com.oracle.truffle.api.TruffleSafepoint
+ anno 0 java.lang.FunctionalInterface()
+intf com.oracle.truffle.api.TruffleSafepoint$InterruptibleFunction<{com.oracle.truffle.api.TruffleSafepoint$CompiledInterruptibleFunction%0},{com.oracle.truffle.api.TruffleSafepoint$CompiledInterruptibleFunction%1}>
+meth public abstract {com.oracle.truffle.api.TruffleSafepoint$CompiledInterruptibleFunction%1} apply({com.oracle.truffle.api.TruffleSafepoint$CompiledInterruptibleFunction%0}) throws java.lang.InterruptedException
+
 CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$Interrupter
  outer com.oracle.truffle.api.TruffleSafepoint
 fld public final static com.oracle.truffle.api.TruffleSafepoint$Interrupter THREAD_INTERRUPT
@@ -696,6 +721,11 @@ CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$In
  outer com.oracle.truffle.api.TruffleSafepoint
  anno 0 java.lang.FunctionalInterface()
 meth public abstract void apply({com.oracle.truffle.api.TruffleSafepoint$Interruptible%0}) throws java.lang.InterruptedException
+
+CLSS public abstract interface static com.oracle.truffle.api.TruffleSafepoint$InterruptibleFunction<%0 extends java.lang.Object, %1 extends java.lang.Object>
+ outer com.oracle.truffle.api.TruffleSafepoint
+ anno 0 java.lang.FunctionalInterface()
+meth public abstract {com.oracle.truffle.api.TruffleSafepoint$InterruptibleFunction%1} apply({com.oracle.truffle.api.TruffleSafepoint$InterruptibleFunction%0}) throws java.lang.InterruptedException
 
 CLSS public final com.oracle.truffle.api.TruffleStackTrace
 meth public java.lang.String toString()
@@ -715,6 +745,16 @@ meth public java.lang.Object getGuestObject()
 meth public static com.oracle.truffle.api.TruffleStackTraceElement create(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.RootCallTarget,com.oracle.truffle.api.frame.Frame)
 supr java.lang.Object
 hfds frame,location,target
+
+CLSS public final com.oracle.truffle.api.TruffleThreadBuilder
+meth public com.oracle.truffle.api.TruffleThreadBuilder afterLeave(java.lang.Runnable)
+meth public com.oracle.truffle.api.TruffleThreadBuilder beforeEnter(java.lang.Runnable)
+meth public com.oracle.truffle.api.TruffleThreadBuilder context(com.oracle.truffle.api.TruffleContext)
+meth public com.oracle.truffle.api.TruffleThreadBuilder stackSize(long)
+meth public com.oracle.truffle.api.TruffleThreadBuilder threadGroup(java.lang.ThreadGroup)
+meth public java.lang.Thread build()
+supr java.lang.Object
+hfds afterLeave,beforeEnter,polyglotLanguageContext,runnable,stackSize,threadGroup,truffleContext
 
 CLSS public abstract interface com.oracle.truffle.api.frame.Frame
 meth public abstract com.oracle.truffle.api.frame.FrameDescriptor getFrameDescriptor()
@@ -1210,6 +1250,7 @@ meth protected boolean isTrivial()
 meth protected com.oracle.truffle.api.frame.FrameDescriptor getParentFrameDescriptor()
 meth protected com.oracle.truffle.api.nodes.ExecutionSignature prepareForAOT()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
+meth protected int computeSize()
 meth protected java.lang.Object translateStackTraceElement(com.oracle.truffle.api.TruffleStackTraceElement)
 meth protected java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> findAsynchronousFrames(com.oracle.truffle.api.frame.Frame)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
@@ -1403,6 +1444,11 @@ cons public init(java.lang.Throwable)
 supr java.lang.RuntimeException
 hfds serialVersionUID
 
+CLSS public abstract interface java.lang.Iterable<%0 extends java.lang.Object>
+meth public abstract java.util.Iterator<{java.lang.Iterable%0}> iterator()
+meth public java.util.Spliterator<{java.lang.Iterable%0}> spliterator()
+meth public void forEach(java.util.function.Consumer<? super {java.lang.Iterable%0}>)
+
 CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
@@ -1485,4 +1531,12 @@ meth public abstract java.lang.annotation.ElementType[] value()
 
 CLSS public abstract interface java.lang.constant.Constable
 meth public abstract java.util.Optional<? extends java.lang.constant.ConstantDesc> describeConstable()
+
+CLSS public abstract interface org.graalvm.options.OptionDescriptors
+fld public final static org.graalvm.options.OptionDescriptors EMPTY
+intf java.lang.Iterable<org.graalvm.options.OptionDescriptor>
+meth public !varargs static org.graalvm.options.OptionDescriptors createUnion(org.graalvm.options.OptionDescriptors[])
+meth public abstract java.util.Iterator<org.graalvm.options.OptionDescriptor> iterator()
+meth public abstract org.graalvm.options.OptionDescriptor get(java.lang.String)
+meth public static org.graalvm.options.OptionDescriptors create(java.util.List<org.graalvm.options.OptionDescriptor>)
 

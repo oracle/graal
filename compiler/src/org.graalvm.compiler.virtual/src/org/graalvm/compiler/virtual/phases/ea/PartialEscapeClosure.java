@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -185,6 +185,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
+    @SuppressWarnings("this-escape")
     public PartialEscapeClosure(ScheduleResult schedule, CoreProviders providers) {
         super(schedule, schedule.getCFG());
         StructuredGraph graph = schedule.getCFG().graph;
@@ -307,7 +308,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 return virtualizationResult;
 
             default:
-                throw GraalError.shouldNotReachHere("Unknown effects closure mode " + currentMode);
+                throw GraalError.shouldNotReachHere("Unknown effects closure mode " + currentMode); // ExcludeFromJacocoGeneratedReport
         }
         return virtualize(node, tool);
     }

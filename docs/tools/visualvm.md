@@ -23,11 +23,11 @@ VisualVM is shipped as an installable component and can be added to GraalVM usin
 gu install visualvm
 ```
 
-This installs VisualVM in the `$GRAALVM_HOME/bin` directory.
+This installs VisualVM in the `$JAVA_HOME/bin` directory.
 To start VisualVM, execute `jvisualvm`:
 
 ```shell
-$GRAALVM_HOME/bin/jvisualvm
+$JAVA_HOME/bin/jvisualvm
 ```
 Immediately after startup, the tool shows all locally running Java processes in the Applications area, including the VisualVM process, itself.
 
@@ -73,7 +73,7 @@ JFR is a tool for collecting diagnostic and profiling data about a running Java 
 It is integrated into the Java Virtual Machine (JVM) and causes almost no performance overhead, so it can be used even in heavily loaded production environments.
 
 To install the JFR support, released as a plugin:
-1. Run `<GRAALVM_HOME>/bin/jvisualvm` to start VisualVM;
+1. Run `$JAVA_HOME/bin/jvisualvm` to start VisualVM;
 2. Navigate to Tools > Plugins > Available Plugins to list all available plugins, then install the _VisualVM-JFR_ and
 _VisualVM-JFR-Generic_ modules.
 

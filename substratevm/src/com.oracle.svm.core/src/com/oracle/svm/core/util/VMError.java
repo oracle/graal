@@ -64,9 +64,15 @@ public final class VMError {
 
     }
 
-    public static RuntimeException shouldNotReachHere() {
-        throw new HostedError("should not reach here");
-    }
+    public static final String msgShouldNotReachHere = "should not reach here";
+    public static final String msgShouldNotReachHereSubstitution = msgShouldNotReachHere + ": substitution reached at runtime";
+    public static final String msgShouldNotReachHereUnexpectedInput = msgShouldNotReachHere + ": unexpected input could not be handled";
+    public static final String msgShouldNotReachHereOverrideInChild = msgShouldNotReachHere + ": method should have been overridden in child";
+    public static final String msgShouldNotReachHereAtRuntime = msgShouldNotReachHere + ": this code is expected to be unreachable at runtime";
+    public static final String msgShouldNotReachHereUnsupportedPlatform = msgShouldNotReachHere + ": unsupported platform";
+
+    public static final String msgUnimplemented = "unimplemented";
+    public static final String msgUnimplementedIntentionally = msgUnimplemented + ": this method has intentionally not been implemented";
 
     public static RuntimeException shouldNotReachHere(String msg) {
         throw new HostedError(msg);
@@ -80,14 +86,37 @@ public final class VMError {
         throw new HostedError(msg, cause);
     }
 
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
+    public static RuntimeException shouldNotReachHereSubstitution() {
+        throw new HostedError(msgShouldNotReachHereSubstitution);
+    }
+
+    /**
+     * A hardcoded list of options (if, switch) did not handle the case actually provided.
+     */
+    public static RuntimeException shouldNotReachHereUnexpectedInput(Object input) {
+        throw new HostedError(msgShouldNotReachHereUnexpectedInput + ": " + input);
+    }
+
+    public static RuntimeException shouldNotReachHereOverrideInChild() {
+        throw new HostedError(msgShouldNotReachHereOverrideInChild);
+    }
+
+    public static RuntimeException shouldNotReachHereAtRuntime() {
+        throw new HostedError(msgShouldNotReachHereAtRuntime);
+    }
+
+    public static RuntimeException unsupportedPlatform() {
+        throw shouldNotReachHere(msgShouldNotReachHereUnsupportedPlatform);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition) {
         if (!condition) {
             throw shouldNotReachHere("guarantee failed");
         }
     }
 
-    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition, String msg) {
         if (!condition) {
             throw shouldNotReachHere(msg);
@@ -128,14 +157,25 @@ public final class VMError {
         }
     }
 
-    public static RuntimeException unimplemented() {
-        throw new UnsupportedOperationException("unimplemented");
-    }
-
+    /**
+     * A lower-level feature that is not yet supported (but might be implemented later, if
+     * relevant).
+     */
     public static RuntimeException unimplemented(String msg) {
         throw new UnsupportedOperationException(msg);
     }
 
+    /**
+     * A lower-level feature that is not implemented. A conscious decision was made not to implement
+     * it.
+     */
+    public static RuntimeException intentionallyUnimplemented() {
+        throw new UnsupportedOperationException(msgUnimplementedIntentionally);
+    }
+
+    /**
+     * A high-level feature that is not supported, e.g. class loading at runtime.
+     */
     public static RuntimeException unsupportedFeature(String msg) {
         throw new HostedError("UNSUPPORTED FEATURE: " + msg);
     }

@@ -50,6 +50,7 @@ import static org.junit.Assert.assertThat;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
@@ -514,6 +515,7 @@ public class ReplacesTest {
 
     abstract static class ReplacesGuard1 extends ValueNode {
 
+        @Idempotent
         boolean g1() {
             return true;
         }
@@ -531,6 +533,7 @@ public class ReplacesTest {
 
     abstract static class ReplacesGuard2 extends ValueNode {
 
+        @Idempotent
         boolean g1() {
             return true;
         }
@@ -548,7 +551,7 @@ public class ReplacesTest {
     }
 
     abstract static class ReplacesGuard3 extends ValueNode {
-
+        @Idempotent
         boolean g1() {
             return true;
         }
@@ -565,11 +568,12 @@ public class ReplacesTest {
     }
 
     abstract static class ReplacesGuard4 extends ValueNode {
-
+        @Idempotent
         boolean g1() {
             return true;
         }
 
+        @Idempotent
         boolean g2() {
             return true;
         }
@@ -586,11 +590,12 @@ public class ReplacesTest {
     }
 
     abstract static class ReplacesGuard5 extends ValueNode {
-
+        @Idempotent
         boolean g1() {
             return true;
         }
 
+        @Idempotent
         boolean g2() {
             return true;
         }
@@ -607,11 +612,12 @@ public class ReplacesTest {
     }
 
     abstract static class ReplacesGuard6 extends ValueNode {
-
+        @Idempotent
         boolean g1() {
             return true;
         }
 
+        @Idempotent
         boolean g2() {
             return true;
         }
@@ -628,11 +634,12 @@ public class ReplacesTest {
     }
 
     abstract static class ReplacesGuard7 extends ValueNode {
-
+        @Idempotent
         boolean g1() {
             return true;
         }
 
+        @Idempotent
         boolean g2() {
             return true;
         }

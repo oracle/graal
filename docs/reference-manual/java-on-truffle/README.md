@@ -28,23 +28,13 @@ Java on Truffle is an experimental technology in GraalVM, but already passes the
 
 ## Install Java on Truffle
 
-To run Java on Truffle, you need to have [GraalVM installed](../../getting-started/graalvm-community/get-started-graalvm-community.md).
 The Java on Truffle runtime is not available by default, but can be easily added to GraalVM using the [GraalVM Updater tool](../graalvm-updater.md).
-
-For GraalVM Community Edition users, run the following command to install Java on Truffle from the GitHub catalog:
 ```shell
 gu install espresso
 ```
 
 The installable's name, `espresso`, is the project code-name, it is used to avoid ambiguity with the other ways Java code can run on GraalVM.
-
-For GraalVM Enterprise Edition users, download  Java on Truffle from [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
-Having downloaded the appropriate JAR file in consideration of the operating system and underlying Java SE version, install it with:
-```shell
-gu install -L espresso.jar
-```
-
-It installs the `jvm` runtime library under the `GRAALVM_HOME/lib/truffle/` location.
+It installs the `jvm` runtime library under the `$JAVA_HOME/lib/truffle/` location.
 
 ## Run Java on Truffle
 

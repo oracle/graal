@@ -31,9 +31,7 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
-import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -52,13 +50,13 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.jdk.ContinuationsNotSupported;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -79,6 +77,10 @@ public final class Target_java_lang_Thread {
     @Alias //
     @TargetElement(onlyWith = JDK19OrLater.class) //
     static int NO_INHERIT_THREAD_LOCALS;
+
+    @Alias //
+    @TargetElement(onlyWith = JDK20OrLater.class) //
+    static Object NEW_THREAD_BINDINGS;
     // Checkstyle: resume
 
     /** This field is initialized when the thread actually starts executing. */
@@ -86,25 +88,16 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     IsolateThread isolateThread;
 
-    /**
-     * Every thread has a boolean for noting whether this thread is interrupted.
-     *
-     * After JDK 11, a field with same name has been introduced and the logic to set / reset it has
-     * moved into Java code. So this injected field and the substitutions that maintain it are no
-     * longer necessary. See {@link #interruptedJDK17OrLater}.
-     */
-    @Inject //
-    @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    volatile boolean interruptedJDK11OrEarlier;
-
     @Alias //
-    @TargetElement(name = "interrupted", onlyWith = JDK17OrLater.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    volatile boolean interruptedJDK17OrLater;
+    volatile boolean interrupted;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     long parentThreadId;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    public boolean jfrExcluded;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ThreadData.class)//
     UnacquiredThreadData threadData;
@@ -185,9 +178,12 @@ public final class Target_java_lang_Thread {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object lockHelper;
 
-    @Inject @TargetElement(onlyWith = {HasScopedValueCache.class, HasExtentLocalCache.class, LoomJDK.class}) //
+    @Inject @TargetElement(onlyWith = JDK19OrLater.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     Object[] scopedValueCache;
+
+    @Alias @TargetElement(onlyWith = JDK20OrLater.class) //
+    Object scopedValueBindings;
 
     @Alias
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -365,6 +361,10 @@ public final class Target_java_lang_Thread {
         boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, allowThreadLocals, inheritThreadLocals);
+
+        if (JavaVersionUtil.JAVA_SPEC >= 20) {
+            this.scopedValueBindings = NEW_THREAD_BINDINGS;
+        }
     }
 
     @Substitute
@@ -389,6 +389,10 @@ public final class Target_java_lang_Thread {
         boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initNewThreadLocalsAndLoader(this, allowThreadLocals, inheritThreadLocals, Thread.currentThread());
+
+        if (JavaVersionUtil.JAVA_SPEC >= 20) {
+            this.scopedValueBindings = NEW_THREAD_BINDINGS;
+        }
     }
 
     @SuppressWarnings("hiding")
@@ -438,33 +442,23 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
     public static boolean interrupted() {
         return JavaThreads.getAndClearInterrupt(Thread.currentThread());
     }
 
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    @Platforms(InternalPlatform.NATIVE_ONLY.class)
-    private native boolean isInterrupted(boolean clearInterrupted);
-
     /**
      * Marks the thread as interrupted and wakes it up.
      *
-     * See {@link PlatformThreads#parkCurrentPlatformOrCarrierThread()},
+     * See {@link PlatformThreads#parkCurrentPlatformOrCarrierThread},
      * {@link PlatformThreads#unpark} and {@link JavaThreads#sleep} for vital aspects of the
      * underlying mechanisms.
      */
     @Substitute
     void interrupt0() {
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            interruptedJDK11OrEarlier = true;
-        } else {
-            /*
-             * After JDK 11, the interrupted flag is maintained by the JDK in Java code, i.e.,
-             * already set by the caller. So we do not need to set any flag.
-             */
-        }
+        /*
+         * The interrupted flag is maintained by the JDK in Java code, i.e., already set by the
+         * caller. So we do not need to set any flag.
+         */
 
         if (!SubstrateOptions.MultiThreaded.getValue()) {
             /* If the VM is single-threaded, this thread can not be blocked. */
@@ -472,7 +466,7 @@ public final class Target_java_lang_Thread {
         }
 
         Thread thread = JavaThreads.fromTarget(this);
-        PlatformThreads.interrupt(thread);
+        PlatformThreads.interruptSleep(thread);
         /*
          * This may unpark the thread unnecessarily (e.g., the interrupt above could have already
          * resumed the thread execution, so the thread could now be parked for some other reason).
@@ -615,7 +609,6 @@ public final class Target_java_lang_Thread {
      * Our implementation in {@code WindowsPlatformThreads} already handles this.
      */
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static void clearInterruptEvent() {
     }
 
@@ -635,43 +628,101 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = LoomJDK.class)
     public static native Target_java_lang_Thread_Builder ofVirtual();
 
-    /** This method being reachable fails the image build, see {@link ContinuationsFeature}. */
     @Substitute
     @TargetElement(name = "ofVirtual", onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
     public static Target_java_lang_Thread_Builder ofVirtualWithoutLoom() {
-        throw VMError.shouldNotReachHere();
+        if (Target_jdk_internal_misc_PreviewFeatures.isEnabled()) {
+            if (DeoptimizationSupport.enabled()) {
+                throw new UnsupportedOperationException("Virtual threads are not supported together with Truffle JIT compilation.");
+            }
+            if (SubstrateOptions.useLLVMBackend()) {
+                throw new UnsupportedOperationException("Virtual threads are not supported together with the LLVM backend.");
+            }
+        } else {
+            Target_jdk_internal_misc_PreviewFeatures.ensureEnabled(); // throws
+        }
+        throw VMError.shouldNotReachHereSubstitution();
     }
 
-    /** This method being reachable fails the image build, see {@link ContinuationsFeature}. */
     @Substitute
-    @TargetElement(onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
-    static Thread startVirtualThread(Runnable task) {
-        throw VMError.shouldNotReachHere();
+    @TargetElement(name = "startVirtualThread", onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
+    static Thread startVirtualThreadWithoutLoom(Runnable task) {
+        Objects.requireNonNull(task);
+        ofVirtualWithoutLoom(); // throws
+        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasExtentLocalCache.class)
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK19OrEarlier.class})
     static Object[] extentLocalCache() {
         return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasExtentLocalCache.class)
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK19OrEarlier.class})
     static void setExtentLocalCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasScopedValueCache.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static Object[] scopedValueCache() {
         return JavaThreads.toTarget(currentCarrierThread()).scopedValueCache;
     }
 
     @Substitute
-    @TargetElement(onlyWith = HasScopedValueCache.class)
+    @TargetElement(onlyWith = JDK20OrLater.class)
     static void setScopedValueCache(Object[] cache) {
         JavaThreads.toTarget(currentCarrierThread()).scopedValueCache = cache;
     }
+
+    @Alias
+    @TargetElement(onlyWith = JDK20OrLater.class)
+    static native Object scopedValueBindings();
+
+    /**
+     * This method is used to set and revert {@code ScopedValue} bindings as follows:
+     *
+     * {@code setScopedValueBindings(b); try { work(); } finally { setScopedValueBindings(previous);
+     * }}
+     *
+     * If a stack overflow or a throwing safepoint action (e.g. recurring callback) disrupts the
+     * second call, ScopedValue bindings can leak out of their scope. Therefore, we require this
+     * method and its direct callers to be uninterruptible. Both calls should be in a single same
+     * caller, which is the case for the usages in the JDK, and those are expected to remain the
+     * only direct usages. Because turning methods uninterruptible prevents inlining through them,
+     * we would prefer another approach such as force-inlining this method instead, but that would
+     * not prevent a throwing safepoint action in the {@code finally} block of the above pattern.
+     *
+     * {@code ScopedValue.Carrier} calls this method through the implementation of
+     * {@code JavaLangAccess}, which is an anonymous class that we cannot substitute, so we also
+     * substitute the calling class to invoke this method directly in
+     * {@link Target_jdk_incubator_concurrent_ScopedValue_Carrier}.
+     */
+    @Substitute
+    @Uninterruptible(reason = "Must not call other methods which can trigger a stack overflow.", callerMustBe = true)
+    @TargetElement(onlyWith = JDK20OrLater.class)
+    static void setScopedValueBindings(Object bindings) {
+        Target_java_lang_Thread thread = SubstrateUtil.cast(PlatformThreads.currentThread.get(), Target_java_lang_Thread.class);
+        if (LoomSupport.isEnabled() && thread.vthread != null) {
+            thread = SubstrateUtil.cast(thread.vthread, Target_java_lang_Thread.class);
+        }
+        thread.scopedValueBindings = bindings;
+    }
+
+    /**
+     * On HotSpot, this method determines the correct ScopedValue bindings for the current context
+     * by finding the top {@code runWith} invocation on the stack and extracting the bindings object
+     * parameter from the frame. It is used following stack overflows and other situations that
+     * could result in bindings leaking to another scope, during which {@link #scopedValueBindings}
+     * is cleared as a precaution. We don't have the means to extract the bindings object from the
+     * stack, but we ensure that {@link #setScopedValueBindings} does not trigger stack overflows
+     * and substitute {@link Target_jdk_incubator_concurrent_ScopedValue#scopedValueBindings} to
+     * never call this method.
+     */
+    @Delete
+    @TargetElement(onlyWith = JDK20OrLater.class)
+    static native Object findScopedValueBindings();
 
     @Substitute
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
@@ -710,22 +761,6 @@ public final class Target_java_lang_Thread {
     @Alias
     @TargetElement(onlyWith = JDK19OrLater.class)
     native long threadId();
-
-    private static class HasExtentLocalCache implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            boolean result = ReflectionUtil.lookupMethod(true, Thread.class, "extentLocalCache") != null;
-            assert !result || JavaVersionUtil.JAVA_SPEC == 19 : "extentLocalCache should not exist as of JDK 20";
-            return result;
-        }
-    }
-
-    public static class HasScopedValueCache implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return ReflectionUtil.lookupMethod(true, Thread.class, "scopedValueCache") != null;
-        }
-    }
 }
 
 @TargetClass(value = Thread.class, innerClass = "Builder", onlyWith = JDK19OrLater.class)
@@ -782,4 +817,13 @@ final class Target_java_lang_Thread_ThreadIdentifiers {
 interface Target_sun_nio_ch_Interruptible {
     @Alias
     void interrupt(Thread t);
+}
+
+@TargetClass(className = "jdk.internal.misc.PreviewFeatures", onlyWith = JDK19OrLater.class)
+final class Target_jdk_internal_misc_PreviewFeatures {
+    @Alias
+    static native boolean isEnabled();
+
+    @Alias
+    static native void ensureEnabled();
 }

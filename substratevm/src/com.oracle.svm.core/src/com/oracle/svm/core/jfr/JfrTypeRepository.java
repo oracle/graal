@@ -29,226 +29,199 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.svm.core.heap.VMOperationInfos;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 
 /**
  * Repository that collects and writes used classes, packages, modules, and classloaders.
  */
-public class JfrTypeRepository implements JfrConstantPool {
+public class JfrTypeRepository implements JfrRepository {
+    private final Set<Class<?>> flushedClasses = new HashSet<>();
+    private final Map<String, PackageInfo> flushedPackages = new HashMap<>();
+    private final Map<Module, Long> flushedModules = new HashMap<>();
+    private final Map<ClassLoader, Long> flushedClassLoaders = new HashMap<>();
+    private long currentPackageId = 0;
+    private long currentModuleId = 0;
+    private long currentClassLoaderId = 0;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTypeRepository() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void teardown() {
+        clearEpochData();
+    }
+
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
         return JfrTraceId.load(clazz);
     }
 
     @Override
-    public int write(JfrChunkWriter writer) {
-        // Visit all used classes, and collect their packages, modules, classloaders and possibly
-        // referenced classes.
-        TypeInfo typeInfo = collectTypeInfo();
+    public int write(JfrChunkWriter writer, boolean flushpoint) {
+        TypeInfo typeInfo = collectTypeInfo(flushpoint);
+        int count = writeClasses(writer, typeInfo, flushpoint);
+        count += writePackages(writer, typeInfo, flushpoint);
+        count += writeModules(writer, typeInfo, flushpoint);
+        count += writeClassLoaders(writer, typeInfo, flushpoint);
 
-        // The order of writing matters as following types can be tagged during the write process
-        int count = writeClasses(writer, typeInfo);
-        count += writePackages(writer, typeInfo);
-        count += writeModules(writer, typeInfo);
-        count += writeClassLoaders(writer, typeInfo);
-        count += writeGCCauses(writer);
-        count += writeGCNames(writer);
-        count += writeVMOperations(writer);
+        if (flushpoint) {
+            flushedClasses.addAll(typeInfo.classes);
+            flushedPackages.putAll(typeInfo.packages);
+            flushedModules.putAll(typeInfo.modules);
+            flushedClassLoaders.putAll(typeInfo.classLoaders);
+        } else {
+            clearEpochData();
+        }
+
         return count;
     }
 
-    private TypeInfo collectTypeInfo() {
+    /**
+     * Visit all used classes, and collect their packages, modules, classloaders and possibly
+     * referenced classes.
+     */
+    private TypeInfo collectTypeInfo(boolean flushpoint) {
         TypeInfo typeInfo = new TypeInfo();
         for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
-            if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
-                JfrTraceId.clearUsedPreviousEpoch(clazz);
-                visitClass(typeInfo, clazz);
+            if (flushpoint) {
+                if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
+                    visitClass(typeInfo, clazz);
+                }
+            } else {
+                if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
+                    JfrTraceId.clearUsedPreviousEpoch(clazz);
+                    visitClass(typeInfo, clazz);
+                }
             }
         }
         return typeInfo;
     }
 
     private void visitClass(TypeInfo typeInfo, Class<?> clazz) {
-        if (clazz != null && typeInfo.addClass(clazz)) {
+        if (clazz != null && addClass(typeInfo, clazz)) {
             visitPackage(typeInfo, clazz.getPackage(), clazz.getModule());
             visitClass(typeInfo, clazz.getSuperclass());
         }
     }
 
     private void visitPackage(TypeInfo typeInfo, Package pkg, Module module) {
-        if (pkg != null && typeInfo.addPackage(pkg, module)) {
+        if (pkg != null && addPackage(typeInfo, pkg, module)) {
             visitModule(typeInfo, module);
         }
     }
 
     private void visitModule(TypeInfo typeInfo, Module module) {
-        if (module != null && typeInfo.addModule(module)) {
+        if (module != null && addModule(typeInfo, module)) {
             visitClassLoader(typeInfo, module.getClassLoader());
         }
     }
 
     private void visitClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
         // The null class-loader is serialized as the "bootstrap" class-loader.
-        if (classLoader != null && typeInfo.addClassLoader(classLoader)) {
+        if (classLoader != null && addClassLoader(typeInfo, classLoader)) {
             visitClass(typeInfo, classLoader.getClass());
         }
     }
 
-    public int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo) {
-        if (typeInfo.getClasses().isEmpty()) {
+    private int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
+        if (typeInfo.classes.isEmpty()) {
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.Class.getId());
-        writer.writeCompressedInt(typeInfo.getClasses().size());
+        writer.writeCompressedInt(typeInfo.classes.size());
 
-        for (Class<?> clazz : typeInfo.getClasses()) {
-            writeClass(writer, typeInfo, clazz);
+        for (Class<?> clazz : typeInfo.classes) {
+            writeClass(typeInfo, writer, clazz, flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private static void writeClass(JfrChunkWriter writer, TypeInfo typeInfo, Class<?> clazz) {
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
-        writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));  // key
-        writer.writeCompressedLong(typeInfo.getClassLoaderId(clazz.getClassLoader()));
-        writer.writeCompressedLong(symbolRepo.getSymbolId(clazz.getName(), true, true));
-        writer.writeCompressedLong(typeInfo.getPackageId(clazz.getPackage()));
+    private void writeClass(TypeInfo typeInfo, JfrChunkWriter writer, Class<?> clazz, boolean flushpoint) {
+        writer.writeCompressedLong(JfrTraceId.getTraceId(clazz));
+        writer.writeCompressedLong(getClassLoaderId(typeInfo, clazz.getClassLoader()));
+        writer.writeCompressedLong(getSymbolId(writer, clazz.getName(), flushpoint, true));
+        writer.writeCompressedLong(getPackageId(typeInfo, clazz.getPackage()));
         writer.writeCompressedLong(clazz.getModifiers());
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            writer.writeBoolean(SubstrateUtil.isHiddenClass(clazz));
-        }
+        writer.writeBoolean(clazz.isHidden());
     }
 
-    private static int writePackages(JfrChunkWriter writer, TypeInfo typeInfo) {
-        Map<String, PackageInfo> packages = typeInfo.getPackages();
-        if (packages.isEmpty()) {
+    @Uninterruptible(reason = "Needed for JfrSymbolRepository.getSymbolId().")
+    private static long getSymbolId(JfrChunkWriter writer, String symbol, boolean flushpoint, boolean replaceDotWithSlash) {
+        /*
+         * The result is only valid for the current epoch, but the epoch can't change while the
+         * current thread holds the JfrChunkWriter lock.
+         */
+        assert writer.isLockedByCurrentThread();
+        return SubstrateJVM.getSymbolRepository().getSymbolId(symbol, !flushpoint, replaceDotWithSlash);
+    }
+
+    private int writePackages(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
+        if (typeInfo.packages.isEmpty()) {
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.Package.getId());
-        writer.writeCompressedInt(packages.size());
+        writer.writeCompressedInt(typeInfo.packages.size());
 
-        for (Map.Entry<String, PackageInfo> pkgInfo : packages.entrySet()) {
-            writePackage(writer, typeInfo, pkgInfo.getKey(), pkgInfo.getValue());
+        for (Map.Entry<String, PackageInfo> pkgInfo : typeInfo.packages.entrySet()) {
+            writePackage(typeInfo, writer, pkgInfo.getKey(), pkgInfo.getValue(), flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private static void writePackage(JfrChunkWriter writer, TypeInfo typeInfo, String pkgName, PackageInfo pkgInfo) {
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
+    private void writePackage(TypeInfo typeInfo, JfrChunkWriter writer, String pkgName, PackageInfo pkgInfo, boolean flushpoint) {
         writer.writeCompressedLong(pkgInfo.id);  // id
-        writer.writeCompressedLong(symbolRepo.getSymbolId(pkgName, true, true));
-        writer.writeCompressedLong(typeInfo.getModuleId(pkgInfo.module));
+        writer.writeCompressedLong(getSymbolId(writer, pkgName, flushpoint, true));
+        writer.writeCompressedLong(getModuleId(typeInfo, pkgInfo.module));
         writer.writeBoolean(false); // exported
     }
 
-    private static int writeModules(JfrChunkWriter writer, TypeInfo typeInfo) {
-        Map<Module, Long> modules = typeInfo.getModules();
-        if (modules.isEmpty()) {
+    private int writeModules(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
+        if (typeInfo.modules.isEmpty()) {
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.Module.getId());
-        writer.writeCompressedInt(modules.size());
+        writer.writeCompressedInt(typeInfo.modules.size());
 
-        for (Map.Entry<Module, Long> modInfo : modules.entrySet()) {
-            writeModule(writer, typeInfo, modInfo.getKey(), modInfo.getValue());
+        for (Map.Entry<Module, Long> modInfo : typeInfo.modules.entrySet()) {
+            writeModule(typeInfo, writer, modInfo.getKey(), modInfo.getValue(), flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private static void writeModule(JfrChunkWriter writer, TypeInfo typeInfo, Module module, long id) {
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
+    private void writeModule(TypeInfo typeInfo, JfrChunkWriter writer, Module module, long id, boolean flushpoint) {
         writer.writeCompressedLong(id);
-        writer.writeCompressedLong(symbolRepo.getSymbolId(module.getName(), true));
+        writer.writeCompressedLong(getSymbolId(writer, module.getName(), flushpoint, false));
         writer.writeCompressedLong(0); // Version, e.g. "11.0.10-internal"
         writer.writeCompressedLong(0); // Location, e.g. "jrt:/java.base"
-        writer.writeCompressedLong(typeInfo.getClassLoaderId(module.getClassLoader()));
+        writer.writeCompressedLong(getClassLoaderId(typeInfo, module.getClassLoader()));
     }
 
-    private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo) {
-        Map<ClassLoader, Long> classLoaders = typeInfo.getClassLoaders();
-        if (classLoaders.isEmpty()) {
+    private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo, boolean flushpoint) {
+        if (typeInfo.classLoaders.isEmpty()) {
             return EMPTY;
         }
         writer.writeCompressedLong(JfrType.ClassLoader.getId());
-        writer.writeCompressedInt(classLoaders.size());
+        writer.writeCompressedInt(typeInfo.classLoaders.size());
 
-        for (Map.Entry<ClassLoader, Long> clInfo : classLoaders.entrySet()) {
-            writeClassLoader(writer, clInfo.getKey(), clInfo.getValue());
+        for (Map.Entry<ClassLoader, Long> clInfo : typeInfo.classLoaders.entrySet()) {
+            writeClassLoader(writer, clInfo.getKey(), clInfo.getValue(), flushpoint);
         }
         return NON_EMPTY;
     }
 
-    private static int writeGCCauses(JfrChunkWriter writer) {
-        // GCCauses has null entries
-        GCCause[] causes = GCCause.getGCCauses();
-        int nonNullItems = 0;
-        for (int index = 0; index < causes.length; index++) {
-            if (causes[index] != null) {
-                nonNullItems++;
-            }
-        }
-
-        assert nonNullItems > 0;
-
-        writer.writeCompressedLong(JfrType.GCCause.getId());
-        writer.writeCompressedLong(nonNullItems);
-        for (GCCause cause : causes) {
-            if (cause != null) {
-                writer.writeCompressedLong(cause.getId());
-                writer.writeString(cause.getName());
-            }
-        }
-        return NON_EMPTY;
-    }
-
-    private static int writeGCNames(JfrChunkWriter writer) {
-        JfrGCName[] gcNames = JfrGCNames.singleton().getNames();
-        assert gcNames != null && gcNames.length > 0;
-
-        writer.writeCompressedLong(JfrType.GCName.getId());
-        writer.writeCompressedLong(gcNames.length);
-        for (JfrGCName name : gcNames) {
-            writer.writeCompressedLong(name.getId());
-            writer.writeString(name.getName());
-        }
-        return NON_EMPTY;
-    }
-
-    private static int writeVMOperations(JfrChunkWriter writer) {
-        String[] vmOperationNames = VMOperationInfos.getNames();
-        assert vmOperationNames.length > 0;
-        writer.writeCompressedLong(JfrType.VMOperation.getId());
-        writer.writeCompressedLong(vmOperationNames.length);
-        for (int id = 0; id < vmOperationNames.length; id++) {
-            writer.writeCompressedLong(id + 1); // id starts with 1
-            writer.writeString(vmOperationNames[id]);
-        }
-
-        return NON_EMPTY;
-    }
-
-    private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id) {
-        JfrSymbolRepository symbolRepo = SubstrateJVM.getSymbolRepository();
+    private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id, boolean flushpoint) {
         writer.writeCompressedLong(id);
         if (cl == null) {
             writer.writeCompressedLong(0);
-            writer.writeCompressedLong(symbolRepo.getSymbolId("bootstrap", true));
+            writer.writeCompressedLong(getSymbolId(writer, "bootstrap", flushpoint, false));
         } else {
             writer.writeCompressedLong(JfrTraceId.getTraceId(cl.getClass()));
-            writer.writeCompressedLong(symbolRepo.getSymbolId(cl.getName(), true));
+            writer.writeCompressedLong(getSymbolId(writer, cl.getName(), flushpoint, false));
         }
     }
 
@@ -262,87 +235,103 @@ public class JfrTypeRepository implements JfrConstantPool {
         }
     }
 
+    private boolean addClass(TypeInfo typeInfo, Class<?> clazz) {
+        if (isClassVisited(typeInfo, clazz)) {
+            return false;
+        }
+        return typeInfo.classes.add(clazz);
+    }
+
+    private boolean isClassVisited(TypeInfo typeInfo, Class<?> clazz) {
+        return typeInfo.classes.contains(clazz) || flushedClasses.contains(clazz);
+    }
+
+    private boolean addPackage(TypeInfo typeInfo, Package pkg, Module module) {
+        if (isPackageVisited(typeInfo, pkg)) {
+            assert module == (flushedPackages.containsKey(pkg.getName()) ? flushedPackages.get(pkg.getName()).module : typeInfo.packages.get(pkg.getName()).module);
+            return false;
+        }
+        // The empty package represented by "" is always traced with id 0
+        long id = pkg.getName().isEmpty() ? 0 : ++currentPackageId;
+        typeInfo.packages.put(pkg.getName(), new PackageInfo(id, module));
+        return true;
+    }
+
+    private boolean isPackageVisited(TypeInfo typeInfo, Package pkg) {
+        return flushedPackages.containsKey(pkg.getName()) || typeInfo.packages.containsKey(pkg.getName());
+    }
+
+    private long getPackageId(TypeInfo typeInfo, Package pkg) {
+        if (pkg != null) {
+            if (flushedPackages.containsKey(pkg.getName())) {
+                return flushedPackages.get(pkg.getName()).id;
+            }
+            return typeInfo.packages.get(pkg.getName()).id;
+        } else {
+            return 0;
+        }
+    }
+
+    private boolean addModule(TypeInfo typeInfo, Module module) {
+        if (isModuleVisited(typeInfo, module)) {
+            return false;
+        }
+        typeInfo.modules.put(module, ++currentModuleId);
+        return true;
+    }
+
+    private boolean isModuleVisited(TypeInfo typeInfo, Module module) {
+        return typeInfo.modules.containsKey(module) || flushedModules.containsKey(module);
+    }
+
+    private long getModuleId(TypeInfo typeInfo, Module module) {
+        if (module != null) {
+            if (flushedModules.containsKey(module)) {
+                return flushedModules.get(module);
+            }
+            return typeInfo.modules.get(module);
+        } else {
+            return 0;
+        }
+    }
+
+    private boolean addClassLoader(TypeInfo typeInfo, ClassLoader classLoader) {
+        if (isClassLoaderVisited(typeInfo, classLoader)) {
+            return false;
+        }
+        typeInfo.classLoaders.put(classLoader, ++currentClassLoaderId);
+        return true;
+    }
+
+    private boolean isClassLoaderVisited(TypeInfo typeInfo, ClassLoader classLoader) {
+        return flushedClassLoaders.containsKey(classLoader) || typeInfo.classLoaders.containsKey(classLoader);
+    }
+
+    private long getClassLoaderId(TypeInfo typeInfo, ClassLoader classLoader) {
+        if (classLoader != null) {
+            if (flushedClassLoaders.containsKey(classLoader)) {
+                return flushedClassLoaders.get(classLoader);
+            }
+            return typeInfo.classLoaders.get(classLoader);
+        } else {
+            return 0;
+        }
+    }
+
+    private void clearEpochData() {
+        flushedClasses.clear();
+        flushedPackages.clear();
+        flushedModules.clear();
+        flushedClassLoaders.clear();
+        currentPackageId = 0;
+        currentModuleId = 0;
+        currentClassLoaderId = 0;
+    }
+
     private static class TypeInfo {
-        private final Set<Class<?>> classes = new HashSet<>();
-        private final Map<String, PackageInfo> packages = new HashMap<>();
-        private final Map<Module, Long> modules = new HashMap<>();
-        private final Map<ClassLoader, Long> classLoaders = new HashMap<>();
-        private long currentPackageId = 0;
-        private long currentModuleId = 0;
-        private long currentClassLoaderId = 0;
-
-        boolean addClass(Class<?> clazz) {
-            return classes.add(clazz);
-        }
-
-        Set<Class<?>> getClasses() {
-            return classes;
-        }
-
-        boolean addPackage(Package pkg, Module module) {
-            if (!packages.containsKey(pkg.getName())) {
-                // The empty package represented by "" is always traced with id 0
-                long id = pkg.getName().isEmpty() ? 0 : ++currentPackageId;
-                packages.put(pkg.getName(), new PackageInfo(id, module));
-                return true;
-            } else {
-                assert module == packages.get(pkg.getName()).module;
-                return false;
-            }
-        }
-
-        Map<String, PackageInfo> getPackages() {
-            return packages;
-        }
-
-        long getPackageId(Package pkg) {
-            if (pkg != null) {
-                return packages.get(pkg.getName()).id;
-            } else {
-                return 0;
-            }
-        }
-
-        boolean addModule(Module module) {
-            if (!modules.containsKey(module)) {
-                modules.put(module, ++currentModuleId);
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        Map<Module, Long> getModules() {
-            return modules;
-        }
-
-        long getModuleId(Module module) {
-            if (module != null) {
-                return modules.get(module);
-            } else {
-                return 0;
-            }
-        }
-
-        boolean addClassLoader(ClassLoader classLoader) {
-            if (!classLoaders.containsKey(classLoader)) {
-                classLoaders.put(classLoader, ++currentClassLoaderId);
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        Map<ClassLoader, Long> getClassLoaders() {
-            return classLoaders;
-        }
-
-        long getClassLoaderId(ClassLoader classLoader) {
-            if (classLoader != null) {
-                return classLoaders.get(classLoader);
-            } else {
-                return 0;
-            }
-        }
+        final Set<Class<?>> classes = new HashSet<>();
+        final Map<String, PackageInfo> packages = new HashMap<>();
+        final Map<Module, Long> modules = new HashMap<>();
+        final Map<ClassLoader, Long> classLoaders = new HashMap<>();
     }
 }

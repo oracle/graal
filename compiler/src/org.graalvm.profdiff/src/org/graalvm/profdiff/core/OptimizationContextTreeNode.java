@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,6 +119,19 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
     }
 
     /**
+     * Returns the caller of this node or {@code null}. If this node has a caller, it is the parent
+     * node.
+     *
+     * @return the caller of this node or {@code null}
+     */
+    private InliningTreeNode getCallerNode() {
+        if (getParent() == null) {
+            return null;
+        }
+        return getParent().getOriginalInliningTreeNode();
+    }
+
+    /**
      * Returns {@code true} iff the node is an info node, i.e., it is not backed by an original
      * node, but it only stores some information in its {@link TreeNode#getName()}.
      *
@@ -131,7 +144,9 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
 
     @Override
     public void writeHead(Writer writer) {
-        if (originalNode != null) {
+        if (originalNode instanceof Optimization) {
+            ((Optimization) originalNode).writeHead(writer, getCallerNode());
+        } else if (originalNode != null) {
             originalNode.writeHead(writer);
         } else {
             super.writeHead(writer);

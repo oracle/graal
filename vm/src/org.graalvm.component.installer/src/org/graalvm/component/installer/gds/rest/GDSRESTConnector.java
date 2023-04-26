@@ -89,7 +89,7 @@ class GDSRESTConnector {
         }
         URL url = null;
         try {
-            url = new URL(baseURL);
+            url = SystemUtils.toURL(baseURL);
         } catch (MalformedURLException ex) {
             throw new IllegalArgumentException("Base URL String must be convertible to URL.");
         }
@@ -207,7 +207,7 @@ class GDSRESTConnector {
     URL makeArtifactDownloadURL(String id) {
         String url = baseURL + ENDPOINT_ARTIFACTS + id + ENDPOINT_DOWNLOAD;
         try {
-            return new URL(url);
+            return SystemUtils.toURL(url);
         } catch (MalformedURLException ex) {
             feedback.error("ERR_MalformedArtifactUrl", ex, url);
         }
@@ -219,7 +219,7 @@ class GDSRESTConnector {
         try {
             FileDownloader dn = new FileDownloader(
                             feedback.l10n("OLDS_ReleaseFile"),
-                            new URL(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())),
+                            SystemUtils.toURL(SystemUtils.buildUrlStringWithParameters(baseURL + endpoint, getParams())),
                             feedback);
             fillBasics(dn);
             dn.download();
@@ -275,7 +275,7 @@ class GDSRESTConnector {
     }
 
     GDSRequester getGDSRequester(String acceptLicLink, String licID) throws MalformedURLException {
-        return new GDSRequester(new URL(acceptLicLink), licID);
+        return new GDSRequester(SystemUtils.toURL(acceptLicLink), licID);
     }
 
     class GDSRequester {
@@ -382,7 +382,7 @@ class GDSRESTConnector {
 
         URLConnectionFactory getConnectionFactory() throws MalformedURLException {
             if (factory == null) {
-                factory = new ProxyConnectionFactory(feedback, new URL(baseURL));
+                factory = new ProxyConnectionFactory(feedback, SystemUtils.toURL(baseURL));
             }
             return factory;
         }

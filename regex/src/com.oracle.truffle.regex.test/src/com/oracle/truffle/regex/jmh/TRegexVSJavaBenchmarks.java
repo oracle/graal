@@ -57,7 +57,7 @@ import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.regex.tregex.test.TRegexTestDummyLanguage;
 
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@OutputTimeUnit(TimeUnit.NANOSECONDS)
 public class TRegexVSJavaBenchmarks extends BenchmarkBase {
 
     private static final class ParameterSet {
@@ -80,7 +80,34 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
 
     private static final Map<String, ParameterSet> benchmarks = createMap(new ParameterSet[]{
                     new ParameterSet("ignoreCase", "Julian", "i", names),
-                    new ParameterSet("URL", "(((\\w+):\\/\\/)([^\\/:]*)(:(\\d+))?)?([^#?]*)(\\?([^#]*))?(#(.*))?", "", "https://lafo.ssw.uni-linz.ac.at/?computer=15"),
+                    new ParameterSet("URL", "(((\\w+):\\/\\/)([^\\/:]*)(:(\\d+))?)?([^#?]*)(\\?([^#]*))?(#(.*))?",
+                                    "", "https://lafo.ssw.uni-linz.ac.at/?computer=15"),
+                    new ParameterSet("vowels", "([aeiouAEIOU]+)", "", "eeeeeeeeeeeeeeiiiiiiiiiiiiiiiiiiieeeeeeeeeeeeeeeeeeeeeeeiiiiiiiiiiiiiiieeeeeeeeeeeee"),
+                    new ParameterSet("date",
+                                    "((([1-3][0-9])|[1-9])\\/((1[0-2])|0?[1-9])\\/[0-9]{4})|((([1-3][0-9])|[1-9])-((1[0-2])|0?[1-9])-[0-9]{4})|((([1-3][0-9])|[1-9])\\.((1[0-2])|0?[1-9])\\.[0-9]{4})",
+                                    "",
+                                    "23-09-1998"),
+                    new ParameterSet("ipv4",
+                                    "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)", "",
+                                    "192.168.0.1"),
+                    new ParameterSet("ipv6_1", "([A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}", "",
+                                    "2001:db8:3333:4444:5555:6666:7777:8888"),
+                    new ParameterSet("ipv6_2",
+                                    "([A-Fa-f0-9]{1,4}:){6}(([A-Fa-f0-9]{1,4}:[A-Fa-f0-9]{1,4})|(((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])))",
+                                    "",
+                                    "2001:db8:3333:4444:5555:6666:1.2.3.4"),
+                    new ParameterSet("email",
+                                    "([-!#-''*+/-9=?A-Z^-~]+(\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"([ ]!#-[^-~ ]|(\\\\[-~ ]))+\")@[0-9A-Za-z]([0-9A-Za-z-]{0,61}[0-9A-Za-z])?(\\.[0-9A-Za-z]([0-9A-Za-z-]{0,61}[0-9A-Za-z])?)+",
+                                    "",
+                                    "surname.lastname@somewhere.org"),
+                    new ParameterSet("email_dfa",
+                                    "([-!#-''*+/-9=?A-Z^-~]+(\\.[-!#-''*+/-9=?A-Z^-~]+)*|\"([ ]!#-[^-~ ]|(\\\\[-~ ]))+\")@[0-9A-Za-z]([0-9A-Za-z-]*[0-9A-Za-z])?(\\.[0-9A-Za-z]([0-9A-Za-z-]*[0-9A-Za-z])?)+",
+                                    "",
+                                    "surname.lastname@somewhere.org"),
+                    new ParameterSet("apache_log",
+                                    "(\\S+) (\\S+) (\\S+) \\[([A-Za-z0-9_:/]+\\s[-+]\\d{4})\\] \"(\\S+)\\s?(\\S+)?\\s?(\\S+)?\" (\\d{3}|-) (\\d+|-)\\s?\"?([^\"]*)\"?\\s?\"?([^\"]*)?\"?",
+                                    "",
+                                    "205.169.39.63 - - [03/Nov/2022:15:28:53 +0100] \"GET / HTTP/1.1\" 200 911 \"-\" \"Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36\"")
     });
 
     private static Map<String, ParameterSet> createMap(ParameterSet[] parameterSets) {
@@ -94,10 +121,13 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
     @State(Scope.Benchmark)
     public static class BenchState {
 
+        // excluded by default:
+        // {"vowels", "date", "ipv4", "ipv6_1", "ipv6_2", "email", "email_dfa", "apache_log"}
         @Param({"ignoreCase", "URL"}) String benchName;
         Context context;
         Pattern javaPattern;
-        Value tregexPattern;
+        Value tregexBool;
+        Value tregexCG;
         String input;
 
         public BenchState() {
@@ -109,8 +139,9 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
             context.enter();
             ParameterSet p = benchmarks.get(benchName);
             javaPattern = Pattern.compile(p.regex, toJavaFlags(p.flags));
-            tregexPattern = context.eval(TRegexTestDummyLanguage.ID, '/' + p.regex + '/' + p.flags);
-            input = p.input;
+            tregexBool = context.parse(TRegexTestDummyLanguage.ID, TRegexTestDummyLanguage.BENCH_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
+            tregexCG = context.parse(TRegexTestDummyLanguage.ID, TRegexTestDummyLanguage.BENCH_CG_PREFIX + "GenerateDFAImmediately=true/" + p.regex + '/' + p.flags);
+            input = "_".repeat(200) + p.input;
         }
 
         private int toJavaFlags(String flags) {
@@ -146,6 +177,11 @@ public class TRegexVSJavaBenchmarks extends BenchmarkBase {
 
     @Benchmark
     public boolean tregex(BenchState state) {
-        return state.tregexPattern.invokeMember("exec", state.input, 0).getMember("isMatch").asBoolean();
+        return state.tregexBool.execute(state.input, 0).asBoolean();
+    }
+
+    @Benchmark
+    public int tregexCG(BenchState state) {
+        return state.tregexCG.execute(state.input, 0).asInt();
     }
 }

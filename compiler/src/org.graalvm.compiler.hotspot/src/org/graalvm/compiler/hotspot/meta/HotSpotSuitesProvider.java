@@ -29,9 +29,8 @@ import java.util.Optional;
 
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.HotSpotInstructionProfiling;
 import org.graalvm.compiler.hotspot.lir.HotSpotZapRegistersPhase;
 import org.graalvm.compiler.hotspot.lir.VerifyMaxRegisterSizePhase;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -48,9 +47,12 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.BarrierSetVerificationPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
+import org.graalvm.compiler.phases.common.WriteBarrierAdditionPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
 
@@ -66,6 +68,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
 
     protected final SuitesCreator defaultSuitesCreator;
 
+    @SuppressWarnings("this-escape")
     public HotSpotSuitesProvider(SuitesCreator defaultSuitesCreator, GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime) {
         this.defaultSuitesCreator = defaultSuitesCreator;
         this.config = config;
@@ -81,6 +84,19 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             assert position != null : "There should be an " + AddressLoweringPhase.class.getName() + " in low tier.";
             position.previous();
             position.add(new UseTrappingNullChecksPhase());
+        }
+
+        if (config.gc == HotSpotGraalRuntime.HotSpotGC.Z) {
+            ListIterator<BasePhase<? super MidTierContext>> mid = suites.getMidTier().findPhase(WriteBarrierAdditionPhase.class);
+            // No write barriers required
+            mid.remove();
+
+            if (Assertions.assertionsEnabled()) {
+                // Perform some verification that the barrier type on all reads are properly set
+                ListIterator<BasePhase<? super LowTierContext>> position = suites.getLowTier().findPhase(AddressLoweringPhase.class);
+                position.previous();
+                position.add(new BarrierSetVerificationPhase());
+            }
         }
         return suites;
     }
@@ -144,13 +160,10 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
         if (Assertions.detailedAssertionsEnabled(options)) {
             suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotZapRegistersPhase());
         }
-        String profileInstructions = HotSpotBackend.Options.ASMInstructionProfiling.getValue(options);
-        if (profileInstructions != null) {
-            suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotInstructionProfiling(profileInstructions));
-        }
         if (Assertions.assertionsEnabled()) {
             suites.getFinalCodeAnalysisStage().appendPhase(new VerifyMaxRegisterSizePhase(config.maxVectorSize));
         }
         return suites;
     }
+
 }

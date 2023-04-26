@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,11 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,9 +53,11 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromFP128Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromFP80Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromUInt16Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.FromUInt32Factory;
@@ -64,18 +68,17 @@ import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.NothingFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.NullableToNativeFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.PointerFromNativeFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToDoubleFactory;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFP128Factory;
+import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFP80Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFloatFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt16Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt32Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt64Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt8Factory;
-import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToFP80Factory;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
 import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
-//TODO GR-42818 fix warnings
-@SuppressWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 final class SimpleTypeCachedState {
 
     private static final TypeCachedState nopCachedState;
@@ -105,7 +108,7 @@ final class SimpleTypeCachedState {
         c[NativeSimpleType.FLOAT.ordinal()] = new TypeCachedState(1, ToFloatFactory.getInstance(), NopConvertFactory.getInstance());
         c[NativeSimpleType.DOUBLE.ordinal()] = new TypeCachedState(1, ToDoubleFactory.getInstance(), NopConvertFactory.getInstance());
         c[NativeSimpleType.FP80.ordinal()] = new TypeCachedState(1, ToFP80Factory.getInstance(), FromFP80Factory.getInstance());
-
+        c[NativeSimpleType.FP128.ordinal()] = new TypeCachedState(1, ToFP128Factory.getInstance(), FromFP128Factory.getInstance());
         c[NativeSimpleType.POINTER.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance());
         c[NativeSimpleType.NULLABLE.ordinal()] = new TypeCachedState(1, NullableToNativeFactory.getInstance(), PointerFromNativeFactory.getInstance());
         c[NativeSimpleType.STRING.ordinal()] = new TypeCachedState(1, NopConvertFactory.getInstance(), PointerFromNativeFactory.getInstance());
@@ -128,6 +131,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class NopConvert extends ConvertTypeNode {
 
         @Specialization
@@ -138,6 +142,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class Nothing extends ConvertTypeNode {
 
         @Specialization
@@ -149,6 +154,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class Injected extends ConvertTypeNode {
 
         @Specialization
@@ -159,6 +165,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class NullableToNative extends ConvertTypeNode {
 
         @GenerateAOT.Exclude
@@ -179,6 +186,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class PointerFromNative extends ConvertTypeNode {
 
         @Specialization(guards = "arg == null")
@@ -195,9 +203,10 @@ final class SimpleTypeCachedState {
         @Specialization(guards = "arg != null")
         Object doObject(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary(limit = "1") BackendNativePointerLibrary library,
-                        @Cached ConditionProfile isPointerProfile) {
+                        @Bind("$node") Node node,
+                        @Cached InlinedConditionProfile isPointerProfile) {
             try {
-                return isPointerProfile.profile(library.isPointer(arg)) ? NFIPointer.create(library.asPointer(arg)) : arg;
+                return isPointerProfile.profile(node, library.isPointer(arg)) ? NFIPointer.create(library.asPointer(arg)) : arg;
             } catch (UnsupportedMessageException e) {
                 throw CompilerDirectives.shouldNotReachHere();
             }
@@ -206,6 +215,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToInt8 extends ConvertTypeNode {
 
         @Specialization
@@ -227,9 +237,10 @@ final class SimpleTypeCachedState {
 
         @Specialization(limit = "3", replaces = "doByte", guards = "interop.isNumber(arg)")
         @GenerateAOT.Exclude
-        byte doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+        static byte doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInByte(arg)) {
                     return interop.asByte(arg);
@@ -243,20 +254,18 @@ final class SimpleTypeCachedState {
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
 
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         byte doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? (byte) 1 : 0;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -269,6 +278,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromUInt8 extends ConvertTypeNode {
 
         @Specialization
@@ -285,6 +295,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToInt16 extends ConvertTypeNode {
 
         @Specialization
@@ -301,9 +312,10 @@ final class SimpleTypeCachedState {
 
         @Specialization(limit = "3", replaces = "doShort", guards = "interop.isNumber(arg)")
         @GenerateAOT.Exclude
-        short doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+        static short doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInShort(arg)) {
                     return interop.asShort(arg);
@@ -317,20 +329,18 @@ final class SimpleTypeCachedState {
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
 
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         short doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? (short) 1 : 0;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -343,6 +353,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromUInt16 extends ConvertTypeNode {
 
         @Specialization
@@ -359,6 +370,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToInt32 extends ConvertTypeNode {
 
         @Specialization
@@ -375,9 +387,10 @@ final class SimpleTypeCachedState {
 
         @Specialization(limit = "3", replaces = "doInt", guards = "interop.isNumber(arg)")
         @GenerateAOT.Exclude
-        int doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+        static int doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInInt(arg)) {
                     return interop.asInt(arg);
@@ -391,20 +404,18 @@ final class SimpleTypeCachedState {
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
 
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         int doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? 1 : 0;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -417,6 +428,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromUInt32 extends ConvertTypeNode {
 
         @Specialization
@@ -433,6 +445,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToInt64 extends ConvertTypeNode {
 
         @Specialization
@@ -449,9 +462,10 @@ final class SimpleTypeCachedState {
 
         @Specialization(limit = "3", replaces = "doLong", guards = "interop.isNumber(arg)")
         @GenerateAOT.Exclude
-        long doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+        static long doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInLong(arg)) {
                     return interop.asLong(arg);
@@ -459,20 +473,18 @@ final class SimpleTypeCachedState {
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
 
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         long doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? 1L : 0L;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -485,6 +497,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToFloat extends ConvertTypeNode {
 
         @Specialization
@@ -506,9 +519,10 @@ final class SimpleTypeCachedState {
 
         @Specialization(limit = "3", replaces = "doFloat", guards = "interop.isNumber(arg)")
         @GenerateAOT.Exclude
-        float doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+        static float doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInDouble(arg)) {
                     return (float) interop.asDouble(arg);
@@ -516,20 +530,18 @@ final class SimpleTypeCachedState {
             } catch (UnsupportedMessageException e) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
 
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         float doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? 1.0f : 0.0f;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -542,6 +554,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToDouble extends ConvertTypeNode {
 
         @Specialization
@@ -558,9 +571,10 @@ final class SimpleTypeCachedState {
 
         @Specialization(limit = "3", replaces = "doDouble", guards = "interop.isNumber(arg)")
         @GenerateAOT.Exclude
-        double doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+        static double doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.fitsInDouble(arg)) {
                     return interop.asDouble(arg);
@@ -568,20 +582,18 @@ final class SimpleTypeCachedState {
             } catch (UnsupportedMessageException e) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
 
         @Specialization(limit = "3", guards = "interop.isBoolean(arg)")
         @GenerateAOT.Exclude
         double doBoolean(@SuppressWarnings("unused") NFIType type, Object arg,
-                        @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @CachedLibrary("arg") InteropLibrary interop) {
             try {
                 return interop.asBoolean(arg) ? 1.0 : 0.0;
             } catch (UnsupportedMessageException ex) {
-                exception.enter();
-                throw UnsupportedTypeException.create(new Object[]{arg});
+                throw CompilerDirectives.shouldNotReachHere(ex);
             }
         }
 
@@ -594,6 +606,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class ToFP80 extends ConvertTypeNode {
 
         @Specialization(limit = "3", guards = "interop.isNumber(arg)")
@@ -620,6 +633,7 @@ final class SimpleTypeCachedState {
 
     @GenerateUncached
     @GenerateNodeFactory
+    @GenerateInline(false)
     abstract static class FromFP80 extends ConvertTypeNode {
 
         @Specialization(limit = "1", guards = {"interop.hasBufferElements(arg)", "!interop.isNumber(arg)"})
@@ -628,6 +642,52 @@ final class SimpleTypeCachedState {
                         @CachedLibrary("arg") InteropLibrary interop) {
             assert interop.hasBufferElements(arg);
             return LongDoubleUtil.fp80ToNumber(arg);
+        }
+
+        @Fallback
+        Object doOther(@SuppressWarnings("unused") NFIType type, Object arg) {
+            return arg;
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
+    @GenerateInline(false)
+    abstract static class ToFP128 extends ConvertTypeNode {
+
+        @Specialization(limit = "3", guards = "interop.isNumber(arg)")
+        @GenerateAOT.Exclude
+        Object doNumber(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) {
+            assert interop.fitsInLong(arg) || interop.fitsInDouble(arg);
+            return LongDoubleUtil.interopToFP128(arg);
+        }
+
+        @Specialization(limit = "3", guards = "serialize.isSerializable(arg)")
+        Object doSerializable(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") SerializableLibrary serialize) {
+            assert serialize.isSerializable(arg);
+            return arg;
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        byte doFail(NFIType type, Object arg) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{arg});
+        }
+    }
+
+    @GenerateUncached
+    @GenerateNodeFactory
+    @GenerateInline(false)
+    abstract static class FromFP128 extends ConvertTypeNode {
+
+        @Specialization(limit = "1", guards = {"interop.hasBufferElements(arg)", "!interop.isNumber(arg)"})
+        @GenerateAOT.Exclude
+        Object doBuffer(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary("arg") InteropLibrary interop) {
+            assert interop.hasBufferElements(arg);
+            return LongDoubleUtil.fp128ToNumber(arg);
         }
 
         @Fallback

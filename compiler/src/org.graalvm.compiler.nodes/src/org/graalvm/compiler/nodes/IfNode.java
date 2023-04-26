@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,12 +48,14 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
+import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -1972,6 +1974,17 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return false;
         }
 
+        boolean[] conditions = new boolean[xs.length];
+        Stamp compareStamp = compare.getX().stamp(NodeView.DEFAULT);
+        for (int i = 0; i < xs.length; i++) {
+            TriState foldedCondition = compare.condition().foldCondition(compareStamp, xs[i], ys[i], tool.getConstantReflection(), compare.unorderedIsTrue());
+            if (foldedCondition.isUnknown()) {
+                return false;
+            } else {
+                conditions[i] = foldedCondition.toBoolean();
+            }
+        }
+
         List<EndNode> falseEnds = new ArrayList<>(mergePredecessors.size());
         List<EndNode> trueEnds = new ArrayList<>(mergePredecessors.size());
         EconomicMap<AbstractEndNode, ValueNode> phiValues = EconomicMap.create(Equivalence.IDENTITY, mergePredecessors.size());
@@ -1986,7 +1999,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         for (int i = 0; i < xs.length; i++) {
             EndNode end = ends.next();
             phiValues.put(end, phi.valueAt(end));
-            if (compare.condition().foldCondition(xs[i], ys[i], tool.getConstantReflection(), compare.unorderedIsTrue())) {
+            if (conditions[i]) {
                 trueEnds.add(end);
             } else {
                 falseEnds.add(end);
@@ -2007,7 +2020,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
         }
 
-        if (this.getProfileData().getProfileSource() == ProfileSource.INJECTED) {
+        if (this.getProfileData().getProfileSource().isInjected()) {
             // Attempt to propagate the injected profile to predecessor if without a profile.
             propagateInjectedProfile(this.getProfileData(), trueEnds, falseEnds);
         }
@@ -2265,8 +2278,16 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
 
                 FrameState stateAfter = oldMerge.stateAfter();
                 if (stateAfter != null) {
-                    stateAfter = stateAfter.duplicate();
-                    stateAfter.replaceFirstInput(oldPhi, newPhi);
+                    stateAfter = stateAfter.duplicateWithVirtualState();
+                    stateAfter.applyToNonVirtual(new NodePositionClosure<>() {
+                        @Override
+                        public void apply(Node from, Position p) {
+                            ValueNode to = (ValueNode) p.get(from);
+                            if (to == oldPhi) {
+                                p.set(from, newPhi);
+                            }
+                        }
+                    });
                     newMerge.setStateAfter(stateAfter);
                 }
 

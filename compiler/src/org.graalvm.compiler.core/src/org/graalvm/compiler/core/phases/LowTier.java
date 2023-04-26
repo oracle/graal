@@ -57,6 +57,7 @@ public class LowTier extends BaseTier<LowTierContext> {
 
     }
 
+    @SuppressWarnings("this-escape")
     public LowTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         CanonicalizerPhase canonicalizerWithoutGVN = canonicalizer.copyWithoutGVN();
@@ -79,7 +80,7 @@ public class LowTier extends BaseTier<LowTierContext> {
          * specific to the target architecture for this compilation. This should be done by the
          * backend or the target specific suites provider.
          */
-        appendPhase(new PlaceholderPhase<LowTierContext>(AddressLoweringPhase.class));
+        appendPhase(new PlaceholderPhase<>(AddressLoweringPhase.class));
 
         appendPhase(FinalCanonicalizerPhase.createFromCanonicalizer(canonicalizerWithoutGVN));
 

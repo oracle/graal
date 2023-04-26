@@ -32,7 +32,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -43,6 +42,7 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
@@ -110,13 +110,13 @@ public final class JavaStackWalker {
      * See {@link #initWalk(JavaStackWalk, Pointer, CodePointer)}, except that the instruction
      * pointer will be read from the stack later on.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Must be uninterruptible because it calls `initWalk`.")
     public static void initWalk(JavaStackWalk walk, Pointer startSP) {
         initWalk(walk, startSP, (CodePointer) WordFactory.nullPointer());
         assert walk.getIPCodeInfo().isNull() : "otherwise, the caller would have to be uninterruptible as well";
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Must be uninterruptible because it calls `initWalk`.")
     public static void initWalk(JavaStackWalk walk, Pointer startSP, Pointer endSP) {
         initWalk(walk, startSP);
         walk.setEndSP(endSP);
@@ -346,7 +346,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     @RestrictHeapAccess(reason = "Whitelisted because some StackFrameVisitor implementations can allocate.", access = RestrictHeapAccess.Access.UNRESTRICTED)
-    static boolean callVisitor(JavaStackWalk walk, CodeInfo info, ParameterizedStackFrameVisitor visitor, Object data) {
+    public static boolean callVisitor(JavaStackWalk walk, CodeInfo info, ParameterizedStackFrameVisitor visitor, Object data) {
         return visitor.visitFrame(walk.getSP(), walk.getPossiblyStaleIP(), info, Deoptimizer.checkDeoptimized(walk.getSP()), data);
     }
 }

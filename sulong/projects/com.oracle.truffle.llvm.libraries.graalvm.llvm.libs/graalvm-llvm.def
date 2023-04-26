@@ -1,5 +1,5 @@
 ;
-; Copyright (c) 2022, Oracle and/or its affiliates.
+; Copyright (c) 2022, 2023, Oracle and/or its affiliates.
 ;
 ; All rights reserved.
 ;
@@ -36,6 +36,7 @@ EXPORTS
   _graalvm_llvm_is_handle
   _graalvm_llvm_points_to_handle_space
   _graalvm_llvm_resolve_function
+  _graalvm_llvm_va_arg
   polyglot_from_buffer
   polyglot_from_const_buffer
   polyglot_has_buffer_elements

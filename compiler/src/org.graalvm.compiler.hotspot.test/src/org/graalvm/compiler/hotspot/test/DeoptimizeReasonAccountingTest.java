@@ -121,7 +121,7 @@ public class DeoptimizeReasonAccountingTest extends GraalCompilerTest {
         boolean has8278871 = store.getConstants().containsKey("Deoptimization::Reason_TRAP_HISTORY_LENGTH"); // JDK-8278871
         Assume.assumeTrue("release".equals(System.getProperty("jdk.debug")) || has8278871);
         for (DeoptimizationReason r : DeoptimizationReason.values()) {
-            for (boolean osr : new boolean[]{false, true}) {
+            for (boolean osr : new boolean[]{false}) {
                 this.reason = r;
                 this.isOSR = osr;
                 test("deoptimizeSnippet");

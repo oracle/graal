@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.io.Closeable;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
@@ -184,7 +185,8 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
             } else {
                 assertCount(graph, LoadFieldNode.class, 1);
             }
-            assertCount(graph, AddNode.class, 2);
+            assertCount(graph, AddNode.class, 1);
+            assertCount(graph, LeftShiftNode.class, 1);
         } finally {
             te.context.leave();
         }

@@ -54,6 +54,7 @@ public class GCCause {
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     protected GCCause(String name, int id) {
         this.id = id;
         this.name = name;

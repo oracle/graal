@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationValue;
@@ -81,11 +80,11 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        return buildGraph(debug, method, providers, message);
+        return buildGraph(debug, method, providers, message, purpose);
     }
 
-    public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message) {
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+    public static StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, String message, Purpose purpose) {
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
         StructuredGraph graph = kit.getGraph();
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
@@ -98,7 +97,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
         graph.start().setStateAfter(state.create(bci++, graph.start()));
 
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(method, message, false);
-        ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graph);
+        ValueNode msgNode = ConstantNode.forConstant(providers.getConstantReflection().forString(msg), providers.getMetaAccess(), graph);
         ValueNode exceptionNode = kit.createInvokeWithExceptionAndUnwind(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, msgNode);
         kit.append(new UnwindNode(exceptionNode));
 

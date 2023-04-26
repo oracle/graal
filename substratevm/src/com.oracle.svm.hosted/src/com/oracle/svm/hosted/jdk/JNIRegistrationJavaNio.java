@@ -79,18 +79,8 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
             RuntimeJNIAccess.register(constructor(a, "sun.nio.fs.WindowsException", int.class));
         }
 
-        /* Use the same lambda for registration to ensure it is called only once. */
-        Consumer<DuringAnalysisAccess> registerServerSocketChannelImplInitIDs = JNIRegistrationJavaNio::registerServerSocketChannelImplInitIDs;
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.ServerSocketChannelImpl", "initIDs"));
-            if (isPosix()) {
-                a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl", "initIDs"));
-            }
-            a.registerReachabilityHandler(JNIRegistrationJavaNio::registerDatagramChannelImplInitIDs, method(a, "sun.nio.ch.DatagramChannelImpl", "initIDs"));
-        } else {
-            // JDK-8220738
-            a.registerReachabilityHandler(JNIRegistrationJavaNio::registerNetInitIDs, method(a, "sun.nio.ch.Net", "initIDs"));
-        }
+        // JDK-8220738
+        a.registerReachabilityHandler(JNIRegistrationJavaNio::registerNetInitIDs, method(a, "sun.nio.ch.Net", "initIDs"));
         if (JavaVersionUtil.JAVA_SPEC <= 17) {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerFileChannelImplInitIDs, method(a, "sun.nio.ch.FileChannelImpl", "initIDs"));
         }
@@ -119,18 +109,6 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Inter
         if (JavaVersionUtil.JAVA_SPEC == 17) {
             RuntimeReflection.register(clazz(a, "jdk.internal.access.foreign.MemorySegmentProxy"));
         }
-    }
-
-    private static void registerServerSocketChannelImplInitIDs(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(clazz(a, "java.net.InetSocketAddress"));
-        RuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
-    }
-
-    private static void registerDatagramChannelImplInitIDs(DuringAnalysisAccess a) {
-        RuntimeJNIAccess.register(clazz(a, "java.net.InetSocketAddress"));
-        RuntimeJNIAccess.register(constructor(a, "java.net.InetSocketAddress", InetAddress.class, int.class));
-        RuntimeJNIAccess.register(clazz(a, "sun.nio.ch.DatagramChannelImpl"));
-        RuntimeJNIAccess.register(fields(a, "sun.nio.ch.DatagramChannelImpl", "sender", "cachedSenderInetAddress", "cachedSenderPort"));
     }
 
     private static void registerNetInitIDs(DuringAnalysisAccess a) {

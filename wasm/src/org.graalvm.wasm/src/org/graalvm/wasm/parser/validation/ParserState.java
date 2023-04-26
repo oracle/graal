@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.bytecode.BytecodeGen;
+import org.graalvm.wasm.parser.bytecode.RuntimeBytecodeGen;
 
 /**
  * Represents the values and stack frames of a Wasm code section during validation. Stores
@@ -61,11 +61,11 @@ public class ParserState {
 
     private final ByteArrayList valueStack;
     private final ControlStack controlStack;
-    private final BytecodeGen bytecode;
+    private final RuntimeBytecodeGen bytecode;
 
     private int maxStackSize;
 
-    public ParserState(BytecodeGen bytecode) {
+    public ParserState(RuntimeBytecodeGen bytecode) {
         this.valueStack = new ByteArrayList();
         this.controlStack = new ControlStack();
         this.bytecode = bytecode;
@@ -258,8 +258,8 @@ public class ParserState {
         }
     }
 
-    public void enterFunction(byte[] returnTypes) {
-        enterBlock(EMPTY_ARRAY, returnTypes);
+    public void enterFunction(byte[] resultTypes) {
+        enterBlock(EMPTY_ARRAY, resultTypes);
     }
 
     /**

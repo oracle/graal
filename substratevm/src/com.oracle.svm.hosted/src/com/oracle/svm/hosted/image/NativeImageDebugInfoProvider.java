@@ -44,7 +44,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.UniqueShortNameProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -61,6 +60,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Builder;
 import com.oracle.svm.core.code.CompilationResultFrameTree.CallNode;
 import com.oracle.svm.core.code.CompilationResultFrameTree.FrameNode;
@@ -71,7 +71,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
@@ -212,6 +211,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     @Override
+    public int compiledCodeMax() {
+        return codeCache.getCodeCacheSize();
+    }
+
+    @Override
     public int oopTagsMask() {
         return tagsMask;
     }
@@ -297,8 +301,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         ResolvedJavaType javaType = hostedType.getWrapped().getWrapped();
         if (javaType instanceof SubstitutionType) {
             return ((SubstitutionType) javaType).getOriginal();
-        } else if (javaType instanceof CustomSubstitutionType<?, ?>) {
-            return ((CustomSubstitutionType<?, ?>) javaType).getOriginal();
         } else if (javaType instanceof LambdaSubstitutionType) {
             return ((LambdaSubstitutionType) javaType).getOriginal();
         } else if (javaType instanceof InjectedFieldsType) {
@@ -337,6 +339,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
+    @Override
+    public Path getCachePath() {
+        return cachePath;
+    }
+
     private HostedType hostedTypeForKind(JavaKind kind) {
         return javaKindToHostedType.get(kind);
     }
@@ -351,10 +358,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
                 Path filePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
-                if (filePath == null && hostedType instanceof HostedInstanceClass) {
+                if (filePath == null && (hostedType instanceof HostedInstanceClass || hostedType instanceof HostedInterface)) {
                     // conjure up an appropriate, unique file name to keep tools happy
                     // even though we cannot find a corresponding source
-                    filePath = fullFilePathFromClassName((HostedInstanceClass) hostedType);
+                    filePath = fullFilePathFromClassName(hostedType);
                 }
                 fullFilePath = filePath;
             } catch (Throwable e) {
@@ -419,14 +426,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
             return null;
         }
-
-        @Override
-        public Path cachePath() {
-            return cachePath;
-        }
     }
 
-    private static Path fullFilePathFromClassName(HostedInstanceClass hostedInstanceClass) {
+    private static Path fullFilePathFromClassName(HostedType hostedInstanceClass) {
         String[] elements = hostedInstanceClass.toJavaName().split("\\.");
         int count = elements.length;
         String name = elements[count - 1];
@@ -559,11 +561,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public Path cachePath() {
-            return null;
-        }
-
-        @Override
         public long classOffset() {
             return -1;
         }
@@ -631,27 +628,27 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public Path filePath() {
             return null;
         }
-
-        @Override
-        public Path cachePath() {
-            return null;
-        }
     }
 
     private Stream<DebugTypeInfo> computeHeaderTypeInfo() {
         List<DebugTypeInfo> infos = new LinkedList<>();
         int hubOffset = getObjectLayout().getHubOffset();
         int hubFieldSize = referenceSize;
-        int idHashOffset = getObjectLayout().getIdentityHashCodeOffset();
+        int objHeaderSize = hubOffset + hubFieldSize;
+
         int idHashSize = getObjectLayout().sizeInBytes(JavaKind.Int);
-        int objHeaderSize = getObjectLayout().getMinimumInstanceObjectSize();
+        int fixedIdHashOffset = -1;
+        if (getObjectLayout().hasFixedIdentityHashField()) {
+            fixedIdHashOffset = getObjectLayout().getFixedIdentityHashOffset();
+            objHeaderSize = Math.max(objHeaderSize, fixedIdHashOffset + idHashSize);
+        }
 
         /* We need array headers for all Java kinds */
 
         NativeImageHeaderTypeInfo objHeader = new NativeImageHeaderTypeInfo("_objhdr", objHeaderSize);
         objHeader.addField("hub", hubType, hubOffset, hubFieldSize);
-        if (idHashOffset > 0) {
-            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), idHashOffset, idHashSize);
+        if (fixedIdHashOffset >= 0) {
+            objHeader.addField("idHash", javaKindToHostedType.get(JavaKind.Int), fixedIdHashOffset, idHashSize);
         }
         infos.add(objHeader);
 

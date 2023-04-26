@@ -61,6 +61,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.AOTSupport;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.examples.AOTTutorialFactory.AddNodeGen;
@@ -237,6 +238,7 @@ public class AOTTutorial {
             return addLib.add(left, right);
         }
 
+        @Idempotent
         static boolean useLibrary() {
             /*
              * This library is not really useful and only here to show-case how to use libraries

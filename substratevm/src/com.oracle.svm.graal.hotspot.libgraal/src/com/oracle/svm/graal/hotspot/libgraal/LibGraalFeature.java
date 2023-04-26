@@ -88,8 +88,8 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
@@ -109,7 +109,6 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -154,7 +153,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -738,26 +736,8 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider {
-
-    @Substitute
-    private static Pointer getBarrierPointer() {
-        return LibGraalEntryPoints.LOG_FILE_BARRIER.get();
-    }
-}
-
 @TargetClass(className = "org.graalvm.compiler.serviceprovider.GraalServices", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
-
-    @Substitute
-    public static long getGlobalTimeStamp() {
-        Pointer timestamp = LibGraalEntryPoints.GLOBAL_TIMESTAMP.get();
-        if (timestamp.readLong(0) == 0) {
-            timestamp.compareAndSwapLong(0, 0, System.currentTimeMillis(), LocationIdentity.ANY_LOCATION);
-        }
-        return timestamp.readLong(0);
-    }
 
     @Substitute
     private static void notifyLowMemoryPoint(boolean fullGC) {
@@ -822,18 +802,6 @@ final class HotSpotGraalOptionValuesUtil {
     }
 }
 
-/**
- * This field resetting must be done via substitutions instead of {@link NativeImageReinitialize} as
- * the fields must only be reset in a libgraal image.
- */
-@TargetClass(className = "org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeInstance {
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
-    // Checkstyle: resume
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
-}
-
 @TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute()
@@ -879,6 +847,19 @@ final class Target_org_graalvm_compiler_truffle_compiler_hotspot_libgraal_Truffl
     private static void doReferenceHandling() {
         Heap.getHeap().doReferenceHandling();
     }
+}
+
+/**
+ * This field resetting must be done via substitutions as the fields must only be reset in a
+ * libgraal image.
+ */
+@TargetClass(className = "org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_truffle_compiler_TruffleCompilerEnvironment {
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object RUNTIME;
+    // Checkstyle: resume
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerEnvironment current;
 }
 
 @TargetClass(value = HotSpotForeignCallLinkageImpl.class, onlyWith = LibGraalFeature.IsEnabled.class)

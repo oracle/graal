@@ -449,7 +449,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
         }
     }
 
-    @ExpectError({"The following message(s) of library AbstractErrorLibrary1 are abstract and must be exported using:%",
+    @ExpectError({"The following message(s) of library AbstractErrorLibrary1 are abstract and should be exported using:%",
                     "Exported library AbstractErrorLibrary1 does not export any messages and therefore has no effect. Remove the export declaration to resolve this."
     })
     @ExportLibrary(AbstractErrorLibrary1.class)
@@ -477,7 +477,7 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     }
 
     // should now have an abstract error message
-    @ExpectError("The following message(s) of library AbstractErrorLibrary2 are abstract and must be exported usin%")
+    @ExpectError("The following message(s) of library AbstractErrorLibrary2 are abstract and should be exported usin%")
     @ExportLibrary(AbstractErrorLibrary2.class)
     public static class AbstractErrorTest3 {
         @SuppressWarnings("static-method")
@@ -561,13 +561,13 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     // test that package-protected duplicate method leads to error
     @GenerateLibrary
     public abstract static class AbstractErrorLibrary9 extends Library {
-        @ExpectError("Library message must have a unique name. Two methods with the same name found.If this method is not intended to be a library message then add the private or final modifier to ignore it.")
+        @ExpectError("Library message must have a unique name. %")
         public String call(Object receiver, String arg) {
             return "default";
         }
 
-        @SuppressWarnings("static-method")
-        String call(Object receiver) {
+        @ExpectError("Library message must have a unique name. %")
+        public String call(Object receiver) {
             return "default";
         }
 
@@ -576,12 +576,12 @@ public class GenerateLibraryTest extends AbstractLibraryTest {
     // test that protected duplicate method leads to error
     @GenerateLibrary
     public abstract static class AbstractErrorLibrary10 extends Library {
-        @ExpectError("Library message must have a unique name. Two methods with the same name found.If this method is not intended to be a library message then add the private or final modifier to ignore it.")
+        @ExpectError("Library message must have a unique name. %")
         public String call(Object receiver, String arg) {
             return "default";
         }
 
-        @SuppressWarnings("static-method")
+        @ExpectError("Library message must have a unique name. %")
         protected String call(Object receiver) {
             return "default";
         }

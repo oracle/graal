@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,16 +40,18 @@ import java.time.format.DateTimeParseException;
 import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -86,8 +88,9 @@ final class BundleSupport {
     Map<Path, Path> pathCanonicalizations = new HashMap<>();
     Map<Path, Path> pathSubstitutions = new HashMap<>();
 
-    private final List<String> buildArgs;
-    private Collection<String> updatedBuildArgs;
+    private final boolean forceBuilderOnClasspath;
+    private final List<String> nativeImageArgs;
+    private List<String> updatedNativeImageArgs;
 
     boolean loadBundle;
     boolean writeBundle;
@@ -95,7 +98,7 @@ final class BundleSupport {
     private static final int BUNDLE_FILE_FORMAT_VERSION_MAJOR = 0;
     private static final int BUNDLE_FILE_FORMAT_VERSION_MINOR = 9;
 
-    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "GraalVM Native Image Bundle Support: ";
+    private static final String BUNDLE_INFO_MESSAGE_PREFIX = "Native Image Bundles: ";
     private static final String BUNDLE_TEMP_DIR_PREFIX = "bundleRoot-";
     private static final String ORIGINAL_DIR_EXTENSION = ".orig";
 
@@ -104,26 +107,19 @@ final class BundleSupport {
 
     private final BundleProperties bundleProperties;
 
-    static boolean allowBundleSupport;
-    static final String UNLOCK_BUNDLE_SUPPORT_OPTION = "--enable-experimental-bundle-support";
-
     static final String BUNDLE_OPTION = "--bundle";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
 
-    private enum BundleOptionVariants {
+    enum BundleOptionVariants {
         create(),
-        apply()
+        apply();
+
+        String optionName() {
+            return BUNDLE_OPTION + "-" + this;
+        }
     }
 
     static BundleSupport create(NativeImage nativeImage, String bundleArg, NativeImage.ArgumentQueue args) {
-        if (!allowBundleSupport) {
-            throw NativeImage.showError("Bundle support is still experimental and needs to be unlocked with " + UNLOCK_BUNDLE_SUPPORT_OPTION);
-        }
-
-        if (!nativeImage.userConfigProperties.isEmpty()) {
-            throw NativeImage.showError("Bundle support cannot be combined with " + NativeImage.CONFIG_FILE_ENV_VAR_KEY + " environment variable use.");
-        }
-
         try {
             String variant = bundleArg.substring(BUNDLE_OPTION.length() + 1);
             String bundleFilename = null;
@@ -132,31 +128,31 @@ final class BundleSupport {
                 variant = variantParts[0];
                 bundleFilename = variantParts[1];
             }
-            String applyOptionStr = BUNDLE_OPTION + "-" + BundleOptionVariants.apply;
-            String createOptionStr = BUNDLE_OPTION + "-" + BundleOptionVariants.create;
+            String applyOptionName = BundleOptionVariants.apply.optionName();
+            String createOptionName = BundleOptionVariants.create.optionName();
             BundleSupport bundleSupport;
             switch (BundleOptionVariants.valueOf(variant)) {
                 case apply:
                     if (nativeImage.useBundle()) {
                         if (nativeImage.bundleSupport.loadBundle) {
-                            throw NativeImage.showError(String.format("native-image allows option %s to be specified only once.", applyOptionStr));
+                            throw NativeImage.showError(String.format("native-image allows option %s to be specified only once.", applyOptionName));
                         }
                         if (nativeImage.bundleSupport.writeBundle) {
-                            throw NativeImage.showError(String.format("native-image option %s is not allowed to be used after option %s.", applyOptionStr, createOptionStr));
+                            throw NativeImage.showError(String.format("native-image option %s is not allowed to be used after option %s.", applyOptionName, createOptionName));
                         }
                     }
                     if (bundleFilename == null) {
-                        throw NativeImage.showError(String.format("native-image option %s requires a bundle file argument. E.g. %s=bundle-file.nib.", applyOptionStr, applyOptionStr));
+                        throw NativeImage.showError(String.format("native-image option %s requires a bundle file argument. E.g. %s=bundle-file.nib.", applyOptionName, applyOptionName));
                     }
                     bundleSupport = new BundleSupport(nativeImage, bundleFilename);
                     /* Inject the command line args from the loaded bundle in-place */
-                    List<String> buildArgs = bundleSupport.getBuildArgs();
+                    List<String> buildArgs = bundleSupport.getNativeImageArgs();
                     for (int i = buildArgs.size() - 1; i >= 0; i--) {
                         args.push(buildArgs.get(i));
                     }
                     nativeImage.showVerboseMessage(nativeImage.isVerbose(), BUNDLE_INFO_MESSAGE_PREFIX + "Inject args: '" + String.join(" ", buildArgs) + "'");
                     /* Snapshot args after in-place expansion (includes also args after this one) */
-                    bundleSupport.updatedBuildArgs = args.snapshot();
+                    bundleSupport.updatedNativeImageArgs = args.snapshot();
                     break;
                 case create:
                     if (nativeImage.useBundle()) {
@@ -193,7 +189,7 @@ final class BundleSupport {
         loadBundle = false;
         writeBundle = true;
         try {
-            rootDir = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+            rootDir = createBundleRootDir();
             bundleProperties = new BundleProperties();
 
             Path inputDir = rootDir.resolve("input");
@@ -208,7 +204,8 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Unable to create bundle directory layout", e);
         }
-        this.buildArgs = Collections.unmodifiableList(nativeImage.config.getBuildArgs());
+        forceBuilderOnClasspath = !nativeImage.config.modulePathBuild;
+        nativeImageArgs = nativeImage.getNativeImageArgs();
     }
 
     private BundleSupport(NativeImage nativeImage, String bundleFilenameArg) {
@@ -222,7 +219,7 @@ final class BundleSupport {
         updateBundleLocation(Path.of(bundleFilenameArg), false);
 
         try {
-            rootDir = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+            rootDir = createBundleRootDir();
             bundleProperties = new BundleProperties();
 
             outputDir = rootDir.resolve("output");
@@ -230,7 +227,9 @@ final class BundleSupport {
 
             Path bundleFilePath = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION);
             try (JarFile archive = new JarFile(bundleFilePath.toFile())) {
-                archive.stream().forEach(jarEntry -> {
+                Enumeration<JarEntry> jarEntries = archive.entries();
+                while (jarEntries.hasMoreElements() && !deleteBundleRoot.get()) {
+                    JarEntry jarEntry = jarEntries.nextElement();
                     Path bundleEntry = rootDir.resolve(jarEntry.getName());
                     if (bundleEntry.startsWith(outputDir)) {
                         /* Extract original output to different path */
@@ -245,13 +244,20 @@ final class BundleSupport {
                     } catch (IOException e) {
                         throw NativeImage.showError("Unable to copy " + jarEntry.getName() + " from bundle " + bundleEntry + " to " + bundleEntry, e);
                     }
-                });
+                }
             }
         } catch (IOException e) {
             throw NativeImage.showError("Unable to expand bundle directory layout from bundle file " + bundleName + BUNDLE_FILE_EXTENSION, e);
         }
 
+        if (deleteBundleRoot.get()) {
+            /* Abort image build request without error message and exit with 0 */
+            throw NativeImage.showError(null, null, 0);
+        }
+
         bundleProperties.loadAndVerify();
+        forceBuilderOnClasspath = bundleProperties.forceBuilderOnClasspath();
+        nativeImage.config.modulePathBuild = !forceBuilderOnClasspath;
 
         try {
             Path inputDir = rootDir.resolve("input");
@@ -278,18 +284,38 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
         }
+        Path environmentFile = stageDir.resolve("environment.json");
+        if (Files.isReadable(environmentFile)) {
+            try (Reader reader = Files.newBufferedReader(environmentFile)) {
+                new EnvironmentParser(nativeImage.imageBuilderEnvironment).parseAndRegister(reader);
+            } catch (IOException e) {
+                throw NativeImage.showError("Failed to read bundle-file " + environmentFile, e);
+            }
+        }
+
         Path buildArgsFile = stageDir.resolve("build.json");
         try (Reader reader = Files.newBufferedReader(buildArgsFile)) {
             List<String> buildArgsFromFile = new ArrayList<>();
             new BuildArgsParser(buildArgsFromFile).parseAndRegister(reader);
-            buildArgs = Collections.unmodifiableList(buildArgsFromFile);
+            nativeImageArgs = Collections.unmodifiableList(buildArgsFromFile);
         } catch (IOException e) {
-            throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
+            throw NativeImage.showError("Failed to read bundle-file " + buildArgsFile, e);
         }
     }
 
-    public List<String> getBuildArgs() {
-        return buildArgs;
+    private final AtomicBoolean deleteBundleRoot = new AtomicBoolean();
+
+    private Path createBundleRootDir() throws IOException {
+        Path bundleRoot = Files.createTempDirectory(BUNDLE_TEMP_DIR_PREFIX);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            deleteBundleRoot.set(true);
+            nativeImage.deleteAllFiles(bundleRoot);
+        }));
+        return bundleRoot;
+    }
+
+    public List<String> getNativeImageArgs() {
+        return nativeImageArgs;
     }
 
     Path recordCanonicalization(Path before, Path after) {
@@ -408,8 +434,8 @@ final class BundleSupport {
             return origPath;
         }
 
-        // TODO Report error if overlapping dir-trees are passed in
-        // TODO add .endsWith(ClasspathUtils.cpWildcardSubstitute) handling (copy whole directory)
+        // TODO: Report error if overlapping dir-trees are passed in
+
         String origFileName = origPath.getFileName().toString();
         int extensionPos = origFileName.lastIndexOf('.');
         String baseName;
@@ -437,6 +463,16 @@ final class BundleSupport {
         nativeImage.showVerboseMessage(nativeImage.isVVerbose(), "RecordSubstitution src: " + origPath + ", dst: " + relativeSubstitutedPath);
         pathSubstitutions.put(origPath, relativeSubstitutedPath);
         return substitutedPath;
+    }
+
+    Path originalPath(Path substitutedPath) {
+        Path relativeSubstitutedPath = rootDir.relativize(substitutedPath);
+        for (Map.Entry<Path, Path> entry : pathSubstitutions.entrySet()) {
+            if (entry.getValue().equals(relativeSubstitutedPath)) {
+                return entry.getKey();
+            }
+        }
+        return null;
     }
 
     private void copyFiles(Path source, Path target, boolean overwrite) {
@@ -468,9 +504,9 @@ final class BundleSupport {
     void complete() {
         boolean writeOutput;
         try (Stream<Path> pathOutputFiles = Files.list(imagePathOutputDir); Stream<Path> auxiliaryOutputFiles = Files.list(auxiliaryOutputDir)) {
-            writeOutput = pathOutputFiles.findAny().isPresent() || auxiliaryOutputFiles.findAny().isPresent();
+            writeOutput = (pathOutputFiles.findAny().isPresent() || auxiliaryOutputFiles.findAny().isPresent()) && !deleteBundleRoot.get();
         } catch (IOException e) {
-            throw NativeImage.showError("Unable to determine if bundle output should be written.");
+            writeOutput = false;
         }
 
         /*
@@ -499,7 +535,6 @@ final class BundleSupport {
             }
         } finally {
             nativeImage.showNewline();
-            nativeImage.deleteAllFiles(rootDir);
         }
     }
 
@@ -566,39 +601,36 @@ final class BundleSupport {
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
         }
+        Path environmentFile = stageDir.resolve("environment.json");
+        try (JsonWriter writer = new JsonWriter(environmentFile)) {
+            /* Printing as list with defined sort-order ensures useful diffs are possible */
+            JsonPrinter.printCollection(writer, nativeImage.imageBuilderEnvironment.entrySet(), Map.Entry.comparingByKey(), BundleSupport::printEnvironmentVariable);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to write bundle-file " + environmentFile, e);
+        }
 
         Path buildArgsFile = stageDir.resolve("build.json");
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
-            ArrayList<String> cleanBuildArgs = new ArrayList<>();
-            for (String buildArg : updatedBuildArgs != null ? updatedBuildArgs : buildArgs) {
-                if (buildArg.equals(UNLOCK_BUNDLE_SUPPORT_OPTION)) {
-                    continue;
-                }
-                if (buildArg.startsWith(BUNDLE_OPTION)) {
-                    continue;
-                }
-                if (buildArg.startsWith(nativeImage.oHPath)) {
-                    continue;
-                }
-                if (buildArg.equals(CmdLineOptionHandler.VERBOSE_OPTION)) {
-                    continue;
-                }
-                if (buildArg.equals(CmdLineOptionHandler.DRY_RUN_OPTION)) {
-                    continue;
-                }
-                if (buildArg.startsWith("-Dllvm.bin.dir=")) {
-                    Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(arg -> arg.startsWith("-Dllvm.bin.dir=")).findFirst();
-                    if (existing.isPresent() && !existing.get().equals(buildArg)) {
-                        throw NativeImage.showError("Bundle native-image argument '" + buildArg + "' conflicts with existing '" + existing.get() + "'.");
+            List<String> equalsNonBundleOptions = List.of(CmdLineOptionHandler.VERBOSE_OPTION, CmdLineOptionHandler.DRY_RUN_OPTION);
+            List<String> startsWithNonBundleOptions = List.of(BUNDLE_OPTION, DefaultOptionHandler.ADD_ENV_VAR_OPTION, nativeImage.oHPath);
+            ArrayList<String> bundleArgs = new ArrayList<>(updatedNativeImageArgs != null ? updatedNativeImageArgs : nativeImageArgs);
+            ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
+            while (bundleArgsIterator.hasNext()) {
+                String arg = bundleArgsIterator.next();
+                if (equalsNonBundleOptions.contains(arg) || startsWithNonBundleOptions.stream().anyMatch(arg::startsWith)) {
+                    bundleArgsIterator.remove();
+                } else if (arg.startsWith("-Dllvm.bin.dir=")) {
+                    Optional<String> existing = nativeImage.config.getBuildArgs().stream().filter(a -> a.startsWith("-Dllvm.bin.dir=")).findFirst();
+                    if (existing.isPresent() && !existing.get().equals(arg)) {
+                        throw NativeImage.showError("Bundle native-image argument '" + arg + "' conflicts with existing '" + existing.get() + "'.");
                     }
-                    continue;
+                    bundleArgsIterator.remove();
                 }
-                cleanBuildArgs.add(buildArg);
             }
             /* Printing as list with defined sort-order ensures useful diffs are possible */
-            JsonPrinter.printCollection(writer, cleanBuildArgs, null, BundleSupport::printBuildArg);
+            JsonPrinter.printCollection(writer, bundleArgs, null, BundleSupport::printBuildArg);
         } catch (IOException e) {
-            throw NativeImage.showError("Failed to write bundle-file " + pathSubstitutionsFile, e);
+            throw NativeImage.showError("Failed to write bundle-file " + buildArgsFile, e);
         }
 
         bundleProperties.write();
@@ -638,13 +670,25 @@ final class BundleSupport {
     private static final String substitutionMapDstField = "dst";
 
     private static void printPathMapping(Map.Entry<Path, Path> entry, JsonWriter w) throws IOException {
-        w.append('{').quote(substitutionMapSrcField).append(" : ").quote(entry.getKey());
+        w.append('{').quote(substitutionMapSrcField).append(':').quote(entry.getKey());
         w.append(',').quote(substitutionMapDstField).append(':').quote(entry.getValue());
         w.append('}');
     }
 
     private static void printBuildArg(String entry, JsonWriter w) throws IOException {
         w.quote(entry);
+    }
+
+    private static final String environmentKeyField = "key";
+    private static final String environmentValueField = "val";
+
+    private static void printEnvironmentVariable(Map.Entry<String, String> entry, JsonWriter w) throws IOException {
+        if (entry.getValue() == null) {
+            throw NativeImage.showError("Storing environment variable '" + entry.getKey() + "' in bundle requires to have its value defined.");
+        }
+        w.append('{').quote(environmentKeyField).append(':').quote(entry.getKey());
+        w.append(',').quote(environmentValueField).append(':').quote(entry.getValue());
+        w.append('}');
     }
 
     private static final class PathMapParser extends ConfigurationParser {
@@ -673,6 +717,33 @@ final class BundleSupport {
         }
     }
 
+    private static final class EnvironmentParser extends ConfigurationParser {
+
+        private final Map<String, String> environment;
+
+        private EnvironmentParser(Map<String, String> environment) {
+            super(true);
+            environment.clear();
+            this.environment = environment;
+        }
+
+        @Override
+        public void parseAndRegister(Object json, URI origin) {
+            for (var rawEntry : asList(json, "Expected a list of environment variable objects")) {
+                var entry = asMap(rawEntry, "Expected a environment variable object");
+                Object envVarKeyString = entry.get(environmentKeyField);
+                if (envVarKeyString == null) {
+                    throw new JSONParserException("Expected " + environmentKeyField + "-field in environment variable object");
+                }
+                Object envVarValueString = entry.get(environmentValueField);
+                if (envVarValueString == null) {
+                    throw new JSONParserException("Expected " + environmentValueField + "-field in environment variable object");
+                }
+                environment.put(envVarKeyString.toString(), envVarValueString.toString());
+            }
+        }
+    }
+
     private static final class BuildArgsParser extends ConfigurationParser {
 
         private final List<String> args;
@@ -697,9 +768,11 @@ final class BundleSupport {
         private static final String PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR = "BundleFileVersionMajor";
         private static final String PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR = "BundleFileVersionMinor";
         private static final String PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP = "BundleFileCreationTimestamp";
+        private static final String PROPERTY_KEY_BUILDER_ON_CLASSPATH = "BuilderOnClasspath";
         private static final String PROPERTY_KEY_IMAGE_BUILT = "ImageBuilt";
         private static final String PROPERTY_KEY_BUILT_WITH_CONTAINER = "BuiltWithContainer";
         private static final String PROPERTY_KEY_NATIVE_IMAGE_PLATFORM = "NativeImagePlatform";
+        private static final String PROPERTY_KEY_NATIVE_IMAGE_VENDOR = "NativeImageVendor";
         private static final String PROPERTY_KEY_NATIVE_IMAGE_VERSION = "NativeImageVersion";
 
         private final Path bundlePropertiesFile;
@@ -739,8 +812,12 @@ final class BundleSupport {
             } catch (NumberFormatException e) {
                 throw NativeImage.showError(fileVersionKey + " in " + bundlePropertiesFileName + " is missing or ill-defined", e);
             }
+            String bundleVendor = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_VENDOR, "unknown");
+            String javaVmVendor = System.getProperty("java.vm.vendor");
+            String currentVendor = bundleVendor.equals(javaVmVendor) ? "" : " != '" + javaVmVendor + "'";
             String bundleVersion = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_VERSION, "unknown");
-            String currentVersion = bundleVersion.equals(NativeImage.getNativeImageVersion()) ? "" : " != '" + NativeImage.getNativeImageVersion() + "'";
+            String javaVmVersion = System.getProperty("java.vm.version");
+            String currentVersion = bundleVersion.equals(javaVmVersion) ? "" : " != '" + javaVmVersion + "'";
             String bundlePlatform = properties.getOrDefault(PROPERTY_KEY_NATIVE_IMAGE_PLATFORM, "unknown");
             String currentPlatform = bundlePlatform.equals(NativeImage.platform) ? "" : " != '" + NativeImage.platform + "'";
             String bundleCreationTimestamp = properties.getOrDefault(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, "");
@@ -752,22 +829,32 @@ final class BundleSupport {
                 localDateStr = "unknown time";
             }
             nativeImage.showNewline();
-            nativeImage.showMessage(String.format("%sLoaded Bundle from %s", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName));
-            nativeImage.showMessage(String.format("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, localDateStr));
-            nativeImage.showMessage(String.format("%sUsing version: '%s'%s on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX, bundleVersion, currentVersion, bundlePlatform, currentPlatform));
+            nativeImage.showMessage("%sLoaded Bundle from %s", BUNDLE_INFO_MESSAGE_PREFIX, bundleFileName);
+            nativeImage.showMessage("%sBundle created at '%s'", BUNDLE_INFO_MESSAGE_PREFIX, localDateStr);
+            nativeImage.showMessage("%sUsing version: '%s'%s (vendor '%s'%s) on platform: '%s'%s", BUNDLE_INFO_MESSAGE_PREFIX,
+                            bundleVersion, currentVersion,
+                            bundleVendor, currentVendor,
+                            bundlePlatform, currentPlatform);
+        }
+
+        private boolean forceBuilderOnClasspath() {
+            assert !properties.isEmpty() : "Needs to be called after loadAndVerify()";
+            return Boolean.parseBoolean(properties.getOrDefault(PROPERTY_KEY_BUILDER_ON_CLASSPATH, Boolean.FALSE.toString()));
         }
 
         private void write() {
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MAJOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MAJOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_VERSION_MINOR, String.valueOf(BUNDLE_FILE_FORMAT_VERSION_MINOR));
             properties.put(PROPERTY_KEY_BUNDLE_FILE_CREATION_TIMESTAMP, ZonedDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME));
+            properties.put(PROPERTY_KEY_BUILDER_ON_CLASSPATH, String.valueOf(forceBuilderOnClasspath));
             boolean imageBuilt = !nativeImage.isDryRun();
             properties.put(PROPERTY_KEY_IMAGE_BUILT, String.valueOf(imageBuilt));
             if (imageBuilt) {
                 properties.put(PROPERTY_KEY_BUILT_WITH_CONTAINER, String.valueOf(false));
             }
             properties.put(PROPERTY_KEY_NATIVE_IMAGE_PLATFORM, NativeImage.platform);
-            properties.put(PROPERTY_KEY_NATIVE_IMAGE_VERSION, NativeImage.getNativeImageVersion());
+            properties.put(PROPERTY_KEY_NATIVE_IMAGE_VENDOR, System.getProperty("java.vm.vendor"));
+            properties.put(PROPERTY_KEY_NATIVE_IMAGE_VERSION, System.getProperty("java.vm.version"));
             NativeImage.ensureDirectoryExists(bundlePropertiesFile.getParent());
             try (OutputStream outputStream = Files.newOutputStream(bundlePropertiesFile)) {
                 Properties p = new Properties();

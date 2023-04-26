@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 
@@ -54,7 +55,7 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     private int lastIndex;
     private final DFACaptureGroupTrackingData cgData;
 
-    public TRegexDFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, DFACaptureGroupTrackingData cgData) {
+    public TRegexDFAExecutorLocals(TruffleString input, int fromIndex, int index, int maxIndex, DFACaptureGroupTrackingData cgData) {
         super(input, fromIndex, maxIndex, index);
         result = TRegexDFAExecutorNode.NO_MATCH;
         this.cgData = cgData;

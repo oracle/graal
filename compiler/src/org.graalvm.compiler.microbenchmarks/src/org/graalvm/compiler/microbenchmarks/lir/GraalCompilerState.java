@@ -66,8 +66,8 @@ import org.graalvm.compiler.microbenchmarks.graal.util.GraalUtil;
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -309,7 +309,7 @@ public abstract class GraalCompilerState {
     private RegisterConfig registerConfig;
     private ScheduleResult schedule;
     private CodeEmissionOrder<?> blockOrder;
-    private char[] linearScanOrder;
+    private int[] linearScanOrder;
 
     /**
      * Copies the {@link #originalGraph original graph} and prepares the {@link #request}.
@@ -325,7 +325,7 @@ public abstract class GraalCompilerState {
         ResolvedJavaMethod installedCodeOwner = graph.method();
         request = new Request<>(graph, installedCodeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), OptimisticOptimizations.ALL,
                         graph.getProfilingInfo(), createSuites(getOptions()), createLIRSuites(getOptions()), new CompilationResult(graph.compilationId()), CompilationResultBuilderFactory.Default,
-                        true);
+                        null, true);
     }
 
     /**
@@ -468,7 +468,7 @@ public abstract class GraalCompilerState {
         request.compilationResult.setHasUnsafeAccess(request.graph.hasUnsafeAccess());
         LIRCompilerBackend.emitCode(request.backend, request.graph.getAssumptions(), request.graph.method(), request.graph.getMethods(), speculationLog,
                         bytecodeSize, lirGenRes, request.compilationResult,
-                        request.installedCodeOwner, request.factory);
+                        request.installedCodeOwner, request.factory, request.entryPointDecorator);
     }
 
     protected StructuredGraph graph() {

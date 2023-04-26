@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,7 +69,10 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
     }
 
     protected InstalledCode compileAndInstallSubstitution(Class<?> c, String methodName) {
-        ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(c, methodName));
+        return compileAndInstallSubstitution(getMetaAccess().lookupJavaMethod(getMethod(c, methodName)));
+    }
+
+    protected InstalledCode compileAndInstallSubstitution(ResolvedJavaMethod method) {
         HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         CompilationIdentifier compilationId = runtime().getHostBackend().getCompilationIdentifier(method);

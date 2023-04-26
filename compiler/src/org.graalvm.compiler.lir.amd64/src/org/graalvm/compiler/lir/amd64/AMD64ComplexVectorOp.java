@@ -103,7 +103,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case Double:
                         return AMD64Kind.V128_DOUBLE;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             case YMM:
                 switch (valueKind) {
@@ -120,7 +120,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case Double:
                         return AMD64Kind.V256_DOUBLE;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             case ZMM:
                 switch (valueKind) {
@@ -157,7 +157,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case S8:
                         return AMD64Kind.V128_QWORD;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             case YMM:
                 switch (stride) {
@@ -170,7 +170,7 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case S8:
                         return AMD64Kind.V256_QWORD;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             case ZMM:
                 switch (stride) {
@@ -183,10 +183,10 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
                     case S8:
                         return AMD64Kind.V512_QWORD;
                     default:
-                        throw GraalError.shouldNotReachHere("Unsupported base value kind.");
+                        throw GraalError.shouldNotReachHere("Unsupported base value kind."); // ExcludeFromJacocoGeneratedReport
                 }
             default:
-                throw GraalError.shouldNotReachHere("Unsupported vector size.");
+                throw GraalError.shouldNotReachHere("Unsupported vector size."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -422,6 +422,10 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         asm.movdq(vecArray, tmp);
     }
 
+    protected void loadMask(CompilationResultBuilder crb, AMD64MacroAssembler asm, Register vecMask, byte[] mask) {
+        asm.movdqu(vectorSize, vecMask, getMaskOnce(crb, mask));
+    }
+
     protected void loadMask(CompilationResultBuilder crb, AMD64MacroAssembler asm, Stride stride, Register vecMask, int value) {
         asm.movdqu(vectorSize, vecMask, getMaskOnce(crb, createMaskBytes(value, stride)));
     }
@@ -494,6 +498,24 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
             writeValue(mask, stride, i, value);
         }
         return mask;
+    }
+
+    /**
+     * When narrowing a YMM int-vector to bytes via PACKUSDW+PACKUSWB, the element order is messed
+     * up due to the PACK instructions being implemented simply as two consecutive 16-byte
+     * operations. A VPERMD instruction with this map will restore the original element order.
+     */
+    protected static byte[] getAVX2IntToBytePackingUnscrambleMap() {
+        return new byte[]{
+                        0, 0, 0, 0,
+                        4, 0, 0, 0,
+                        1, 0, 0, 0,
+                        5, 0, 0, 0,
+                        2, 0, 0, 0,
+                        6, 0, 0, 0,
+                        3, 0, 0, 0,
+                        7, 0, 0, 0,
+        };
     }
 
     protected static DataSection.Data writeToDataSection(CompilationResultBuilder crb, byte[] array) {

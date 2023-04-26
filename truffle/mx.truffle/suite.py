@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.14.13",
+  "mxversion": "6.17.0",
   "name" : "truffle",
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -63,9 +63,6 @@ suite = {
       {
         "name" : "sdk",
         "subdir": True,
-        "urls" : [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-         ]
       },
     ]
   },
@@ -108,8 +105,8 @@ suite = {
     },
 
     "TRUFFLE_JCODINGS": {
-      "digest" : "sha512:49ab9ee3a2d2e7cdc4780252f6f796de1837e8b6dde3480b840faea711d16cbb9ea2c3d945e3cc8916b996a46164f866d3ed2cfdc6eeffb93087131b59e53ec0",
-      "version" : "1.0.56.7",
+      "digest" : "sha512:455f3dc287181c185ab87c03e88cc89615f3da262358f44ea01bb3cc9f04d8e3cee7911f8a14a6403d3285d9b54812aaa48ade093a0b3ec4e594adbbda1d5387",
+      "version" : "1.0.58.1",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/graalvm-shadowed-jcodings-{version}.jar"],
       "exports" : [],
       "license": ["MIT"],
@@ -200,7 +197,7 @@ suite = {
       # if warnings as errors is enabled. See GR-14683.
       "forceJavac" : "true",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,Truffle",
     },
 
@@ -240,6 +237,7 @@ suite = {
       "requires" : [
         "java.logging",
         "jdk.management",
+        "jdk.unsupported", # sun.misc.Unsafe
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.api",
@@ -282,6 +280,7 @@ suite = {
         "java.logging",
         "java.sql",
         "jdk.management",
+        "jdk.unsupported", # sun.misc.Unsafe
       ],
       "requiresConcealed" : {
         "java.base" : [
@@ -406,7 +405,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -773,6 +772,7 @@ suite = {
     "com.oracle.truffle.nfi.native" : {
       "subDir" : "src",
       "native" : "shared_lib",
+      "toolchain" : "sdk:LLVM_NINJA_TOOLCHAIN",
       "deliverable" : "trufflenfi",
       "use_jdk_headers" : True,
       "buildDependencies" : [
@@ -795,6 +795,12 @@ suite = {
         "linux" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "ldlibs" : ["-ldl"],
+          },
+        },
+        "linux-musl" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
             "ldlibs" : ["-ldl"],
           },
         },
@@ -834,6 +840,7 @@ suite = {
     "com.oracle.truffle.nfi.test.native" : {
       "subDir" : "src",
       "native" : "shared_lib",
+      "toolchain" : "sdk:LLVM_NINJA_TOOLCHAIN",
       "deliverable" : "nativetest",
       "buildDependencies" : [
         "com.oracle.truffle.nfi.native",
@@ -942,7 +949,7 @@ suite = {
         "TRUFFLE_API",
       ],
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -1007,7 +1014,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.graal.graal_enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.api.impl to org.graalvm.locator",
           "com.oracle.truffle.api to org.graalvm.locator, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",

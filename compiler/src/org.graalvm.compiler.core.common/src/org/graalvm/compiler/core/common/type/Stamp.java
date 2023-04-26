@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,18 @@
 package org.graalvm.compiler.core.common.type;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup.SpeculationContextObject;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * A stamp is the basis for a type system.
@@ -150,6 +154,13 @@ public abstract class Stamp implements SpeculationContextObject {
     }
 
     /**
+     * Tests whether this stamp represents an Object value.
+     */
+    public boolean isObjectStamp() {
+        return this instanceof AbstractObjectStamp;
+    }
+
+    /**
      * If this stamp represents a single value, the methods returns this single value. It returns
      * null otherwise.
      *
@@ -215,6 +226,37 @@ public abstract class Stamp implements SpeculationContextObject {
             return otherConstant != null && constant.equals(otherConstant);
         }
         return false;
+    }
+
+    /**
+     * Tries to constant fold the given condition when applied to the constants {@code x} and
+     * {@code y}. The constants must be of a type that matches this stamp. If the constants are
+     * primitives, this is equivalent to calling
+     * {@link Condition#foldCondition(PrimitiveConstant, PrimitiveConstant, boolean)}.
+     * <p/>
+     *
+     * As some kinds of values might not be strictly orderable, this method may return
+     * {@link TriState#UNKNOWN}.
+     */
+    public TriState tryConstantFold(Condition condition, Constant x, Constant y, boolean unorderedIsTrue, ConstantReflectionProvider constantReflection) {
+        if (x instanceof PrimitiveConstant) {
+            PrimitiveConstant lp = (PrimitiveConstant) x;
+            PrimitiveConstant rp = (PrimitiveConstant) y;
+            return TriState.get(condition.foldCondition(lp, rp, unorderedIsTrue));
+        } else {
+            Boolean equal = constantReflection.constantEquals(x, y);
+            if (equal == null) {
+                return TriState.UNKNOWN;
+            }
+            switch (condition) {
+                case EQ:
+                    return TriState.get(equal.booleanValue());
+                case NE:
+                    return TriState.get(!equal.booleanValue());
+                default:
+                    return TriState.UNKNOWN;
+            }
+        }
     }
 
     /**

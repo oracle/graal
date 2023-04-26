@@ -33,19 +33,27 @@ This guide shows how you can take advantage of Native Image linking options incl
 The following prerequisites should be met:
 
 - Linux AMD64 operating system
-- GraalVM distribution for Java 11 of higher with [Native Image support](../README.md#install-native-image)
+- GraalVM distribution for Java 17 of higher
 - A 64-bit `musl` toolchain, `make`, and `configure`
 - The latest `zlib` library
- 
-As a preparation step, install the `musl` toolchain, compile and install `zlib` into the toolchain.
 
-1. Download the `musl` toolchain from [musl.cc](https://musl.cc/). (We recommend [this one](https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz)). Extract the toolchain to a directory of your choice. This directory will be referred as `$TOOLCHAIN_DIR`.
-2. Download the latest `zlib` library sources from [zlib.net](https://zlib.net/) and extract them. (This documentation uses `zlib-1.2.11`.)
-3. Create a new environment variable, named `CC`:
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ```
+    
+    Next, you should install the `musl` toolchain, compile and install `zlib` into the toolchain.
+
+2. Download the `musl` toolchain from [musl.cc](https://musl.cc/). (We recommend [this one](https://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz)). Extract the toolchain to a directory of your choice. This directory will be referred as `$TOOLCHAIN_DIR`.
+
+3. Download the latest `zlib` library sources from [zlib.net](https://zlib.net/) and extract them. (This documentation uses `zlib-1.2.11`.)
+
+4. Create a new environment variable, named `CC`:
     ```bash
     CC=$TOOLCHAIN_DIR/bin/gcc
     ```
-4. Change into the `zlib` directory, and then run the following commands to compile and install `zlib` into the toolchain:
+
+5. Change into the `zlib` directory, and then run the following commands to compile and install `zlib` into the toolchain:
     ```bash
     ./configure --prefix=$TOOLCHAIN_DIR --static
     make
@@ -82,7 +90,7 @@ This application iterates over your environment variables and prints out the one
     x86_64-linux-musl-gcc
     ```
     You should see output similar to the following:
-    ```bash
+    ```
     x86_64-linux-musl-gcc: fatal error: no input files
     compilation terminated.
     ```

@@ -48,7 +48,6 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
@@ -67,6 +66,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.builtins.SLAddToHostClassPathBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
@@ -208,7 +208,7 @@ public final class SLContext {
      * Methods for language interoperability.
      */
     public static Object fromForeignValue(Object a) {
-        if (a instanceof Long || a instanceof SLBigNumber || a instanceof String || a instanceof TruffleString || a instanceof Boolean) {
+        if (a instanceof Long || a instanceof SLBigInteger || a instanceof String || a instanceof TruffleString || a instanceof Boolean) {
             return a;
         } else if (a instanceof Character) {
             return fromForeignCharacter((Character) a);

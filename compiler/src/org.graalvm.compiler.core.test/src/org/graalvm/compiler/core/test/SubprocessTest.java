@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,11 @@ import static org.graalvm.compiler.test.SubprocessUtil.java;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.compiler.test.SubprocessUtil;
+import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assume;
 import org.junit.Before;
 
@@ -42,29 +44,40 @@ public abstract class SubprocessTest extends GraalCompilerTest {
         Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
     }
 
-    public void launchSubprocess(Runnable runnable) throws InterruptedException, IOException {
-        String recursionPropName = getClass().getSimpleName() + ".Subprocess";
+    /**
+     * Launches the {@code runnable} in a subprocess, with any extra {@code args} passed as
+     * arguments to the subprocess VM. Checks that the subprocess terminated successfully, i.e., an
+     * exit code different from 0 raises an error.
+     *
+     * @return Inside the subprocess, returns {@code null}. Outside the subprocess, returns a
+     *         {@link Subprocess} instance describing the process after its successful termination.
+     */
+    public SubprocessUtil.Subprocess launchSubprocess(Runnable runnable, String... args) throws InterruptedException, IOException {
+        return launchSubprocess(getClass(), runnable, args);
+    }
+
+    public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
+        String recursionPropName = testClass.getSimpleName() + ".Subprocess";
         if (Boolean.getBoolean(recursionPropName)) {
             runnable.run();
+            return null;
         } else {
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
             vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
             vmArgs.add("-D" + recursionPropName + "=true");
-            configSubprocess(vmArgs);
-            boolean verbose = Boolean.getBoolean(getClass().getSimpleName() + ".verbose");
+            vmArgs.addAll(Arrays.asList(args));
+            boolean verbose = Boolean.getBoolean(testClass.getSimpleName() + ".verbose");
             if (verbose) {
                 System.err.println(String.join(" ", vmArgs));
             }
-            SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
+            SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", testClass.getName());
             if (verbose) {
-                System.err.println(proc.output);
+                for (String line : proc.output) {
+                    System.err.println(line);
+                }
             }
             assertTrue(proc.exitCode == 0, proc.toString() + " failed with exit code " + proc.exitCode);
+            return proc;
         }
     }
-
-    @SuppressWarnings("unused")
-    public void configSubprocess(List<String> vmArgs) {
-    }
-
 }

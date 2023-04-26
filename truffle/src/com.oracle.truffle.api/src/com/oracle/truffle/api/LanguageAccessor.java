@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,7 @@ import java.util.logging.Level;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.TruffleLanguage.ContextLocalFactory;
@@ -82,6 +84,7 @@ final class LanguageAccessor extends Accessor {
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
     static final ExceptionSupport EXCEPTIONS = ACCESSOR.exceptionSupport();
+    static final HostSupport HOST = ACCESSOR.hostSupport();
 
     private LanguageAccessor() {
     }
@@ -106,6 +109,10 @@ final class LanguageAccessor extends Accessor {
         return ACCESSOR.ioSupport();
     }
 
+    static HostSupport hostAccess() {
+        return ACCESSOR.hostSupport();
+    }
+
     static final class LanguageImpl extends LanguageSupport {
 
         @Override
@@ -124,8 +131,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public void materializeHostFrames(Throwable original) {
-            TruffleStackTrace.materializeHostFrames(original);
+        public Throwable getOrCreateLazyStackTrace(Throwable t) {
+            return TruffleStackTrace.getOrCreateLazyStackTrace(t);
         }
 
         @Override
@@ -549,6 +556,62 @@ final class LanguageAccessor extends Accessor {
         @Override
         public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
             action.perform(access);
+        }
+
+        @Override
+        public OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors) {
+            return switch (descriptors.length) {
+                case 0 -> OptionDescriptors.EMPTY;
+                case 1 -> descriptors[0];
+                default -> {
+                    OptionDescriptors singleNonEmpty = null;
+                    for (OptionDescriptors d : descriptors) {
+                        if (d != OptionDescriptors.EMPTY) {
+                            if (singleNonEmpty == null) {
+                                singleNonEmpty = d;
+                            } else {
+                                yield new UnionTruffleOptionDescriptors(descriptors);
+                            }
+                        }
+                    }
+                    yield singleNonEmpty != null ? singleNonEmpty : OptionDescriptors.EMPTY;
+                }
+            };
+        }
+    }
+
+    private static final class UnionTruffleOptionDescriptors implements TruffleOptionDescriptors {
+
+        private final OptionDescriptors delegate;
+        private final OptionDescriptors[] descriptorsList;
+
+        UnionTruffleOptionDescriptors(OptionDescriptors[] descriptorsList) {
+            this.delegate = OptionDescriptors.createUnion(descriptorsList);
+            this.descriptorsList = descriptorsList;
+        }
+
+        @Override
+        public Iterator<OptionDescriptor> iterator() {
+            return delegate.iterator();
+        }
+
+        @Override
+        public OptionDescriptor get(String optionName) {
+            return delegate.get(optionName);
+        }
+
+        @Override
+        public SandboxPolicy getSandboxPolicy(String key) {
+            for (OptionDescriptors descriptors : descriptorsList) {
+                if (descriptors.get(key) != null) {
+                    if (descriptors instanceof TruffleOptionDescriptors) {
+                        return ((TruffleOptionDescriptors) descriptors).getSandboxPolicy(key);
+                    } else {
+                        return SandboxPolicy.TRUSTED;
+                    }
+                }
+            }
+            return null;
         }
     }
 }

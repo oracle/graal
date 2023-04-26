@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -225,31 +227,39 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     @Exclusive @Cached ToEspressoNode toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(this, member, true, true, arguments.length);
-        if (candidates != null) {
-            if (candidates.length == 1) {
-                Method method = candidates[0];
-                assert method.isStatic() && method.isPublic();
-                assert member.startsWith(method.getNameAsString());
-                if (!method.isVarargs()) {
-                    assert method.getParameterCount() == arguments.length;
-                    return invoke.execute(method, null, arguments);
-                } else {
-                    CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
-                    if (matched != null) {
-                        matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+        try {
+            if (candidates != null) {
+                if (candidates.length == 1) {
+                    Method method = candidates[0];
+                    assert method.isStatic() && method.isPublic();
+                    assert member.startsWith(method.getNameAsString());
+                    if (!method.isVarargs()) {
+                        assert method.getParameterCount() == arguments.length;
+                        return invoke.execute(method, null, arguments);
+                    } else {
+                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
                         if (matched != null) {
-                            return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            if (matched != null) {
+                                return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                            }
                         }
                     }
-                }
-            } else {
-                CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
-                if (typeMatched != null) {
-                    return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                } else {
+                    CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
+                    if (typeMatched != null) {
+                        return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                    }
                 }
             }
+            throw UnknownIdentifierException.create(member);
+        } catch (EspressoException e) {
+            if (e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
+                // rethrow the original foreign exception when leaving espresso interop
+                throw (AbstractTruffleException) getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(getLanguage());
+            }
+            throw e;
         }
-        throw UnknownIdentifierException.create(member);
     }
 
     @SuppressWarnings("static-method")
@@ -285,7 +295,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
 
-        return new KeysArray(members.toArray(new String[members.size()]));
+        return new KeysArray<>(members.toArray(new String[members.size()]));
     }
 
     protected static boolean isObjectKlass(Klass receiver) {
@@ -453,6 +463,44 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     boolean isMetaInstance(Object instance) {
         return instance instanceof StaticObject && instanceOf((StaticObject) instance, this);
+    }
+
+    @ExportMessage
+    boolean hasMetaParents() {
+        if (isPrimitive()) {
+            return false;
+        }
+        if (isInterface()) {
+            return getSuperInterfaces().length > 0;
+        }
+        return this != getMeta().java_lang_Object;
+    }
+
+    @ExportMessage
+    Object getMetaParents() throws UnsupportedMessageException {
+        if (hasMetaParents()) {
+            Klass[] result;
+            if (isInterface()) {
+                ObjectKlass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length];
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i] = superInterfaces[i];
+                }
+            } else {
+                Klass superKlass = getSuperKlass();
+                Klass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length + 1];
+                // put the super class first in array
+                result[0] = superKlass;
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i + 1] = superInterfaces[i];
+                }
+            }
+            return new KeysArray<>(result);
+        }
+        throw UnsupportedMessageException.create();
     }
 
     // endregion ### Meta-objects
@@ -697,6 +745,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @Override
+    @Idempotent
     public final boolean isInterface() {
         // conflict between ModifiersProvider and KlassRef interfaces,
         // so chose the default implementation in ModifiersProvider.
@@ -1434,10 +1483,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (this instanceof ObjectKlass && context.advancedRedefinitionEnabled()) {
             // getKlassVersion().getModifiers() introduces a ~10%
             // perf hit on some benchmarks, so put behind a check
-            return this.getClassModifiers();
+            return getRedefinitionAwareModifiers();
         } else {
             return modifiers;
         }
+    }
+
+    public int getRedefinitionAwareModifiers() {
+        return getModifiers();
     }
 
     /**

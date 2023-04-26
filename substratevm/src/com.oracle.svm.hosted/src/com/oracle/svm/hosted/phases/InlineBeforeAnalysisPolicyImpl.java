@@ -61,6 +61,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -137,6 +138,19 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
             return false;
         }
 
+        return inliningAllowed(hostVM, b, method);
+    }
+
+    @Override
+    protected boolean tryInvocationPlugins() {
+        /*
+         * We conditionally allow the invocation plugin to be triggered during graph decoding to see
+         * what happens.
+         */
+        return true;
+    }
+
+    public static boolean inliningAllowed(SVMHost hostVM, GraphBuilderContext b, ResolvedJavaMethod method) {
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
         AnalysisMethod callee = (AnalysisMethod) method;
         if (hostVM.neverInlineTrivial(caller, callee)) {
@@ -164,14 +178,25 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
     }
 
     @Override
-    protected CountersScope createTopScope() {
-        CountersScope accumulated = new CountersScope(null);
-        return new CountersScope(accumulated);
+    protected CountersScope createRootScope() {
+        /* We do not need a scope for the root method. */
+        return null;
     }
 
     @Override
     protected CountersScope openCalleeScope(CountersScope outer) {
-        return new CountersScope(outer.accumulated);
+        CountersScope accumulated;
+        if (outer == null) {
+            /*
+             * The first level of method inlining, i.e., the top scope from the inlining policy
+             * point of view.
+             */
+            accumulated = new CountersScope(null);
+        } else {
+            /* Nested inlining. */
+            accumulated = outer.accumulated;
+        }
+        return new CountersScope(accumulated);
     }
 
     @Override
@@ -207,6 +232,14 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
 
         if (node instanceof ConstantNode || node instanceof LogicConstantNode) {
             /* An unlimited number of constants is allowed. We like constants. */
+            return true;
+        }
+
+        if (node instanceof ReachabilityRegistrationNode) {
+            /*
+             * These nodes do not affect compilation and are only used to execute handlers depending
+             * on their reachability.
+             */
             return true;
         }
 
@@ -251,9 +284,9 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
             return true;
         }
 
-        if (node instanceof Invoke) {
-            throw VMError.shouldNotReachHere("Node must not visible to policy: " + node.getClass().getTypeName());
-        } else if (node instanceof CallTargetNode) {
+        if (node instanceof CallTargetNode) {
+            throw VMError.shouldNotReachHere("Node must not be visible to policy: " + node.getClass().getTypeName());
+        } else if (node instanceof Invoke) {
             if (scope.accumulated.numInvokes >= allowedInvokes) {
                 return false;
             }

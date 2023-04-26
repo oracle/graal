@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -62,7 +63,12 @@ public class ForeignCallStub extends AbstractForeignCallStub {
      *            to the arguments for the call to {@code address}
      */
     public ForeignCallStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, HotSpotForeignCallDescriptor descriptor, boolean prependThread) {
-        super(options, runtime, providers, address, descriptor, prependThread);
+        super(options, runtime, providers, address, descriptor, HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED, prependThread);
+    }
+
+    public ForeignCallStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, HotSpotForeignCallDescriptor descriptor, boolean prependThread,
+                    HotSpotForeignCallLinkage.RegisterEffect effect) {
+        super(options, runtime, providers, address, descriptor, effect, prependThread);
     }
 
     @Override

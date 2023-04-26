@@ -17,10 +17,10 @@ This allows seamless interoperability with the dynamic languages supported by Gr
 Since GraalVM 22.2, the LLVM runtime is packaged in a separate GraalVM component. It can be installed with GraalVM Updater:
 
 ```shell
-$GRAALVM_HOME/bin/gu install llvm
+$JAVA_HOME/bin/gu install llvm
 ```
 
-This installs GraalVM's implementation of `lli` in the `$GRAALVM_HOME/bin` directory.
+This installs GraalVM's implementation of `lli` in the `$JAVA_HOME/bin` directory.
 With the LLVM runtime installed, you can execute programs in LLVM bitcode format on GraalVM.
 
 Additionally to installing the LLVM runtime, you can add the LLVM toolchain:

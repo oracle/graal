@@ -58,6 +58,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
@@ -114,7 +115,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     public void close(Object oreceiver, Object apiObject, boolean cancelIfExecuting) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
-            receiver.ensureClosed(cancelIfExecuting, false, false);
+            receiver.ensureClosed(cancelIfExecuting, false);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(receiver, t);
         }
@@ -151,7 +152,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     }
 
     @Override
-    public Context createContext(Object oreceiver, OutputStream out, OutputStream err, InputStream in,
+    public Context createContext(Object oreceiver, SandboxPolicy sandboxPolicy, OutputStream out, OutputStream err, InputStream in,
                     boolean allowHostLookup,
                     HostAccess hostAccess, PolyglotAccess polyglotAccess, boolean allowNativeAccess,
                     boolean allowCreateThread, boolean allowHostClassLoading, boolean allowInnerContextOptions,
@@ -160,7 +161,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
-        PolyglotContextImpl context = receiver.createContext(out, err, in, allowHostLookup, hostAccess, polyglotAccess,
+        PolyglotContextImpl context = receiver.createContext(sandboxPolicy, out, err, in, allowHostLookup, hostAccess, polyglotAccess,
                         allowNativeAccess, allowCreateThread, allowHostClassLoading,
                         allowInnerContextOptions,
                         allowExperimentalOptions,
@@ -204,6 +205,10 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     boolean roots,
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
         PolyglotEngineImpl engine = (PolyglotEngineImpl) engineReceiver;
+        if (engine.sandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED)) {
+            throw PolyglotImpl.sandboxPolicyException(engine.sandboxPolicy, "ExecutionListener is attached to an Engine, but execution listeners are not allowed.",
+                            "do not attach execution listeners to this engine");
+        }
         Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
 
         List<Class<? extends Tag>> tags = new ArrayList<>();
@@ -305,5 +310,10 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
     @Override
     public RuntimeException hostToGuestException(Object engineReceiver, Throwable throwable) {
         return PolyglotImpl.hostToGuestException((PolyglotEngineImpl) engineReceiver, throwable);
+    }
+
+    @Override
+    public SandboxPolicy getSandboxPolicy(Object engineReceiver) {
+        return ((PolyglotEngineImpl) engineReceiver).sandboxPolicy;
     }
 }

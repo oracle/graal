@@ -74,7 +74,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.heap.Heap;
 import com.sun.management.ThreadMXBean;
 
@@ -99,13 +98,6 @@ import jdk.vm.ci.runtime.JVMCICompiler;
  * {@code CompileTheWorld}.
  */
 public final class LibGraalEntryPoints {
-
-    /**
-     * @see org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider#execute
-     */
-    static final CGlobalData<Pointer> LOG_FILE_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
-
-    static final CGlobalData<Pointer> GLOBAL_TIMESTAMP = CGlobalDataFactory.createBytes(() -> 8);
 
     /**
      * Map from a foreign call signature to a C global word that is the address of a pointer to a

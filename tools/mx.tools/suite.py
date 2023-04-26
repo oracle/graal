@@ -21,12 +21,12 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.14.13",
+    "mxversion": "6.17.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "23.0.0",
+    "version" : "23.1.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -46,9 +46,6 @@ suite = {
             {
               "name" : "truffle",
               "subdir" : True,
-              "urls" : [
-                {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-              ]
             },
         ]
     },
@@ -74,7 +71,7 @@ suite = {
               "com.oracle.truffle.tools.chromeinspector.instrument to org.graalvm.truffle"
             ],
             "javaCompliance" : "17+",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "10.7.0",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",

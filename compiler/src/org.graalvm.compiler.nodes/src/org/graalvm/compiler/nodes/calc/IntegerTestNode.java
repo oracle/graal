@@ -71,9 +71,9 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
         if (forX.stamp(view) instanceof IntegerStamp && forY.stamp(view) instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) forX.stamp(view);
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
-            if ((xStamp.upMask() & yStamp.upMask()) == 0) {
+            if ((xStamp.mayBeSet() & yStamp.mayBeSet()) == 0) {
                 return LogicConstantNode.tautology();
-            } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
+            } else if ((xStamp.mustBeSet() & yStamp.mustBeSet()) != 0) {
                 return LogicConstantNode.contradiction();
             }
             // this node is effectively an & operation x & y == 0 so part of the canonicalizations
@@ -106,16 +106,16 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
             IntegerStamp otherStamp = (IntegerStamp) otherStampGeneric;
             if (negated) {
-                if (Long.bitCount(otherStamp.upMask()) == 1) {
-                    long newDownMask = xStamp.downMask() | otherStamp.upMask();
-                    if (xStamp.downMask() != newDownMask) {
-                        return IntegerStamp.stampForMask(xStamp.getBits(), newDownMask, xStamp.upMask()).join(xStamp);
+                if (Long.bitCount(otherStamp.mayBeSet()) == 1) {
+                    long newMustBeSet = xStamp.mustBeSet() | otherStamp.mayBeSet();
+                    if (xStamp.mustBeSet() != newMustBeSet) {
+                        return IntegerStamp.stampForMask(xStamp.getBits(), newMustBeSet, xStamp.mayBeSet()).join(xStamp);
                     }
                 }
             } else {
-                long restrictedUpMask = ((~otherStamp.downMask()) & xStamp.upMask());
-                if (xStamp.upMask() != restrictedUpMask) {
-                    return IntegerStamp.stampForMask(xStamp.getBits(), xStamp.downMask(), restrictedUpMask).join(xStamp);
+                long restrictedMayBeSet = ((~otherStamp.mustBeSet()) & xStamp.mayBeSet());
+                if (xStamp.mayBeSet() != restrictedMayBeSet) {
+                    return IntegerStamp.stampForMask(xStamp.getBits(), xStamp.mustBeSet(), restrictedMayBeSet).join(xStamp);
                 }
             }
         }
@@ -132,9 +132,9 @@ public final class IntegerTestNode extends BinaryOpLogicNode implements BinaryCo
         if (xStampGeneric instanceof IntegerStamp && yStampGeneric instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) xStampGeneric;
             IntegerStamp yStamp = (IntegerStamp) yStampGeneric;
-            if ((xStamp.upMask() & yStamp.upMask()) == 0) {
+            if ((xStamp.mayBeSet() & yStamp.mayBeSet()) == 0) {
                 return TriState.TRUE;
-            } else if ((xStamp.downMask() & yStamp.downMask()) != 0) {
+            } else if ((xStamp.mustBeSet() & yStamp.mustBeSet()) != 0) {
                 return TriState.FALSE;
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -152,7 +152,7 @@ public abstract class LoopTransformations {
                     if (n.isAlive() && (n instanceof IfNode || n instanceof SwitchNode || n instanceof FixedGuardNode || n instanceof BeginNode)) {
                         Simplifiable s = (Simplifiable) n;
                         s.simplify(defaultSimplifier);
-                        graph.getOptimizationLog().report(LoopTransformations.class, "LoopCfgSimplification", n);
+                        graph.getOptimizationLog().report(LoopTransformations.class, "LoopFullUnrollCfgSimplification", n);
                     }
                 }
                 if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue(graph.getOptions()) * 2 ||
@@ -765,6 +765,17 @@ public abstract class LoopTransformations {
         return controls;
     }
 
+    /**
+     * Check for multiple usages of the loop condition. Partial unrolling will modify the condition
+     * in place. Any other usages of the condition would therefore compute a different condition
+     * than before. A shared loop condition indicates that the graph isn't properly optimized, so
+     * don't bother with partial unrolling, especially if it would break things.
+     */
+    public static boolean countedLoopExitConditionHasMultipleUsages(LoopEx loop) {
+        LogicNode condition = loop.counted().getLimitTest().condition();
+        return condition.hasMoreThanOneUsage();
+    }
+
     public static boolean isUnrollableLoop(LoopEx loop) {
         if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
@@ -780,6 +791,9 @@ public abstract class LoopTransformations {
         }
         if (((CompareNode) condition).condition() == CanonicalCondition.EQ) {
             condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s condition unsupported %s ", loopBegin, ((CompareNode) condition).condition());
+            return false;
+        }
+        if (countedLoopExitConditionHasMultipleUsages(loop)) {
             return false;
         }
         long stride = loop.counted().getLimitCheckedIV().constantStride();

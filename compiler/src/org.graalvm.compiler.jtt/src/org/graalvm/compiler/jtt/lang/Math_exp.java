@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
 package org.graalvm.compiler.jtt.lang;
 
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.junit.Assume;
 import org.junit.Test;
 
 /*
@@ -69,7 +67,6 @@ public class Math_exp extends UnaryMath {
 
     @Test
     public void run6() {
-        Assume.assumeTrue("GR-42441", JavaVersionUtil.JAVA_SPEC <= 19);
         runTest("test", 1.0D);
     }
 

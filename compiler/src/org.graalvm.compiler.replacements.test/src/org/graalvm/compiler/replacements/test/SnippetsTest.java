@@ -36,6 +36,7 @@ public abstract class SnippetsTest extends ReplacementsTest {
     protected final ReplacementsImpl installer;
     protected final ClassfileBytecodeProvider bytecodeProvider;
 
+    @SuppressWarnings("this-escape")
     protected SnippetsTest() {
         ReplacementsImpl d = (ReplacementsImpl) getReplacements();
         bytecodeProvider = getSystemClassLoaderBytecodeProvider();

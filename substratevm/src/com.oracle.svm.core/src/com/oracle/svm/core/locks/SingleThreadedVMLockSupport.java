@@ -109,20 +109,20 @@ final class SingleThreadedVMMutex extends VMMutex {
 
     @Override
     public VMMutex lock() {
-        assertNotOwner("Recursive locking is not supported");
+        assert !isOwner() : "Recursive locking is not supported";
         setOwnerToCurrentThread();
         return this;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockNoTransition() {
-        assertNotOwner("Recursive locking is not supported");
+        assert !isOwner() : "Recursive locking is not supported";
         setOwnerToCurrentThread();
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockNoTransitionUnspecifiedOwner() {
         setOwnerToUnspecified();
     }
@@ -134,14 +134,9 @@ final class SingleThreadedVMMutex extends VMMutex {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
-    }
-
-    @Override
-    public void unlockWithoutChecks() {
-        clearCurrentThreadOwner();
     }
 }
 
@@ -156,13 +151,13 @@ final class SingleThreadedVMCondition extends VMCondition {
         VMError.shouldNotReachHere("Cannot block in a single-threaded environment, because there is no other thread that could signal");
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     @Override
     public void blockNoTransition() {
         VMError.shouldNotReachHere("Cannot block in a single-threaded environment, because there is no other thread that could signal");
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     @Override
     public void blockNoTransitionUnspecifiedOwner() {
         VMError.shouldNotReachHere("Cannot block in a single-threaded environment, because there is no other thread that could signal");
@@ -174,7 +169,7 @@ final class SingleThreadedVMCondition extends VMCondition {
         return 0;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     @Override
     public long blockNoTransition(long nanos) {
         VMError.shouldNotReachHere("Cannot block in a single-threaded environment, because there is no other thread that could signal");
@@ -187,6 +182,7 @@ final class SingleThreadedVMCondition extends VMCondition {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void broadcast() {
         /* Nothing to do. */
     }

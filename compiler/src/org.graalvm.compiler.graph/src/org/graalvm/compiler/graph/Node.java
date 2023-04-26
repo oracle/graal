@@ -113,7 +113,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface Input {
+    public @interface Input {
         InputType value() default InputType.Value;
     }
 
@@ -126,7 +126,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface OptionalInput {
+    public @interface OptionalInput {
         InputType value() default InputType.Value;
     }
 
@@ -136,7 +136,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.FIELD)
-    public static @interface Successor {
+    public @interface Successor {
     }
 
     /**
@@ -145,7 +145,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.PARAMETER)
-    public static @interface ConstantNodeParameter {
+    public @interface ConstantNodeParameter {
     }
 
     /**
@@ -158,7 +158,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.PARAMETER)
-    public static @interface InjectedNodeParameter {
+    public @interface InjectedNodeParameter {
     }
 
     /**
@@ -190,7 +190,7 @@ public abstract class Node implements Cloneable, Formattable {
      */
     @java.lang.annotation.Retention(RetentionPolicy.RUNTIME)
     @java.lang.annotation.Target(ElementType.METHOD)
-    public static @interface NodeIntrinsic {
+    public @interface NodeIntrinsic {
 
         /**
          * The class declaring the factory method or {@link Node} subclass declaring the constructor
@@ -306,6 +306,7 @@ public abstract class Node implements Cloneable, Formattable {
     public static class NodeInsertionStackTrace extends NodeStackTrace {
     }
 
+    @SuppressWarnings("this-escape")
     public Node(NodeClass<? extends Node> c) {
         init(c);
     }
@@ -1315,6 +1316,9 @@ public abstract class Node implements Cloneable, Formattable {
         if (getNodeSourcePosition() != null && (into == null || into.trackNodeSourcePosition())) {
             newNode.setNodeSourcePosition(getNodeSourcePosition());
         }
+        if (getInsertionPosition() != null) {
+            newNode.setInsertionPosition(getInsertionPosition());
+        }
         if (into != null) {
             into.register(newNode);
         }
@@ -1621,7 +1625,7 @@ public abstract class Node implements Cloneable, Formattable {
         try {
             return dynamicNodeSizeEstimate();
         } catch (Exception e) {
-            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation");
+            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation"); // ExcludeFromJacocoGeneratedReport
         }
     }
 

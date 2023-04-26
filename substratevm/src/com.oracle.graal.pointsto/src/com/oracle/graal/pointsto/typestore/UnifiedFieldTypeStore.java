@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,14 +54,10 @@ public class UnifiedFieldTypeStore extends FieldTypeStore {
         return readWriteFlow;
     }
 
-    public FieldTypeFlow readWriteFlow() {
-        return readWriteFlow;
-    }
-
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append("UnifiedFieldStore<").append(field.format("%h.%n")).append("\n").append(object).append(">");
+        str.append("UnifiedFieldStore<").append(field.format("%h.%n")).append(System.lineSeparator()).append(object).append(">");
         return str.toString();
     }
 

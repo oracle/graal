@@ -62,6 +62,9 @@ public class SubstitutionReflectivityFilter {
     }
 
     public static boolean shouldExclude(Executable method, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
+        if (shouldExclude(method.getDeclaringClass(), metaAccess, universe)) {
+            return true;
+        }
         if (!universe.hostVM().platformSupported(method)) {
             return true;
         }
@@ -88,6 +91,9 @@ public class SubstitutionReflectivityFilter {
     }
 
     public static boolean shouldExclude(Field field, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
+        if (shouldExclude(field.getDeclaringClass(), metaAccess, universe)) {
+            return true;
+        }
         if (!universe.hostVM().platformSupported(field)) {
             return true;
         }

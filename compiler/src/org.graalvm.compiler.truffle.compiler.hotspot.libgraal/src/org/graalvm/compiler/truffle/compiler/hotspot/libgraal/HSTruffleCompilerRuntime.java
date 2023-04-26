@@ -30,9 +30,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallTargetForCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetConstantFieldInfo;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetFrameSlotKindTagForJavaKind;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetFrameSlotKindTagsCount;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetJavaKindForFrameSlotKind;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSpecializationMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
@@ -45,9 +42,6 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callCreateStringSupplier;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetCallTargetForCallNode;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetConstantFieldInfo;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetFrameSlotKindTagForJavaKind;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetFrameSlotKindTagsCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callGetJavaKindForFrameSlotKind;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsSpecializationMethod;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsSuppressedFailure;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callIsValueType;
@@ -91,7 +85,6 @@ import org.graalvm.word.WordFactory;
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -140,9 +133,9 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     private MethodCache createMethodCache(ResolvedJavaMethod method) {
         long methodHandle = LibGraal.translate(method);
         JByteArray hsByteArray = callReadMethodCache(env(), getHandle(), methodHandle);
-        CCharPointer buffer = StackValue.get(19);
-        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 19, buffer);
-        BinaryInput in = BinaryInput.create(buffer, 19);
+        CCharPointer buffer = StackValue.get(20);
+        JNIUtil.GetByteArrayRegion(env(), hsByteArray, 0, 20, buffer);
+        BinaryInput in = BinaryInput.create(buffer, 20);
         LoopExplosionKind loopExplosionKind = LoopExplosionKind.values()[in.readInt()];
         InlineKind peInlineKind = InlineKind.values()[in.readInt()];
         InlineKind inlineKind = InlineKind.values()[in.readInt()];
@@ -151,11 +144,12 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         boolean bytecodeInterpreterSwitch = in.readBoolean();
         boolean bytecodeInterpreterSwitchBoundary = in.readBoolean();
         boolean inInterpreter = in.readBoolean();
+        boolean inInterpreterFastPath = in.readBoolean();
         boolean transferToInterpreterMethod = in.readBoolean();
         boolean callIsInliningCutoff = in.readBoolean();
         return new MethodCache(loopExplosionKind, peInlineKind, inlineKind, inlineable,
                         truffleBoundary, bytecodeInterpreterSwitch, bytecodeInterpreterSwitchBoundary,
-                        inInterpreter, transferToInterpreterMethod, callIsInliningCutoff);
+                        inInterpreter, inInterpreterFastPath, transferToInterpreterMethod, callIsInliningCutoff);
     }
 
     @TruffleFromLibGraal(AsCompilableTruffleAST)
@@ -259,6 +253,16 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     }
 
     @Override
+    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
+        if (JNIMethodScope.scope() != null) {
+            MethodCache cache = getMethodCache(method);
+            return cache.isInInterpreterFastPath;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
     public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
         if (JNIMethodScope.scope() != null) {
             MethodCache cache = getMethodCache(method);
@@ -321,48 +325,6 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
                 return ConstantFieldInfo.CHILD;
             default:
                 return ConstantFieldInfo.forDimensions(fieldInfoDimension);
-        }
-    }
-
-    private volatile JavaKind[] frameSlotKindToTag;
-    private volatile int[] javaKindToTag;
-
-    @TruffleFromLibGraal(GetJavaKindForFrameSlotKind)
-    @Override
-    public JavaKind getJavaKindForFrameSlotKind(int frameSlotTag) {
-        JavaKind[] values = frameSlotKindToTag;
-        if (values == null) {
-            JavaKind[] newValues = new JavaKind[callGetFrameSlotKindTagsCount(env(), getHandle())];
-            for (int tag = 0; tag < newValues.length; tag++) {
-                newValues[tag] = JavaKind.values()[callGetJavaKindForFrameSlotKind(env(), getHandle(), tag)];
-            }
-            this.frameSlotKindToTag = values = newValues;
-        }
-        return values[frameSlotTag];
-    }
-
-    @TruffleFromLibGraal(GetFrameSlotKindTagForJavaKind)
-    @Override
-    public int getFrameSlotKindTagForJavaKind(JavaKind kind) {
-        int[] values = javaKindToTag;
-        if (values == null) {
-            int[] newValues = new int[JavaKind.values().length];
-            for (int i = 0; i < newValues.length; i++) {
-                newValues[i] = callGetFrameSlotKindTagForJavaKind(env(), getHandle(), i);
-            }
-            this.javaKindToTag = values = newValues;
-        }
-        return values[kind.ordinal()];
-    }
-
-    @TruffleFromLibGraal(GetFrameSlotKindTagsCount)
-    @Override
-    public int getFrameSlotKindTagsCount() {
-        JavaKind[] kinds = frameSlotKindToTag;
-        if (kinds == null) {
-            return callGetFrameSlotKindTagsCount(env(), getHandle());
-        } else {
-            return kinds.length;
         }
     }
 
@@ -435,15 +397,18 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
         final boolean isBytecodeInterpreterSwitch;
         final boolean isBytecodeInterpreterSwitchBoundary;
         final boolean isInInterpreter;
+        final boolean isInInterpreterFastPath;
         final boolean isTransferToInterpreterMethod;
         final boolean isInliningCutoff;
 
         MethodCache(LoopExplosionKind explosionKind, InlineKind inlineKindPE, InlineKind inlineKindNonPE, boolean isInlineable, boolean isTruffleBoundary, boolean isBytecodeInterpreterSwitch,
-                        boolean isBytecodeInterpreterSwitchBoundary, boolean isInInterpreter, boolean isTransferToInterpreterMethod, boolean isInliningCutoff) {
+                        boolean isBytecodeInterpreterSwitchBoundary, boolean isInInterpreter, boolean isInInterpreterFastPath,
+                        boolean isTransferToInterpreterMethod, boolean isInliningCutoff) {
             this.explosionKind = explosionKind;
             this.inlineKindPE = inlineKindPE;
             this.inlineKindNonPE = inlineKindNonPE;
             this.isInlineable = isInlineable;
+            this.isInInterpreterFastPath = isInInterpreterFastPath;
             this.isTruffleBoundary = isTruffleBoundary;
             this.isBytecodeInterpreterSwitch = isBytecodeInterpreterSwitch;
             this.isBytecodeInterpreterSwitchBoundary = isBytecodeInterpreterSwitchBoundary;

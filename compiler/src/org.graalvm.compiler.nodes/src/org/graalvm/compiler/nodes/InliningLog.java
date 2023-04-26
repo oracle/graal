@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,9 +35,12 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 
+import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.util.CollectionsUtil;
 
 /**
  * This class contains all inlining decisions performed on a graph during the compilation.
@@ -126,11 +129,11 @@ public class InliningLog {
          * The invoke is also lost (the value is {@code null}) when it is removed and
          * {@link #copyTree copied}.
          */
-        private final Invokable invoke;
+        private Invokable invoke;
 
         /**
          * The target method of the callsite. This field should reflect the correct target method at
-         * the end of compilation.
+         * the end of a compilation.
          */
         private ResolvedJavaMethod target;
 
@@ -141,7 +144,7 @@ public class InliningLog {
          *
          * @see #copyTree(Callsite, Callsite, UnmodifiableEconomicMap, EconomicMap)
          */
-        private int bci;
+        private final int bci;
 
         /**
          * {@code true} if the call was known to be indirect at the time of the last inlining
@@ -165,7 +168,13 @@ public class InliningLog {
          */
         private final Callsite originalCallsite;
 
-        private Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci, boolean indirect) {
+        /**
+         * The last non-null type profile of the call target or {@code null}. The value is updated
+         * on each inlining decision.
+         */
+        private JavaTypeProfile targetTypeProfile;
+
+        Callsite(Callsite parent, Callsite originalCallsite, Invokable invoke, ResolvedJavaMethod target, int bci, boolean indirect, JavaTypeProfile targetTypeProfile) {
             this.parent = parent;
             this.bci = bci;
             this.indirect = indirect;
@@ -174,21 +183,26 @@ public class InliningLog {
             this.invoke = invoke;
             this.target = target;
             this.originalCallsite = originalCallsite;
+            this.targetTypeProfile = targetTypeProfile;
             if (parent != null) {
                 parent.children.add(this);
             }
         }
 
         /**
-         * Adds an inlining decision, updates the target method, bci, and the indirect field.
+         * Adds an inlining decision, updates the target method, the type profile, and the indirect
+         * field.
          *
          * @param decision the decision to be added
          */
         private void addDecision(Decision decision) {
             decisions.add(decision);
-            target = invoke.getTargetMethod();
-            indirect = invokeIsIndirect(invoke);
-            bci = invoke.bci();
+            target = decision.target;
+            indirect = !decision.positive && invokeIsIndirect(invoke);
+            JavaTypeProfile newTypeProfile = targetTypeProfile(invoke);
+            if (newTypeProfile != null) {
+                targetTypeProfile = newTypeProfile;
+            }
         }
 
         /**
@@ -209,6 +223,24 @@ public class InliningLog {
         }
 
         /**
+         * Returns the type profile associated with the call target of the provided invoke or
+         * {@code null}.
+         *
+         * @param invokable an invokable
+         * @return the type profile of the call target or {@code null}
+         */
+        private static JavaTypeProfile targetTypeProfile(Invokable invokable) {
+            if (!(invokable instanceof Invoke)) {
+                return null;
+            }
+            CallTargetNode callTarget = ((Invoke) invokable).callTarget();
+            if (!(callTarget instanceof MethodCallTargetNode)) {
+                return null;
+            }
+            return ((MethodCallTargetNode) callTarget).getTypeProfile();
+        }
+
+        /**
          * Creates and adds a child call-tree node (callsite) to this node.
          *
          * @param childInvoke the invoke which represents the child callsite to be added
@@ -217,7 +249,7 @@ public class InliningLog {
          * @return the created callsite for the child
          */
         private Callsite addChild(Invokable childInvoke, Callsite childOriginalCallsite) {
-            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci(), invokeIsIndirect(childInvoke));
+            return new Callsite(this, childOriginalCallsite, childInvoke, childInvoke.getTargetMethod(), childInvoke.bci(), invokeIsIndirect(childInvoke), targetTypeProfile(childInvoke));
         }
 
         public String positionString() {
@@ -276,6 +308,15 @@ public class InliningLog {
         }
 
         /**
+         * Updates the invoke associated with the callsite.
+         *
+         * @param newInvoke the new invoke
+         */
+        public void setInvoke(Invokable newInvoke) {
+            invoke = newInvoke;
+        }
+
+        /**
          * Gets the target method of the callsite. The target is correct at the end of the
          * compilation.
          *
@@ -299,6 +340,16 @@ public class InliningLog {
         }
 
         /**
+         * Gets the original callsite, which overrides the parent callsite when it is set.
+         *
+         * @see #getOverriddenParent()
+         * @return the original callsite
+         */
+        public Callsite getOriginalCallsite() {
+            return originalCallsite;
+        }
+
+        /**
          * Gets the bci of the invoke. Returns {@link #ROOT_CALLSITE_BCI} for the root callsite.
          *
          * @return the bci of the invoke
@@ -317,6 +368,20 @@ public class InliningLog {
         public boolean isIndirect() {
             return indirect;
         }
+
+        /**
+         * Returns the last non-null type profile of the call target or {@code null}.
+         */
+        public JavaTypeProfile getTargetTypeProfile() {
+            return targetTypeProfile;
+        }
+
+        /**
+         * Returns {@code true} if the callsite is inlined.
+         */
+        public boolean isInlined() {
+            return CollectionsUtil.anyMatch(decisions, InliningLog.Decision::isPositive);
+        }
     }
 
     private Callsite root;
@@ -324,7 +389,7 @@ public class InliningLog {
     private final EconomicMap<Invokable, Callsite> leaves;
 
     public InliningLog(ResolvedJavaMethod rootMethod) {
-        this.root = new Callsite(null, null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI, false);
+        this.root = new Callsite(null, null, null, rootMethod, Callsite.ROOT_CALLSITE_BCI, false, null);
         this.leaves = EconomicMap.create();
     }
 
@@ -335,11 +400,11 @@ public class InliningLog {
      * logged after replacing an {@link Invoke} with a graph. In this case, the node replacement map
      * and the {@link InliningLog} of the inlined graph must be provided.
      */
-    void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+    void addDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, ResolvedJavaMethod inlineeMethod, String reason, Object... args) {
         assert leaves.containsKey(invoke) : invoke;
         assert !positive || Objects.isNull(replacements) == Objects.isNull(calleeLog);
         Callsite callsite = leaves.get(invoke);
-        callsite.addDecision(new Decision(positive, String.format(reason, args), phase, invoke.getTargetMethod()));
+        callsite.addDecision(new Decision(positive, String.format(reason, args), phase, inlineeMethod));
         if (positive) {
             leaves.removeKey(invoke);
             if (calleeLog == null) {
@@ -438,7 +503,7 @@ public class InliningLog {
             }
         }
         Callsite originalCallsite = replacementSite.originalCallsite == null ? null : mapping.get(replacementSite.originalCallsite);
-        Callsite site = new Callsite(parent, originalCallsite, invoke, replacementSite.target, replacementSite.bci, replacementSite.indirect);
+        Callsite site = new Callsite(parent, originalCallsite, invoke, replacementSite.target, replacementSite.bci, replacementSite.indirect, replacementSite.targetTypeProfile);
         site.decisions.addAll(replacementSite.decisions);
         mapping.put(replacementSite, site);
         for (Callsite replacementChild : replacementSite.children) {
@@ -480,7 +545,7 @@ public class InliningLog {
 
         public void activate() {
             if (currentUpdateScope != null) {
-                throw GraalError.shouldNotReachHere("InliningLog updating already set.");
+                throw GraalError.shouldNotReachHere("InliningLog updating already set."); // ExcludeFromJacocoGeneratedReport
             }
             currentUpdateScope = this;
         }
@@ -550,12 +615,35 @@ public class InliningLog {
         }
         return inliningLog.openUpdateScope((originalInvoke, newInvoke) -> {
             if (originalInvoke != null) {
-                inliningLog.removeLeafCallsite(newInvoke);
-                Callsite siblingCallsite = inliningLog.leaves.get(originalInvoke);
-                Callsite parentCallsite = siblingCallsite.parent;
-                Callsite callsite = parentCallsite.addChild(newInvoke, siblingCallsite);
-                inliningLog.leaves.put(newInvoke, callsite);
+                assert !inliningLog.containsLeafCallsite(newInvoke);
+                inliningLog.trackDuplicatedCallsite(originalInvoke, newInvoke, inliningLog.leaves.get(originalInvoke));
             }
+        });
+    }
+
+    /**
+     * Opens a new update scope tracking the replacement of an invoke. Exactly one invoke must be
+     * registered when this scope is active, which becomes the replacement invoke. The method
+     * associates the {@link Callsite} of the replaced invoke with the replacement invoke,
+     * preserving all inlining decisions. It is a responsibility of the caller to delete the
+     * replaced invoke.
+     *
+     * @param inliningLog the inlining log or {@code null} if it disabled
+     * @param replacedInvoke the invoke that is getting replaced
+     *
+     * @return a bound {@link UpdateScope} or {@code null} if the log is disabled
+     */
+    public static UpdateScope openUpdateScopeTrackingReplacement(InliningLog inliningLog, Invokable replacedInvoke) {
+        if (inliningLog == null) {
+            return null;
+        }
+        return inliningLog.openUpdateScope((nullInvoke, replacementInvoke) -> {
+            assert nullInvoke == null;
+            assert !inliningLog.leaves.containsKey(replacementInvoke);
+            Callsite callsite = inliningLog.leaves.get(replacedInvoke);
+            callsite.invoke = replacementInvoke;
+            inliningLog.leaves.removeKey(replacedInvoke);
+            inliningLog.leaves.put(replacementInvoke, callsite);
         });
     }
 
@@ -594,7 +682,7 @@ public class InliningLog {
         @Override
         public void close() {
             assert currentRootScope != null;
-            removeLeafCallsite(replacementRoot.invoke);
+            unregisterLeafCallsite(replacementRoot.invoke);
             currentRootScope = parent;
         }
     }
@@ -622,7 +710,7 @@ public class InliningLog {
 
         @Override
         public void setBci(int bci) {
-            GraalError.shouldNotReachHere();
+            GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -673,15 +761,39 @@ public class InliningLog {
         return leaves.containsKey(invokable);
     }
 
-    public Callsite removeLeafCallsite(Invokable invokable) {
+    /**
+     * Removes a callsite from the set of leaf callsites. The callsite is not removed from the call
+     * tree. The callsite can be {@link #registerLeafCallsite re-registered} later.
+     *
+     * @param invokable the invoke representing the callsite
+     * @return the unregistered callsite
+     */
+    public Callsite unregisterLeafCallsite(Invokable invokable) {
         return leaves.removeKey(invokable);
     }
 
     /**
-     * This method must be called during graph compression, or other node-id changes.
+     * Registers a callsite as a leaf callsite. This method must be called during graph compression,
+     * or other node-id changes.
+     *
+     * @param invokable the invoke representing the callsite
+     * @param callsite the callsite to be registered
      */
-    public void addLeafCallsite(Invokable invokable, Callsite callsite) {
+    public void registerLeafCallsite(Invokable invokable, Callsite callsite) {
         leaves.put(invokable, callsite);
+    }
+
+    /**
+     * Removes a leaf callsite from the call tree. This implies {@link #unregisterLeafCallsite
+     * unregistering} it from the set of leaves.
+     *
+     * @param invokable the invoke representing the callsite
+     */
+    public void removeLeafCallsite(Invokable invokable) {
+        Callsite callsite = unregisterLeafCallsite(invokable);
+        assert callsite != null : "it must be a leaf callsite";
+        assert callsite.parent != null : "a leaf callsite must have a parent";
+        callsite.parent.children.remove(callsite);
     }
 
     public void trackNewCallsite(Invokable invoke) {
@@ -695,10 +807,11 @@ public class InliningLog {
         return currentRootScope != null ? currentRootScope.replacementRoot : root;
     }
 
-    public void trackDuplicatedCallsite(Invokable sibling, Invokable newInvoke) {
+    public void trackDuplicatedCallsite(Invokable sibling, Invokable newInvoke, Callsite childOriginalCallsite) {
         Callsite siblingCallsite = leaves.get(sibling);
         Callsite parentCallsite = siblingCallsite.parent;
-        Callsite callsite = parentCallsite.addChild(newInvoke, null);
+        Callsite callsite = parentCallsite.addChild(newInvoke, childOriginalCallsite);
+        callsite.decisions.addAll(siblingCallsite.decisions);
         leaves.put(newInvoke, callsite);
     }
 
@@ -751,4 +864,36 @@ public class InliningLog {
         return root;
     }
 
+    /**
+     * Sets the call tree to the provided call tree.
+     *
+     * @param root the root of the new call tree
+     */
+    public void setRootCallsite(Callsite root) {
+        this.root = root;
+    }
+
+    /**
+     * Adds a positive inlining decision and transfers the inlining log of the callee to this log.
+     * The inlining log of the callee must be associated with the same graph. The inlining log of
+     * the callee is cleared and should not be used anymore. The target of the callsite is updated
+     * using the provided call target.
+     *
+     * @param invoke the inlined invoke
+     * @param callTargetNode the call target of the invoke
+     * @param calleeLog the inlining log of the callee
+     * @param phase the phase which performed the decision
+     * @param reason the reason for the inlining decision
+     */
+    public void inlineByTransfer(Invokable invoke, CallTargetNode callTargetNode, InliningLog calleeLog, String phase, String reason) {
+        Callsite caller = leaves.get(invoke);
+        caller.addDecision(new Decision(true, reason, phase, invoke.getTargetMethod()));
+        caller.target = callTargetNode.targetMethod;
+        caller.indirect = callTargetNode.invokeKind.isIndirect();
+        caller.children.addAll(calleeLog.getRootCallsite().children);
+        leaves.removeKey(invoke);
+        leaves.putAll(calleeLog.leaves);
+        calleeLog.root.children.clear();
+        calleeLog.leaves.clear();
+    }
 }

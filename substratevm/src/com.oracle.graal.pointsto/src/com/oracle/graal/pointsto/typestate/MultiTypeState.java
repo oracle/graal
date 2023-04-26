@@ -48,34 +48,20 @@ public class MultiTypeState extends TypeState {
     protected boolean merged;
 
     /** Creates a new type state using the provided types bit set and objects. */
-    public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet) {
-        super(properties);
-        /*
-         * Trim the typesBitSet to size eagerly. The typesBitSet is effectively immutable, i.e., no
-         * calls to mutating methods are made on it after it is set in the MultiTypeState, thus we
-         * don't need to use any external synchronization. However, to keep it immutable we use
-         * BitSet.clone() when deriving a new BitSet since the set operations (and, or, etc.) mutate
-         * the original object. The problem is that BitSet.clone() breaks the informal contract that
-         * the clone method should not modify the original object; it calls trimToSize() before
-         * creating a copy. Thus, trimming the bit set here ensures that cloning does not modify the
-         * typesBitSet. Since BitSet is not thread safe mutating it during cloning is problematic in
-         * a multithreaded environment. If for example you iterate over the bits at the same time as
-         * another thread calls clone() the words[] array can be in an inconsistent state.
-         */
-        TypeStateUtils.trimBitSetToSize(typesBitSet);
+    @SuppressWarnings("this-escape")
+    public MultiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount) {
+        assert !TypeStateUtils.needsTrim(typesBitSet);
         this.typesBitSet = typesBitSet;
-        long cardinality = typesBitSet.cardinality();
-        assert cardinality < Integer.MAX_VALUE : "We don't expect so much types.";
-        this.typesCount = (int) cardinality;
+        this.typesCount = typesCount;
         this.canBeNull = canBeNull;
         this.merged = false;
-        assert typesCount > 1 : "Multi type state with single type.";
+        assert this.typesCount > 1 : "Multi type state with single type.";
         PointsToStats.registerTypeState(bb, this);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
+    @SuppressWarnings("this-escape")
     protected MultiTypeState(PointsToAnalysis bb, boolean canBeNull, MultiTypeState other) {
-        super(other.properties);
         this.typesBitSet = other.typesBitSet;
         this.typesCount = other.typesCount;
         this.canBeNull = canBeNull;
@@ -87,11 +73,6 @@ public class MultiTypeState extends TypeState {
     @Override
     public int objectsCount() {
         return typesCount;
-    }
-
-    @Override
-    public final boolean hasExactTypes(BitSet inputTypesBitSet) {
-        return typesBitSet.equals(inputTypesBitSet);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -116,6 +117,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         }
     }
 
+    @SuppressWarnings("this-escape")
     protected MacroNode(NodeClass<? extends MacroNode> c, MacroParams p) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);
@@ -204,7 +206,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     @Override
     @SuppressWarnings("try")
     public Invoke replaceWithInvoke() {
-        try (DebugCloseable context = withNodeSourcePosition()) {
+        try (DebugCloseable context = withNodeSourcePosition(); InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph().getInliningLog(), this)) {
             InvokeNode invoke = createInvoke(true);
             graph().replaceFixedWithFixed(this, invoke);
             assert invoke.verify();

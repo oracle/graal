@@ -29,7 +29,6 @@ import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -123,7 +122,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
         if (name.equals("<clinit>")) {
             return type.getClassInitializer();
         } else if (name.equals("<init>")) {
-            for (ResolvedJavaMethod m : type.getDeclaredConstructors()) {
+            for (ResolvedJavaMethod m : type.getDeclaredConstructors(false)) {
                 if (m.getName().equals(name) && m.getSignature().equals(signature)) {
                     return m;
                 }
@@ -173,20 +172,18 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     @SuppressWarnings("unchecked")
     private static EconomicMap<String, Class<? extends jdk.jfr.Event>> createMirrorEventsMapping() {
         EconomicMap<String, Class<? extends jdk.jfr.Event>> result = EconomicMap.create();
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            Class<? extends Annotation> mirrorEventAnnotationClass = (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "jdk.jfr.internal.MirrorEvent");
-            Class<?> jdkEventsClass = ReflectionUtil.lookupClass(false, "jdk.jfr.internal.instrument.JDKEvents");
-            Class<?>[] mirrorEventClasses = ReflectionUtil.readStaticField(jdkEventsClass, "mirrorEventClasses");
-            for (int i = 0; i < mirrorEventClasses.length; i++) {
-                Class<? extends jdk.jfr.Event> mirrorEventClass = (Class<? extends jdk.jfr.Event>) mirrorEventClasses[i];
-                Annotation mirrorEvent = AnnotationAccess.getAnnotation(mirrorEventClass, mirrorEventAnnotationClass);
-                Method m = ReflectionUtil.lookupMethod(mirrorEventAnnotationClass, "className");
-                try {
-                    String className = (String) m.invoke(mirrorEvent);
-                    result.put(className, mirrorEventClass);
-                } catch (Exception e) {
-                    throw VMError.shouldNotReachHere(e);
-                }
+        Class<? extends Annotation> mirrorEventAnnotationClass = (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "jdk.jfr.internal.MirrorEvent");
+        Class<?> jdkEventsClass = ReflectionUtil.lookupClass(false, "jdk.jfr.internal.instrument.JDKEvents");
+        Class<?>[] mirrorEventClasses = ReflectionUtil.readStaticField(jdkEventsClass, "mirrorEventClasses");
+        for (int i = 0; i < mirrorEventClasses.length; i++) {
+            Class<? extends jdk.jfr.Event> mirrorEventClass = (Class<? extends jdk.jfr.Event>) mirrorEventClasses[i];
+            Annotation mirrorEvent = AnnotationAccess.getAnnotation(mirrorEventClass, mirrorEventAnnotationClass);
+            Method m = ReflectionUtil.lookupMethod(mirrorEventAnnotationClass, "className");
+            try {
+                String className = (String) m.invoke(mirrorEvent);
+                result.put(className, mirrorEventClass);
+            } catch (Exception e) {
+                throw VMError.shouldNotReachHere(e);
             }
         }
         return result;

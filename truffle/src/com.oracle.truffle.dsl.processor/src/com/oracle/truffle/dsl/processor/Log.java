@@ -92,16 +92,16 @@ public class Log {
         }
     }
 
-    public boolean isSuppressed(Kind kind, String suppressionKey, Element usedElement) {
+    public boolean isSuppressed(Kind kind, String suppressionKey, Element usedElement, boolean useOptions) {
         if (kind == Kind.WARNING) {
-            if (!emitWarnings) {
+            if (!emitWarnings && useOptions) {
                 return true;
             }
             if (suppressionKey != null) {
                 if (TruffleSuppressedWarnings.isSuppressed(usedElement, suppressionKey)) {
                     return true;
                 }
-                if (suppressWarnings != null && suppressWarnings.contains(suppressionKey)) {
+                if (suppressWarnings != null && useOptions && suppressWarnings.contains(suppressionKey)) {
                     return true;
                 }
             } else {
@@ -111,6 +111,10 @@ public class Log {
             }
         }
         return false;
+    }
+
+    public boolean isSuppressed(Kind kind, String suppressionKey, Element usedElement) {
+        return isSuppressed(kind, suppressionKey, usedElement, true);
     }
 
 }

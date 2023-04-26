@@ -17,33 +17,41 @@ This guide demonstrates how to use the dashboard to optimize the size of a nativ
 ## Fortune
 Package the contents of the first implementation ([fortune](https://github.com/graalvm/graalvm-demos/tree/master/fortune-demo/fortune)) as a native executable and review its composition.
 
-1. Download or clone the repository and navigate into the _fortune-demo/fortune_ directory:
-    ```
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``` 
+
+2. Download or clone the repository and navigate into the _fortune-demo/fortune_ directory:
+    ```shell
     git clone https://github.com/graalvm/graalvm-demos
+    ```
+    ```shell
     cd fortune-demo/fortune
     ```
-2. Build the project:
-    ```
+
+3. Build the project:
+    ```shell
     mvn clean package
     ```
-3. When the build succeeds, run the application on the JVM with the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support). Since you have installed GraalVM, it will run on GraalVM JDK.
-    ```
+
+4. When the build succeeds, run the application on the JVM with the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support). Since you have installed GraalVM, it will run on GraalVM JDK.
+    ```shell
     mvn -Pnative -Dagent exec:exec@java-agent
     ```
     The application will return a random saying. 
     The agent generates the configuration files in the `target/native/agent-output` subdirectory.
 
-4. Build a native executable of this application with GraalVM Native Image and Maven:
-    ```
+5. Build a native executable of this application with GraalVM Native Image and Maven:
+    ```shell
     mvn -Pnative -Dagent package
     ```
     When the command completes, a native executable, `fortune`, is generated in the `/target` directory of the project and ready for use.
 
-5. Run the application by launching a native executable directly:
-    ```
+6. Run the application by launching a native executable directly:
+    ```shell
     ./target/fortune
     ```
-
     The application should slowly print a random phrase.
 
     The application's [_pom.xml_](https://github.com/graalvm/graalvm-demos/blob/master/fortune-demo/fortune/pom.xml) file employs the [Native Image Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) to build a native executable, configured to produce diagnostic data using these two options:
@@ -56,7 +64,7 @@ Package the contents of the first implementation ([fortune](https://github.com/g
 
     Compare the sizes of the JAR file and the native executable (for example, using `du`):
 
-    ```shell
+    ```
     du -sh target/*
     0B	    target/archive-tmp
     136K	target/classes
@@ -92,40 +100,37 @@ Package the contents of the first implementation ([fortune](https://github.com/g
 The first implementation of the fortune application uses the [Jackson JSON parser](https://github.com/FasterXML/jackson) (package `com.fasterxml`) at **runtime** to parse the contents of a [resource file](https://github.com/graalvm/graalvm-demos/blob/master/fortune-demo/fortune/src/main/resources/fortunes.json) that the native image builder has included in the native executable. An alternative implementation (named "staticfortune") parses the contents of the resource file at build time. This means that the resource file is no longer included in the executable, and the code required to parse the file is omitted from the native executable because it is only required at build time.
 
 1. Change to the project directory and build the project:
-    ```
+    ```shell
     cd ../staticfortune
     ```
-    ```
+    ```shell
     mvn clean package
     ```
 
 2. Run the application on the JVM (GraalVM JDK) with the [Tracing agent](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html#agent-support):
-    ```
+    ```shell
     mvn -Pnative -Dagent exec:exec@java-agent
     ```
     The application will print a random saying. The agent generates the configuration files in the `target/native/agent-output` subdirectory.
 3. Build a static native executable:
-    ```
+    ```shell
     mvn -Pnative -Dagent package
     ```
     When the command completes, a native executable, `staticfortune`, is generated in the `/target` directory of the project and ready for use.
 
 4. Run the demo by launching a native executable directly or with the Maven profile:
-
-    ```
+    ```shell
     ./target/staticfortune
     ```
     The application should behave in exactly the same way as the first implementation.
 
     The application's [_pom.xml_](https://github.com/graalvm/graalvm-demos/blob/master/fortune-demo/staticfortune/pom.xml) file again uses the [Native Image Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) to build a native executable. However, for this implementation it adds an extra option to initialize class `demo.StaticFortune` at build time:
-
     ```shell
     -H:DashboardDump=staticfortune -H:+DashboardAll --initialize-at-build-time=demo.StaticFortune
     ```
 
     Compare the sizes of the JAR file and the native executable:
-
-    ```shell
+    ```
     du -sh target/*
     0B	    target/archive-tmp
     76K	    target/classes
@@ -142,7 +147,7 @@ The first implementation of the fortune application uses the [Jackson JSON parse
 
     The size of the native executable has reduced in size from 17MB to 4.3MB.
 
-    The reduction in size is due to the use of the `--initialize-at-build-time=` argument used with the [Native Image Maven plugin](use-native-image-maven-plugin.md).
+    The reduction in size is due to the use of the `--initialize-at-build-time=` argument used with the [Native Image Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html).
 
 5.  The build created a file named _staticfortune.bgv_. Load it into the GraalVM Dashboard to view the composition of the `staticfortune` native executable. 
 

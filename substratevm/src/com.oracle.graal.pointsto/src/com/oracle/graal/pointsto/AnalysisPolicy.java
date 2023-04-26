@@ -27,12 +27,14 @@ package com.oracle.graal.pointsto;
 import java.util.BitSet;
 
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -64,6 +66,11 @@ public abstract class AnalysisPolicy {
     protected final boolean relaxTypeFlowConstraints;
     protected final boolean removeSaturatedTypeFlows;
     protected final int typeFlowSaturationCutoff;
+    protected final boolean allocationSiteSensitiveHeap;
+    protected final int maxHeapContextDepth;
+    protected final boolean limitObjectArrayLength;
+    protected final int maxObjectSetSize;
+    protected final boolean hybridStaticContext;
 
     public AnalysisPolicy(OptionValues options) {
         this.options = options;
@@ -72,6 +79,11 @@ public abstract class AnalysisPolicy {
         relaxTypeFlowConstraints = PointstoOptions.RelaxTypeFlowStateConstraints.getValue(options);
         removeSaturatedTypeFlows = PointstoOptions.RemoveSaturatedTypeFlows.getValue(options);
         typeFlowSaturationCutoff = PointstoOptions.TypeFlowSaturationCutoff.getValue(options);
+        allocationSiteSensitiveHeap = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
+        maxHeapContextDepth = PointstoOptions.MaxHeapContextDepth.getValue(options);
+        limitObjectArrayLength = PointstoOptions.LimitObjectArrayLength.getValue(options);
+        maxObjectSetSize = PointstoOptions.MaxObjectSetSize.getValue(options);
+        hybridStaticContext = PointstoOptions.HybridStaticContext.getValue(options);
     }
 
     public abstract boolean isContextSensitiveAnalysis();
@@ -90,6 +102,22 @@ public abstract class AnalysisPolicy {
 
     public int typeFlowSaturationCutoff() {
         return typeFlowSaturationCutoff;
+    }
+
+    public boolean allocationSiteSensitiveHeap() {
+        return allocationSiteSensitiveHeap;
+    }
+
+    public boolean limitObjectArrayLength() {
+        return limitObjectArrayLength;
+    }
+
+    public int maxObjectSetSize() {
+        return maxObjectSetSize;
+    }
+
+    public boolean useHybridStaticContext() {
+        return hybridStaticContext;
     }
 
     public abstract MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method);
@@ -170,27 +198,15 @@ public abstract class AnalysisPolicy {
 
     public abstract void registerAsImplementationInvoked(InvokeTypeFlow invoke, PointsToAnalysisMethod method);
 
-    @SuppressWarnings("unused")
-    public int makeProperties(BigBang bb, AnalysisObject... objects) {
-        /* The default analysis policy doesn't use properties. */
-        return 0;
-    }
-
-    @SuppressWarnings("unused")
-    public int makePropertiesForUnion(TypeState s1, TypeState s2) {
-        /* The default analysis policy doesn't use properties. */
-        return 0;
-    }
-
     /**
      * Simplifies a type state by replacing all context sensitive objects with context insensitive
      * objects.
      */
     public abstract TypeState forContextInsensitiveTypeState(PointsToAnalysis bb, TypeState state);
 
-    public abstract SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type, AnalysisObject... objects);
+    public abstract SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects);
 
-    public abstract MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet, AnalysisObject... objects);
+    public abstract MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, BitSet typesBitSet, int typesCount, AnalysisObject... objects);
 
     public abstract TypeState doUnion(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2);
 
@@ -251,4 +267,32 @@ public abstract class AnalysisPolicy {
     public abstract TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2);
 
     public abstract TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2);
+
+    public abstract void processArrayCopyStates(PointsToAnalysis bb, TypeState srcArrayState, TypeState dstArrayState);
+
+    /**
+     * System.arraycopy() type compatibility is defined as: can elements of the source array be
+     * converted to the component type of the destination array by assignment conversion.
+     * <p>
+     * System.arraycopy() semantics doesn't check the compatibility of the source and destination
+     * arrays statically, it instead relies on runtime checks to verify the compatibility between
+     * the copied objects and the destination array. For example System.arraycopy() can copy from an
+     * Object[] to SomeOtherObject[]. That's why {@link ArrayElementsTypeFlow} tests each individual
+     * copied object for compatibility with the defined type of the destination array and filters
+     * out those not assignable. From System.arraycopy() javadoc: "...if any actual component of the
+     * source array [...] cannot be converted to the component type of the destination array by
+     * assignment conversion, an ArrayStoreException is thrown."
+     * <p>
+     * Here we detect incompatible types eagerly, i.e., array types whose elements would be filtered
+     * out by ArrayElementsTypeFlow anyway, by checking
+     * {@code dstType.isAssignableFrom(srcType) || srcType.isAssignableFrom(dstType)}.
+     * <p>
+     * By skipping incompatible types when modeling an {@link BasicArrayCopyNode} we avoid adding
+     * any use links between ArrayElementsTypeFlow that would filter out all elements anyway. (Note
+     * that the filter in ArrayElementsTypeFlow is still necessary for partially compatible copying,
+     * e.g., when copying from an array to another array of one of its subtypes.)
+     */
+    protected static boolean areTypesCompatibleForSystemArraycopy(AnalysisType srcType, AnalysisType dstType) {
+        return dstType.isAssignableFrom(srcType) || srcType.isAssignableFrom(dstType);
+    }
 }

@@ -76,6 +76,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return object;
     }
 
+    @SuppressWarnings("this-escape")
     protected PiNode(NodeClass<? extends PiNode> c, ValueNode object, Stamp stamp, GuardingNode guard) {
         super(c, stamp, guard);
         this.object = object;
@@ -154,7 +155,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 pushKind = JavaKind.Long;
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHereUnexpectedValue(intrinsifyOp); // ExcludeFromJacocoGeneratedReport
         }
         ValueNode value = canonical(input, piStamp, (GuardingNode) guard, null);
         if (value == null) {

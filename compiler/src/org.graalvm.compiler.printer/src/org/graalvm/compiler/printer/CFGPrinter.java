@@ -29,6 +29,7 @@ import static org.graalvm.compiler.core.match.ComplexMatchValue.INTERIOR_MATCH;
 
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,8 +37,8 @@ import java.util.TreeMap;
 
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.core.match.ComplexMatchValue;
 import org.graalvm.compiler.graph.Node;
@@ -59,8 +60,8 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.meta.JavaKind;
@@ -100,10 +101,10 @@ class CFGPrinter extends CompilationPrinter {
      * @param label A label describing the compilation phase that produced the control flow graph.
      * @param blockIds The list of block ids for which the associated blocks have to be printed.
      */
-    public void printCFG(String label, char[] blockIds) {
+    public void printCFG(String label, int[] blockIds) {
         begin("cfg");
         out.print("name \"").print(label).println('"');
-        for (char blockId : blockIds) {
+        for (int blockId : blockIds) {
             if (blockId == AbstractControlFlowGraph.INVALID_BLOCK_ID) {
                 continue;
             }
@@ -221,7 +222,18 @@ class CFGPrinter extends CompilationPrinter {
         out.print("d ").print(HOVER_START).print("d").print(HOVER_SEP);
         out.println("=== Debug Properties ===");
         for (Map.Entry<Object, Object> entry : props.entrySet()) {
-            out.print(entry.getKey().toString()).print(": ").print(entry.getValue() == null ? "[null]" : entry.getValue().toString()).println();
+            Object value = entry.getValue();
+            String s;
+            if (value == null) {
+                s = "[null]";
+            } else {
+                if (value instanceof Object[]) {
+                    s = Arrays.toString((Object[]) value);
+                } else {
+                    s = value.toString();
+                }
+            }
+            out.print(entry.getKey().toString()).print(": ").print(value == null ? "[null]" : s).println();
         }
         out.println("=== Inputs ===");
         printNamedNodes(node, node.inputPositions().iterator(), "", "\n", null);
@@ -397,7 +409,7 @@ class CFGPrinter extends CompilationPrinter {
         } else {
             // LIR instructions contain references to blocks and these blocks are printed as the
             // blockID -> use the blockID.
-            return "B" + (int) block.getId();
+            return "B" + block.getId();
         }
     }
 

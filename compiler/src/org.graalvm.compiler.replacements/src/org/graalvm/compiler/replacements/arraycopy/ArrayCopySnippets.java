@@ -301,22 +301,22 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     protected void doExactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation) {
-        int scale = ReplacementsUtil.arrayIndexScale(INJECTED_META_ACCESS, elementKind);
+        long scale = ReplacementsUtil.arrayIndexScale(INJECTED_META_ACCESS, elementKind);
         int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(INJECTED_META_ACCESS, elementKind);
-        long sourceOffset = arrayBaseOffset + (long) srcPos * scale;
-        long destOffset = arrayBaseOffset + (long) destPos * scale;
+        long sourceOffset = arrayBaseOffset + srcPos * scale;
+        long destOffset = arrayBaseOffset + destPos * scale;
 
         GuardingNode anchor = SnippetAnchorNode.anchor();
         if (probability(FREQUENT_PROBABILITY, src == dest) && probability(NOT_FREQUENT_PROBABILITY, srcPos < destPos)) {
             // bad aliased case so we need to copy the array from back to front
             for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
-                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
-                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
+                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
+                RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
         } else {
             for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
-                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
-                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
+                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + position * scale, elementKind, arrayLocation, anchor);
+                RawStoreNode.storeObject(dest, destOffset + position * scale, value, elementKind, arrayLocation, true);
             }
         }
     }
@@ -530,6 +530,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         private ResolvedJavaMethod originalArraycopy;
         private final Counters counters;
 
+        @SuppressWarnings("this-escape")
         public Templates(ArrayCopySnippets receiver, Group.Factory factory, OptionValues options, Providers providers) {
             super(options, providers);
             this.counters = new Counters(factory);
@@ -554,7 +555,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 case genericArraycopySnippet:
                     return genericArraycopySnippet;
             }
-            throw GraalError.shouldNotReachHere(workSnippetID.toString());
+            throw GraalError.shouldNotReachHere(workSnippetID.toString()); // ExcludeFromJacocoGeneratedReport
         }
 
         protected SnippetInfo snippet(Providers providers, ArrayCopySnippets receiver, String methodName) {

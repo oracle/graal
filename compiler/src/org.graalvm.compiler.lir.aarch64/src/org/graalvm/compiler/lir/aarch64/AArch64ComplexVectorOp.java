@@ -58,6 +58,14 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
         return allocateRegisters(tool, LIRKind.value(tool.target().arch.getLargestStorableKind(SIMD)), n);
     }
 
+    protected static Value[] allocateVectorRegisters(LIRGeneratorTool tool, int n, boolean consecutive) {
+        if (consecutive) {
+            return allocateConsecutiveVectorRegisters(tool, n);
+        } else {
+            return allocateVectorRegisters(tool, n);
+        }
+    }
+
     private static AllocatableValue[] allocateRegisters(LIRGeneratorTool tool, LIRKind kind, int n) {
         AllocatableValue[] values = new AllocatableValue[n];
         for (int i = 0; i < values.length; i++) {
@@ -171,7 +179,17 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
     protected static void calcIndexOfFirstMatch(AArch64MacroAssembler asm, Register dst, Register vec1, Register vec2, Register vecMask, boolean inverse, Runnable interleavedInstructions) {
         /*
          * Using the magic constant set 2 bits in the matching byte(s) that represent its position
-         * in the chunk
+         * in the chunk.
+         *
+         * @formatter:off
+         * The mask consists of the following repeating pattern:
+         * 
+         * 0: b00000011
+         * 1: b00001100
+         * 2: b00110000
+         * 3: b11000000
+         * 
+         * @formatter:on
          */
         if (inverse) {
             asm.neon.bicVVV(FullReg, vec1, vecMask, vec1);
@@ -181,14 +199,32 @@ public abstract class AArch64ComplexVectorOp extends AArch64LIRInstruction {
             asm.neon.andVVV(FullReg, vec2, vec2, vecMask);
         }
         /* Convert 32-byte to 8-byte representation, 2 bits per byte. */
-        /* Reduce from 256 -> 128 bits. */
+        /*
+         * Reduce from 256 -> 128 bits, by pairwise addition of neighbouring bytes. Due to the 2-bit
+         * patterns chosen above, this addition is equivalent to a logical OR, so e.g. for two neighboring values
+         *
+         * @formatter:off
+         * 
+         *   b00001100
+         * + b00110000 
+         * = b00111100
+         * 
+         * @formatter:on
+         */
         asm.neon.addpVVV(FullReg, AArch64ASIMDAssembler.ElementSize.Byte, vec1, vec1, vec2);
-        /* Reduce from 128 -> 64 bits. Note vec2's value doesn't matter; only care about vec1. */
+        /*
+         * Reduce from 128 -> 64 bits. Again, the ADD operation is equivalent to a logical OR. Note
+         * vec2's value doesn't matter; only care about vec1. After this operation, every two bits
+         * in every byte of the resulting 64-bit value represent one byte of the original two
+         * vectors.
+         */
         asm.neon.addpVVV(FullReg, AArch64ASIMDAssembler.ElementSize.Byte, vec1, vec1, vec2);
         asm.neon.moveFromIndex(AArch64ASIMDAssembler.ElementSize.DoubleWord, AArch64ASIMDAssembler.ElementSize.DoubleWord, dst, vec1, 0);
         /* moveFromIndex takes 4 cycles, optionally run other things in the meantime */
         interleavedInstructions.run();
+        /* reverse the bits for CLZ */
         asm.rbit(64, dst, dst);
+        /* Count the number of leading zeros, resulting in the matching byte index times 2. */
         asm.clz(64, dst, dst);
     }
 

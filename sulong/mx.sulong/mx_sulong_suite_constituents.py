@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -518,7 +518,6 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
                 This mode supports appending a "-<post-opt>" specifier to the variant string,
                 to post-process the result using the `opt` tool from LLVM. The following post-opt specifiers are
                 supported:
-                    - MISC_OPTS: run a selection of common optimizations
                     - MEM2REG: run the -mem2reg optimization
                 See tests/com.oracle.truffle.llvm.tests.cmake/SulongTestSuiteVariantBitcode.cmake for more details.
             - "executable"

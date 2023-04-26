@@ -86,6 +86,11 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
+        public boolean needsInitialization() {
+            return true;
+        }
+
+        @Override
         public String toString() {
             return "StoreStaticFieldTypeFlow<" + getState() + ">";
         }

@@ -40,12 +40,22 @@ import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
+
+    public static class Options {
+        //@formatter:off
+        @Option(help = "Remove safepoints on counted loop ends.", type = OptionType.Expert)
+        public static final OptionKey<Boolean> RemoveLoopSafepoints = new OptionKey<>(true);
+        //@formatter:on
+    }
 
     private static final long IntegerRangeDistance = Math.abs((long) Integer.MAX_VALUE - (long) Integer.MIN_VALUE);
 
@@ -114,35 +124,38 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     @Override
     protected final void run(StructuredGraph graph, MidTierContext context) {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-        loops.detectCountedLoops();
-        for (LoopEx loop : loops.countedLoops()) {
-            if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
-                boolean hasSafepoint = false;
-                for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
-                    hasSafepoint |= loopEnd.canSafepoint();
-                }
-                if (hasSafepoint) {
-                    if (!loop.counted().counterNeverOverflows()) {
-                        // Counter can overflow, need to create a guard.
-                        boolean allowsLoopLimitChecks = context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions());
-                        boolean allowsFloatingGuards = graph.getGuardsStage().allowsFloatingGuards();
-                        if (allowsLoopLimitChecks && allowsFloatingGuards) {
-                            loop.counted().createOverFlowGuard();
-                        } else {
-                            // Cannot disable this safepoint, because the loop could overflow.
-                            continue;
+        if (Options.RemoveLoopSafepoints.getValue(graph.getOptions())) {
+            loops.detectCountedLoops();
+            for (LoopEx loop : loops.countedLoops()) {
+                if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
+                    boolean hasSafepoint = false;
+                    for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
+                        hasSafepoint |= loopEnd.canSafepoint();
+                    }
+                    if (hasSafepoint) {
+                        if (!loop.counted().counterNeverOverflows()) {
+                            // Counter can overflow, need to create a guard.
+                            boolean allowsLoopLimitChecks = context.getOptimisticOptimizations().useLoopLimitChecks(graph.getOptions());
+                            boolean allowsFloatingGuards = graph.getGuardsStage().allowsFloatingGuards();
+                            if (allowsLoopLimitChecks && allowsFloatingGuards) {
+                                loop.counted().createOverFlowGuard();
+                            } else {
+                                // Cannot disable this safepoint, because the loop could overflow.
+                                continue;
+                            }
                         }
+                        loop.loopBegin().disableSafepoint();
+                        if (loop.loopBegin().isStripMinedInner()) {
+                            // graal strip mined this loop, trust the heuristics and remove the
+                            // inner
+                            // loop safepoint
+                            loop.loopBegin().disableGuestSafepoint();
+                        } else {
+                            // let the shape of the loop decide whether a guest safepoint is needed
+                            onSafepointDisabledLoopBegin(loop);
+                        }
+                        graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
                     }
-                    loop.loopBegin().disableSafepoint();
-                    if (loop.loopBegin().isStripMinedInner()) {
-                        // graal strip mined this loop, trust the heuristics and remove the inner
-                        // loop safepoint
-                        loop.loopBegin().disableGuestSafepoint();
-                    } else {
-                        // let the shape of the loop decide whether a guest safepoint is needed
-                        onSafepointDisabledLoopBegin(loop);
-                    }
-                    graph.getOptimizationLog().report(LoopSafepointEliminationPhase.class, "SafepointElimination", loop.loopBegin());
                 }
             }
         }

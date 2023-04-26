@@ -24,19 +24,21 @@
  */
 package com.oracle.graal.reachability;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaConstant;
-import org.graalvm.collections.EconomicSet;
 
 /**
  * This class fully represents a method for the purposes of Reachability Analysis, so that it does
  * not have to be re-analyzed again.
  */
 public class MethodSummary {
-    public final EconomicSet<AnalysisMethod> invokedMethods;
+    public final EconomicSet<AnalysisMethod> virtualInvokedMethods;
+    public final EconomicSet<AnalysisMethod> specialInvokedMethods;
     public final EconomicSet<AnalysisMethod> implementationInvokedMethods;
     public final EconomicSet<AnalysisType> accessedTypes;
     public final EconomicSet<AnalysisType> instantiatedTypes;
@@ -45,13 +47,15 @@ public class MethodSummary {
     public final EconomicSet<JavaConstant> embeddedConstants;
     public final EconomicSet<AnalysisMethod> foreignCallTargets;
 
-    public MethodSummary(EconomicSet<AnalysisMethod> invokedMethods, EconomicSet<AnalysisMethod> implementationInvokedMethods, EconomicSet<AnalysisType> accessedTypes,
+    public MethodSummary(EconomicSet<AnalysisMethod> virtualInvokedMethods, EconomicSet<AnalysisMethod> specialInvokedMethods, EconomicSet<AnalysisMethod> implementationInvokedMethods,
+                    EconomicSet<AnalysisType> accessedTypes,
                     EconomicSet<AnalysisType> instantiatedTypes,
                     EconomicSet<AnalysisField> readFields,
                     EconomicSet<AnalysisField> writtenFields,
                     EconomicSet<JavaConstant> embeddedConstants,
                     EconomicSet<AnalysisMethod> foreignCallTargets) {
-        this.invokedMethods = invokedMethods;
+        this.virtualInvokedMethods = virtualInvokedMethods;
+        this.specialInvokedMethods = specialInvokedMethods;
         this.implementationInvokedMethods = implementationInvokedMethods;
         this.accessedTypes = accessedTypes;
         this.instantiatedTypes = instantiatedTypes;
@@ -63,8 +67,10 @@ public class MethodSummary {
 
     @Override
     public String toString() {
-        return "invoked: " +
-                        invokedMethods.size() +
+        return "virtual invoked: " +
+                        virtualInvokedMethods.size() +
+                        ", special invoked: " +
+                        specialInvokedMethods.size() +
                         ", impl invoked: " +
                         implementationInvokedMethods.size() +
                         ", accessed: " +

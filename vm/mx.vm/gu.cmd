@@ -1,7 +1,7 @@
 ::
 :: ----------------------------------------------------------------------------------------------------
 ::
-:: Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+:: Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 :: DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ::
 :: This code is free software; you can redistribute it and/or modify it
@@ -32,11 +32,9 @@ set location=%~dp0
 set root_dir=%location%..\..\..
 set relcp=%location%..\*.jar
 
-set realcp=
-set delim=
+set realcp=%root_dir%\lib\graalvm\launcher-common.jar
 for %%i in ("%relcp%") do (
-  set realcp=!realcp!!delim!%%i
-  set delim=;
+  set realcp=!realcp!;%%i
 )
 
 set unique=%temp%\%~nx0

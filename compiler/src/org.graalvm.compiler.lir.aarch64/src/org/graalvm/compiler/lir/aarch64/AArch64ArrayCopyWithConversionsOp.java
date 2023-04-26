@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -286,7 +286,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                 asm.fstp(128, v(2), v(3), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayDst, 32));
                 break;
             default:
-                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
+                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -371,7 +371,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                 asm.fstp(128, v(2), v(3), createPairBaseRegisterOnlyAddress(128, arrayDst));
                 break;
             default:
-                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
+                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
         asm.jmp(end);
     }
@@ -439,7 +439,7 @@ public final class AArch64ArrayCopyWithConversionsOp extends AArch64ComplexVecto
                 asm.neon.uxtlVV(srcESize.expand(), v(1), v(1));
                 break;
             default:
-                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented");
+                throw GraalError.unimplemented("conversion from " + strideSrc + " to " + strideDst + " not implemented"); // ExcludeFromJacocoGeneratedReport
         }
         asm.fstr(storeBits, v(0), createBaseRegisterOnlyAddress(storeBits, arrayDst));
         asm.add(64, arrayDst, arrayDst, len, ShiftType.LSL, strideDst.log2);

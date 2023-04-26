@@ -43,10 +43,10 @@ import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
 
 import org.graalvm.compiler.asm.Label;
@@ -57,7 +57,6 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
-import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -69,8 +68,8 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
           lineStart = 1097,
           lineEnd   = 1243,
-          commit    = "4a300818fe7a47932c5b762ccd3b948815a31974",
-          sha1      = "69fb5daea24fdb8798a1c3167aaec9b8236531e6")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "644bffae25607c21475e4b5f51476fa6117f4ca2")
 // @formatter:on
 public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruction {
 
@@ -126,12 +125,6 @@ public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruct
                         xmm15.asValue(),
         };
     }
-
-    private ArrayDataPointerConstant keyShuffleMask = pointerConstant(16, new int[]{
-            // @formatter:off
-            0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f
-            // @formatter:on
-    });
 
     private static final int XMM_REG_NUM_KEY_FIRST = 2;
 
@@ -248,7 +241,7 @@ public final class AMD64CipherBlockChainingAESEncryptOp extends AMD64LIRInstruct
         for (int rnum = XMM_REG_NUM_KEY_FIRST + 1; rnum <= XMM_REG_NUM_KEY_FIRST + 13; rnum++) {
             masm.aesenc(xmmResult, asXMMRegister(rnum));
         }
-        loadKey(masm, xmmTemp, key, 0xe0, crb, keyShuffleMask);
+        loadKey(masm, xmmTemp, key, 0xe0, crb);
         masm.aesenclast(xmmResult, xmmTemp);
         // store into the next 16 bytes of output
         masm.movdqu(new AMD64Address(to, pos, Stride.S1, 0), xmmResult);

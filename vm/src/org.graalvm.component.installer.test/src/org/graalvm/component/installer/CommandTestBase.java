@@ -82,6 +82,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
     URL clu;
     ComponentInfo info;
 
+    @SuppressWarnings("this-escape")
     public CommandTestBase() {
         fileOps = SystemUtils.isWindows() ? new WindowsFileOperations() : new DefaultFileOperations();
         fileOps.init(this);
@@ -89,7 +90,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     protected void initRemoteComponent(String relativeJar, String u, String disp, String spec) throws IOException {
         clu = getClass().getResource(relativeJar);
-        url = new URL(u);
+        url = SystemUtils.toURL(u);
         Handler.bind(url.toString(), clu);
 
         File f = dataFile(relativeJar).toFile();
@@ -104,7 +105,7 @@ public class CommandTestBase extends TestBase implements CommandInput, SoftwareC
 
     protected void initURLComponent(String relativeJar, String spec) throws IOException {
         clu = getClass().getResource(relativeJar);
-        url = new URL(spec);
+        url = SystemUtils.toURL(spec);
         Handler.bind(url.toString(), clu);
 
         File f = dataFile(relativeJar).toFile();

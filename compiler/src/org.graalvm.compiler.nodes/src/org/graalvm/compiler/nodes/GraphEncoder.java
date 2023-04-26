@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,6 +164,10 @@ public class GraphEncoder {
 
     protected DebugContext debug;
 
+    private final InliningLogCodec inliningLogCodec;
+
+    private final OptimizationLogCodec optimizationLogCodec;
+
     /**
      * Utility method that does everything necessary to encode a single graph.
      */
@@ -192,6 +196,8 @@ public class GraphEncoder {
         objects = FrequencyEncoder.createEqualityEncoder();
         nodeClasses = FrequencyEncoder.createIdentityEncoder();
         writer = UnsafeArrayTypeWriter.create(architecture.supportsUnalignedMemoryAccess());
+        inliningLogCodec = new InliningLogCodec();
+        optimizationLogCodec = new OptimizationLogCodec();
     }
 
     /**
@@ -200,6 +206,8 @@ public class GraphEncoder {
     public void prepare(StructuredGraph graph) {
         addObject(graph.getGuardsStage());
         addObject(graph.getGraphState().getStageFlags());
+        inliningLogCodec.prepare(graph, this::addObject);
+        optimizationLogCodec.prepare(graph, this::addObject);
         for (Node node : graph.getNodes()) {
             NodeClass<? extends Node> nodeClass = node.getNodeClass();
             nodeClasses.addObject(nodeClass);
@@ -253,7 +261,7 @@ public class GraphEncoder {
         if (nodeReferences != null) {
             for (var nodeReference : nodeReferences) {
                 if (nodeReference.orderId != EncodedNodeReference.DECODED) {
-                    throw GraalError.shouldNotReachHere("EncodedNodeReference is not in 'decoded' state");
+                    throw GraalError.shouldNotReachHere("EncodedNodeReference is not in 'decoded' state"); // ExcludeFromJacocoGeneratedReport
                 }
                 nodeReference.orderId = nodeOrder.orderIds.get(nodeReference.node);
                 nodeReference.node = null;
@@ -333,6 +341,8 @@ public class GraphEncoder {
         writer.putUV(nodeOrder.maxFixedNodeOrderId);
         writeObjectId(graph.getGuardsStage());
         writeObjectId(graph.getGraphState().getStageFlags());
+        writeObjectId(inliningLogCodec.encode(graph, nodeOrder.orderIds::get));
+        writeObjectId(optimizationLogCodec.encode(graph, nodeOrder.orderIds::get));
         writer.putUV(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
             writer.putUV(metadataStart - nodeStartOffsets[i]);
@@ -486,7 +496,7 @@ public class GraphEncoder {
     }
 
     /**
-     * Verification code that checks that the decoding of an encode graph is the same as the
+     * Verification code that checks that the decoding of an encoded graph is the same as the
      * original graph.
      */
     @SuppressWarnings("try")
@@ -507,14 +517,13 @@ public class GraphEncoder {
         try {
             GraphComparison.verifyGraphsEqual(originalGraph, decodedGraph);
         } catch (Throwable ex) {
-            originalGraph.getDebug();
             try (DebugContext.Scope scope = debugContext.scope("GraphEncoder")) {
                 debugContext.dump(DebugContext.VERBOSE_LEVEL, originalGraph, "Original Graph");
                 debugContext.dump(DebugContext.VERBOSE_LEVEL, decodedGraph, "Decoded Graph");
             }
             throw ex;
         }
-        return true;
+        return optimizationLogCodec.verify(originalGraph, decodedGraph) && inliningLogCodec.verify(originalGraph, decodedGraph);
     }
 }
 

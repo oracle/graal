@@ -26,19 +26,17 @@ package org.graalvm.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
@@ -132,31 +130,12 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             DebugContext debug = new Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
-                CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
-                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, compilationId,
-                                new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
-                                    private TruffleInliningData inlining = new TruffleInlining();
+                TruffleCompilationTask task = PartialEvaluationTest.newTask();
+                TruffleCompilerImpl compiler = getTruffleCompiler(target);
+                try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
+                    compiler.compileAST(compilable.getOptionValues(), debug, compilable, compilation.getCompilationId(), task, null);
+                }
 
-                                    @Override
-                                    public boolean isCancelled() {
-                                        return false;
-                                    }
-
-                                    @Override
-                                    public boolean isLastTier() {
-                                        return true;
-                                    }
-
-                                    @Override
-                                    public TruffleInliningData inliningData() {
-                                        return inlining;
-                                    }
-
-                                    @Override
-                                    public boolean hasNextTier() {
-                                        return false;
-                                    }
-                                }), null);
                 assertTrue(compilable.isValid());
             }
         } catch (AssertionError e) {

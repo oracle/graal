@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -72,7 +71,26 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     public static final int IN_HEAP_FLAG_MASK = 1 << IN_HEAP_FLAG_INDEX;
     public static final int HIDING_FLAG_INDEX = 29;
     public static final int HIDING_FLAG_MASK = 1 << HIDING_FLAG_INDEX;
-    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK;
+    public static final int NEGATIVE_FLAG_INDEX = 28;
+    public static final int NEGATIVE_FLAG_MASK = 1 << NEGATIVE_FLAG_INDEX;
+    /* single lookup flags are filled before encoding */
+    public static final int ALL_FLAGS_MASK = COMPLETE_FLAG_MASK | IN_HEAP_FLAG_MASK | HIDING_FLAG_MASK | NEGATIVE_FLAG_MASK;
+
+    public static final int ALL_FIELDS_FLAG = 1 << 16;
+    public static final int ALL_DECLARED_FIELDS_FLAG = 1 << 17;
+    public static final int ALL_METHODS_FLAG = 1 << 18;
+    public static final int ALL_DECLARED_METHODS_FLAG = 1 << 19;
+    public static final int ALL_CONSTRUCTORS_FLAG = 1 << 20;
+    public static final int ALL_DECLARED_CONSTRUCTORS_FLAG = 1 << 21;
+    public static final int ALL_CLASSES_FLAG = 1 << 22;
+    public static final int ALL_DECLARED_CLASSES_FLAG = 1 << 23;
+    public static final int ALL_RECORD_COMPONENTS_FLAG = 1 << 24;
+    public static final int ALL_PERMITTED_SUBCLASSES_FLAG = 1 << 25;
+    public static final int ALL_NEST_MEMBERS_FLAG = 1 << 26;
+    public static final int ALL_SIGNERS_FLAG = 1 << 27;
+
+    // Value from Reflection.getClassAccessFlags()
+    public static final int CLASS_ACCESS_FLAGS_MASK = 0x1FFF;
 
     static byte[] getEncoding() {
         return ImageSingletons.lookup(ReflectionMetadataEncoding.class).getEncoding();
@@ -162,6 +180,19 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     }
 
     /**
+     * Object array encoding.
+     *
+     * <pre>
+     * ObjectIndex[] objects
+     * </pre>
+     */
+    @Override
+    public Object[] parseObjects(int index) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(getEncoding(), index, ByteArrayReader.supportsUnalignedMemoryAccess());
+        return decodeArray(reader, Object.class, (i) -> decodeObject(reader));
+    }
+
+    /**
      * Parameters encoding for executables.
      *
      * <pre>
@@ -206,6 +237,11 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
     @Override
     public boolean isHiding(int modifiers) {
         return (modifiers & HIDING_FLAG_MASK) != 0;
+    }
+
+    @Override
+    public boolean isNegative(int modifiers) {
+        return (modifiers & NEGATIVE_FLAG_MASK) != 0;
     }
 
     @Override
@@ -267,6 +303,15 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *
      * <pre>
      * ReachableFieldEncoding : FieldMetadata {
+     *     int         modifiers (including EXISTS flag)
+     *     StringIndex name
+     * }
+     * </pre>
+     * 
+     * Negative query field encoding.
+     *
+     * <pre>
+     * NegativeQueryFieldEncoding : FieldMetadata {
      *     int         modifiers (always zero)
      *     StringIndex name
      * }
@@ -289,16 +334,18 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         }
         boolean hiding = (modifiers & HIDING_FLAG_MASK) != 0;
         assert !(complete && hiding);
+        boolean negative = (modifiers & NEGATIVE_FLAG_MASK) != 0;
+        assert !(negative && (complete || hiding));
         modifiers &= ~COMPLETE_FLAG_MASK;
 
         String name = decodeName(buf);
         Class<?> type = (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
-            if (reflectOnly != hiding) {
+            if (reflectOnly != (hiding || negative)) {
                 /*
-                 * When querying for reflection fields, we want the hiding fields but not the
-                 * reachable fields. When querying for reachable fields, we want the reachable
-                 * fields but not the hiding fields.
+                 * When querying for reflection fields, we want the hiding fields and negative
+                 * queries but not the reachable fields. When querying for reachable fields, we want
+                 * the reachable fields but not the hiding fields and negative queries.
                  */
                 return null;
             }
@@ -306,14 +353,10 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                 return new FieldDescriptor(declaringClass, name);
             }
             Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                field.constructorJDK17OrLater(declaringClass, name, type, modifiers, false, -1, null, null);
-            } else {
-                field.constructorJDK11OrEarlier(declaringClass, name, type, modifiers, -1, null, null);
-            }
+            field.constructor(declaringClass, name, negative ? Object.class : type, modifiers, false, -1, null, null);
             return SubstrateUtil.cast(field, Field.class);
         }
-        boolean trustedFinal = (JavaVersionUtil.JAVA_SPEC >= 17) ? buf.getU1() == 1 : false;
+        boolean trustedFinal = buf.getU1() == 1;
         String signature = decodeName(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
@@ -324,11 +367,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         }
 
         Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            field.constructorJDK17OrLater(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
-        } else {
-            field.constructorJDK11OrEarlier(declaringClass, name, type, modifiers, -1, signature, annotations);
-        }
+        field.constructor(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
         field.offset = offset;
         field.deletedReason = deletedReason;
         SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
@@ -379,6 +418,16 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *
      * <pre>
      * ReachableMethodMetadata : MethodMetadata {
+     *     int          modifiers      (including EXISTS flag)
+     *     StringIndex  name
+     *     ClassIndex[] parameterTypes
+     * }
+     * </pre>
+     *
+     * Negative query method encoding.
+     *
+     * <pre>
+     * NegativeQueryMethodMetadata : MethodMetadata {
      *     int          modifiers      (always zero)
      *     StringIndex  name
      *     ClassIndex[] parameterTypes
@@ -413,6 +462,15 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
      *
      * <pre>
      * ReachableConstructorMetadata : ConstructorMetadata {
+     *     int          modifiers      (including EXISTS flag)
+     *     ClassIndex[] parameterTypes
+     * }
+     * </pre>
+     * 
+     * Negative query constructor encoding.
+     *
+     * <pre>
+     * NegativeQueryConstructorMetadata : ConstructorMetadata {
      *     int          modifiers      (always zero)
      *     ClassIndex[] parameterTypes
      * }
@@ -441,18 +499,20 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         }
         boolean hiding = (modifiers & HIDING_FLAG_MASK) != 0;
         assert !(complete && hiding);
+        boolean negative = (modifiers & NEGATIVE_FLAG_MASK) != 0;
+        assert !(negative && (complete || hiding));
         modifiers &= ~COMPLETE_FLAG_MASK;
 
         String name = isMethod ? decodeName(buf) : null;
         Object[] parameterTypes;
-        if (complete || hiding) {
+        if (complete || hiding || negative) {
             parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf));
         } else {
             parameterTypes = decodeArray(buf, String.class, (i) -> decodeName(buf));
         }
         Class<?> returnType = isMethod && (complete || hiding) ? decodeType(buf) : null;
         if (!complete) {
-            if (reflectOnly != hiding) {
+            if (reflectOnly != (hiding || negative)) {
                 /*
                  * When querying for reflection methods, we want the hiding methods but not the
                  * reachable methods. When querying for reachable methods, we want the reachable
@@ -465,7 +525,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                     return new MethodDescriptor(declaringClass, name, (String[]) parameterTypes);
                 }
                 Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
-                method.constructor(declaringClass, name, (Class<?>[]) parameterTypes, returnType, null, modifiers, -1, null, null, null, null);
+                method.constructor(declaringClass, name, (Class<?>[]) parameterTypes, negative ? Object.class : returnType, null, modifiers, -1, null, null, null, null);
                 return SubstrateUtil.cast(method, Executable.class);
             } else {
                 if (!reflectOnly) {

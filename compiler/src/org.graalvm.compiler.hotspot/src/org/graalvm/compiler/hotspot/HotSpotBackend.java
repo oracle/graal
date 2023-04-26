@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,8 +43,9 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -67,14 +68,12 @@ import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.RestoreRegistersOp;
 import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
 import org.graalvm.compiler.lir.ValueConsumer;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.word.Word;
@@ -107,9 +106,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         // @formatter:off
         @Option(help = "Use Graal arithmetic stubs instead of HotSpot stubs where possible")
         public static final OptionKey<Boolean> GraalArithmeticStubs = new OptionKey<>(true);
-        @Option(help = "Enables instruction profiling on assembler level. Valid values are a comma separated list of supported instructions." +
-                        " Compare with subclasses of Assembler.InstructionCounter.", type = OptionType.Debug)
-        public static final OptionKey<String> ASMInstructionProfiling = new OptionKey<>(null);
         // @formatter:on
     }
 
@@ -140,17 +136,11 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     private final HotSpotGraalRuntimeProvider runtime;
 
-    public static final HotSpotForeignCallDescriptor MUL_ADD = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int), "mulAdd",
-                    int.class, Word.class, Word.class, int.class, int.class, int.class);
-
     public static final HotSpotForeignCallDescriptor MONTGOMERY_MULTIPLY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class, Word.class);
 
     public static final HotSpotForeignCallDescriptor MONTGOMERY_SQUARE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomerySquare", void.class, Word.class, Word.class, int.class, long.class, Word.class);
-
-    public static final HotSpotForeignCallDescriptor SQUARE_TO_LEN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
-                    "implSquareToLen", void.class, Word.class, int.class, Word.class, int.class);
 
     public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "md5ImplCompress", void.class, Word.class,
                     Object.class);
@@ -278,7 +268,14 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
                     "_electronicCodeBook_decryptAESCrypt", int.class,
                     WordBase.class, WordBase.class, WordBase.class, int.class);
 
-    public static final HotSpotForeignCallDescriptor CONTINUATION_DO_YIELD = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "_cont_doYield", int.class);
+    public static final HotSpotForeignCallDescriptor GALOIS_COUNTER_MODE_CRYPT = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "_galoisCounterMode_AESCrypt", int.class,
+                    WordBase.class, int.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class, WordBase.class);
+
+    public static final HotSpotForeignCallDescriptor POLY1305_PROCESSBLOCKS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "_poly1305_processBlocks", int.class,
+                    WordBase.class, int.class, WordBase.class, WordBase.class);
+
+    public static final HotSpotForeignCallDescriptor CHACHA20Block = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "_chacha20Block", int.class,
+                    WordBase.class, WordBase.class);
 
     /**
      * @see VMErrorNode
@@ -427,6 +424,16 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
             }
         }
 
+        // Only allocatable registers must be described as killed. This works around an issue where
+        // the set of allocatable registers is different than the registers actually used for
+        // allocation by linear scan on AVX512.
+        RegisterAllocationConfig registerAllocationConfig = newRegisterAllocationConfig(frameMap.getRegisterConfig(), null);
+        EconomicSet<Register> allocatableRegisters = EconomicSet.create();
+        for (Register r : registerAllocationConfig.getAllocatableRegisters()) {
+            allocatableRegisters.add(r);
+        }
+        destroyedRegisters.retainAll(allocatableRegisters);
+
         stub.initDestroyedCallerRegisters(destroyedRegisters);
 
         MapCursor<LIRFrameState, SaveRegistersOp> cursor = calleeSaveInfo.getEntries();
@@ -447,12 +454,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @Override
     public SuitesProvider getSuites() {
         return getProviders().getSuites();
-    }
-
-    protected void profileInstructions(LIR lir, CompilationResultBuilder crb) {
-        if (HotSpotBackend.Options.ASMInstructionProfiling.getValue(lir.getOptions()) != null) {
-            HotSpotInstructionProfiling.countInstructions(lir, crb.asm);
-        }
     }
 
     @Override

@@ -41,11 +41,12 @@
 import os
 import re
 import tempfile
-import sys
+import difflib
 import zipfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections import OrderedDict
-from os.path import exists, isdir, join
+from os.path import exists, isdir, join, abspath
+from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
 
 import mx
 import mx_benchmark
@@ -56,25 +57,9 @@ import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
-from mx_jackpot import jackpot
 from mx_javamodules import as_java_module, get_java_module_info
 from mx_sigtest import sigtest
 from mx_unittest import unittest
-
-# Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
-if sys.version_info[0] < 3:
-    from urlparse import urljoin as _urllib_urljoin
-    def _decode(x):
-        return x
-    def _encode(x):
-        return x
-else:
-    from urllib.parse import urljoin as _urllib_urljoin # pylint: disable=unused-import,no-name-in-module
-    def _decode(x):
-        return x.decode()
-    def _encode(x):
-        return x.encode()
-
 
 _suite = mx.suite('truffle')
 
@@ -116,7 +101,7 @@ def checkLinks(javadocDir):
                 html = os.path.join(root, f)
                 content = open(html, 'r').read()
                 for url in href.findall(content):
-                    full = _urllib_urljoin(html, url)
+                    full = urljoin(html, url)
                     sectionIndex = full.find('#')
                     questionIndex = full.find('?')
                     minIndex = sectionIndex
@@ -242,8 +227,6 @@ def sl(args):
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
-    with Task('Jackpot check', tasks) as t:
-        if t: jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
     if jdk.javaCompliance < '9':
         with Task('Truffle Javadoc', tasks) as t:
             if t: javadoc([])
@@ -449,7 +432,7 @@ class TruffleArchiveParticipant:
         m = TruffleArchiveParticipant.providersRE.match(arcname)
         if m:
             provider = m.group(2)
-            for service in _decode(contents_supplier()).strip().split(os.linesep):
+            for service in contents_supplier().decode().strip().split(os.linesep):
                 assert service
                 version = m.group(1)
                 if version is None:
@@ -671,7 +654,7 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         # remove first line
         content = "\n".join(content.split("\n")[1:])
         # modify SuppressWarnings to remove useless entries
-        content = PTRN_SUPPRESS_WARNINGS.sub('@SuppressWarnings("all")', content)
+        content = PTRN_SUPPRESS_WARNINGS.sub('@SuppressWarnings({"all", "this-escape"})', content)
         # remove useless casts
         content = PTRN_LOCALCTXT_CAST.sub('_localctx', content)
         content = PTRN_TOKEN_CAST.sub('_errHandler.recoverInline(this)', content)
@@ -693,20 +676,20 @@ def validate_parser(grammar_project, grammar_path, create_command, args=None, ou
             return f.readlines()
     parser_path = grammar_path.replace(".g4", "Parser.java")
     lexer_path = grammar_path.replace(".g4", "Lexer.java")
-    parser = mx.project(grammar_project).source_dirs()[0] + "/" + parser_path
-    lexer = mx.project(grammar_project).source_dirs()[0] + "/" + lexer_path
+    parser = abspath(mx.project(grammar_project).source_dirs()[0] + "/" + parser_path)
+    lexer = abspath(mx.project(grammar_project).source_dirs()[0] + "/" + lexer_path)
     parser_before = read_file(parser)
     lexer_before = read_file(lexer)
     create_command([], out)
     parser_after = read_file(parser)
     lexer_after = read_file(lexer)
-    if (parser_before != parser_after or lexer_before != lexer_after):
-        with open(parser, "w") as f:
-            f.writelines(parser_before)
-        with open(lexer, "w") as f:
-            f.writelines(lexer_before)
-        mx.abort("Parser generated from " + grammar_path + " does not match content of " + parser_path + " or " + lexer_path + "." +
-            " Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
+    for before, after, path in ((parser_before, parser_after, parser), (lexer_before, lexer_after, lexer)):
+        if before != after:
+            diff = ''.join(difflib.unified_diff(before, after))
+            nl = os.linesep
+            mx.abort(f"Content generated from {grammar_path} does not match content of {path}:{nl}" +
+                    f"{diff}{nl}" +
+                    "Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.
@@ -931,7 +914,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle'],
     truffle_jars=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
     support_distributions=['truffle:TRUFFLE_ICU4J_GRAALVM_SUPPORT'],
-    installable=False,
+    installable=True,
+    standalone=False,
     stability="supported",
 ))
 

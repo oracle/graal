@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.stack;
 
-import static com.oracle.svm.core.util.VMError.unimplemented;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
@@ -331,7 +331,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
          * Substrate VM currently does not store a mapping from deoptimization information back to
          * ResolvedJavaMethod.
          */
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

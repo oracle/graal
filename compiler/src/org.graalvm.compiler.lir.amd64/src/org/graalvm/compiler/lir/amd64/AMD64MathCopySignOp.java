@@ -84,7 +84,7 @@ public class AMD64MathCopySignOp extends AMD64LIRInstruction {
             masm.movdq(scratchXMMReg, scratchGPReg);
             VexRVMIOp.VPTERNLOGQ.emit(masm, AVXSize.XMM, resultReg, signReg, scratchXMMReg, 0xE4);
         } else {
-            throw GraalError.shouldNotReachHere("unsupported kind for Math.copySign");
+            throw GraalError.shouldNotReachHere("unsupported kind for Math.copySign"); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

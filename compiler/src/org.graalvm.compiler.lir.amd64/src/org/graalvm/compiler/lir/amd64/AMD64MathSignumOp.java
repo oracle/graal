@@ -60,25 +60,25 @@ public class AMD64MathSignumOp extends AMD64LIRInstruction {
         this.scratch = tool.newVariable(LIRKind.value(input.getPlatformKind()));
     }
 
-    private ArrayDataPointerConstant floatOne = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant floatOne = pointerConstant(8, new int[]{
             // @formatter:off
             0x3F800000, 0x00000000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant floatSignMask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant floatSignMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x80000000, 0x80000000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant doubleOne = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant doubleOne = pointerConstant(8, new int[]{
             // @formatter:off
             0x00000000, 0x3FF00000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant doubleSignMask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant doubleSignMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x80000000
             // @formatter:on
@@ -112,7 +112,7 @@ public class AMD64MathSignumOp extends AMD64LIRInstruction {
             masm.xorpd(resultReg, recordExternalAddress(crb, doubleSignMask));
             masm.bind(done);
         } else {
-            throw GraalError.shouldNotReachHere("unsupported kind for Math.signum");
+            throw GraalError.shouldNotReachHere("unsupported kind for Math.signum"); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

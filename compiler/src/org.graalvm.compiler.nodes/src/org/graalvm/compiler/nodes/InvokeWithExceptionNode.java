@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -216,17 +216,20 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
      * Replaces this InvokeWithExceptionNode with a normal InvokeNode. Kills the exception dispatch
      * code.
      */
+    @SuppressWarnings("try")
     public InvokeNode replaceWithInvoke() {
-        InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, bci, stamp, this.getKilledLocationIdentity()));
-        newInvoke.setStateAfter(stateAfter);
-        newInvoke.setStateDuring(stateDuring);
-        newInvoke.setInlineControl(inlineControl);
-        AbstractBeginNode oldException = this.exceptionEdge;
-        graph().replaceSplitWithFixed(this, newInvoke, this.next());
-        GraphUtil.killCFG(oldException);
-        // copy across any original node source position
-        newInvoke.setNodeSourcePosition(getNodeSourcePosition());
-        return newInvoke;
+        try (InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph().getInliningLog(), this)) {
+            InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, bci, stamp, this.getKilledLocationIdentity()));
+            newInvoke.setStateAfter(stateAfter);
+            newInvoke.setStateDuring(stateDuring);
+            newInvoke.setInlineControl(inlineControl);
+            AbstractBeginNode oldException = this.exceptionEdge;
+            graph().replaceSplitWithFixed(this, newInvoke, this.next());
+            GraphUtil.killCFG(oldException);
+            // copy across any original node source position
+            newInvoke.setNodeSourcePosition(getNodeSourcePosition());
+            return newInvoke;
+        }
     }
 
     @Override

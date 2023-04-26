@@ -187,11 +187,12 @@ meth public org.graalvm.polyglot.Context$Builder options(java.util.Map<java.lang
 meth public org.graalvm.polyglot.Context$Builder out(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder processHandler(org.graalvm.polyglot.io.ProcessHandler)
 meth public org.graalvm.polyglot.Context$Builder resourceLimits(org.graalvm.polyglot.ResourceLimits)
+meth public org.graalvm.polyglot.Context$Builder sandbox(org.graalvm.polyglot.SandboxPolicy)
 meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 meth public org.graalvm.polyglot.Context$Builder useSystemExit(boolean)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sharedEngine,useSystemExit,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowInnerContextOptions,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,ioAccess,messageTransport,options,out,permittedLanguages,polyglotAccess,processHandler,resourceLimits,sandboxPolicy,sharedEngine,useSystemExit,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -224,10 +225,11 @@ meth public org.graalvm.polyglot.Engine$Builder logHandler(java.util.logging.Han
 meth public org.graalvm.polyglot.Engine$Builder option(java.lang.String,java.lang.String)
 meth public org.graalvm.polyglot.Engine$Builder options(java.util.Map<java.lang.String,java.lang.String>)
 meth public org.graalvm.polyglot.Engine$Builder out(java.io.OutputStream)
+meth public org.graalvm.polyglot.Engine$Builder sandbox(org.graalvm.polyglot.SandboxPolicy)
 meth public org.graalvm.polyglot.Engine$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Engine$Builder useSystemProperties(boolean)
 supr java.lang.Object
-hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,permittedLanguages,useSystemProperties
+hfds allowExperimentalOptions,boundEngine,customLogHandler,err,in,messageTransport,options,out,permittedLanguages,sandboxPolicy,useSystemProperties
 
 CLSS public final org.graalvm.polyglot.EnvironmentAccess
 fld public final static org.graalvm.polyglot.EnvironmentAccess INHERIT
@@ -238,9 +240,12 @@ hfds name
 
 CLSS public final org.graalvm.polyglot.HostAccess
 fld public final static org.graalvm.polyglot.HostAccess ALL
+fld public final static org.graalvm.polyglot.HostAccess CONSTRAINED
 fld public final static org.graalvm.polyglot.HostAccess EXPLICIT
+fld public final static org.graalvm.polyglot.HostAccess ISOLATED
 fld public final static org.graalvm.polyglot.HostAccess NONE
 fld public final static org.graalvm.polyglot.HostAccess SCOPED
+fld public final static org.graalvm.polyglot.HostAccess UNTRUSTED
 innr public abstract interface static !annotation DisableMethodScoping
 innr public abstract interface static !annotation Export
 innr public abstract interface static !annotation Implementable
@@ -253,7 +258,7 @@ meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder(org.graalvm.polyglot.HostAccess)
 supr java.lang.Object
-hfds EMPTY,accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,impl,implementableAnnotations,implementableTypes,members,methodScopingDefault,name,targetMappings
+hfds EMPTY,accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,impl,implementableAnnotations,implementableTypes,members,methodScopingDefault,name,targetMappings
 
 CLSS public final org.graalvm.polyglot.HostAccess$Builder
  outer org.graalvm.polyglot.HostAccess
@@ -268,6 +273,7 @@ meth public org.graalvm.polyglot.HostAccess$Builder allowAccessInheritance(boole
 meth public org.graalvm.polyglot.HostAccess$Builder allowAllClassImplementations(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowAllImplementations(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowArrayAccess(boolean)
+meth public org.graalvm.polyglot.HostAccess$Builder allowBigIntegerNumberAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowBufferAccess(boolean)
 meth public org.graalvm.polyglot.HostAccess$Builder allowImplementations(java.lang.Class<?>)
 meth public org.graalvm.polyglot.HostAccess$Builder allowImplementationsAnnotatedBy(java.lang.Class<? extends java.lang.annotation.Annotation>)
@@ -282,7 +288,7 @@ meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScoping(java.la
 meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScopingAnnotatedBy(java.lang.Class<? extends java.lang.annotation.Annotation>)
 meth public org.graalvm.polyglot.HostAccess$Builder methodScoping(boolean)
 supr java.lang.Object
-hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,implementableTypes,implementationAnnotations,members,methodScopingDefault,name,targetMappings
+hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,implementableTypes,implementationAnnotations,members,methodScopingDefault,name,targetMappings
 
 CLSS public abstract interface static !annotation org.graalvm.polyglot.HostAccess$DisableMethodScoping
  outer org.graalvm.polyglot.HostAccess
@@ -428,6 +434,17 @@ meth public org.graalvm.polyglot.ResourceLimits$Builder statementLimit(long,java
 supr java.lang.Object
 hfds onLimit,statementLimit,statementLimitSourceFilter
 
+CLSS public final !enum org.graalvm.polyglot.SandboxPolicy
+fld public final static org.graalvm.polyglot.SandboxPolicy CONSTRAINED
+fld public final static org.graalvm.polyglot.SandboxPolicy ISOLATED
+fld public final static org.graalvm.polyglot.SandboxPolicy TRUSTED
+fld public final static org.graalvm.polyglot.SandboxPolicy UNTRUSTED
+meth public boolean isStricterOrEqual(org.graalvm.polyglot.SandboxPolicy)
+meth public boolean isStricterThan(org.graalvm.polyglot.SandboxPolicy)
+meth public static org.graalvm.polyglot.SandboxPolicy valueOf(java.lang.String)
+meth public static org.graalvm.polyglot.SandboxPolicy[] values()
+supr java.lang.Enum<org.graalvm.polyglot.SandboxPolicy>
+
 CLSS public final org.graalvm.polyglot.Source
 innr public Builder
 meth public boolean equals(java.lang.Object)
@@ -532,6 +549,7 @@ meth public boolean canExecute()
 meth public boolean canInstantiate()
 meth public boolean canInvokeMember(java.lang.String)
 meth public boolean equals(java.lang.Object)
+meth public boolean fitsInBigInteger()
 meth public boolean fitsInByte()
 meth public boolean fitsInDouble()
 meth public boolean fitsInFloat()
@@ -581,6 +599,7 @@ meth public java.lang.String asString()
 meth public java.lang.String getMetaQualifiedName()
 meth public java.lang.String getMetaSimpleName()
 meth public java.lang.String toString()
+meth public java.math.BigInteger asBigInteger()
 meth public java.time.Duration asDuration()
 meth public java.time.Instant asInstant()
 meth public java.time.LocalDate asDate()

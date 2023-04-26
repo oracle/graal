@@ -41,8 +41,8 @@ local visualizer = import 'visualizer/ci/ci.jsonnet';
 local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
 
 {
-  # Ensure that entries in common.jsonnet can be resolved.
-  _checkCommon: (import 'ci/ci_common/common.jsonnet'),
+  # Ensure that non-hidden entries in ci/common.jsonnet and ci/ci_common/common.jsonnet can be resolved.
+  assert std.length(std.toString(import 'ci/ci_common/common.jsonnet')) > 0,
   ci_resources:: (import 'ci/ci_common/ci-resources.libsonnet'),
   overlay: graal_common.ci.overlay,
   specVersion: "3",

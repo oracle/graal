@@ -44,6 +44,7 @@ import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Node.NodeInsertionStackTrace;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -464,37 +465,51 @@ public class Graph {
             return node;
         }
         if (node.getNodeClass().valueNumberable()) {
-            return uniqueHelper(node);
+            return uniqueHelper(node, null);
         }
         return add(node);
     }
 
     public <T extends Node> T addOrUniqueWithInputs(T node) {
+        return addOrUniqueWithInputs(node, null);
+    }
+
+    public <T extends Node> T addOrUniqueWithInputs(T node, NodePredicate predicate) {
         if (node.isAlive()) {
             assert node.graph() == this;
             return node;
         } else {
             assert node.isUnregistered();
-            addInputs(node);
+            addInputs(node, predicate);
             if (node.getNodeClass().valueNumberable()) {
-                return uniqueHelper(node);
+                return uniqueHelper(node, predicate);
             }
             return add(node);
         }
     }
 
     public <T extends Node> T addWithoutUniqueWithInputs(T node) {
-        addInputs(node);
+        addInputs(node, null);
         return addHelper(node);
     }
 
     private final class AddInputsFilter extends Node.EdgeVisitor {
 
+        private final NodePredicate predicate;
+
+        AddInputsFilter(NodePredicate predicate) {
+            this.predicate = predicate;
+        }
+
+        AddInputsFilter() {
+            this(null);
+        }
+
         @Override
         public Node apply(Node self, Node input) {
             if (!input.isAlive()) {
                 assert !input.isDeleted();
-                return addOrUniqueWithInputs(input);
+                return addOrUniqueWithInputs(input, predicate);
             } else {
                 return input;
             }
@@ -504,8 +519,12 @@ public class Graph {
 
     private AddInputsFilter addInputsFilter = new AddInputsFilter();
 
-    private <T extends Node> void addInputs(T node) {
-        node.applyInputs(addInputsFilter);
+    private <T extends Node> void addInputs(T node, NodePredicate predicate) {
+        if (predicate == null) {
+            node.applyInputs(addInputsFilter);
+        } else {
+            node.applyInputs(new AddInputsFilter(predicate));
+        }
     }
 
     private <T extends Node> T addHelper(T node) {
@@ -736,12 +755,12 @@ public class Graph {
      * @return a node similar to {@code node} if one exists, otherwise {@code node}
      */
     public <T extends Node & ValueNumberable> T unique(T node) {
-        return uniqueHelper(node);
+        return uniqueHelper(node, null);
     }
 
-    <T extends Node> T uniqueHelper(T node) {
+    <T extends Node> T uniqueHelper(T node, NodePredicate predicate) {
         assert node.getNodeClass().valueNumberable();
-        T other = this.findDuplicate(node);
+        T other = this.findDuplicate(node, predicate);
         if (other != null) {
             if (other.getNodeSourcePosition() == null) {
                 other.setNodeSourcePosition(node.getNodeSourcePosition());
@@ -802,18 +821,23 @@ public class Graph {
         return result;
     }
 
-    /**
-     * Returns a possible duplicate for the given node in the graph or {@code null} if no such
-     * duplicate exists.
-     */
     @SuppressWarnings("unchecked")
     public <T extends Node> T findDuplicate(T node) {
+        return findDuplicate(node, null);
+    }
+
+    /**
+     * Returns a possible duplicate for the given node in the graph or {@code null} if no such
+     * duplicate exists. The predicate parameter is used to filter potential results.
+     */
+    @SuppressWarnings("unchecked")
+    public <T extends Node> T findDuplicate(T node, NodePredicate predicate) {
         NodeClass<?> nodeClass = node.getNodeClass();
         assert nodeClass.valueNumberable();
         if (nodeClass.isLeafNode()) {
             // Leaf node: look up in cache
             Node cachedNode = findNodeInCache(node);
-            if (cachedNode != null && cachedNode != node) {
+            if (cachedNode != null && cachedNode != node && (predicate == null || predicate.apply(cachedNode))) {
                 return (T) cachedNode;
             } else {
                 return null;
@@ -840,7 +864,7 @@ public class Graph {
             }
             if (minCountNode != null) {
                 for (Node usage : minCountNode.usages()) {
-                    if (usage != node && nodeClass == usage.getNodeClass() && node.valueEquals(usage) && nodeClass.equalInputs(node, usage) &&
+                    if (usage != node && nodeClass == usage.getNodeClass() && (predicate == null || predicate.apply(usage)) && node.valueEquals(usage) && nodeClass.equalInputs(node, usage) &&
                                     nodeClass.equalSuccessors(node, usage)) {
                         return (T) usage;
                     }
@@ -910,13 +934,7 @@ public class Graph {
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
         final int index = mark == null ? 0 : mark.getValue();
-        return new NodeIterable<>() {
-
-            @Override
-            public Iterator<Node> iterator() {
-                return new GraphNodeIterator(Graph.this, index);
-            }
-        };
+        return () -> new GraphNodeIterator(Graph.this, index);
     }
 
     /**
@@ -1153,7 +1171,7 @@ public class Graph {
         if (currentNodeSourcePosition != null && trackNodeSourcePosition()) {
             node.setNodeSourcePosition(currentNodeSourcePosition);
         }
-        if (TrackNodeInsertion.getValue(getOptions())) {
+        if (TrackNodeInsertion.getValue(getOptions()) && node.getInsertionPosition() == null) {
             node.setInsertionPosition(new NodeInsertionStackTrace());
         }
 

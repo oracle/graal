@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,9 @@
         return ret;                                                                                                                                  \
     }                                                                                                                                                \
                                                                                                                                                      \
-    EXPORT void store_##name(type *arr, uint32_t idx, type value) { arr[idx] = value; }                                                              \
+    EXPORT void store_##name(type *arr, uint32_t idx, type value) {                                                                                  \
+        arr[idx] = value;                                                                                                                            \
+    }                                                                                                                                                \
                                                                                                                                                      \
     EXPORT char *null_array_##name(type *arr) {                                                                                                      \
         if (arr == NULL) {                                                                                                                           \

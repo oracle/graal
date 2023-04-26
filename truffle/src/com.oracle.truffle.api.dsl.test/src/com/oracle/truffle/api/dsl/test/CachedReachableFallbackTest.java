@@ -304,6 +304,7 @@ public class CachedReachableFallbackTest {
 
         abstract Object execute(Object other);
 
+        @SuppressWarnings("truffle-assumption")
         @Specialization(guards = {"guardNode1.execute(obj)", "notTwo(obj)"}, rewriteOn = RuntimeException.class, assumptions = "createAssumption()", limit = "1")
         protected Object s1(int obj,
                         @Cached(value = "create(1)") NotGuardNode guardNode1) {

@@ -1116,4 +1116,8 @@ public final class EspressoContext {
             throw EspressoError.shouldNotReachHere();
         }
     }
+
+    public long nextThreadId() {
+        return espressoEnv.getThreadRegistry().nextThreadId();
+    }
 }

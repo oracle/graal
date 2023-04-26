@@ -28,7 +28,7 @@
 
 from __future__ import print_function
 import os
-from os.path import join, exists, getmtime, basename, dirname, isdir
+from os.path import join, exists, basename, dirname, isdir
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
@@ -38,13 +38,13 @@ import subprocess
 import tempfile
 import csv
 
+import mx_java_benchmarks
 import mx_truffle
 import mx_sdk_vm
 
 import mx
 import mx_gate
-from mx_gate import Task, Tags
-from mx import SafeDirectoryUpdater
+from mx_gate import Task
 
 import mx_unittest
 from mx_unittest import unittest, parse_split_args
@@ -55,7 +55,7 @@ from mx_renamegraalpackages import renamegraalpackages
 import mx_sdk_vm_impl
 
 import mx_benchmark
-import mx_graal_benchmark
+import mx_graal_benchmark #pylint: disable=unused-import
 import mx_graal_tools #pylint: disable=unused-import
 
 import argparse
@@ -83,48 +83,17 @@ jdk = mx.get_jdk(tag='default')
 #: 3-tuple (major, minor, build) of JVMCI version, if any, denoted by `jdk`
 _jdk_jvmci_version = None
 
-if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '11':
-    mx.abort('Graal requires JDK11 or later, got ' + str(jdk) +
+if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '17':
+    mx.abort('Graal requires JDK17 or later, got ' + str(jdk) +
              '. This check can be bypassed by setting env var JDK_VERSION_CHECK=ignore')
 
 def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
-
-    This runs a version of org.graalvm.compiler.hotspot.JVMCIVersionCheck that is "moved"
-    to the unnamed package. Without this, on JDK 10+, the class in the jdk.internal.vm.compiler
-    module will be run instead of the version on the class path.
     """
-    unqualified_name = 'JVMCIVersionCheck'
-    qualified_name = 'org.graalvm.compiler.hotspot.' + unqualified_name
-    binDir = mx.ensure_dir_exists(join(_suite.get_output_root(), '.jdk' + str(jdk.version)))
-
-    if isinstance(_suite, mx.BinarySuite):
-        dists = [d for d in _suite.dists if d.name == 'GRAAL_HOTSPOT']
-        assert len(dists) == 1, 'could not find GRAAL_HOTSPOT distribution'
-        d = dists[0]
-        assert exists(d.sourcesPath), 'missing expected file: ' + d.sourcesPath
-        source_timestamp = getmtime(d.sourcesPath)
-        def source_supplier():
-            with zipfile.ZipFile(d.sourcesPath, 'r') as zf:
-                return zf.read(qualified_name.replace('.', '/') + '.java')
-    else:
-        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', qualified_name.replace('.', '/') + '.java')
-        source_timestamp = getmtime(source_path)
-        def source_supplier():
-            with open(source_path, 'r') as fp:
-                return fp.read()
-
-    unqualified_class_file = join(binDir, unqualified_name + '.class')
-    if not exists(unqualified_class_file) or getmtime(unqualified_class_file) < source_timestamp:
-        with SafeDirectoryUpdater(binDir, create=True) as sdu:
-            unqualified_source_path = join(sdu.directory, unqualified_name + '.java')
-            with open(unqualified_source_path, 'w') as fp:
-                fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
-            mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
-
+    source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
     out = mx.OutputCapture()
-    mx.run([jdk.java, '-cp', binDir, unqualified_name], out=out)
+    mx.run([jdk.java, source_path], out=out)
     global _jdk_jvmci_version
     if out.data:
         _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
@@ -348,10 +317,12 @@ class GraalTags:
     doc = ['javadoc']
     phaseplan_fuzz_jtt_tests = ['phaseplan-fuzz-jtt-tests']
 
-def _remove_empty_entries(a):
+def _remove_empty_entries(a, filter_gcs=False):
     """Removes empty entries. Return value is always a list."""
     if not a:
         return []
+    if filter_gcs:
+        a = [x for x in a if not x.endswith('GC') or not x.startswith('-XX:+Use')]
     return [x for x in a if x]
 
 def _compiler_error_options(default_compilation_failure_action='ExitVM', vmargs=None, prefix='-Dgraal.'):
@@ -391,16 +362,12 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
     if set_start_heap_size:
         vmargs += ['-Xms2g']
-    vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
+    vmargs += ['-XX:-UseCompressedOops', '-Djava.net.preferIPv4Stack=true'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=force_serial_gc)
     args = ['-n', str(iterations), '--preserve']
     if threads is not None:
         args += ['-t', str(threads)]
-    out = mx.TeeOutputCapture(mx.OutputCapture())
-    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
-    if exit_code != 0:
-        mx.log(out)
-        mx.abort("Gate for dacapo benchmark '{}' failed!".format(name))
-    return exit_code, suite, results
+    return _run_benchmark('dacapo', name, args, vmargs)
+
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
@@ -409,61 +376,28 @@ def jdk_includes_corba(jdk):
 def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
-
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments, filter_gcs=True)
     args = ['-n', str(iterations), '--preserve']
+    return _run_benchmark('scala-dacapo', name, args, vmargs)
+
+
+def _gate_renaissance(name, iterations, extraVMarguments=None):
+    if iterations == -1:
+        return
+    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
+    args = ['-r', str(iterations)]
+    return _run_benchmark('renaissance', name, args, vmargs)
+
+
+def _run_benchmark(suite, name, args, vmargs):
     out = mx.TeeOutputCapture(mx.OutputCapture())
-    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["scala-dacapo:{}".format(name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
+    exit_code, suite, results = mx_benchmark.gate_mx_benchmark(["{}:{}".format(suite, name), "--tracker=none", "--"] + vmargs + ["--"] + args, out=out, err=out, nonZeroIsFatal=False)
     if exit_code != 0:
         mx.log(out)
-        mx.abort("Gate for scala-dacapo benchmark '{}' failed!".format(name))
+        mx.abort("Gate for {} benchmark '{}' failed!".format(suite, name))
     return exit_code, suite, results
 
-def get_catch_files_and_common_path():
-    common_path = join(dirname(_suite.dir), 'common.json')
-    if not exists(common_path):
-        mx.abort('Required file does not exist: {}'.format(common_path))
-    with open(common_path) as common_file:
-        common_cfg = json.load(common_file)
-    catch_files = common_cfg.get('catch_files')
-    if catch_files is None:
-        mx.abort('Could not find catch_files attribute in {}'.format(common_path))
-    return catch_files, common_path
-
-def find_field_value(source_path, field_name):
-    decl = field_name + ' = "'
-    with open(source_path) as fp:
-        for line in fp.readlines():
-            index = line.find(decl)
-            if index != -1:
-                start_index = index + len(decl)
-                end_index = line.find('"', start_index)
-                return line[start_index:end_index]
-    mx.abort('Could not find value of ' + field_name + ' in ' + source_path)
-
-def _check_catch_files():
-    """
-    Verifies that there is a "catch_files" array in common.json at the root of
-    the repository containing this suite and that the array contains elements
-    matching DebugContext.DUMP_FILE_MESSAGE_REGEXP and
-    StandardPathUtilitiesProvider.DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP.
-    """
-    catch_files_fields = (
-        ('DebugContext', 'DUMP_FILE_MESSAGE_REGEXP'),
-        ('StandardPathUtilitiesProvider', 'DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP')
-    )
-
-    catch_files, common_path = get_catch_files_and_common_path()
-    for class_name, field_name in catch_files_fields:
-        source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.debug', 'src', 'org', 'graalvm', 'compiler', 'debug', class_name + '.java')
-        regexp = find_field_value(source_path, field_name).replace('(?<', '(?P<') # Convert from Java style regexp to Python style
-        if regexp not in catch_files:
-            mx.abort('Could not find catch_files entry in {} matching "{}"'.format(common_path, regexp))
-
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
-    with Task('CheckCatchFiles', tasks, tags=[Tags.style]) as t:
-        if t: _check_catch_files()
-
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 
@@ -525,55 +459,110 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
         if t:
             phaseplan_fuzz_jtt_tests([], extraVMarguments=_remove_empty_entries(extraVMarguments), extraUnitTestArguments=_remove_empty_entries(extraUnitTestArguments))
 
-def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
+def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task_report_component='compiler'):
     # run DaCapo benchmarks #
     #########################
 
     # DaCapo benchmarks that can run with system assertions enabled but
     # java.util.Logging assertions disabled because the the DaCapo harness
     # misuses the API. The same harness is used by Scala DaCapo.
-    dacapo_esa = ['-esa', '-da:java.util.logging...']
+    enable_assertions = ['-esa']
+    dacapo_esa = enable_assertions + ['-da:java.util.logging...']
 
     # A few iterations to increase the chance of catching compilation errors
     default_iterations = 2
+    daily_weekly_jobs_ratio = 2
+    scala_daily_scaling_factor = 4
+    scala_dacapo_daily_scaling_factor = 10
+    default_iterations_reduction = 0.5
+    scala_weekly_scaling_factor = scala_daily_scaling_factor * daily_weekly_jobs_ratio
+    scala_dacapo_weekly_scaling_factor = scala_dacapo_daily_scaling_factor * daily_weekly_jobs_ratio
 
     bmSuiteArgs = ["--jvm", "server"]
     benchVmArgs = bmSuiteArgs + _remove_empty_entries(extraVMarguments)
 
-    dacapo_suite = mx_graal_benchmark.DaCapoBenchmarkSuite()
+    dacapo_suite = mx_java_benchmarks.DaCapoBenchmarkSuite()
     dacapo_gate_iterations = {
         k: default_iterations for k, v in dacapo_suite.daCapoIterations().items() if v > 0
     }
     dacapo_gate_iterations.update({'fop': 8})
-    mx.warn("Disabling gate for dacapo:tradesoap (GR-33605)")
-    dacapo_gate_iterations.update({'tradesoap': -1})
     for name in dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = dacapo_gate_iterations.get(name, -1)
-        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=True) as t:
+        with Task(prefix + 'DaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t: _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
 
+    with mx_gate.Task('Dacapo benchmark daily workload', tasks, tags=['dacapo_daily'], report=task_report_component) as t:
+        if t:
+            for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+                iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
+                for i in range(default_iterations * scala_daily_scaling_factor):
+                    _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+
+    with mx_gate.Task('Dacapo benchmark weekly workload', tasks, tags=['dacapo_weekly'], report=task_report_component) as t:
+        if t:
+            for name in dacapo_suite.benchmarkList(bmSuiteArgs):
+                iterations = int(dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
+                for i in range(default_iterations * scala_weekly_scaling_factor):
+                    _gate_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+
     # ensure we can also run on C2
-    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_C2:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t:
             # Strip JVMCI args from C2 execution which uses -XX:-EnableJVMCI
             c2BenchVmArgs = [a for a in benchVmArgs if 'JVMCI' not in a]
             _gate_dacapo('fop', 1, ['--jvm-config', 'default'] + c2BenchVmArgs)
 
+    # ensure we can run with --enable-preview
+    with Task(prefix + 'DaCapo_enable-preview:fop', tasks, tags=GraalTags.test, report=task_report_component) as t:
+        if t:
+            _gate_dacapo('fop', 8, ['--enable-preview', '-Dgraal.CompilationFailureAction=ExitVM'])
+
     # run Scala DaCapo benchmarks #
     ###############################
-    scala_dacapo_suite = mx_graal_benchmark.ScalaDaCapoBenchmarkSuite()
+    scala_dacapo_suite = mx_java_benchmarks.ScalaDaCapoBenchmarkSuite()
     scala_dacapo_gate_iterations = {
         k: default_iterations for k, v in scala_dacapo_suite.daCapoIterations().items() if v > 0
     }
     for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
         iterations = scala_dacapo_gate_iterations.get(name, -1)
-        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=True) as t:
+        with Task(prefix + 'ScalaDaCapo:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
             if t: _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+
+    with mx_gate.Task('ScalaDacapo benchmark daily workload', tasks, tags=['scala_dacapo_daily'], report=task_report_component) as t:
+        if t:
+            for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
+                iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
+                for i in range(default_iterations * scala_dacapo_daily_scaling_factor):
+                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+
+    with mx_gate.Task('ScalaDacapo benchmark weekly workload', tasks, tags=['scala_dacapo_weekly'], report=task_report_component) as t:
+        if t:
+            for name in scala_dacapo_suite.benchmarkList(bmSuiteArgs):
+                iterations = int(scala_dacapo_suite.daCapoIterations().get(name, -1) * default_iterations_reduction)
+                for i in range(default_iterations * scala_dacapo_weekly_scaling_factor):
+                    _gate_scala_dacapo(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + dacapo_esa)
+
+    # run Renaissance benchmarks #
+    ###############################
+    renaissance_suite = mx_java_benchmarks.RenaissanceBenchmarkSuite()
+    with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
+        if t:
+            for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+                iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
+                for i in range(default_iterations):
+                    _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+
+    with mx_gate.Task('Renaissance benchmark weekly workload', tasks, tags=['renaissance_weekly'], report=task_report_component) as t:
+        if t:
+            for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+                iterations = int(renaissance_suite.renaissanceIterations().get(name, -1) * default_iterations_reduction)
+                for i in range(default_iterations * daily_weekly_jobs_ratio):
+                    _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
 
     # run benchmark with non default setup #
     ########################################
     # ensure -Xbatch still works
-    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_pmd:BatchMode', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', 1, benchVmArgs + ['-Xbatch'])
 
     # Ensure benchmark counters still work but omit this test on
@@ -583,7 +572,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     out = mx.OutputCapture()
     mx.run([jdk.java, '-version'], err=subprocess.STDOUT, out=out)
     if 'fastdebug' not in out.data and '-XX:+UseJVMCINativeLibrary' not in (extraVMarguments or []):
-        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=True) as t:
+        with Task(prefix + 'DaCapo_pmd:BenchmarkCounters', tasks, tags=GraalTags.test, report=task_report_component) as t:
             if t:
                 fd, logFile = tempfile.mkstemp()
                 os.close(fd) # Don't leak file descriptors
@@ -604,12 +593,16 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
                     os.remove(logFile)
 
     # ensure -Xcomp still works
-    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
 
     # ensure -XX:+PreserveFramePointer  still works
-    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=True) as t:
+    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test, report=task_report_component) as t:
         if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
+
+    # stress entry barrier deopt
+    with Task(prefix + 'DaCapo_pmd:DeoptimizeNMethodBarriersALot', tasks, tags=GraalTags.test, report=task_report_component) as t:
+        if t: _gate_dacapo('pmd', default_iterations, benchVmArgs + ['-Xmx256M', '-XX:+UnlockDiagnosticVMOptions', '-XX:+DeoptimizeNMethodBarriersALot'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
 graal_unit_test_runs = [
     UnitTestRun('UnitTests', [], tags=GraalTags.unittest + GraalTags.coverage),
@@ -647,7 +640,7 @@ graal_bootstrap_tests = [
 
 def _graal_gate_runner(args, tasks):
     compiler_gate_runner(['compiler', 'truffle'], graal_unit_test_runs, graal_bootstrap_tests, tasks, args.extra_vm_argument, args.extra_unittest_argument)
-    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument)
+    compiler_gate_benchmark_runner(tasks, args.extra_vm_argument, task_report_component='compiler')
 
 class ShellEscapedStringAction(argparse.Action):
     """Turns a shell-escaped string into a list of arguments.
@@ -987,7 +980,7 @@ def collate_metrics(args):
                 writer.writerow([n] + [str(v) for v in series] + [units[n]])
         mx.log('Collated metrics into ' + collated_filename)
 
-def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None):
+def run_java(args, out=None, err=None, addDefaultArgs=True, command_mapper_hooks=None, jdk=None, **kw_args):
     graaljdk = jdk or get_graaljdk()
     vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
     args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
@@ -998,7 +991,7 @@ def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=No
     with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
         try:
             cmd = mx.apply_command_mapper_hooks(cmd, command_mapper_hooks)
-            return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, timeout=timeout, cwd=cwd, env=env)
+            return mx.run(cmd, out=u.out, err=u.err, **kw_args)
         finally:
             # Collate AggratedMetricsFile
             for a in vm_args:

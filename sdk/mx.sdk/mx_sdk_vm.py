@@ -60,6 +60,11 @@ from argparse import ArgumentParser
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
+# This can be incremented if a new GraalVM release needs to be built on exactly the same JDK as a previous GraalVM release.
+# It will be appended after a dot to the JDK build number an appear in the java.vendor.version.
+# This should be brought back down to 1 when the JDK version is updated (feature, interim, patch, or even build, see java.lang.Runtime.Version).
+release_build = '1'
+
 _suite = mx.suite('sdk')
 _graalvm_components = dict()  # By short_name
 _graalvm_components_by_name = dict()
@@ -149,6 +154,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         :param list[str] | None extra_jvm_args
         :param str main_module: Specifies the main module. Mandatory if use_modules is not None
+        :param bool link_at_build_time
         :param list[str] | None option_vars
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
@@ -239,6 +245,7 @@ class GraalVmComponent(object):
                  installable=None,
                  post_install_msg=None,
                  installable_id=None,
+                 standalone=None,
                  dependencies=None,
                  supported=None,
                  early_adopter=False,
@@ -273,6 +280,7 @@ class GraalVmComponent(object):
         :param int priority: priority with a higher value means higher priority
         :type installable: bool
         :type installable_id: str
+        :type standalone: bool
         :type post_install_msg: str
         :type stability: str | None
         :type extra_installable_qualifiers: list[str] | None
@@ -305,6 +313,9 @@ class GraalVmComponent(object):
         if installable is None:
             installable = isinstance(self, GraalVmLanguage)
         self.installable = installable
+        if standalone is None:
+            standalone = installable
+        self.standalone = standalone
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
@@ -1052,6 +1063,33 @@ def format_release_file(release_dict, skip_quoting=None):
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
 
 
+def ee_implementor(jdk_home=base_jdk().home):
+    """
+    Returns True if the value of the `IMPLEMENTOR` field of the `release` file of a given JDK is `Oracle Corporation`
+    :type jdk_home: str | None
+    :rtype bool
+    """
+    release_file_path = join(jdk_home, 'release')
+    release_dict = parse_release_file(release_file_path)
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        return implementor == 'Oracle Corporation'
+    else:
+        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
+        return False
+
+
+def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
+    """
+    Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
+    :type jdk_home: str
+    :type ce_edition: list[str] | None
+    :type oracle_edition: list[str] | None
+    :rtype: list[str] | None
+    """
+    return oracle_edition if ee_implementor(jdk_home) else ce_edition
+
+
 @mx.command(_suite, 'verify-graalvm-configs')
 def _verify_graalvm_configs(args):
     parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify registered GraalVM configs')
@@ -1080,7 +1118,12 @@ def verify_graalvm_configs(suites=None, start_from=None):
             _env_file = env_file or dist_name
             started = started or _env_file == start_from
 
-            graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=mx_sdk_vm_impl._graalvm_base_name, dist_name=dist_name, jdk_version=mx_sdk_vm_impl._src_jdk_version).upper().replace('-', '_')
+            graalvm_dist_name = '{base_name}{delimiter}{dist_name}_JAVA{jdk_version}'.format(
+                base_name=mx_sdk_vm_impl._graalvm_base_name,
+                delimiter='_' if dist_name else '',
+                dist_name=dist_name,
+                jdk_version=mx_sdk_vm_impl._src_jdk_version
+            ).upper().replace('-', '_')
             mx.log("{}Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format('' if started else '[SKIPPED] ', _env_file, suite.name, graalvm_dist_name))
 
             if started:

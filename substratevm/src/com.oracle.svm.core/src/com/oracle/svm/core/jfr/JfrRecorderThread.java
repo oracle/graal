@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jfr;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -63,6 +62,7 @@ public class JfrRecorderThread extends Thread {
     private volatile boolean stopped;
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     public JfrRecorderThread(JfrGlobalMemory globalMemory, JfrUnlockedChunkWriter unlockedChunkWriter) {
         super("JFR recorder");
         this.globalMemory = globalMemory;
@@ -123,35 +123,42 @@ public class JfrRecorderThread extends Thread {
 
     @SuppressFBWarnings(value = "NN_NAKED_NOTIFY", justification = "state change is in native buffer")
     private void persistBuffers(JfrChunkWriter chunkWriter) {
-        JfrBuffers buffers = globalMemory.getBuffers();
-        for (int i = 0; i < globalMemory.getBufferCount(); i++) {
-            JfrBuffer buffer = buffers.addressOf(i).read();
-            if (isFullEnough(buffer)) {
-                boolean shouldNotify = persistBuffer(chunkWriter, buffer);
-                if (shouldNotify) {
-                    Object chunkRotationMonitor = JavaVersionUtil.JAVA_SPEC >= 20
-                                    ? Target_jdk_jfr_internal_JVM.CHUNK_ROTATION_MONITOR
-                                    : Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
-                    synchronized (chunkRotationMonitor) {
-                        chunkRotationMonitor.notifyAll();
-                    }
-                }
+        JfrBufferList buffers = globalMemory.getBuffers();
+        JfrBufferNode node = buffers.getHead();
+        while (node.isNonNull()) {
+            tryPersistBuffer(chunkWriter, node);
+            node = node.getNext();
+        }
+
+        if (chunkWriter.shouldRotateDisk()) {
+            Object chunkRotationMonitor = getChunkRotationMonitor();
+            synchronized (chunkRotationMonitor) {
+                chunkRotationMonitor.notifyAll();
             }
         }
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static boolean persistBuffer(JfrChunkWriter chunkWriter, JfrBuffer buffer) {
-        if (JfrBufferAccess.acquire(buffer)) {
+    private static Object getChunkRotationMonitor() {
+        if (HasChunkRotationMonitorField.get()) {
+            return Target_jdk_jfr_internal_JVM.CHUNK_ROTATION_MONITOR;
+        } else {
+            return Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE;
+        }
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private static void tryPersistBuffer(JfrChunkWriter chunkWriter, JfrBufferNode node) {
+        if (JfrBufferNodeAccess.tryLock(node)) {
             try {
-                boolean shouldNotify = chunkWriter.write(buffer);
-                JfrBufferAccess.reinitialize(buffer);
-                return shouldNotify;
+                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+                if (isFullEnough(buffer)) {
+                    chunkWriter.write(buffer);
+                    JfrBufferAccess.reinitialize(buffer);
+                }
             } finally {
-                JfrBufferAccess.release(buffer);
+                JfrBufferNodeAccess.unlock(node);
             }
         }
-        return false;
     }
 
     /**

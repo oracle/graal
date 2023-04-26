@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
 import com.oracle.truffle.api.dsl.InlineSupport.IntField;
 import com.oracle.truffle.api.dsl.InlineSupport.LongField;
@@ -149,7 +150,7 @@ public final class InlinedLoopConditionProfile extends InlinedProfile {
             }
         }
 
-        if (CompilerDirectives.inInterpreter()) {
+        if (HostCompilerDirectives.inInterpreterFastPath()) {
             if (condition) {
                 if (trueCountLocal < Long.MAX_VALUE) {
                     trueCount.set(node, trueCountLocal + 1);
@@ -178,7 +179,7 @@ public final class InlinedLoopConditionProfile extends InlinedProfile {
      * @since 23.0
      */
     public void profileCounted(Node node, long length) {
-        if (CompilerDirectives.inInterpreter()) {
+        if (HostCompilerDirectives.inInterpreterFastPath() && this != DISABLED) {
             long trueCountLocal = trueCount.get(node) + length;
             if (trueCountLocal >= 0) { // don't write overflow values
                 trueCount.set(node, trueCountLocal);
@@ -319,7 +320,7 @@ public final class InlinedLoopConditionProfile extends InlinedProfile {
      * @since 23.0
      */
     public static InlinedLoopConditionProfile inline(
-                    @RequiredField(value = IntField.class)//
+                    @RequiredField(value = LongField.class)//
                     @RequiredField(value = IntField.class) InlineTarget target) {
         if (Profile.isProfilingEnabled()) {
             return new InlinedLoopConditionProfile(target);

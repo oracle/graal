@@ -79,7 +79,7 @@ public interface Canonicalizable extends CanonicalizableMarker {
      *
      * @param <T> the common supertype of all inputs of this node
      */
-    public interface Unary<T extends Node> extends Canonicalizable {
+    interface Unary<T extends Node> extends Canonicalizable {
 
         /**
          * Similar to {@link Canonicalizable#canonical(CanonicalizerTool)}, except that
@@ -110,7 +110,7 @@ public interface Canonicalizable extends CanonicalizableMarker {
      *
      * @param <T> the common supertype of all inputs of this node
      */
-    public interface Binary<T extends Node> extends Canonicalizable {
+    interface Binary<T extends Node> extends Canonicalizable {
 
         /**
          * Similar to {@link Canonicalizable#canonical(CanonicalizerTool)}, except that
@@ -145,7 +145,7 @@ public interface Canonicalizable extends CanonicalizableMarker {
      * operation is commutative. It is used to improve GVN by trying to merge nodes with the same
      * inputs in different order.
      */
-    public interface BinaryCommutative<T extends Node> extends Binary<T>, BinaryCommutativeMarker {
+    interface BinaryCommutative<T extends Node> extends Binary<T>, BinaryCommutativeMarker {
 
         /**
          * Ensure a canonical ordering of inputs for commutative nodes to improve GVN results. Order
@@ -166,7 +166,7 @@ public interface Canonicalizable extends CanonicalizableMarker {
      *
      * @param <T> the common supertype of all inputs of this node
      */
-    public interface Ternary<T extends Node> extends Canonicalizable {
+    interface Ternary<T extends Node> extends Canonicalizable {
 
         /**
          * Similar to {@link Canonicalizable#canonical(CanonicalizerTool)}, except that

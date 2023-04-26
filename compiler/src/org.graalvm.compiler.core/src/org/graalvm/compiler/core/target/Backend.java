@@ -38,6 +38,7 @@ import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
@@ -285,8 +286,10 @@ public abstract class Backend implements TargetProvider, ValueKindFactory<LIRKin
                     ResolvedJavaMethod installedCodeOwner,
                     CompilationResult compilationResult,
                     CompilationResultBuilderFactory factory,
-                    RegisterConfig config, LIRSuites lirSuites) {
-        LIRCompilerBackend.emitBackEnd(graph, stub, installedCodeOwner, this, compilationResult, factory, config, lirSuites);
+                    EntryPointDecorator entryPointDecorator,
+                    RegisterConfig config,
+                    LIRSuites lirSuites) {
+        LIRCompilerBackend.emitBackEnd(graph, stub, installedCodeOwner, this, compilationResult, factory, entryPointDecorator, config, lirSuites);
     }
 
     /**

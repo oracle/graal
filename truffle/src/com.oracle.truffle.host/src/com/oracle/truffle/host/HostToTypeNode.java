@@ -46,6 +46,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -65,6 +66,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -121,11 +123,11 @@ abstract class HostToTypeNode extends Node {
                     boolean useCustomTargetTypes,
                     @CachedLibrary("operand") InteropLibrary interop,
                     @Cached("targetType") Class<?> cachedTargetType,
-                    @Cached("isPrimitiveTarget(cachedTargetType)") boolean primitiveTarget,
+                    @Cached("isPrimitiveOrBigIntegerTarget(context, cachedTargetType)") boolean primitiveOrBigIntegerTarget,
                     @Cached("allowsImplementation(context, targetType)") boolean allowsImplementation,
                     @Cached HostTargetMappingNode targetMapping,
                     @Cached InlinedBranchProfile error) {
-        return convertImpl(node, operand, cachedTargetType, genericType, allowsImplementation, primitiveTarget, context, interop, useCustomTargetTypes, targetMapping, error);
+        return convertImpl(node, operand, cachedTargetType, genericType, allowsImplementation, primitiveOrBigIntegerTarget, context, interop, useCustomTargetTypes, targetMapping, error);
     }
 
     @TruffleBoundary
@@ -149,7 +151,7 @@ abstract class HostToTypeNode extends Node {
                     Class<?> targetType, Type genericType,
                     boolean useTargetMapping) {
         return convertImpl(node, operand, targetType, genericType, allowsImplementation(context, targetType),
-                        isPrimitiveTarget(targetType), context,
+                        isPrimitiveOrBigIntegerTarget(context, targetType), context,
                         InteropLibrary.getUncached(operand),
                         useTargetMapping,
                         HostTargetMappingNode.getUncached(),
@@ -161,7 +163,7 @@ abstract class HostToTypeNode extends Node {
         return value.toString();
     }
 
-    private static Object convertImpl(Node node, Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveTargetType,
+    private static Object convertImpl(Node node, Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveOrBigIntegerTargetType,
                     HostContext context, InteropLibrary interop, boolean useCustomTargetTypes, HostTargetMappingNode targetMapping, InlinedBranchProfile error) {
         if (useCustomTargetTypes) {
             Object result = targetMapping.execute(node, value, targetType, context, interop, false, HIGHEST, STRICT);
@@ -170,7 +172,7 @@ abstract class HostToTypeNode extends Node {
             }
         }
         Object convertedValue;
-        if (primitiveTargetType) {
+        if (primitiveOrBigIntegerTargetType) {
             convertedValue = HostUtil.convertLossLess(value, targetType, interop);
             if (convertedValue != null) {
                 return convertedValue;
@@ -188,7 +190,7 @@ abstract class HostToTypeNode extends Node {
             }
         }
 
-        if (primitiveTargetType) {
+        if (primitiveOrBigIntegerTargetType) {
             convertedValue = HostUtil.convertLossy(value, targetType, interop);
             if (convertedValue != null) {
                 return convertedValue;
@@ -231,6 +233,7 @@ abstract class HostToTypeNode extends Node {
     }
 
     @SuppressWarnings({"unused"})
+    @InliningCutoff
     static boolean canConvert(Node node, Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
                     HostContext hostContext, int priority,
                     InteropLibrary interop,
@@ -255,7 +258,7 @@ abstract class HostToTypeNode extends Node {
             return true;
         } else if (targetType == Value.class && hostContext != null) {
             return true;
-        } else if (isPrimitiveTarget(targetType)) {
+        } else if (isPrimitiveOrBigIntegerTarget(hostContext, targetType)) {
             Object convertedValue = HostUtil.convertLossLess(value, targetType, interop);
             if (convertedValue != null) {
                 return true;
@@ -302,7 +305,7 @@ abstract class HostToTypeNode extends Node {
 
         if (targetType.isArray()) {
             return interop.hasArrayElements(value);
-        } else if (isPrimitiveTarget(targetType)) {
+        } else if (isPrimitiveOrBigIntegerTarget(hostContext, targetType)) {
             Object convertedValue = HostUtil.convertLossy(value, targetType, interop);
             if (convertedValue != null) {
                 return true;
@@ -351,6 +354,18 @@ abstract class HostToTypeNode extends Node {
                         clazz == char.class || clazz == Character.class ||
                         clazz == Number.class ||
                         CharSequence.class.isAssignableFrom(clazz);
+    }
+
+    static boolean isPrimitiveOrBigIntegerTarget(HostContext context, Class<?> clazz) {
+        return isPrimitiveTarget(clazz) || (isBigIntegerNumberAccess(context) && clazz == BigInteger.class);
+    }
+
+    static boolean isBigIntegerNumberAccess(HostContext context) {
+        if (context != null) {
+            return context.getHostClassCache().isBigIntegerNumberAccess();
+        } else {
+            return true;
+        }
     }
 
     /**

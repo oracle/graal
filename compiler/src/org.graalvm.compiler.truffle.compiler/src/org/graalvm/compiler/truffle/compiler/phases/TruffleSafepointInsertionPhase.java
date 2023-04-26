@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,12 +43,11 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleSafepointNode;
 
 import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -73,22 +72,21 @@ public final class TruffleSafepointInsertionPhase extends Phase {
     private final ResolvedJavaField loopNodeField;
     private final ResolvedJavaMethod executeRootMethod;
 
-    public TruffleSafepointInsertionPhase(Providers providers) {
+    public TruffleSafepointInsertionPhase(KnownTruffleTypes types, Providers providers) {
         this.providers = providers;
-        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
-        this.nodeType = rt.resolveType(providers.getMetaAccess(), com.oracle.truffle.api.nodes.Node.class.getName());
-        this.rootNodeType = rt.resolveType(providers.getMetaAccess(), RootNode.class.getName());
-        this.osrRootNodeType = rt.resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.BaseOSRRootNode");
-        this.callTargetClass = rt.resolveType(providers.getMetaAccess(), "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget");
-        this.executeRootMethod = findMethod(callTargetClass, "executeRootNode");
-        this.rootNodeField = findField(callTargetClass, "rootNode");
-        this.parentField = findField(nodeType, "parent");
-        this.loopNodeField = findField(osrRootNodeType, "loopNode");
+        this.nodeType = types.Node;
+        this.rootNodeType = types.RootNode;
+        this.osrRootNodeType = types.BaseOSRRootNode;
+        this.callTargetClass = types.OptimizedCallTarget;
+        this.executeRootMethod = types.OptimizedCallTarget_executeRootNode;
+        this.rootNodeField = types.OptimizedCallTarget_rootNode;
+        this.parentField = types.Node_parent;
+        this.loopNodeField = types.BaseOSRRootNode_loopNode;
     }
 
     public static boolean allowsSafepoints(StructuredGraph graph) {
         // only allowed in Truffle compilations.
-        return graph.compilationId() instanceof TruffleCompilationIdentifier;
+        return TruffleCompilation.isTruffleCompilation(graph);
     }
 
     @Override
@@ -133,7 +131,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         if (node == null) {
             // we did not found a truffle node in any frame state so we need to use the root node of
             // the compilation unit
-            JavaConstant javaConstant = ((TruffleCompilationIdentifier) graph.compilationId()).getCompilable().asJavaConstant();
+            JavaConstant javaConstant = TruffleCompilation.lookupCompilable(graph).asJavaConstant();
             JavaConstant rootNode = providers.getConstantReflection().readFieldValue(rootNodeField, javaConstant);
             ObjectStamp stamp = StampFactory.object(TypeReference.createExactTrusted(rootNodeField.getType().resolve(callTargetClass)));
             node = new ConstantNode(skipOSRRoot(rootNode), stamp);
@@ -159,7 +157,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
                         if (state.getMethod().equals(executeRootMethod)) {
                             // we should not need to cross a call boundary to find a constant node
                             // it must be guaranteed that we find this earlier.
-                            throw GraalError.shouldNotReachHere("Found a frame state of executeRootNode but not a constant node.");
+                            throw GraalError.shouldNotReachHere("Found a frame state of executeRootNode but not a constant node."); // ExcludeFromJacocoGeneratedReport
                         }
                         state = state.outerFrameState();
                     }
@@ -236,7 +234,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         if (osrRootNodeType.isAssignableFrom(type)) {
             JavaConstant loopNode = providers.getConstantReflection().readFieldValue(loopNodeField, rootNode);
             if (loopNode.isNull()) {
-                throw GraalError.shouldNotReachHere(String.format("%s must never be null but is for node %s.", loopNodeField.toString(), rootNode));
+                throw GraalError.shouldNotReachHere(String.format("%s must never be null but is for node %s.", loopNodeField.toString(), rootNode)); // ExcludeFromJacocoGeneratedReport
             }
             return getRootNode(loopNode);
         }
@@ -261,21 +259,4 @@ public final class TruffleSafepointInsertionPhase extends Phase {
         return null;
     }
 
-    static ResolvedJavaMethod findMethod(ResolvedJavaType type, String name) {
-        for (ResolvedJavaMethod m : type.getDeclaredMethods()) {
-            if (m.getName().equals(name)) {
-                return m;
-            }
-        }
-        throw GraalError.shouldNotReachHere("Required method " + name + " not found in " + type);
-    }
-
-    static ResolvedJavaField findField(ResolvedJavaType type, String name) {
-        for (ResolvedJavaField field : type.getInstanceFields(false)) {
-            if (field.getName().equals(name)) {
-                return field;
-            }
-        }
-        throw GraalError.shouldNotReachHere("Required field " + name + " not found in " + type);
-    }
 }

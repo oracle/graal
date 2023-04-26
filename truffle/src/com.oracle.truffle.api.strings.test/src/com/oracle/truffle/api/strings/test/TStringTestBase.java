@@ -47,6 +47,7 @@ import static com.oracle.truffle.api.strings.TruffleString.Encoding.Stateless_IS
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.Stateless_ISO_2022_JP_KDDI;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.US_ASCII;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16LE;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.values;
@@ -424,6 +425,15 @@ public class TStringTestBase {
             if ((encoding == UTF_16 || encoding == UTF_32) && string.isImmutable() && string.isManaged()) {
                 test.run(((TruffleString) string).asNativeUncached(PointerObject::create, encoding, true, false), array, codeRange, isValid, encoding, codepoints, byteIndices);
             }
+        }
+        if (encoding == UTF_16LE) {
+            // check fromJavaString with lazy codeRange / codePointLength
+            TruffleString fromJavaString = TruffleString.fromJavaStringUncached(new String(TStringTestUtil.toCharArrayPunned(array)), encoding);
+            if (array.length != 2) {
+                TruffleString.CodeRange codeRangeImprecise = fromJavaString.getCodeRangeImpreciseUncached(encoding);
+                Assert.assertSame(codeRangeImprecise, (codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1) ? TruffleString.CodeRange.LATIN_1 : TruffleString.CodeRange.BROKEN));
+            }
+            test.run(fromJavaString, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
         if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {
             byte[] bytesUTF16 = new byte[(codepoints.length + 1) * 2];

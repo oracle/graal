@@ -42,9 +42,16 @@ package com.oracle.truffle.dsl.processor;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class TruffleTypes {
 
@@ -80,6 +87,7 @@ public class TruffleTypes {
     public static final String OptionKey_Name = "org.graalvm.options.OptionKey";
     public static final String OptionMap_Name = "org.graalvm.options.OptionMap";
     public static final String OptionStability_Name = "org.graalvm.options.OptionStability";
+    public static final String SandboxPolicy_Name = "org.graalvm.polyglot.SandboxPolicy";
 
     public final DeclaredType Option = c.getDeclaredType(Option_Name);
     public final DeclaredType Option_Group = c.getDeclaredType(Option_Group_Name);
@@ -89,9 +97,11 @@ public class TruffleTypes {
     public final DeclaredType OptionKey = c.getDeclaredType(OptionKey_Name);
     public final DeclaredType OptionMap = c.getDeclaredType(OptionMap_Name);
     public final DeclaredType OptionStability = c.getDeclaredType(OptionStability_Name);
+    public final DeclaredType SandboxPolicy = c.getDeclaredType(SandboxPolicy_Name);
 
     // Truffle API
     public static final String Assumption_Name = "com.oracle.truffle.api.Assumption";
+    public static final String ContextThreadLocal_Name = "com.oracle.truffle.api.ContextThreadLocal";
     public static final String CompilerAsserts_Name = "com.oracle.truffle.api.CompilerAsserts";
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
@@ -103,6 +113,7 @@ public class TruffleTypes {
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
     public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
+    public static final String HostCompilerDirectives_Name = "com.oracle.truffle.api.HostCompilerDirectives";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
     public static final String Node_Child_Name = "com.oracle.truffle.api.nodes.Node.Child";
@@ -125,11 +136,13 @@ public class TruffleTypes {
     public static final String TruffleLanguage_Provider_Name = "com.oracle.truffle.api.TruffleLanguage.Provider";
     public static final String TruffleLanguage_Registration_Name = "com.oracle.truffle.api.TruffleLanguage.Registration";
     public static final String TruffleOptions_Name = "com.oracle.truffle.api.TruffleOptions";
+    public static final String TruffleOptionDescriptors_Name = "com.oracle.truffle.api.TruffleOptionDescriptors";
     public static final String UnexpectedResultException_Name = "com.oracle.truffle.api.nodes.UnexpectedResultException";
     public static final String VirtualFrame_Name = "com.oracle.truffle.api.frame.VirtualFrame";
     public static final String HostLanguage_Name = "com.oracle.truffle.polyglot.HostLanguage";
 
     public final DeclaredType Assumption = c.getDeclaredType(Assumption_Name);
+    public final DeclaredType ContextThreadLocal = c.getDeclaredType(ContextThreadLocal_Name);
     public final DeclaredType CompilerAsserts = c.getDeclaredType(CompilerAsserts_Name);
     public final DeclaredType CompilerDirectives = c.getDeclaredType(CompilerDirectives_Name);
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
@@ -141,6 +154,7 @@ public class TruffleTypes {
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
+    public final DeclaredType HostCompilerDirectives = c.getDeclaredType(HostCompilerDirectives_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
     public final DeclaredType Node = c.getDeclaredType(Node_Name);
@@ -161,6 +175,7 @@ public class TruffleTypes {
     public final DeclaredType TruffleLanguage_Provider = c.getDeclaredType(TruffleLanguage_Provider_Name);
     public final DeclaredType TruffleLanguage_Registration = c.getDeclaredType(TruffleLanguage_Registration_Name);
     public final DeclaredType TruffleOptions = c.getDeclaredType(TruffleOptions_Name);
+    public final DeclaredType TruffleOptionDescriptors = c.getDeclaredType(TruffleOptionDescriptors_Name);
     public final DeclaredType UnexpectedResultException = c.getDeclaredType(UnexpectedResultException_Name);
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
     public final DeclaredType HostLanguage = c.getDeclaredTypeOptional(HostLanguage_Name);
@@ -172,6 +187,7 @@ public class TruffleTypes {
     public static final String Cached_Shared_Name = "com.oracle.truffle.api.dsl.Cached.Shared";
     public static final String CreateCast_Name = "com.oracle.truffle.api.dsl.CreateCast";
     public static final String DSLSupport_Name = "com.oracle.truffle.api.dsl.DSLSupport";
+    public static final String DSLSupport_SpecializationDataNode_Name = "com.oracle.truffle.api.dsl.DSLSupport.SpecializationDataNode";
     public static final String Executed_Name = "com.oracle.truffle.api.dsl.Executed";
     public static final String ExecuteTracingSupport_Name = "com.oracle.truffle.api.dsl.ExecuteTracingSupport";
     public static final String Fallback_Name = "com.oracle.truffle.api.dsl.Fallback";
@@ -184,6 +200,7 @@ public class TruffleTypes {
     public static final String GeneratePackagePrivate_Name = "com.oracle.truffle.api.dsl.GeneratePackagePrivate";
     public static final String GenerateNodeFactory_Name = "com.oracle.truffle.api.dsl.GenerateNodeFactory";
     public static final String GenerateUncached_Name = "com.oracle.truffle.api.dsl.GenerateUncached";
+    public static final String Idempotent_Name = "com.oracle.truffle.api.dsl.Idempotent";
     public static final String ImplicitCast_Name = "com.oracle.truffle.api.dsl.ImplicitCast";
     public static final String ImportStatic_Name = "com.oracle.truffle.api.dsl.ImportStatic";
     public static final String Introspectable_Name = "com.oracle.truffle.api.dsl.Introspectable";
@@ -210,6 +227,7 @@ public class TruffleTypes {
     public static final String NodeFactory_Name = "com.oracle.truffle.api.dsl.NodeFactory";
     public static final String NodeField_Name = "com.oracle.truffle.api.dsl.NodeField";
     public static final String NodeFields_Name = "com.oracle.truffle.api.dsl.NodeFields";
+    public static final String NonIdempotent_Name = "com.oracle.truffle.api.dsl.NonIdempotent";
     public static final String ReportPolymorphism_Exclude_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism.Exclude";
     public static final String ReportPolymorphism_Megamorphic_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism.Megamorphic";
     public static final String ReportPolymorphism_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism";
@@ -230,6 +248,7 @@ public class TruffleTypes {
     public final DeclaredType Cached_Shared = c.getDeclaredType(Cached_Shared_Name);
     public final DeclaredType CreateCast = c.getDeclaredType(CreateCast_Name);
     public final DeclaredType DSLSupport = c.getDeclaredType(DSLSupport_Name);
+    public final DeclaredType DSLSupport_SpecializationDataNode = c.getDeclaredType(DSLSupport_SpecializationDataNode_Name);
     public final DeclaredType Executed = c.getDeclaredType(Executed_Name);
     public final DeclaredType ExecuteTracingSupport = c.getDeclaredType(ExecuteTracingSupport_Name);
     public final DeclaredType Fallback = c.getDeclaredType(Fallback_Name);
@@ -242,6 +261,7 @@ public class TruffleTypes {
     public final DeclaredType GeneratePackagePrivate = c.getDeclaredType(GeneratePackagePrivate_Name);
     public final DeclaredType GenerateNodeFactory = c.getDeclaredType(GenerateNodeFactory_Name);
     public final DeclaredType GenerateUncached = c.getDeclaredType(GenerateUncached_Name);
+    public final DeclaredType Idempotent = c.getDeclaredType(Idempotent_Name);
     public final DeclaredType ImplicitCast = c.getDeclaredType(ImplicitCast_Name);
     public final DeclaredType ImportStatic = c.getDeclaredType(ImportStatic_Name);
     public final DeclaredType Introspectable = c.getDeclaredType(Introspectable_Name);
@@ -268,6 +288,7 @@ public class TruffleTypes {
     public final DeclaredType NodeFactory = c.getDeclaredType(NodeFactory_Name);
     public final DeclaredType NodeField = c.getDeclaredType(NodeField_Name);
     public final DeclaredType NodeFields = c.getDeclaredType(NodeFields_Name);
+    public final DeclaredType NonIdempotent = c.getDeclaredType(NonIdempotent_Name);
     public final DeclaredType ReportPolymorphism = c.getDeclaredType(ReportPolymorphism_Name);
     public final DeclaredType ReportPolymorphism_Exclude = c.getDeclaredType(ReportPolymorphism_Exclude_Name);
     public final DeclaredType ReportPolymorphism_Megamorphic = c.getDeclaredType(ReportPolymorphism_Megamorphic_Name);
@@ -362,6 +383,83 @@ public class TruffleTypes {
     public static final String TruffleWeakReference_Name = "com.oracle.truffle.api.utilities.TruffleWeakReference";
 
     public final DeclaredType TruffleWeakReference = c.getDeclaredTypeOptional(TruffleWeakReference_Name);
+
+    public final Map<String, List<Element>> idempotentMethods = new HashMap<>();
+    public final Map<String, List<Element>> nonIdempotentMethods = new HashMap<>();
+    public final Map<String, List<Element>> neverDefaultElements = new HashMap<>();
+
+    {
+        // idempotent
+        addMethod(idempotentMethods, TruffleLanguage_LanguageReference, "get");
+        addMethod(idempotentMethods, DirectCallNode, "getCallTarget");
+        addMethod(idempotentMethods, c.getDeclaredType(Object.class), "equals");
+        addMethod(idempotentMethods, c.getDeclaredType(String.class), "equals");
+
+        // non-idempotent
+        addMethod(nonIdempotentMethods, TruffleLanguage_ContextReference, "get");
+        addMethod(nonIdempotentMethods, ContextThreadLocal, "get");
+        addMethod(nonIdempotentMethods, Assumption, "isValid");
+        addMethod(nonIdempotentMethods, Assumption, "isValidAssumption");
+        addMethod(nonIdempotentMethods, Library, "accepts");
+
+        // never default elements
+        addMethod(neverDefaultElements, c.getDeclaredType(Object.class), "getClass");
+        addMethod(neverDefaultElements, c.getDeclaredType(Object.class), "toString");
+
+        addMethod(neverDefaultElements, Frame, "getFrameDescriptor");
+        addMethod(neverDefaultElements, Frame, "getArguments");
+        addMethod(neverDefaultElements, Frame, "materialize");
+
+        addMethod(neverDefaultElements, FrameDescriptor, "getSlotKind");
+        addMethod(neverDefaultElements, FrameDescriptor, "getAuxiliarySlots");
+
+        addMethod(neverDefaultElements, DirectCallNode, "create");
+        addMethod(neverDefaultElements, IndirectCallNode, "create");
+
+        addField(neverDefaultElements, Assumption, "ALWAYS_VALID");
+        addField(neverDefaultElements, Assumption, "NEVER_VALID");
+    }
+
+    public boolean isBuiltinNeverDefault(Element e) {
+        return isElementInMap(neverDefaultElements, e);
+    }
+
+    public boolean isBuiltinIdempotent(ExecutableElement e) {
+        return isElementInMap(idempotentMethods, e);
+    }
+
+    public boolean isBuiltinNonIdempotent(ExecutableElement e) {
+        return isElementInMap(nonIdempotentMethods, e);
+    }
+
+    private static boolean isElementInMap(Map<String, List<Element>> map, Element e) {
+        List<Element> elements = map.get(e.getSimpleName().toString());
+        if (elements == null) {
+            return false;
+        }
+        for (Element m : elements) {
+            if (ElementUtils.elementEquals(m, e)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void addMethod(Map<String, List<Element>> map, DeclaredType type, String methodName) {
+        List<ExecutableElement> m = ElementUtils.findAllPublicMethods(type, methodName);
+        if (m.isEmpty()) {
+            throw new AssertionError(String.format("Method %s.%s not found.", ElementUtils.getSimpleName(type), methodName));
+        }
+        map.computeIfAbsent(methodName, (e) -> new ArrayList<>()).addAll(m);
+    }
+
+    private static void addField(Map<String, List<Element>> map, DeclaredType type, String fieldName) {
+        VariableElement v = ElementUtils.findVariableElement(type, fieldName);
+        if (v == null) {
+            throw new AssertionError(String.format("Field %s.%s not found.", ElementUtils.getSimpleName(type), fieldName));
+        }
+        map.computeIfAbsent(fieldName, (e) -> new ArrayList<>()).add(v);
+    }
 
     // Checkstyle: resume
 }

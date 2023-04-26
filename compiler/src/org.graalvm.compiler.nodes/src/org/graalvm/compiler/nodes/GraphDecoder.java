@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -127,6 +127,27 @@ public class GraphDecoder {
          */
         public MergeNode loopExplosionHead;
 
+        /**
+         * The decoded inlining log. If this is the root method scope, it
+         * {@link StructuredGraph#setInliningLog replaces} the inlining log of the graph. Otherwise,
+         * the inlining log is {@link InliningLog#inlineByTransfer transferred} to the caller.
+         */
+        public InliningLog inliningLog;
+
+        /**
+         * The decoded optimization log. If this is the root method scope, it
+         * {@link StructuredGraph#setOptimizationLog replaces} the optimization log of the graph.
+         * Otherwise, the optimization log is {@link OptimizationLog#inline inlined} in the caller.
+         */
+        public OptimizationLog optimizationLog;
+
+        /**
+         * The stateful decoder for the {@link #inliningLog}, which is needed to map order IDs back
+         * to decoded graph nodes. The decoder is also responsible for tracking new callsites in the
+         * inlining log. {@code null} if the inlining log is not being decoded.
+         */
+        public InliningLogCodec.InliningLogDecoder inliningLogDecoder;
+
         @SuppressWarnings("unchecked")
         protected MethodScope(LoopScope callerLoopScope, StructuredGraph graph, EncodedGraph encodedGraph, LoopExplosionKind loopExplosion) {
             this.callerLoopScope = callerLoopScope;
@@ -140,6 +161,14 @@ public class GraphDecoder {
                 maxFixedNodeOrderId = reader.getUVInt();
                 graph.getGraphState().setGuardsStage((GraphState.GuardsStage) readObject(this));
                 graph.getGraphState().getStageFlags().addAll((EnumSet<StageFlag>) readObject(this));
+
+                var decoderPair = InliningLogCodec.maybeDecode(graph, readObject(this));
+                if (decoderPair != null) {
+                    inliningLogDecoder = decoderPair.getLeft();
+                    inliningLog = decoderPair.getRight();
+                }
+                optimizationLog = OptimizationLogCodec.maybeDecode(graph, readObject(this));
+
                 int nodeCount = reader.getUVInt();
                 if (encodedGraph.nodeStartOffsets == null) {
                     int[] nodeStartOffsets = new int[nodeCount];
@@ -181,6 +210,18 @@ public class GraphDecoder {
             return position;
         }
 
+        /**
+         * Sets the {@link #inliningLog} and {@link #optimizationLog} as the logs of the
+         * {@link #graph} if they are non-null.
+         */
+        public void replaceLogsForDecodedGraph() {
+            if (inliningLog != null) {
+                graph.setInliningLog(inliningLog);
+            }
+            if (optimizationLog != null) {
+                graph.setOptimizationLog(optimizationLog);
+            }
+        }
     }
 
     /**
@@ -503,11 +544,11 @@ public class GraphDecoder {
             if (nodeReferences != null) {
                 for (var nodeReference : nodeReferences) {
                     if (nodeReference.orderId < 0) {
-                        throw GraalError.shouldNotReachHere("EncodeNodeReference is not in 'encoded' state");
+                        throw GraalError.shouldNotReachHere("EncodeNodeReference is not in 'encoded' state"); // ExcludeFromJacocoGeneratedReport
                     }
                     nodeReference.node = loopScope.createdNodes[nodeReference.orderId];
                     if (nodeReference.node == null || !nodeReference.node.isAlive()) {
-                        throw GraalError.shouldNotReachHere("Could not decode the EncodedNodeReference");
+                        throw GraalError.shouldNotReachHere("Could not decode the EncodedNodeReference"); // ExcludeFromJacocoGeneratedReport
                     }
                     nodeReference.orderId = EncodedNodeReference.DECODED;
                 }
@@ -543,50 +584,55 @@ public class GraphDecoder {
         return loopScope;
     }
 
+    @SuppressWarnings("try")
     protected final void decode(LoopScope initialLoopScope) {
-        LoopScope loopScope = initialLoopScope;
-        /* Process (inlined) methods. */
-        while (loopScope != null) {
-            MethodScope methodScope = loopScope.methodScope;
-
-            /* Process loops of method. */
+        initialLoopScope.methodScope.replaceLogsForDecodedGraph();
+        try (InliningLog.UpdateScope updateScope = InliningLog.openDefaultUpdateScope(graph.getInliningLog())) {
+            LoopScope loopScope = initialLoopScope;
+            /* Process (inlined) methods. */
             while (loopScope != null) {
-                /* Process nodes of loop. */
-                while (!loopScope.nodesToProcess.isEmpty()) {
-                    loopScope = processNextNode(methodScope, loopScope);
-                    methodScope = loopScope.methodScope;
-                    /*
-                     * We can have entered a new loop, and we can have entered a new inlined method.
-                     */
-                }
+                MethodScope methodScope = loopScope.methodScope;
 
-                /* Finished with a loop. */
-                if (loopScope.hasIterationsToProcess()) {
-                    loopScope = loopScope.getNextIterationToProcess(true);
-                } else {
-                    propagateCreatedNodes(loopScope);
-                    loopScope = loopScope.outer;
+                /* Process loops of method. */
+                while (loopScope != null) {
+                    /* Process nodes of loop. */
+                    while (!loopScope.nodesToProcess.isEmpty()) {
+                        loopScope = processNextNode(methodScope, loopScope);
+                        methodScope = loopScope.methodScope;
+                        /*
+                         * We can have entered a new loop, and we can have entered a new inlined
+                         * method.
+                         */
+                    }
 
-                    if (loopScope == null) {
-                        // finished all loops of a method
-                        afterMethodScope(methodScope);
+                    /* Finished with a loop. */
+                    if (loopScope.hasIterationsToProcess()) {
+                        loopScope = loopScope.getNextIterationToProcess(true);
+                    } else {
+                        propagateCreatedNodes(loopScope);
+                        loopScope = loopScope.outer;
+
+                        if (loopScope == null) {
+                            // finished all loops of a method
+                            afterMethodScope(methodScope);
+                        }
                     }
                 }
-            }
 
-            /*
-             * Finished with an inlined method. Perform end-of-method cleanup tasks.
-             */
-            if (methodScope.loopExplosion.mergeLoops()) {
-                LoopDetector loopDetector = new LoopDetector(graph, methodScope);
-                loopDetector.run();
-            }
-            if (methodScope.isInlinedMethod()) {
-                finishInlining(methodScope);
-            }
+                /*
+                 * Finished with an inlined method. Perform end-of-method cleanup tasks.
+                 */
+                if (methodScope.loopExplosion.mergeLoops()) {
+                    LoopDetector loopDetector = new LoopDetector(graph, methodScope);
+                    loopDetector.run();
+                }
+                if (methodScope.isInlinedMethod()) {
+                    finishInlining(methodScope);
+                }
 
-            /* continue with the caller */
-            loopScope = methodScope.callerLoopScope;
+                /* continue with the caller */
+                loopScope = methodScope.callerLoopScope;
+            }
         }
     }
 
@@ -1014,7 +1060,7 @@ public class GraphDecoder {
      * @param loopScope The current loop.
      */
     protected void checkLoopExplosionIteration(MethodScope methodScope, LoopScope loopScope) {
-        throw shouldNotReachHere("when subclass uses loop explosion, it needs to implement this method");
+        throw shouldNotReachHere("when subclass uses loop explosion, it needs to implement this method"); // ExcludeFromJacocoGeneratedReport
     }
 
     protected LoopScopeTrigger handleLoopExplosionEnd(MethodScope methodScope, LoopScope loopScope) {
@@ -1453,7 +1499,7 @@ public class GraphDecoder {
             }
 
             if (!newNode.isAlive()) {
-                newNode = addFloatingNode(methodScope, newNode);
+                newNode = addFloatingNode(methodScope, loopScope, newNode);
             }
             node = handleFloatingNodeAfterAdd(methodScope, loopScope, newNode);
         }
@@ -1461,7 +1507,7 @@ public class GraphDecoder {
         return node;
     }
 
-    protected Node addFloatingNode(@SuppressWarnings("unused") MethodScope methodScope, Node node) {
+    protected Node addFloatingNode(@SuppressWarnings("unused") MethodScope methodScope, @SuppressWarnings("unused") LoopScope loopScope, Node node) {
         /*
          * We want to exactly reproduce the encoded graph. Even though nodes should be unique in the
          * encoded graph, this is not always guaranteed.
@@ -1483,7 +1529,7 @@ public class GraphDecoder {
              * This is a severe error that will lead to a corrupted graph, so it is better not to
              * continue decoding at all.
              */
-            throw shouldNotReachHere("Not a floating node: " + node.getClass().getName());
+            throw shouldNotReachHere("Not a floating node: " + node.getClass().getName()); // ExcludeFromJacocoGeneratedReport
         }
 
         /* Read the inputs of the node, possibly creating them recursively. */
@@ -1657,6 +1703,9 @@ public class GraphDecoder {
         assert allowNull || node != null;
         assert allowOverwrite || lookupNode(loopScope, nodeOrderId) == null;
         loopScope.createdNodes[nodeOrderId] = node;
+        if (loopScope.methodScope.inliningLogDecoder != null) {
+            loopScope.methodScope.inliningLogDecoder.registerNode(loopScope.methodScope.inliningLog, node, nodeOrderId);
+        }
     }
 
     protected int readOrderId(MethodScope methodScope) {
@@ -1668,7 +1717,7 @@ public class GraphDecoder {
             case 4:
                 return methodScope.reader.getS4();
         }
-        throw GraalError.shouldNotReachHere("Invalid orderIdWidth: " + methodScope.orderIdWidth);
+        throw GraalError.shouldNotReachHere("Invalid orderIdWidth: " + methodScope.orderIdWidth); // ExcludeFromJacocoGeneratedReport
     }
 
     protected Object readObject(MethodScope methodScope) {

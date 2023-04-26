@@ -117,6 +117,6 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
          * of y.
          */
         IntegerStamp yStamp = (IntegerStamp) getY().stamp(NodeView.DEFAULT);
-        return (yStamp.upMask() & (wideMask & ~narrowMask)) == 0;
+        return (yStamp.mayBeSet() & (wideMask & ~narrowMask)) == 0;
     }
 }

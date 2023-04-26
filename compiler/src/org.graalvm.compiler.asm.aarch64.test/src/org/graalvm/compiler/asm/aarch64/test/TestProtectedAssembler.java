@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -196,11 +196,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void brk(int uimm16) {
-        super.brk(uimm16);
-    }
-
-    @Override
     protected void hint(SystemHint hint) {
         super.hint(hint);
     }
@@ -212,6 +207,10 @@ class TestProtectedAssembler extends AArch64Assembler {
 
     @Override
     public void align(int modulus) {
+    }
+
+    @Override
+    public void halt() {
     }
 
     @Override

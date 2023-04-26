@@ -55,6 +55,7 @@ public class DigestBaseSnippets implements Snippets {
 
         public final SnippetTemplate.SnippetInfo implCompressMultiBlock0;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 

@@ -181,7 +181,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
             try {
                 loadedGraalClasses.add(Class.forName(name));
             } catch (ClassNotFoundException e) {
-                if (e.getMessage().contains("$$Lambda$")) {
+                if (e.getMessage().contains("$$Lambda")) {
                     // lambdas may not be found.
                     continue;
                 }

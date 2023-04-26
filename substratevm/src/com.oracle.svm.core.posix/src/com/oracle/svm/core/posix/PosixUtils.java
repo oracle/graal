@@ -38,6 +38,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -50,8 +51,11 @@ import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Locale;
 import com.oracle.svm.core.posix.headers.Signal;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.Wait;
+import com.oracle.svm.core.posix.headers.darwin.DarwinTime;
+import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.util.VMError;
 
 public class PosixUtils {
@@ -253,8 +257,18 @@ public class PosixUtils {
      *
      * Use this or {@code sigaction} directly instead of calling {@code signal} or {@code sigset}:
      * they are not portable and when running in HotSpot, signal chaining (libjsig) prints warnings.
+     *
+     * Note that this method should not be called from an initialization hook:
+     * {@code EnableSignalHandling} may not be set correctly at the time initialization hooks run.
      */
     public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler) {
+        synchronized (Target_jdk_internal_misc_Signal.class) {
+            return installSignalHandler0(signum, handler);
+        }
+    }
+
+    private static Signal.SignalDispatcher installSignalHandler0(int signum, Signal.SignalDispatcher handler) {
+        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
         Signal.sigaction old = UnsafeStackValue.get(Signal.sigaction.class);
 
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
@@ -268,4 +282,16 @@ public class PosixUtils {
         }
         return old.sa_handler();
     }
+
+    // Checkstyle: stop
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int clock_gettime(int clock_id, Time.timespec ts) {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            return DarwinTime.NoTransitions.clock_gettime(clock_id, ts);
+        } else {
+            assert Platform.includedIn(Platform.LINUX.class);
+            return LinuxTime.NoTransitions.clock_gettime(clock_id, ts);
+        }
+    }
+    // Checkstyle: resume
 }

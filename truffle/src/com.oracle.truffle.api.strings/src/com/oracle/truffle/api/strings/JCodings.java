@@ -101,7 +101,7 @@ interface JCodings {
     int getCodePointLength(Encoding jCoding, byte[] array, int index, int arrayLength);
 
     @TruffleBoundary
-    int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd);
+    int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd, TruffleString.ErrorHandling errorHandling);
 
     @TruffleBoundary
     int writeCodePoint(Encoding jCoding, int codepoint, byte[] array, int index);

@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 23.0.0
+* GR-41407: Added new option `--dap.SourcePath` to allow to resolve sources with relative paths.
+
 ## Version 22.3.0
 * GR-40233: The interpretation of the `depth` parameter in [Insight heap dumping](../docs/tools/insight/Insight-Manual.md#heap-dumping) was off by one and was applied to primitive values as well. This is now corrected to match the documentation.
 

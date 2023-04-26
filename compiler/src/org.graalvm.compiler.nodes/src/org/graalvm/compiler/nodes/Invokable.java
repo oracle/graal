@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,11 +91,11 @@ public interface Invokable extends DeoptBciSupplier {
                 assert log.containsLeafCallsite(this) : "Node " + this + " not contained in the log.";
                 assert log.containsLeafCallsite((Invokable) other) : "Sibling " + other + " not contained in the log.";
                 log.removeLeafCallsite(this);
-                log.trackDuplicatedCallsite((Invokable) other, this);
+                log.trackDuplicatedCallsite((Invokable) other, this, null);
             } else {
                 // This node was added from a different graph.
                 // The adder is responsible for providing a context.
-                throw GraalError.shouldNotReachHere("No InliningLog.Update scope provided.");
+                throw GraalError.shouldNotReachHere("No InliningLog.Update scope provided."); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

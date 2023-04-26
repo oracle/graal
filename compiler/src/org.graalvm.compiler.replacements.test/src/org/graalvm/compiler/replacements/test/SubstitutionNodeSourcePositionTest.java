@@ -26,6 +26,7 @@ package org.graalvm.compiler.replacements.test;
 
 import static org.graalvm.compiler.core.GraalCompiler.compileGraph;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.List;
 
@@ -58,6 +59,10 @@ public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
 
     @Test
     public void testSnippetLowering() {
+        // This test is checking for the source positions from the snippet lowered write barrier so
+        // it only works for GCs that have write barriers.
+        assumeTrue("current gc has no write barrier", getProviders().getPlatformConfigurationProvider().getBarrierSet().hasWriteBarrier());
+
         // @formatter:off
         // Expect mappings of the form:
         //   at org.graalvm.compiler.hotspot.replacements.WriteBarrierSnippets.serialWriteBarrier(WriteBarrierSnippets.java:140) [bci: 18]
@@ -92,6 +97,13 @@ public class SubstitutionNodeSourcePositionTest extends ReplacementsTest {
         boolean found = false;
         Assert.assertTrue("must have mappings", !mappings.isEmpty());
         for (SourceMapping mapping : mappings) {
+            // test SourceMapping class
+            assertTrue(mapping.getStartOffset() <= mapping.getEndOffset());
+            assertTrue(mapping.equals(mapping));
+            assertFalse(mapping.equals(resolvedJavaType));
+            assertTrue(mapping.toString().length() > 0); // checks for NPE, not content
+
+            // check mappings
             NodeSourcePosition callee = null;
             for (NodeSourcePosition pos = mapping.getSourcePosition(); pos != null; pos = pos.getCaller()) {
                 ResolvedJavaMethod method = pos.getMethod();

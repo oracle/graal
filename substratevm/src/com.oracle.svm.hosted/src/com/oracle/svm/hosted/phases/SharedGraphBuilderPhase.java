@@ -68,6 +68,7 @@ import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.common.meta.MultiMethod;
@@ -166,6 +167,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             if (e instanceof UserException) {
                 throw (UserException) e;
             }
+            if (e instanceof UnsupportedFeatureException) {
+                throw (UnsupportedFeatureException) e;
+            }
             throw super.throwParserError(e);
         }
 
@@ -199,6 +203,20 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 throw VMError.shouldNotReachHere("Discovered an unresolved callee while parsing " + method.asStackTraceElement(bci()) + '.');
             }
             return result;
+        }
+
+        @Override
+        protected Object lookupConstant(int cpi, int opcode) {
+            try {
+                return super.lookupConstant(cpi, opcode);
+            } catch (BootstrapMethodError | IncompatibleClassChangeError | IllegalArgumentException ex) {
+                if (linkAtBuildTime) {
+                    reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
+                } else {
+                    replaceWithThrowingAtRuntime(this, ex);
+                }
+                return ex;
+            }
         }
 
         /**
@@ -336,15 +354,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
             handleUnresolvedMethod(javaMethod);
-        }
-
-        @Override
-        protected void handleBootstrapMethodError(BootstrapMethodError bme, JavaMethod javaMethod) {
-            if (linkAtBuildTime) {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
-            } else {
-                replaceWithThrowingAtRuntime(this, bme);
-            }
         }
 
         /**

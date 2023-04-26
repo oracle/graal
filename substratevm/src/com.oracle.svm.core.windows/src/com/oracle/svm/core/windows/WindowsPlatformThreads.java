@@ -51,10 +51,9 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ParkEvent;
-import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
+import com.oracle.svm.core.thread.Parker;
+import com.oracle.svm.core.thread.Parker.ParkerFactory;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
@@ -116,6 +115,8 @@ public final class WindowsPlatformThreads extends PlatformThreads {
         if (SynchAPI.NoTransitions.WaitForSingleObject((WinBase.HANDLE) threadHandle, SynchAPI.INFINITE()) != SynchAPI.WAIT_OBJECT_0()) {
             return false;
         }
+        // Since only an int is written, first clear word
+        threadExitStatus.write(WordFactory.zero());
         if (Process.NoTransitions.GetExitCodeThread((WinBase.HANDLE) threadHandle, (CIntPointer) threadExitStatus) == 0) {
             return false;
         }
@@ -188,8 +189,13 @@ public final class WindowsPlatformThreads extends PlatformThreads {
     }
 }
 
+/**
+ * {@link WindowsParker} is based on HotSpot class {@code Parker} in {@code os_windows.cpp}, as of
+ * JDK 19 (git commit hash: 967a28c3d85fdde6d5eb48aa0edd8f7597772469, JDK tag: jdk-19+36).
+ */
 @Platforms(Platform.WINDOWS.class)
-class WindowsParkEvent extends ParkEvent {
+class WindowsParker extends Parker {
+    private static final long MAX_DWORD = (1L << 32) - 1;
 
     /**
      * An opaque handle for an event object from the operating system. Event objects have explicit
@@ -198,9 +204,8 @@ class WindowsParkEvent extends ParkEvent {
      */
     private WinBase.HANDLE eventHandle;
 
-    WindowsParkEvent() {
-        /* Create an auto-reset event. */
-        eventHandle = SynchAPI.CreateEventA(WordFactory.nullPointer(), 0, 0, WordFactory.nullPointer());
+    WindowsParker() {
+        eventHandle = SynchAPI.CreateEventA(WordFactory.nullPointer(), 1, 0, WordFactory.nullPointer());
         VMError.guarantee(eventHandle.rawValue() != 0, "CreateEventA failed");
     }
 
@@ -216,41 +221,50 @@ class WindowsParkEvent extends ParkEvent {
     }
 
     @Override
-    protected void condWait() {
+    protected void park(boolean isAbsolute, long time) {
+        assert time >= 0 && !(isAbsolute && time == 0) : "must not be called otherwise";
+
+        long millis;
+        if (time == 0) {
+            millis = SynchAPI.INFINITE() & 0xFFFFFFFFL;
+        } else if (isAbsolute) {
+            millis = time - System.currentTimeMillis();
+            if (millis <= 0) {
+                /* Already elapsed. */
+                return;
+            }
+        } else {
+            /* Coarsen from nanos to millis. */
+            millis = TimeUtils.divideNanosToMillis(time);
+            if (millis == 0) {
+                /* Wait for the minimal time. */
+                millis = 1;
+            }
+        }
+
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            int status = SynchAPI.WaitForSingleObject(eventHandle, SynchAPI.INFINITE());
-            if (status != SynchAPI.WAIT_OBJECT_0()) {
-                Log.log().newline().string("WindowsParkEvent.condWait failed, status returned:  ").hex(status);
-                Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
-                throw VMError.shouldNotReachHere("WaitForSingleObject failed");
+            int status = SynchAPI.WaitForSingleObject(eventHandle, 0);
+            if (status == SynchAPI.WAIT_OBJECT_0()) {
+                /* There was already a notification pending. */
+                SynchAPI.ResetEvent(eventHandle);
+            } else {
+                status = SynchAPI.WaitForSingleObject(eventHandle, toDword(millis));
+                SynchAPI.ResetEvent(eventHandle);
             }
+            assert status == SynchAPI.WAIT_OBJECT_0() || status == SynchAPI.WAIT_TIMEOUT();
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
-    @Override
-    protected void condTimedWait(long durationNanos) {
-        StackOverflowCheck.singleton().makeYellowZoneAvailable();
-        try {
-            final int maxTimeout = 0x10_000_000;
-            long durationMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(durationNanos));
-            do { // at least once to consume potential unpark
-                int timeout = (durationMillis < maxTimeout) ? (int) durationMillis : maxTimeout;
-                int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
-                if (status == SynchAPI.WAIT_OBJECT_0()) {
-                    break; // unparked
-                } else if (status != SynchAPI.WAIT_TIMEOUT()) {
-                    Log.log().newline().string("WindowsParkEvent.condTimedWait failed, status returned:  ").hex(status);
-                    Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
-                    throw VMError.shouldNotReachHere("WaitForSingleObject failed");
-                }
-                durationMillis -= timeout;
-            } while (durationMillis > 0);
-        } finally {
-            StackOverflowCheck.singleton().protectYellowZone();
+    /* DWORD is an unsigned 32-bit value. */
+    private static int toDword(long value) {
+        assert value >= 0;
+        if (value > MAX_DWORD) {
+            return (int) MAX_DWORD;
         }
+        return (int) value;
     }
 
     @Override
@@ -272,11 +286,11 @@ class WindowsParkEvent extends ParkEvent {
     }
 }
 
-@AutomaticallyRegisteredImageSingleton(ParkEventFactory.class)
+@AutomaticallyRegisteredImageSingleton(ParkerFactory.class)
 @Platforms(Platform.WINDOWS.class)
-class WindowsParkEventFactory implements ParkEventFactory {
+class WindowsParkerFactory implements ParkerFactory {
     @Override
-    public ParkEvent acquire() {
-        return new WindowsParkEvent();
+    public Parker acquire() {
+        return new WindowsParker();
     }
 }

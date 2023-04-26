@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,17 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.Inl
 import static org.junit.Assume.assumeTrue;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.CompanionObjectEncoder;
 import org.graalvm.compiler.nodes.EncodedGraph;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -44,14 +49,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.util.CollectionsUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Test;
@@ -165,24 +171,64 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         assumeTrue(GraalServices.hasLookupReferencedType());
         EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = EconomicMap.create();
         // Parse and cache doIncrement before the single implementor is loaded
-        test("doIncrement", graphCache);
+        test("doIncrement", graphCache, getInitialOptions());
         // Force loading of the single implementor
         SingleInterfaceImpl.init();
-        StructuredGraph graph = test("testSingleImplementorDevirtualize", graphCache);
+        StructuredGraph graph = test("testSingleImplementorDevirtualize", graphCache, getInitialOptions());
         Assert.assertEquals(0, graph.getNodes().filter(InvokeNode.class).count());
     }
 
     @Test
     @SuppressWarnings("try")
     public void test() {
-        test("doTest", EconomicMap.create());
+        test("doTest", EconomicMap.create(), getInitialOptions());
+    }
+
+    /**
+     * Tests that the optimization log and inlining log are decoded correctly. The inlining log is
+     * enabled automatically by enabling the optimization log. The respective codecs
+     * {@link CompanionObjectEncoder#verify verify} that the logs are correctly decoded, i.e., the
+     * decoded logs match what was encoded in the first place.
+     *
+     * The test also checks that inlining decisions made in the decoder are properly logged. We
+     * compare a decoder that inlines everything with a {@link #parseAndInlineAll parser that
+     * inlines everything}. The resulting inlining logs should have
+     * {@link #assertInlinedMethodsEqual the same methods inlined}.
+     */
+    @Test
+    public void inliningLogAndOptimizationLogDecodedCorrectly() {
+        EconomicSet<DebugOptions.OptimizationLogTarget> targets = EconomicSet.create();
+        targets.add(DebugOptions.OptimizationLogTarget.Stdout);
+        OptionValues optionValues = new OptionValues(getInitialOptions(), DebugOptions.OptimizationLog, targets);
+        String methodName = "doTest";
+        InliningLog actualInliningLog = test(methodName, EconomicMap.create(), optionValues).getInliningLog();
+        InliningLog expectedInliningLog = parseAndInlineAll(methodName, optionValues).getInliningLog();
+        assertInlinedMethodsEqual(expectedInliningLog.getRootCallsite(), actualInliningLog.getRootCallsite());
+    }
+
+    private StructuredGraph parseAndInlineAll(String methodName, OptionValues optionValues) {
+        GraphBuilderConfiguration.Plugins plugins = getDefaultGraphBuilderPlugins();
+        plugins.appendInlineInvokePlugin(new InlineAll());
+        GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
+        graphBuilderConfig = editGraphBuilderConfiguration(graphBuilderConfig);
+        registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
+        return parse(builder(getResolvedJavaMethod(methodName), AllowAssumptions.YES, optionValues), getCustomGraphBuilderSuite(graphBuilderConfig));
+    }
+
+    private static void assertInlinedMethodsEqual(InliningLog.Callsite expected, InliningLog.Callsite actual) {
+        Assert.assertEquals(expected.isInlined(), actual.isInlined());
+        Assert.assertEquals(expected.getTarget(), actual.getTarget());
+        Assert.assertEquals(expected.getChildren().size(), actual.getChildren().size());
+        for (var pair : CollectionsUtil.zipLongest(expected.getChildren(), actual.getChildren())) {
+            assertInlinedMethodsEqual(pair.getLeft(), pair.getRight());
+        }
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph test(String methodName, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+    private StructuredGraph test(String methodName, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, OptionValues optionValues) {
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(methodName);
         StructuredGraph targetGraph = null;
-        DebugContext debug = getDebugContext();
+        DebugContext debug = getDebugContext(optionValues, null, null);
         try (DebugContext.Scope scope = debug.scope("GraphPETest", testMethod)) {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true).withUnresolvedIsError(true);
             graphBuilderConfig = editGraphBuilderConfiguration(graphBuilderConfig);

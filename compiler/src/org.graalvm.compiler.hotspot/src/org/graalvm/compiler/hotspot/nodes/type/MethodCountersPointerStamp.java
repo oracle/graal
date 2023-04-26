@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,14 @@
  */
 package org.graalvm.compiler.hotspot.nodes.type;
 
+import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
-
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 
 public final class MethodCountersPointerStamp extends MetaspacePointerStamp {
 
@@ -43,10 +43,6 @@ public final class MethodCountersPointerStamp extends MetaspacePointerStamp {
 
     public static MethodCountersPointerStamp methodCounters() {
         return METHOD_COUNTERS;
-    }
-
-    public static MethodCountersPointerStamp methodCountersNonNull() {
-        return METHOD_COUNTERS_NON_NULL;
     }
 
     private MethodCountersPointerStamp(boolean nonNull, boolean alwaysNull) {

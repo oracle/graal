@@ -26,6 +26,7 @@
 package org.graalvm.component.installer.gds.rest;
 
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import static org.junit.Assert.assertEquals;
@@ -41,6 +42,7 @@ import java.util.Set;
  *
  * @author odouda
  */
+@SuppressWarnings("this-escape")
 public class GDSCatalogStorageTest extends CommandTestBase {
     static final String MOCK_URL = "https://mock.url/";
     static final String ID1 = "id1";
@@ -52,7 +54,7 @@ public class GDSCatalogStorageTest extends CommandTestBase {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        mockUrl = new URL(MOCK_URL);
+        mockUrl = SystemUtils.toURL(MOCK_URL);
     }
 
     @Test

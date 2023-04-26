@@ -57,6 +57,13 @@ import com.oracle.truffle.api.strings.TruffleString;
 
 public final class Encodings {
 
+    public static final TruffleString.Encoding[] PRIMARY_ENCODINGS = {
+                    TruffleString.Encoding.US_ASCII,
+                    TruffleString.Encoding.ISO_8859_1,
+                    TruffleString.Encoding.BYTES,
+                    TruffleString.Encoding.UTF_8,
+                    UTF_16,
+                    UTF_32};
     private static final int MAX_J_CODINGS_INDEX_VALUE = 0x7f;
     static final EconomicMap<String, Encoding> J_CODINGS_MAP = createJCodingsMap();
 
@@ -233,6 +240,18 @@ public final class Encodings {
                     buf[iBuf++] = 0x10ffff;
                 }
                 int[] codepoints = Arrays.copyOf(buf, iBuf);
+
+                byte[] encodedBroken = null;
+                int[] codepointsBroken = null;
+
+                if (e == TruffleString.Encoding.UTF_16BE) {
+                    encodedBroken = asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 1, ByteOrder.BIG_ENDIAN);
+                    codepointsBroken = new int[]{0xfffd};
+                } else if (e == TruffleString.Encoding.UTF_32BE) {
+                    encodedBroken = asBytes(new int[]{Character.MIN_LOW_SURROGATE}, 2, ByteOrder.BIG_ENDIAN);
+                    codepointsBroken = new int[]{0xfffd};
+                }
+
                 testData[e.ordinal()] = new TestData(
                                 codepoints,
                                 codePointByteIndices(codepoints, jCoding),
@@ -240,8 +259,8 @@ public final class Encodings {
                                 null,
                                 null,
                                 encodeCodePoints(codepoints, jCoding),
-                                null,
-                                null);
+                                encodedBroken,
+                                codepointsBroken);
             }
         }
         // Checkstyle: stop
@@ -273,7 +292,7 @@ public final class Encodings {
         return ret;
     }
 
-    private static int[] codePointByteIndices(int[] codepoints, Encoding jCoding) {
+    public static int[] codePointByteIndices(int[] codepoints, Encoding jCoding) {
         int[] ret = new int[codepoints.length];
         int length = 0;
         for (int i = 0; i < codepoints.length; i++) {
@@ -284,9 +303,13 @@ public final class Encodings {
     }
 
     private static byte[] asBytes(int[] values, int stride) {
+        return asBytes(values, stride, ByteOrder.nativeOrder());
+    }
+
+    private static byte[] asBytes(int[] values, int stride, ByteOrder byteOrder) {
         byte[] ret = new byte[values.length << stride];
         for (int i = 0; i < values.length; i++) {
-            TStringTestUtil.writeValue(ret, stride, i, values[i]);
+            TStringTestUtil.writeValue(ret, stride, i, values[i], byteOrder);
         }
         return ret;
     }
@@ -320,6 +343,7 @@ public final class Encodings {
                     dataBig5(),
                     dataBig5HKSCS(),
                     dataBig5UAO(),
+                    dataCESU8(),
                     dataCP51932(),
                     dataCP850(),
                     dataCP852(),
@@ -339,6 +363,7 @@ public final class Encodings {
                     dataGB2312(),
                     dataGBK(),
                     dataIBM437(),
+                    dataIBM720(),
                     dataIBM737(),
                     dataIBM775(),
                     dataIBM852(),
@@ -426,8 +451,10 @@ public final class Encodings {
 
     static TestData dataUTF32BE() {
         assert TruffleString.Encoding.UTF_32BE.ordinal() == 1;
-        return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x4, 0x8, 0xc}, null, null, null, new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
-                        (byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0xe0, (byte) 0x00, (byte) 0x00, (byte) 0x10, (byte) 0xff, (byte) 0xff}, null, null);
+        return new TestData(
+                        new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x4, 0x8, 0xc}, null, null, null, new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00,
+                                        (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0x00, (byte) 0x00, (byte) 0xe0, (byte) 0x00, (byte) 0x00, (byte) 0x10, (byte) 0xff, (byte) 0xff},
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xdc, (byte) 0x00}, new int[]{0xfffd});
     }
 
     static TestData dataUTF16LE() {
@@ -443,7 +470,8 @@ public final class Encodings {
     static TestData dataUTF16BE() {
         assert TruffleString.Encoding.UTF_16BE.ordinal() == 3;
         return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x2, 0x4, 0x6}, null, null, null,
-                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0xe0, (byte) 0x00, (byte) 0xdb, (byte) 0xff, (byte) 0xdf, (byte) 0xff}, null, null);
+                        new byte[]{(byte) 0x00, (byte) 0x00, (byte) 0xd7, (byte) 0xff, (byte) 0xe0, (byte) 0x00, (byte) 0xdb, (byte) 0xff, (byte) 0xdf, (byte) 0xff},
+                        new byte[]{(byte) 0xdc, (byte) 0x00}, new int[]{0xfffd});
     }
 
     static TestData dataISO88591() {
@@ -835,8 +863,14 @@ public final class Encodings {
                         null, null);
     }
 
+    static TestData dataCESU8() {
+        assert TruffleString.Encoding.CESU_8.ordinal() == 11;
+        return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x1, 0x4, 0x7}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xed,
+                        (byte) 0x9f, (byte) 0xbf, (byte) 0xee, (byte) 0x80, (byte) 0x80, (byte) 0xed, (byte) 0xaf, (byte) 0xbf, (byte) 0xed, (byte) 0xbf, (byte) 0xbf}, null, null);
+    }
+
     static TestData dataCP51932() {
-        assert TruffleString.Encoding.CP51932.ordinal() == 11;
+        assert TruffleString.Encoding.CP51932.ordinal() == 12;
         return new TestData(new int[]{0x0000, 0x007f, 0x8ea1, 0x8efe, 0xa1a1, 0xa1fe, 0xa2a1, 0xa2fe, 0xa3a1, 0xa3fe, 0xa4a1, 0xa4fe, 0xa5a1, 0xa5fe, 0xa6a1, 0xa6fe, 0xa7a1, 0xa7fe, 0xa8a1, 0xa8fe,
                         0xa9a1, 0xa9fe, 0xaaa1, 0xaafe, 0xaba1, 0xabfe, 0xaca1, 0xacfe, 0xada1, 0xadfe, 0xaea1, 0xaefe, 0xafa1, 0xaffe, 0xb0a1, 0xb0fe, 0xb1a1, 0xb1fe, 0xb2a1, 0xb2fe, 0xb3a1, 0xb3fe,
                         0xb4a1, 0xb4fe, 0xb5a1, 0xb5fe, 0xb6a1, 0xb6fe, 0xb7a1, 0xb7fe, 0xb8a1, 0xb8fe, 0xb9a1, 0xb9fe, 0xbaa1, 0xbafe, 0xbba1, 0xbbfe, 0xbca1, 0xbcfe, 0xbda1, 0xbdfe, 0xbea1, 0xbefe,
@@ -892,22 +926,22 @@ public final class Encodings {
     }
 
     static TestData dataCP850() {
-        assert TruffleString.Encoding.CP850.ordinal() == 12;
+        assert TruffleString.Encoding.CP850.ordinal() == 13;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataCP852() {
-        assert TruffleString.Encoding.CP852.ordinal() == 13;
+        assert TruffleString.Encoding.CP852.ordinal() == 14;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataCP855() {
-        assert TruffleString.Encoding.CP855.ordinal() == 14;
+        assert TruffleString.Encoding.CP855.ordinal() == 15;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataCP949() {
-        assert TruffleString.Encoding.CP949.ordinal() == 15;
+        assert TruffleString.Encoding.CP949.ordinal() == 16;
         return new TestData(new int[]{0x0000, 0x0080, 0x8141, 0x815a, 0x8161, 0x817a, 0x8181, 0x81fe, 0x8241, 0x825a, 0x8261, 0x827a, 0x8281, 0x82fe, 0x8341, 0x835a, 0x8361, 0x837a, 0x8381, 0x83fe,
                         0x8441, 0x845a, 0x8461, 0x847a, 0x8481, 0x84fe, 0x8541, 0x855a, 0x8561, 0x857a, 0x8581, 0x85fe, 0x8641, 0x865a, 0x8661, 0x867a, 0x8681, 0x86fe, 0x8741, 0x875a, 0x8761, 0x877a,
                         0x8781, 0x87fe, 0x8841, 0x885a, 0x8861, 0x887a, 0x8881, 0x88fe, 0x8941, 0x895a, 0x8961, 0x897a, 0x8981, 0x89fe, 0x8a41, 0x8a5a, 0x8a61, 0x8a7a, 0x8a81, 0x8afe, 0x8b41, 0x8b5a,
@@ -1108,7 +1142,7 @@ public final class Encodings {
     }
 
     static TestData dataCP950() {
-        assert TruffleString.Encoding.CP950.ordinal() == 16;
+        assert TruffleString.Encoding.CP950.ordinal() == 17;
         return new TestData(new int[]{0x0000, 0x007f, 0xa140, 0xa17e, 0xa1a1, 0xa1fe, 0xa240, 0xa27e, 0xa2a1, 0xa2fe, 0xa340, 0xa37e, 0xa3a1, 0xa3fe, 0xa440, 0xa47e, 0xa4a1, 0xa4fe, 0xa540, 0xa57e,
                         0xa5a1, 0xa5fe, 0xa640, 0xa67e, 0xa6a1, 0xa6fe, 0xa740, 0xa77e, 0xa7a1, 0xa7fe, 0xa840, 0xa87e, 0xa8a1, 0xa8fe, 0xa940, 0xa97e, 0xa9a1, 0xa9fe, 0xaa40, 0xaa7e, 0xaaa1, 0xaafe,
                         0xab40, 0xab7e, 0xaba1, 0xabfe, 0xac40, 0xac7e, 0xaca1, 0xacfe, 0xad40, 0xad7e, 0xada1, 0xadfe, 0xae40, 0xae7e, 0xaea1, 0xaefe, 0xaf40, 0xaf7e, 0xafa1, 0xaffe, 0xb040, 0xb07e,
@@ -1212,7 +1246,7 @@ public final class Encodings {
     }
 
     static TestData dataCP951() {
-        assert TruffleString.Encoding.CP951.ordinal() == 17;
+        assert TruffleString.Encoding.CP951.ordinal() == 18;
         return new TestData(new int[]{0x0000, 0x007f, 0x8740, 0x877e, 0x87a1, 0x87fe, 0x8840, 0x887e, 0x88a1, 0x88fe, 0x8940, 0x897e, 0x89a1, 0x89fe, 0x8a40, 0x8a7e, 0x8aa1, 0x8afe, 0x8b40, 0x8b7e,
                         0x8ba1, 0x8bfe, 0x8c40, 0x8c7e, 0x8ca1, 0x8cfe, 0x8d40, 0x8d7e, 0x8da1, 0x8dfe, 0x8e40, 0x8e7e, 0x8ea1, 0x8efe, 0x8f40, 0x8f7e, 0x8fa1, 0x8ffe, 0x9040, 0x907e, 0x90a1, 0x90fe,
                         0x9140, 0x917e, 0x91a1, 0x91fe, 0x9240, 0x927e, 0x92a1, 0x92fe, 0x9340, 0x937e, 0x93a1, 0x93fe, 0x9440, 0x947e, 0x94a1, 0x94fe, 0x9540, 0x957e, 0x95a1, 0x95fe, 0x9640, 0x967e,
@@ -1342,7 +1376,7 @@ public final class Encodings {
     }
 
     static TestData dataEUCJIS2004() {
-        assert TruffleString.Encoding.EUC_JIS_2004.ordinal() == 18;
+        assert TruffleString.Encoding.EUC_JIS_2004.ordinal() == 19;
         return new TestData(new int[]{0x0000, 0x007f, 0x8ea1, 0x8efe, 0xa1a1, 0xa1fe, 0xa2a1, 0xa2fe, 0xa3a1, 0xa3fe, 0xa4a1, 0xa4fe, 0xa5a1, 0xa5fe, 0xa6a1, 0xa6fe, 0xa7a1, 0xa7fe, 0xa8a1, 0xa8fe,
                         0xa9a1, 0xa9fe, 0xaaa1, 0xaafe, 0xaba1, 0xabfe, 0xaca1, 0xacfe, 0xada1, 0xadfe, 0xaea1, 0xaefe, 0xafa1, 0xaffe, 0xb0a1, 0xb0fe, 0xb1a1, 0xb1fe, 0xb2a1, 0xb2fe, 0xb3a1, 0xb3fe,
                         0xb4a1, 0xb4fe, 0xb5a1, 0xb5fe, 0xb6a1, 0xb6fe, 0xb7a1, 0xb7fe, 0xb8a1, 0xb8fe, 0xb9a1, 0xb9fe, 0xbaa1, 0xbafe, 0xbba1, 0xbbfe, 0xbca1, 0xbcfe, 0xbda1, 0xbdfe, 0xbea1, 0xbefe,
@@ -1398,7 +1432,7 @@ public final class Encodings {
     }
 
     static TestData dataEUCJP() {
-        assert TruffleString.Encoding.EUC_JP.ordinal() == 19;
+        assert TruffleString.Encoding.EUC_JP.ordinal() == 20;
         return new TestData(new int[]{0x0000, 0x007f, 0x8ea1, 0x8efe, 0xa1a1, 0xa1fe, 0xa2a1, 0xa2fe, 0xa3a1, 0xa3fe, 0xa4a1, 0xa4fe, 0xa5a1, 0xa5fe, 0xa6a1, 0xa6fe, 0xa7a1, 0xa7fe, 0xa8a1, 0xa8fe,
                         0xa9a1, 0xa9fe, 0xaaa1, 0xaafe, 0xaba1, 0xabfe, 0xaca1, 0xacfe, 0xada1, 0xadfe, 0xaea1, 0xaefe, 0xafa1, 0xaffe, 0xb0a1, 0xb0fe, 0xb1a1, 0xb1fe, 0xb2a1, 0xb2fe, 0xb3a1, 0xb3fe,
                         0xb4a1, 0xb4fe, 0xb5a1, 0xb5fe, 0xb6a1, 0xb6fe, 0xb7a1, 0xb7fe, 0xb8a1, 0xb8fe, 0xb9a1, 0xb9fe, 0xbaa1, 0xbafe, 0xbba1, 0xbbfe, 0xbca1, 0xbcfe, 0xbda1, 0xbdfe, 0xbea1, 0xbefe,
@@ -1454,7 +1488,7 @@ public final class Encodings {
     }
 
     static TestData dataEUCKR() {
-        assert TruffleString.Encoding.EUC_KR.ordinal() == 20;
+        assert TruffleString.Encoding.EUC_KR.ordinal() == 21;
         return new TestData(new int[]{0x0000, 0x007f, 0xa1a1, 0xa1fe, 0xa2a1, 0xa2fe, 0xa3a1, 0xa3fe, 0xa4a1, 0xa4fe, 0xa5a1, 0xa5fe, 0xa6a1, 0xa6fe, 0xa7a1, 0xa7fe, 0xa8a1, 0xa8fe, 0xa9a1, 0xa9fe,
                         0xaaa1, 0xaafe, 0xaba1, 0xabfe, 0xaca1, 0xacfe, 0xada1, 0xadfe, 0xaea1, 0xaefe, 0xafa1, 0xaffe, 0xb0a1, 0xb0fe, 0xb1a1, 0xb1fe, 0xb2a1, 0xb2fe, 0xb3a1, 0xb3fe, 0xb4a1, 0xb4fe,
                         0xb5a1, 0xb5fe, 0xb6a1, 0xb6fe, 0xb7a1, 0xb7fe, 0xb8a1, 0xb8fe, 0xb9a1, 0xb9fe, 0xbaa1, 0xbafe, 0xbba1, 0xbbfe, 0xbca1, 0xbcfe, 0xbda1, 0xbdfe, 0xbea1, 0xbefe, 0xbfa1, 0xbffe,
@@ -1510,7 +1544,7 @@ public final class Encodings {
     }
 
     static TestData dataEUCTW() {
-        assert TruffleString.Encoding.EUC_TW.ordinal() == 21;
+        assert TruffleString.Encoding.EUC_TW.ordinal() == 22;
         return new TestData(new int[]{0x0000, 0x007f, 0xa1a1, 0xa1fe, 0xa2a1, 0xa2fe, 0xa3a1, 0xa3fe, 0xa4a1, 0xa4fe, 0xa5a1, 0xa5fe, 0xa6a1, 0xa6fe, 0xa7a1, 0xa7fe, 0xa8a1, 0xa8fe, 0xa9a1, 0xa9fe,
                         0xaaa1, 0xaafe, 0xaba1, 0xabfe, 0xaca1, 0xacfe, 0xada1, 0xadfe, 0xaea1, 0xaefe, 0xafa1, 0xaffe, 0xb0a1, 0xb0fe, 0xb1a1, 0xb1fe, 0xb2a1, 0xb2fe, 0xb3a1, 0xb3fe, 0xb4a1, 0xb4fe,
                         0xb5a1, 0xb5fe, 0xb6a1, 0xb6fe, 0xb7a1, 0xb7fe, 0xb8a1, 0xb8fe, 0xb9a1, 0xb9fe, 0xbaa1, 0xbafe, 0xbba1, 0xbbfe, 0xbca1, 0xbcfe, 0xbda1, 0xbdfe, 0xbea1, 0xbefe, 0xbfa1, 0xbffe,
@@ -1566,12 +1600,12 @@ public final class Encodings {
     }
 
     static TestData dataEmacsMule() {
-        assert TruffleString.Encoding.Emacs_Mule.ordinal() == 22;
+        assert TruffleString.Encoding.Emacs_Mule.ordinal() == 23;
         return new TestData(new int[]{0x00, 0x7f}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null);
     }
 
     static TestData dataEucJPms() {
-        assert TruffleString.Encoding.EucJP_ms.ordinal() == 23;
+        assert TruffleString.Encoding.EucJP_ms.ordinal() == 24;
         return new TestData(new int[]{0x0000, 0x007f, 0x8ea1, 0x8efe, 0xa1a1, 0xa1fe, 0xa2a1, 0xa2fe, 0xa3a1, 0xa3fe, 0xa4a1, 0xa4fe, 0xa5a1, 0xa5fe, 0xa6a1, 0xa6fe, 0xa7a1, 0xa7fe, 0xa8a1, 0xa8fe,
                         0xa9a1, 0xa9fe, 0xaaa1, 0xaafe, 0xaba1, 0xabfe, 0xaca1, 0xacfe, 0xada1, 0xadfe, 0xaea1, 0xaefe, 0xafa1, 0xaffe, 0xb0a1, 0xb0fe, 0xb1a1, 0xb1fe, 0xb2a1, 0xb2fe, 0xb3a1, 0xb3fe,
                         0xb4a1, 0xb4fe, 0xb5a1, 0xb5fe, 0xb6a1, 0xb6fe, 0xb7a1, 0xb7fe, 0xb8a1, 0xb8fe, 0xb9a1, 0xb9fe, 0xbaa1, 0xbafe, 0xbba1, 0xbbfe, 0xbca1, 0xbcfe, 0xbda1, 0xbdfe, 0xbea1, 0xbefe,
@@ -1627,7 +1661,7 @@ public final class Encodings {
     }
 
     static TestData dataGB12345() {
-        assert TruffleString.Encoding.GB12345.ordinal() == 24;
+        assert TruffleString.Encoding.GB12345.ordinal() == 25;
         return new TestData(new int[]{0x0000, 0x007f, 0xa1a1, 0xa1fe, 0xa2a1, 0xa2fe, 0xa3a1, 0xa3fe, 0xa4a1, 0xa4fe, 0xa5a1, 0xa5fe, 0xa6a1, 0xa6fe, 0xa7a1, 0xa7fe, 0xa8a1, 0xa8fe, 0xa9a1, 0xa9fe,
                         0xaaa1, 0xaafe, 0xaba1, 0xabfe, 0xaca1, 0xacfe, 0xada1, 0xadfe, 0xaea1, 0xaefe, 0xafa1, 0xaffe, 0xb0a1, 0xb0fe, 0xb1a1, 0xb1fe, 0xb2a1, 0xb2fe, 0xb3a1, 0xb3fe, 0xb4a1, 0xb4fe,
                         0xb5a1, 0xb5fe, 0xb6a1, 0xb6fe, 0xb7a1, 0xb7fe, 0xb8a1, 0xb8fe, 0xb9a1, 0xb9fe, 0xbaa1, 0xbafe, 0xbba1, 0xbbfe, 0xbca1, 0xbcfe, 0xbda1, 0xbdfe, 0xbea1, 0xbefe, 0xbfa1, 0xbffe,
@@ -1683,7 +1717,7 @@ public final class Encodings {
     }
 
     static TestData dataGB18030() {
-        assert TruffleString.Encoding.GB18030.ordinal() == 25;
+        assert TruffleString.Encoding.GB18030.ordinal() == 26;
         return new TestData(new int[]{0x0000, 0x007f, 0x8140, 0x817e, 0x8180, 0x81fe, 0x8240, 0x827e, 0x8280, 0x82fe, 0x8340, 0x837e, 0x8380, 0x83fe, 0x8440, 0x847e, 0x8480, 0x84fe, 0x8540, 0x857e,
                         0x8580, 0x85fe, 0x8640, 0x867e, 0x8680, 0x86fe, 0x8740, 0x877e, 0x8780, 0x87fe, 0x8840, 0x887e, 0x8880, 0x88fe, 0x8940, 0x897e, 0x8980, 0x89fe, 0x8a40, 0x8a7e, 0x8a80, 0x8afe,
                         0x8b40, 0x8b7e, 0x8b80, 0x8bfe, 0x8c40, 0x8c7e, 0x8c80, 0x8cfe, 0x8d40, 0x8d7e, 0x8d80, 0x8dfe, 0x8e40, 0x8e7e, 0x8e80, 0x8efe, 0x8f40, 0x8f7e, 0x8f80, 0x8ffe, 0x9040, 0x907e,
@@ -1821,12 +1855,12 @@ public final class Encodings {
     }
 
     static TestData dataGB1988() {
-        assert TruffleString.Encoding.GB1988.ordinal() == 26;
+        assert TruffleString.Encoding.GB1988.ordinal() == 27;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataGB2312() {
-        assert TruffleString.Encoding.GB2312.ordinal() == 27;
+        assert TruffleString.Encoding.GB2312.ordinal() == 28;
         return new TestData(new int[]{0x0000, 0x007f, 0xa1a1, 0xa1fe, 0xa2a1, 0xa2fe, 0xa3a1, 0xa3fe, 0xa4a1, 0xa4fe, 0xa5a1, 0xa5fe, 0xa6a1, 0xa6fe, 0xa7a1, 0xa7fe, 0xa8a1, 0xa8fe, 0xa9a1, 0xa9fe,
                         0xaaa1, 0xaafe, 0xaba1, 0xabfe, 0xaca1, 0xacfe, 0xada1, 0xadfe, 0xaea1, 0xaefe, 0xafa1, 0xaffe, 0xb0a1, 0xb0fe, 0xb1a1, 0xb1fe, 0xb2a1, 0xb2fe, 0xb3a1, 0xb3fe, 0xb4a1, 0xb4fe,
                         0xb5a1, 0xb5fe, 0xb6a1, 0xb6fe, 0xb7a1, 0xb7fe, 0xb8a1, 0xb8fe, 0xb9a1, 0xb9fe, 0xbaa1, 0xbafe, 0xbba1, 0xbbfe, 0xbca1, 0xbcfe, 0xbda1, 0xbdfe, 0xbea1, 0xbefe, 0xbfa1, 0xbffe,
@@ -1882,7 +1916,7 @@ public final class Encodings {
     }
 
     static TestData dataGBK() {
-        assert TruffleString.Encoding.GBK.ordinal() == 28;
+        assert TruffleString.Encoding.GBK.ordinal() == 29;
         return new TestData(new int[]{0x0000, 0x0080, 0x8140, 0x817e, 0x8180, 0x81fe, 0x8240, 0x827e, 0x8280, 0x82fe, 0x8340, 0x837e, 0x8380, 0x83fe, 0x8440, 0x847e, 0x8480, 0x84fe, 0x8540, 0x857e,
                         0x8580, 0x85fe, 0x8640, 0x867e, 0x8680, 0x86fe, 0x8740, 0x877e, 0x8780, 0x87fe, 0x8840, 0x887e, 0x8880, 0x88fe, 0x8940, 0x897e, 0x8980, 0x89fe, 0x8a40, 0x8a7e, 0x8a80, 0x8afe,
                         0x8b40, 0x8b7e, 0x8b80, 0x8bfe, 0x8c40, 0x8c7e, 0x8c80, 0x8cfe, 0x8d40, 0x8d7e, 0x8d80, 0x8dfe, 0x8e40, 0x8e7e, 0x8e80, 0x8efe, 0x8f40, 0x8f7e, 0x8f80, 0x8ffe, 0x9040, 0x907e,
@@ -2020,182 +2054,187 @@ public final class Encodings {
     }
 
     static TestData dataIBM437() {
-        assert TruffleString.Encoding.IBM437.ordinal() == 29;
+        assert TruffleString.Encoding.IBM437.ordinal() == 30;
+        return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
+    }
+
+    static TestData dataIBM720() {
+        assert TruffleString.Encoding.IBM720.ordinal() == 31;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM737() {
-        assert TruffleString.Encoding.IBM737.ordinal() == 30;
+        assert TruffleString.Encoding.IBM737.ordinal() == 32;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM775() {
-        assert TruffleString.Encoding.IBM775.ordinal() == 31;
+        assert TruffleString.Encoding.IBM775.ordinal() == 33;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM852() {
-        assert TruffleString.Encoding.IBM852.ordinal() == 32;
+        assert TruffleString.Encoding.IBM852.ordinal() == 34;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM855() {
-        assert TruffleString.Encoding.IBM855.ordinal() == 33;
+        assert TruffleString.Encoding.IBM855.ordinal() == 35;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM857() {
-        assert TruffleString.Encoding.IBM857.ordinal() == 34;
+        assert TruffleString.Encoding.IBM857.ordinal() == 36;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM860() {
-        assert TruffleString.Encoding.IBM860.ordinal() == 35;
+        assert TruffleString.Encoding.IBM860.ordinal() == 37;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM861() {
-        assert TruffleString.Encoding.IBM861.ordinal() == 36;
+        assert TruffleString.Encoding.IBM861.ordinal() == 38;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM862() {
-        assert TruffleString.Encoding.IBM862.ordinal() == 37;
+        assert TruffleString.Encoding.IBM862.ordinal() == 39;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM863() {
-        assert TruffleString.Encoding.IBM863.ordinal() == 38;
+        assert TruffleString.Encoding.IBM863.ordinal() == 40;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM864() {
-        assert TruffleString.Encoding.IBM864.ordinal() == 39;
+        assert TruffleString.Encoding.IBM864.ordinal() == 41;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM865() {
-        assert TruffleString.Encoding.IBM865.ordinal() == 40;
+        assert TruffleString.Encoding.IBM865.ordinal() == 42;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM866() {
-        assert TruffleString.Encoding.IBM866.ordinal() == 41;
+        assert TruffleString.Encoding.IBM866.ordinal() == 43;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM869() {
-        assert TruffleString.Encoding.IBM869.ordinal() == 42;
+        assert TruffleString.Encoding.IBM869.ordinal() == 44;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO885910() {
-        assert TruffleString.Encoding.ISO_8859_10.ordinal() == 43;
+        assert TruffleString.Encoding.ISO_8859_10.ordinal() == 45;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO885911() {
-        assert TruffleString.Encoding.ISO_8859_11.ordinal() == 44;
+        assert TruffleString.Encoding.ISO_8859_11.ordinal() == 46;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO885913() {
-        assert TruffleString.Encoding.ISO_8859_13.ordinal() == 45;
+        assert TruffleString.Encoding.ISO_8859_13.ordinal() == 47;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO885914() {
-        assert TruffleString.Encoding.ISO_8859_14.ordinal() == 46;
+        assert TruffleString.Encoding.ISO_8859_14.ordinal() == 48;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO885915() {
-        assert TruffleString.Encoding.ISO_8859_15.ordinal() == 47;
+        assert TruffleString.Encoding.ISO_8859_15.ordinal() == 49;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO885916() {
-        assert TruffleString.Encoding.ISO_8859_16.ordinal() == 48;
+        assert TruffleString.Encoding.ISO_8859_16.ordinal() == 50;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO88592() {
-        assert TruffleString.Encoding.ISO_8859_2.ordinal() == 49;
+        assert TruffleString.Encoding.ISO_8859_2.ordinal() == 51;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO88593() {
-        assert TruffleString.Encoding.ISO_8859_3.ordinal() == 50;
+        assert TruffleString.Encoding.ISO_8859_3.ordinal() == 52;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO88594() {
-        assert TruffleString.Encoding.ISO_8859_4.ordinal() == 51;
+        assert TruffleString.Encoding.ISO_8859_4.ordinal() == 53;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO88595() {
-        assert TruffleString.Encoding.ISO_8859_5.ordinal() == 52;
+        assert TruffleString.Encoding.ISO_8859_5.ordinal() == 54;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO88596() {
-        assert TruffleString.Encoding.ISO_8859_6.ordinal() == 53;
+        assert TruffleString.Encoding.ISO_8859_6.ordinal() == 55;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO88597() {
-        assert TruffleString.Encoding.ISO_8859_7.ordinal() == 54;
+        assert TruffleString.Encoding.ISO_8859_7.ordinal() == 56;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO88598() {
-        assert TruffleString.Encoding.ISO_8859_8.ordinal() == 55;
+        assert TruffleString.Encoding.ISO_8859_8.ordinal() == 57;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO88599() {
-        assert TruffleString.Encoding.ISO_8859_9.ordinal() == 56;
+        assert TruffleString.Encoding.ISO_8859_9.ordinal() == 58;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataKOI8R() {
-        assert TruffleString.Encoding.KOI8_R.ordinal() == 57;
+        assert TruffleString.Encoding.KOI8_R.ordinal() == 59;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataKOI8U() {
-        assert TruffleString.Encoding.KOI8_U.ordinal() == 58;
+        assert TruffleString.Encoding.KOI8_U.ordinal() == 60;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacCentEuro() {
-        assert TruffleString.Encoding.MacCentEuro.ordinal() == 59;
+        assert TruffleString.Encoding.MacCentEuro.ordinal() == 61;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacCroatian() {
-        assert TruffleString.Encoding.MacCroatian.ordinal() == 60;
+        assert TruffleString.Encoding.MacCroatian.ordinal() == 62;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacCyrillic() {
-        assert TruffleString.Encoding.MacCyrillic.ordinal() == 61;
+        assert TruffleString.Encoding.MacCyrillic.ordinal() == 63;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacGreek() {
-        assert TruffleString.Encoding.MacGreek.ordinal() == 62;
+        assert TruffleString.Encoding.MacGreek.ordinal() == 64;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacIceland() {
-        assert TruffleString.Encoding.MacIceland.ordinal() == 63;
+        assert TruffleString.Encoding.MacIceland.ordinal() == 65;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacJapanese() {
-        assert TruffleString.Encoding.MacJapanese.ordinal() == 64;
+        assert TruffleString.Encoding.MacJapanese.ordinal() == 66;
         return new TestData(new int[]{0x0000, 0x007f, 0x00a1, 0x00df, 0x8140, 0x817e, 0x8180, 0x81fc, 0x8240, 0x827e, 0x8280, 0x82fc, 0x8340, 0x837e, 0x8380, 0x83fc, 0x8440, 0x847e, 0x8480, 0x84fc,
                         0x8540, 0x857e, 0x8580, 0x85fc, 0x8640, 0x867e, 0x8680, 0x86fc, 0x8740, 0x877e, 0x8780, 0x87fc, 0x8840, 0x887e, 0x8880, 0x88fc, 0x8940, 0x897e, 0x8980, 0x89fc, 0x8a40, 0x8a7e,
                         0x8a80, 0x8afc, 0x8b40, 0x8b7e, 0x8b80, 0x8bfc, 0x8c40, 0x8c7e, 0x8c80, 0x8cfc, 0x8d40, 0x8d7e, 0x8d80, 0x8dfc, 0x8e40, 0x8e7e, 0x8e80, 0x8efc, 0x8f40, 0x8f7e, 0x8f80, 0x8ffc,
@@ -2265,32 +2304,32 @@ public final class Encodings {
     }
 
     static TestData dataMacRoman() {
-        assert TruffleString.Encoding.MacRoman.ordinal() == 65;
+        assert TruffleString.Encoding.MacRoman.ordinal() == 67;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacRomania() {
-        assert TruffleString.Encoding.MacRomania.ordinal() == 66;
+        assert TruffleString.Encoding.MacRomania.ordinal() == 68;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacThai() {
-        assert TruffleString.Encoding.MacThai.ordinal() == 67;
+        assert TruffleString.Encoding.MacThai.ordinal() == 69;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacTurkish() {
-        assert TruffleString.Encoding.MacTurkish.ordinal() == 68;
+        assert TruffleString.Encoding.MacTurkish.ordinal() == 70;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataMacUkraine() {
-        assert TruffleString.Encoding.MacUkraine.ordinal() == 69;
+        assert TruffleString.Encoding.MacUkraine.ordinal() == 71;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataSJISDoCoMo() {
-        assert TruffleString.Encoding.SJIS_DoCoMo.ordinal() == 70;
+        assert TruffleString.Encoding.SJIS_DoCoMo.ordinal() == 72;
         return new TestData(new int[]{0x0000, 0x007f, 0x00a1, 0x00df, 0x8140, 0x817e, 0x8180, 0x81fc, 0x8240, 0x827e, 0x8280, 0x82fc, 0x8340, 0x837e, 0x8380, 0x83fc, 0x8440, 0x847e, 0x8480, 0x84fc,
                         0x8540, 0x857e, 0x8580, 0x85fc, 0x8640, 0x867e, 0x8680, 0x86fc, 0x8740, 0x877e, 0x8780, 0x87fc, 0x8840, 0x887e, 0x8880, 0x88fc, 0x8940, 0x897e, 0x8980, 0x89fc, 0x8a40, 0x8a7e,
                         0x8a80, 0x8afc, 0x8b40, 0x8b7e, 0x8b80, 0x8bfc, 0x8c40, 0x8c7e, 0x8c80, 0x8cfc, 0x8d40, 0x8d7e, 0x8d80, 0x8dfc, 0x8e40, 0x8e7e, 0x8e80, 0x8efc, 0x8f40, 0x8f7e, 0x8f80, 0x8ffc,
@@ -2360,7 +2399,7 @@ public final class Encodings {
     }
 
     static TestData dataSJISKDDI() {
-        assert TruffleString.Encoding.SJIS_KDDI.ordinal() == 71;
+        assert TruffleString.Encoding.SJIS_KDDI.ordinal() == 73;
         return new TestData(new int[]{0x0000, 0x007f, 0x00a1, 0x00df, 0x8140, 0x817e, 0x8180, 0x81fc, 0x8240, 0x827e, 0x8280, 0x82fc, 0x8340, 0x837e, 0x8380, 0x83fc, 0x8440, 0x847e, 0x8480, 0x84fc,
                         0x8540, 0x857e, 0x8580, 0x85fc, 0x8640, 0x867e, 0x8680, 0x86fc, 0x8740, 0x877e, 0x8780, 0x87fc, 0x8840, 0x887e, 0x8880, 0x88fc, 0x8940, 0x897e, 0x8980, 0x89fc, 0x8a40, 0x8a7e,
                         0x8a80, 0x8afc, 0x8b40, 0x8b7e, 0x8b80, 0x8bfc, 0x8c40, 0x8c7e, 0x8c80, 0x8cfc, 0x8d40, 0x8d7e, 0x8d80, 0x8dfc, 0x8e40, 0x8e7e, 0x8e80, 0x8efc, 0x8f40, 0x8f7e, 0x8f80, 0x8ffc,
@@ -2430,7 +2469,7 @@ public final class Encodings {
     }
 
     static TestData dataSJISSoftBank() {
-        assert TruffleString.Encoding.SJIS_SoftBank.ordinal() == 72;
+        assert TruffleString.Encoding.SJIS_SoftBank.ordinal() == 74;
         return new TestData(new int[]{0x0000, 0x007f, 0x00a1, 0x00df, 0x8140, 0x817e, 0x8180, 0x81fc, 0x8240, 0x827e, 0x8280, 0x82fc, 0x8340, 0x837e, 0x8380, 0x83fc, 0x8440, 0x847e, 0x8480, 0x84fc,
                         0x8540, 0x857e, 0x8580, 0x85fc, 0x8640, 0x867e, 0x8680, 0x86fc, 0x8740, 0x877e, 0x8780, 0x87fc, 0x8840, 0x887e, 0x8880, 0x88fc, 0x8940, 0x897e, 0x8980, 0x89fc, 0x8a40, 0x8a7e,
                         0x8a80, 0x8afc, 0x8b40, 0x8b7e, 0x8b80, 0x8bfc, 0x8c40, 0x8c7e, 0x8c80, 0x8cfc, 0x8d40, 0x8d7e, 0x8d80, 0x8dfc, 0x8e40, 0x8e7e, 0x8e80, 0x8efc, 0x8f40, 0x8f7e, 0x8f80, 0x8ffc,
@@ -2500,7 +2539,7 @@ public final class Encodings {
     }
 
     static TestData dataShiftJIS() {
-        assert TruffleString.Encoding.Shift_JIS.ordinal() == 73;
+        assert TruffleString.Encoding.Shift_JIS.ordinal() == 75;
         return new TestData(new int[]{0x0000, 0x007f, 0x00a1, 0x00df, 0x8140, 0x817e, 0x8180, 0x81fc, 0x8240, 0x827e, 0x8280, 0x82fc, 0x8340, 0x837e, 0x8380, 0x83fc, 0x8440, 0x847e, 0x8480, 0x84fc,
                         0x8540, 0x857e, 0x8580, 0x85fc, 0x8640, 0x867e, 0x8680, 0x86fc, 0x8740, 0x877e, 0x8780, 0x87fc, 0x8840, 0x887e, 0x8880, 0x88fc, 0x8940, 0x897e, 0x8980, 0x89fc, 0x8a40, 0x8a7e,
                         0x8a80, 0x8afc, 0x8b40, 0x8b7e, 0x8b80, 0x8bfc, 0x8c40, 0x8c7e, 0x8c80, 0x8cfc, 0x8d40, 0x8d7e, 0x8d80, 0x8dfc, 0x8e40, 0x8e7e, 0x8e80, 0x8efc, 0x8f40, 0x8f7e, 0x8f80, 0x8ffc,
@@ -2570,91 +2609,91 @@ public final class Encodings {
     }
 
     static TestData dataStatelessISO2022JP() {
-        assert TruffleString.Encoding.Stateless_ISO_2022_JP.ordinal() == 74;
+        assert TruffleString.Encoding.Stateless_ISO_2022_JP.ordinal() == 76;
         return new TestData(new int[]{0x00, 0x7f}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null);
     }
 
     static TestData dataStatelessISO2022JPKDDI() {
-        assert TruffleString.Encoding.Stateless_ISO_2022_JP_KDDI.ordinal() == 75;
+        assert TruffleString.Encoding.Stateless_ISO_2022_JP_KDDI.ordinal() == 77;
         return new TestData(new int[]{0x00, 0x7f}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null);
     }
 
     static TestData dataTIS620() {
-        assert TruffleString.Encoding.TIS_620.ordinal() == 76;
+        assert TruffleString.Encoding.TIS_620.ordinal() == 78;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataUTF8DoCoMo() {
-        assert TruffleString.Encoding.UTF8_DoCoMo.ordinal() == 77;
+        assert TruffleString.Encoding.UTF8_DoCoMo.ordinal() == 79;
         return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x1, 0x4, 0x7}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null,
                         new byte[]{(byte) 0x00, (byte) 0xed, (byte) 0x9f, (byte) 0xbf, (byte) 0xee, (byte) 0x80, (byte) 0x80, (byte) 0xf4, (byte) 0x8f, (byte) 0xbf, (byte) 0xbf}, null, null);
     }
 
     static TestData dataUTF8KDDI() {
-        assert TruffleString.Encoding.UTF8_KDDI.ordinal() == 78;
+        assert TruffleString.Encoding.UTF8_KDDI.ordinal() == 80;
         return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x1, 0x4, 0x7}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null,
                         new byte[]{(byte) 0x00, (byte) 0xed, (byte) 0x9f, (byte) 0xbf, (byte) 0xee, (byte) 0x80, (byte) 0x80, (byte) 0xf4, (byte) 0x8f, (byte) 0xbf, (byte) 0xbf}, null, null);
     }
 
     static TestData dataUTF8MAC() {
-        assert TruffleString.Encoding.UTF8_MAC.ordinal() == 79;
+        assert TruffleString.Encoding.UTF8_MAC.ordinal() == 81;
         return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x1, 0x4, 0x7}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null,
                         new byte[]{(byte) 0x00, (byte) 0xed, (byte) 0x9f, (byte) 0xbf, (byte) 0xee, (byte) 0x80, (byte) 0x80, (byte) 0xf4, (byte) 0x8f, (byte) 0xbf, (byte) 0xbf}, null, null);
     }
 
     static TestData dataUTF8SoftBank() {
-        assert TruffleString.Encoding.UTF8_SoftBank.ordinal() == 80;
+        assert TruffleString.Encoding.UTF8_SoftBank.ordinal() == 82;
         return new TestData(new int[]{0x000000, 0x00d7ff, 0x00e000, 0x10ffff}, new int[]{0x0, 0x1, 0x4, 0x7}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null,
                         new byte[]{(byte) 0x00, (byte) 0xed, (byte) 0x9f, (byte) 0xbf, (byte) 0xee, (byte) 0x80, (byte) 0x80, (byte) 0xf4, (byte) 0x8f, (byte) 0xbf, (byte) 0xbf}, null, null);
     }
 
     static TestData dataWindows1250() {
-        assert TruffleString.Encoding.Windows_1250.ordinal() == 81;
+        assert TruffleString.Encoding.Windows_1250.ordinal() == 83;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows1251() {
-        assert TruffleString.Encoding.Windows_1251.ordinal() == 82;
+        assert TruffleString.Encoding.Windows_1251.ordinal() == 84;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows1252() {
-        assert TruffleString.Encoding.Windows_1252.ordinal() == 83;
+        assert TruffleString.Encoding.Windows_1252.ordinal() == 85;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows1253() {
-        assert TruffleString.Encoding.Windows_1253.ordinal() == 84;
+        assert TruffleString.Encoding.Windows_1253.ordinal() == 86;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows1254() {
-        assert TruffleString.Encoding.Windows_1254.ordinal() == 85;
+        assert TruffleString.Encoding.Windows_1254.ordinal() == 87;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows1255() {
-        assert TruffleString.Encoding.Windows_1255.ordinal() == 86;
+        assert TruffleString.Encoding.Windows_1255.ordinal() == 88;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows1256() {
-        assert TruffleString.Encoding.Windows_1256.ordinal() == 87;
+        assert TruffleString.Encoding.Windows_1256.ordinal() == 89;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows1257() {
-        assert TruffleString.Encoding.Windows_1257.ordinal() == 88;
+        assert TruffleString.Encoding.Windows_1257.ordinal() == 90;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows1258() {
-        assert TruffleString.Encoding.Windows_1258.ordinal() == 89;
+        assert TruffleString.Encoding.Windows_1258.ordinal() == 91;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataWindows31J() {
-        assert TruffleString.Encoding.Windows_31J.ordinal() == 90;
+        assert TruffleString.Encoding.Windows_31J.ordinal() == 92;
         return new TestData(new int[]{0x0000, 0x007f, 0x00a1, 0x00df, 0x8140, 0x817e, 0x8180, 0x81fc, 0x8240, 0x827e, 0x8280, 0x82fc, 0x8340, 0x837e, 0x8380, 0x83fc, 0x8440, 0x847e, 0x8480, 0x84fc,
                         0x8540, 0x857e, 0x8580, 0x85fc, 0x8640, 0x867e, 0x8680, 0x86fc, 0x8740, 0x877e, 0x8780, 0x87fc, 0x8840, 0x887e, 0x8880, 0x88fc, 0x8940, 0x897e, 0x8980, 0x89fc, 0x8a40, 0x8a7e,
                         0x8a80, 0x8afc, 0x8b40, 0x8b7e, 0x8b80, 0x8bfc, 0x8c40, 0x8c7e, 0x8c80, 0x8cfc, 0x8d40, 0x8d7e, 0x8d80, 0x8dfc, 0x8e40, 0x8e7e, 0x8e80, 0x8efc, 0x8f40, 0x8f7e, 0x8f80, 0x8ffc,
@@ -2724,42 +2763,42 @@ public final class Encodings {
     }
 
     static TestData dataWindows874() {
-        assert TruffleString.Encoding.Windows_874.ordinal() == 91;
+        assert TruffleString.Encoding.Windows_874.ordinal() == 93;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, new byte[]{(byte) 0x00, (byte) 0x7f}, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataCP50220() {
-        assert TruffleString.Encoding.CP50220.ordinal() == 92;
+        assert TruffleString.Encoding.CP50220.ordinal() == 94;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, null, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataCP50221() {
-        assert TruffleString.Encoding.CP50221.ordinal() == 93;
+        assert TruffleString.Encoding.CP50221.ordinal() == 95;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, null, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataIBM037() {
-        assert TruffleString.Encoding.IBM037.ordinal() == 94;
+        assert TruffleString.Encoding.IBM037.ordinal() == 96;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, null, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO2022JP() {
-        assert TruffleString.Encoding.ISO_2022_JP.ordinal() == 95;
+        assert TruffleString.Encoding.ISO_2022_JP.ordinal() == 97;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, null, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO2022JP2() {
-        assert TruffleString.Encoding.ISO_2022_JP_2.ordinal() == 96;
+        assert TruffleString.Encoding.ISO_2022_JP_2.ordinal() == 98;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, null, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataISO2022JPKDDI() {
-        assert TruffleString.Encoding.ISO_2022_JP_KDDI.ordinal() == 97;
+        assert TruffleString.Encoding.ISO_2022_JP_KDDI.ordinal() == 99;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, null, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 
     static TestData dataUTF7() {
-        assert TruffleString.Encoding.UTF_7.ordinal() == 98;
+        assert TruffleString.Encoding.UTF_7.ordinal() == 100;
         return new TestData(new int[]{0x00, 0xff}, new int[]{0x0, 0x1}, null, null, null, new byte[]{(byte) 0x00, (byte) 0xff}, null, null);
     }
 }

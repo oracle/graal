@@ -87,6 +87,25 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         Assert.assertFalse("new call node to non \"needs split\" target is split", newCallNode.isCallTargetCloned());
     }
 
+    protected static void testNeedsSplitButDoesNotSplitDirectCallHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        // two callers for a target are needed
+        runtime.createDirectCallNode(callTarget);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertFalse("Target shouldn't be split but is split", directCallNode.isCallTargetCloned());
+
+        // Test new dirrectCallNode will split
+        final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
+        newCallNode.call(firstArgs);
+        Assert.assertFalse("new call node to non \"needs split\" target is split", newCallNode.isCallTargetCloned());
+    }
+
     protected static Boolean getNeedsSplit(OptimizedCallTarget callTarget) {
         try {
             return (Boolean) reflectivelyGetField(callTarget, "needsSplit");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,7 +111,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                             value = getScalarAlias(write.value());
                             object = GraphUtil.unproxify(write.getAddress());
                         } else {
-                            throw GraalError.shouldNotReachHere();
+                            throw GraalError.shouldNotReachHereUnexpectedValue(node); // ExcludeFromJacocoGeneratedReport
                         }
                         LoadCacheEntry identifier = new LoadCacheEntry(object, identity);
                         ValueNode cachedValue = state.getCacheEntry(identifier);
@@ -144,7 +144,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                     killReadCacheByIdentity(state, identity);
                 }
             } else {
-                throw GraalError.shouldNotReachHere("Unknown memory kill " + node);
+                throw GraalError.shouldNotReachHere("Unknown memory kill " + node); // ExcludeFromJacocoGeneratedReport
             }
         } else {
             if (node instanceof MemoryAccess) {
@@ -203,7 +203,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
         }
         if (deleted) {
             effects.addLog(cfg.graph.getOptimizationLog(),
-                            optimizationLog -> optimizationLog.withProperty("deletedNodeClass", node.getNodeClass().shortName()).report(getClass(), "ReadElimination", node));
+                            optimizationLog -> optimizationLog.withProperty("deletedNodeClass", node.getNodeClass().shortName()).report(ReadEliminationClosure.class, "ReadElimination", node));
         }
         return deleted;
     }

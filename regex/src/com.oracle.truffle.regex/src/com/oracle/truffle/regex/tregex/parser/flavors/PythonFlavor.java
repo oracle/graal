@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.ibm.icu.lang.UCharacter;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
@@ -52,18 +53,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 import java.util.function.BiPredicate;
 
 /**
- * An implementation of the Python regex flavor. Technically, this class provides an implementation
- * for two regex flavors: 'str' regexes, which result from compiling string patterns, and 'bytes'
- * patterns, which result from compiling binary (byte buffer) patterns.
- *
- * This implementation supports translating all Python regular expressions to ECMAScript regular
- * expressions with the exception of the following features:
- * <ul>
- * <li>locale-sensitive case folding, word boundary assertions and character classes: When a regular
- * expression is compiled with the {@code re.LOCALE} flag, some of its elements should depend on the
- * locale set during matching time. This is not compatible with compiling regular expressions
- * ahead-of-time into automata.</li>
- * </ul>
+ * An implementation of the Python regex flavor. Supports both string regexes ('str' patterns) and
+ * binary regexes ('bytes' patterns).
  *
  * @see PythonREMode
  */
@@ -89,10 +80,14 @@ public final class PythonFlavor extends RegexFlavor {
     @Override
     public BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast) {
         if (ast.getOptions().getEncoding() == Encodings.UTF_32) {
-            return CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode.getEqualsPredicate();
+            return PythonFlavor::equalsIgnoreCaseUnicode;
         } else {
             assert ast.getOptions().getEncoding() == Encodings.LATIN_1;
             return CaseFoldTable.CaseFoldingAlgorithm.PythonAscii.getEqualsPredicate();
         }
+    }
+
+    private static boolean equalsIgnoreCaseUnicode(int codePointA, int codePointB) {
+        return UCharacter.toLowerCase(codePointA) == UCharacter.toLowerCase(codePointB);
     }
 }

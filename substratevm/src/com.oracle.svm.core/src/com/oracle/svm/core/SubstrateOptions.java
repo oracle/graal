@@ -28,7 +28,6 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.I
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
-import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
@@ -64,6 +63,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ModuleSupport;
@@ -412,6 +412,9 @@ public class SubstrateOptions {
     @Option(help = "Show code and heap breakdowns as part of the build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputBreakdowns = new HostedOptionKey<>(true);
 
+    @Option(help = "Show recommendations as part of the build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputRecommendations = new HostedOptionKey<>(true);
+
     @Option(help = "Print GC warnings as part of build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
 
@@ -494,6 +497,9 @@ public class SubstrateOptions {
 
     @Option(help = "Maximum number of nodes in a method so that it is considered trivial, if it does not have any invokes.")//
     public static final HostedOptionKey<Integer> MaxNodesInTrivialLeafMethod = new HostedOptionKey<>(40);
+
+    @Option(help = "The maximum number of nodes in a graph allowed after trivial inlining.")//
+    public static final HostedOptionKey<Integer> MaxNodesAfterTrivialInlining = new HostedOptionKey<>(Integer.MAX_VALUE);
 
     @Option(help = "Saves stack base pointer on the stack on method entry.")//
     public static final HostedOptionKey<Boolean> PreserveFramePointer = new HostedOptionKey<>(false);
@@ -617,7 +623,7 @@ public class SubstrateOptions {
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
-    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0) {
+    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             if (OS.WINDOWS.isCurrent()) {
@@ -626,6 +632,30 @@ public class SubstrateOptions {
             }
         }
     };
+
+    private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
+        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue()) {
+            System.out.printf("Warning: Using %s is not supported on macOS%n", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
+        }
+    }
+
+    @Option(help = "Control debug information output: 0 - no debuginfo, 1 - AOT code debuginfo, 2 - AOT and runtime code debuginfo (runtime code support only with -H:+UseOldDebugInfo).", //
+                    deprecated = true, deprecationMessage = "Please use the -g option.")//
+    public static final HostedOptionKey<Integer> Debug = new HostedOptionKey<>(0) {
+        public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
+            GenerateDebugInfo.update(values, newValue);
+        }
+    };
+
+    @Option(help = "Use old debuginfo", deprecated = true, deprecationMessage = "Please use the -g option.")//
+    public static final HostedOptionKey<Boolean> UseOldDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateUseOldDebugInfo);
+
+    private static void validateUseOldDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && SubstrateOptions.GenerateDebugInfo.getValue() < 1) {
+            throw UserError.abort("The option '%s' can only be used together with '%s'.",
+                            SubstrateOptionsParser.commandArgument(optionKey, "+"), SubstrateOptionsParser.commandArgument(SubstrateOptions.GenerateDebugInfo, "2"));
+        }
+    }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> DebugInfoSourceSearchPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
@@ -641,8 +671,17 @@ public class SubstrateOptions {
         }
     }
 
-    @Option(help = "Strip debug info from the binary.")//
-    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(true);
+    @Option(help = "Use a separate file for debug info.")//
+    public static final HostedOptionKey<Boolean> StripDebugInfo = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN, SubstrateOptions::validateStripDebugInfo);
+
+    private static void validateStripDebugInfo(HostedOptionKey<Boolean> optionKey) {
+        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue()) {
+            throw UserError.abort("Warning: Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+"));
+        }
+        if (OS.getCurrent() == OS.WINDOWS && optionKey.hasBeenSet() && !optionKey.getValue()) {
+            throw UserError.abort("Warning: Using %s is not supported on Windows: debug info is always generated in a separate file", SubstrateOptionsParser.commandArgument(optionKey, "-"));
+        }
+    }
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
@@ -716,7 +755,7 @@ public class SubstrateOptions {
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
     public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1, Immutable, RelevantForCompilationIsolates);
 
-    @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
+    @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
 
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal). Defaults to false for shared library and true for executables", stability = OptionStability.EXPERIMENTAL, type = Expert)//
@@ -780,13 +819,17 @@ public class SubstrateOptions {
     public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning", Immutable);
 
     public static String reportsPath() {
-        return Paths.get(Paths.get(Path.getValue()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();
+        Path reportsPath = ImageSingletons.lookup(ReportingSupport.class).reportsPath;
+        if (reportsPath.isAbsolute()) {
+            return reportsPath.toString();
+        }
+        return Paths.get(Path.getValue()).resolve(reportsPath).toString();
     }
 
     public static class ReportingSupport {
-        String reportsPath;
+        Path reportsPath;
 
-        public ReportingSupport(String reportingPath) {
+        public ReportingSupport(Path reportingPath) {
             this.reportsPath = reportingPath;
         }
     }
@@ -794,20 +837,13 @@ public class SubstrateOptions {
     @Option(help = "Define PageSize of a machine that runs the image. The default = 0 (== same as host machine page size)")//
     protected static final HostedOptionKey<Integer> PageSize = new HostedOptionKey<>(0);
 
+    @Fold
     public static int getPageSize() {
         int value = PageSize.getValue();
         if (value == 0) {
-            try {
-                /*
-                 * On JDK 17 and later, this is just a final field access that can never fail. But
-                 * on JDK 11, it is a native method call with some corner cases that can throw an
-                 * exception.
-                 */
-                return Unsafe.getUnsafe().pageSize();
-            } catch (IllegalArgumentException e) {
-                return 4096;
-            }
+            return Unsafe.getUnsafe().pageSize();
         }
+        assert value > 0;
         return value;
     }
 
@@ -822,6 +858,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Specifies the number of entries that diagnostic buffers have.", type = OptionType.Debug)//
+    public static final HostedOptionKey<Integer> DiagnosticBufferSize = new HostedOptionKey<>(30);
+
     @SuppressWarnings("unused")//
     @APIOption(name = "configure-reflection-metadata")//
     @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert, deprecated = true)//
@@ -830,13 +869,13 @@ public class SubstrateOptions {
     @Option(help = "Include a list of methods included in the image for runtime inspection.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(true);
 
-    @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = Debug)//
+    @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
 
     @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert)//
     public static final HostedOptionKey<Boolean> RunReachabilityHandlersConcurrently = new HostedOptionKey<>(true);
 
-    @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = Debug)//
+    @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> UseDirectCallTrampolinesALot = new HostedOptionKey<>(false);
 
     @Option(help = "Initializes and runs main entry point in a new native thread.", type = Expert)//
@@ -855,7 +894,15 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = Debug)//
+    @Option(help = "Instead of abort, only warn if image builder classes are found on the image class-path.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> AllowDeprecatedBuilderClassesOnImageClasspath = new HostedOptionKey<>(false);
 
+    @Option(help = "file:doc-files/MissingRegistrationHelp.txt")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrors = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "file:doc-files/MissingRegistrationPathsHelp.txt")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
 }

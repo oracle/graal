@@ -108,7 +108,7 @@ public final class ArrayCopyWithDelayedLoweringNode extends BasicArrayCopyNode i
                 // will become a loop
                 return true;
             default:
-                throw GraalError.shouldNotReachHere("Unkown snippet type " + snippet);
+                throw GraalError.shouldNotReachHere("Unkown snippet type " + snippet); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

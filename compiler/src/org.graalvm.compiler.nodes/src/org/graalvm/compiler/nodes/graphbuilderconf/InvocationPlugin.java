@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -383,21 +383,30 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         return name + argumentsDescriptor;
     }
 
-    public boolean match(InvocationPlugin other) {
+    public boolean isSameType(InvocationPlugin other) {
         return isStatic == other.isStatic && name.equals(other.name) && argumentsDescriptor.equals(other.argumentsDescriptor);
     }
 
-    public boolean match(ResolvedJavaMethod method) {
+    public boolean isSameType(ResolvedJavaMethod method) {
         return isStatic == method.isStatic() && name.equals(method.getName()) && method.getSignature().toMethodDescriptor().startsWith(argumentsDescriptor);
     }
 
-    public boolean match(Method method) {
+    private static boolean isSameType(Class<?> actualType, Type toMatch) {
+        if (actualType == toMatch) {
+            return true;
+        } else if (toMatch instanceof InvocationPlugins.OptionalLazySymbol) {
+            return actualType.getTypeName().equals(toMatch.getTypeName());
+        }
+        return false;
+    }
+
+    public boolean isSameType(Method method) {
         if (isStatic == Modifier.isStatic(method.getModifiers()) && name.equals(method.getName())) {
             Class<?>[] parameterTypes = method.getParameterTypes();
             int offset = isStatic ? 0 : 1;
             if (parameterTypes.length == argumentTypes.length - offset) {
                 for (int i = 0; i < parameterTypes.length; i++) {
-                    if (parameterTypes[i] != argumentTypes[i + offset]) {
+                    if (!isSameType(parameterTypes[i], argumentTypes[i + offset])) {
                         return false;
                     }
                 }
@@ -407,12 +416,12 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         return false;
     }
 
-    public boolean match(Constructor<?> c) {
+    public boolean isSameType(Constructor<?> c) {
         if (!isStatic && "<init>".equals(name)) {
             Class<?>[] parameterTypes = c.getParameterTypes();
             if (parameterTypes.length == argumentTypes.length - 1) {
                 for (int i = 0; i < parameterTypes.length; i++) {
-                    if (parameterTypes[i] != argumentTypes[i + 1]) {
+                    if (!isSameType(parameterTypes[i], argumentTypes[i + 1])) {
                         return false;
                     }
                 }

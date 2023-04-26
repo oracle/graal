@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,27 @@
  */
 package com.oracle.svm.core.sampler;
 
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.stack.ParameterizedStackFrameVisitor;
-import com.oracle.svm.core.util.VMError;
 
 class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate within the safepoint sampler.")
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame, Object data) {
         SamplingStackVisitor.StackTrace stackTrace = (SamplingStackVisitor.StackTrace) data;
-        VMError.guarantee(stackTrace.num < StackTrace.MAX_STACK_DEPTH, "The call stack depth of the thread  exceeds the maximal set value.");
-        stackTrace.data[stackTrace.num++] = ip.rawValue();
-        return true;
+        if (stackTrace.num < stackTrace.buffer.length) {
+            stackTrace.buffer[stackTrace.num++] = ip.rawValue();
+            return true;
+        } else {
+            stackTrace.overflow = true;
+            return false;
+        }
     }
 
     @Override
@@ -47,10 +52,25 @@ class SamplingStackVisitor extends ParameterizedStackFrameVisitor {
         return false;
     }
 
-    public static class StackTrace {
+    static class StackTrace {
+        final long[] buffer;
+        int num;
+        boolean overflow;
 
-        static final int MAX_STACK_DEPTH = 2048;
-        long[] data = new long[MAX_STACK_DEPTH];
-        int num = 0;
+        StackTrace(long stackSizeInBytes) {
+            this.buffer = new long[((int) stackSizeInBytes) / 4];
+            this.num = 0;
+            this.overflow = false;
+        }
+
+        public void reset() {
+            this.num = 0;
+            this.overflow = false;
+        }
+
+        @Override
+        public String toString() {
+            return "StackTrace<buffer length = " + buffer.length + ", num = " + num + ">";
+        }
     }
 }

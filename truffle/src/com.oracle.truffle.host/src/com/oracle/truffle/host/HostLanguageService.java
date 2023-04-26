@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -254,7 +254,7 @@ public class HostLanguageService extends AbstractHostLanguageService {
     @Override
     public RuntimeException toHostException(Object context, Throwable exception) {
         HostContext hostContext = (HostContext) context;
-        return new HostException(exception, hostContext);
+        return HostException.wrap(exception, hostContext);
     }
 
     @Override
@@ -314,6 +314,11 @@ public class HostLanguageService extends AbstractHostLanguageService {
     @Override
     public void hostExit(int exitCode) {
         System.exit(exitCode);
+    }
+
+    @Override
+    public boolean allowsPublicAccess() {
+        return api.allowsPublicAccess(language.hostClassCache.hostAccess);
     }
 
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {

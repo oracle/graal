@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -124,6 +125,11 @@ public class OptimizationLogImpl implements OptimizationLog {
     public static final String INDIRECT_PROPERTY = "indirect";
 
     /**
+     * The key of the property which is {@code true} iff the invoke of a callsite is alive.
+     */
+    public static final String ALIVE_PROPERTY = "alive";
+
+    /**
      * The key of the reason property. The property holds a list of reasons for inlining decisions
      * in their original order.
      */
@@ -201,47 +207,36 @@ public class OptimizationLogImpl implements OptimizationLog {
     public static final String CONCRETE_METHOD_NAME_PROPERTY = "concreteMethodName";
 
     /**
-     * Represents an optimization phase, which can trigger its own subphases and/or individual
-     * optimizations. It is a node in the tree of optimizations that holds its subphases and
-     * individual optimizations in the order they were performed.
+     * Represents an applied optimization phase as a node in the optimization tree. The children are
+     * the phases applied and the optimizations performed in the phase.
      */
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Phase", nameTemplate = "{p#phaseName/s}")
-    public static class OptimizationPhaseScopeImpl extends OptimizationTreeNode implements OptimizationLog.OptimizationPhaseScope {
-        public static final NodeClass<OptimizationPhaseScopeImpl> TYPE = NodeClass.create(OptimizationPhaseScopeImpl.class);
-
-        private final OptimizationLogImpl optimizationLog;
+    public static class OptimizationPhaseNode extends OptimizationTreeNode {
+        public static final NodeClass<OptimizationPhaseNode> TYPE = NodeClass.create(OptimizationPhaseNode.class);
 
         private final CharSequence phaseName;
 
-        @Successor private NodeSuccessorList<OptimizationTreeNode> children = null;
+        @Successor private NodeSuccessorList<OptimizationTreeNode> children;
 
-        protected OptimizationPhaseScopeImpl(OptimizationLogImpl optimizationLog, CharSequence phaseName) {
+        @SuppressWarnings("this-escape")
+        protected OptimizationPhaseNode(CharSequence phaseName) {
             super(TYPE);
-            this.optimizationLog = optimizationLog;
             this.phaseName = phaseName;
+            this.children = new NodeSuccessorList<>(this, 0);
         }
 
         /**
-         * Gets the name of the phase described by this scope.
-         *
-         * @return the name of the phase described by this scope
+         * Gets the subphases and the optimizations performed in this phase.
          */
-        @Override
         public CharSequence getPhaseName() {
             return phaseName;
         }
 
         /**
-         * Creates a subphase of this phase, sets it as the current phase and returns its instance.
-         *
-         * @param subphaseName the name of the newly created phase
-         * @return the newly created phase
+         * Gets the subphases and the optimizations performed in this phase.
          */
-        private OptimizationPhaseScopeImpl enterSubphase(CharSequence subphaseName) {
-            OptimizationPhaseScopeImpl subphase = new OptimizationPhaseScopeImpl(optimizationLog, subphaseName);
-            addChild(subphase);
-            optimizationLog.currentPhase = subphase;
-            return subphase;
+        public NodeSuccessorList<OptimizationTreeNode> getChildren() {
+            return children;
         }
 
         /**
@@ -249,23 +244,9 @@ public class OptimizationLogImpl implements OptimizationLog {
          *
          * @param node the node to be added as a child
          */
-        private void addChild(OptimizationLogImpl.OptimizationTreeNode node) {
+        public void addChild(OptimizationTreeNode node) {
             graph().add(node);
-            if (children == null) {
-                children = new NodeSuccessorList<>(this, 1);
-                children.set(0, node);
-            } else {
-                children.add(node);
-            }
-        }
-
-        /**
-         * Notifies the phase that it has ended. Sets the current phase to the parent phase of this
-         * phase.
-         */
-        @Override
-        public void close() {
-            optimizationLog.currentPhase = (OptimizationPhaseScopeImpl) predecessor();
+            children.add(node);
         }
 
         @Override
@@ -275,38 +256,28 @@ public class OptimizationLogImpl implements OptimizationLog {
             List<EconomicMap<String, Object>> optimizations = null;
             if (children != null) {
                 optimizations = new ArrayList<>();
-                for (OptimizationLogImpl.OptimizationTreeNode entry : children) {
+                for (OptimizationTreeNode entry : children) {
                     optimizations.add(entry.asJSONMap(methodNameFormatter));
                 }
             }
             map.put(OPTIMIZATIONS_PROPERTY, optimizations);
             return map;
         }
-
-        /**
-         * Gets child nodes (successors) in the graph, i.e., optimizations and phases triggered
-         * inside this phase.
-         *
-         * @return child nodes (successors) in the graph
-         */
-        @Override
-        public NodeSuccessorList<OptimizationTreeNode> getChildren() {
-            return children;
-        }
     }
 
     /**
-     * Represents one performed optimization stored in the optimization log. Additional properties
-     * are stored and immediately evaluated. This is a leaf node in the optimization tree.
+     * Represents a performed optimization in the optimization tree. The parent (predecessor) is the
+     * phase that performed the optimization. An optimization does not have any children of its own;
+     * it is always a leaf node in the optimization tree.
      */
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#event}")
-    public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
-        public static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
+    public static class OptimizationNode extends OptimizationTreeNode {
+        public static final NodeClass<OptimizationNode> TYPE = NodeClass.create(OptimizationNode.class);
 
         /**
          * A map of additional named properties or {@code null} if no properties were set.
          */
-        private EconomicMap<String, Object> properties = null;
+        private final EconomicMap<String, Object> properties;
 
         /**
          * A position of a significant node related to this optimization.
@@ -314,25 +285,22 @@ public class OptimizationLogImpl implements OptimizationLog {
         private NodeSourcePosition position;
 
         /**
-         * The associated optimization log, which is extended with this node when it is
-         * {@link #report reported}.
-         */
-        private final OptimizationLogImpl optimizationLog;
-
-        /**
          * The name of this optimization. Corresponds to the name of the compiler phase or another
          * class which performed this optimization.
          */
-        private String optimizationName;
+        private final String optimizationName;
 
         /**
          * The name of the event that occurred, which describes this optimization entry.
          */
-        private String event;
+        private final String eventName;
 
-        protected OptimizationEntryImpl(OptimizationLogImpl optimizationLog) {
+        public OptimizationNode(EconomicMap<String, Object> properties, NodeSourcePosition position, String optimizationName, String eventName) {
             super(TYPE);
-            this.optimizationLog = optimizationLog;
+            this.properties = properties;
+            this.position = position;
+            this.optimizationName = optimizationName;
+            this.eventName = eventName;
         }
 
         /**
@@ -361,66 +329,16 @@ public class OptimizationLogImpl implements OptimizationLog {
             return map;
         }
 
-        private static String createOptimizationName(Class<?> optimizationClass) {
-            String className = optimizationClass.getSimpleName();
-            String phaseSuffix = "Phase";
-            if (className.endsWith(phaseSuffix)) {
-                return className.substring(0, className.length() - phaseSuffix.length());
-            }
-            return className;
-        }
-
         @Override
         public EconomicMap<String, Object> asJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
             EconomicMap<String, Object> jsonMap = EconomicMap.create();
             jsonMap.put(OPTIMIZATION_NAME_PROPERTY, optimizationName);
-            jsonMap.put(EVENT_NAME_PROPERTY, event);
+            jsonMap.put(EVENT_NAME_PROPERTY, eventName);
             jsonMap.put(POSITION_PROPERTY, createPositionProperty(methodNameFormatter, position));
             if (properties != null) {
                 jsonMap.putAll(properties);
             }
             return jsonMap;
-        }
-
-        @Override
-        public <V> OptimizationEntry withLazyProperty(String key, Supplier<V> valueSupplier) {
-            if (properties == null) {
-                properties = EconomicMap.create(1);
-            }
-            properties.put(key, valueSupplier.get());
-            return this;
-        }
-
-        @Override
-        public OptimizationEntry withProperty(String key, Object value) {
-            if (properties == null) {
-                properties = EconomicMap.create(1);
-            }
-            properties.put(key, value);
-            return this;
-        }
-
-        @Override
-        public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-            assert logLevel >= OptimizationLog.MINIMUM_LOG_LEVEL;
-            event = eventName;
-            optimizationName = createOptimizationName(optimizationClass);
-            position = node.getNodeSourcePosition();
-            DebugContext debug = optimizationLog.graph.getDebug();
-            if (debug.isCountEnabled() || debug.hasUnscopedCounters()) {
-                DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
-            }
-            if (debug.isLogEnabled(logLevel)) {
-                debug.log(logLevel, "Performed %s %s for node %s at bci %s %s", optimizationName, eventName, node,
-                                position == null ? "unknown" : position.getBCI(),
-                                properties == null ? "" : JSONFormatter.formatJSON(properties));
-            }
-            if (debug.isDumpEnabled(logLevel)) {
-                debug.dump(logLevel, optimizationLog.graph, "%s %s for %s", optimizationName, eventName, node);
-            }
-            if (optimizationLog.optimizationLogEnabled) {
-                optimizationLog.currentPhase.addChild(this);
-            }
         }
 
         /**
@@ -446,23 +364,87 @@ public class OptimizationLogImpl implements OptimizationLog {
          * @return the name of the event that occurred
          */
         public String getEventName() {
-            return event;
+            return eventName;
+        }
+
+        /**
+         * Gets the position of the optimization, i.e., the position of a significant node.
+         *
+         * @return the position of the optimization
+         */
+        public NodeSourcePosition getPosition() {
+            return position;
         }
     }
 
-    public static final class PartialEscapeLogImpl implements OptimizationLog.PartialEscapeLog {
-        private final EconomicMap<VirtualObjectNode, Integer> virtualNodes = EconomicMap.create(Equivalence.IDENTITY);
+    /**
+     * Describes a performed optimization. Allows to incrementally add properties and then report
+     * the performed optimization. When the optimization is reported and the optimization log is
+     * enabled, an {@link OptimizationNode} is added to the {@link #getCurrentPhase() current
+     * phase}.
+     */
+    public static class OptimizationEntryImpl implements OptimizationEntry {
+        /**
+         * A map of additional named properties or {@code null} if no properties were set.
+         */
+        private EconomicMap<String, Object> properties;
 
-        @Override
-        public void allocationRemoved(VirtualObjectNode virtualObjectNode) {
-            virtualNodes.put(virtualObjectNode, 0);
+        /**
+         * The associated optimization log, which is extended with this node when it is
+         * {@link #report reported}.
+         */
+        private final OptimizationLogImpl optimizationLog;
+
+        public OptimizationEntryImpl(OptimizationLogImpl optimizationLog) {
+            this.optimizationLog = optimizationLog;
+        }
+
+        private static String createOptimizationName(Class<?> optimizationClass) {
+            String className = optimizationClass.getSimpleName();
+            String phaseSuffix = "Phase";
+            if (className.endsWith(phaseSuffix)) {
+                return className.substring(0, className.length() - phaseSuffix.length());
+            }
+            return className;
         }
 
         @Override
-        public void objectMaterialized(VirtualObjectNode virtualObjectNode) {
-            Integer count = virtualNodes.get(virtualObjectNode);
-            if (count != null) {
-                virtualNodes.put(virtualObjectNode, count + 1);
+        public <V> OptimizationEntry withLazyProperty(String key, Supplier<V> valueSupplier) {
+            if (properties == null) {
+                properties = EconomicMap.create(1);
+            }
+            properties.put(key, valueSupplier.get());
+            return this;
+        }
+
+        @Override
+        public OptimizationEntry withProperty(String key, Object value) {
+            if (properties == null) {
+                properties = EconomicMap.create(1);
+            }
+            properties.put(key, value);
+            return this;
+        }
+
+        @Override
+        public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
+            assert logLevel >= OptimizationLog.MINIMUM_LOG_LEVEL;
+            String optimizationName = createOptimizationName(optimizationClass);
+            NodeSourcePosition position = node.getNodeSourcePosition();
+            DebugContext debug = optimizationLog.graph.getDebug();
+            if (debug.isCountEnabled() || debug.hasUnscopedCounters()) {
+                DebugContext.counter(optimizationName + "_" + eventName).increment(debug);
+            }
+            if (debug.isLogEnabled(logLevel)) {
+                debug.log(logLevel, "Performed %s %s for node %s at bci %s %s", optimizationName, eventName, node,
+                                position == null ? "unknown" : position.getBCI(),
+                                properties == null ? "" : JSONFormatter.formatJSON(properties));
+            }
+            if (debug.isDumpEnabled(logLevel)) {
+                debug.dump(logLevel, optimizationLog.graph, "%s %s for %s", optimizationName, eventName, node);
+            }
+            if (optimizationLog.optimizationLogEnabled) {
+                optimizationLog.currentPhase.addChild(new OptimizationNode(properties, position, optimizationName, eventName));
             }
         }
     }
@@ -492,18 +474,18 @@ public class OptimizationLogImpl implements OptimizationLog {
      * A data structure that holds the state of virtualized allocations during partial escape
      * analysis.
      */
-    private PartialEscapeLogImpl partialEscapeLog = null;
+    private PartialEscapeLog partialEscapeLog = null;
 
     /**
-     * The most recently opened phase that was not closed. Initially, this is the root phase. If
-     * {@link #optimizationLogEnabled} is {@code false}, the field stays {@code null}.
+     * The most recently entered phase which has not been exited yet. Initially, this is the root
+     * phase. If {@link #optimizationLogEnabled} is {@code false}, the field stays {@code null}.
      */
-    private OptimizationPhaseScopeImpl currentPhase;
+    private OptimizationPhaseNode currentPhase;
 
     /**
      * The graph that holds the optimization tree if it is enabled.
      */
-    private final Graph optimizationTree;
+    private Graph optimizationTree;
 
     /**
      * Constructs an optimization log bound with a given graph. Optimization
@@ -517,7 +499,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         optimizationLogEnabled = OptimizationLog.isOptimizationLogEnabled(graph.getOptions());
         if (optimizationLogEnabled) {
             compilationId = parseCompilationID();
-            currentPhase = new OptimizationPhaseScopeImpl(this, ROOT_PHASE_NAME);
+            currentPhase = new OptimizationPhaseNode(ROOT_PHASE_NAME);
             optimizationTree = new Graph("OptimizationTree", graph.getOptions(), graph.getDebug(), false);
             optimizationTree.add(currentPhase);
             verifyOptions(graph.getOptions());
@@ -574,23 +556,74 @@ public class OptimizationLogImpl implements OptimizationLog {
     }
 
     /**
+     * Gets the optimization tree.
+     *
+     * @return the optimization tree
+     * @see OptimizationLog.OptimizationTreeNode
+     */
+    public Graph getOptimizationTree() {
+        return optimizationTree;
+    }
+
+    /**
      * Notifies the log that an optimization phase is entered.
      *
      * @param name the name of the phase
-     * @param nesting the level of nesting (ignored)
      * @return a scope that represents the open phase
      */
     @Override
-    public OptimizationPhaseScope enterPhase(CharSequence name, int nesting) {
-        if (currentPhase == null) {
-            return null;
+    public DebugCloseable enterPhase(CharSequence name) {
+        if (optimizationLogEnabled) {
+            OptimizationPhaseNode previousPhase = currentPhase;
+            OptimizationPhaseNode subphase = new OptimizationPhaseNode(name);
+            currentPhase.addChild(subphase);
+            currentPhase = subphase;
+            return () -> currentPhase = previousPhase;
         }
-        return currentPhase.enterSubphase(name);
+        return null;
     }
 
     @Override
-    public void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci) {
+    public void inline(OptimizationLog calleeOptimizationLog, boolean updatePosition, NodeSourcePosition invokePosition) {
+        if (!optimizationLogEnabled || !calleeOptimizationLog.isOptimizationLogEnabled()) {
+            return;
+        }
+        assert calleeOptimizationLog instanceof OptimizationLogImpl : "an enabled log is an instance of OptimizationLogImpl";
+        OptimizationLogImpl calleeLogImpl = (OptimizationLogImpl) calleeOptimizationLog;
+        Graph calleeTree = calleeLogImpl.optimizationTree;
+        UnmodifiableEconomicMap<Node, Node> duplicates = optimizationTree.addDuplicates(calleeTree.getNodes(), calleeTree, calleeTree.getNodeCount(), (EconomicMap<Node, Node>) null);
+        if (updatePosition) {
+            for (Node duplicate : duplicates.getValues()) {
+                if (!(duplicate instanceof OptimizationNode)) {
+                    continue;
+                }
+                OptimizationNode optimization = (OptimizationNode) duplicate;
+                if (invokePosition != null && optimization.position != null) {
+                    optimization.position = optimization.position.addCaller(invokePosition);
+                } else {
+                    optimization.position = invokePosition;
+                }
+            }
+        }
+        currentPhase.children.add(duplicates.get(calleeLogImpl.findRootPhase()));
+    }
 
+    @Override
+    public void replaceLog(OptimizationLog replacementLog) {
+        if (!optimizationLogEnabled) {
+            return;
+        }
+        optimizationTree = new Graph(optimizationTree.name, optimizationTree.getOptions(), optimizationTree.getDebug(), optimizationTree.trackNodeSourcePosition());
+        if (!replacementLog.isOptimizationLogEnabled()) {
+            currentPhase = new OptimizationPhaseNode(ROOT_PHASE_NAME);
+            optimizationTree.add(currentPhase);
+            return;
+        }
+        assert replacementLog instanceof OptimizationLogImpl : "an enabled log is an instance of OptimizationLogImpl";
+        OptimizationLogImpl replacementLogImpl = (OptimizationLogImpl) replacementLog;
+        Graph replacementTree = replacementLogImpl.optimizationTree;
+        UnmodifiableEconomicMap<Node, Node> duplicates = optimizationTree.addDuplicates(replacementTree.getNodes(), replacementTree, replacementTree.getNodeCount(), (EconomicMap<Node, Node>) null);
+        currentPhase = (OptimizationPhaseNode) duplicates.get(replacementLogImpl.findRootPhase());
     }
 
     @Override
@@ -599,30 +632,14 @@ public class OptimizationLogImpl implements OptimizationLog {
         if (!optimizationLogEnabled) {
             return DebugCloseable.VOID_CLOSEABLE;
         }
-        partialEscapeLog = new PartialEscapeLogImpl();
+        partialEscapeLog = new PartialEscapeLog();
         return () -> {
             assert partialEscapeLog != null;
-            MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.virtualNodes.getEntries();
+            MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.getVirtualNodes().getEntries();
             while (cursor.advance()) {
                 withProperty("materializations", cursor.getValue()).report(PartialEscapeLog.class, "AllocationVirtualization", cursor.getKey());
             }
             partialEscapeLog = null;
-        };
-    }
-
-    @Override
-    public DebugCloseable listen(Function<ResolvedJavaMethod, String> methodNameFormatter) {
-        if (!optimizationLogEnabled) {
-            return DebugCloseable.VOID_CLOSEABLE;
-        }
-        graph.getDebug().setCompilationListener(this);
-        return () -> {
-            graph.getDebug().setCompilationListener(null);
-            try {
-                printCompilationUnit(methodNameFormatter);
-            } catch (IOException exception) {
-                throw new GraalError("Failed to print the optimization tree: %s", exception.getMessage());
-            }
         };
     }
 
@@ -632,25 +649,25 @@ public class OptimizationLogImpl implements OptimizationLog {
         return partialEscapeLog;
     }
 
-    @Override
-    public Graph getOptimizationTree() {
-        return optimizationTree;
-    }
-
-    @Override
-    public OptimizationPhaseScope getCurrentPhase() {
+    /**
+     * Gets the current phase or {@code null} if the optimization log is not enabled. The current
+     * phase is the most recently entered phase which has not been exited yet.
+     *
+     * @return the current phase or {@code null}
+     */
+    public OptimizationPhaseNode getCurrentPhase() {
         return currentPhase;
     }
 
     /**
      * Depending on the {@link DebugOptions#OptimizationLog OptimizationLog} option, prints the
-     * compilation unit to the standard output, JSON files and/or dumps it. If the optimization tree
-     * is printed to a file, the directory is either specified by the
-     * {@link DebugOptions#OptimizationLogPath OptimizationLogPath} option or it is printed to
-     * {@link DebugOptions#DumpPath DumpPath}/optimization_log (the former having precedence).
-     * Directories are created if they do not exist.
+     * optimization log to the standard output, JSON files and/or dumps it. When the log is printed
+     * to a file, the directory is either specified by the {@link DebugOptions#OptimizationLogPath
+     * OptimizationLogPath} option or it is printed to {@link DebugOptions#DumpPath
+     * DumpPath}/optimization_log (the former having precedence). Directories are created if they do
+     * not exist.
      *
-     * When the logs are printed to files, the filename is set to the current thread ID. The
+     * When the log are printed to a file, the filename is set to the current thread ID. The
      * optimization log in the form of a single-line JSON is appended to the file. This way, the
      * number of files is reduced, which significantly speeds up parsing later. It is also not
      * necessary to coordinate with other compilation threads, because they write to a different
@@ -662,9 +679,9 @@ public class OptimizationLogImpl implements OptimizationLog {
      * must be no extra whitespace other than what is generated by {@link JSONFormatter}.
      *
      * @param methodNameFormatter a function that formats method names
-     * @throws IOException failed to create a directory or the file
      */
-    private void printCompilationUnit(Function<ResolvedJavaMethod, String> methodNameFormatter) throws IOException {
+    @Override
+    public void emit(Function<ResolvedJavaMethod, String> methodNameFormatter) {
         EconomicSet<DebugOptions.OptimizationLogTarget> targets = DebugOptions.OptimizationLog.getValue(graph.getOptions());
         if (targets == null || targets.isEmpty()) {
             return;
@@ -682,21 +699,39 @@ public class OptimizationLogImpl implements OptimizationLog {
             TTY.out().println(json);
         }
         if (printToFile) {
-            String pathOptionValue = DebugOptions.OptimizationLogPath.getValue(graph.getOptions());
-            if (pathOptionValue == null) {
-                pathOptionValue = PathUtilities.getPath(DebugOptions.getDumpDirectory(graph.getOptions()), OPTIMIZATION_LOG_DIRECTORY);
-            }
-            PathUtilities.createDirectories(pathOptionValue);
-            @SuppressWarnings("deprecation")
-            String fileName = String.valueOf(Thread.currentThread().getId());
-            String filePath = PathUtilities.getPath(pathOptionValue, fileName);
-            try (OutputStream outputStream = PathUtilities.openOutputStream(filePath, true);
-                            PrintStream printStream = new PrintStream(outputStream)) {
-                printStream.print(json);
-                printStream.print(LINE_SEPARATOR);
-                printStream.flush();
+            try {
+                String pathOptionValue = DebugOptions.OptimizationLogPath.getValue(graph.getOptions());
+                if (pathOptionValue == null) {
+                    pathOptionValue = PathUtilities.getPath(DebugOptions.getDumpDirectory(graph.getOptions()), OPTIMIZATION_LOG_DIRECTORY);
+                }
+                PathUtilities.createDirectories(pathOptionValue);
+                @SuppressWarnings("deprecation")
+                String fileName = String.valueOf(Thread.currentThread().getId());
+                String filePath = PathUtilities.getPath(pathOptionValue, fileName);
+                try (OutputStream outputStream = PathUtilities.openOutputStream(filePath, true);
+                                PrintStream printStream = new PrintStream(outputStream)) {
+                    printStream.print(json);
+                    printStream.print(LINE_SEPARATOR);
+                    printStream.flush();
+                }
+            } catch (IOException exception) {
+                throw new GraalError("Failed to print the optimization log to a file: %s", exception.getMessage());
             }
         }
+    }
+
+    /**
+     * Finds and returns the root of the optimization tree.
+     *
+     * @return the root of the optimization tree
+     */
+    public OptimizationPhaseNode findRootPhase() {
+        OptimizationPhaseNode root = currentPhase;
+        while (root.predecessor() != null) {
+            root = (OptimizationPhaseNode) root.predecessor();
+        }
+        assert ROOT_PHASE_NAME.contentEquals(root.getPhaseName());
+        return root;
     }
 
     private EconomicMap<String, Object> asJSONMap(Function<ResolvedJavaMethod, String> methodNameFormatter) {
@@ -757,6 +792,7 @@ public class OptimizationLogImpl implements OptimizationLog {
         map.put(INLINED_PROPERTY, isInlined);
         map.put(REASON_PROPERTY, reason);
         map.put(INDIRECT_PROPERTY, callsite.isIndirect());
+        map.put(ALIVE_PROPERTY, callsite.getInvoke() instanceof Node && ((Node) callsite.getInvoke()).isAlive());
         if (callsite.isIndirect()) {
             EconomicMap<String, Object> receiverTypeProfile = receiverTypeProfileAsJSONMap(callsite, methodNameFormatter);
             if (receiverTypeProfile != null) {
@@ -807,10 +843,9 @@ public class OptimizationLogImpl implements OptimizationLog {
         }
         EconomicMap<String, Object> typeProfileMap = EconomicMap.create();
         typeProfileMap.put(MATURE_PROPERTY, profilingInfo.isMature());
-        JavaTypeProfile typeProfile = profilingInfo.getTypeProfile(callsite.getBci());
-        if (typeProfile != null) {
+        if (callsite.getTargetTypeProfile() != null) {
             List<EconomicMap<String, Object>> profiledTypes = new ArrayList<>();
-            for (JavaTypeProfile.ProfiledType profiledType : typeProfile.getTypes()) {
+            for (JavaTypeProfile.ProfiledType profiledType : callsite.getTargetTypeProfile().getTypes()) {
                 EconomicMap<String, Object> profiledTypeMap = EconomicMap.create();
                 profiledTypeMap.put(TYPE_NAME_PROPERTY, profiledType.getType().toJavaName(true));
                 profiledTypeMap.put(PROBABILITY_PROPERTY, profiledType.getProbability());

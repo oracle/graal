@@ -70,6 +70,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.io.MessageEndpoint;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -173,8 +174,12 @@ public abstract class TruffleInstrument {
      * languages are going to be disposed, possibly because the underlying
      * {@linkplain org.graalvm.polyglot.Engine engine} is going to be closed. This method is called
      * before {@link #onDispose(Env)} and the instrument must remain usable after finalization. The
-     * instrument can prepare for disposal while still having other instruments not disposed yet.
-     *
+     * instrument can prepare for disposal while still having other instruments not disposed yet. In
+     * the event of VM shutdown, {@link #onDispose(Env)} for active instruments on unclosed
+     * {@link org.graalvm.polyglot.Engine engines} is not called, and so in case the instrument is
+     * supposed to do some specific action before its disposal, e.g. print some kind of summary, it
+     * should be done in this method.
+     * 
      * @param env environment information for the instrument
      * @since 19.0
      */
@@ -186,7 +191,9 @@ public abstract class TruffleInstrument {
      * Invoked once on an {@linkplain TruffleInstrument instance} when it becomes disabled, possibly
      * because the underlying {@linkplain org.graalvm.polyglot.Engine engine} has been closed. A
      * disposed instance is no longer usable. If the instrument is re-enabled, the engine will
-     * create a new instance.
+     * create a new instance. In the event of VM shutdown, this method is not called for active
+     * instruments on unclosed {@link org.graalvm.polyglot.Engine engines}. The unclosed engines are
+     * not closed automatically on VM shutdown, they just die with the VM.
      *
      * @param env environment information for the instrument
      * @since 0.12
@@ -1176,7 +1183,7 @@ public abstract class TruffleInstrument {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
+         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
          * {@link Interruptible}. If the supplied context is already closed, the method returns a
@@ -1249,6 +1256,21 @@ public abstract class TruffleInstrument {
                 throw engineToInstrumentException(t);
             }
         }
+
+        /**
+         * Returns the engine's {@link SandboxPolicy}. An instrument can use the returned sandbox
+         * policy to make instrument-specific verifications that the sandbox requirements are met.
+         * These verifications should be made as early as possible in the
+         * {@link TruffleInstrument#onCreate(Env)} method.
+         *
+         * @see SandboxPolicy
+         * @see TruffleInstrument#onCreate(Env)
+         * @since 23.0
+         */
+        public SandboxPolicy getSandboxPolicy() {
+            return ENGINE.getEngineSandboxPolicy(polyglotInstrument);
+        }
+
     }
 
     /**
@@ -1321,10 +1343,23 @@ public abstract class TruffleInstrument {
          * <dd>the current GraalVM version in a format suitable for links to the GraalVM reference
          * manual. The exact format may change without notice.</dd>
          * </dl>
-         * 
+         *
          * @since 22.1.0
          */
         String website() default "";
+
+        /**
+         * Specifies the most strict sandbox policy in which the instrument can be used. The
+         * instrument can be used in an engine with the specified sandbox policy or a weaker one.
+         * For example, if an instrument specifies {@code ISOLATED} policy, it can be used in an
+         * engine configured with sandbox policy {@code TRUSTED}, {@code CONSTRAINED} or
+         * {@code ISOLATED}. But it cannot be used in an engine configured with the
+         * {@code UNTRUSTED} sandbox policy.
+         *
+         * @see SandboxPolicy
+         * @since 23.0
+         */
+        SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
     }
 
     /**

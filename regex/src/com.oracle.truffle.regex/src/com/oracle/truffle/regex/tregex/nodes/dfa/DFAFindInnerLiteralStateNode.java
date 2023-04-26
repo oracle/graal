@@ -66,9 +66,9 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
         return new DFAFindInnerLiteralStateNode(copyID, Arrays.copyOf(getSuccessors(), getSuccessors().length), innerLiteral);
     }
 
-    int executeInnerLiteralSearch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, boolean tString) {
-        return executor.getIndexOfStringNode().execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteralContent(tString),
-                        innerLiteral.getMaskContent(tString), executor.getEncoding());
+    int executeInnerLiteralSearch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
+        return executor.getIndexOfStringNode().execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteralContent(),
+                        innerLiteral.getMaskContent(), executor.getEncoding());
     }
 
     @TruffleBoundary

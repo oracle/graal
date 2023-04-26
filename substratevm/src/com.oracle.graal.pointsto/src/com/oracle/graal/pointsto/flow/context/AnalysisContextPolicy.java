@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -103,14 +103,6 @@ public abstract class AnalysisContextPolicy<C extends AnalysisContext> {
     public static BytecodePosition[] extend(BytecodePosition[] labelList, BytecodePosition add) {
         BytecodePosition[] result = Arrays.copyOf(labelList, labelList.length + 1);
         result[result.length - 1] = add;
-        return result;
-    }
-
-    /** Prepends the context label to the input label list. */
-    public static BytecodePosition[] prepend(BytecodePosition add, BytecodePosition[] labelList) {
-        BytecodePosition[] result = new BytecodePosition[labelList.length + 1];
-        result[0] = add;
-        System.arraycopy(labelList, 0, result, 1, labelList.length);
         return result;
     }
 

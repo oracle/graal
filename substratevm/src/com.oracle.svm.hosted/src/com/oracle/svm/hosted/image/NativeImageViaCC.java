@@ -157,17 +157,19 @@ public abstract class NativeImageViaCC extends NativeImage {
 
             if (Platform.includedIn(Platform.WINDOWS.class) && !imageKindIsExecutable) {
                 /* Provide an import library for the built shared library. */
-                String importLib = imageName + ".lib";
-                Path importLibPath = imagePath.resolveSibling(importLib);
-                Files.move(inv.getTempDirectory().resolve(importLib), importLibPath, StandardCopyOption.REPLACE_EXISTING);
-                BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIBRARY, importLibPath);
+                Path importLib = inv.getTempDirectory().resolve(imageName + ".lib");
+                Path importLibCopy = Files.copy(importLib, imagePath.resolveSibling(importLib.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                BuildArtifacts.singleton().add(ArtifactType.IMPORT_LIBRARY, importLibCopy);
             }
 
             if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
+                if (SubstrateOptions.UseOldDebugInfo.getValue()) {
+                    return;
+                }
                 BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
                 if (Platform.includedIn(Platform.WINDOWS.class)) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
-                } else {
+                } else if (!SubstrateOptions.StripDebugInfo.getValue()) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);
                 }
             }

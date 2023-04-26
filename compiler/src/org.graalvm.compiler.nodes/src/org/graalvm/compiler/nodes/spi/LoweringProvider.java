@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.RoundNode;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.memory.ExtendableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.options.OptionValues;
@@ -87,6 +88,11 @@ public interface LoweringProvider {
      * Returns the target being lowered.
      */
     TargetDescription getTarget();
+
+    /**
+     * Returns the barrier set use for code generation.
+     */
+    BarrierSet getBarrierSet();
 
     /**
      * Indicates whether the target platform complies with the JVM specification semantics for

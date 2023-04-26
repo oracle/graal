@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
@@ -48,6 +47,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.windows.headers.FileAPI;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
@@ -143,7 +143,7 @@ public class WindowsUtils {
             return;
         }
 
-        try (PinnedObject bytesPin = PinnedObject.create(bytes)) {
+        try (PrimitiveArrayView bytesPin = PrimitiveArrayView.createForReading(bytes)) {
             CCharPointer curBuf = bytesPin.addressOfArrayElement(off);
             UnsignedWord curLen = WordFactory.unsigned(len);
             /** Temp fix until we complete FileDescriptor substitutions. */
@@ -202,7 +202,7 @@ public class WindowsUtils {
      * cached function pointer is {@linkplain #UNINITIALIZED_POINTER uninitialized}, otherwise it
      * returns the cached value.
      */
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T extends CFunctionPointer> T getAndCacheFunctionPointer(CFunctionPointerPointer<T> cachedFunctionPointer,
                     CCharPointer dllName, CCharPointer functionName) {
         T functionPointer = cachedFunctionPointer.read();
@@ -215,7 +215,7 @@ public class WindowsUtils {
 
     /** Retrieves the address of an exported function from an already loaded DLL. */
     @SuppressWarnings("unchecked")
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static <T extends CFunctionPointer> T getFunctionPointer(CCharPointer dllName, CCharPointer functionName, boolean failOnError) {
         PointerBase functionPointer = LibLoaderAPI.GetProcAddress(getDLLHandle(dllName), functionName);
         if (functionPointer.isNull() && failOnError) {
@@ -224,7 +224,7 @@ public class WindowsUtils {
         return (T) functionPointer;
     }
 
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static HMODULE getDLLHandle(CCharPointer dllName) {
         HMODULE dllHandle = LibLoaderAPI.GetModuleHandleA(dllName);
         if (dllHandle.isNull()) {

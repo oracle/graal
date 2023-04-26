@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.memory;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;

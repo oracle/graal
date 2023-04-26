@@ -67,6 +67,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     // preferred byte alignment for a branch target
     public static final int PREFERRED_BRANCH_TARGET_ALIGNMENT = 16;
 
+    @SuppressWarnings("this-escape")
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
         this.neon = new AArch64ASIMDMacroAssembler(this);
@@ -279,7 +280,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 mov(64, dst, address.getBase());
                 break;
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHereUnexpectedValue(address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -1525,18 +1526,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 & ~(src2) and sets condition flags.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
-     * @param src2 general purpose register. May not be null or stackpointer.
-     */
-    public void bics(int size, Register dst, Register src1, Register src2) {
-        super.bics(size, dst, src1, src2, ShiftType.LSL, 0);
-    }
-
-    /**
      * Sign-extend value from src into dst.
      *
      * @param destSize destination register size. Must be 32 or 64.
@@ -1936,16 +1925,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Halting mode software breakpoint: Enters halting mode debug state if enabled, else treated as
-     * UNALLOCATED instruction.
-     *
-     * @param exceptionCode exception code specifying why halt was called. Non null.
-     */
-    public void hlt(AArch64ExceptionCode exceptionCode) {
-        super.hlt(exceptionCode.encoding);
-    }
-
-    /**
      * Monitor mode software breakpoint: exception routed to a debug monitor executing in a higher
      * exception level.
      *
@@ -1964,14 +1943,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void nop() {
         super.hint(SystemHint.NOP);
-    }
-
-    /**
-     * Consumption of Speculative Data Barrier. This is a memory barrier that controls speculative
-     * execution and data value prediction.
-     */
-    public void csdb() {
-        super.hint(SystemHint.CSDB);
     }
 
     /**
@@ -2012,6 +1983,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         for (int i = 0; i < offset; i += 4) {
             nop();
         }
+    }
+
+    @Override
+    public void halt() {
+        illegal();
     }
 
     /**
@@ -2077,7 +2053,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 break;
             }
             default:
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHereUnexpectedValue(type); // ExcludeFromJacocoGeneratedReport
         }
     }
 

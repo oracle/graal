@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,13 +30,13 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.And;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -104,10 +104,10 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
             // An OrNode strictly adds information to a bit pattern - it cannot remove set bits.
             // We can fold an operand away when that operand does not contribute any bits to the
             // masked result - check must be set against masked maybe set bits
-            if (!stampY.isUnrestricted() && (stampY.upMask() & usingAndOtherStamp.upMask()) == 0) {
+            if (!stampY.isUnrestricted() && (stampY.mayBeSet() & usingAndOtherStamp.mayBeSet()) == 0) {
                 return opX;
             }
-            if (!stampX.isUnrestricted() && (stampX.upMask() & usingAndOtherStamp.upMask()) == 0) {
+            if (!stampX.isUnrestricted() && (stampX.mayBeSet() & usingAndOtherStamp.mayBeSet()) == 0) {
                 return opY;
             }
         } else if (usingAndInput instanceof AddNode) {
@@ -116,7 +116,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
             // 1) the operand has ones only where we know zeros must be in the and result
             // 2) bit carrys can't mess up the pattern (eg bits are packed at the bottom)
             // then we can simply fold the add away because it adds no information
-            long mightBeOne = usingAndOtherStamp.upMask();
+            long mightBeOne = usingAndOtherStamp.mayBeSet();
             // here we check all the bits that might be set are packed and contiguous at the bottom
             // of the stamp - number of leading zeros + bitCount == number of bits
             if (Long.numberOfLeadingZeros(mightBeOne) + Long.bitCount(mightBeOne) != 64) {
@@ -134,10 +134,10 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
                 //
                 // we know that x << 2 has no bits set in the lowest two bits so we don't need to
                 // add x << 2 to 15 to know what the result of the & 3 is - we can just do 15 & 3
-                if (!stampY.isUnrestricted() && (stampY.upMask() & mightBeOne) == 0) {
+                if (!stampY.isUnrestricted() && (stampY.mayBeSet() & mightBeOne) == 0) {
                     return opX;
                 }
-                if (!stampX.isUnrestricted() && (stampX.upMask() & mightBeOne) == 0) {
+                if (!stampX.isUnrestricted() && (stampX.mayBeSet() & mightBeOne) == 0) {
                     return opY;
                 }
             }
@@ -158,9 +158,9 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
         if (rawXStamp instanceof IntegerStamp && rawYStamp instanceof IntegerStamp) {
             IntegerStamp xStamp = (IntegerStamp) rawXStamp;
             IntegerStamp yStamp = (IntegerStamp) rawYStamp;
-            if (((~xStamp.downMask()) & yStamp.upMask()) == 0) {
+            if (((~xStamp.mustBeSet()) & yStamp.mayBeSet()) == 0) {
                 return forY;
-            } else if (((~yStamp.downMask()) & xStamp.upMask()) == 0) {
+            } else if (((~yStamp.mustBeSet()) & xStamp.mayBeSet()) == 0) {
                 return forX;
             }
             ValueNode newLHS = eliminateRedundantBinaryArithmeticOp(forX, yStamp);
@@ -192,7 +192,12 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
             return reassociateMatchedValues(self != null ? self : (AndNode) new AndNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
         }
         if (forX instanceof NotNode && forY instanceof NotNode) {
+            // ~x & ~y |-> ~(x | y)
             return new NotNode(OrNode.create(((NotNode) forX).getValue(), ((NotNode) forY).getValue(), view));
+        }
+        if (forY instanceof NotNode && ((NotNode) forY).getValue() == forX) {
+            // x & ~x |-> 0
+            return ConstantNode.forIntegerStamp(rawXStamp, 0L);
         }
         return self != null ? self : new AndNode(forX, forY).maybeCommuteInputs();
     }

@@ -30,6 +30,7 @@ import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEff
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -40,18 +41,89 @@ import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueKindFactory;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotForeignCallTarget;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * The details required to link a HotSpot runtime or stub call.
  */
 public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget implements HotSpotForeignCallLinkage {
+
+    /**
+     * A calling convention where all arguments are passed through the stack and any return values
+     * are passed through the stack. This is useful for assembly slow paths where we don't want to
+     * perturb the register allocation of the fast path.
+     */
+    public enum StackOnlyCallingConvention implements CallingConvention.Type {
+
+        /**
+         * The stack only convention from the perspective of the caller.
+         */
+        StackOnlyCall(true),
+
+        /**
+         * The stack only convention from the perspective of the callee.
+         */
+        StackOnlyCallee(false);
+
+        /**
+         * Determines if this is a request for the outgoing argument locations at a call site.
+         */
+        public final boolean out;
+
+        StackOnlyCallingConvention(boolean out) {
+            this.out = out;
+        }
+
+        /**
+         * Creates a calling convention were all arguments and the return value are passed on the
+         * stack. This follows the stack layout of normal Java calling convention.
+         *
+         * A platform specific definition of this could be provided but currently AMD64 and AArch64
+         * do exactly the same thing so for simplicity it is provided here.
+         */
+        public CallingConvention getCallingConvention(TargetDescription target, JavaType returnType, JavaType[] parameterTypes,
+                        ValueKindFactory<?> valueKindFactory) {
+            AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
+            int currentStackOffset = 0;
+            for (int i = 0; i < parameterTypes.length; i++) {
+                final JavaKind kind = parameterTypes[i].getJavaKind().getStackKind();
+                switch (kind) {
+                    case Illegal:
+                    case Void:
+                        throw GraalError.shouldNotReachHere(kind.toString());
+                }
+
+                ValueKind<?> valueKind = valueKindFactory.getValueKind(kind);
+                locations[i] = StackSlot.get(valueKind, currentStackOffset, !this.out);
+                currentStackOffset += Math.max(valueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
+            }
+
+            JavaKind returnKind = returnType == null ? JavaKind.Void : returnType.getJavaKind();
+            AllocatableValue returnLocation = Value.ILLEGAL;
+            if (returnKind != JavaKind.Void) {
+                /*
+                 * The return value is also passed through the stack so use the same location that
+                 * would be used if it were an incoming argument.
+                 */
+                ValueKind<?> valueKind = valueKindFactory.getValueKind(returnKind);
+                returnLocation = StackSlot.get(valueKind, 0, !this.out);
+                int slotSize = Math.max(valueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
+                currentStackOffset = Math.max(currentStackOffset, slotSize);
+            }
+
+            return new CallingConvention(currentStackOffset, returnLocation, locations);
+        }
+    }
 
     /**
      * The descriptor of the call.
@@ -126,6 +198,10 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
         }
         JavaType returnType = asJavaType(descriptor.getResultType(), metaAccess, wordTypes);
         RegisterConfig regConfig = codeCache.getRegisterConfig();
+        if (ccType instanceof StackOnlyCallingConvention) {
+            StackOnlyCallingConvention conventionType = (StackOnlyCallingConvention) ccType;
+            return conventionType.getCallingConvention(codeCache.getTarget(), returnType, parameterTypes, valueKindFactory);
+        }
         return regConfig.getCallingConvention(ccType, returnType, parameterTypes, valueKindFactory);
     }
 
@@ -260,6 +336,9 @@ public class HotSpotForeignCallLinkageImpl extends HotSpotForeignCallTarget impl
                 int i = 0;
                 for (Register reg : killedRegisters) {
                     temporaryLocations[i++] = reg.asValue();
+                }
+                if (stub.getLinkage().getEffect() == HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS) {
+                    GraalError.guarantee(temporaryLocations.length == 0, "no registers are expected to be killed: %s %s", this, temporaryLocations);
                 }
                 temporaries = temporaryLocations;
             }

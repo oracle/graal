@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,7 +138,7 @@ public class LinearScan {
     /**
      * List of blocks in linear-scan order. This is only correct as long as the CFG does not change.
      */
-    private final char[] sortedBlocks;
+    private final int[] sortedBlocks;
 
     /**
      * @see #intervals()
@@ -193,7 +193,8 @@ public class LinearScan {
     public final boolean detailedAsserts;
     private final LIRGenerationResult res;
 
-    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, char[] sortedBlocks,
+    @SuppressWarnings("this-escape")
+    protected LinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, int[] sortedBlocks,
                     boolean neverSpillConstants) {
         this.ir = res.getLIR();
         this.res = res;
@@ -797,7 +798,7 @@ public class LinearScan {
                 try (Indent indent2 = debug.logAndIndent("Basic Blocks")) {
                     for (int i = 0; i < blockCount(); i++) {
                         BasicBlock<?> block = blockAt(i);
-                        debug.log("B%d [%d, %d, %s] ", (int) block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
+                        debug.log("B%d [%d, %d, %s] ", block.getId(), getFirstLirInstructionId(block), getLastLirInstructionId(block), block.getLoop());
                     }
                 }
             }
@@ -888,7 +889,7 @@ public class LinearScan {
                     Value l2 = i2.location();
                     if (i1.intersects(i2) && !isIllegal(l1) && (l1.equals(l2))) {
                         throw GraalError.shouldNotReachHere(String.format("Intervals %d and %d overlap and have the same register assigned\n%s\n%s", i1.operandNumber, i2.operandNumber,
-                                        i1.logString(this), i2.logString(this)));
+                                        i1.logString(this), i2.logString(this))); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }
@@ -903,7 +904,7 @@ public class LinearScan {
         return frameMapBuilder;
     }
 
-    public char[] sortedBlocks() {
+    public int[] sortedBlocks() {
         return sortedBlocks;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,6 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.spi.ProfileProvider;
 import org.graalvm.compiler.nodes.spi.StableProfileProvider;
 import org.graalvm.compiler.nodes.spi.StableProfileProvider.TypeFilter;
 import org.graalvm.compiler.options.OptionKey;
@@ -199,24 +198,21 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                 throw debug.handle(e);
             }
 
-            if (result != null) {
-                try (DebugCloseable b = CodeInstallationTime.start(debug)) {
-                    installMethod(debug, graph, result);
-                }
-                // Installation is included in compilation time and memory usage reported by printer
-                printer.finish(result, installedCode);
+            try (DebugCloseable b = CodeInstallationTime.start(debug)) {
+                installMethod(debug, graph, result);
             }
+            // Installation is included in compilation time and memory usage reported by printer
+            printer.finish(result, installedCode);
+
             stats.finish(method, installedCode);
-            if (result != null) {
-                // For compilation of substitutions the method in the compilation request might be
-                // different than the actual method parsed. The root of the compilation will always
-                // be the first method in the methods list, so use that instead.
-                ResolvedJavaMethod rootMethod = result.getMethods()[0];
-                int inlinedBytecodes = result.getBytecodeSize() - rootMethod.getCodeSize();
-                assert inlinedBytecodes >= 0 : rootMethod + " " + method;
-                return HotSpotCompilationRequestResult.success(inlinedBytecodes);
-            }
-            return null;
+
+            // For compilation of substitutions the method in the compilation request might be
+            // different than the actual method parsed. The root of the compilation will always
+            // be the first method in the methods list, so use that instead.
+            ResolvedJavaMethod rootMethod = result.getMethods()[0];
+            int inlinedBytecodes = result.getBytecodeSize() - rootMethod.getCodeSize();
+            assert inlinedBytecodes >= 0 : rootMethod + " " + method;
+            return HotSpotCompilationRequestResult.success(inlinedBytecodes);
         }
 
     }
@@ -370,10 +366,6 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
                 }
             }
         }
-    }
-
-    public ProfileProvider getProfileProvider() {
-        return profileProvider;
     }
 
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {

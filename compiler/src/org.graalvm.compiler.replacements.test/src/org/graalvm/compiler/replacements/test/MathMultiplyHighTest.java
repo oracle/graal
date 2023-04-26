@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
+@SuppressWarnings("this-escape")
 public class MathMultiplyHighTest extends MethodSubstitutionTest {
 
     private static final long[] INPUT = {Long.MIN_VALUE, Long.MIN_VALUE + 1, 0XF64543679090840EL, -1L,

@@ -33,12 +33,12 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-public class LLVMAddressLowering extends AddressLoweringPhase.AddressLowering {
+public class LLVMAddressLowering extends AddressLoweringByNodePhase.AddressLowering {
 
     @Override
     public AddressNode lower(ValueNode base, ValueNode offset) {

@@ -251,7 +251,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.StrictDeoptInsertion
 import static org.graalvm.compiler.core.common.GraalOptions.TraceInlining;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 import static org.graalvm.compiler.debug.GraalError.guarantee;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlinePartialIntrinsicExitDuringParsing;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceBytecodeParserLevel;
 import static org.graalvm.compiler.java.BytecodeParserOptions.TraceInlineDuringParsing;
@@ -581,7 +581,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 if (BytecodeFrame.isPlaceholderBci(frameState.bci)) {
                     if (frameState.bci == BytecodeFrame.AFTER_BCI) {
                         if (parser.getInvokeReturnType() == null) {
-                            throw GraalError.shouldNotReachHere("unhandled intrinsic path");
+                            throw GraalError.shouldNotReachHere("unhandled intrinsic path"); // ExcludeFromJacocoGeneratedReport
                         } else {
                             JavaKind returnKind = parser.getInvokeReturnType().getJavaKind();
                             FrameStateBuilder frameStateBuilder = parser.frameState;
@@ -648,7 +648,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
                     } else if (frameState.bci == BytecodeFrame.UNWIND_BCI) {
                         if (graph.getGuardsStage().allowsFloatingGuards()) {
-                            throw GraalError.shouldNotReachHere("Cannot handle this UNWIND_BCI");
+                            throw GraalError.shouldNotReachHere("Cannot handle this UNWIND_BCI"); // ExcludeFromJacocoGeneratedReport
                         }
                         // hope that by construction, there are no fixed guard after this unwind
                         // and before an other state split
@@ -662,7 +662,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         @SuppressWarnings("unused")
         protected void handleReturnMismatch(StructuredGraph g, FrameState fs) {
-            throw GraalError.shouldNotReachHere("Unexpected return kind mismatch in " + parser.method + " at FS " + fs);
+            throw GraalError.shouldNotReachHere("Unexpected return kind mismatch in " + parser.method + " at FS " + fs); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -920,7 +920,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected FixedWithNextNode lastInstr;                 // the last instruction added
     private boolean controlFlowSplit;
-    private final InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(this);
+    private final InvocationPluginReceiver invocationPluginReceiver;
 
     private FixedWithNextNode[] firstInstructionArray;
     private FrameStateBuilder[] entryStateArray;
@@ -931,9 +931,11 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     private final boolean uninitializedIsError;
     private final int traceLevel;
 
+    @SuppressWarnings("this-escape")
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
         super(graphBuilderInstance.providers);
+        invocationPluginReceiver = new InvocationPluginReceiver(this);
         this.bytecodeProvider = intrinsicContext == null ? new ResolvedJavaMethodBytecodeProvider() : intrinsicContext.getBytecodeProvider();
         this.code = bytecodeProvider.getBytecode(method);
         this.method = code.getMethod();
@@ -1952,7 +1954,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             targetMethod = originalMethod;
         }
         Invoke invoke = createNonInlinedInvoke(edgeAction, invokeBci, args, targetMethod, invokeKind, resultType, returnType, profile);
-        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
+        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, null, invoke.getTargetMethod(), "bytecode parser did not replace invoke");
         if (partialIntrinsicExit) {
             // This invoke must never be later inlined as an intrinsic so restrict this call site to
             // normal invoke handling.
@@ -2148,7 +2150,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                  * doesn't return a value, it probably throws an exception.
                  */
                 int expectedStackSize = beforeStackSize + resultType.getSlotCount();
-                assert lastInstr == null || expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d", expectedStackSize,
+                assert lastInstr == null || plugin.isDecorator() || expectedStackSize == frameState.stackSize() : error("plugin manipulated the stack incorrectly: expected=%d, actual=%d",
+                                expectedStackSize,
                                 frameState.stackSize());
 
                 NodeIterable<Node> newNodes = graph.getNewNodes(mark);
@@ -2209,7 +2212,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
         InvocationPlugins plugins = graphBuilderConfig.getPlugins().getInvocationPlugins();
-        InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true, options);
+        InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true, !parsingIntrinsic(), options);
         if (plugin != null) {
 
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
@@ -2258,7 +2261,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             assert getFrameStateBuilder().stackSize() > beforeDepth : "only pushes expected";
             getFrameStateBuilder().pop(currentInvoke.returnType.getJavaKind());
         }
-        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, "bytecode parser did not replace invoke");
+        graph.notifyInliningDecision(invoke, false, "GraphBuilderPhase", null, null, null, invoke.getTargetMethod(), "bytecode parser did not replace invoke");
         invoke.setInlineControl(Invoke.InlineControl.BytecodesOnly);
         lastInstr.setNext(end);
         lastInstr = previousLastInstr;
@@ -2387,7 +2390,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                         printInlining(targetMethod, targetMethod, true, reason);
                         if (TraceInlining.getValue(options) || debug.hasCompilationListener()) {
                             PlaceholderInvokable invoke = new PlaceholderInvokable(method, targetMethod, bci());
-                            graph.notifyInliningDecision(invoke, true, "GraphBuilderPhase", null, null, reason);
+                            graph.notifyInliningDecision(invoke, true, "GraphBuilderPhase", null, null, null, targetMethod, reason);
                         }
                         notifyAfterInline(targetMethod);
                     }
@@ -2417,7 +2420,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 if (intrinsic.getOriginalMethod().isNative()) {
                     printInlining(targetMethod, inlinedMethod, false, "native method (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "native method");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "native method");
                     }
                     return false;
                 }
@@ -2428,7 +2431,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     notifyBeforeInline(inlinedMethod);
                     printInlining(targetMethod, inlinedMethod, true, "partial intrinsic exit (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, null, inlinedMethod, "partial intrinsic exit");
                     }
                     parseAndInlineCallee(intrinsic.getOriginalMethod(), args, null);
                     notifyAfterInline(inlinedMethod);
@@ -2436,7 +2439,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 } else {
                     printInlining(targetMethod, inlinedMethod, false, "partial intrinsic exit (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "partial intrinsic exit");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "partial intrinsic exit");
                     }
                     return false;
                 }
@@ -2450,14 +2453,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     notifyBeforeInline(inlinedMethod);
                     printInlining(targetMethod, inlinedMethod, true, "inline method (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "inline method");
+                        graph.notifyInliningDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, null, inlinedMethod, "inline method");
                     }
                     parseAndInlineCallee(inlinedMethod, args, intrinsic);
                     notifyAfterInline(inlinedMethod);
                 } else {
                     printInlining(targetMethod, inlinedMethod, false, "no bytecodes (abstract or native) (bytecode parsing)");
                     if (logInliningDecision) {
-                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, "no bytecodes (abstract or native)");
+                        graph.notifyInliningDecision(logInliningInvokable, false, "GraphBuilderPhase", null, null, null, inlinedMethod, "no bytecodes (abstract or native)");
                     }
                     return false;
                 }
@@ -3771,7 +3774,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 assert a.getStackKind() != JavaKind.Object;
                 return genIntegerLessThan(a, b);
             default:
-                throw GraalError.shouldNotReachHere("Unexpected condition: " + cond);
+                throw GraalError.shouldNotReachHere("Unexpected condition: " + cond); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -3955,30 +3958,26 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected void genLoadConstant(int cpi, int opcode) {
-        try {
-            Object con = lookupConstant(cpi, opcode);
-            if (con instanceof JavaType) {
-                // this is a load of class constant which might be unresolved
-                JavaType type = (JavaType) con;
-                if (typeIsResolved(type)) {
-                    frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
-                } else {
-                    handleUnresolvedLoadConstant(type);
-                }
-            } else if (con instanceof JavaConstant) {
-                JavaConstant constant = (JavaConstant) con;
-                frameState.push(constant.getJavaKind(), appendConstant(constant));
+        Object con = lookupConstant(cpi, opcode);
+        if (con instanceof JavaType) {
+            // this is a load of class constant which might be unresolved
+            JavaType type = (JavaType) con;
+            if (typeIsResolved(type)) {
+                frameState.push(JavaKind.Object, appendConstant(getConstantReflection().asJavaClass((ResolvedJavaType) type)));
             } else {
-                throw new Error("lookupConstant returned an object of incorrect type: " + con);
+                handleUnresolvedLoadConstant(type);
             }
-        } catch (BootstrapMethodError error) {
-            handleBootstrapMethodError(error, method);
+        } else if (con instanceof JavaConstant) {
+            JavaConstant constant = (JavaConstant) con;
+            frameState.push(constant.getJavaKind(), appendConstant(constant));
+        } else if (!(con instanceof Throwable)) {
+            /**
+             * We use the exceptional return value of {@link #lookupConstant(int, int)} as sentinel
+             * to indicate that the exception is already handled, thus no need to throw an error
+             * here.
+             */
+            throw new Error("lookupConstant returned an object of incorrect type: " + con);
         }
-    }
-
-    @SuppressWarnings("unused")
-    protected void handleBootstrapMethodError(BootstrapMethodError be, JavaMethod javaMethod) {
-        throw be;
     }
 
     private JavaKind refineComponentType(ValueNode array, JavaKind kind) {
@@ -4070,7 +4069,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genFloatRem(x, y);
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4092,7 +4091,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genIntegerRem(x, y, zeroCheck);
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4120,7 +4119,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genUnsignedRightShift(x, s);
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4143,7 +4142,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 v = genXor(x, y);
                 break;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
         frameState.push(kind, append(v));
     }
@@ -4281,7 +4280,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return result;
     }
 
-    private Object lookupConstant(int cpi, int opcode) {
+    /**
+     * This method may return a value of the type {@code Throwable} to indicate that an exceptional
+     * scenario has occurred and has been handled properly. The caller of this method may therefore
+     * ignore the exceptional return value.
+     */
+    protected Object lookupConstant(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
         Object result = constantPool.lookupConstant(cpi);
         assert !graphBuilderConfig.unresolvedIsError() || !(result instanceof JavaType) || (result instanceof ResolvedJavaType) : result;

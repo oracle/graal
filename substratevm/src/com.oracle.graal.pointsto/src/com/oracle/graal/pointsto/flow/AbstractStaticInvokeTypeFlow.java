@@ -42,6 +42,17 @@ public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow 
     }
 
     @Override
+    public void initFlow(PointsToAnalysis bb) {
+        /* Trigger the update for static invokes, there is no receiver to trigger it. */
+        bb.postFlow(this);
+    }
+
+    @Override
+    public boolean needsInitialization() {
+        return true;
+    }
+
+    @Override
     public String toString() {
         return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
     }

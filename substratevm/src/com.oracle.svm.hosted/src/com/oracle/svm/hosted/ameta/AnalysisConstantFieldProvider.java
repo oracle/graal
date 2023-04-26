@@ -28,63 +28,43 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.SharedConstantFieldProvider;
 
-import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
-    private final AnalysisUniverse universe;
-    private final AnalysisConstantReflectionProvider constantReflection;
 
-    public AnalysisConstantFieldProvider(AnalysisUniverse universe, AnalysisMetaAccess metaAccess, AnalysisConstantReflectionProvider constantReflection,
-                    ClassInitializationSupport classInitializationSupport) {
-        super(metaAccess, classInitializationSupport, (SVMHost) universe.hostVM());
-        this.universe = universe;
-        this.constantReflection = constantReflection;
+    public AnalysisConstantFieldProvider(MetaAccessProvider metaAccess, SVMHost hostVM) {
+        super(metaAccess, hostVM);
     }
 
     @Override
-    public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> analysisTool) {
-        AnalysisField f = (AnalysisField) field;
-        if (SVMHost.isUnknownObjectField(f) || SVMHost.isUnknownPrimitiveField(f)) {
+    public <T> T readConstantField(ResolvedJavaField f, ConstantFieldTool<T> analysisTool) {
+        AnalysisField field = (AnalysisField) f;
+        if (SVMHost.isUnknownObjectField(field) || SVMHost.isUnknownPrimitiveField(field)) {
             return null;
         }
-        T foldedValue = null;
-        if (f.wrapped instanceof ReadableJavaField) {
-            ReadableJavaField readableField = (ReadableJavaField) f.wrapped;
-            if (readableField.allowConstantFolding() && readableField.isValueAvailable()) {
-                JavaConstant fieldValue = readableField.readValue(metaAccess, universe.toHosted(analysisTool.getReceiver()));
-                if (fieldValue != null) {
-                    JavaConstant interceptedValue = constantReflection.interceptValue(metaAccess, f, universe.lookup(fieldValue));
-                    if (isStableField(field, analysisTool) && isStableFieldValueConstant(field, interceptedValue, analysisTool)) {
-                        foldedValue = foldStableArray(interceptedValue, field, analysisTool);
-                    } else {
-                        foldedValue = analysisTool.foldConstant(interceptedValue);
-                    }
-                }
-            }
-        } else {
-            foldedValue = super.readConstantField(field, analysisTool);
-        }
+
+        T foldedValue = super.readConstantField(field, analysisTool);
 
         if (foldedValue != null) {
             if (!BuildPhaseProvider.isAnalysisFinished()) {
-                f.registerAsFolded(nonNullReason(analysisTool.getReason()));
+                field.registerAsFolded(nonNullReason(analysisTool.getReason()));
             }
         }
         return foldedValue;
     }
 
-    public static Object nonNullReason(Object reason) {
-        return reason == null ? "Unknown constant fold location." : reason;
+    @Override
+    protected AnalysisField asAnalysisField(ResolvedJavaField field) {
+        return (AnalysisField) field;
     }
 
+    private static Object nonNullReason(Object reason) {
+        return reason == null ? "Unknown constant fold location." : reason;
+    }
 }

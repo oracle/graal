@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -233,7 +233,9 @@ public final class DebugException extends RuntimeException {
                 }
                 if (hostInfo) {
                     StackTraceElement[] stack = SuspendedEvent.cutToHostDepth(getRawStackTrace());
-                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(session.getDebugger().getEnv(), stack, debugStack.iterator(), true,
+                    Object polyglotInstrument = Debugger.ACCESSOR.instrumentSupport().getPolyglotInstrument(session.getDebugger().getEnv());
+                    Object polyglotEngine = Debugger.ACCESSOR.engineSupport().getEngineFromPolyglotObject(polyglotInstrument);
+                    Iterator<DebugStackTraceElement> mergedElements = Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(polyglotEngine, stack, debugStack.iterator(), true, true,
                                     new Function<StackTraceElement, DebugStackTraceElement>() {
                                         @Override
                                         public DebugStackTraceElement apply(StackTraceElement element) {

@@ -36,6 +36,7 @@ import static org.graalvm.compiler.replacements.StringHelperIntrinsics.getByte;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.Stride;
+import org.graalvm.compiler.lir.gen.LIRGeneratorTool.ArrayIndexOfVariant;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.options.OptionValues;
@@ -55,6 +56,7 @@ public class StringUTF16Snippets implements Snippets {
         public final SnippetTemplate.SnippetInfo indexOfLatin1Unsafe;
         public final SnippetTemplate.SnippetInfo indexOfUnsafe;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Providers providers) {
             super(options, providers);
 
@@ -88,12 +90,13 @@ public class StringUTF16Snippets implements Snippets {
         ReplacementsUtil.dynamicAssert(targetCount <= length(target), "StringUTF16.indexOfUnsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfUnsafe invalid args: sourceCount < targetCount");
         if (unknownProbability(targetCount == 1)) {
-            return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, false, false, source, byteArrayCharOffset(0), sourceCount, fromIndex, getChar(target, 0));
+            return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, ArrayIndexOfVariant.MatchAny, source, byteArrayCharOffset(0), sourceCount, fromIndex, getChar(target, 0));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
             while (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength)) {
-                int indexOfResult = ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, true, false, source, byteArrayCharOffset(0), haystackLength, offset, getChar(target, 0),
+                int indexOfResult = ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, ArrayIndexOfVariant.FindTwoConsecutive, source, byteArrayCharOffset(0), haystackLength, offset,
+                                getChar(target, 0),
                                 getChar(target, 1));
                 if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                     return -1;
@@ -120,7 +123,7 @@ public class StringUTF16Snippets implements Snippets {
         ReplacementsUtil.dynamicAssert(targetCount <= target.length, "StringUTF16.indexOfLatin1Unsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfLatin1Unsafe invalid args: sourceCount < targetCount");
         if (unknownProbability(targetCount == 1)) {
-            return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, false, false, source, byteArrayCharOffset(0), sourceCount, fromIndex,
+            return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, ArrayIndexOfVariant.MatchAny, source, byteArrayCharOffset(0), sourceCount, fromIndex,
                             (char) Byte.toUnsignedInt(getByte(target, 0)));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
@@ -129,7 +132,8 @@ public class StringUTF16Snippets implements Snippets {
                 char c1 = (char) Byte.toUnsignedInt(getByte(target, 0));
                 char c2 = (char) Byte.toUnsignedInt(getByte(target, 1));
                 do {
-                    int indexOfResult = ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, true, false, source, byteArrayCharOffset(0), haystackLength, offset, c1, c2);
+                    int indexOfResult = ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, Stride.S2, ArrayIndexOfVariant.FindTwoConsecutive, source, byteArrayCharOffset(0), haystackLength, offset,
+                                    c1, c2);
                     if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                         return -1;
                     }

@@ -50,6 +50,7 @@ public class InvocationPluginsTest extends GraalCompilerTest {
     public void testIsEmptyWithNormalRegistration() {
         InvocationPlugins invocationPlugins = new InvocationPlugins();
         assertTrue(invocationPlugins.isEmpty());
+        assertTrue(invocationPlugins.toString().length() == 0);
 
         Registration r = new Registration(invocationPlugins, Class.class);
         r.register(new InvocationPlugin("isAnonymousClass", Receiver.class) {
@@ -66,6 +67,7 @@ public class InvocationPluginsTest extends GraalCompilerTest {
     public void testIsEmptyWithDeferredRegistration() {
         InvocationPlugins invocationPlugins = new InvocationPlugins();
         assertTrue(invocationPlugins.isEmpty());
+        assertTrue(invocationPlugins.toString().length() == 0);
         invocationPlugins.defer(new Runnable() {
 
             @Override
@@ -87,6 +89,7 @@ public class InvocationPluginsTest extends GraalCompilerTest {
     public void testIsEmptyWithLateRegistration() {
         InvocationPlugins invocationPlugins = new InvocationPlugins();
         assertTrue(invocationPlugins.isEmpty());
+        assertTrue(invocationPlugins.toString().length() == 0);
 
         try (LateRegistration lr = new LateRegistration(invocationPlugins, Class.class)) {
             lr.register(new InvocationPlugin("isAnonymousClass", Receiver.class) {

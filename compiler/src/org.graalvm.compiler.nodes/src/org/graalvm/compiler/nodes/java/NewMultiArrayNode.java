@@ -68,6 +68,7 @@ public class NewMultiArrayNode extends DeoptimizingFixedWithNextNode implements 
         this(TYPE, type, dimensions);
     }
 
+    @SuppressWarnings("this-escape")
     protected NewMultiArrayNode(NodeClass<? extends NewMultiArrayNode> c, ResolvedJavaType type, ValueNode[] dimensions) {
         super(c, StampFactory.objectNonNull(TypeReference.createExactTrusted(type)));
         this.type = type;

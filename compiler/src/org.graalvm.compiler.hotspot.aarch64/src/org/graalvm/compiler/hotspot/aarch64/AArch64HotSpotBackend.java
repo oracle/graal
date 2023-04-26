@@ -33,6 +33,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.NMETHOD_ENTRY_BARRIER;
 
 import org.graalvm.compiler.asm.BranchTargetOutOfBoundsException;
 import org.graalvm.compiler.asm.Label;
@@ -41,11 +42,13 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -62,6 +65,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
@@ -160,7 +164,56 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         return instruction == masm.getInt(0);
     }
 
-    private class HotSpotFrameContext implements FrameContext {
+    public static void rawLeave(CompilationResultBuilder crb) {
+        AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+        FrameMap frameMap = crb.frameMap;
+        final int totalFrameSize = frameMap.totalFrameSize();
+        // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::leave_frame
+        try (ScratchRegister sc = masm.getScratchRegister()) {
+            int wordSize = 8;
+            Register scratch = sc.getRegister();
+            final int frameSize = frameMap.frameSize();
+            assert totalFrameSize > 0;
+            AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
+            if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
+                masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
+                masm.add(64, sp, sp, totalFrameSize);
+            } else {
+                int frameRecordSize = 2 * wordSize;
+                masm.add(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
+                masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, frameRecordSize));
+            }
+        }
+    }
+
+    public static void rawEnter(CompilationResultBuilder crb, FrameMap frameMap, AArch64MacroAssembler masm, boolean preserveFramePointer) {
+        // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::build_frame
+        try (ScratchRegister sc = masm.getScratchRegister()) {
+            final int frameSize = frameMap.frameSize();
+            final int totalFrameSize = frameMap.totalFrameSize();
+            int wordSize = crb.target.arch.getWordSize();
+            assert frameSize + 2 * wordSize == totalFrameSize : "total framesize should be framesize + 2 words";
+            Register scratch = sc.getRegister();
+            assert totalFrameSize > 0;
+            AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
+            if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
+                masm.sub(64, sp, sp, totalFrameSize);
+                masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
+                if (preserveFramePointer) {
+                    masm.add(64, fp, sp, frameSize);
+                }
+            } else {
+                int frameRecordSize = 2 * wordSize;
+                masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
+                if (preserveFramePointer) {
+                    masm.mov(64, fp, sp);
+                }
+                masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
+            }
+        }
+    }
+
+    class HotSpotFrameContext implements FrameContext {
         final boolean isStub;
         final boolean preserveFramePointer;
 
@@ -172,38 +225,16 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         @Override
         public void enter(CompilationResultBuilder crb) {
             FrameMap frameMap = crb.frameMap;
-            final int frameSize = frameMap.frameSize();
-            final int totalFrameSize = frameMap.totalFrameSize();
-            int wordSize = crb.target.arch.getWordSize();
-            assert frameSize + 2 * wordSize == totalFrameSize : "total framesize should be framesize + 2 words";
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             if (!isStub) {
                 emitStackOverflowCheck(crb);
             }
             crb.blockComment("[method prologue]");
+            rawEnter(crb, frameMap, masm, config.preserveFramePointer);
 
-            // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::build_frame
-            try (ScratchRegister sc = masm.getScratchRegister()) {
-                Register scratch = sc.getRegister();
-                assert totalFrameSize > 0;
-                AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
-                if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
-                    masm.sub(64, sp, sp, totalFrameSize);
-                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
-                    if (preserveFramePointer) {
-                        masm.add(64, fp, sp, frameSize);
-                    }
-                } else {
-                    int frameRecordSize = 2 * wordSize;
-                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
-                    if (preserveFramePointer) {
-                        masm.mov(64, fp, sp);
-                    }
-                    masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
-                }
-            }
-            if (HotSpotMarkId.FRAME_COMPLETE.isAvailable()) {
-                crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
+            crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
+            if (!isStub && config.nmethodEntryBarrier != 0) {
+                emitNmethodEntryBarrier(crb, masm);
             }
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                 try (ScratchRegister sc = masm.getScratchRegister()) {
@@ -214,7 +245,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                     try (ScratchRegister sc2 = masm.getScratchRegister()) {
                         Register value = sc2.getRegister();
                         masm.mov(value, 0xBADDECAFFC0FFEEL);
-                        for (int i = 0; i < frameSize; i += longSize) {
+                        for (int i = 0; i < frameMap.frameSize(); i += longSize) {
                             masm.str(64, value, address);
                         }
                     }
@@ -224,40 +255,64 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             crb.blockComment("[code body]");
         }
 
+        private void emitNmethodEntryBarrier(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            try (ScratchRegister sc = masm.getScratchRegister(); ScratchRegister sc2 = masm.getScratchRegister()) {
+                Register scratch1 = sc.getRegister();
+                Register scratch2 = sc2.getRegister();
+
+                GraalError.guarantee(HotSpotMarkId.ENTRY_BARRIER_PATCH.isAvailable(), "must be available");
+                ForeignCallLinkage callTarget = getForeignCalls().lookupForeignCall(NMETHOD_ENTRY_BARRIER);
+                Register thread = getProviders().getRegisters().getThreadRegister();
+
+                // The assembly sequence is from
+                // src/hotspot/cpu/aarch64/gc/shared/barrierSetAssembler_aarch64.cpp. It was
+                // improved in
+                // JDK 20 to be more efficient.
+                final Label continuation = new Label();
+                final Label entryPoint = new Label();
+
+                // The following code sequence must be emitted in exactly this fashion as HotSpot
+                // will check that the barrier is the expected code sequence.
+                crb.recordMark(HotSpotMarkId.ENTRY_BARRIER_PATCH);
+                DataSection.Data data = crb.dataBuilder.createMutableData(4, 4);
+                masm.ldr(32, scratch1, (AArch64Address) crb.recordDataSectionReference(data));
+
+                if (config.nmethodEntryBarrierConcurrentPatch) {
+                    masm.dmb(AArch64Assembler.BarrierKind.LOAD_ANY);
+                }
+
+                AArch64Address threadDisarmedAddr = masm.makeAddress(32, thread, config.threadDisarmedOffset, scratch2);
+                masm.ldr(32, scratch2, threadDisarmedAddr);
+                masm.cmp(32, scratch1, scratch2);
+                masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, entryPoint);
+                crb.getLIR().addSlowPath(null, () -> {
+                    masm.bind(entryPoint);
+                    int beforeCall = masm.position();
+                    if (AArch64Call.isNearCall(callTarget)) {
+                        // Address is fixed up by the runtime.
+                        masm.bl();
+                    } else {
+                        masm.movNativeAddress(scratch1, 0L, true);
+                        masm.blr(scratch1);
+                    }
+                    crb.recordDirectCall(beforeCall, masm.position(), callTarget, null);
+
+                    // Return to inline code
+                    masm.jmp(continuation);
+                });
+                masm.bind(continuation);
+            }
+        }
+
         @Override
         public void leave(CompilationResultBuilder crb) {
-            AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
-            FrameMap frameMap = crb.frameMap;
-            final int totalFrameSize = frameMap.totalFrameSize();
-
             crb.blockComment("[method epilogue]");
-            // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::leave_frame
-            try (ScratchRegister sc = masm.getScratchRegister()) {
-                int wordSize = 8;
-                Register scratch = sc.getRegister();
-                final int frameSize = frameMap.frameSize();
-                assert totalFrameSize > 0;
-                AArch64Address.AddressingMode addressingMode = AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
-                if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
-                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
-                    masm.add(64, sp, sp, totalFrameSize);
-                } else {
-                    int frameRecordSize = 2 * wordSize;
-                    masm.add(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
-                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, frameRecordSize));
-                }
-            }
-
+            rawLeave(crb);
         }
 
         @Override
         public void returned(CompilationResultBuilder crb) {
             // nothing to do
-        }
-
-        @Override
-        public boolean hasFrame() {
-            return true;
         }
 
     }
@@ -274,7 +329,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
         CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, lir.getOptions(), lir.getDebug(), compilationResult,
-                        Register.None);
+                        Register.None, lir);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         crb.setMinDataSectionItemAlignment(getMinDataSectionItemAlignment());
@@ -291,29 +346,32 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
+    public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         Label verifiedStub = new Label();
-        crb.buildLabelOffsets(lir);
+        crb.buildLabelOffsets();
         try {
-            emitCode(crb, lir, installedCodeOwner, verifiedStub);
+            emitCode(crb, installedCodeOwner, verifiedStub, entryPointDecorator);
         } catch (BranchTargetOutOfBoundsException e) {
             // A branch estimation was wrong, now retry with conservative label ranges, this
             // should always work
             crb.setConservativeLabelRanges();
             crb.resetForEmittingCode();
-            lir.resetLabels();
             verifiedStub.reset();
-            emitCode(crb, lir, installedCodeOwner, verifiedStub);
+            emitCode(crb, installedCodeOwner, verifiedStub, entryPointDecorator);
         }
     }
 
-    private void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner, Label verifiedStub) {
+    private void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, Label verifiedStub, EntryPointDecorator entryPointDecorator) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
         emitCodePrefix(crb, installedCodeOwner, masm, regConfig, verifiedStub);
-        emitCodeBody(crb, lir, masm);
-        emitCodeSuffix(crb, masm, frameMap);
+
+        if (entryPointDecorator != null) {
+            entryPointDecorator.emitEntryPoint(crb);
+        }
+        emitCodeBody(crb, masm);
+        emitCodeSuffix(crb, masm);
     }
 
     private void emitCodePrefix(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, AArch64MacroAssembler masm, RegisterConfig regConfig, Label verifiedStub) {
@@ -349,9 +407,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         crb.recordMark(crb.compilationResult.getEntryBCI() != -1 ? HotSpotMarkId.OSR_ENTRY : HotSpotMarkId.VERIFIED_ENTRY);
     }
 
-    private static void emitCodeBody(CompilationResultBuilder crb, LIR lir, AArch64MacroAssembler masm) {
+    private static void emitCodeBody(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         emitInvalidatePlaceholder(crb, masm);
-        crb.emit(lir);
+        crb.emitLIR();
     }
 
     /**
@@ -365,7 +423,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         masm.nop();
     }
 
-    private void emitCodeSuffix(CompilationResultBuilder crb, AArch64MacroAssembler masm, FrameMap frameMap) {
+    private void emitCodeSuffix(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {
@@ -425,10 +483,6 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 masm.adr(lr, 0);
                 AArch64Call.directJmp(crb, masm, linkage);
             }
-        } else {
-            // No need to emit the stubs for entries back into the method since
-            // it has no calls that can cause such "return" entries
-            assert !frameMap.accessesCallerFrame();
         }
     }
 

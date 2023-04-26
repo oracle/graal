@@ -42,8 +42,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -73,8 +73,10 @@ import com.oracle.svm.core.jni.headers.JNIJavaVMOption;
 import com.oracle.svm.core.jni.headers.JNIJavaVMPointer;
 import com.oracle.svm.core.jni.headers.JNIVersion;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Utf8;
 
@@ -265,11 +267,8 @@ public final class JNIInvocationInterface {
      */
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
-    static int DetachCurrentThread(JNIJavaVM vm) {
+    static int DetachCurrentThread(@SuppressWarnings("unused") JNIJavaVM vm) {
         int result = JNIErrors.JNI_OK();
-        if (!vm.equal(JNIFunctionTables.singleton().getGlobalJavaVM())) {
-            result = JNIErrors.JNI_ERR();
-        }
         // JNI specification requires releasing all owned monitors
         Support.releaseCurrentThreadOwnedMonitors();
         return result;
@@ -282,6 +281,9 @@ public final class JNIInvocationInterface {
     @CEntryPointOptions(prologue = JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue.class, epilogue = LeaveTearDownIsolateEpilogue.class)
     @SuppressWarnings("unused")
     static int DestroyJavaVM(JNIJavaVM vm) {
+        if (JavaFrameAnchors.getFrameAnchor().isNonNull()) {
+            return JNIErrors.JNI_ERR();
+        }
         PlatformThreads.singleton().joinAllNonDaemons();
         return JNIErrors.JNI_OK();
     }
@@ -353,7 +355,7 @@ public final class JNIInvocationInterface {
         static void releaseCurrentThreadOwnedMonitors() {
             JNIThreadOwnedMonitors.forEach((obj, depth) -> {
                 for (int i = 0; i < depth; i++) {
-                    MonitorSupport.singleton().monitorExit(obj);
+                    MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
                 }
                 assert !Thread.holdsLock(obj);
             });

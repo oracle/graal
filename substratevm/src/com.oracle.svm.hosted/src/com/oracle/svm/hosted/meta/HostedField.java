@@ -31,8 +31,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -151,19 +149,16 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     }
 
     public JavaConstant readValue(JavaConstant receiver) {
-        JavaConstant wrappedReceiver;
-        if (metaAccess.isInstanceOf(receiver, Class.class)) {
-            Object classObject = SubstrateObjectConstant.asObject(receiver);
-            if (classObject instanceof Class) {
-                throw VMError.shouldNotReachHere("Receiver " + receiver + " of field " + this + " read should not be java.lang.Class. Expecting to see DynamicHub here.");
-            } else {
-                VMError.guarantee(classObject instanceof DynamicHub);
-                wrappedReceiver = receiver;
-            }
-        } else {
-            wrappedReceiver = receiver;
+        assert checkHub(receiver) : "Receiver " + receiver + " of field " + this + " read should not be java.lang.Class. Expecting to see DynamicHub here.";
+        return universe.lookup(universe.getConstantReflectionProvider().readValue(metaAccess, wrapped, receiver));
+    }
+
+    private boolean checkHub(JavaConstant constant) {
+        if (metaAccess.isInstanceOf(constant, Class.class)) {
+            Object classObject = universe.getSnippetReflection().asObject(Object.class, constant);
+            return classObject instanceof DynamicHub;
         }
-        return universe.lookup(universe.getConstantReflectionProvider().readValue(metaAccess, wrapped, wrappedReceiver));
+        return true;
     }
 
     public JavaConstant readStorageValue(JavaConstant receiver) {
@@ -190,7 +185,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     @Override
     public String toString() {
-        return "HostedField<" + format("%h.%n") + " location: " + location + "   " + wrapped.toString() + ">";
+        return "HostedField<" + format("%h.%n") + " -> " + wrapped.toString() + ", location: " + location + ">";
     }
 
     @Override

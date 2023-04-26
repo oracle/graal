@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -48,7 +49,6 @@ import org.graalvm.compiler.nodes.gc.G1ArrayRangePreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1PostWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1PreWriteBarrier;
 import org.graalvm.compiler.nodes.gc.G1ReferentFieldReadBarrier;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -268,11 +268,11 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word bufferAddress = thread.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
         Word indexAddress = thread.add(satbQueueIndexOffset());
         long indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION).rawValue();
-        int scale = objectArrayIndexScale();
+        long scale = objectArrayIndexScale();
         Word start = getPointerToFirstArrayElement(address, length, elementStride);
 
         for (int i = 0; GraalDirectives.injectIterationCount(10, i < length); i++) {
-            Word arrElemPtr = start.add(i * scale);
+            Word arrElemPtr = start.add(WordFactory.unsigned(i * scale));
             Object previousObject = arrElemPtr.readObject(0, BarrierType.NONE, LocationIdentity.any());
             verifyOop(previousObject);
             if (probability(FREQUENT_PROBABILITY, previousObject != null)) {
@@ -334,7 +334,10 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     protected abstract int wordSize();
 
-    protected abstract int objectArrayIndexScale();
+    /**
+     * The scale as a long to force promotion to long when it's used in computations.
+     */
+    protected abstract long objectArrayIndexScale();
 
     protected abstract int satbQueueMarkingActiveOffset();
 

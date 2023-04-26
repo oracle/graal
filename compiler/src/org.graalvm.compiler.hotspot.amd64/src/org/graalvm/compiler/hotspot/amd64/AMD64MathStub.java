@@ -63,7 +63,7 @@ public class AMD64MathStub extends SnippetStub {
             case LOG10:
                 return "log10";
             default:
-                throw GraalError.shouldNotReachHere("Unknown operation " + operation);
+                throw GraalError.shouldNotReachHere("Unknown operation " + operation); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -71,7 +71,7 @@ public class AMD64MathStub extends SnippetStub {
         if (operation == BinaryOperation.POW) {
             return "pow";
         }
-        throw GraalError.shouldNotReachHere("Unknown operation " + operation);
+        throw GraalError.shouldNotReachHere("Unknown operation " + operation); // ExcludeFromJacocoGeneratedReport
     }
 
     @Snippet

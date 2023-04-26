@@ -192,6 +192,7 @@ public class GenerateUncachedTest {
 
         static Assumption testAssumption = Truffle.getRuntime().createAssumption();
 
+        @SuppressWarnings("truffle-assumption")
         @Specialization(assumptions = "testAssumption")
         static String s1(int v) {
             return "s1";

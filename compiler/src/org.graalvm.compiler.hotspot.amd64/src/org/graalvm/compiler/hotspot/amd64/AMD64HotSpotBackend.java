@@ -29,9 +29,10 @@ import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.core.common.GraalOptions.CanOmitFrame;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
+import static org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider.NMETHOD_ENTRY_BARRIER;
 
+import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
@@ -41,8 +42,10 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.amd64.AMD64NodeMatchRules;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
@@ -55,10 +58,10 @@ import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.amd64.AMD64Call;
 import org.graalvm.compiler.lir.amd64.AMD64FrameMap;
-import org.graalvm.compiler.lir.amd64.AMD64FrameMapBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
+import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
@@ -91,8 +94,8 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     @Override
     protected FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
-        FrameMap frameMap = new AMD64FrameMap(getCodeCache(), registerConfigNonNull, this, config.preserveFramePointer);
-        return new AMD64FrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
+        AMD64FrameMap frameMap = new AMD64HotSpotFrameMap(getCodeCache(), registerConfigNonNull, this, config);
+        return new AMD64HotSpotFrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
     }
 
     @Override
@@ -124,82 +127,131 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     /**
      * Emits code at the verified entry point and return point(s) of a method.
      */
-    class HotSpotFrameContext implements FrameContext {
+    public class HotSpotFrameContext implements FrameContext {
 
         final boolean isStub;
-        final boolean omitFrame;
-        final boolean useStandardFrameProlog;
 
-        HotSpotFrameContext(boolean isStub, boolean omitFrame, boolean useStandardFrameProlog) {
+        HotSpotFrameContext(boolean isStub) {
             this.isStub = isStub;
-            this.omitFrame = omitFrame;
-            this.useStandardFrameProlog = useStandardFrameProlog;
-        }
-
-        @Override
-        public boolean hasFrame() {
-            return !omitFrame;
         }
 
         @Override
         public void enter(CompilationResultBuilder crb) {
-            FrameMap frameMap = crb.frameMap;
+            AMD64FrameMap frameMap = (AMD64FrameMap) crb.frameMap;
             int frameSize = frameMap.frameSize();
-            AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
-            if (omitFrame) {
-                if (!isStub) {
-                    asm.nop(PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE);
-                }
-            } else {
-                int verifiedEntryPointOffset = asm.position();
-                if (!isStub) {
-                    emitStackOverflowCheck(crb);
-                    // assert asm.position() - verifiedEntryPointOffset >=
-                    // PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
-                }
-                if (useStandardFrameProlog) {
-                    // Stack-walking friendly instructions
-                    asm.push(rbp);
-                    asm.movq(rbp, rsp);
-                }
-                if (!isStub && asm.position() == verifiedEntryPointOffset) {
-                    asm.subqWide(rsp, frameSize);
-                    assert asm.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
-                } else {
-                    asm.decrementq(rsp, frameSize);
-                }
-                if (HotSpotMarkId.FRAME_COMPLETE.isAvailable()) {
-                    crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
-                }
-                if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
-                    final int intSize = 4;
-                    for (int i = 0; i < frameSize / intSize; ++i) {
-                        asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
-                    }
-                }
-                assert frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
+            AMD64HotSpotMacroAssembler asm = (AMD64HotSpotMacroAssembler) crb.asm;
+
+            int verifiedEntryPointOffset = asm.position();
+            if (!isStub) {
+                emitStackOverflowCheck(crb);
+                // assert asm.position() - verifiedEntryPointOffset >=
+                // PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
             }
+            if (frameMap.preserveFramePointer()) {
+                // Stack-walking friendly instructions
+                asm.push(rbp);
+                asm.movq(rbp, rsp);
+            }
+            if (!isStub && asm.position() == verifiedEntryPointOffset) {
+                asm.subqWide(rsp, frameSize);
+                assert asm.position() - verifiedEntryPointOffset >= PATCHED_VERIFIED_ENTRY_POINT_INSTRUCTION_SIZE;
+            } else {
+                asm.decrementq(rsp, frameSize);
+            }
+
+            assert frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
+
+            if (!isStub && config.nmethodEntryBarrier != 0) {
+                emitNmethodEntryBarrier(crb, asm);
+            } else {
+                crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
+            }
+
+            if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
+                final int intSize = 4;
+                for (int i = 0; i < frameSize / intSize; ++i) {
+                    asm.movl(new AMD64Address(rsp, i * intSize), 0xC1C1C1C1);
+                }
+            }
+        }
+
+        private void emitNmethodEntryBarrier(CompilationResultBuilder crb, AMD64HotSpotMacroAssembler asm) {
+            GraalError.guarantee(HotSpotMarkId.ENTRY_BARRIER_PATCH.isAvailable(), "must be available");
+            ForeignCallLinkage callTarget = getForeignCalls().lookupForeignCall(NMETHOD_ENTRY_BARRIER);
+
+            // The assembly sequence is from
+            // src/hotspot/cpu/x86/gc/shared/barrierSetAssembler_x86.cpp. It was improved in
+            // JDK 20 to be more efficient.
+            final Label continuation = new Label();
+            final Label entryPoint = new Label();
+
+            // The following code sequence must be emitted in exactly this fashion as HotSpot
+            // will check that the barrier is the expected code sequence.
+            asm.align(4);
+            crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
+            crb.recordMark(HotSpotMarkId.ENTRY_BARRIER_PATCH);
+            asm.nmethodEntryCompare(config.threadDisarmedOffset);
+            asm.jcc(ConditionFlag.NotEqual, entryPoint);
+            crb.getLIR().addSlowPath(null, () -> {
+                asm.bind(entryPoint);
+                /*
+                 * The nmethod entry barrier can deoptimize by manually removing this frame. It
+                 * makes some assumptions about the frame layout that aren't always true for Graal.
+                 * In particular it assumes the caller`s rbp is always saved in the standard
+                 * location. With -XX:+PreserveFramePointer this has been done by the frame setup.
+                 * Otherwise it is only saved lazily (i.e. if rbp is actually used by the register
+                 * allocator). Since nmethod entry barriers are enabled, the space for rbp has been
+                 * reserved in the frame and here we ensure it is properly saved before calling the
+                 * nmethod entry barrier.
+                 */
+                AMD64HotSpotFrameMap frameMap = (AMD64HotSpotFrameMap) crb.frameMap;
+                if (!frameMap.preserveFramePointer()) {
+                    asm.movq(new AMD64Address(rsp, frameMap.offsetForStackSlot(frameMap.getRBPSpillSlot())), rbp);
+                }
+                // This is always a near call
+                int beforeCall = asm.position();
+                asm.call();
+                crb.recordDirectCall(beforeCall, asm.position(), callTarget, null);
+
+                // Return to inline code
+                asm.jmp(continuation);
+            });
+            asm.bind(continuation);
         }
 
         @Override
         public void leave(CompilationResultBuilder crb) {
-            if (!omitFrame) {
-                AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
-                assert crb.frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
+            AMD64HotSpotFrameMap frameMap = (AMD64HotSpotFrameMap) crb.frameMap;
+            AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
+            assert frameMap.getRegisterConfig().getCalleeSaveRegisters() == null;
 
-                int frameSize = crb.frameMap.frameSize();
-                if (useStandardFrameProlog) {
-                    asm.movq(rsp, rbp);
-                    asm.pop(rbp);
-                } else {
-                    asm.incrementq(rsp, frameSize);
-                }
+            if (frameMap.preserveFramePointer()) {
+                asm.movq(rsp, rbp);
+                asm.pop(rbp);
+            } else {
+                asm.incrementq(rsp, frameMap.frameSize());
             }
         }
 
         @Override
         public void returned(CompilationResultBuilder crb) {
             // nothing to do
+        }
+
+        public void rawEnter(CompilationResultBuilder crb) {
+            AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
+            AMD64FrameMap frameMap = (AMD64FrameMap) crb.frameMap;
+
+            if (frameMap.preserveFramePointer()) {
+                // Stack-walking friendly instructions
+                asm.push(rbp);
+                asm.movq(rbp, rsp);
+            }
+            asm.decrementq(rsp, frameMap.frameSize());
+        }
+
+        public void rawLeave(CompilationResultBuilder crb) {
+            leave(crb);
         }
     }
 
@@ -216,14 +268,12 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
-        boolean omitFrame = CanOmitFrame.getValue(options) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall() &&
-                        !((AMD64FrameMap) frameMap).useStandardFrameProlog();
 
         Stub stub = gen.getStub();
         AMD64MacroAssembler masm = new AMD64HotSpotMacroAssembler(config, getTarget(), options, config.CPU_HAS_INTEL_JCC_ERRATUM);
-        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame, config.preserveFramePointer);
+        HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());
-        CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None);
+        CompilationResultBuilder crb = factory.createBuilder(getProviders(), frameMap, masm, dataBuilder, frameContext, options, debug, compilationResult, Register.None, lir);
         crb.setTotalFrameSize(frameMap.totalFrameSize());
         crb.setMaxInterpreterFrameSize(gen.getMaxInterpreterFrameSize());
         crb.setMinDataSectionItemAlignment(getMinDataSectionItemAlignment());
@@ -240,7 +290,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, LIR lir, ResolvedJavaMethod installedCodeOwner) {
+    public void emitCode(CompilationResultBuilder crb, ResolvedJavaMethod installedCodeOwner, EntryPointDecorator entryPointDecorator) {
         AMD64MacroAssembler asm = (AMD64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         RegisterConfig regConfig = frameMap.getRegisterConfig();
@@ -248,14 +298,15 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         // Emit the prefix
         emitCodePrefix(installedCodeOwner, crb, asm, regConfig);
 
+        if (entryPointDecorator != null) {
+            entryPointDecorator.emitEntryPoint(crb);
+        }
+
         // Emit code for the LIR
-        emitCodeBody(installedCodeOwner, crb, lir);
+        crb.emitLIR();
 
         // Emit the suffix
-        emitCodeSuffix(installedCodeOwner, crb, asm, frameMap);
-
-        // Profile assembler instructions
-        profileInstructions(lir, crb);
+        emitCodeSuffix(crb, asm);
     }
 
     /**
@@ -269,7 +320,7 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
             CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCallee, null, new JavaType[]{providers.getMetaAccess().lookupJavaType(Object.class)}, this);
             Register inlineCacheKlass = rax; // see definition of IC_Klass in
-                                             // c1_LIRAssembler_x86.cpp
+            // c1_LIRAssembler_x86.cpp
             Register receiver = asRegister(cc.getArgument(0));
             AMD64Address src = new AMD64Address(receiver, config.hubOffset);
             int before;
@@ -290,26 +341,14 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             } else {
                 before = asm.cmpqAndJcc(inlineCacheKlass, src, ConditionFlag.NotEqual, null, false);
             }
-            AMD64Call.recordDirectCall(crb, asm, getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), before);
+            crb.recordDirectCall(before, asm.position(), getForeignCalls().lookupForeignCall(IC_MISS_HANDLER), null);
         }
 
         asm.align(config.codeEntryAlignment);
         crb.recordMark(crb.compilationResult.getEntryBCI() != -1 ? HotSpotMarkId.OSR_ENTRY : HotSpotMarkId.VERIFIED_ENTRY);
     }
 
-    /**
-     * Emits the code which starts at the verified entry point.
-     *
-     * @param installedCodeOwner see {@link LIRGenerationProvider#emitCode}
-     */
-    public void emitCodeBody(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, LIR lir) {
-        crb.emit(lir);
-    }
-
-    /**
-     * @param installedCodeOwner see {@link LIRGenerationProvider#emitCode}
-     */
-    public void emitCodeSuffix(ResolvedJavaMethod installedCodeOwner, CompilationResultBuilder crb, AMD64MacroAssembler asm, FrameMap frameMap) {
+    public void emitCodeSuffix(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
         HotSpotProviders providers = getProviders();
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         if (!frameContext.isStub) {
@@ -354,14 +393,6 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
             crb.recordMark(AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), null, false, null), HotSpotMarkId.DEOPT_HANDLER_ENTRY);
             if (config.supportsMethodHandleDeoptimizationEntry() && crb.needsMHDeoptHandler()) {
                 crb.recordMark(AMD64Call.directCall(crb, asm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), null, false, null), HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY);
-            }
-        } else {
-            // No need to emit the stubs for entries back into the method since
-            // it has no calls that can cause such "return" entries
-
-            if (frameContext.omitFrame) {
-                // Cannot access slots in caller's frame if my frame is omitted
-                assert !frameMap.accessesCallerFrame();
             }
         }
     }

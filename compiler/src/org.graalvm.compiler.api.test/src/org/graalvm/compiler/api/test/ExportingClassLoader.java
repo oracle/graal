@@ -29,10 +29,12 @@ package org.graalvm.compiler.api.test;
  * in the unnamed module associated with the loader.
  */
 public class ExportingClassLoader extends ClassLoader {
+    @SuppressWarnings("this-escape")
     public ExportingClassLoader() {
         ModuleSupport.exportAllPackagesTo(getClass(), this);
     }
 
+    @SuppressWarnings("this-escape")
     public ExportingClassLoader(ClassLoader parent) {
         super(parent);
         ModuleSupport.exportAllPackagesTo(getClass(), this);

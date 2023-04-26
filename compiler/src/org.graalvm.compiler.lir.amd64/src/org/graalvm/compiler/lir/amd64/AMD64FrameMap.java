@@ -24,13 +24,9 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asStackSlot;
-
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 
-import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
@@ -51,9 +47,9 @@ import jdk.vm.ci.code.StackSlot;
  *   current  | return address                 |    |            ^
  *   frame    +--------------------------------+    |            |
  *            | preserved rbp                  |    |            |
- *            | (iff {@link #useStandardFrameProlog})   |    |            |
+ *            | iff preserveFramePointer       |    |            |
  *            +--------------------------------+    |            |    -----
- *            |                                |    |            |      ^
+ *            |                                |    |            |      |
  *            : callee save area               :    |            |      |
  *            |                                |    |            |      |
  *            +--------------------------------+    |            |      |
@@ -81,14 +77,17 @@ import jdk.vm.ci.code.StackSlot;
  */
 public class AMD64FrameMap extends FrameMap {
 
-    private final boolean useStandardFrameProlog;
-    private StackSlot rbpSpillSlot;
+    /**
+     * If true then the frame setup always pushes and pops rbp.
+     */
+    protected final boolean preserveFramePointer;
 
-    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean useStandardFrameProlog) {
+    @SuppressWarnings("this-escape")
+    public AMD64FrameMap(CodeCacheProvider codeCache, RegisterConfig registerConfig, ReferenceMapBuilderFactory referenceMapFactory, boolean preserveFramePointer) {
         super(codeCache, registerConfig, referenceMapFactory);
         // (negative) offset relative to sp + total frame size
-        this.useStandardFrameProlog = useStandardFrameProlog;
-        this.initialSpillSize = returnAddressSize() + (useStandardFrameProlog ? getTarget().arch.getWordSize() : 0);
+        this.preserveFramePointer = preserveFramePointer;
+        this.initialSpillSize = returnAddressSize() + (preserveFramePointer ? getTarget().arch.getWordSize() : 0);
         this.spillSize = initialSpillSize;
     }
 
@@ -120,30 +119,7 @@ public class AMD64FrameMap extends FrameMap {
         return super.offsetForStackSlot(slot);
     }
 
-    /**
-     * For non-leaf methods, RBP is preserved in the special stack slot required by the HotSpot
-     * runtime for walking/inspecting frames of such methods.
-     */
-    StackSlot allocateRBPSpillSlot() {
-        assert spillSize == initialSpillSize : "RBP spill slot must be the first allocated stack slots";
-        rbpSpillSlot = allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-        assert asStackSlot(rbpSpillSlot).getRawOffset() == -16 : asStackSlot(rbpSpillSlot).getRawOffset();
-        return rbpSpillSlot;
-    }
-
-    void freeRBPSpillSlot() {
-        int size = spillSlotSize(LIRKind.value(AMD64Kind.QWORD));
-        assert spillSize == NumUtil.roundUp(initialSpillSize + size, size) : "RBP spill slot can not be freed after allocation other stack slots";
-        spillSize = initialSpillSize;
-    }
-
-    public StackSlot allocateDeoptimizationRescueSlot() {
-        assert spillSize == initialSpillSize || spillSize == initialSpillSize +
-                        spillSlotSize(LIRKind.value(AMD64Kind.QWORD)) : "Deoptimization rescue slot must be the first or second (if there is an RBP spill slot) stack slot";
-        return allocateSpillSlot(LIRKind.value(AMD64Kind.QWORD));
-    }
-
-    public boolean useStandardFrameProlog() {
-        return useStandardFrameProlog;
+    public boolean preserveFramePointer() {
+        return preserveFramePointer;
     }
 }

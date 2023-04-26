@@ -1,14 +1,14 @@
 ---
 layout: docs
 toc_group: embedding
-link_title: Enterprise Sandbox Resource Limits
+link_title: Sandbox Resource Limits
 permalink: /reference-manual/embed-languages/sandbox-resource-limits/
 ---
 
-## Enterprise Sandbox Resource Limits
+## Oracle GraalVM Sandbox Resource Limits
 
-GraalVM Enterprise provides the experimental Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
-These resource limits are not available in the Community Edition of GraalVM.
+Oracle GraalVM provides the Sandbox Resource Limits feature that allows for the limiting of resources used by guest applications.
+These resource limits are not available in GraalVM Community Edition.
 The following document describes how to configure sandbox resource limits using options in GraalVM Polyglot API.
 
 In general all resource limit options are prefixed with `sandbox` option group and they can be listed using the help of any language launcher provided in GraalVM, e.g., `js --help:tools`.
@@ -21,21 +21,23 @@ The options are a best effort approach to limiting resource usage of guest appli
 The resource limits may be configured using the following options:
 
 <!-- BEGIN: sandbox-options -->
-- `--sandbox.AllocatedBytesCheckEnabled=true|false` : Specifies whether checking of allocated bytes for an execution context is enabled. Is set to 'true' by default.
 - `--sandbox.AllocatedBytesCheckFactor=[0.0, inf)` : Specifies a factor of MaxHeapMemory the allocation of which triggers retained heap memory computation. When allocated bytes for an execution context reach the specified factor, computation of bytes retained in the heap by the context is initiated. Is set to '1.0' by default.
-- `--sandbox.AllocatedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check allocated bytes for an execution context. Exceeding certain number of allocated bytes triggers computation of bytes retained in the heap by the context. Is set to '10ms' by default.
+- `--sandbox.AllocatedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check allocated bytes for an execution context. Exceeding certain number of allocated bytes triggers computation of bytes retained in the heap by the context. Is set to '10ms' by default. Maximum interval is 1h.
 - `--sandbox.MaxASTDepth=[1, inf)` : Maximum AST depth of a function (default: no limit).
 - `--sandbox.MaxCPUTime=[1, inf)ms|s|m|h|d` : Limits the total maximum CPU time that was spent running the application. No limit is set by default. Example value: '100ms'.
-- `--sandbox.MaxCPUTimeCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check the active CPU time for an execution context. Is set to '10ms' by default.
-- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
+- `--sandbox.MaxCPUTimeCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check the active CPU time for an execution context. Is set to '10ms' by default. Maximum interval is 1h.
+- `--sandbox.MaxErrorStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stderr. No limit is set by default. Example value: '10MB'.
+- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. Includes only data retained by the guest application, runtime allocated data is not included. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
+- `--sandbox.MaxOutputStreamSize=[0, inf)B|KB|MB|GB` : Specifies the maximum size that the guest application can write to stdout. No limit is set by default. Example value: '10MB'.
 - `--sandbox.MaxStackFrames=[1, inf)` : Limits the maximum number of guest stack frames (default: no limit).
 - `--sandbox.MaxStatements=[1, inf)` : Limits the maximum number of guest language statements executed. The execution is cancelled with an resource exhausted error when it is exceeded.
 - `--sandbox.MaxStatementsIncludeInternal` : Configures whether to include internal sources in the max statements computation.
 - `--sandbox.MaxThreads=[1, inf)` : Limits the number of threads that can be entered by a context at the same point in time (default: no limit).
-- `--sandbox.RetainedBytesCheckFactor=[0.0, inf)` : Specifies a factor of total heap memory of the host VM the exceeding of which stops the world. When the total number of bytes allocated in the heap for the whole host VM exceeds the factor, the following process is initiated. Execution for all engines with at least one memory-limited execution context is paused. Retained bytes in the heap for each memory-limited context are computed. Contexts exceeding their limits are cancelled. The execution is resumed. Is set to '0.7' by default.
-- `--sandbox.RetainedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Specifies the minimum time interval between two computations of retained bytes in the heap for a single execution context. Is set to '10ms' by default.
+- `--sandbox.RetainedBytesCheckFactor=[0.0, inf)` : Specifies a factor of total heap memory of the host VM the exceeding of which stops the world. When the total number of bytes allocated in the heap for the whole host VM exceeds the factor, the following process is initiated. Execution for all engines with at least one memory-limited execution context is paused. Retained bytes in the heap for each memory-limited context are computed. Contexts exceeding their limits are cancelled. The execution is resumed. Is set to '0.7' by default. Has no effect if 'UseLowMemoryTrigger' is 'false'.
+- `--sandbox.RetainedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Specifies the minimum time interval between two computations of retained bytes in the heap for a single execution context. Is set to '10ms' by default. Maximum value for the minimum interval is 1h.
+- `--sandbox.ReuseLowMemoryTriggerThreshold=true|false` : Specifies whether an already set heap memory notification limit can be reused for the low memory trigger. When reusing is allowed and the usage threshold or the collection usage threshold of a heap memory pool has already been set, then the value of 'RetainedBytesCheckFactor' is ignored for that memory pool and threshold type and whatever threshold value has already been set is used. Is set to 'false' by default.
 - `--sandbox.TraceLimits=true|false` : Records the maximum amount of resources used during execution, and reports a summary of resource limits to the log file upon application exit. Users may also provide limits to enforce while tracing. This flag can be used to estimate an application's optimal sandbox parameters, either by tracing the limits of a stress test or peak usage.
-- `--sandbox.UseLowMemoryTrigger=true|false` : Specifies whether stopping the world is enabled. When enabled, engines with at least one memory limited execution context are paused when the total number of bytes allocated in the heapfor the whole host VM exceeds the specified factor of total heap memory of the host VM. Is set to 'true' by default.
+- `--sandbox.UseLowMemoryTrigger=true|false` : Specifies whether stopping the world is enabled. When enabled, engines with at least one memory limited execution context are paused when the total number of bytes allocated in the heap for the whole host VM exceeds the specified factor of total heap memory of the host VM. Is set to 'true' by default.
 <!-- END: sandbox-options -->
 
 Different configurations may be provided for each polyglot embedding `Context` instance.
@@ -186,28 +188,6 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-## Determining Sandbox Resource Limits
-
-The sandbox.TraceLimits option allows you to trace a running process and record the maximum resource utilization. This can be used to estimate parameters to define a sandbox for the workload. For example, a web server's sandbox parameters could be obtained by enabling this option and either stress-testing the server, or letting the server run during peak usage. When this option is enabled, the report is saved to the log file after the workload completes. Users can change the location of the log file by using --log.file=<path> with a language launcher or -Dpolyglot.log.file=<path> when using a java launcher. Each resource limit in the report can be passed directly to a sandbox option in order to enforce the limit.
-
-See, for example, how to trace limits for a Python workload:
-
-```
-graalpy --log.file=limits.log --experimental-options --sandbox.TraceLimits=true workload.py
-
-limits.log:
-[trace-limits] Sandbox Limits Statistics:
-HEAP                                12MB
-CPU                                   7s
-STATEMENTS                       9441565
-STACKFRAMES                           29
-THREADS                                1
-ASTDEPTH                              15
-
-Sandbox Command Line Options:
---sandbox.MaxHeapMemory=12MB --sandbox.MaxCPUTime=7s --sandbox.MaxStatements=9441565 --sandbox.MaxStackFrames=29 --sandbox.MaxThreads=1 --sandbox.MaxASTDepth=15
-```
-
 #### Implementation details and expert options
 
 The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on [low memory notification](https://docs.oracle.com/en/java/javase/11/docs/api/java.management/java/lang/management/MemoryMXBean.html).
@@ -254,6 +234,10 @@ The execution for all engines with at least one execution context which has the 
 The default factor is 0.7. This can be configuted by the `sandbox.RetainedBytesCheckFactor` option.
 The factor must be between 0.0 and 1.0. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.RetainedBytesCheckFactor`.
 
+When the usage threshold or the collection usage threshold of any heap memory pool has already been set, then the low memory trigger cannot be used by default, because the limit specified by the `sandbox.RetainedBytesCheckFactor` cannot be implemented.
+However, when `sandbox.ReuseLowMemoryTriggerThreshold` is set to true and the usage threshold or the collection usage threshold of a heap memory pool has already been set, then the value of `sandbox.RetainedBytesCheckFactor` is ignored for that memory pool and whatever limit has already been set is used.
+That way the low memory trigger can be used together with libraries that also set the usage threshold or the collection usage threshold of heap memory pools.
+
 The described low memory trigger can be disabled by the `sandbox.UseLowMemoryTrigger` option.
 By default it is enabled ("true"). If disabled ("false"), retained size checking for the execution context can be triggered only by the allocated bytes checker.
 All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.UseLowMemoryTrigger`.
@@ -269,6 +253,64 @@ Available units to specify sizes are `B` for bytes, `KB` for kilobytes, `MB` for
 It is not allowed to specify negative values or no size unit with max heap memory options.
 
 Resetting resource limits using `Context.resetLimits` does not affect the heap memory limit.
+
+## Limiting the size of the output written to stdout/stderr
+
+Limits the size of the output that the application writes to standard output or standard error output during runtime.
+If the limit is exceeded, evaluation of the code fails and the context is canceled.
+Limiting the size of the output can serve as protection against denial-of-service attacks that flood the output.
+
+#### Example Usage
+```java
+try (Context context = Context.newBuilder("js")
+                           .option("sandbox.MaxOutputStreamSize", "100KB")
+                       .build()) {
+    context.eval("js", "while(true) { console.log('Log message') };");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after writing more than 100KB to stdout
+    // context is closed and can no longer be used
+    // error message: Maximum output stream size of 102400 exceeded. Bytes written 102408.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
+}
+```
+```java
+try (Context context = Context.newBuilder("js")
+                           .option("sandbox.MaxErrorStreamSize", "100KB")
+                       .build()) {
+    context.eval("js", "while(true) { console.error('Error message') };");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after writing more than 100KB to stderr
+    // context is closed and can no longer be used
+    // error message: Maximum error stream size of 102400 exceeded. Bytes written 102410.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
+}
+```
+
+## Determining Sandbox Resource Limits
+
+The sandbox.TraceLimits option allows you to trace a running process and record the maximum resource utilization. This can be used to estimate parameters to define a sandbox for the workload. For example, a web server's sandbox parameters could be obtained by enabling this option and either stress-testing the server, or letting the server run during peak usage. When this option is enabled, the report is saved to the log file after the workload completes. Users can change the location of the log file by using --log.file=<path> with a language launcher or -Dpolyglot.log.file=<path> when using a java launcher. Each resource limit in the report can be passed directly to a sandbox option in order to enforce the limit.
+
+See, for example, how to trace limits for a Python workload:
+
+```
+graalpy --log.file=limits.log --experimental-options --sandbox.TraceLimits=true workload.py
+
+limits.log:
+[trace-limits] Sandbox Limits Statistics:
+HEAP                                12MB
+CPU                                   7s
+STATEMENTS                       9441565
+STACKFRAMES                           29
+THREADS                                1
+ASTDEPTH                              15
+
+Sandbox Command Line Options:
+--sandbox.MaxHeapMemory=12MB --sandbox.MaxCPUTime=7s --sandbox.MaxStatements=9441565 --sandbox.MaxStackFrames=29 --sandbox.MaxThreads=1 --sandbox.MaxASTDepth=15
+```
 
 ## Resetting Resource Limits
 

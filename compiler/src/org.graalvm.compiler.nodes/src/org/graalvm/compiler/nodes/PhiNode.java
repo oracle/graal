@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,7 +77,7 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
         } else if (values[0].isAllowedUsageType(InputType.Guard)) {
             return new GuardPhiNode(merge, values);
         } else {
-            throw GraalError.shouldNotReachHere("Cannot create a phi for this input type.");
+            throw GraalError.shouldNotReachHere("Cannot create a phi for this input type."); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -253,8 +253,40 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
                 return null;
             }
         }
+        PhiNode canonical = this;
+        if (!isLoopPhi()) {
+            boolean canForwardInputs = false;
+            for (int i = 0; i < valueCount(); i++) {
+                if (merge.isPhiAtMerge(valueAt(i))) {
+                    /**
+                     * Canonicalize a shape like:
+                     *
+                     * <pre>
+                     * phi1 = phi(merge, a, b);       ==>    phi1 = phi(merge, a, b);
+                     * phi2 = phi(merge, phi1, c);    ==>    phi2 = phi(merge, a, c);
+                     * </pre>
+                     *
+                     * by replacing a phi's transitive phi input by the value it takes on the
+                     * corresponding path.
+                     */
+                    canForwardInputs = true;
+                    break;
+                }
+            }
+            if (canForwardInputs) {
+                ValueNode[] canonicalInputs = new ValueNode[valueCount()];
+                for (int i = 0; i < valueCount(); i++) {
+                    ValueNode input = valueAt(i);
+                    while (merge.isPhiAtMerge(input)) {
+                        input = ((PhiNode) input).valueAt(i);
+                    }
+                    canonicalInputs[i] = input;
+                }
+                canonical = duplicateWithValues(merge(), canonicalInputs);
+            }
+        }
 
-        return singleValueOrThis();
+        return canonical.singleValueOrThis();
     }
 
     public ValueNode firstValue() {
@@ -283,9 +315,19 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
     public abstract ProxyNode createProxyFor(LoopExitNode lex);
 
     /**
-     * Create a phi of the same kind on the given merge.
+     * Create a phi of the same kind on the given merge. The resulting node is added to the graph
+     * without GVN.
      *
      * @param newMerge the merge to use for the newly created phi
      */
     public abstract PhiNode duplicateOn(AbstractMergeNode newMerge);
+
+    /**
+     * Create a phi of the same kind on the given merge with the given input values. The resulting
+     * node is <em>not</em> added to the graph to make this method usable in canonicalization rules.
+     *
+     * @param newMerge the merge to use for the newly created phi
+     * @param newValues the input values to use for the newly created phi
+     */
+    public abstract PhiNode duplicateWithValues(AbstractMergeNode newMerge, ValueNode... newValues);
 }

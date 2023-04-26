@@ -81,6 +81,7 @@ public class UnsafeSnippets implements Snippets {
         private final SnippetInfo copyMemory;
         private final SnippetInfo copyMemoryGuarded;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 

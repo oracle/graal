@@ -25,12 +25,13 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -40,6 +41,8 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapPrimitiveArray;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.FrameAccess;
@@ -52,12 +55,12 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 
 import jdk.internal.misc.Unsafe;
@@ -118,8 +121,8 @@ public final class NativeImageHeapWriter {
         }
     }
 
-    private static Object readObjectField(HostedField field, JavaConstant receiver) {
-        return SubstrateObjectConstant.asObject(field.readStorageValue(receiver));
+    private Object readObjectField(HostedField field, JavaConstant receiver) {
+        return snippetReflection().asObject(Object.class, field.readStorageValue(receiver));
     }
 
     private int referenceSize() {
@@ -146,7 +149,7 @@ public final class NativeImageHeapWriter {
         }
 
         if (value.getJavaKind() == JavaKind.Object && heap.getMetaAccess().isInstanceOf(value, RelocatedPointer.class)) {
-            addNonDataRelocation(buffer, index, (RelocatedPointer) SubstrateObjectConstant.asObject(value));
+            addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, value));
         } else {
             write(buffer, index, value, info != null ? info : field);
         }
@@ -173,20 +176,20 @@ public final class NativeImageHeapWriter {
                 int shift = compressEncoding.getShift();
                 writeReferenceValue(buffer, index, targetInfo.getAddress() >>> shift);
             } else {
-                addDirectRelocationWithoutAddend(buffer, index, referenceSize(), SubstrateObjectConstant.asObject(target));
+                addDirectRelocationWithoutAddend(buffer, index, referenceSize(), snippetReflection().asObject(Object.class, target));
             }
         }
     }
 
     private void writeConstant(RelocatableBuffer buffer, int index, JavaKind kind, JavaConstant constant, ObjectInfo info) {
         if (heap.getMetaAccess().isInstanceOf(constant, RelocatedPointer.class)) {
-            addNonDataRelocation(buffer, index, (RelocatedPointer) SubstrateObjectConstant.asObject(constant));
+            addNonDataRelocation(buffer, index, snippetReflection().asObject(RelocatedPointer.class, constant));
             return;
         }
 
         final JavaConstant con;
         if (heap.getMetaAccess().isInstanceOf(constant, WordBase.class)) {
-            Object value = heap.getUniverse().getSnippetReflection().asObject(Object.class, constant);
+            Object value = snippetReflection().asObject(Object.class, constant);
             con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), ((WordBase) value).rawValue());
         } else if (constant.isNull() && kind == FrameAccess.getWordKind()) {
             con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0);
@@ -209,7 +212,7 @@ public final class NativeImageHeapWriter {
             con = JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0);
         } else {
             assert kind == JavaKind.Object || value != null : "primitive value must not be null";
-            con = SubstrateObjectConstant.forBoxedValue(kind, value);
+            con = snippetReflection().forBoxed(kind, value);
         }
         write(buffer, index, con, info);
     }
@@ -360,7 +363,7 @@ public final class NativeImageHeapWriter {
                     writeField(buffer, info, field, con, info);
                 }
             }
-            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
+            long idHashOffset;
             if (hybridArray != null) {
                 /*
                  * Write the hybrid array length and the array elements.
@@ -373,30 +376,35 @@ public final class NativeImageHeapWriter {
                     final Object array = Array.get(hybridArray, i);
                     writeConstant(buffer, elementIndex, elementStorageKind, array, info);
                 }
+                idHashOffset = hybridLayout.getOptionalIdentityHashOffset(length);
+            } else {
+                idHashOffset = ((HostedInstanceClass) clazz).getOptionalIdentityHashOffset();
             }
+            bufferBytes.putInt(info.getIndexInBuffer(idHashOffset), info.getIdentityHashCode());
 
         } else if (clazz.isArray()) {
 
             JavaKind kind = clazz.getComponentType().getStorageKind();
             JavaConstant constant = info.getConstant();
             if (constant instanceof ImageHeapConstant) {
-                if (!clazz.getComponentType().isPrimitive()) {
+                if (clazz.getComponentType().isPrimitive()) {
+                    ImageHeapPrimitiveArray imageHeapArray = (ImageHeapPrimitiveArray) constant;
+                    writePrimitiveArray(info, buffer, objectLayout, kind, imageHeapArray.getArray(), imageHeapArray.getLength());
+                } else {
                     AnalysisConstantReflectionProvider constantReflection = heap.getUniverse().getConstantReflectionProvider();
                     int length = constantReflection.readArrayLength(constant);
                     bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-                    bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
+                    bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
                     constantReflection.forEachArrayElement(constant, (element, index) -> {
                         final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, index));
                         writeConstant(buffer, elementIndex, kind, element, info);
                     });
-                } else {
-                    throw VMError.shouldNotReachHere("Heap writing for primitive type ImageHeapArray not yet implemented.");
                 }
             } else {
                 Object array = info.getObject();
                 int length = Array.getLength(array);
                 bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getIdentityHashCodeOffset()), info.getIdentityHashCode());
+                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayOptionalIdentityHashOffset(kind, length)), info.getIdentityHashCode());
                 if (array instanceof Object[]) {
                     Object[] oarray = (Object[]) array;
                     assert oarray.length == length;
@@ -407,16 +415,20 @@ public final class NativeImageHeapWriter {
                         writeConstant(buffer, elementIndex, kind, element, info);
                     }
                 } else {
-                    int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, 0));
-                    int elementTypeSize = Unsafe.getUnsafe().arrayIndexScale(array.getClass());
-                    assert elementTypeSize == kind.getByteCount();
-                    Unsafe.getUnsafe().copyMemory(array, Unsafe.getUnsafe().arrayBaseOffset(array.getClass()), buffer.getBackingArray(),
-                                    Unsafe.ARRAY_BYTE_BASE_OFFSET + elementIndex, length * elementTypeSize);
+                    writePrimitiveArray(info, buffer, objectLayout, kind, array, length);
                 }
             }
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(clazz); // ExcludeFromJacocoGeneratedReport
         }
+    }
+
+    private static void writePrimitiveArray(ObjectInfo info, RelocatableBuffer buffer, ObjectLayout objectLayout, JavaKind kind, Object array, int length) {
+        int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, 0));
+        int elementTypeSize = Unsafe.getUnsafe().arrayIndexScale(array.getClass());
+        assert elementTypeSize == kind.getByteCount();
+        Unsafe.getUnsafe().copyMemory(array, Unsafe.getUnsafe().arrayBaseOffset(array.getClass()), buffer.getBackingArray(),
+                        Unsafe.ARRAY_BYTE_BASE_OFFSET + elementIndex, length * elementTypeSize);
     }
 
     private Object maybeReplace(Object object, Object reason) {
@@ -426,4 +438,9 @@ public final class NativeImageHeapWriter {
             throw NativeImageHeap.reportIllegalType(ex.getType(), reason);
         }
     }
+
+    private SnippetReflectionProvider snippetReflection() {
+        return heap.getUniverse().getSnippetReflection();
+    }
+
 }

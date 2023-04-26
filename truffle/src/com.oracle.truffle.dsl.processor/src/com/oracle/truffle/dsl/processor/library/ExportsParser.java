@@ -186,6 +186,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
          */
         Map<String, List<Element>> potentiallyMissedOverrides = new LinkedHashMap<>();
         List<ExportMessageData> exportedElements = new ArrayList<>();
+
         for (Element member : members) {
             List<AnnotationMirror> exportedMessageMirrors = getRepeatedAnnotation(member.getAnnotationMirrors(), types.ExportMessage);
             if (exportedMessageMirrors.isEmpty()) {
@@ -338,7 +339,34 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         exportedElements = exportedElements.stream().filter((e) -> declaredExports.contains(e.getExportsLibrary())).collect(Collectors.toList());
 
         /*
-         * Third pass: initialize and further parsing that need both method and node to be
+         * Third pass deprecation overload resolution. Might update LibraryMessage.
+         */
+        for (ExportsLibrary exportsLibrary : declaredExports) {
+
+            for (ExportMessageData exportedMessage : exportsLibrary.getExportedMessages().values()) {
+                Element member = exportedMessage.getMessageElement();
+
+                LibraryMessage libraryMessage = exportedMessage.getResolvedMessage();
+                List<LibraryMessage> overloads = libraryMessage.getDeprecatedOverloads();
+                if (overloads.isEmpty()) {
+                    continue;
+                }
+
+                List<TypeMirror> actualTypes = computeGenericSignature(member);
+                if (!member.getModifiers().contains(STATIC)) {
+                    // add receiver
+                    actualTypes.add(0, exportsLibrary.getReceiverType());
+                }
+
+                LibraryMessage overload = resolveOverload(overloads, actualTypes);
+                if (overload != null) {
+                    exportedMessage.updateOverload(overload);
+                }
+            }
+        }
+
+        /*
+         * Forth pass: initialize and further parsing that need both method and node to be
          * available.
          */
         for (ExportsLibrary exportsLibrary : declaredExports) {
@@ -391,6 +419,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
 
             Set<LibraryMessage> missingAbstractMessage = new LinkedHashSet<>();
+            Set<LibraryMessage> missingAbstractMessageAsWarning = new LinkedHashSet<>();
             for (LibraryMessage message : exportLib.getLibrary().getMethods()) {
                 List<Element> elementsWithSameName = potentiallyMissedOverrides.getOrDefault(message.getName(), Collections.emptyList());
                 if (!elementsWithSameName.isEmpty()) {
@@ -406,9 +435,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                 }
                 if (message.isAbstract() && !message.getName().equals("accepts")) {
-                    ExportMessageData exportMessage = exportLib.getExportedMessages().get(message.getName());
-
-                    if (exportMessage == null || exportMessage.getResolvedMessage() != message) {
+                    if (!exportLib.isExported(message)) {
                         boolean isAbstract;
                         if (!message.getAbstractIfExported().isEmpty()) {
                             isAbstract = false;
@@ -418,20 +445,36 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                     break;
                                 }
                             }
-                        } else {
+                        } else if (message.getAbstractIfExportedAsWarning().isEmpty()) {
                             isAbstract = !exportLib.hasExportDelegation();
+                        } else {
+                            isAbstract = false;
                         }
+
                         if (isAbstract) {
                             missingAbstractMessage.add(message);
                         }
+
+                        if (!message.getAbstractIfExportedAsWarning().isEmpty()) {
+                            for (LibraryMessage abstractIfExportedAsWarning : message.getAbstractIfExportedAsWarning()) {
+                                if (exportLib.getExportedMessages().containsKey(abstractIfExportedAsWarning.getName())) {
+                                    missingAbstractMessageAsWarning.add(message);
+                                    break;
+                                }
+                            }
+                        }
+
                     }
                 }
             }
-            if (!missingAbstractMessage.isEmpty()) {
+            if (!missingAbstractMessage.isEmpty() || !missingAbstractMessageAsWarning.isEmpty()) {
+                Set<LibraryMessage> missingAbstractMessages = new LinkedHashSet<>(missingAbstractMessage);
+                missingAbstractMessages.addAll(missingAbstractMessageAsWarning);
+
                 StringBuilder msg = new StringBuilder(
-                                String.format("The following message(s) of library %s are abstract and must be exported using:%n",
+                                String.format("The following message(s) of library %s are abstract and should be exported using:%n",
                                                 getSimpleName(exportLib.getLibrary().getTemplateType())));
-                for (LibraryMessage message : missingAbstractMessage) {
+                for (LibraryMessage message : missingAbstractMessages) {
                     msg.append("  ").append(generateExpectedSignature(type, message, exportLib.getExplicitReceiver())).append(" {");
                     if (!ElementUtils.isVoid(message.getExecutable().getReturnType())) {
                         msg.append(" return ").append(ElementUtils.defaultValue(message.getExecutable().getReturnType()));
@@ -439,7 +482,34 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                     }
                     msg.append(" }%n");
                 }
-                exportLib.addError(msg.toString());
+                if (!missingAbstractMessage.isEmpty()) {
+                    exportLib.addError(msg.toString());
+                } else {
+                    exportLib.addSuppressableWarning(TruffleSuppressedWarnings.ABSTRACT_LIBRARY_EXPORT, msg.toString());
+                }
+            }
+        }
+
+        for (ExportsLibrary libraryExports : model.getExportedLibraries().values()) {
+            for (ExportMessageData export : libraryExports.getExportedMessages().values()) {
+                LibraryMessage message = export.getResolvedMessage();
+                if (message.isDeprecated()) {
+                    LibraryMessage replacement = message.getDeprecatedReplacement();
+
+                    if (replacement != null) {
+                        export.addSuppressableWarning(TruffleSuppressedWarnings.DEPRECATION,
+                                        "The message with signature '%s' of library '%s' is deprecated and should be updated to be compatible with its new signature '%s'. Update the signature to resolve this problem.",
+                                        ElementUtils.getReadableSignature(message.getExecutable()),
+                                        getSimpleName(message.getLibrary().getTemplateType()),
+                                        ElementUtils.getReadableSignature(replacement.getExecutable()));
+                    } else {
+                        export.addSuppressableWarning(TruffleSuppressedWarnings.DEPRECATION,
+                                        "The message '%s' from library '%s' is deprecated. Please refer to the library documentation on how to resolve this problem.",
+                                        message.getExecutable().getSimpleName().toString(),
+                                        getSimpleName(message.getLibrary().getTemplateType()));
+                    }
+
+                }
             }
         }
 
@@ -485,6 +555,76 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
         return model;
+    }
+
+    private static LibraryMessage resolveOverload(List<LibraryMessage> overloads, List<TypeMirror> genericSignature) {
+        for (LibraryMessage overload : overloads) {
+            if (overload.isCompatibleExact(genericSignature)) {
+                return overload;
+            }
+        }
+        for (LibraryMessage overload : overloads) {
+            if (overload.isCompatibleAssignable(genericSignature)) {
+                return overload;
+            }
+        }
+        return null;
+    }
+
+    private List<TypeMirror> computeGenericSignature(Element member) {
+        if (isMethodElement(member)) {
+            ExecutableElement exportedMethod = (ExecutableElement) member;
+            return computeSpecializationSignature(exportedMethod);
+        } else if (isNodeElement(member)) {
+            TypeElement type = (TypeElement) member;
+            List<List<TypeMirror>> signatures = new ArrayList<>();
+            int maxArguments = 0;
+
+            for (Element nodeMember : loadMembers(Set.of(type), type)) {
+                if (nodeMember.getKind() != ElementKind.METHOD) {
+                    continue;
+                }
+                if (ElementUtils.findAnnotationMirror(nodeMember, types.Specialization) == null && ElementUtils.findAnnotationMirror(nodeMember, types.Fallback) == null) {
+                    continue;
+                }
+                List<TypeMirror> signature = computeSpecializationSignature((ExecutableElement) nodeMember);
+
+                maxArguments = Math.max(maxArguments, signature.size());
+                signatures.add(signature);
+            }
+
+            if (signatures.size() == 1) {
+                return signatures.get(0);
+            }
+
+            List<TypeMirror> commonTypes = new ArrayList<>(maxArguments);
+            for (int i = 0; i < maxArguments; i++) {
+                List<TypeMirror> possibleTypes = new ArrayList<>();
+                for (List<TypeMirror> signature : signatures) {
+                    possibleTypes.add(signature.get(i));
+                }
+                commonTypes.add(ElementUtils.getCommonSuperType(context, possibleTypes));
+            }
+
+            return commonTypes;
+        } else {
+            throw new AssertionError("should not be reachable");
+        }
+    }
+
+    private static List<TypeMirror> computeSpecializationSignature(ExecutableElement exportedMethod) {
+        List<TypeMirror> cachedAnnotations = NodeParser.getCachedAnnotations();
+        List<TypeMirror> signature = new ArrayList<>();
+        for (VariableElement exportParameter : exportedMethod.getParameters()) {
+            for (TypeMirror cachedAnnotation : cachedAnnotations) {
+                AnnotationMirror found = ElementUtils.findAnnotationMirror(exportParameter.getAnnotationMirrors(), cachedAnnotation);
+                if (found != null) {
+                    return signature;
+                }
+            }
+            signature.add(exportParameter.asType());
+        }
+        return signature;
     }
 
     private List<? extends Element> loadMembers(Set<TypeElement> relevantTypes, TypeElement templateType) {
@@ -870,6 +1010,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
         List<ExportMessageData> exportMessages;
         if (libraryValue == null) {
             List<LibraryMessage> messages = model.getLibraryMessages().get(name);
+
             if (messages == null || messages.size() == 0) {
                 if (model.getExportedLibraries().isEmpty()) {
                     error = String.format("No libraries exported. Use @%s(MyLibrary.class) on the enclosing type to export libraries.", types.ExportLibrary.asElement().getSimpleName().toString());
@@ -1113,8 +1254,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 }
             }
 
-            AnnotationMirror cachedLibraryMirror = findAnnotationMirror(exportParameter.getAnnotationMirrors(), types.CachedLibrary);
-            if (cachedLibraryMirror != null) {
+            if (isCachedLibrary(exportParameter)) {
                 cachedLibraries.add(exportParameter);
             } else if (cachedMirror != null) {
                 cachedNodes.add(exportParameter);
@@ -1122,6 +1262,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 realParameterCount++;
             }
         }
+
         verifyMethodSignature(model.getTemplateType(), message, exportedElement, exportedMethod, exportsLibrary.getReceiverType(), realParameterCount, true);
 
         boolean aotExcluded = ElementUtils.findAnnotationMirror(exportedMethod, types.GenerateAOT_Exclude) != null;
@@ -1186,6 +1327,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             exportedElement.addError("Exported method must be static. @%s annotated types with explcit receiverClass must only contain static methods.",
                             types.ExportLibrary.asElement().getSimpleName().toString());
         }
+    }
+
+    private boolean isCachedLibrary(VariableElement exportParameter) {
+        return findAnnotationMirror(exportParameter.getAnnotationMirrors(), types.CachedLibrary) != null;
     }
 
     // this cache is also needed for correctness

@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -57,8 +58,8 @@ public final class LoweredAtomicReadAndAddNode extends FixedAccessNode implement
     @Input ValueNode delta;
     @OptionalInput(State) FrameState stateAfter;
 
-    public LoweredAtomicReadAndAddNode(AddressNode address, LocationIdentity location, ValueNode delta, BarrierType barrierType) {
-        super(TYPE, address, location, delta.stamp(NodeView.DEFAULT).unrestricted(), barrierType);
+    public LoweredAtomicReadAndAddNode(AddressNode address, LocationIdentity location, ValueNode delta) {
+        super(TYPE, address, location, delta.stamp(NodeView.DEFAULT).unrestricted(), BarrierType.NONE);
         this.delta = delta;
     }
 

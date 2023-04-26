@@ -20,7 +20,7 @@ It also provides security researchers with information on GraalVM's security mod
 * [Guest Applications](#guest-applications)
 * [Native Image](#native-image)
 * [Security Manager and Untrusted Code](#security-manager-and-untrusted-code)
-* [GraalVM Enterprise to GraalVM Community Downgrade](#graalvm-enterprise-to-graalvm-community-downgrade)
+* [Oracle GraalVM to GraalVM Community Downgrade](#graalvm-enterprise-to-graalvm-community-downgrade)
 
 ## Security Model
 
@@ -72,9 +72,9 @@ Source.newBuilder(…).cached(false).build()
 
 ### Computational Resource Limits
 
-> Note: Available with GraalVM Enterprise.
+> Note: Available with Oracle GraalVM.
 
-GraalVM Enterprise allows restricting certain computational resources used by guest applications, such as CPU time, heap memory or the number of threads that can be concurrently used by a context.
+Oracle GraalVM allows restricting certain computational resources used by guest applications, such as CPU time, heap memory or the number of threads that can be concurrently used by a context.
 These [sandboxing options](../reference-manual/embedding/sandbox-options.md) are also available via the Polyglot embedding API.
 
 ### ScriptEngine Compatibility
@@ -85,12 +85,12 @@ However, to maintain compatibility, the Nashorn GraalVM JavaScript ScriptEngine 
 
 ### Managed Execution of Native Code
 
-> Note: Available with GraalVM Enterprise.
+> Note: Available with Oracle GraalVM.
 
 The Truffle framework also supports the LLVM intermediate representation (IR) as a guest language. Several native system programming languages, above all C/C++, can be compiled to LLVM IR with the LLVM compiler toolchain. Typically, these
 languages are not memory-safe by themselves and it must be remembered that violations of memory safety are a frequent cause of security vulnerabilities.
 
-In managed mode, all ties to the native level are abstracted and routed through GraalVM Enterprise. In particular this means that:
+In managed mode, all ties to the native level are abstracted and routed through Oracle GraalVM. In particular this means that:
 
 * In regards to temporal and spatial memory safety, memory is allocated from the Java heap. This means that memory allocations are managed objects and all accesses are performed in a memory-safe manner (no arbitrary pointer arithmetics and no unchecked out-of-bounds accesses).
 * Regarding type safety, it is not possible to reinterpret a data pointer into a function pointer and execute arbitrary instructions (since these are distinct pointer types for LLVM runtime).
@@ -118,6 +118,8 @@ See the [documentation](../reference-manual/native-image/CertificateManagement.m
 
 In addition, developers can run the `native-image` builder in a dedicated environment, such as a container, that does not contain any sensitive information in the first place.
 
+The directory containing the native image is part of the search path when loading native libraries using `System.loadLibrary()` at runtime.
+
 ### Serialization in Native Image
 
 Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native executable in the first place.
@@ -137,11 +139,11 @@ Native Image does not support a security manager in general. Attempting to set a
 
 The Truffle framework needs to be invoked with all permissions to make full use of its functionality - it provides its own controls to manage resources.
 
-## GraalVM Enterprise to GraalVM Community Downgrade
+## Oracle GraalVM to GraalVM Community Edition Downgrade
 
-> Note: Managed execution of native code is available with GraalVM Enterprise.
+> Note: Managed execution of native code is not available in GraalVM Community Edition.
 
-When downgrading to GraalVM Community, native code execution is only available with the `allowNativeAccess` privilege.
+When downgrading to GraalVM Community Edition, native code execution is only possible with the `allowNativeAccess` privilege.
 This also applies to languages implemented with Truffle that allow for native code extensions, such as Python and Ruby.
 
-Computational resource limit options are not recognized by GraalVM Community.
+Computational resource limit options are not recognized by GraalVM Community Edition.

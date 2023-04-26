@@ -76,6 +76,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     private final SnippetTemplate.SnippetInfo uirem;
     private final SnippetTemplate.SnippetInfo ulrem;
 
+    @SuppressWarnings("this-escape")
     public AArch64IntegerArithmeticSnippets(OptionValues options, Providers providers) {
         super(options, providers);
         idiv = snippet(providers, AArch64IntegerArithmeticSnippets.class, "idivSnippet");
@@ -109,7 +110,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         } else if (node instanceof UnsignedRemNode) {
             snippet = kind == JavaKind.Int ? uirem : ulrem;
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHereUnexpectedValue(node); // ExcludeFromJacocoGeneratedReport
         }
         StructuredGraph graph = node.graph();
         Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());

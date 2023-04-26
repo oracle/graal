@@ -55,6 +55,7 @@ public abstract class IsArraySnippets implements Snippets {
         private final SnippetInfo objectIsArraySnippet;
         private final SnippetInfo classIsArraySnippet;
 
+        @SuppressWarnings("this-escape")
         public Templates(IsArraySnippets receiver, OptionValues options, Providers providers) {
             super(options, providers);
             objectIsArraySnippet = snippet(providers, IsArraySnippets.class, "objectIsArraySnippet", null, receiver);
@@ -72,7 +73,7 @@ public abstract class IsArraySnippets implements Snippets {
                 args = new Arguments(classIsArraySnippet, node.graph().getGuardsStage(), tool.getLoweringStage());
                 args.add("clazz", ((ClassIsArrayNode) node).getValue());
             } else {
-                throw GraalError.shouldNotReachHere();
+                throw GraalError.shouldNotReachHere(node + " " + replacer); // ExcludeFromJacocoGeneratedReport
             }
 
             args.add("trueValue", replacer.trueValue);

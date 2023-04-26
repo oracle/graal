@@ -29,12 +29,8 @@ import java.util.function.ObjIntConsumer;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.Constant;
@@ -47,13 +43,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HostedConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final SVMHost hostVM;
     private final HostedUniverse universe;
-    private final UniverseMetaAccess metaAccess;
     private final HostedMemoryAccessProvider memoryAccess;
 
-    public HostedConstantReflectionProvider(SVMHost hostVM, HostedUniverse universe, UniverseMetaAccess metaAccess, HostedMemoryAccessProvider memoryAccess) {
+    public HostedConstantReflectionProvider(SVMHost hostVM, HostedUniverse universe, HostedMemoryAccessProvider memoryAccess) {
         this.hostVM = hostVM;
         this.universe = universe;
-        this.metaAccess = metaAccess;
         this.memoryAccess = memoryAccess;
     }
 
@@ -63,21 +57,21 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
     }
 
     @Override
+    public JavaConstant boxPrimitive(JavaConstant source) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return universe.getConstantReflectionProvider().boxPrimitive(source);
+    }
+
+    @Override
+    public JavaConstant unboxPrimitive(JavaConstant source) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return universe.getConstantReflectionProvider().unboxPrimitive(source);
+    }
+
+    @Override
     public ResolvedJavaType asJavaType(Constant constant) {
-        if (constant instanceof SubstrateObjectConstant) {
-            Object obj = SubstrateObjectConstant.asObject(constant);
-            if (obj instanceof DynamicHub) {
-                return universe.lookup(hostVM.lookupType((DynamicHub) obj));
-            } else if (obj instanceof Class) {
-                throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
-            }
-        }
-        if (constant instanceof ImageHeapConstant) {
-            if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
-                throw VMError.shouldNotReachHere("ConstantReflectionProvider.asJavaType(Constant) not yet implemented for ImageHeapObject");
-            }
-        }
-        return null;
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return universe.lookup(universe.getConstantReflectionProvider().asJavaType(constant));
     }
 
     @Override

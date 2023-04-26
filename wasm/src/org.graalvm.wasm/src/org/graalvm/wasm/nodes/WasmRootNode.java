@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
@@ -69,22 +70,16 @@ import com.oracle.truffle.api.source.SourceSection;
 
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode {
-
     private SourceSection sourceSection;
-    @Child private WasmFunctionNode function;
+    @Child private WasmInstrumentableFunctionNode function;
 
-    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmFunctionNode function) {
+    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode function) {
         super(language, frameDescriptor);
         this.function = function;
     }
 
     protected final WasmContext getContext() {
         return WasmContext.get(this);
-    }
-
-    @Override
-    protected boolean isInstrumentable() {
-        return false;
     }
 
     public void tryInitialize(WasmContext context) {
@@ -128,7 +123,7 @@ public class WasmRootNode extends RootNode {
         }
 
         try {
-            function.execute(context, frame);
+            function.execute(frame, context);
         } catch (StackOverflowError e) {
             function.enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
@@ -269,14 +264,23 @@ public class WasmRootNode extends RootNode {
     }
 
     @Override
+    @TruffleBoundary
+    protected boolean isInstrumentable() {
+        return function != null && function.isInstrumentable();
+    }
+
+    @Override
+    @TruffleBoundary
     public final SourceSection getSourceSection() {
         if (function == null) {
             return null;
-        } else {
+        }
+        if (sourceSection == null) {
+            sourceSection = function.getSourceSection();
             if (sourceSection == null) {
                 sourceSection = function.instance().module().source().createUnavailableSection();
             }
-            return sourceSection;
         }
+        return sourceSection;
     }
 }

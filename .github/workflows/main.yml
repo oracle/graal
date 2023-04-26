@@ -64,10 +64,10 @@ jobs:
               GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
-          # - env:
-          #     JDK_VERSION: "17" # espresso does not support JDK20 yet
-          #     GATE_TAGS: "style,fullbuild"
-          #     PRIMARY: "espresso"
+          - env:
+              JDK_VERSION: "20"
+              GATE_TAGS: "style,fullbuild"
+              PRIMARY: "espresso"
           # /substratevm
           - env:
               JDK_VERSION: "20"
@@ -107,6 +107,7 @@ jobs:
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/sulong,/substratevm"
+              NATIVE_IMAGES: "graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-ld,lib:llvmvm"
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
@@ -115,7 +116,7 @@ jobs:
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
               DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
-              NATIVE_IMAGES: "polyglot"
+              NATIVE_IMAGES: "lib:jvmcicompiler,native-image,lib:native-image-agent,lib:native-image-diagnostics-agent,polyglot"
               WITHOUT_VCS: true
     env:
       MX_RUNS_DEBUG: ${{ contains(matrix.env.GATE_TAGS, 'debug') || matrix.env.GATE_TAGS == '' }}
@@ -160,8 +161,9 @@ jobs:
       if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         sudo apt install python3-pip python-setuptools
-        jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' common.json |
-          xargs sudo pip install
+        sudo pip install ninja_syntax$(jq -r '.pip.ninja_syntax' common.json)
+        sudo pip install lazy-object-proxy$(jq -r '.pip["lazy-object-proxy"]' common.json)
+        sudo pip install pylint$(jq -r '.pip.pylint' common.json)
     - name: Install additional pip packages
       if: ${{ matrix.env.PIP_PACKAGES != '' }}
       run: ${MX_PYTHON} -m pip install ${{ matrix.env.PIP_PACKAGES }}
@@ -169,8 +171,8 @@ jobs:
       if: ${{ env.MX_RUNS_STYLE == 'true' }}
       run: |
         ECLIPSE_TAR=eclipse.tar.gz
-        ECLIPSE_ORG_VERSION=$(jq -r '.downloads.eclipse.eclipse_org.version' common.json)
-        ECLIPSE_ORG_TIMESTAMP=$(jq -r '.downloads.eclipse.eclipse_org.timestamp' common.json)
+        ECLIPSE_ORG_VERSION=$(jq -r '.eclipse.short_version' common.json)
+        ECLIPSE_ORG_TIMESTAMP=$(jq -r '.eclipse.timestamp' common.json)
         wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-${ECLIPSE_ORG_VERSION}-${ECLIPSE_ORG_TIMESTAMP}/eclipse-SDK-${ECLIPSE_ORG_VERSION}-linux-gtk-x86_64.tar.gz -O $ECLIPSE_TAR
         tar -xzf ${ECLIPSE_TAR}
         echo "ECLIPSE_EXE=${PWD}/eclipse/eclipse" >> $GITHUB_ENV

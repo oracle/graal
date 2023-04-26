@@ -70,23 +70,6 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         TestProgram.class.getName()));
     }
 
-    /**
-     * Tests that {@code -Dgraal.ExitVMOnException=true} works as an alias for
-     * {@code -Dgraal.CompilationFailureAction=ExitVM}.
-     */
-    @Test
-    public void testVMCompilation2() throws IOException, InterruptedException {
-        assumeManagementLibraryIsLoadable();
-        testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
-                        "-XX:+UseJVMCICompiler",
-                        "-XX:JVMCIThreads=1",
-                        "-Dgraal.ExitVMOnException=true",
-                        "-Dgraal.CrashAt=TestProgram.*",
-                        "-Xcomp",
-                        "-XX:CompileCommand=compileonly,*/TestProgram.print*",
-                        TestProgram.class.getName()));
-    }
-
     static class Probe {
         final String substring;
         final int expectedOccurrences;
@@ -151,6 +134,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         testHelper(Arrays.asList(probes), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
                         "-XX:JVMCIThreads=1",
+                        "-Dgraal.ExitVMCompilationFailureRate=0",
                         "-Dgraal.CompilationFailureAction=Diagnose",
                         "-Dgraal.MaxCompilationProblemsPerAction=" + maxProblems,
                         "-Dgraal.CrashAt=TestProgram.*",
@@ -211,7 +195,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         "org.graalvm.compiler.truffle.test.SLTruffleGraalTestSuite", "test");
     }
 
-    private static final boolean VERBOSE = Boolean.getBoolean(CompilationWrapperTest.class.getSimpleName() + ".verbose");
+    private static final boolean VERBOSE = Boolean.getBoolean("CompilationWrapperTest.verbose");
 
     private static void testHelper(List<Probe> initialProbes, List<String> extraVmArgs, String... mainClassAndArgs) throws IOException, InterruptedException {
         final File dumpPath = new File(CompilationWrapperTest.class.getSimpleName() + "_" + System.currentTimeMillis()).getAbsoluteFile();
@@ -278,6 +262,12 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                     entries.add(name);
                     if (name.endsWith(".bgv") || name.endsWith(".cfg")) {
                         bgvOrCfgFiles++;
+                    } else if (name.endsWith("retry.log")) {
+                        String log = new String(dd.getInputStream(ze).readAllBytes());
+                        Pattern re = Pattern.compile("<Metrics>.*</Metrics>", Pattern.DOTALL);
+                        if (!re.matcher(log).find()) {
+                            Assert.fail(String.format("Could not find %s in %s:%n%s", re.pattern(), name, log));
+                        }
                     }
                 }
                 if (bgvOrCfgFiles == 0) {

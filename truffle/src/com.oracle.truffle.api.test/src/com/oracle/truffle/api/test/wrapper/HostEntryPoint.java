@@ -49,6 +49,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
@@ -82,10 +83,10 @@ final class HostEntryPoint {
         this.guestEntry = new GuestEntryPoint(this);
     }
 
-    public long remoteCreateEngine() {
+    public long remoteCreateEngine(SandboxPolicy sandboxPolicy) {
         // host access needs to be replaced
         GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, guestPolyglot.createHostAccess());
-        Object engine = guestPolyglot.buildEngine(new String[0], null, null, null, new HashMap<>(), true, false, false, null, null, hostLanguage, false, false, null);
+        Object engine = guestPolyglot.buildEngine(new String[0], sandboxPolicy, null, null, null, new HashMap<>(), false, false, null, null, hostLanguage, false, false, null);
         return guestToHost(engine);
     }
 
@@ -116,11 +117,11 @@ final class HostEntryPoint {
         return type.cast(idToGuestObject.get(id));
     }
 
-    public long remoteCreateContext(long engineId) {
+    public long remoteCreateContext(long engineId, SandboxPolicy sandboxPolicy) {
         Engine engine = unmarshall(Engine.class, engineId);
         Object receiver = api.getReceiver(engine);
         AbstractEngineDispatch dispatch = api.getDispatch(engine);
-        Context remoteContext = dispatch.createContext(receiver, null, null, null, false, null, PolyglotAccess.NONE, false,
+        Context remoteContext = dispatch.createContext(receiver, sandboxPolicy, null, null, null, false, null, PolyglotAccess.NONE, false,
                         false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], IOAccess.NONE, null,
                         false, null, EnvironmentAccess.NONE,

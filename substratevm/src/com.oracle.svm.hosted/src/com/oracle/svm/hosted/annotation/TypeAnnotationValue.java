@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import java.lang.annotation.AnnotationFormatError;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
 import jdk.internal.reflect.ConstantPool;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 public final class TypeAnnotationValue {
     private final byte[] targetInfo;
@@ -108,7 +108,7 @@ public final class TypeAnnotationValue {
                 buf.get();
                 break;
             default:
-                throw new AnnotationFormatError("Could not parse bytes for type annotations");
+                throw new IllegalArgumentException("Invalid target info code");
         }
         int endPos = buf.position();
         byte[] targetInfo = new byte[endPos - startPos];
@@ -129,10 +129,10 @@ public final class TypeAnnotationValue {
         return locationInfo;
     }
 
-    static TypeAnnotationValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container) {
+    static TypeAnnotationValue extract(SnippetReflectionProvider snippetReflection, ByteBuffer buf, ConstantPool cp, Class<?> container) {
         byte[] targetInfo = extractTargetInfo(buf);
         byte[] locationInfo = extractLocationInfo(buf);
-        AnnotationValue annotation = AnnotationValue.extract(buf, cp, container, false, false);
+        AnnotationValue annotation = AnnotationValue.extract(snippetReflection, buf, cp, container, false, false);
 
         return new TypeAnnotationValue(targetInfo, locationInfo, annotation);
     }

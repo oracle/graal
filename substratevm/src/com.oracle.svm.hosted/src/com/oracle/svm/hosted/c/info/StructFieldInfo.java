@@ -36,6 +36,7 @@ public class StructFieldInfo extends SizableInfo {
     private final PropertyInfo<Integer> offset;
     private LocationIdentity locationIdentity;
 
+    @SuppressWarnings("this-escape")
     public StructFieldInfo(String name, ElementKind kind) {
         super(name, kind);
         this.offset = adoptChild(new PropertyInfo<Integer>("offset"));

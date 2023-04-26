@@ -83,8 +83,8 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_log.cpp",
           lineStart = 365,
           lineEnd   = 707,
-          commit    = "090cdfc7a2e280c620a0926512fb67f0ce7f3c21",
-          sha1      = "f9be8829233550e1708f81a2770fccac94c9c940")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "b8e7d34454b0d8d90eb8bbfce4fab3c5e018a941")
 // @formatter:on
 public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
 
@@ -95,22 +95,22 @@ public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
                         /* XMM */ xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7);
     }
 
-    private ArrayDataPointerConstant highsigmask = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant highsigmask = pointerConstant(16, new int[]{
             // @formatter:off
             0xf8000000, 0xffffffff, 0x00000000, 0xffffe000
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant log10E = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant log10E = pointerConstant(8, new int[]{
             // @formatter:off
             0x00000000, 0x3fdbc000,
     });
-    private ArrayDataPointerConstant log10E8 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant log10E8 = pointerConstant(8, new int[]{
             0xbf2e4108, 0x3f5a7a6c
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant lTbl = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant lTbl = pointerConstant(16, new int[]{
             // @formatter:off
             0x509f7800, 0x3fd34413, 0x1f12b358, 0x3d1fef31, 0x80333400,
             0x3fd32418, 0xc671d9d0, 0xbcf542bf, 0x51195000, 0x3fd30442,
@@ -219,23 +219,23 @@ public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant log2 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant log2 = pointerConstant(8, new int[]{
             // @formatter:off
             0x509f7800, 0x3f934413,
     });
-    private ArrayDataPointerConstant log28 = pointerConstant(8, new int[]{
+    private static ArrayDataPointerConstant log28 = pointerConstant(8, new int[]{
             0x1f12b358, 0x3cdfef31
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant coeff = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff = pointerConstant(16, new int[]{
             // @formatter:off
             0xc1a5f12e, 0x40358874, 0x64d4ef0d, 0xc0089309,
     });
-    private ArrayDataPointerConstant coeff16 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff16 = pointerConstant(16, new int[]{
             0x385593b1, 0xc025c917, 0xdc963467, 0x3ffc6a02,
     });
-    private ArrayDataPointerConstant coeff32 = pointerConstant(16, new int[]{
+    private static ArrayDataPointerConstant coeff32 = pointerConstant(16, new int[]{
             0x7f9d3aa1, 0x4016ab9f, 0xdc77b115, 0xbff27af2
             // @formatter:on
     });

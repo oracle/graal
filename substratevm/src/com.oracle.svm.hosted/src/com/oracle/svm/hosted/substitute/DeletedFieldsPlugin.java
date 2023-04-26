@@ -32,7 +32,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -66,7 +65,7 @@ public final class DeletedFieldsPlugin implements NodePlugin {
         }
 
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(field, deleteAnnotation, false);
-        ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), b.getMetaAccess(), b.getGraph());
+        ValueNode msgNode = ConstantNode.forConstant(b.getConstantReflection().forString(msg), b.getMetaAccess(), b.getGraph());
         ResolvedJavaMethod reportErrorMethod = b.getMetaAccess().lookupJavaMethod(DeletedMethod.reportErrorMethod);
         b.handleReplacedInvoke(InvokeKind.Static, reportErrorMethod, new ValueNode[]{msgNode}, false);
         // reportErrorMethod always throws an exception, e.g. never returns.

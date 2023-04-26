@@ -39,10 +39,10 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.14.13",
+  "mxversion": "6.17.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/",
   "developer" : {
@@ -63,9 +63,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir" : True,
-        "urls": [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-        ],
       },
     ],
   },
@@ -90,7 +87,7 @@ suite = {
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "10.7.0",
       "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "WebAssembly",

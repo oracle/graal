@@ -30,7 +30,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleCompilerPhases;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
 public final class TruffleTierConfiguration {
     private final PartialEvaluatorConfiguration configuration;
@@ -50,7 +49,7 @@ public final class TruffleTierConfiguration {
         this.providers = providers.copyWith(new TruffleStringConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess(), knownTruffleTypes));
         this.suites = suites;
         this.lirSuites = lirSuites;
-        TruffleCompilerPhases.register(providers, suites);
+        TruffleCompilerPhases.register(knownTruffleTypes, providers, suites);
         this.suites.setImmutable();
     }
 

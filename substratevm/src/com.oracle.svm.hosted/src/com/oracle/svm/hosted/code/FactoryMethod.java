@@ -87,7 +87,7 @@ public final class FactoryMethod extends NonBytecodeMethod {
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
         ResolvedJavaMethod universeTargetConstructor = lookupMethodInUniverse(metaAccess, targetConstructor);
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
 
         AbstractNewObjectNode newInstance = support.createNewInstance(kit, universeTargetConstructor.getDeclaringClass(), true);
 
@@ -112,5 +112,14 @@ public final class FactoryMethod extends NonBytecodeMethod {
             universeMethod = lookupMethodInUniverse((UniverseMetaAccess) wrappedMetaAccess, universeMethod);
         }
         return metaAccess.getUniverse().lookup(universeMethod);
+    }
+
+    public ResolvedJavaMethod getTargetConstructor() {
+        return targetConstructor;
+    }
+
+    @Override
+    public ResolvedJavaType getDeclaringClass() {
+        return super.getDeclaringClass();
     }
 }

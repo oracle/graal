@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,8 +87,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     /**
      * A {@link GuardingNode} protecting an unsigned inverted counted loop. {@link IntegerStamp}
      * does not record information about the sign of a stamp, i.e., it cannot represent
-     * {@link IntegerStamp#upMask()}} and {@link IntegerStamp#downMask()} in relation with unsigned
-     * stamps. Thus, if we have such a guard we set it explicitly to a loop.
+     * {@link IntegerStamp#mayBeSet()}} and {@link IntegerStamp#mustBeSet()} in relation with
+     * unsigned stamps. Thus, if we have such a guard we set it explicitly to a loop.
      *
      * An example for such a loop would be
      *
@@ -132,9 +132,17 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     /** See {@link LoopEndNode#canGuestSafepoint} for more information. */
     boolean canEndsGuestSafepoint;
 
+    /**
+     * A guard that proves that this loop's counter never overflows and wraps around (either in the
+     * positive or negative direction).
+     */
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
 
-    @OptionalInput(InputType.Association) ValueNode precedingLoop;
+    /**
+     * A guard that proves that memory accesses in this loop don't alias in certain ways that must
+     * not be reordered.
+     */
+    @OptionalInput(InputType.Guard) GuardingNode interIterationAliasingGuard;
 
     public static final CounterKey overflowSpeculationTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_Taken");
     public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
@@ -387,7 +395,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         } else {
             return super.forwardEndIndex((EndNode) pred);
         }
-        throw GraalError.shouldNotReachHere("unknown pred : " + pred);
+        throw GraalError.shouldNotReachHere("unknown pred : " + pred); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -402,7 +410,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
                 return end;
             }
         }
-        throw GraalError.shouldNotReachHere("unknown index: " + index);
+        throw GraalError.shouldNotReachHere("unknown index: " + index); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -468,13 +476,13 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.overflowGuard = overflowGuard;
     }
 
-    public ValueNode getPrecedingLoop() {
-        return precedingLoop;
+    public GuardingNode getInterIterationAliasingGuard() {
+        return interIterationAliasingGuard;
     }
 
-    public void setPrecedingLoop(ValueNode precedingLoop) {
-        updateUsages(this.precedingLoop, precedingLoop);
-        this.precedingLoop = precedingLoop;
+    public void setInterIterationAliasingGuard(GuardingNode guard) {
+        updateUsagesInterface(this.interIterationAliasingGuard, guard);
+        this.interIterationAliasingGuard = guard;
     }
 
     private static final int NO_INCREMENT = Integer.MIN_VALUE;
@@ -568,5 +576,19 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     @Override
     protected boolean verifyState() {
         return !this.graph().getGraphState().getFrameStateVerification().implies(GraphState.FrameStateVerificationFeature.LOOP_BEGINS) || super.verifyState();
+    }
+
+    @Override
+    public void setStateAfter(FrameState x) {
+        super.setStateAfter(x);
+        if (x != null && graph() != null) {
+            /*
+             * We disable counted loop checking for loops whose overflow guard failed. Some
+             * optimizations can change the loop begin's frame state and thus the associated BCI. In
+             * this case we need to check the speculation log again to see if the new BCI is
+             * associated with a failed overflow guard.
+             */
+            checkDisableCountedBySpeculation(x.bci, graph());
+        }
     }
 }

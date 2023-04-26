@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -79,6 +79,7 @@ public class ObjectSnippets implements Snippets {
         private final SnippetInfo notifySnippet;
         private final SnippetInfo notifyAllSnippet;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 
@@ -119,7 +120,7 @@ public class ObjectSnippets implements Snippets {
                     }
                 }
             } else {
-                GraalError.shouldNotReachHere("Unknown object snippet lowered node");
+                GraalError.shouldNotReachHere("Unknown object snippet lowered node"); // ExcludeFromJacocoGeneratedReport
             }
         }
 

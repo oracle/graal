@@ -59,6 +59,7 @@ public class SecurityServiceTest {
             // we use these (application) classes during Native image build
             RuntimeClassInitialization.initializeAtBuildTime(NoOpService.class);
             RuntimeClassInitialization.initializeAtBuildTime(NoOpProvider.class);
+            RuntimeClassInitialization.initializeAtBuildTime(NoOpProviderTwo.class);
 
             // register the service implementation for reflection explicitly,
             // non-standard services are not processed automatically

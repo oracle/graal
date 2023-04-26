@@ -74,6 +74,7 @@ final class HostClassCache {
     private final boolean iterableAccess;
     private final boolean iteratorAccess;
     private final boolean mapAccess;
+    private final boolean bigIntegerNumberAccess;
     final boolean allowsPublicAccess;
     final boolean allowsAccessInheritance;
     private final Map<Class<?>, Object> targetMappings;
@@ -102,6 +103,7 @@ final class HostClassCache {
         this.iterableAccess = apiAccess.isIterableAccessible(hostAccess);
         this.iteratorAccess = apiAccess.isIteratorAccessible(hostAccess);
         this.mapAccess = apiAccess.isMapAccessible(hostAccess);
+        this.bigIntegerNumberAccess = apiAccess.isBigIntegerAccessibleAsNumber(hostAccess);
         this.allowsPublicAccess = apiAccess.allowsPublicAccess(hostAccess);
         this.allowsAccessInheritance = apiAccess.allowsAccessInheritance(hostAccess);
         this.targetMappings = groupMappings(apiAccess, conf);
@@ -261,6 +263,10 @@ final class HostClassCache {
 
     boolean isMapAccess() {
         return mapAccess;
+    }
+
+    public boolean isBigIntegerNumberAccess() {
+        return bigIntegerNumberAccess;
     }
 
     boolean allowsImplementation(Class<?> type) {

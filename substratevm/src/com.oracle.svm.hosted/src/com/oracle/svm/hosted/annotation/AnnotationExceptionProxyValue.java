@@ -27,7 +27,7 @@ package com.oracle.svm.hosted.annotation;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 import sun.reflect.annotation.ExceptionProxy;
@@ -36,9 +36,9 @@ public final class AnnotationExceptionProxyValue extends AnnotationMemberValue {
     private final ExceptionProxy exceptionProxy;
     private final JavaConstant objectConstant;
 
-    AnnotationExceptionProxyValue(ExceptionProxy exceptionProxy) {
+    AnnotationExceptionProxyValue(SnippetReflectionProvider snippetReflection, ExceptionProxy exceptionProxy) {
         this.exceptionProxy = exceptionProxy;
-        this.objectConstant = SubstrateObjectConstant.forObject(exceptionProxy);
+        this.objectConstant = snippetReflection.forObject(exceptionProxy);
     }
 
     public JavaConstant getObjectConstant() {

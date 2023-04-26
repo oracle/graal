@@ -49,6 +49,7 @@ import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSnippetReflectionProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
@@ -94,7 +95,8 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                     HotSpotSnippetReflectionProvider snippetReflection,
                     HotSpotReplacementsImpl replacements,
                     HotSpotWordTypes wordTypes,
-                    OptionValues options) {
+                    OptionValues options,
+                    BarrierSet barrierSet) {
         Plugins plugins = HotSpotGraphBuilderPlugins.create(graalRuntime,
                         compilerConfiguration,
                         config,
@@ -105,7 +107,8 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         foreignCalls,
                         replacements,
                         options,
-                        target);
+                        target,
+                        barrierSet);
         AArch64GraphBuilderPlugins.register(plugins,
                         replacements,
                         /* registerForeignCallMath */true,

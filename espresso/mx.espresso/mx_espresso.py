@@ -183,7 +183,7 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
     ],
 )
 
-if mx_sdk_vm.base_jdk_version() not in (11, 17):
+if mx_sdk_vm.base_jdk_version() not in (17,):
     _espresso_stability = "experimental"
 elif mx.get_os() != "linux" or mx.get_arch() != "amd64":
     _espresso_stability = "experimental"
@@ -216,20 +216,10 @@ Usage: java -truffle [-options] class [args...]
 To rebuild the polyglot library:
     gu rebuild-images libpolyglot -cp """ + lib_javavm_cp,
     stability=_espresso_stability,
+    standalone=False,
 ))
 
 if LLVM_JAVA_HOME:
-    release_dict = mx_sdk_vm.parse_release_file(join(LLVM_JAVA_HOME, 'release'))
-    implementor = release_dict.get('IMPLEMENTOR')
-    if implementor is not None:
-        if implementor == 'Oracle Corporation':
-            edition = 'ee'
-        else:
-            edition = 'ce'
-    else:
-        mx.warn('Release file for `LLVM_JAVA_HOME` ({}) is missing the IMPLEMENTOR field')
-        edition = 'ce'
-
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         suite=_suite,
         name='Java on Truffle LLVM Java libraries',
@@ -239,12 +229,13 @@ if LLVM_JAVA_HOME:
         truffle_jars=[],
         dir_name='java',
         installable_id='espresso-llvm',
-        extra_installable_qualifiers=[edition],
+        extra_installable_qualifiers=mx_sdk_vm.extra_installable_qualifiers(jdk_home=LLVM_JAVA_HOME, ce_edition=['ce'], oracle_edition=['ee']),
         installable=True,
         dependencies=['Java on Truffle', 'LLVM Runtime Native'],
         support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
         priority=2,
         stability=_espresso_stability,
+        standalone=False,
     ))
 
 

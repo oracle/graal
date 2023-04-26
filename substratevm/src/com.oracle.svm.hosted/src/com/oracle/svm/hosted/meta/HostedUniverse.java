@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -321,7 +321,7 @@ public class HostedUniverse implements Universe {
 
     @Override
     public SnippetReflectionProvider getSnippetReflection() {
-        return bb.getProviders().getSnippetReflection();
+        return bb.getSnippetReflectionProvider();
     }
 
     @Override
@@ -346,6 +346,17 @@ public class HostedUniverse implements Universe {
 
     public HostedType optionalLookup(JavaType type) {
         return types.get(type);
+    }
+
+    public HostedType[] optionalLookup(JavaType... javaTypes) {
+        HostedType[] result = new HostedType[javaTypes.length];
+        for (int i = 0; i < javaTypes.length; ++i) {
+            result[i] = optionalLookup(javaTypes[i]);
+            if (result[i] == null) {
+                return null;
+            }
+        }
+        return result;
     }
 
     @Override
@@ -511,7 +522,7 @@ public class HostedUniverse implements Universe {
             } else if (type.getJavaKind() != JavaKind.Object) {
                 return 1;
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

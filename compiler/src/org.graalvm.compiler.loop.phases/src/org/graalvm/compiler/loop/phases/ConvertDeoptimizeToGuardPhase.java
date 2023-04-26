@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.Optional;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
@@ -51,6 +52,7 @@ import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StaticDeoptimizingNode;
@@ -73,15 +75,15 @@ import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.TriState;
 
 /**
  * This phase will find branches which always end with a {@link DeoptimizeNode} and replace their
  * {@link ControlSplitNode ControlSplitNodes} with {@link FixedGuardNode FixedGuardNodes}.
- *
+ * <p>
  * This is useful because {@link FixedGuardNode FixedGuardNodes} will be lowered to {@link GuardNode
  * GuardNodes} which can later be optimized more aggressively than control-flow constructs.
- *
+ * <p>
  * This is currently only done for branches that start from a {@link IfNode}. If it encounters a
  * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
  * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
@@ -108,7 +110,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
 
         for (DeoptimizeNode d : graph.getNodes(DeoptimizeNode.TYPE)) {
             assert d.isAlive();
-            if (d.getAction() == DeoptimizationAction.None) {
+            if (!d.canFloat()) {
                 continue;
             }
             try (DebugCloseable closable = d.withNodeSourcePosition()) {
@@ -177,16 +179,20 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
             } else {
                 ys = yPhi.valueAt(mergePredecessor).asConstant();
             }
-            if (xs != null && ys != null && compare.condition().foldCondition(xs, ys, context.getConstantReflection(), compare.unorderedIsTrue()) == fixedGuard.isNegated()) {
-                try (DebugCloseable position = fixedGuard.withNodeSourcePosition()) {
-                    propagateFixed(mergePredecessor, fixedGuard, context, lazyLoops);
+            if (xs != null && ys != null) {
+                Stamp compareStamp = x.stamp(NodeView.DEFAULT);
+                TriState compareResult = compare.condition().foldCondition(compareStamp, xs, ys, context.getConstantReflection(), compare.unorderedIsTrue());
+                if (compareResult.isKnown() && compareResult.toBoolean() == fixedGuard.isNegated()) {
+                    try (DebugCloseable position = fixedGuard.withNodeSourcePosition()) {
+                        propagateFixed(mergePredecessor, fixedGuard, context, lazyLoops);
+                    }
                 }
             }
         }
     }
 
     @SuppressWarnings("try")
-    private static void propagateFixed(FixedNode from, StaticDeoptimizingNode deopt, CoreProviders providers, LazyValue<LoopsData> lazyLoops) {
+    public static void propagateFixed(FixedNode from, StaticDeoptimizingNode deopt, CoreProviders providers, LazyValue<LoopsData> lazyLoops) {
         Node current = from;
         while (current != null) {
             if (GraalOptions.GuardPriorities.getValue(from.getOptions()) && current instanceof FixedGuardNode) {

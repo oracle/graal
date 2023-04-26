@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
 import jdk.vm.ci.code.Architecture;
 
@@ -42,7 +41,7 @@ public final class TruffleCompilerConfiguration {
     private final SnippetReflectionProvider provider;
     private final TruffleTierConfiguration firstTier;
     private final TruffleTierConfiguration lastTier;
-    private final KnownTruffleTypes knownTruffleTypes;
+    private final KnownTruffleTypes types;
     private final Suites hostSuite;
 
     public TruffleCompilerConfiguration(
@@ -58,7 +57,7 @@ public final class TruffleCompilerConfiguration {
         this.provider = provider;
         this.firstTier = firstTier;
         this.lastTier = lastTier;
-        this.knownTruffleTypes = knownTruffleTypes;
+        this.types = knownTruffleTypes;
         this.hostSuite = hostSuite;
     }
 
@@ -82,8 +81,8 @@ public final class TruffleCompilerConfiguration {
         return lastTier;
     }
 
-    public KnownTruffleTypes getKnownTruffleTypes() {
-        return knownTruffleTypes;
+    public KnownTruffleTypes types() {
+        return types;
     }
 
     public Suites hostSuite() {
@@ -91,7 +90,7 @@ public final class TruffleCompilerConfiguration {
     }
 
     public TruffleCompilerConfiguration withFirstTier(TruffleTierConfiguration tier) {
-        return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier, knownTruffleTypes, hostSuite);
+        return new TruffleCompilerConfiguration(runtime, plugins, provider, tier, lastTier, types, hostSuite);
     }
 
     public List<Backend> backends() {

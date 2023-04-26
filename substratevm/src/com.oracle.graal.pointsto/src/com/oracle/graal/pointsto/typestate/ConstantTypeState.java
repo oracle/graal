@@ -46,8 +46,8 @@ public class ConstantTypeState extends SingleTypeState {
     protected final JavaConstant constant;
 
     /** Creates a new type state from incoming objects. */
-    public ConstantTypeState(PointsToAnalysis bb, int properties, AnalysisType type, JavaConstant constant) {
-        super(bb, false, properties, type);
+    public ConstantTypeState(PointsToAnalysis bb, AnalysisType type, JavaConstant constant) {
+        super(bb, false, type);
         assert !bb.analysisPolicy().isContextSensitiveAnalysis() : "The ConstantTypeState is indented to be used with a context insensitive analysis.";
         this.constant = constant;
     }

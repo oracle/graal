@@ -145,6 +145,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     private EconomicMap<Class<? extends Node>, List<MatchStatement>> matchRules;
     private EconomicMap<Node, Integer> sharedMatchCounts;
 
+    @SuppressWarnings("this-escape")
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, NodeMatchRules nodeMatchRules) {
         this.gen = (LIRGenerator) gen;
         this.nodeMatchRules = nodeMatchRules;
@@ -263,7 +264,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             }
             suxIndex++;
         }
-        throw GraalError.shouldNotReachHere("Block not in successor list of current block");
+        throw GraalError.shouldNotReachHere("Block not in successor list of current block"); // ExcludeFromJacocoGeneratedReport
     }
 
     public final void append(LIRInstruction op) {
@@ -511,7 +512,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (node instanceof LIRLowerable) {
             ((LIRLowerable) node).generate(this);
         } else {
-            throw GraalError.shouldNotReachHere("node is not LIRLowerable: " + node);
+            throw GraalError.shouldNotReachHere("node is not LIRLowerable: " + node); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -595,7 +596,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (node instanceof OpaqueLogicNode) {
             emitBranch(((OpaqueLogicNode) node).value(), trueSuccessor, falseSuccessor, trueSuccessorProbability);
         } else {
-            throw GraalError.unimplemented(node.toString());
+            throw GraalError.unimplemented(node.toString()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -660,7 +661,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         } else if (callTarget instanceof IndirectCallTargetNode) {
             emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
         } else {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHereUnexpectedValue(callTarget); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -701,7 +702,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 result[j] = operand;
                 j++;
             } else {
-                throw GraalError.shouldNotReachHere("I thought we no longer have null entries for two-slot types...");
+                throw GraalError.shouldNotReachHere("I thought we no longer have null entries for two-slot types..."); // ExcludeFromJacocoGeneratedReport
             }
         }
         return result;

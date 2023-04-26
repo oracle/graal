@@ -43,8 +43,8 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jdk.Target_java_nio_Buffer;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
 
 /**
  * Provides access to the underlying OS-specific memory that stores the performance data.
@@ -134,7 +134,7 @@ public class PerfMemory {
      * may only be used for JDK code that needs direct memory access.
      */
     public ByteBuffer createByteBuffer() {
-        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(rawMemory.rawValue(), capacity), ByteBuffer.class);
+        return DirectByteBufferUtil.allocate(rawMemory.rawValue(), capacity);
     }
 
     /**
@@ -163,7 +163,9 @@ public class PerfMemory {
         if (overflowMemory == null) {
             overflowMemory = new Word[8];
         } else if (overflowMemory.length == overflowMemoryPos) {
-            overflowMemory = new Word[overflowMemory.length * 2];
+            Word[] expandedOverflowMemory = new Word[overflowMemory.length * 2];
+            System.arraycopy(overflowMemory, 0, expandedOverflowMemory, 0, overflowMemoryPos);
+            overflowMemory = expandedOverflowMemory;
         }
         overflowMemory[overflowMemoryPos] = result;
         overflowMemoryPos++;
@@ -200,7 +202,9 @@ public class PerfMemory {
             overflowMemory = null;
         }
 
-        memoryProvider.teardown();
+        if (memoryProvider != null) {
+            memoryProvider.teardown();
+        }
         releasePerfDataFile();
     }
 

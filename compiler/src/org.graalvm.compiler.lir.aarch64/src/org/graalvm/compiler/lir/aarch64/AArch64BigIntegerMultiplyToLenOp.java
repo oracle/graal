@@ -58,20 +58,20 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 4347,
-          lineEnd   = 4385,
-          commit    = "2afb4c3327b6830a009ee1ab8a1eb7803ef53007",
-          sha1      = "b7579c8da82c51fb00317be26f7fa7d4ed1db927")
+          lineStart = 4572,
+          lineEnd   = 4610,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "9c106817eae54d0e6783c1442b26fee08bc7a07a")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 2964,
-          lineEnd   = 2973,
-          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
-          sha1      = "123de736fb13a15ffa6864d86b0e9d52123248a0")
+          lineStart = 3008,
+          lineEnd   = 3017,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "376de6fbb2caccaac53c4aa934ce96f8f0dc7f18")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 3161,
-          lineEnd   = 3471,
-          commit    = "df81b3c66a3b17fc5d10098ce879416affbddd40",
-          sha1      = "e398a3781e3492a5625200e04ce934d022d3b2dc")
+          lineStart = 3205,
+          lineEnd   = 3515,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "dfdfc5113a04698da12c5cb29bc78ced09a2eb63")
 // @formatter:on
 public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstruction {
 
@@ -361,7 +361,7 @@ public final class AArch64BigIntegerMultiplyToLenOp extends AArch64LIRInstructio
         }
     }
 
-    private static void multiplyToLen(AArch64MacroAssembler masm,
+    static void multiplyToLen(AArch64MacroAssembler masm,
                     Register x,
                     Register xlen,
                     Register y,

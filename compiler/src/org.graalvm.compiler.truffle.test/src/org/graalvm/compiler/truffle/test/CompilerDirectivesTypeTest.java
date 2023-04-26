@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
 import org.junit.Test;
 
@@ -88,9 +87,9 @@ public class CompilerDirectivesTypeTest extends PartialEvaluationTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, true, getProviders(), new KnownTruffleTypes(getMetaAccess()));
+        TruffleGraphBuilderPlugins.registerInvocationPlugins(invocationPlugins, getTypes(), getProviders(), true);
         for (GraphBuilderInvocationPluginProvider p : GraalServices.load(GraphBuilderInvocationPluginProvider.class)) {
-            p.registerInvocationPlugins(getProviders(), getBackend().getTarget().arch, invocationPlugins, true);
+            p.registerInvocationPlugins(invocationPlugins, getTypes(), getProviders(), getBackend().getTarget().arch, true);
         }
         super.registerInvocationPlugins(invocationPlugins);
     }

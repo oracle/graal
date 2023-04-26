@@ -71,6 +71,7 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
 
         private final SerialWriteBarrierLowerer lowerer;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Group.Factory factory, HotSpotProviders providers) {
             super(options, providers);
             this.lowerer = new SerialWriteBarrierLowerer(factory);

@@ -376,7 +376,7 @@ public class DirectoryStorage implements ManagementStorage {
         String u = loaded.getProperty(CommonConstants.BUNDLE_ORIGIN_URL);
         if (u != null) {
             try {
-                ci.setRemoteURL(new URL(u));
+                ci.setRemoteURL(SystemUtils.toURL(u));
             } catch (MalformedURLException ex) {
                 // ignore
             }
@@ -615,7 +615,7 @@ public class DirectoryStorage implements ManagementStorage {
             p.setProperty(BUNDLE_PROVIDED_PREFIX + k, t + o.toString());
         }
         if (!info.getDependencies().isEmpty()) {
-            p.setProperty(BundleConstants.BUNDLE_DEPENDENCY, info.getDependencies().stream().sequential().collect(Collectors.joining(":")));
+            p.setProperty(BundleConstants.BUNDLE_DEPENDENCY, info.getDependencies().stream().sequential().collect(Collectors.joining(",")));
         }
         if (info.getPostinstMessage() != null) {
             p.setProperty(BundleConstants.BUNDLE_MESSAGE_POSTINST, info.getPostinstMessage());

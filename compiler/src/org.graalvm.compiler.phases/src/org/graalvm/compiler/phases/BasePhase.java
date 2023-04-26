@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -395,7 +395,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             if (name.contains(".svm.") || name.contains(".truffle.")) {
                 // Not yet implemented by SVM (GR-41437) or Truffle (GR-39494).
             } else {
-                GraalError.shouldNotReachHere(graph + ": " + name + ": " + cannotBeApplied.get());
+                GraalError.shouldNotReachHere(graph + ": " + name + ": " + cannotBeApplied.get()); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -407,6 +407,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         DebugContext debug = graph.getDebug();
         try (DebugContext.Scope s = debug.scope(getName(), this);
                         CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+                        DebugCloseable l = graph.getOptimizationLog().enterPhase(getName());
                         DebugCloseable a = timer.start(debug);
                         DebugCloseable c = memUseTracker.start(debug)) {
 
@@ -509,8 +510,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     private static final class GraphChangeListener extends NodeEventListener {
         boolean changed;
-        private StructuredGraph graph;
-        private Mark mark;
+        private final StructuredGraph graph;
+        private final Mark mark;
 
         GraphChangeListener(StructuredGraph graphCopy) {
             this.graph = graphCopy;
@@ -548,12 +549,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         /**
          * Contains the excluded phases and the corresponding methods to exclude.
          */
-        private EconomicMap<Pattern, MethodFilter> filters;
+        private final EconomicMap<Pattern, MethodFilter> filters;
 
         /**
          * Cache instances of this class to avoid parsing the same option string more than once.
          */
-        private static ConcurrentHashMap<String, ExcludePhaseFilter> instances;
+        private static final ConcurrentHashMap<String, ExcludePhaseFilter> instances;
 
         static {
             instances = new ConcurrentHashMap<>();
@@ -638,7 +639,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      */
     @Target(value = {ElementType.FIELD})
     @Retention(value = RetentionPolicy.RUNTIME)
-    public static @interface SharedGlobalPhaseState {
+    public @interface SharedGlobalPhaseState {
 
     }
 

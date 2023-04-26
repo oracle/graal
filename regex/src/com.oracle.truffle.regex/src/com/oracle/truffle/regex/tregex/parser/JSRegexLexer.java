@@ -47,6 +47,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
@@ -58,6 +59,7 @@ public final class JSRegexLexer extends RegexLexer {
     private static final CodePointSet ID_CONTINUE = UnicodeProperties.getProperty("ID_Continue").union(CodePointSet.createNoDedup('$', '$', '\u200c', '\u200d'));
     private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '/', '?', '[', '\\', ']', '^', '{', '|', '}');
     private final RegexFlags flags;
+    private final CodePointSetAccumulator caseFoldTmp = new CodePointSetAccumulator();
 
     public JSRegexLexer(RegexSource source, RegexFlags flags) {
         super(source);
@@ -110,8 +112,9 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected CaseFoldTable.CaseFoldingAlgorithm getCaseFoldingAlgorithm() {
-        return flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+    protected void caseFold(CodePointSetAccumulator charClass) {
+        CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+        CaseFoldTable.applyCaseFold(charClass, caseFoldTmp, caseFolding);
     }
 
     @Override

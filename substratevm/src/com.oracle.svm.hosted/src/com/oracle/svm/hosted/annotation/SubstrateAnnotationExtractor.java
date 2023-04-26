@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
@@ -74,8 +75,9 @@ import sun.reflect.annotation.AnnotationParser;
  *
  * The {@link SubstrateAnnotationExtractor} is tightly coupled with {@link AnnotationAccess}, which
  * provides implementations of {@link AnnotatedElement#isAnnotationPresent(Class)} and
- * {@link AnnotatedElement#getAnnotation(Class)}. {@link AnnotatedElement#getAnnotations()} should
- * in principle not be used during Native Image generation.
+ * {@link AnnotatedElement#getAnnotation(Class)}. {@link AnnotatedElement#getAnnotations()} must
+ * never be used during Native Image generation because it initializes all annotation classes and
+ * their dependencies.
  */
 public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private final Map<Class<?>, AnnotationValue[]> annotationCache = new ConcurrentHashMap<>();
@@ -104,6 +106,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     private static final Field recordComponentTypeAnnotations = recordComponentClass == null ? null : ReflectionUtil.lookupField(recordComponentClass, "typeAnnotations");
     private static final Method recordComponentGetDeclaringRecord = recordComponentClass == null ? null : ReflectionUtil.lookupMethod(recordComponentClass, "getDeclaringRecord");
     private static final Method packageGetPackageInfo = ReflectionUtil.lookupMethod(Package.class, "getPackageInfo");
+    private SnippetReflectionProvider snippetReflection;
 
     public static AnnotationValue[] prepareInjectedAnnotations(Annotation... annotations) {
         if (annotations == null || annotations.length == 0) {
@@ -162,11 +165,6 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
     @Override
     public Class<? extends Annotation>[] getAnnotationTypes(AnnotatedElement element) {
         return Arrays.stream(getAnnotationData(element, false)).map(AnnotationValue::getType).filter(t -> t != null).toArray(Class[]::new);
-    }
-
-    @Override
-    public Annotation[] extractAnnotations(AnnotatedElement element, boolean declaredOnly) {
-        return Arrays.stream(getAnnotationData(element, declaredOnly)).map(v -> v.get(v.type)).toArray(Annotation[]::new);
     }
 
     public AnnotationValue[] getDeclaredAnnotationData(AnnotatedElement element) {
@@ -253,7 +251,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
                 List<AnnotationValue> annotations = new ArrayList<>();
                 int numAnnotations = buf.getShort() & 0xFFFF;
                 for (int i = 0; i < numAnnotations; i++) {
-                    AnnotationValue annotation = AnnotationValue.extract(buf, getConstantPool(element), getContainer(element), false, false);
+                    AnnotationValue annotation = AnnotationValue.extract(snippetReflection, buf, getConstantPool(element), getContainer(element), false, false);
                     if (annotation != null) {
                         annotations.add(annotation);
                     }
@@ -284,7 +282,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
                     List<AnnotationValue> parameterAnnotationList = new ArrayList<>();
                     int numAnnotations = buf.getShort() & 0xFFFF;
                     for (int j = 0; j < numAnnotations; j++) {
-                        AnnotationValue parameterAnnotation = AnnotationValue.extract(buf, getConstantPool(element), getContainer(element), false, false);
+                        AnnotationValue parameterAnnotation = AnnotationValue.extract(snippetReflection, buf, getConstantPool(element), getContainer(element), false, false);
                         if (parameterAnnotation != null) {
                             parameterAnnotationList.add(parameterAnnotation);
                         }
@@ -314,7 +312,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
                 int annotationCount = buf.getShort() & 0xFFFF;
                 TypeAnnotationValue[] typeAnnotationValues = new TypeAnnotationValue[annotationCount];
                 for (int i = 0; i < annotationCount; i++) {
-                    typeAnnotationValues[i] = TypeAnnotationValue.extract(buf, getConstantPool(element), getContainer(element));
+                    typeAnnotationValues[i] = TypeAnnotationValue.extract(snippetReflection, buf, getConstantPool(element), getContainer(element));
                 }
                 return typeAnnotationValues;
             } catch (IllegalArgumentException | BufferUnderflowException ex) {
@@ -341,7 +339,7 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
             }
             ByteBuffer buf = ByteBuffer.wrap(rawAnnotationDefault);
             try {
-                return AnnotationMemberValue.extract(buf, getConstantPool(method), getContainer(method), false);
+                return AnnotationMemberValue.extract(snippetReflection, buf, getConstantPool(method), getContainer(method), false);
             } catch (IllegalArgumentException | BufferUnderflowException ex) {
                 return AnnotationValue.forAnnotationFormatException();
             }
@@ -467,5 +465,9 @@ public class SubstrateAnnotationExtractor implements AnnotationExtractor {
         } catch (IllegalAccessException e) {
             throw new AnnotationExtractionError(e);
         }
+    }
+
+    public void setSnippetReflection(SnippetReflectionProvider snippetReflection) {
+        this.snippetReflection = snippetReflection;
     }
 }

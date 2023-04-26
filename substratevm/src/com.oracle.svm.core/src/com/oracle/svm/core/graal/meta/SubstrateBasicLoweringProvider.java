@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.meta;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -47,11 +48,11 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
@@ -225,16 +226,19 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
         int reservedBitsMask = Heap.getHeap().getObjectHeader().getReservedBitsMask();
         if (reservedBitsMask != 0) {
             // get rid of the reserved header bits and extract the actual pointer to the hub
-            int encodingShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
-            if ((reservedBitsMask >>> encodingShift) == 0) {
-                hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(encodingShift, graph)));
-            } else if (reservedBitsMask < objectLayout.getAlignment()) {
+            assert CodeUtil.isPowerOf2(reservedBitsMask + 1) : "only the lowest bits may be set";
+            int numReservedBits = CodeUtil.log2(reservedBitsMask + 1);
+            int compressionShift = ReferenceAccess.singleton().getCompressEncoding().getShift();
+            int numAlignmentBits = CodeUtil.log2(objectLayout.getAlignment());
+            assert compressionShift <= numAlignmentBits : "compression discards bits";
+            if (numReservedBits == numAlignmentBits && compressionShift == 0) {
                 hubBits = graph.unique(new AndNode(headerBits, ConstantNode.forIntegerStamp(headerBitsStamp, ~reservedBitsMask, graph)));
             } else {
-                assert encodingShift > 0 : "shift below results in a compressed value";
-                assert CodeUtil.isPowerOf2(reservedBitsMask + 1) : "only the lowest bits may be set";
-                int numReservedBits = CodeUtil.log2(reservedBitsMask + 1);
                 hubBits = graph.unique(new UnsignedRightShiftNode(headerBits, ConstantNode.forInt(numReservedBits, graph)));
+                if (compressionShift != numAlignmentBits) {
+                    int shift = numAlignmentBits - compressionShift;
+                    hubBits = graph.unique(new LeftShiftNode(hubBits, ConstantNode.forInt(shift, graph)));
+                }
             }
         } else {
             hubBits = headerBits;

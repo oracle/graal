@@ -29,10 +29,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
@@ -243,7 +244,7 @@ public final class YoungGeneration extends Generation {
             return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
         }
         // Only objects in the young generation have no remembered set
-        UnsignedWord header = ObjectHeaderImpl.readHeaderFromObject(object);
+        UnsignedWord header = ObjectHeader.readHeaderFromObject(object);
         boolean young = !ObjectHeaderImpl.hasRememberedSet(header);
         assert young == HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
         return young;

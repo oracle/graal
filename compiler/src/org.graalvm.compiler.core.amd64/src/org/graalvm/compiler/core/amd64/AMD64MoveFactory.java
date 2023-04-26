@@ -120,7 +120,7 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
         } else if (src instanceof DataPointerConstant) {
             return new LeaDataOp(dst, (DataPointerConstant) src);
         } else {
-            throw GraalError.shouldNotReachHere(String.format("unsupported constant: %s", src));
+            throw GraalError.shouldNotReachHere(String.format("unsupported constant: %s", src)); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -129,7 +129,7 @@ public abstract class AMD64MoveFactory extends AMD64MoveFactoryBase {
         if (input instanceof JavaConstant) {
             return new MoveFromConstOp(result, (JavaConstant) input);
         } else {
-            throw GraalError.shouldNotReachHere(String.format("unsupported constant for stack load: %s", input));
+            throw GraalError.shouldNotReachHere(String.format("unsupported constant for stack load: %s", input)); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

@@ -90,6 +90,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
         return true;
     }
 
+    @SuppressWarnings("this-escape")
     protected DynamicCounterNode(NodeClass<? extends DynamicCounterNode> c, String group, String name, ValueNode increment, boolean withContext) {
         super(c, StampFactory.forVoid());
         this.group = group;
@@ -97,10 +98,6 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
         this.increment = increment;
         this.withContext = withContext;
         assert checkIncrement();
-    }
-
-    public ValueNode getIncrement() {
-        return increment;
     }
 
     public String getName() {
@@ -136,7 +133,7 @@ public class DynamicCounterNode extends FixedWithNextNode implements LIRLowerabl
         if (counterOp != null) {
             lirGen.append(counterOp);
         } else {
-            throw GraalError.unimplemented("Benchmark counters not enabled or not implemented by the back end.");
+            throw GraalError.unimplemented("Benchmark counters not enabled or not implemented by the back end."); // ExcludeFromJacocoGeneratedReport
         }
     }
 

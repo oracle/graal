@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -152,12 +152,13 @@ public class InvocationPlugins {
     /**
      * A symbol that is lazily {@linkplain OptionalLazySymbol#resolve() resolved} to a {@link Type}.
      */
-    static class OptionalLazySymbol implements Type {
+    public static class OptionalLazySymbol implements Type {
         private static final Class<?> MASK_NULL = OptionalLazySymbol.class;
         private final String name;
         private Class<?> resolved;
 
-        OptionalLazySymbol(String name) {
+        @SuppressWarnings("this-escape")
+        public OptionalLazySymbol(String name) {
             this.name = name;
             if (IS_BUILDING_NATIVE_IMAGE) {
                 resolve();
@@ -389,7 +390,7 @@ public class InvocationPlugins {
             assert !method.isBridge();
             InvocationPlugin plugin = invocationPlugins.get(method.getName());
             while (plugin != null) {
-                if (plugin.match(method)) {
+                if (plugin.isSameType(method)) {
                     return plugin;
                 }
                 plugin = plugin.next;
@@ -412,7 +413,7 @@ public class InvocationPlugins {
         InvocationPlugin lookup(InvocationPlugin plugin) {
             InvocationPlugin registeredPlugin = invocationPlugins.get(plugin.name);
             while (registeredPlugin != null) {
-                if (registeredPlugin.match(plugin)) {
+                if (registeredPlugin.isSameType(plugin)) {
                     return registeredPlugin;
                 }
                 registeredPlugin = registeredPlugin.next;
@@ -509,7 +510,7 @@ public class InvocationPlugins {
                             List<InvocationPlugin> testInvocationPlugins = testExtensions.get(internalName);
                             if (testInvocationPlugins != null) {
                                 for (InvocationPlugin testInvocationPlugin : testInvocationPlugins) {
-                                    if (testInvocationPlugin.match(method)) {
+                                    if (testInvocationPlugin.isSameType(method)) {
                                         return testInvocationPlugin;
                                     }
                                 }
@@ -605,7 +606,7 @@ public class InvocationPlugins {
     private static int findInvocationPlugin(List<InvocationPlugin> list, InvocationPlugin key) {
         for (int i = 0; i < list.size(); i++) {
             InvocationPlugin invocationPlugin = list.get(i);
-            if (invocationPlugin.match(key)) {
+            if (invocationPlugin.isSameType(key)) {
                 return i;
             }
         }
@@ -817,9 +818,10 @@ public class InvocationPlugins {
      *
      * @param method the method to lookup
      * @param allowDecorators return {@link InvocationPlugin#isDecorator()} plugins only if true
+     * @param allowDisable whether to respect the DisableIntrinsics flag
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
-    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, OptionValues options) {
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
         if (!isDisabledIntrinsicsFilterInitialized) {
             synchronized (this) {
                 if (!isDisabledIntrinsicsFilterInitialized) {
@@ -837,7 +839,7 @@ public class InvocationPlugins {
         }
 
         if (parent != null) {
-            InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators, options);
+            InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators, allowDisable, options);
             if (plugin != null) {
                 return plugin;
             }
@@ -845,7 +847,7 @@ public class InvocationPlugins {
         InvocationPlugin invocationPlugin = get(method);
         if (invocationPlugin != null) {
             if (allowDecorators || !invocationPlugin.isDecorator()) {
-                if (disabledIntrinsicsFilter != null && disabledIntrinsicsFilter.matches(method)) {
+                if (allowDisable && disabledIntrinsicsFilter != null && disabledIntrinsicsFilter.matches(method)) {
                     if (invocationPlugin.canBeDisabled()) {
                         if (logDisabledIntrinsics) {
                             TTY.println("[Warning] Intrinsic for %s is disabled.", method.format("%H.%n(%p)"));
@@ -856,6 +858,9 @@ public class InvocationPlugins {
                             TTY.println("[Warning] Intrinsic for %s cannot be disabled.", method.format("%H.%n(%p)"));
                         }
                     }
+                }
+                if (logDisabledIntrinsics && invocationPlugin.canBeDisabled()) {
+                    TTY.println("[Warning] Intrinsic for %s is enabled.", method.format("%H.%n(%p)"));
                 }
                 return invocationPlugin;
             }
@@ -872,7 +877,7 @@ public class InvocationPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, OptionValues options) {
-        return lookupInvocation(method, false, options);
+        return lookupInvocation(method, false, true, options);
     }
 
     /**
@@ -1036,7 +1041,7 @@ public class InvocationPlugins {
                 }
                 klass = klass.getSuperclass();
             }
-            throw new AssertionError(format("graph builder plugin for %s not found", plugin.getMethodNameWithArgumentsDescriptor()));
+            throw new AssertionError(format("graph builder plugin for %s not found. check that the plugin-method signature matches the target", plugin.getMethodNameWithArgumentsDescriptor()));
         }
 
         static boolean checkResolvable(Type declaringType, InvocationPlugin plugin) {
@@ -1139,7 +1144,7 @@ public class InvocationPlugins {
         Method[] methods = declaringClass.getDeclaredMethods();
         Method match = null;
         for (Method m : methods) {
-            if (plugin.match(m)) {
+            if (plugin.isSameType(m)) {
                 if (match == null) {
                     match = m;
                 } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
@@ -1163,7 +1168,7 @@ public class InvocationPlugins {
      * {@link ResolvedJavaType} and {@link ResolvedJavaMethod}.
      */
     public static ResolvedJavaMethod resolveJavaMethod(ResolvedJavaType declaringClass, InvocationPlugin plugin) {
-        ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods();
+        ResolvedJavaMethod[] methods = declaringClass.getDeclaredMethods(false);
         if (plugin.name.equals("<init>")) {
             for (ResolvedJavaMethod m : methods) {
                 if (m.getName().equals("<init>") && m.getSignature().toMethodDescriptor().startsWith(plugin.argumentsDescriptor)) {
@@ -1176,7 +1181,7 @@ public class InvocationPlugins {
         ResolvedJavaMethod match = null;
         for (int i = 0; i < methods.length; ++i) {
             ResolvedJavaMethod m = methods[i];
-            if (plugin.match(m)) {
+            if (plugin.isSameType(m)) {
                 if (match == null) {
                     match = m;
                 } else {
@@ -1210,7 +1215,7 @@ public class InvocationPlugins {
         }
         Constructor<?>[] constructors = declaringClass.getDeclaredConstructors();
         for (Constructor<?> c : constructors) {
-            if (plugin.match(c)) {
+            if (plugin.isSameType(c)) {
                 return c;
             }
         }

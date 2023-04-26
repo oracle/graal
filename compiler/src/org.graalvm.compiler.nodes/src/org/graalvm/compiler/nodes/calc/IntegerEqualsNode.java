@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,7 +138,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
             } else if (newX.stamp(view) instanceof AbstractPointerStamp && newY.stamp(view) instanceof AbstractPointerStamp) {
                 return new IntegerEqualsNode(newX, newY);
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(newX.stamp(view) + " " + newY.stamp(view)); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -236,6 +236,15 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
                 }
             }
 
+            if (forX instanceof NotNode notY && notY.getValue() == forY) {
+                // ~y == y => false
+                return LogicConstantNode.contradiction();
+            }
+            if (forY instanceof NotNode notX && forX == notX.getValue()) {
+                // x == ~x => false
+                return LogicConstantNode.contradiction();
+            }
+
             return super.canonical(constantReflection, metaAccess, options, smallestCompareWidth, condition, unorderedIsTrue, forX, forY, view);
         }
 
@@ -319,7 +328,7 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
 
                 if (nonConstant instanceof XorNode && nonConstant.stamp(view) instanceof IntegerStamp) {
                     XorNode xorNode = (XorNode) nonConstant;
-                    if (xorNode.getY().isJavaConstant() && xorNode.getY().asJavaConstant().asLong() == 1 && ((IntegerStamp) xorNode.getX().stamp(view)).upMask() == 1) {
+                    if (xorNode.getY().isJavaConstant() && xorNode.getY().asJavaConstant().asLong() == 1 && ((IntegerStamp) xorNode.getX().stamp(view)).mayBeSet() == 1) {
                         // x ^ 1 == 0 is the same as x == 1 if x in [0, 1]
                         // x ^ 1 == 1 is the same as x == 0 if x in [0, 1]
                         return new IntegerEqualsNode(xorNode.getX(), ConstantNode.forIntegerStamp(xorNode.getX().stamp(view), primitiveConstant.asLong() ^ 1));

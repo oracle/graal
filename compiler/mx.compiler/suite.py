@@ -1,10 +1,10 @@
 suite = {
-  "mxversion": "6.14.18",
+  "mxversion": "6.19.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "23.0.0",
+  "version" : "23.1.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -24,9 +24,6 @@ suite = {
       {
         "name" : "truffle",
         "subdir": True,
-        "urls" : [
-          {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
-         ]
       },
       {
         "name" : "regex",
@@ -460,21 +457,6 @@ suite = {
       "workingSets" : "Graal",
     },
 
-    "org.graalvm.libgraal.jni.processor" : {
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "org.graalvm.compiler.processor",
-        "org.graalvm.libgraal.jni.annotation",
-      ],
-      "requires" : [
-        "java.compiler" # javax.annotation.processing.*
-      ],
-      "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "17+",
-      "workingSets" : "Graal",
-    },
-
     "org.graalvm.util" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -697,12 +679,41 @@ suite = {
         "java.instrument" : [
           "sun.instrument",
         ],
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
       },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
+      "workingSets" : "Graal,HotSpot,Test",
+    },
+
+    "org.graalvm.compiler.hotspot.jdk20.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.hotspot.test",
+        "org.graalvm.compiler.jtt",
+      ],
+      "requires" : [
+        "jdk.incubator.concurrent",
+      ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.misc",
+        ],
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.meta",
+        ],
+      },
+      "checkstyle": "org.graalvm.compiler.graph",
+      "javaCompliance" : "20+",
+      "javaPreviewNeeded": "20+",
+      "javac.lint.overrides": "none",
       "workingSets" : "Graal,HotSpot,Test",
     },
 
@@ -789,7 +800,7 @@ suite = {
         ],
       },
       "javaCompliance" : "17+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyleVersion" : "10.7.0",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
       ],
@@ -950,6 +961,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.jtt",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
+        ],
+      },
       "annotationProcessors" : ["GRAAL_PROCESSOR"],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
@@ -1364,6 +1380,11 @@ suite = {
       "requires" : [
         "jdk.unsupported",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.code",
+        ],
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
       "workingSets" : "Graal,AMD64,Test",
@@ -1508,6 +1529,19 @@ suite = {
       "testProject" : True,
     },
 
+    "org.graalvm.compiler.hightiercodegen": {
+        "subDir": "src",
+        "sourceDirs": ["src"],
+        "dependencies": [
+            "org.graalvm.compiler.replacements",
+        ],
+        "javaCompliance": "17+",
+        "workingSets": "Graal",
+        "annotationProcessors": ["GRAAL_PROCESSOR"],
+        "checkstyle" : "org.graalvm.compiler.graph",
+        "spotbugsIgnoresGenerated": True,
+    },
+
     # ------------- GraalTruffle -------------
 
     "org.graalvm.compiler.truffle.common" : {
@@ -1515,7 +1549,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "JVMCI_API",
-        "org.graalvm.graphio",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
@@ -1793,8 +1826,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.libgraal.jni.processor",
-        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+        "org.graalvm.compiler.processor",
       ],
       "requires" : [
         "java.compiler" # javax.annotation.processing.*
@@ -1928,6 +1960,7 @@ suite = {
         "org.graalvm.compiler.hotspot.aarch64.test",
         "org.graalvm.compiler.hotspot.amd64.test",
         "org.graalvm.compiler.hotspot.lir.test",
+        "org.graalvm.compiler.hotspot.jdk20.test",
         "org.graalvm.compiler.options.test",
         "org.graalvm.compiler.jtt",
         "org.graalvm.compiler.lir.jtt",
@@ -2012,7 +2045,6 @@ suite = {
     "GRAAL_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.libgraal.jni.processor",
         "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.processor",
       ],
       "distDependencies" : ["GRAAL_PROCESSOR"],
@@ -2029,6 +2061,7 @@ suite = {
         "exports" : [
           """* to com.oracle.graal.graal_enterprise,org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.nativeimage.base,
           org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise""",
+          "org.graalvm.compiler.java                   to org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.configure",
           "org.graalvm.compiler.core.common            to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.debug                  to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.hotspot                to jdk.internal.vm.compiler.management",
@@ -2085,6 +2118,7 @@ suite = {
         "org.graalvm.compiler.runtime",
         "org.graalvm.compiler.code",
         "org.graalvm.compiler.printer",
+        "org.graalvm.compiler.hightiercodegen",
         "org.graalvm.compiler.core.aarch64",
         "org.graalvm.compiler.replacements.aarch64",
         "org.graalvm.compiler.core.amd64",

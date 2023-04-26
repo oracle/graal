@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.hosted.analysis;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.common.meta.MultiMethod;
 
 /**
  * {@link com.oracle.graal.pointsto.api.HostVM} methods which may be overwritten by substratevm
@@ -36,9 +39,11 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
  */
 public interface SVMParsingSupport {
 
-    Object parseGraph(BigBang bb, AnalysisMethod method);
+    Object parseGraph(BigBang bb, DebugContext debug, AnalysisMethod method);
 
     boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph);
 
     boolean allowAssumptions(AnalysisMethod method);
+
+    HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key);
 }

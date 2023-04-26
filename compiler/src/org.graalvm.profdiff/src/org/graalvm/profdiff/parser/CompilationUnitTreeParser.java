@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
+import org.graalvm.profdiff.core.optimization.Position;
 
 /**
  * Parses the trees of a compilation unit from its source file.
@@ -85,7 +86,8 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
             }
         }
         boolean indirect = map.property(OptimizationLogImpl.INDIRECT_PROPERTY).asBoolean();
-        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, indirect, parseProfilingInfo(map));
+        boolean alive = map.property(OptimizationLogImpl.ALIVE_PROPERTY).asBoolean();
+        InliningTreeNode inliningTreeNode = new InliningTreeNode(methodName, bci, positive, reason, indirect, parseProfilingInfo(map), alive);
         ExperimentJSONParser.JSONLiteral invokes = map.property(OptimizationLogImpl.INVOKES_PROPERTY);
         if (invokes.isNull()) {
             return inliningTreeNode;
@@ -141,16 +143,19 @@ public class CompilationUnitTreeParser implements CompilationUnit.TreeLoader {
         String optimizationName = optimization.property(OptimizationLogImpl.OPTIMIZATION_NAME_PROPERTY).asString();
         String eventName = optimization.property(OptimizationLogImpl.EVENT_NAME_PROPERTY).asString();
         ExperimentJSONParser.JSONLiteral positionObject = optimization.property(OptimizationLogImpl.POSITION_PROPERTY);
-        EconomicMap<String, Integer> position = null;
+        Position position = Position.EMPTY;
         if (!positionObject.isNull()) {
             MapCursor<String, Object> cursor = positionObject.asMap().getInnerMap().getEntries();
-            position = EconomicMap.create();
+            List<String> methodNames = new ArrayList<>();
+            List<Integer> bcis = new ArrayList<>();
             while (cursor.advance()) {
                 if (!(cursor.getValue() instanceof Integer)) {
                     throw new ExperimentParserTypeError(experimentId, fileView.getSymbolicPath(), OptimizationLogImpl.POSITION_PROPERTY, Integer.class, cursor.getValue());
                 }
-                position.put(cursor.getKey(), (Integer) cursor.getValue());
+                methodNames.add(cursor.getKey());
+                bcis.add((Integer) cursor.getValue());
             }
+            position = Position.create(methodNames, bcis);
         }
         EconomicMap<String, Object> properties = optimization.getInnerMap();
         properties.removeKey(OptimizationLogImpl.OPTIMIZATION_NAME_PROPERTY);

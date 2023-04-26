@@ -27,8 +27,9 @@ package com.oracle.svm.core.heapdump;
 import java.io.IOException;
 
 /**
- * Simple interface for writing heap dump to arbitrary data source.
+ * Legacy implementation, only used by other legacy code (see GR-44538).
  *
+ * Simple interface for writing heap dump to arbitrary data source.
  */
 public interface AllocationFreeOutputStream {
 

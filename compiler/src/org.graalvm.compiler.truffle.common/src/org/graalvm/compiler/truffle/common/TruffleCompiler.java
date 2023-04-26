@@ -39,50 +39,22 @@ public interface TruffleCompiler {
      * Initializes the compiler before the first compilation.
      *
      * @param options the options for initialization
-     * @param compilation the Truffle AST that triggered the initialization
+     * @param compilable the Truffle AST that triggered the initialization
      * @param firstInitialization first initialization. For a multi-isolate compiler the
      *            {@code firstInitialization} must be {@code true} for an initialization in the
      *            first isolate and {@code false} for an initialization in the following isolates.
      *
      * @since 20.0.0
      */
-    void initialize(Map<String, Object> options, CompilableTruffleAST compilation, boolean firstInitialization);
-
-    /**
-     * Opens a new compilation for {@code compilable}. Each call results in a new compilation
-     * object. The returned compilation object may be associated with external resources which are
-     * only released by calling {@link TruffleCompilation#close() close}.
-     *
-     * @param compilable the Truffle AST to be compiled
-     */
-    TruffleCompilation openCompilation(CompilableTruffleAST compilable);
-
-    /**
-     * Opens a debug context for Truffle compilation. The {@code close()} method should be called on
-     * the returned object once the compilation is finished.
-     *
-     * @param options the options for the debug context
-     * @param compilation a compilation object created by
-     *            {@link #openCompilation(org.graalvm.compiler.truffle.common.CompilableTruffleAST)
-     *            openCompilation} to be used for a single compilation or {@code null} if the
-     *            returned context will be used for multiple Truffle compilations
-     * @return the new {@link TruffleDebugContext}
-     */
-    TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation);
+    void initialize(Map<String, Object> options, CompilableTruffleAST compilable, boolean firstInitialization);
 
     /**
      * Compiles {@code compilable} to machine code.
      *
-     * @param debug a debug context to use
-     * @param compilation a compilation object created by
-     *            {@link #openCompilation(org.graalvm.compiler.truffle.common.CompilableTruffleAST)
-     *            openCompilation} to be used for the compilation
      * @param options option values relevant to compilation
-     * @param task an object that holds information about the compilation process itself (e.g. which
-     *            tier, was the compilation canceled)
      * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleCompilationTask task, TruffleCompilerListener listener);
+    void doCompile(TruffleCompilationTask task, CompilableTruffleAST compilable, Map<String, Object> options, TruffleCompilerListener listener);
 
     /**
      * Returns a unique name for the configuration in use by this compiler.

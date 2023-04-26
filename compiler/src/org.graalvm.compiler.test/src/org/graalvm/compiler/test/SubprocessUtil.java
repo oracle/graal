@@ -53,10 +53,8 @@ public final class SubprocessUtil {
     /**
      * The name of the boolean system property that can be set to preserve temporary files created
      * as arguments files passed to the java launcher.
-     *
-     * @see "https://docs.oracle.com/javase/9/tools/java.htm#JSWOR-GUID-4856361B-8BFD-4964-AE84-121F5F6CF111"
      */
-    public static final String KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME = "test." + SubprocessUtil.class.getSimpleName() + ".keepTempArgumentFiles";
+    public static final String KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME = "test.SubprocessUtil.keepTempArgumentFiles";
 
     private SubprocessUtil() {
     }

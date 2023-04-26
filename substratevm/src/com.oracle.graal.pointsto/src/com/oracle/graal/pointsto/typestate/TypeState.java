@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.typestate;
 
 import java.lang.reflect.Modifier;
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.stream.Stream;
@@ -35,32 +34,10 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.util.BitArrayUtils;
 
 import jdk.vm.ci.meta.JavaConstant;
 
 public abstract class TypeState {
-
-    /** TypeState id is only be used for statistics. */
-    private int id = -1;
-
-    /** A bit array of properties for this type state. */
-    protected final int properties;
-
-    public TypeState(int properties) {
-        this.properties = properties;
-    }
-
-    /* Instance methods. */
-
-    public int getProperties() {
-        return properties;
-    }
-
-    /* Types accessing methods. */
-
-    /** Returns true if the type state contains exact the same types as the bit set. */
-    public abstract boolean hasExactTypes(BitSet typesBitSet);
 
     /** Get the number of types. */
     public abstract int typesCount();
@@ -164,16 +141,6 @@ public abstract class TypeState {
     @Override
     public abstract boolean equals(Object o);
 
-    public int getId(PointsToAnalysis bb) {
-        assert bb.reportAnalysisStatistics() : "TypeState id should only be used for statistics.";
-        return id;
-    }
-
-    public void setId(PointsToAnalysis bb, int id) {
-        assert bb.reportAnalysisStatistics() : "TypeState id should only be used for statistics.";
-        this.id = id;
-    }
-
     /* Static methods. */
 
     public static TypeState forEmpty() {
@@ -186,7 +153,7 @@ public abstract class TypeState {
 
     /** Wraps an analysis object into a non-null type state. */
     public static TypeState forNonNullObject(PointsToAnalysis bb, AnalysisObject object) {
-        return bb.analysisPolicy().singleTypeState(bb, false, bb.analysisPolicy().makeProperties(bb, object), object.type(), object);
+        return bb.analysisPolicy().singleTypeState(bb, false, object.type(), object);
     }
 
     /** Wraps the analysis object corresponding to a JavaConstant into a non-null type state. */
@@ -202,7 +169,7 @@ public abstract class TypeState {
 
     public static SingleTypeState forExactType(PointsToAnalysis bb, AnalysisObject object, boolean canBeNull) {
         assert object.type().isArray() || (object.type().isInstanceClass() && !Modifier.isAbstract(object.type().getModifiers())) : object.type();
-        return bb.analysisPolicy().singleTypeState(bb, canBeNull, bb.analysisPolicy().makeProperties(bb, object), object.type(), object);
+        return bb.analysisPolicy().singleTypeState(bb, canBeNull, object.type(), object);
     }
 
     public static TypeState forType(PointsToAnalysis bb, AnalysisType type, boolean canBeNull) {
@@ -210,7 +177,7 @@ public abstract class TypeState {
     }
 
     public static TypeState forType(PointsToAnalysis bb, AnalysisObject object, boolean canBeNull) {
-        return bb.analysisPolicy().singleTypeState(bb, canBeNull, bb.analysisPolicy().makeProperties(bb, object), object.type(), object);
+        return bb.analysisPolicy().singleTypeState(bb, canBeNull, object.type(), object);
     }
 
     public final TypeState forNonNull(PointsToAnalysis bb) {
@@ -313,12 +280,6 @@ final class EmptyTypeState extends TypeState {
     static final TypeState SINGLETON = new EmptyTypeState();
 
     private EmptyTypeState() {
-        super(BitArrayUtils.EMPTY_BIT_ARRAY);
-    }
-
-    @Override
-    public boolean hasExactTypes(BitSet typesBitSet) {
-        return typesBitSet.isEmpty();
     }
 
     @Override
@@ -382,12 +343,6 @@ final class NullTypeState extends TypeState {
     static final TypeState SINGLETON = new NullTypeState();
 
     private NullTypeState() {
-        super(BitArrayUtils.EMPTY_BIT_ARRAY);
-    }
-
-    @Override
-    public boolean hasExactTypes(BitSet typesBitSet) {
-        return typesBitSet.isEmpty();
     }
 
     @Override

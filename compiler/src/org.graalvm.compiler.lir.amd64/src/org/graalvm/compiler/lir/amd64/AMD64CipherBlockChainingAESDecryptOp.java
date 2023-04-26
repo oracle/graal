@@ -45,11 +45,11 @@ import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
 import static org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp.newLabels;
-import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
 
 import java.util.function.BiConsumer;
@@ -62,7 +62,6 @@ import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
-import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -74,8 +73,8 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
           lineStart = 1245,
           lineEnd   = 1501,
-          commit    = "4a300818fe7a47932c5b762ccd3b948815a31974",
-          sha1      = "eeac176914c5c7d0fc7ede271a29b937c31470b9")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "e3481678a0bdb4d66c9b3641ba44a3559979aff5")
 // @formatter:on
 public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruction {
 
@@ -132,12 +131,6 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
                         xmm15.asValue(),
         };
     }
-
-    private ArrayDataPointerConstant keyShuffleMask = pointerConstant(16, new int[]{
-            // @formatter:off
-            0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f
-            // @formatter:on
-    });
 
     private static final int XMM_REG_NUM_KEY_FIRST = 5;
     private static final int XMM_REG_NUM_KEY_LAST = 15;
@@ -220,22 +213,22 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
                 // save last_key from xmm15
                 masm.movdqu(new AMD64Address(rsp, 0), xmm15);
                 // 192-bit key goes up to 0xc0
-                loadKey(masm, xmm15, key, 0xb0, crb, keyShuffleMask); // 0xb0;
+                loadKey(masm, xmm15, key, 0xb0, crb); // 0xb0;
                 masm.movdqu(new AMD64Address(rsp, 2 * wordSize), xmm15);
-                loadKey(masm, xmm1, key, 0xc0, crb, keyShuffleMask);  // 0xc0;
+                loadKey(masm, xmm1, key, 0xc0, crb);  // 0xc0;
                 masm.movdqu(new AMD64Address(rsp, 4 * wordSize), xmm1);
             } else if (k == 2) {
                 masm.subq(rsp, 10 * wordSize);
                 // save last_key from xmm15
                 masm.movdqu(new AMD64Address(rsp, 0), xmm15);
                 // 256-bit key goes up to 0xe0
-                loadKey(masm, xmm15, key, 0xd0, crb, keyShuffleMask); // 0xd0;
+                loadKey(masm, xmm15, key, 0xd0, crb); // 0xd0;
                 masm.movdqu(new AMD64Address(rsp, 6 * wordSize), xmm15);
-                loadKey(masm, xmm1, key, 0xe0, crb, keyShuffleMask);  // 0xe0;
+                loadKey(masm, xmm1, key, 0xe0, crb);  // 0xe0;
                 masm.movdqu(new AMD64Address(rsp, 8 * wordSize), xmm1);
-                loadKey(masm, xmm15, key, 0xb0, crb, keyShuffleMask); // 0xb0;
+                loadKey(masm, xmm15, key, 0xb0, crb); // 0xb0;
                 masm.movdqu(new AMD64Address(rsp, 2 * wordSize), xmm15);
-                loadKey(masm, xmm1, key, 0xc0, crb, keyShuffleMask);  // 0xc0;
+                loadKey(masm, xmm1, key, 0xc0, crb);  // 0xc0;
                 masm.movdqu(new AMD64Address(rsp, 4 * wordSize), xmm1);
             }
             masm.align(preferredLoopAlignment(crb));
@@ -328,13 +321,13 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
             masm.jcc(ConditionFlag.Equal, labelExit);
             masm.bind(labelSingleBlockLoopTopHead2[k]);
             if (k == 1) {
-                loadKey(masm, xmmKey11, key, 0xb0, crb, keyShuffleMask); // 0xb0;
+                loadKey(masm, xmmKey11, key, 0xb0, crb); // 0xb0;
                 // 192-bit key goes up to 0xc0
-                loadKey(masm, xmmKey12, key, 0xc0, crb, keyShuffleMask); // 0xc0;
+                loadKey(masm, xmmKey12, key, 0xc0, crb); // 0xc0;
             }
             if (k == 2) {
                 // 256-bit key goes up to 0xe0
-                loadKey(masm, xmmKey11, key, 0xb0, crb, keyShuffleMask); // 0xb0;
+                loadKey(masm, xmmKey11, key, 0xb0, crb); // 0xb0;
             }
             masm.align(preferredLoopAlignment(crb));
             masm.bind(labelSingleBlockLoopTop[k]);
@@ -351,11 +344,11 @@ public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruct
             }
             if (k == 2) {
                 masm.aesdec(xmmResult, xmmKey11);
-                loadKey(masm, keyTmp, key, 0xc0, crb, keyShuffleMask);
+                loadKey(masm, keyTmp, key, 0xc0, crb);
                 masm.aesdec(xmmResult, keyTmp);
-                loadKey(masm, keyTmp, key, 0xd0, crb, keyShuffleMask);
+                loadKey(masm, keyTmp, key, 0xd0, crb);
                 masm.aesdec(xmmResult, keyTmp);
-                loadKey(masm, keyTmp, key, 0xe0, crb, keyShuffleMask);
+                loadKey(masm, keyTmp, key, 0xe0, crb);
                 masm.aesdec(xmmResult, keyTmp);
             }
 

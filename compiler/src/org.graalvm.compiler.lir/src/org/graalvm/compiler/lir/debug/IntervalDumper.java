@@ -31,7 +31,7 @@ import jdk.vm.ci.meta.Value;
  */
 public interface IntervalDumper {
 
-    public interface IntervalVisitor {
+    interface IntervalVisitor {
         void visitIntervalStart(Value parentOperand, Value splitOperand, Value location, Value hint, String typeName);
 
         void visitRange(int from, int to);

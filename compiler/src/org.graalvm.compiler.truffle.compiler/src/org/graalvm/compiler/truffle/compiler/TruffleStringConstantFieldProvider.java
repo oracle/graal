@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -33,9 +32,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class TruffleStringConstantFieldProvider implements ConstantFieldProvider {
+    private static final int FLAG_IMPRECISE = 1 << 4;
     protected final ConstantFieldProvider graalConstantFieldProvider;
     protected final MetaAccessProvider metaAccess;
-    private final KnownTruffleTypes types;
+    protected final KnownTruffleTypes types;
     private final ResolvedJavaType byteArrayType;
 
     public TruffleStringConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
@@ -62,20 +62,33 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
 
     protected <T> T readWellKnownConstantTruffleField(ResolvedJavaField field, ConstantFieldTool<T> tool) {
         // well-known internal fields of AbstractTruffleString
-        if (types.truffleStringDataField.equals(field) || types.truffleStringHashCodeField.equals(field)) {
+        if (types.AbstractTruffleString_data.equals(field) ||
+                        types.AbstractTruffleString_hashCode.equals(field) ||
+                        types.AbstractTruffleString_codeRange.equals(field) ||
+                        types.AbstractTruffleString_codePointLength.equals(field)) {
             // only applies to the immutable subclass TruffleString, not MutableTruffleString
-            if (types.truffleStringType.isAssignableFrom(metaAccess.lookupJavaType(tool.getReceiver()))) {
+            if (types.TruffleString.isAssignableFrom(metaAccess.lookupJavaType(tool.getReceiver()))) {
                 JavaConstant value = tool.readValue();
                 if (value != null) {
-                    if (types.truffleStringDataField.equals(field)) {
+                    if (types.AbstractTruffleString_data.equals(field)) {
                         // the "data" field is implicitly stable if it contains a byte array
                         if (byteArrayType.isAssignableFrom(metaAccess.lookupJavaType(value))) {
                             return tool.foldStableArray(value, 1, true);
                         }
-                    } else {
-                        assert types.truffleStringHashCodeField.equals(field);
+                    } else if (types.AbstractTruffleString_hashCode.equals(field)) {
                         // the "hashCode" field is stable if its value is not zero
                         if (!value.isDefaultForKind()) {
+                            return tool.foldConstant(value);
+                        }
+                    } else if (types.AbstractTruffleString_codeRange.equals(field)) {
+                        // the "codeRange" field is stable if the IMPRECISE flag is not set
+                        if ((value.asInt() & FLAG_IMPRECISE) == 0) {
+                            return tool.foldConstant(value);
+                        }
+                    } else {
+                        assert types.AbstractTruffleString_codePointLength.equals(field);
+                        // the "codePointLength" field is stable if its value is positive
+                        if (value.asInt() >= 0) {
                             return tool.foldConstant(value);
                         }
                     }
@@ -87,6 +100,10 @@ public class TruffleStringConstantFieldProvider implements ConstantFieldProvider
 
     @Override
     public boolean maybeFinal(ResolvedJavaField field) {
-        return types.truffleStringDataField.equals(field) || types.truffleStringHashCodeField.equals(field) || graalConstantFieldProvider.maybeFinal(field);
+        return types.AbstractTruffleString_data.equals(field) ||
+                        types.AbstractTruffleString_hashCode.equals(field) ||
+                        types.AbstractTruffleString_codeRange.equals(field) ||
+                        types.AbstractTruffleString_codePointLength.equals(field) ||
+                        graalConstantFieldProvider.maybeFinal(field);
     }
 }

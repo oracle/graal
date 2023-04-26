@@ -45,6 +45,7 @@ public class TraceFileWriter extends Tracer implements TracingResultWriter {
     private boolean open = true;
     private int written = 0;
 
+    @SuppressWarnings("this-escape")
     public TraceFileWriter(Path path) throws IOException {
         writer = Files.newBufferedWriter(path);
         JsonWriter json = new JsonWriter(writer);

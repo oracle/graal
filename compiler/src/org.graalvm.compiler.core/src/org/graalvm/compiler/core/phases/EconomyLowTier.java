@@ -24,8 +24,10 @@
  */
 package org.graalvm.compiler.core.phases;
 
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.phases.PlaceholderPhase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
+import org.graalvm.compiler.phases.common.BarrierSetVerificationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ExpandLogicPhase;
 import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
@@ -34,10 +36,16 @@ import org.graalvm.compiler.phases.tiers.LowTierContext;
 
 public class EconomyLowTier extends BaseTier<LowTierContext> {
 
+    @SuppressWarnings("this-escape")
     public EconomyLowTier() {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         appendPhase(new LowTierLoweringPhase(canonicalizer));
         appendPhase(new ExpandLogicPhase(canonicalizer));
+
+        if (Assertions.assertionsEnabled()) {
+            appendPhase(new BarrierSetVerificationPhase());
+        }
+
         /*
          * This placeholder should be replaced by an instance of {@link AddressLoweringPhase}
          * specific to the target architecture for this compilation. This should be done by the

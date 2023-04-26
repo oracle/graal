@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -408,7 +408,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     private static ConstantNode forIntegerBits(int bits, JavaConstant constant, StructuredGraph graph) {
         long value = constant.asLong();
         long bounds = CodeUtil.signExtend(value, bits);
-        return unique(graph, new ConstantNode(constant, StampFactory.forInteger(bits, bounds, bounds)));
+        return unique(graph, new ConstantNode(constant, IntegerStamp.createConstant(bits, bounds)));
     }
 
     /**
@@ -422,7 +422,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     private static ConstantNode forIntegerBits(int bits, JavaConstant constant) {
         long value = constant.asLong();
         long bounds = CodeUtil.signExtend(value, bits);
-        return new ConstantNode(constant, StampFactory.forInteger(bits, bounds, bounds));
+        return new ConstantNode(constant, IntegerStamp.createConstant(bits, bounds));
     }
 
     /**
@@ -466,7 +466,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
             case Long:
                 return ConstantNode.forLong(value, graph);
             default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
+                throw GraalError.shouldNotReachHere("unknown kind " + kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -479,7 +479,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
             case Long:
                 return createPrimitive(JavaConstant.forLong(value));
             default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
+                throw GraalError.shouldNotReachHere("unknown kind " + kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -490,7 +490,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
             case Double:
                 return ConstantNode.forDouble(value, graph);
             default:
-                throw GraalError.shouldNotReachHere("unknown kind " + kind);
+                throw GraalError.shouldNotReachHere("unknown kind " + kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -530,7 +530,11 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(Verbosity.Name) + "(" + value.toValueString() + ", " + stamp(NodeView.DEFAULT).unrestricted().toString() + ")";
+            String valueString = value == null ? "null" : value.toValueString();
+            Stamp stampVal = stamp(NodeView.DEFAULT);
+            stampVal = stampVal == null ? null : stampVal.unrestricted();
+            String stampString = stampVal == null ? "null" : stampVal.toString();
+            return super.toString(Verbosity.Name) + "(" + valueString + ", " + stampString + ")";
         } else {
             return super.toString(verbosity);
         }

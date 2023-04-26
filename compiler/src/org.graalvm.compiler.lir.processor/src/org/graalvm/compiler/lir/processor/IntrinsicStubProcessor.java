@@ -229,7 +229,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                 }
             }
         }
-        processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, "Could not find runtime checked flags variant. " +
+        processor.env().getMessager().printMessage(Diagnostic.Kind.ERROR, method + ": Could not find runtime checked flags variant. " +
                         "For every method annotated with @GenerateStub, a second @NodeIntrinsic method with the same signature + an additional @ConstantNodeParameter EnumSet<CPUFeature> parameter for runtime checked CPU flags is required.",
                         method, annotation);
         return null;
@@ -352,7 +352,7 @@ public class IntrinsicStubProcessor extends AbstractProcessor {
                                 out.printf("            return %s.%s();\n", genClass.clazz.getSimpleName(), featuresGetter.aarch64Getter);
                             }
                             out.printf("        }\n");
-                            out.printf("        throw GraalError.shouldNotReachHere();\n");
+                            out.printf("        throw GraalError.unsupportedArchitecture(arch);\n");
                             out.printf("    }\n");
                             out.printf("\n");
 

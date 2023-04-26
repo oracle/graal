@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.c.codegen;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C11;
 import static com.oracle.svm.hosted.NativeImageOptions.CStandards.C99;
 
@@ -222,7 +223,7 @@ public class CSourceCodeWriter {
                 case Void:
                     return "void";
                 default:
-                    throw shouldNotReachHere();
+                    throw shouldNotReachHereUnexpectedInput(type.getJavaKind()); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -272,7 +273,7 @@ public class CSourceCodeWriter {
     private static boolean isFunctionPointer(MetaAccessProvider metaAccess, ResolvedJavaType type) {
         boolean functionPointer = metaAccess.lookupJavaType(CFunctionPointer.class).isAssignableFrom(type);
         return functionPointer &&
-                        Arrays.stream(type.getDeclaredMethods()).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
+                        Arrays.stream(type.getDeclaredMethods(false)).anyMatch(v -> v.getDeclaredAnnotation(InvokeCFunctionPointer.class) != null);
     }
 
     /**

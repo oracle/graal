@@ -98,14 +98,14 @@ public class StampTool {
                 }
                 // If the test succeeds then this proves that n is at greater than c so the bounds
                 // are [c+1..-n.upperBound)].
-                return StampFactory.forInteger(x.getBits(), x.lowerBound() + 1, y.upperBound());
+                return IntegerStamp.create(x.getBits(), x.lowerBound() + 1, y.upperBound());
             }
             return null;
         }
         // n <| c, where c is a strictly positive constant
         if (y.lowerBound() == y.upperBound() && y.isStrictlyPositive()) {
             // The test proves that n is positive and less than c, [0..c-1]
-            return StampFactory.forInteger(y.getBits(), 0, y.lowerBound() - 1);
+            return IntegerStamp.create(y.getBits(), 0, y.lowerBound() - 1);
         }
         return null;
     }
@@ -115,16 +115,16 @@ public class StampTool {
         // Don't count zeros from the mask in the result.
         int adjust = Long.numberOfLeadingZeros(mask);
         assert adjust == 0 || adjust == 32;
-        int min = Long.numberOfLeadingZeros(valueStamp.upMask() & mask) - adjust;
-        int max = Long.numberOfLeadingZeros(valueStamp.downMask() & mask) - adjust;
+        int min = Long.numberOfLeadingZeros(valueStamp.mayBeSet() & mask) - adjust;
+        int max = Long.numberOfLeadingZeros(valueStamp.mustBeSet() & mask) - adjust;
         return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 
     public static Stamp stampForTrailingZeros(IntegerStamp valueStamp) {
         int bits = valueStamp.getBits();
         long mask = CodeUtil.mask(bits);
-        int min = Math.min(Long.numberOfTrailingZeros(valueStamp.upMask() & mask), bits);
-        int max = Math.min(Long.numberOfTrailingZeros(valueStamp.downMask() & mask), bits);
+        int min = Math.min(Long.numberOfTrailingZeros(valueStamp.mayBeSet() & mask), bits);
+        int max = Math.min(Long.numberOfTrailingZeros(valueStamp.mustBeSet() & mask), bits);
         return StampFactory.forInteger(JavaKind.Int, min, max);
     }
 

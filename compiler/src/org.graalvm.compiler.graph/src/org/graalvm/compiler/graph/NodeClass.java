@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.graph;
 
 import static org.graalvm.compiler.core.common.Fields.translateInto;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
 import static org.graalvm.compiler.graph.Edges.translateInto;
 import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
@@ -133,7 +134,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     public static <T> NodeClass<T> get(Class<T> clazz) {
         NodeClass<T> result = getUnchecked(clazz);
         if (result == null && clazz != NODE_CLASS) {
-            throw GraalError.shouldNotReachHere("TYPE field not initialized for class " + clazz.getTypeName());
+            throw GraalError.shouldNotReachHere("TYPE field not initialized for class " + clazz.getTypeName()); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -569,7 +570,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         } else if (o instanceof boolean[]) {
             return Arrays.hashCode((boolean[]) o);
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedValue(o); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -646,7 +647,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         } else if (e1 instanceof boolean[]) {
             return Arrays.equals((boolean[]) e1, (boolean[]) e2);
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHere(e1 + " " + e2); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -838,7 +839,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
             node.init((NodeClass<? extends Node>) this);
             return node;
         } catch (InstantiationException ex) {
-            throw shouldNotReachHere(ex);
+            throw shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
         }
     }
 

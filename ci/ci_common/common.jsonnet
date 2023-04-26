@@ -1,75 +1,12 @@
-local composable = (import "common-utils.libsonnet").composable;
+# This file is only shared between the graal and graal-enterprise repositories.
 
-local mx_version = (import "../../common.json").mx_version;
-local common_json = composable(import "../../common.json");
+local common = import "../common.jsonnet";
 local repo_config = import '../repo-configuration.libsonnet';
-local jdks = common_json.jdks;
-local deps = common_json.deps;
-local downloads = common_json.downloads;
 
-# Finds the first integer in a string and returns it as an integer.
-local find_first_integer(versionString) =
-  local charToInt(c) =
-    std.codepoint(c) - std.codepoint("0");
-  local firstNum(s, i) =
-    assert std.length(s) > i : "No number found in string " + s;
-    local n = charToInt(s[i]);
-    if n >=0 && n < 10 then i else firstNum(s, i + 1);
-  local lastNum(s, i) =
-    if i >= std.length(s) then
-      i
-    else
-      local n = charToInt(s[i]);
-      if n < 0 || n > 9 then i else lastNum(s, i + 1);
-  local versionIndexStart = firstNum(versionString, 0);
-  local versionIndexEnd = lastNum(versionString, versionIndexStart);
-  std.parseInt(versionString[versionIndexStart:versionIndexEnd])
-;
-# jdk_version is an hidden field that can be used to generate job names
-local add_jdk_version(name) =
-  local jdk = jdks[name];
-  // this assumes that the version is the first number in the jdk.version string
-  local version = find_first_integer(jdk.version);
-  // santity check that the parsed version is also included in the name
-  assert std.length(std.findSubstr(std.toString(version), name)) == 1 : "Cannot find version %d in name %s" % [version, name];
-  { jdk_version:: version }
-;
-
-{
-
-  mx:: {
-    packages+: {
-      mx: mx_version
-    }
-  },
-
-  eclipse:: downloads.eclipse,
-  jdt:: downloads.jdt,
-  devkits:: common_json.devkits,
-
-  svm_deps:: common_json.svm.deps + repo_config.native_image.extra_deps,
-
+common + common.frequencies + {
   build_base:: {
     // holds location of CI resources that can easily be overwritten in an overlay
-    ci_resources:: (import "ci/ci_common/ci-resources.libsonnet"),
-  },
-
-  // Job frequencies
-  // ***************
-  on_demand:: {
-    targets+: ["ondemand"],
-  },
-  post_merge:: {
-    targets+: ["post-merge"],
-  },
-  daily:: {
-    targets+: ["daily"],
-  },
-  weekly:: {
-    targets+: ["weekly"],
-  },
-  monthly:: {
-    targets+: ["monthly"],
+    ci_resources:: (import "ci-resources.libsonnet"),
   },
 
   # Add a guard to `build` that prevents it from running in the gate
@@ -111,71 +48,41 @@ local add_jdk_version(name) =
     }
   },
 
-} + {
-  // JDK definitions
-  // ***************
-  // this adds all jdks from common.json
-  [name]: add_jdk_version(name) + { downloads+: { [if std.endsWith(name, "llvm") then "LLVM_JAVA_HOME" else "JAVA_HOME"] : jdks[name] }},
-  for name in std.objectFieldsAll(jdks)
-} + {
+} + common.jdks + {
   # Aliases to edition specific labsjdks
-  labsjdk17::            self["labsjdk-ee-17"],
+  labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   labsjdk19::            self["labsjdk-" + repo_config.graalvm_edition + "-19"],
-  labsjdk17Debug::       self["labsjdk-ee-17Debug"],
+  labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
   labsjdk19Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-19Debug"],
-  labsjdk17LLVM::        self["labsjdk-ee-17-llvm"],
+  labsjdk17LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-17-llvm"],
   labsjdk19LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-19-llvm"],
 
   labsjdk20::            self["labsjdk-" + repo_config.graalvm_edition + "-20"],
   labsjdk20Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-20Debug"],
   labsjdk20LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-20-llvm"],
 
-
   // Hardware definitions
   // ********************
-  common:: deps.common + self.mx + {
-    local where = if std.objectHas(self, "name") then " in " + self.name else "",
-    # enforce self.os (useful for generating job names)
-    os:: error "self.os not set" + where,
-    # enforce self.arch (useful for generating job names)
-    arch:: error "self.arch not set" + where,
-    capabilities +: [],
-    catch_files +: common_json.catch_files,
-    logs +: [
+  local graal_common_extras = common.deps.pylint + {
+    logs+: [
       "*.bgv",
-      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*"
-    ]
+      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*",
+    ],
+    timelimit: "30:00",
   },
-
-  ol7:: {
-    docker+: {
-      image: "buildslave_ol7",
-      mount_modules: true,
+  local linux_deps_extras = {
+    packages+: {
+      "apache/ant": ">=1.9.4",
     },
   },
 
-  linux::   deps.linux   + self.common + {os::"linux",   capabilities+: [self.os]},
-  darwin::  deps.darwin  + self.common + {os::"darwin",  capabilities+: [self.os]},
-  windows:: deps.windows + self.common + {os::"windows", capabilities+: [self.os]},
-  windows_server_2016:: self.windows + {capabilities+: ["windows_server_2016"]},
+  linux_amd64: linux_deps_extras + common.linux_amd64 + graal_common_extras,
+  linux_aarch64: linux_deps_extras + common.linux_aarch64 + graal_common_extras,
+  darwin_amd64: common.darwin_amd64 + graal_common_extras,
+  darwin_aarch64: common.darwin_aarch64 + graal_common_extras,
+  windows_amd64: common.windows_amd64 + graal_common_extras,
+  windows_server_2016_amd64: common.windows_server_2016_amd64 + graal_common_extras,
 
-  amd64::   { arch::"amd64",   capabilities+: [self.arch]},
-  aarch64:: { arch::"aarch64", capabilities+: [self.arch]},
-
-  linux_amd64::               self.linux               + self.amd64   + self.ol7,
-  darwin_amd64::              self.darwin              + self.amd64,
-  darwin_aarch64::            self.darwin              + self.aarch64 + {
-      # only needed until GR-22580 is resolved?
-      python_version: 3,
-  },
-  windows_amd64::             self.windows             + self.amd64,
-  windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
-  linux_aarch64::             self.linux               + self.aarch64,
-
+  // See GR-31169 for description of the mach5 target
   mach5_target:: {targets+: ["mach5"]},
-
-  // Utils
-  disable_proxies:: {
-    setup+: [["unset", "HTTP_PROXY", "HTTPS_PROXY", "FTP_PROXY", "NO_PROXY", "http_proxy", "https_proxy", "ftp_proxy", "no_proxy"]],
-  },
 }

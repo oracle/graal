@@ -44,6 +44,7 @@ import java.math.BigInteger;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -204,6 +205,7 @@ public class ReachabilityTest {
 
     static class ReachabilityGuard1 extends ValueNode {
 
+        @Idempotent
         boolean foo() {
             return false;
         }
@@ -241,6 +243,7 @@ public class ReachabilityTest {
 
     static class ReachabilityGuard3 extends ValueNode {
 
+        @Idempotent
         boolean foo() {
             return false;
         }

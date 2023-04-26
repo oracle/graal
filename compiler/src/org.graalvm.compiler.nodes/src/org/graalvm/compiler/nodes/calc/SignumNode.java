@@ -67,7 +67,8 @@ public final class SignumNode extends UnaryNode implements ArithmeticLIRLowerabl
                 return new FloatStamp(floatStamp.getBits(), -1.0D, -1.0D, true);
             }
         }
-        FloatStamp result = new FloatStamp(floatStamp.getBits(), Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, !floatStamp.canBeNaN());
+        // Initially make an empty stamp.
+        FloatStamp result = new FloatStamp(floatStamp.getBits(), Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, floatStamp.isNonNaN());
         if (floatStamp.contains(0.0d)) {
             // this also covers stamp.contains(-0.0d)
             result = (FloatStamp) result.meet(new FloatStamp(floatStamp.getBits(), 0.0d, 0.0d, true));
@@ -96,7 +97,7 @@ public final class SignumNode extends UnaryNode implements ArithmeticLIRLowerabl
                 case Double:
                     return ConstantNode.forDouble(Math.signum(c.asDouble()));
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHereUnexpectedValue(c.getJavaKind()); // ExcludeFromJacocoGeneratedReport
             }
         }
         return this;

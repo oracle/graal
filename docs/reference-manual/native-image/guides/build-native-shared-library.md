@@ -71,18 +71,14 @@ A native shared library can have an unlimited number of **entrypoints**, for exa
 In the following example, you'll create a small Java class library (containing one class), use `native-image` to create a shared library from the class library, and then create a small C application that uses the shared library.
 The C application takes a string as its argument, passes it to the shared library, and prints environment variables that contain the argument.
 
-#### Prerequisites
+1. Download and install the latest GraalVM JDK with Native Image and LLVM toolchain using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk) -c 'llvm-toolchain' 
+    ```
 
-You have set the `GRAALVM_HOME` environment variable to the location of the GraalVM installation.
+  >Note: The llvm-toolchain GraalVM component is not available on Microsoft Windows.
 
-You have have installed LLVM toolchain support to GraalVM, as follows:
-```shell
-$GRAALVM_HOME/bin/gu install llvm-toolchain
-```
-
->Note: The llvm-toolchain GraalVM component is not available on Microsoft Windows.
-
-1. Save the following Java code to a file named _LibEnvMap.java_:
+2. Save the following Java code to a file named _LibEnvMap.java_:
 
     ```java
     import java.util.Map;
@@ -112,11 +108,12 @@ $GRAALVM_HOME/bin/gu install llvm-toolchain
     ```
     Notice how the method `filterEnv()` is identified as an **entrypoint** using the `@CEntryPoint` annotation and the method is given a name as a argument to the annotation. 
 
-2. Compile the Java code and build a native shared library, as follows:
-
+3. Compile the Java code and build a native shared library, as follows:
     ```shell
-    $GRAALVM_HOME/bin/javac LibEnvMap.java
-    $GRAALVM_HOME/bin/native-image -H:Name=libenvmap --shared 
+    $JAVA_HOME/bin/javac LibEnvMap.java
+    ```
+    ```shell
+    $JAVA_HOME/bin/native-image -H:Name=libenvmap --shared 
     ```
 
     It will produce the following artifacts:
@@ -134,7 +131,7 @@ $GRAALVM_HOME/bin/gu install llvm-toolchain
 
     If you work with C or C++, use these header files directly. For other languages, such as Java, use the function declarations in the headers to set up your foreign call bindings. 
 
-3. Create a C application, _main.c_, in the same directory containing the following code:
+4. Create a C application, _main.c_, in the same directory containing the following code:
 
     ```c
     #include <stdio.h>
@@ -166,13 +163,11 @@ $GRAALVM_HOME/bin/gu install llvm-toolchain
 
 
 5. Compile the C application using `clang`. 
-
-     ```shell
-    $GRAALVM_HOME/languages/llvm/native/bin/clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
+    ```shell
+    $JAVA_HOME/languages/llvm/native/bin/clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
     ```
 
 6. Run the C application by passing a string as an argument. For example:
-    
     ```shell
     ./main USER
     ```

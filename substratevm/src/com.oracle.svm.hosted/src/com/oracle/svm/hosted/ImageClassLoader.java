@@ -161,7 +161,7 @@ public final class ImageClassLoader {
         try {
             initialAnnotationData = classAnnotationData.get(clazz);
         } catch (IllegalAccessException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
 
         boolean inPlatform = true;
@@ -218,7 +218,7 @@ public final class ImageClassLoader {
              */
             assert classAnnotationData.get(clazz) == initialAnnotationData;
         } catch (IllegalAccessException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -67,14 +67,14 @@ public final class BitScanReverseNode extends UnaryNode implements ArithmeticLIR
         int min;
         int max;
         long mask = CodeUtil.mask(valueStamp.getBits());
-        int lastAlwaysSetBit = scan(valueStamp.downMask() & mask);
+        int lastAlwaysSetBit = scan(valueStamp.mustBeSet() & mask);
         if (lastAlwaysSetBit == -1) {
-            int firstMaybeSetBit = BitScanForwardNode.scan(valueStamp.upMask() & mask);
+            int firstMaybeSetBit = BitScanForwardNode.scan(valueStamp.mayBeSet() & mask);
             min = firstMaybeSetBit;
         } else {
             min = lastAlwaysSetBit;
         }
-        int lastMaybeSetBit = scan(valueStamp.upMask() & mask);
+        int lastMaybeSetBit = scan(valueStamp.mayBeSet() & mask);
         max = lastMaybeSetBit;
         return StampFactory.forInteger(JavaKind.Int, min, max);
     }

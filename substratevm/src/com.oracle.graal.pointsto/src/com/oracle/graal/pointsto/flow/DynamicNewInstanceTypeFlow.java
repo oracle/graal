@@ -71,6 +71,11 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     }
 
     @Override
+    public boolean needsInitialization() {
+        return true;
+    }
+
+    @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
         /* The state of the new type provider has changed. */
         TypeState newTypeState = newTypeFlow.getState();

@@ -56,6 +56,8 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.DSLSupport.SpecializationDataNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -108,6 +110,15 @@ public final class InlineSupport {
         field0.validate(node);
         return true;
     }
+
+    private static String getEnclosingSimpleName(Class<?> c) {
+        if (c.getEnclosingClass() != null) {
+            return getEnclosingSimpleName(c.getEnclosingClass()) + "." + c.getSimpleName();
+        }
+        return c.getSimpleName();
+    }
+
+    static final ReferenceField<Node> PARENT = new ReferenceField<>(Node.class, Node.class, DSLAccessor.nodeAccessor().nodeLookup(), "parent", Node.class);
 
     /**
      * Used to specify fields for node object inlining in inline methods for the {@link InlineTarget
@@ -344,49 +355,12 @@ public final class InlineSupport {
     @SuppressWarnings({"static-method"})
     public abstract static class InlinableField extends UnsafeField {
 
-        final ReferenceField<Node> parentField;
-
         InlinableField(Class<?> receiverClass, Class<?> declaringClass, Lookup declaringLookup, String fieldName, Class<?> valueClass) {
             super(receiverClass, declaringClass, declaringLookup, fieldName, valueClass);
-            this.parentField = null;
-        }
-
-        InlinableField(InlinableField prev, Class<? extends Node> parentClass) {
-            super(prev);
-            this.parentField = new ReferenceField<>(parentClass, Node.class, DSLAccessor.nodeAccessor().nodeLookup(), "parent", Node.class);
         }
 
         InlinableField(InlinableField prev) {
             super(prev);
-            this.parentField = prev.parentField;
-        }
-
-        final Object resolveReceiver(Node node) {
-            CompilerAsserts.partialEvaluationConstant(this);
-            CompilerAsserts.partialEvaluationConstant(node);
-
-            // produces better error messages when assertions are enabled.
-            Node receiver = node;
-            if (parentField != null) {
-                receiver = resolveParent(receiver);
-            }
-            return receiver;
-        }
-
-        @ExplodeLoop
-        private Node resolveParent(Node node) {
-            Node receiver = node;
-            do {
-                receiver = parentField.get(receiver);
-            } while (receiver != null && !receiverClass.isInstance(receiver));
-            return receiver;
-        }
-
-        private static String getEnclosingSimpleName(Class<?> c) {
-            if (c.getEnclosingClass() != null) {
-                return getEnclosingSimpleName(c.getEnclosingClass()) + "." + c.getSimpleName();
-            }
-            return c.getSimpleName();
         }
 
         /**
@@ -398,24 +372,9 @@ public final class InlineSupport {
         public final boolean validate(Node node) {
             // this receiver class is more precise than the
             // var handle type, so this produces better errors.
-            validateImpl(resolveReceiver(node));
+            resolveReceiver(node);
             // return boolean for convenient use in assertions
             return true;
-        }
-
-        static RuntimeException invalidAccessError(Class<?> expectedClass, Object node) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (node == null) {
-                throw new NullPointerException(formatInvalidAccessError(expectedClass, node));
-            } else {
-                throw new ClassCastException(formatInvalidAccessError(expectedClass, node));
-            }
-        }
-
-        private static String formatInvalidAccessError(Class<?> expectedClass, Object node) {
-            return String.format("Invalid parameter type passed to updater. Instance of type '%s' expected but was '%s'. " + //
-                            "Did you pass the wrong node to an execute method of an inlined cached node?",
-                            getEnclosingSimpleName(expectedClass), node != null ? getEnclosingSimpleName(node.getClass()) : "null");
         }
 
         static RuntimeException invalidValue(Class<?> expectedClass, Object value) {
@@ -452,13 +411,6 @@ public final class InlineSupport {
             this.bitMask = computeMask(bitOffset, length);
         }
 
-        StateField(StateField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-            this.bitOffset = prev.bitOffset;
-            this.bitLength = prev.bitLength;
-            this.bitMask = prev.bitMask;
-        }
-
         private static int computeMask(int offset, int length) {
             int mask = 0;
             for (int i = offset; i < offset + length; i++) {
@@ -473,9 +425,11 @@ public final class InlineSupport {
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public StateField createParentAccessor(Class<? extends Node> parentClass) {
-            return new StateField(this, parentClass);
+        @Deprecated
+        public StateField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -507,7 +461,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public int get(Node node) {
-            return (getInt(resolveReceiver(node)) & bitMask) >>> bitOffset;
+            return (getInt(node) & bitMask) >>> bitOffset;
         }
 
         /**
@@ -520,7 +474,7 @@ public final class InlineSupport {
          */
         public void set(Node node, int value) {
             assert noBitsLost(value);
-            Object receiver = resolveReceiver(node);
+            Object receiver = node;
             int newState = getInt(receiver) & ~bitMask | ((value << bitOffset) & bitMask);
             setInt(receiver, newState);
         }
@@ -563,19 +517,17 @@ public final class InlineSupport {
             super(receiverClass, lookupFieldClass, declaringLookup, fieldName, valueClass);
         }
 
-        ReferenceField(ReferenceField<T> prev, Class<? extends Node> pclass) {
-            super(prev, pclass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public ReferenceField<T> createParentAccessor(Class<? extends Node> parentClass) {
-            return new ReferenceField<>(this, parentClass);
+        @Deprecated
+        public ReferenceField<T> createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -588,7 +540,7 @@ public final class InlineSupport {
          */
         @SuppressWarnings("unchecked")
         public T get(Node node) {
-            return (T) getObject(resolveReceiver(node));
+            return (T) getObject(node);
         }
 
         /**
@@ -600,7 +552,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, T value) {
-            setObject(resolveReceiver(node), value);
+            setObject(node, value);
         }
 
         /**
@@ -613,7 +565,7 @@ public final class InlineSupport {
          */
         @SuppressWarnings("unchecked")
         public T getVolatile(Node node) {
-            return (T) getObjectVolatile(resolveReceiver(node));
+            return (T) getObjectVolatile(node);
         }
 
         /**
@@ -625,7 +577,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public boolean compareAndSet(Node node, T expect, T update) {
-            return compareAndSetObject(resolveReceiver(node), expect, update);
+            return compareAndSetObject(node, expect, update);
         }
 
         /**
@@ -654,19 +606,17 @@ public final class InlineSupport {
             super(lookup.lookupClass(), lookup.lookupClass(), lookup, fieldName, boolean.class);
         }
 
-        BooleanField(BooleanField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public BooleanField createParentAccessor(Class<? extends Node> parentClass) {
-            return new BooleanField(this, parentClass);
+        @Deprecated
+        public BooleanField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -678,7 +628,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public boolean get(Node node) {
-            return getBoolean(resolveReceiver(node));
+            return getBoolean(node);
         }
 
         /**
@@ -690,7 +640,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, boolean value) {
-            setBoolean(resolveReceiver(node), value);
+            setBoolean(node, value);
         }
 
         /**
@@ -718,19 +668,17 @@ public final class InlineSupport {
             super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, byte.class);
         }
 
-        ByteField(ByteField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public ByteField createParentAccessor(Class<? extends Node> parentClass) {
-            return new ByteField(this, parentClass);
+        @Deprecated
+        public ByteField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -742,7 +690,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public byte get(Node node) {
-            return getByte(resolveReceiver(node));
+            return getByte(node);
         }
 
         /**
@@ -754,7 +702,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, byte value) {
-            setByte(resolveReceiver(node), value);
+            setByte(node, value);
         }
 
         /**
@@ -782,19 +730,17 @@ public final class InlineSupport {
             super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, short.class);
         }
 
-        ShortField(ShortField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public ShortField createParentAccessor(Class<? extends Node> parentClass) {
-            return new ShortField(this, parentClass);
+        @Deprecated
+        public ShortField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -806,7 +752,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public short get(Node node) {
-            return getShort(resolveReceiver(node));
+            return getShort(node);
         }
 
         /**
@@ -818,7 +764,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, short value) {
-            setShort(resolveReceiver(node), value);
+            setShort(node, value);
         }
 
         /**
@@ -846,19 +792,17 @@ public final class InlineSupport {
             super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, char.class);
         }
 
-        CharField(CharField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public CharField createParentAccessor(Class<? extends Node> parentClass) {
-            return new CharField(this, parentClass);
+        @Deprecated
+        public CharField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -870,7 +814,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public char get(Node node) {
-            return getChar(resolveReceiver(node));
+            return getChar(node);
         }
 
         /**
@@ -882,7 +826,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, char value) {
-            setChar(resolveReceiver(node), value);
+            setChar(node, value);
         }
 
         /**
@@ -910,19 +854,17 @@ public final class InlineSupport {
             super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, float.class);
         }
 
-        FloatField(FloatField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public FloatField createParentAccessor(Class<? extends Node> parentClass) {
-            return new FloatField(this, parentClass);
+        @Deprecated
+        public FloatField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -934,7 +876,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public float get(Node node) {
-            return getFloat(resolveReceiver(node));
+            return getFloat(node);
         }
 
         /**
@@ -946,7 +888,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, float value) {
-            setFloat(resolveReceiver(node), value);
+            setFloat(node, value);
         }
 
         /**
@@ -974,19 +916,17 @@ public final class InlineSupport {
             super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, int.class);
         }
 
-        IntField(IntField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public IntField createParentAccessor(Class<? extends Node> parentClass) {
-            return new IntField(this, parentClass);
+        @Deprecated
+        public IntField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -998,7 +938,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public int get(Node node) {
-            return getInt(resolveReceiver(node));
+            return getInt(node);
         }
 
         /**
@@ -1010,7 +950,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, int value) {
-            setInt(resolveReceiver(node), value);
+            setInt(node, value);
         }
 
         /**
@@ -1038,19 +978,17 @@ public final class InlineSupport {
             super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, long.class);
         }
 
-        LongField(LongField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public LongField createParentAccessor(Class<? extends Node> parentClass) {
-            return new LongField(this, parentClass);
+        @Deprecated
+        public LongField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -1062,7 +1000,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public long get(Node node) {
-            return getLong(resolveReceiver(node));
+            return getLong(node);
         }
 
         /**
@@ -1074,7 +1012,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, long value) {
-            setLong(resolveReceiver(node), value);
+            setLong(node, value);
         }
 
         /**
@@ -1102,19 +1040,17 @@ public final class InlineSupport {
             super(declaringLookup.lookupClass(), declaringLookup.lookupClass(), declaringLookup, fieldName, double.class);
         }
 
-        DoubleField(DoubleField prev, Class<? extends Node> parentClass) {
-            super(prev, parentClass);
-        }
-
         /**
          * This method creates a parent accessor field. A parent accessor allows access to a field
          * through a parent pointer. The given class must exactly match the given receiver. This
          * method is intended to be used by the DSL-generated code.
          *
          * @since 23.0
+         * @deprecated in 23.1 - no longer needed
          */
-        public DoubleField createParentAccessor(Class<? extends Node> parentClass) {
-            return new DoubleField(this, parentClass);
+        @Deprecated
+        public DoubleField createParentAccessor(@SuppressWarnings("unused") Class<? extends Node> parentClass) {
+            return this;
         }
 
         /**
@@ -1126,7 +1062,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public double get(Node node) {
-            return getDouble(resolveReceiver(node));
+            return getDouble(node);
         }
 
         /**
@@ -1138,7 +1074,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, double value) {
-            setDouble(resolveReceiver(node), value);
+            setDouble(node, value);
         }
 
         /**
@@ -1211,12 +1147,12 @@ public final class InlineSupport {
                 throw new IllegalArgumentException(String.format("Expected field type %s, but got %s. ",
                                 valueClass.getName(), fieldClass.getName()));
             }
+
             if (!declaringClass.isAssignableFrom(receiverClass)) {
                 throw new AssertionError(String.format("Receiver class %s is not assignable to the declaring class %s.",
                                 receiverClass.getName(),
                                 declaringClass.getName()));
             }
-
             final int modifiers = field.getModifiers();
             if (Modifier.isFinal(modifiers)) {
                 throw new IllegalArgumentException("Must not be final field");
@@ -1225,11 +1161,87 @@ public final class InlineSupport {
             this.offset = U.objectFieldOffset(field);
         }
 
-        final boolean validateImpl(Object node) {
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
+        final Object resolveReceiver(Object node) {
+            CompilerAsserts.partialEvaluationConstant(this);
+            CompilerAsserts.partialEvaluationConstant(node);
+            Object value;
+            if (receiverClass.isInstance(node)) {
+                // fast common path
+                value = node;
+            } else {
+                // slow path with parent resolve
+                value = resolveReceiverWithParents(node);
+            }
+            return receiverClass.cast(value);
+        }
+
+        /**
+         * Lookups up the parent {@link SpecializationDataNode} instances to find the correct
+         * receiver.
+         */
+        @ExplodeLoop
+        private Object resolveReceiverWithParents(Object node) {
+            Node receiver = (Node) node;
+            while (receiver != null) {
+                assert validateForParentLookup(node, receiver);
+                receiver = PARENT.getParent(receiver);
+                if (receiverClass.isInstance(receiver)) {
+                    break;
+                }
+            }
+
+            if (receiver == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw nullError(node);
+            }
+            return receiver;
+        }
+
+        /**
+         * Validates that we are allowed to do a parent lookup for the inline context. Parent
+         * lookups are only allowed for all instances of {@link SpecializationDataNode} generated by
+         * the DSL. Any further parent lookups are invalid.
+         */
+        @TruffleBoundary
+        private boolean validateForParentLookup(Object inlineTarget, Node parent) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return true;
+            }
+            if (parent == null) {
+                return true;
+            }
+            /*
+             * If the inline context is a specialization data node we can check that all consecutive
+             * nodes in the parent chain are specialization data classes too. If code has not yet
+             * been recompiled with the latest DSL version we do not provide bad errors.
+             */
+            if (inlineTarget instanceof SpecializationDataNode) {
+                if (!(parent instanceof SpecializationDataNode)) {
+                    throw invalidReceiver(inlineTarget);
+                }
             }
             return true;
+        }
+
+        private RuntimeException nullError(Object node) {
+            if (node == null) {
+                throw nullReceiver(node);
+            } else {
+                throw invalidReceiver(node);
+            }
+        }
+
+        private NullPointerException nullReceiver(Object node) {
+            return new NullPointerException(String.format(
+                            "Invalid inline context node passed to an inlined field. A receiver of type '%s' was expected but is null. " +
+                                            "Did you pass the wrong node to an execute method of an inlined cached node?",
+                            getEnclosingSimpleName(receiverClass)));
+        }
+
+        private RuntimeException invalidReceiver(Object inlineTarget) {
+            throw new ClassCastException(String.format("Invalid inline context node passed to an inlined field. A receiver of type '%s' was expected but is '%s'. " + //
+                            "Did you pass the wrong node to an execute method of an inlined cached node?",
+                            getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(((Node) inlineTarget).getClass())));
         }
 
         final Class<?> getFieldClass() {
@@ -1237,209 +1249,97 @@ public final class InlineSupport {
         }
 
         final boolean getBoolean(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getBoolean(useNode, offset);
+            return U.getBoolean(resolveReceiver(node), offset);
         }
 
         final byte getByte(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getByte(useNode, offset);
+            return U.getByte(resolveReceiver(node), offset);
         }
 
         final short getShort(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getShort(useNode, offset);
+            return U.getShort(resolveReceiver(node), offset);
         }
 
         final char getChar(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getChar(useNode, offset);
+            return U.getChar(resolveReceiver(node), offset);
         }
 
         final int getInt(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getInt(useNode, offset);
+            return U.getInt(resolveReceiver(node), offset);
         }
 
         final float getFloat(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getFloat(useNode, offset);
+            return U.getFloat(resolveReceiver(node), offset);
         }
 
         final long getLong(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getLong(useNode, offset);
+            return U.getLong(resolveReceiver(node), offset);
         }
 
         final double getDouble(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getDouble(useNode, offset);
+            return U.getDouble(resolveReceiver(node), offset);
         }
 
         final Object getObject(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getObject(useNode, offset);
+            return U.getObject(resolveReceiver(node), offset);
+        }
+
+        /**
+         * A get object without parent resolution, when walking parents.
+         */
+        final Node getParent(Node node) {
+            assert this == PARENT;
+            return (Node) U.getObject(node, offset);
         }
 
         final void setBoolean(Object node, boolean v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            U.putBoolean(useNode, offset, v);
+            U.putBoolean(resolveReceiver(node), offset, v);
         }
 
         final void setByte(Object node, byte v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            U.putByte(useNode, offset, v);
+            U.putByte(resolveReceiver(node), offset, v);
         }
 
         final void setShort(Object node, short v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            U.putShort(useNode, offset, v);
+            U.putShort(resolveReceiver(node), offset, v);
         }
 
         final void setChar(Object node, char v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            U.putChar(useNode, offset, v);
+            U.putChar(resolveReceiver(node), offset, v);
         }
 
         final void setInt(Object node, int v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            U.putInt(useNode, offset, v);
+            U.putInt(resolveReceiver(node), offset, v);
         }
 
         final void setFloat(Object node, float v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            U.putFloat(useNode, offset, v);
+            U.putFloat(resolveReceiver(node), offset, v);
         }
 
         final void setLong(Object node, long v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            U.putLong(useNode, offset, v);
+            U.putLong(resolveReceiver(node), offset, v);
         }
 
         final void setDouble(Object node, double v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            U.putDouble(useNode, offset, v);
+            U.putDouble(resolveReceiver(node), offset, v);
         }
 
         final void setObject(Object node, Object v) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
             if (!fieldClass.isInstance(v) && v != null) {
                 throw InlinableField.invalidValue(fieldClass, v);
             }
-            U.putObject(useNode, offset, v);
+            U.putObject(resolveReceiver(node), offset, v);
         }
 
         final Object getObjectVolatile(Object node) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
-            return U.getObjectVolatile(useNode, offset);
+            return U.getObjectVolatile(resolveReceiver(node), offset);
         }
 
         final boolean compareAndSetObject(Object node, Object expect, Object update) {
-            Object useNode;
-            if (node == null || !receiverClass.isInstance(node)) {
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            } else {
-                useNode = receiverClass.cast(node);
-            }
             if (!fieldClass.isInstance(update) && update != null) {
                 throw InlinableField.invalidValue(fieldClass, update);
             }
-            return U.compareAndSwapObject(useNode, offset, expect, update);
+            return U.compareAndSwapObject(resolveReceiver(node), offset, expect, update);
         }
 
         private static sun.misc.Unsafe getUnsafe() {
@@ -1487,39 +1387,23 @@ public final class InlineSupport {
             return handle.varType();
         }
 
-        /*
-         * For method handles only an assertion is needed on the fast-path for it to be safe.
-         */
-        final boolean validateImpl(Object node) {
-            if (!receiverClass.isInstance(node)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw InlinableField.invalidAccessError(receiverClass, node);
-            }
-            return true;
-        }
-
         final boolean getBoolean(Object node) {
-            assert validateImpl(node);
             return (boolean) handle.get(node);
         }
 
         final byte getByte(Object node) {
-            assert validateImpl(node);
             return (byte) handle.get(node);
         }
 
         final short getShort(Object node) {
-            assert validateImpl(node);
             return (short) handle.get(node);
         }
 
         final char getChar(Object node) {
-            assert validateImpl(node);
             return (char) handle.get(node);
         }
 
         final int getInt(Object node) {
-            assert validateImpl(node);
             return (int) handle.get(node);
         }
 
@@ -1528,72 +1412,58 @@ public final class InlineSupport {
         }
 
         final long getLong(Object node) {
-            assert validateImpl(node);
             return (long) handle.get(node);
         }
 
         final double getDouble(Object node) {
-            assert validateImpl(node);
             return (double) handle.get(node);
         }
 
         final void setBoolean(Object node, boolean v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setByte(Object node, byte v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setShort(Object node, short v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setChar(Object node, char v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setInt(Object node, int v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setFloat(Object node, float v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setLong(Object node, long v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setDouble(Object node, double v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final void setObject(Object node, Object v) {
-            assert validateImpl(node);
             handle.set(node, v);
         }
 
         final Object getObject(Object node) {
-            assert validateImpl(node);
             return handle.get(node);
         }
 
         final Object getObjectVolatile(Object node) {
-            assert validateImpl(node);
             return handle.getVolatile(node);
         }
 
         final boolean compareAndSetObject(Object node, Object expect, Object update) {
-            assert validateImpl(node);
             return handle.compareAndSet(node, expect, update);
         }
 

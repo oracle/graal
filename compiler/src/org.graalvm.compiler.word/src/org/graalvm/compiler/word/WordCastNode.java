@@ -81,6 +81,10 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         return new WordCastNode(stamp, input);
     }
 
+    public static WordCastNode wordToTypedObject(ValueNode input, Stamp stamp) {
+        return new WordCastNode(stamp, input);
+    }
+
     public static WordCastNode addressToWord(ValueNode input, JavaKind wordKind) {
         assert input.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp;
         return new WordCastNode(StampFactory.forKind(wordKind), input);
@@ -170,7 +174,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
         }
 
         assert !stamp.isCompatible(input.stamp(NodeView.DEFAULT));
-        if (input.isConstant()) {
+        if (input.isJavaConstant()) {
             /* Null pointers are uncritical for GC, so they can be constant folded. */
             if (input.asJavaConstant().isNull()) {
                 return ConstantNode.forIntegerStamp(stamp, 0);

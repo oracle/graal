@@ -28,13 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 
 @TargetClass(className = "sun.reflect.annotation.AnnotationInvocationHandler")
 public final class Target_sun_reflect_annotation_AnnotationInvocationHandler {
@@ -49,7 +45,6 @@ public final class Target_sun_reflect_annotation_AnnotationInvocationHandler {
     static native String toSourceString(double clazz);
 
     @Alias
-    @TargetElement(onlyWith = JDK17OrLater.class)
     static native String toSourceString(byte clazz);
 
     @Alias
@@ -79,7 +74,7 @@ public final class Target_sun_reflect_annotation_AnnotationInvocationHandler {
                 return toSourceString((float) value);
             } else if (type == Long.class) {
                 return toSourceString((long) value);
-            } else if (JavaVersionUtil.JAVA_SPEC >= 17 && type == Byte.class) {
+            } else if (type == Byte.class) {
                 return toSourceString((byte) value);
             } else {
                 return value.toString();
@@ -127,11 +122,7 @@ class Util_sun_reflect_annotation_AnnotationInvocationHandler {
     static List<String> convert(byte[] values) {
         List<String> list = new ArrayList<>(values.length);
         for (byte b : values) {
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                list.add(Target_sun_reflect_annotation_AnnotationInvocationHandler.toSourceString(b));
-            } else {
-                list.add(Byte.toString(b));
-            }
+            list.add(Target_sun_reflect_annotation_AnnotationInvocationHandler.toSourceString(b));
         }
         return list;
     }

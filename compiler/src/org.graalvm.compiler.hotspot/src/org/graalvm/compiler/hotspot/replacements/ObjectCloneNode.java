@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
@@ -83,14 +84,18 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void lower(LoweringTool tool) {
         StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
 
         if (replacementGraph != null) {
             // Replace this node with an invoke but disable verification of the stamp since the
             // invoke only exists for the purpose of performing the inling.
-            InvokeNode invoke = createInvoke(false);
-            graph().replaceFixedWithFixed(this, invoke);
+            InvokeNode invoke;
+            try (InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph().getInliningLog(), this)) {
+                invoke = createInvoke(false);
+                graph().replaceFixedWithFixed(this, invoke);
+            }
 
             // Pull out the receiver null check so that a replaced
             // receiver can be lowered if necessary
@@ -131,7 +136,7 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
                     assert getConcreteType(stamp(NodeView.DEFAULT)) != null;
                     return MacroInvokable.lowerReplacement(graph(), (StructuredGraph) snippetGraph.copy(getDebug()), tool);
                 }
-                GraalError.shouldNotReachHere("unhandled array type " + type.getComponentType().getJavaKind());
+                GraalError.shouldNotReachHere("unhandled array type " + type.getComponentType().getJavaKind()); // ExcludeFromJacocoGeneratedReport
             } else {
                 Assumptions assumptions = graph().getAssumptions();
                 type = getConcreteType(getObject().stamp(NodeView.DEFAULT));

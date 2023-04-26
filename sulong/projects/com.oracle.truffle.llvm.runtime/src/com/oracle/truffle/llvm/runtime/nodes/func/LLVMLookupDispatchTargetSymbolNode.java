@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -45,9 +46,9 @@ public abstract class LLVMLookupDispatchTargetSymbolNode extends LLVMExpressionN
         this.function = function;
     }
 
-    @Specialization(guards = {"code != null", "code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath()"}, assumptions = "function.getFixedCodeAssumption()")
+    @Specialization(guards = {"function.getFixedCodeAssumption().isValid()", "code != null", "code.isLLVMIRFunction() || code.isIntrinsicFunctionSlowPath()"})
     protected LLVMFunctionCode getCode(
-                    @Cached("function.getFixedCode()") LLVMFunctionCode code) {
+                    @Bind("function.getFixedCode()") LLVMFunctionCode code) {
         return code;
     }
 

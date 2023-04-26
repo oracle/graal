@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,7 +75,7 @@ public class BaseInterop {
     @ExportMessage
     public static boolean isMetaObject(StaticObject object) {
         object.checkNotForeign();
-        return !isNull(object) && object.getKlass() == object.getKlass().getMeta().java_lang_Class;
+        return !isNull(object) && object.isMirrorKlass();
     }
 
     @ExportMessage
@@ -130,6 +130,55 @@ public class BaseInterop {
         throw UnsupportedMessageException.create();
     }
 
+    @ExportMessage
+    public static boolean hasMetaParents(StaticObject object) {
+        if (object.isForeignObject()) {
+            return false;
+        }
+        if (isMetaObject(object)) {
+            Klass mirrorKlass = object.getMirrorKlass();
+            if (mirrorKlass.isInterface()) {
+                return mirrorKlass.getSuperInterfaces().length > 0;
+            }
+            return !mirrorKlass.isPrimitive() && mirrorKlass != object.getKlass().getMeta().java_lang_Object;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    public static Object getMetaParents(StaticObject object,
+                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+        object.checkNotForeign();
+
+        if (hasMetaParents(object)) {
+            Klass klass = object.getMirrorKlass();
+            StaticObject[] result;
+            if (klass.isInterface()) {
+                Klass[] superInterfaces = klass.getSuperInterfaces();
+                result = new StaticObject[superInterfaces.length];
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i] = superInterfaces[i].mirror();
+                }
+            } else {
+                Klass superClass = klass.getSuperKlass();
+                Klass[] superInterfaces = klass.getSuperInterfaces();
+
+                result = new StaticObject[superInterfaces.length + 1];
+                // put the super class first in array
+                result[0] = superClass.mirror();
+                // then all interfaces
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i + 1] = superInterfaces[i].mirror();
+                }
+            }
+            return StaticObject.wrap(result, object.getKlass().getMeta());
+        }
+
+        error.enter();
+        throw UnsupportedMessageException.create();
+    }
+
     // endregion ### Meta-objects
 
     // region ### Identity/hashCode
@@ -162,27 +211,6 @@ public class BaseInterop {
     }
 
     // endregion ### Identity/hashCode
-
-    // region ### Exceptions
-
-    @ExportMessage
-    public static boolean isException(StaticObject object) {
-        object.checkNotForeign();
-        return !isNull(object) && instanceOf(object, object.getKlass().getMeta().java_lang_Throwable);
-    }
-
-    @ExportMessage
-    public static RuntimeException throwException(StaticObject object,
-                    @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
-        object.checkNotForeign();
-        if (isException(object)) {
-            throw object.getKlass().getMeta().throwException(object);
-        }
-        error.enter();
-        throw UnsupportedMessageException.create();
-    }
-
-    // endregion ### Exceptions
 
     // region ### Language/DisplayString
 

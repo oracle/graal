@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.nodes.cfg;
 
 import static org.graalvm.compiler.core.common.cfg.BasicBlock.BLOCK_ID_COMPARATOR;
-import static org.graalvm.compiler.core.common.cfg.BasicBlock.safeCast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +33,6 @@ import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
-import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BasicBlockSet;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
@@ -62,8 +60,8 @@ import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.HIRBlock.UnmodifiableBlock;
 import org.graalvm.compiler.nodes.cfg.HIRBlock.ModifiableBlock;
+import org.graalvm.compiler.nodes.cfg.HIRBlock.UnmodifiableBlock;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -183,14 +181,15 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
     }
 
     private void identifyBlocks(boolean makeEditable) {
-        char numBlocks = 0;
+        int numBlocks = 0;
         for (AbstractBeginNode begin : graph.getNodes(AbstractBeginNode.TYPE)) {
             GraalError.guarantee(begin.predecessor() != null || (begin instanceof StartNode || begin instanceof AbstractMergeNode), "Disconnected control flow %s encountered", begin);
             HIRBlock block = makeEditable ? new ModifiableBlock(begin, this) : new UnmodifiableBlock(begin, this);
             identifyBlock(block);
             numBlocks++;
             if (numBlocks > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
-                throw new RetryableBailoutException("Graph too large to safely compile in reasonable time. Graph contains more than %d basic blocks", AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX);
+                throw new RetryableBailoutException("Graph too large to safely compile in reasonable time. Graph contains more than %d basic blocks",
+                                AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX);
             }
         }
         reversePostOrder = ReversePostOrder.identifyBlocks(this, numBlocks);
@@ -515,7 +514,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     if (!lv.allEndsVisited()) {
                         throw GraalError.shouldNotReachHere(
                                         "Loop ends should be visited before exits. This is a major error in the reverse post order of the control " +
-                                                        "flow graph of this method. This typically means wrongly specified control-split nodes have been processed in ReversePostOrder.java.");
+                                                        "flow graph of this method. This typically means wrongly specified control-split nodes have been processed in ReversePostOrder.java."); // ExcludeFromJacocoGeneratedReport
                     }
                     lv.exitsVisited++;
                     if (lv.loopFullyProcessed()) {
@@ -650,7 +649,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         HIRBlock[] stack = new HIRBlock[size];
         stack[0] = block;
         int tos = 0;
-        char myNumber = 0;
+        int myNumber = 0;
 
         do {
             HIRBlock cur = stack[tos];
@@ -668,9 +667,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     cur.setMaxChildDomNumber(myNumber);
                     --tos;
                 }
-                myNumber = BasicBlock.addExact(myNumber, 1);
+                myNumber = myNumber + 1;
             } else {
-                cur.setMaxChildDomNumber(safeCast(dominated.getMaxChildDominatorNumber()));
+                cur.setMaxChildDomNumber(dominated.getMaxChildDominatorNumber());
                 --tos;
             }
         } while (tos >= 0);
@@ -911,7 +910,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     if (succFrequency < selfFrequency - delta) {
                         String format = "Successors must add up for block %s with begin %s, selfF=%f succF=%f";
                         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, format, loopBlock, loopBlock.getBeginNode(), selfFrequency, succFrequency);
-                        throw GraalError.shouldNotReachHere(String.format(format, loopBlock, loopBlock.getBeginNode(), selfFrequency, succFrequency));
+                        throw GraalError.shouldNotReachHere(String.format(format, loopBlock, loopBlock.getBeginNode(), selfFrequency, succFrequency)); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }
@@ -938,7 +937,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                     final double frequencyDifference = Math.abs(predFrequency - otherLoopExitFrequencySum);
                     if (frequencyDifference > delta) {
                         graph.getDebug().dump(DebugContext.VERBOSE_LEVEL, graph, "Frequencies diverge too much");
-                        throw GraalError.shouldNotReachHere("Frequencies diverge too much");
+                        throw GraalError.shouldNotReachHere("Frequencies diverge too much"); // ExcludeFromJacocoGeneratedReport
                     }
                 }
             }

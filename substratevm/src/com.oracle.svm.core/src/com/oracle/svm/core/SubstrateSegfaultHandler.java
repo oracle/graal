@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,12 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -60,9 +62,6 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
-import java.util.Collections;
-import java.util.List;
-
 @AutomaticallyRegisteredFeature
 class SubstrateSegfaultHandlerFeature implements InternalFeature {
     @Override
@@ -89,7 +88,7 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
     public void execute(boolean isFirstIsolate) {
         if (isFirstIsolate) {
             Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
-            if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
+            if (SubstrateOptions.EnableSignalHandling.getValue() && optionValue != Boolean.FALSE) {
                 ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
             }
         }
@@ -98,7 +97,7 @@ final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
 
 public abstract class SubstrateSegfaultHandler {
     public static class Options {
-        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library.")//
+        @Option(help = "Install segfault handler that prints register contents and full Java stacktrace. Default: enabled for an executable, disabled for a shared library, disabled when EnableSignalHandling is disabled.")//
         static final RuntimeOptionKey<Boolean> InstallSegfaultHandler = new RuntimeOptionKey<>(null);
     }
 
@@ -124,7 +123,7 @@ public abstract class SubstrateSegfaultHandler {
     protected abstract void printSignalInfo(Log log, PointerBase signalInfo);
 
     /** Called from the platform dependent segfault handler to enter the isolate. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Thread state not set up yet.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
         // Check if we have sufficient information to enter the correct isolate.
@@ -179,11 +178,22 @@ public abstract class SubstrateSegfaultHandler {
             PointerBase ip = RegisterDumper.singleton().getIP(context);
             boolean printedDiagnostics = SubstrateDiagnostics.printFatalError(log, (Pointer) sp, (CodePointer) ip, context, false);
             if (printedDiagnostics) {
-                log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-                log.newline();
+                log.string("Segfault detected, aborting process. ")
+                                .string("Use '-XX:-InstallSegfaultHandler' to disable the segfault handler at run time and create a core dump instead. ")
+                                .string("Rebuild with '-R:-InstallSegfaultHandler' to disable the handler permanently at build time.") //
+                                .newline().newline();
             }
         }
         logHandler.fatalError();
+    }
+
+    protected static void printSegfaultAddressInfo(Log log, long addr) {
+        log.zhex(addr);
+        if (addr != 0) {
+            long delta = addr - CurrentIsolate.getIsolate().rawValue();
+            String sign = (delta >= 0 ? "+" : "-");
+            log.string("(heapBase ").string(sign).string(" ").signed(Math.abs(delta)).string(")");
+        }
     }
 
     static class SingleIsolateSegfaultSetup implements IsolateListener {

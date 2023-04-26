@@ -37,6 +37,8 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
+
 /**
  * This utility helps set up a build environment for Windows users automatically.
  */
@@ -47,11 +49,13 @@ class WindowsBuildEnvironmentUtil {
                     // prefer x64 location over x86
                     Paths.get("C:", "Program Files (x86)", "Microsoft Visual Studio")};
     private static final String[] KNOWN_VS_EDITIONS = {
-                    // prefer Enterprise over Professional over Community
-                    "Enterprise", "Professional", "Community"};
+                    // prefer Enterprise over Professional over Community over BuildTools
+                    "Enterprise", "Professional", "Community", "BuildTools"};
     private static final String VCVARSALL = "vcvarsall.bat";
     private static final Path VCVARSALL_SUBPATH = Paths.get("VC", "Auxiliary", "Build", VCVARSALL);
     private static final String OUTPUT_SEPARATOR = "!NEXTCOMMAND!";
+    // Use another static field for minimum required version because CCompilerInvoker is hosted only
+    private static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION = CCompilerInvoker.VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION;
 
     static void propagateEnv(Map<String, String> environment) {
         if (isCCompilerOnPath()) {
@@ -143,10 +147,9 @@ class WindowsBuildEnvironmentUtil {
     }
 
     private static Error fail(String reason, Throwable e) {
-        throw NativeImage.showError(reason + System.lineSeparator() +
-                        "Please make sure that Visual Studio 2017 version 15.5 or later (C/C++ Optimizing Compiler Version 19.12 or later) is installed on your system. " +
+        throw NativeImage.showError(String.format("%s%nPlease make sure that %s or later is installed on your system. " +
                         "You can download it at https://visualstudio.microsoft.com/downloads/. " +
                         "If this error persists, please try and run GraalVM Native Image in an x64 Native Tools Command Prompt or file a ticket.",
-                        e);
+                        reason, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION), e);
     }
 }

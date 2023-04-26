@@ -236,8 +236,8 @@ public class InstallTest extends CommandTestBase {
         ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
         storage.installed.add(fakeInfo);
 
-        URL u = new URL("test://graalvm.io/download/catalog");
-        URL u2 = new URL(u, "graalvm-ruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/catalog");
+        URL u2 = SystemUtils.toURL(u, "graalvm-ruby.zip");
 
         Handler.bind(u.toString(), getClass().getResource("catalog"));
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "0.33-dev");
@@ -272,8 +272,8 @@ public class InstallTest extends CommandTestBase {
         ComponentInfo fakeInfo = new ComponentInfo("ruby", "Fake ruby", "1.0");
         storage.installed.add(fakeInfo);
 
-        URL u = new URL("test://graalvm.io/download/catalog");
-        URL u2 = new URL(u, "graalvm-ruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/catalog");
+        URL u2 = SystemUtils.toURL(u, "graalvm-ruby.zip");
 
         Handler.bind(u.toString(), getClass().getResource("catalog"));
         Handler.bind(u2.toString(), getClass().getResource("graalvm-ruby.zip"));

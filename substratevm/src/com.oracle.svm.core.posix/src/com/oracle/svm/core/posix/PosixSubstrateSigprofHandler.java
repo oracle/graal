@@ -48,6 +48,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.IsolateListenerSupportFeature;
 import com.oracle.svm.core.RegisterDumper;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -64,6 +65,7 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.VMError;
 
 public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     private static final CEntryPointLiteral<Signal.AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(PosixSubstrateSigprofHandler.class,
@@ -88,6 +90,7 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     }
 
     private static void registerSigprofSignal(Signal.AdvancedSignalDispatcher dispatcher) {
+        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
         int structSigActionSize = SizeOf.get(Signal.sigaction.class);
         Signal.sigaction structSigAction = UnsafeStackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
@@ -95,20 +98,26 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
         /* Register sa_sigaction signal handler */
         structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER() | Signal.SA_RESTART());
         structSigAction.sa_sigaction(dispatcher);
+        /*
+         * Note this can race with other signals being installed. However, using Java
+         * synchronization is disallowed within a VMOperation. If race-free execution becomes
+         * necessary, then a VMMutex will be needed and additional code will need to be
+         * made @Uniterruptible so that a thread owning the VMMutex cannot block at a safepoint.
+         */
         Signal.sigaction(Signal.SignalEnum.SIGPROF.getCValue(), structSigAction, WordFactory.nullPointer());
     }
 
     @Override
     protected void updateInterval() {
-        updateInterval(newIntervalMillis);
+        updateInterval(TimeUtils.millisToMicros(newIntervalMillis));
     }
 
-    private static void updateInterval(long ms) {
+    public static void updateInterval(long us) {
         Time.itimerval newValue = UnsafeStackValue.get(Time.itimerval.class);
-        newValue.it_value().set_tv_sec(ms / TimeUtils.millisPerSecond);
-        newValue.it_value().set_tv_usec((ms % TimeUtils.millisPerSecond) * 1000);
-        newValue.it_interval().set_tv_sec(ms / TimeUtils.millisPerSecond);
-        newValue.it_interval().set_tv_usec((ms % TimeUtils.millisPerSecond) * 1000);
+        newValue.it_value().set_tv_sec(us / TimeUtils.microsPerSecond);
+        newValue.it_value().set_tv_usec(us % TimeUtils.microsPerSecond);
+        newValue.it_interval().set_tv_sec(us / TimeUtils.microsPerSecond);
+        newValue.it_interval().set_tv_usec(us % TimeUtils.microsPerSecond);
 
         int status = Time.NoTransitions.setitimer(Time.TimerTypeEnum.ITIMER_PROF, newValue, WordFactory.nullPointer());
         PosixUtils.checkStatusIs0(status, "setitimer(which, newValue, oldValue): wrong arguments.");

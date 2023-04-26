@@ -151,7 +151,7 @@ public final class SpeculationReasonGroup {
     public interface SpeculationContextObject {
         void accept(Visitor v);
 
-        public interface Visitor {
+        interface Visitor {
             void visitBoolean(boolean v);
 
             void visitByte(byte v);

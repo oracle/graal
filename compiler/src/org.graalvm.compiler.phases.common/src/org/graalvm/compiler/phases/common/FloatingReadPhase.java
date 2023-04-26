@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,10 +57,10 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
+import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.memory.AddressableMemoryAccess;
 import org.graalvm.compiler.nodes.memory.FloatableAccessNode;
@@ -276,7 +276,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
                     if (isPhi) {
                         // Fortify: Suppress Null Deference false positive (`isPhi == true` implies
                         // `merged != null`)
-                        ((MemoryPhiNode) merged).addInput(ValueNodeUtil.asNode(last));
+                        ((MemoryPhiNode) merged).addInput(ValueNodeInterface.asNode(last));
                     } else {
                         if (merged == last) {
                             // nothing to do
@@ -285,9 +285,9 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
                         } else {
                             MemoryPhiNode phi = merge.graph().addWithoutUnique(new MemoryPhiNode(merge, key));
                             for (int j = 0; j < mergedStatesCount; j++) {
-                                phi.addInput(ValueNodeUtil.asNode(merged));
+                                phi.addInput(ValueNodeInterface.asNode(merged));
                             }
-                            phi.addInput(ValueNodeUtil.asNode(last));
+                            phi.addInput(ValueNodeInterface.asNode(last));
                             merged = phi;
                             isPhi = true;
                         }
@@ -476,7 +476,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
                 while (phiCursor.advance()) {
                     LocationIdentity key = phiCursor.getKey();
                     PhiNode phi = phiCursor.getValue();
-                    phi.initializeValueAt(endIndex, ValueNodeUtil.asNode(endStateCursor.getValue().getLastLocationAccess(key)));
+                    phi.initializeValueAt(endIndex, ValueNodeInterface.asNode(endStateCursor.getValue().getLastLocationAccess(key)));
                 }
             }
             return loopInfo.exitStates;
@@ -486,7 +486,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         private static void createMemoryPhi(LoopBeginNode loop, MemoryMapImpl initialState, EconomicMap<LocationIdentity, MemoryPhiNode> phis, LocationIdentity location) {
             try (DebugCloseable position = loop.withNodeSourcePosition()) {
                 MemoryPhiNode phi = loop.graph().addWithoutUnique(new MemoryPhiNode(loop, location));
-                phi.addInput(ValueNodeUtil.asNode(initialState.getLastLocationAccess(location)));
+                phi.addInput(ValueNodeInterface.asNode(initialState.getLastLocationAccess(location)));
                 phis.put(location, phi);
             }
         }

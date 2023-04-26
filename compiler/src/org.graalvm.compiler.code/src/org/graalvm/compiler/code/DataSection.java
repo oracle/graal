@@ -103,12 +103,16 @@ public final class DataSection implements Iterable<Data> {
         @Override
         public int hashCode() {
             // Data instances should not be used as hash map keys
-            throw new UnsupportedOperationException("hashCode");
+            throw new UnsupportedOperationException("hashCode"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
         public String toString() {
             return identityHashCodeString(this);
+        }
+
+        public boolean isMutable() {
+            return false;
         }
 
         @Override
@@ -166,11 +170,6 @@ public final class DataSection implements Iterable<Data> {
                             ", constant=" + constant +
                             '}';
         }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(super.hashCode(), constant);
-        }
     }
 
     public static class ZeroData extends Data {
@@ -207,13 +206,6 @@ public final class DataSection implements Iterable<Data> {
             for (Data data : nested) {
                 data.emit(buffer, patches);
             }
-        }
-
-        @Override
-        public int hashCode() {
-            int result = super.hashCode();
-            result = 31 * result + Arrays.hashCode(nested);
-            return result;
         }
 
         @Override
@@ -291,13 +283,6 @@ public final class DataSection implements Iterable<Data> {
     }
 
     /**
-     * Determines if this object has been {@link #close closed}.
-     */
-    public boolean closed() {
-        return closed;
-    }
-
-    /**
      * Computes the layout of the data section and closes this object to further updates.
      *
      * This must be called exactly once.
@@ -309,7 +294,14 @@ public final class DataSection implements Iterable<Data> {
         closed = true;
 
         // simple heuristic: put items with larger alignment requirement first
-        dataItems.sort((a, b) -> a.alignment - b.alignment);
+        dataItems.sort((a, b) -> {
+            // Workaround JVMCI bug with nmethod entry barriers on aarch64 by forcing mutable data
+            // items at the beginning of the data section.
+            if (a.isMutable() != b.isMutable()) {
+                return Boolean.compare(b.isMutable(), a.isMutable());
+            }
+            return a.alignment - b.alignment;
+        });
 
         int position = 0;
         int alignment = 1;
@@ -335,7 +327,7 @@ public final class DataSection implements Iterable<Data> {
     /**
      * Gets the size of the data section.
      *
-     * This must only be called once this object has been {@linkplain #closed() closed}.
+     * This must only be called once this object has been {@linkplain #checkClosed() closed}.
      */
     public int getSectionSize() {
         checkClosed();
@@ -345,7 +337,7 @@ public final class DataSection implements Iterable<Data> {
     /**
      * Gets the minimum alignment requirement of the data section.
      *
-     * This must only be called once this object has been {@linkplain #closed() closed}.
+     * This must only be called once this object has been {@linkplain #checkClosed() closed}.
      */
     public int getSectionAlignment() {
         checkClosed();
@@ -355,7 +347,7 @@ public final class DataSection implements Iterable<Data> {
     /**
      * Builds the data section into a given buffer.
      *
-     * This must only be called once this object has been {@linkplain #closed() closed}.
+     * This must only be called once this object has been {@linkplain #checkClosed() closed}.
      *
      * @param buffer the {@link ByteBuffer} where the data section should be built. The buffer must
      *            hold at least {@link #getSectionSize()} bytes.
@@ -370,8 +362,8 @@ public final class DataSection implements Iterable<Data> {
     /**
      * Builds the data section into a given buffer.
      *
-     * This must only be called once this object has been {@linkplain #closed() closed}. When this
-     * method returns, the buffers' position is just after the last data item.
+     * This must only be called once this object has been {@linkplain #checkClosed() closed}. When
+     * this method returns, the buffers' position is just after the last data item.
      *
      * @param buffer the {@link ByteBuffer} where the data section should be built. The buffer must
      *            hold at least {@link #getSectionSize()} bytes.
@@ -389,10 +381,6 @@ public final class DataSection implements Iterable<Data> {
             d.emit(buffer, patch);
         }
         buffer.position(start + sectionSize);
-    }
-
-    public static void emit(ByteBuffer buffer, Data data, Patches patch) {
-        data.emit(buffer, patch);
     }
 
     @Override
@@ -425,13 +413,13 @@ public final class DataSection implements Iterable<Data> {
 
     private void checkClosed() {
         if (!closed) {
-            throw new IllegalStateException();
+            throw new IllegalStateException(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
     private void checkOpen() {
         if (closed) {
-            throw new IllegalStateException();
+            throw new IllegalStateException(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

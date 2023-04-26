@@ -36,7 +36,9 @@ import org.graalvm.compiler.bytecode.BridgeMethodUtils;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -57,6 +59,7 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -68,7 +71,6 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.LogicCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.java.ValueCompareAndSwapNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -78,6 +80,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.impl.WordFactoryOperation;
 
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -92,12 +95,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvokePlugin {
     protected final WordTypes wordTypes;
     protected final JavaKind wordKind;
+    private final BarrierSet barrierSet;
     protected final SnippetReflectionProvider snippetReflection;
+    protected final ConstantReflectionProvider constantReflection;
 
-    public WordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes) {
+    public WordOperationPlugin(SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, WordTypes wordTypes, BarrierSet barrierSet) {
+        this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.wordTypes = wordTypes;
         this.wordKind = wordTypes.getWordKind();
+        this.barrierSet = barrierSet;
+        assert barrierSet != null;
     }
 
     @Override
@@ -407,6 +415,18 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 b.push(returnKind, wordToObject);
                 break;
 
+            case TO_TYPED_OBJECT:
+                assert args.length == 3;
+                assert args[1].isConstant();
+                assert args[2].isConstant();
+                ResolvedJavaType type = constantReflection.asJavaType(args[1].asJavaConstant());
+                boolean nonNull = args[2].asJavaConstant().asInt() != 0;
+                TypeReference trusted = TypeReference.createTrustedWithoutAssumptions(type);
+                ObjectStamp stamp = StampFactory.object(trusted, nonNull);
+                WordCastNode wordToObjectTyped = b.add(WordCastNode.wordToTypedObject(args[0], stamp));
+                b.push(returnKind, wordToObjectTyped);
+                break;
+
             case TO_OBJECT_NON_NULL:
                 assert args.length == 1;
                 WordCastNode wordToObjectNonNull = b.add(WordCastNode.wordToObjectNonNull(args[0], wordKind));
@@ -476,7 +496,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     protected ValueNode readOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
         assert op == Opcode.READ_POINTER || op == Opcode.READ_OBJECT || op == Opcode.READ_BARRIERED;
-        final BarrierType barrier = (op == Opcode.READ_BARRIERED ? BarrierType.UNKNOWN : BarrierType.NONE);
+        final BarrierType barrier = (op == Opcode.READ_BARRIERED && readKind.isObject() ? barrierSet.readBarrierType(location, address, null) : BarrierType.NONE);
         final boolean compressible = (op == Opcode.READ_OBJECT || op == Opcode.READ_BARRIERED);
 
         return readOp(b, readKind, address, location, barrier, compressible);
@@ -494,7 +514,7 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     protected ValueNode readVolatileOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
         assert op == Opcode.READ_POINTER_VOLATILE || op == Opcode.READ_BARRIERED_VOLATILE;
-        final BarrierType barrier = op == Opcode.READ_BARRIERED_VOLATILE ? BarrierType.UNKNOWN : BarrierType.NONE;
+        final BarrierType barrier = op == Opcode.READ_BARRIERED_VOLATILE && readKind.isObject() ? barrierSet.readBarrierType(location, address, null) : BarrierType.NONE;
         final boolean compressible = op == Opcode.READ_BARRIERED_VOLATILE;
         /*
          * A JavaOrderedReadNode is lowered to an OrderedReadNode that will not float. This means it

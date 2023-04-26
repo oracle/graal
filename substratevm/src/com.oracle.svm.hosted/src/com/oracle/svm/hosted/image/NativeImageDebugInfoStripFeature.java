@@ -41,7 +41,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
@@ -65,11 +64,11 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
                 case ELF:
                     stripLinux(accessImpl);
                     break;
-                case MACH_O:
                 case PECOFF:
-                    if (SubstrateOptions.StripDebugInfo.hasBeenSet()) {
-                        System.out.println("Warning: Using " + SubstrateOptionsParser.commandArgument(SubstrateOptions.StripDebugInfo, "+") + " not supported on macOS and Windows");
-                    }
+                    // debug info is always "stripped" to a pdb file
+                    break;
+                case MACH_O:
+                    // Not supported. See warning in SubstrateOptions.validateStripDebugInfo
                     break;
                 default:
                     throw UserError.abort("Unsupported object file format");

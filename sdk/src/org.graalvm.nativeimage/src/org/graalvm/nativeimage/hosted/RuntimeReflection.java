@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,9 +73,20 @@ public final class RuntimeReflection {
     }
 
     /**
+     * Makes the provided class available for reflection at run time. A call to
+     * {@link Class#forName} for the name of the class will return the class (if it exists) or a
+     * {@link ClassNotFoundException} at run time.
+     *
+     * @since 23.0
+     */
+    public static void registerClassLookup(String className) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), className);
+    }
+
+    /**
      * Makes the provided methods available for reflection at run time. The methods will be returned
-     * by {@link Class#getMethod}, {@link Class#getMethods},and all the other methods on
-     * {@link Class} that return a single or a list of methods.
+     * by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and all the
+     * other methods on {@link Class} that return a single method.
      *
      * @since 19.0
      */
@@ -85,9 +96,9 @@ public final class RuntimeReflection {
 
     /**
      * Makes the provided methods available for reflection queries at run time. The methods will be
-     * returned by {@link Class#getMethod}, {@link Class#getMethods}, and all the other methods on
-     * {@link Class} that return a single or a list of methods, but will not be invocable and will
-     * not be considered reachable.
+     * returned by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and
+     * all the other methods on {@link Class} that return a single method, but will not be invocable
+     * and will not be considered reachable.
      *
      * @since 21.3
      */
@@ -96,14 +107,167 @@ public final class RuntimeReflection {
     }
 
     /**
+     * Makes the provided method available for reflection queries at run time. The method will be
+     * returned by {@link Class#getMethod}, {@link Class#getDeclaredMethod(String, Class[])}, and
+     * all the other methods on {@link Class} that return a single method, but will not be invocable
+     * and will not be considered reachable. If the method doesn't exist a
+     * {@link NoSuchMethodException} will be thrown when calling these methods at run-time.
+     *
+     * @since 23.0
+     */
+    public static void registerMethodLookup(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerMethodLookup(ConfigurationCondition.alwaysTrue(), declaringClass, methodName, parameterTypes);
+    }
+
+    /**
+     * Makes the provided constructor available for reflection queries at run time. The constructor
+     * will be returned by {@link Class#getConstructor},
+     * {@link Class#getDeclaredConstructor(Class[])}, and all the other methods on {@link Class}
+     * that return a single constructor, but will not be invocable and will not be considered
+     * reachable. If the constructor doesn't exist a {@link NoSuchMethodException} will be thrown
+     * when calling these methods at run-time.
+     *
+     * @since 23.0
+     */
+    public static void registerConstructorLookup(Class<?> declaringClass, Class<?>... parameterTypes) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerConstructorLookup(ConfigurationCondition.alwaysTrue(), declaringClass, parameterTypes);
+    }
+
+    /**
      * Makes the provided fields available for reflection at run time. The fields will be returned
-     * by {@link Class#getField}, {@link Class#getFields},and all the other methods on {@link Class}
-     * that return a single or a list of fields.
+     * by {@link Class#getField}, {@link Class#getDeclaredField(String)},and all the other methods
+     * on {@link Class} that return a single field.
      *
      * @since 19.0
      */
     public static void register(Field... fields) {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.alwaysTrue(), false, fields);
+    }
+
+    /**
+     * Makes the provided field available for reflection at run time. The field will be returned by
+     * {@link Class#getField}, {@link Class#getDeclaredField(String)}, and all the other methods on
+     * {@link Class} that return a single field. If the field doesn't exist a
+     * {@link NoSuchFieldException} will be thrown when calling these methods at run-time.
+     *
+     * @since 19.0
+     */
+    public static void registerFieldLookup(Class<?> declaringClass, String fieldName) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerFieldLookup(ConfigurationCondition.alwaysTrue(), declaringClass, fieldName);
+    }
+
+    /**
+     * Allows calling {@link Class#getClasses()} on the provided class at run time.
+     *
+     * @since 23.0
+     */
+    public static void registerAllClasses(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllClassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getDeclaredClasses()} on the provided class at run time.
+     *
+     * @since 23.0
+     */
+    public static void registerAllDeclaredClasses(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredClassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getMethods()} on the provided class at run time. The methods will
+     * also be registered for individual queries.
+     *
+     * @since 23.0
+     */
+    public static void registerAllMethods(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllMethodsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getDeclaredMethods()} on the provided class at run time. The
+     * methods will also be registered for individual queries.
+     *
+     * @since 23.0
+     */
+    public static void registerAllDeclaredMethods(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredMethodsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getConstructors()} on the provided class at run time. The
+     * constructors will also be registered for individual queries.
+     *
+     * @since 23.0
+     */
+    public static void registerAllConstructors(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getDeclaredConstructors()} on the provided class at run time. The
+     * constructors will also be registered for individual queries.
+     *
+     * @since 23.0
+     */
+    public static void registerAllDeclaredConstructors(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredConstructorsQuery(ConfigurationCondition.alwaysTrue(), true, declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getFields()} on the provided class at run time. The fields will
+     * also be registered for individual queries.
+     *
+     * @since 23.0
+     */
+    public static void registerAllFields(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllFieldsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getDeclaredFields()} on the provided class at run time. The
+     * fields will also be registered for individual queries.
+     *
+     * @since 23.0
+     */
+    public static void registerAllDeclaredFields(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllDeclaredFieldsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getNestMembers()} on the provided class at run time.
+     *
+     * @since 23.0
+     */
+    public static void registerAllNestMembers(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllNestMembersQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getPermittedSubclasses()} on the provided class at run time.
+     *
+     * @since 23.0
+     */
+    public static void registerAllPermittedSubclasses(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllPermittedSubclassesQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getRecordComponents()} on the provided class at run time.
+     *
+     * @since 23.0
+     */
+    public static void registerAllRecordComponents(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllRecordComponentsQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
+    }
+
+    /**
+     * Allows calling {@link Class#getSigners()} on the provided class at run time.
+     *
+     * @since 23.0
+     */
+    public static void registerAllSigners(Class<?> declaringClass) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerAllSignersQuery(ConfigurationCondition.alwaysTrue(), declaringClass);
     }
 
     /**

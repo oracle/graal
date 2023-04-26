@@ -62,6 +62,28 @@ import jdk.vm.ci.meta.Value;
  * The base class for an {@code LIRInstruction}.
  */
 public abstract class LIRInstruction {
+
+    /**
+     * Holder for LIR instructions with out-of-line slow path assembly.
+     */
+    public static class LIRInstructionSlowPath {
+        private final LIRInstruction op;
+        private final Runnable slowPath;
+
+        public LIRInstructionSlowPath(LIRInstruction op, Runnable slowPath) {
+            this.op = op;
+            this.slowPath = slowPath;
+        }
+
+        public void emitSlowPathCode() {
+            slowPath.run();
+        }
+
+        public LIRInstruction forOp() {
+            return op;
+        }
+    }
+
     /**
      * Constants denoting how a LIR instruction uses an operand.
      */
@@ -98,35 +120,35 @@ public abstract class LIRInstruction {
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Use {
+    public @interface Use {
 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Alive {
+    public @interface Alive {
 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Temp {
+    public @interface Temp {
 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface Def {
+    public @interface Def {
 
         OperandFlag[] value() default OperandFlag.REG;
     }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
-    public static @interface State {
+    public @interface State {
     }
 
     /**
@@ -170,7 +192,9 @@ public abstract class LIRInstruction {
          */
         UNINITIALIZED,
 
-        /** Outgoing block value. */
+        /**
+         * Outgoing block value.
+         */
         OUTGOING,
     }
 
@@ -351,6 +375,7 @@ public abstract class LIRInstruction {
     }
 
     // Checkstyle: stop
+
     /**
      * Returns {@code true} if the instruction is a {@link MoveOp}.
      *

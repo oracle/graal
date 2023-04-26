@@ -84,6 +84,7 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
         this(TYPE, descriptor, arguments);
     }
 
+    @SuppressWarnings("this-escape")
     protected ForeignCallWithExceptionNode(NodeClass<? extends ForeignCallWithExceptionNode> c, ForeignCallDescriptor descriptor, ValueNode... arguments) {
         super(c, StampFactory.forKind(JavaKind.fromJavaClass(descriptor.getResultType())));
         this.arguments = new NodeInputList<>(this, arguments);

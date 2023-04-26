@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 public interface ConstantFieldProvider {
 
-    public interface ConstantFieldTool<T> {
+    interface ConstantFieldTool<T> {
 
         OptionValues getOptions();
 

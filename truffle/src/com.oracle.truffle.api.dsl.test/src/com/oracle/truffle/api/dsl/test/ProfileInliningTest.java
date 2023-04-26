@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.test.ProfileInliningTestFactory.LoopConditionUsageNodeGen;
 import com.oracle.truffle.api.dsl.test.ProfileInliningTestFactory.UsageNodeGen;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -70,6 +71,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedIntValueProfile;
 import com.oracle.truffle.api.profiles.InlinedLongValueProfile;
+import com.oracle.truffle.api.profiles.InlinedLoopConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedProfile;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.api.profiles.LongValueProfile;
@@ -79,9 +81,18 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 public class ProfileInliningTest extends AbstractPolyglotTest {
 
     @Test
-    public void test() {
+    public void testCachedUsageNode() {
         UsageNode node = adoptNode(UsageNodeGen.create()).get();
+        testUsageNode(node);
+    }
 
+    @Test
+    public void testUncacheddUsageNode() {
+        UsageNode node = adoptNode(UsageNodeGen.create()).get();
+        testUsageNode(UsageNodeGen.getUncached());
+    }
+
+    private static void testUsageNode(UsageNode node) {
         assertEquals(true, node.execute(true));
         assertEquals(false, node.execute(false));
         assertEquals(true, node.execute(true));
@@ -102,6 +113,7 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
     }
 
     @GenerateCached(alwaysInlineCached = true)
+    @GenerateUncached
     @SuppressWarnings({"unused"})
     public abstract static class UsageNode extends Node {
 
@@ -159,6 +171,49 @@ public class ProfileInliningTest extends AbstractPolyglotTest {
             return p.profile(node, arg);
         }
 
+    }
+
+    @Test
+    public void testCachedLoopConditionUsageNode() {
+        testLoopConditionUsageNode(adoptNode(LoopConditionUsageNodeGen.create()).get());
+    }
+
+    @Test
+    public void testUncachedLoopConditionUsageNode() {
+        testLoopConditionUsageNode(LoopConditionUsageNodeGen.getUncached());
+    }
+
+    private static void testLoopConditionUsageNode(LoopConditionUsageNode node) {
+        assertEquals(true, node.execute(true));
+        assertEquals(false, node.execute(false));
+    }
+
+    @GenerateCached(alwaysInlineCached = true)
+    @GenerateUncached
+    @SuppressWarnings({"unused"})
+    public abstract static class LoopConditionUsageNode extends Node {
+
+        abstract Object execute(Object arg);
+
+        @Specialization(guards = "triggerGuards(arg, g)", limit = "1")
+        @TruffleBoundary
+        final Object doBoolean(boolean arg,
+                        @Cached InlinedLoopConditionProfile g,
+                        @Cached InlinedLoopConditionProfile p) {
+            assertFalse(isUninitialized(this, g));
+            triggerGuards(arg, p);
+
+            assertFalse(isUninitialized(this, p));
+            return arg;
+        }
+
+        @TruffleBoundary
+        boolean triggerGuards(boolean arg, InlinedLoopConditionProfile p) {
+            p.profileCounted(this, 1);
+            p.inject(this, arg);
+            p.profile(this, arg);
+            return true;
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)

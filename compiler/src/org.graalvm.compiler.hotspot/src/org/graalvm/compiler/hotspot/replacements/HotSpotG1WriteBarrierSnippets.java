@@ -85,7 +85,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
     }
 
     @Override
-    protected int objectArrayIndexScale() {
+    protected long objectArrayIndexScale() {
         return ReplacementsUtil.arrayIndexScale(INJECTED_METAACCESS, JavaKind.Object);
     }
 
@@ -195,6 +195,7 @@ public final class HotSpotG1WriteBarrierSnippets extends G1WriteBarrierSnippets 
 
         private final G1WriteBarrierLowerer lowerer;
 
+        @SuppressWarnings("this-escape")
         public Templates(OptionValues options, Group.Factory factory, HotSpotProviders providers, GraalHotSpotVMConfig config) {
             super(options, providers);
             this.lowerer = new HotspotG1WriteBarrierLowerer(config, factory);

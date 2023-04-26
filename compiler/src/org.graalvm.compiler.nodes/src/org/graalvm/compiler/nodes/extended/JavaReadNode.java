@@ -27,7 +27,9 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
@@ -73,6 +75,7 @@ public class JavaReadNode extends FixedAccessNode implements Lowerable, Guarding
         this.readKind = readKind;
         this.compressible = compressible;
         this.memoryOrder = memoryOrder;
+        assert barrierType == BarrierType.NONE || stamp instanceof AbstractObjectStamp : "incorrect barrier on non-object type: " + location;
     }
 
     @Override
