@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "default": [],
+  "items": {
+    "properties": {
+      "condition": {
+        "properties": {
+          "typeReachable": {
+            "type": "string",
+            "title": "Fully qualified class name of the class that must be reachable in order to register dynamic proxy"
+          }
+        },
+        "required": [
+          "typeReachable"
+        ],
+        "type": "object"
+      },
+      "interfaces": {
+        "default": [],
+        "items": {
+          "type": "string",
+          "title": "Interface that will be implemented by the dynamic proxy"
+        },
+        "type": "array",
+        "title": "List of interfaces that dynamic proxy implements"
+      }
+    },
+    "type": "object"
+  },
+  "type": "array",
+  "title": "JSON schema for the proxy-config that GraalVM Native Image uses"
+}
