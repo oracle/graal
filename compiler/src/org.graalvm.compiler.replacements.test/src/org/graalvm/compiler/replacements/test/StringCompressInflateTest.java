@@ -36,6 +36,7 @@ import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -269,6 +270,28 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
                     assertDeepEquals(dst, dst2);
                 }
             }
+        }
+    }
+
+    public static void getCharsSnippet(String s, int srcBegin, int srcEnd, char[] dst, int dstBegin) {
+        s.getChars(srcBegin, srcEnd, dst, dstBegin);
+    }
+
+    @Test
+    public void testGetChars() throws InvalidInstalledCodeException {
+        // Stress String inflation with large offsets
+        String s = new String(new char[Integer.MAX_VALUE - 20]);
+        InstalledCode code = getCode(getResolvedJavaMethod("getCharsSnippet"));
+        char[] dst = new char[s.length()];
+        int offset = 0;
+        int size = 1024 * 1024;
+        while (offset < s.length()) {
+            System.err.println(offset);
+            if (offset + size < 0) {
+                size = s.length() - offset;
+            }
+            code.executeVarargs(s, offset, offset + size, dst, offset);
+            offset += size;
         }
     }
 
