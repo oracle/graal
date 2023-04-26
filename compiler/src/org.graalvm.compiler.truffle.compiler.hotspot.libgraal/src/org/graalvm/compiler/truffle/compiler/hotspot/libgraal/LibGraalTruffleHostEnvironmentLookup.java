@@ -83,7 +83,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
                 return environment;
             }
         }
-        ResolvedJavaType runtimeType = LibGraal.asResolvedJavaType(JNIUtil.GetObjectClass(env, runtimeLocalRef).rawValue());
+        ResolvedJavaType runtimeType = LibGraal.asResolvedJavaType(JNIUtil.GetObjectClass(env, runtimeLocalRef));
         if (runtimeType == null) {
             throw GraalError.shouldNotReachHere("The object class needs to be available for a Truffle runtime object.");
         }

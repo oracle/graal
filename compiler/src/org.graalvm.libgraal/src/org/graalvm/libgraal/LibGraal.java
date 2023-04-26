@@ -231,12 +231,12 @@ public class LibGraal {
     /**
      * @see HotSpotJVMCIRuntime#asResolvedJavaType(long)
      */
-    public static HotSpotResolvedJavaType asResolvedJavaType(long rawPointerValue) {
+    public static HotSpotResolvedJavaType asResolvedJavaType(PointerBase pointer) {
         if (asResolvedJavaType == null) {
             return null;
         }
         try {
-            return (HotSpotResolvedJavaType) asResolvedJavaType.invoke(runtime(), rawPointerValue);
+            return (HotSpotResolvedJavaType) asResolvedJavaType.invoke(runtime(), pointer.rawValue());
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
