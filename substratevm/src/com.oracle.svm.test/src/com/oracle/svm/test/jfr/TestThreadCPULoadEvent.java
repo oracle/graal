@@ -28,6 +28,8 @@ package com.oracle.svm.test.jfr;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -64,6 +66,12 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
 
     private static void validateEvents(List<RecordedEvent> events) {
         assertEquals(1, events.size());
+        RecordedEvent event = events.get(0);
+        assertNotNull(event.getThread());
+        float userTime = event.<Float> getValue("user");
+        assertTrue("User time is outside 0..1 range", 0.0 <= userTime && userTime <= 1.0);
+        float systemTime = event.<Float> getValue("system");
+        assertTrue("System time is outside 0..1 range", 0.0 <= systemTime && systemTime <= 1.0);
     }
 
     private static void writeToFile() {
