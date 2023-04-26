@@ -1,0 +1,119 @@
+/*
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Red Hat Inc. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
+package com.oracle.svm.test.jfr;
+
+import static org.junit.Assert.assertEquals;
+
+import java.io.Serial;
+import java.util.List;
+
+import org.junit.Test;
+
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedClass;
+import jdk.jfr.consumer.RecordedEvent;
+
+public class TestThrowEvent extends JfrRecordingTest {
+    private static final TestException PRE_ALLOCATED_TEST_EXCEPTION = new TestException();
+    private static final TestError PRE_ALLOCATED_TEST_ERROR = new TestError();
+
+    @Test
+    public void test() throws Throwable {
+        String[] events = new String[]{"jdk.JavaExceptionThrow", "jdk.JavaErrorThrow"};
+        Recording recording = startRecording(events);
+
+        throwInInterruptibleCode();
+        throwInUninterruptibleCode();
+
+        stopRecording(recording, TestThrowEvent::validateEvents);
+    }
+
+    private static void throwInInterruptibleCode() {
+        try {
+            if (alwaysTrue()) {
+                throw new TestException();
+            }
+        } catch (TestException e) {
+            /* Ignore. */
+        }
+
+        try {
+            if (alwaysTrue()) {
+                throw new TestError();
+            }
+        } catch (TestError e) {
+            /* Ignore. */
+        }
+    }
+
+    @Uninterruptible(reason = "For testing.")
+    private static void throwInUninterruptibleCode() {
+        try {
+            if (alwaysTrue()) {
+                throw PRE_ALLOCATED_TEST_EXCEPTION;
+            }
+        } catch (TestException e) {
+            /* Ignore. */
+        }
+
+        try {
+            if (alwaysTrue()) {
+                throw PRE_ALLOCATED_TEST_ERROR;
+            }
+        } catch (TestError e) {
+            /* Ignore. */
+        }
+    }
+
+    @Uninterruptible(reason = "For testing.")
+    @NeverInline("Prevent optimizations.")
+    private static boolean alwaysTrue() {
+        return true;
+    }
+
+    private static void validateEvents(List<RecordedEvent> events) {
+        int count = 0;
+        for (RecordedEvent event : events) {
+            String className = event.<RecordedClass> getValue("thrownClass").getName();
+            if (className.equals(TestException.class.getName()) || className.equals(TestError.class.getName())) {
+                count++;
+            }
+        }
+        assertEquals(4, count);
+    }
+
+    private static class TestException extends Exception {
+        @Serial private static final long serialVersionUID = -3390105283470433636L;
+    }
+
+    private static class TestError extends Error {
+        @Serial private static final long serialVersionUID = -5476851241322816642L;
+    }
+}

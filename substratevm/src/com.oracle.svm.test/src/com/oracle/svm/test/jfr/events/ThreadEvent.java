@@ -33,7 +33,7 @@ import jdk.jfr.StackTrace;
 
 @Label("Thread Event")
 @Description("An event with a thread payload")
-@StackTrace(false)
+@StackTrace()
 public class ThreadEvent extends Event {
 
     @Label("Thread") public Thread thread;
