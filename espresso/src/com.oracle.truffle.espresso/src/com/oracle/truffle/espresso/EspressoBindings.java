@@ -39,7 +39,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.interop.AddPathToBindingsNode;
+import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -58,11 +58,11 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * guest class loader. <br>
  * {@link ClassNotFoundException} is translated into interop's {@link UnknownIdentifierException
  * member not found}, all other guest exceptions thrown during class loading will be propagated.
- * 
+ *
  * <p>
  * If properly set up, these bindings will expose the {@code addPath} invocable member, which allows
  * to add a new path for the underlying class loader to load from. This invocation takes a single
- * {@link String} as argument, the path to add.
+ * {@link InteropLibrary#isString(Object) interop string} as argument, the path to add.
  */
 @ExportLibrary(InteropLibrary.class)
 public final class EspressoBindings implements TruffleObject {
@@ -139,7 +139,7 @@ public final class EspressoBindings implements TruffleObject {
             return context.getVM().getJavaVM();
         }
         if (useBindingsLoader && ADD_PATH.equals(member)) {
-            return new AddPathToBindingsNode.InvocableAddToBindings(loader);
+            return new AddPathToBindingsNode.InvocableAddToBindings();
         }
         Meta meta = context.getMeta();
         try {
@@ -164,7 +164,7 @@ public final class EspressoBindings implements TruffleObject {
             throw UnknownIdentifierException.create(member);
         }
         if (useBindingsLoader && ADD_PATH.equals(member)) {
-            addPathToBindingsNode.execute(loader, arguments);
+            addPathToBindingsNode.execute(arguments);
             return StaticObject.NULL;
         }
         error.enter();

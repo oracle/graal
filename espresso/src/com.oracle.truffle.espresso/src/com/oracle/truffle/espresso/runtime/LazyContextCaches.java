@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
+import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsCache;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessCache;
 
 public class LazyContextCaches extends ContextAccessImpl {
@@ -41,6 +42,8 @@ public class LazyContextCaches extends ContextAccessImpl {
 
     @CompilationFinal //
     private volatile ReferenceProcessCache referenceProcessCache = null;
+    @CompilationFinal //
+    private volatile AddPathToBindingsCache addPathToBindingsCache = null;
 
     public ReferenceProcessCache getReferenceProcessCache() {
         ReferenceProcessCache cache = referenceProcessCache;
@@ -50,6 +53,20 @@ public class LazyContextCaches extends ContextAccessImpl {
                 cache = referenceProcessCache;
                 if (cache == null) {
                     cache = (referenceProcessCache = new ReferenceProcessCache(getContext()));
+                }
+            }
+        }
+        return cache;
+    }
+
+    public AddPathToBindingsCache getAddPathToBindingsCache() {
+        AddPathToBindingsCache cache = addPathToBindingsCache;
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                cache = addPathToBindingsCache;
+                if (cache == null) {
+                    cache = (addPathToBindingsCache = new AddPathToBindingsCache(getContext()));
                 }
             }
         }
