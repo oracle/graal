@@ -2334,12 +2334,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (model.enableSerialization) {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
-                    b.startStatement();
-                    b.type(operationNodeGen.asType()).string(" node = ");
-                    b.startNew(operationNodeGen.asType());
-                    b.string("serialization.language");
-                    b.string("FrameDescriptor.newBuilder()");
-                    b.end(2);
+                    CodeTree constructorCall = CodeTreeBuilder.createBuilder().startNew(operationNodeGen.asType()).string("serialization.language").startStaticCall(types.FrameDescriptor,
+                                    "newBuilder").end(2).build();
+                    b.declaration(operationNodeGen.asType(), "node", constructorCall);
 
                     b.statement("node.buildIndex = buildIndex++");
                     serializationElements.writeShort(b, serializationElements.codeEnd[rootOperation.id]);
@@ -2369,7 +2366,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.cast(types.TruffleLanguage).string("rootData[1]");
             b.end();
 
-            b.declaration(types.FrameDescriptor_Builder, "fdb", "FrameDescriptor.newBuilder(numLocals + maxStack)");
+            CodeTree newBuilderCall = CodeTreeBuilder.createBuilder().startStaticCall(types.FrameDescriptor, "newBuilder").string("numLocals + maxStack").end().build();
+            b.declaration(types.FrameDescriptor_Builder, "fdb", newBuilderCall);
             b.startStatement().startCall("fdb.addSlots");
             b.string("numLocals + maxStack");
             b.staticReference(types.FrameSlotKind, "Illegal");
