@@ -34,7 +34,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
@@ -155,30 +154,21 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
-        if (SubstrateUtil.HOSTED) {
-            return super.getPartialEvaluationMethodInfo(method);
-        } else {
-            throw GraalError.shouldNotReachHere("Partial evaluation method lookup must not be used during runtime. Call PartialEvaluator.getMethodInfo instead.");
-        }
+        return super.getPartialEvaluationMethodInfo(method);
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        if (SubstrateUtil.HOSTED) {
-            return super.getHostMethodInfo(method);
-        } else {
-            throw GraalError.shouldNotReachHere("Hosted method information must not be used during runtime compilation. Call TruffleHostEnvironment.getHostMethodInfo instead.");
-        }
+        return super.getHostMethodInfo(method);
     }
 
     @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        if (SubstrateUtil.HOSTED) {
-            return super.getConstantFieldInfo(field);
-        } else {
-            throw GraalError.shouldNotReachHere("Hosted field lookup must not be used during runtime. Call PartialEvaluator.getConstantFieldInfo instead.");
-        }
+        return super.getConstantFieldInfo(field);
     }
 
     private void teardown() {
