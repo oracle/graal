@@ -37,11 +37,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public abstract class TruffleElementCache<K, V> {
 
-    private final Map<Object, V> methodCache;
+    private final Map<Object, V> elementCache;
 
     @SuppressWarnings("serial")
     protected TruffleElementCache(int maxSize) {
-        this.methodCache = Collections.synchronizedMap(new LinkedHashMap<>() {
+        this.elementCache = Collections.synchronizedMap(new LinkedHashMap<>() {
             @Override
             protected boolean removeEldestEntry(Map.Entry<Object, V> eldest) {
                 return size() > maxSize;
@@ -60,10 +60,10 @@ public abstract class TruffleElementCache<K, V> {
         // It intentionally does not use Map#computeIfAbsent.
         // Collections.SynchronizedMap#computeIfAbsent implementation blocks readers during the
         // creation of the MethodCache.
-        V cache = methodCache.get(key);
+        V cache = elementCache.get(key);
         if (cache == null) {
             cache = computeValue(method);
-            methodCache.putIfAbsent(key, cache);
+            elementCache.putIfAbsent(key, cache);
         }
         return cache;
     }
@@ -72,7 +72,7 @@ public abstract class TruffleElementCache<K, V> {
 
     @Override
     public final String toString() {
-        return methodCache.toString();
+        return elementCache.toString();
     }
 
 }
