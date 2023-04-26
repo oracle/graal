@@ -171,12 +171,13 @@ public class InvocationPluginHelper implements DebugCloseable {
 
     public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index) {
         int arrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(kind);
-        ValueNode offset = ConstantNode.forInt(arrayBaseOffset);
+        ValueNode offset = ConstantNode.forIntegerKind(wordKind, arrayBaseOffset);
         if (index != null) {
-            offset = add(offset, scale(index, kind));
+            offset = add(offset, scale(asWord(index), kind));
         }
 
-        return b.add(new ComputeObjectAddressNode(array, asWord(offset)));
+        GraalError.guarantee(offset.getStackKind() == wordKind, "should have been promoted to word: %s", index);
+        return b.add(new ComputeObjectAddressNode(array, offset));
     }
 
     public ValueNode scale(ValueNode index, JavaKind kind) {
