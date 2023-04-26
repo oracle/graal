@@ -43,6 +43,7 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.util.TimeUtils;
 
 import static com.oracle.svm.core.thread.PlatformThreads.IsolateThreadConsumer;
 
@@ -52,7 +53,6 @@ public class ThreadCPULoadEvent {
     private static final FastThreadLocalLong userTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.userTimeTL");
     private static final FastThreadLocalLong wallClockTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.wallClockTimeTL");
 
-    private static final int NANOSECS_PER_MILLISEC = 1_000_000;
     private static volatile int lastActiveProcessorCount;
 
     private static final IsolateThreadConsumer threadCPULoadEventConsumer = new IsolateThreadConsumer() {
@@ -88,7 +88,7 @@ public class ThreadCPULoadEvent {
         wallClockTimeTL.set(isolateThread, currWallClockTime);
 
         // Threshold of 1 ms
-        if (currCpuTime - prevCpuTime < 1 * NANOSECS_PER_MILLISEC) {
+        if (currCpuTime - prevCpuTime < 1 * TimeUtils.nanosPerMilli) {
             return;
         }
 
