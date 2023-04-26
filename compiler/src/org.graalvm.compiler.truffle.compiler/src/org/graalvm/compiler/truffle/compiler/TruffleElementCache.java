@@ -52,23 +52,23 @@ public abstract class TruffleElementCache<K, V> {
     /**
      * Either use {@link MethodKey} or {@link ResolvedJavaMethod} directly.
      */
-    protected abstract Object createKey(K method);
+    protected abstract Object createKey(K element);
 
-    public final V get(K method) {
-        Object key = createKey(method);
+    public final V get(K element) {
+        Object key = createKey(element);
 
         // It intentionally does not use Map#computeIfAbsent.
         // Collections.SynchronizedMap#computeIfAbsent implementation blocks readers during the
         // creation of the MethodCache.
         V cache = elementCache.get(key);
         if (cache == null) {
-            cache = computeValue(method);
+            cache = computeValue(element);
             elementCache.putIfAbsent(key, cache);
         }
         return cache;
     }
 
-    protected abstract V computeValue(K method);
+    protected abstract V computeValue(K element);
 
     @Override
     public final String toString() {

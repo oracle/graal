@@ -184,13 +184,13 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
         }
 
         @Override
-        protected Object createKey(ResolvedJavaField method) {
-            return new FieldKey(method);
+        protected Object createKey(ResolvedJavaField field) {
+            return new FieldKey(field);
         }
 
         @Override
-        protected ConstantFieldInfo computeValue(ResolvedJavaField method) {
-            return config.runtime().getConstantFieldInfo(method);
+        protected ConstantFieldInfo computeValue(ResolvedJavaField field) {
+            return config.runtime().getConstantFieldInfo(field);
         }
 
     }
