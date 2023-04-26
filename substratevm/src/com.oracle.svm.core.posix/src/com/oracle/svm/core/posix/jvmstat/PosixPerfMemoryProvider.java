@@ -42,6 +42,7 @@ import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -147,7 +148,11 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 
         /* Clear the shared memory region. */
         LibC.memset(mapAddress, WordFactory.signed(0), WordFactory.unsigned(size));
-        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(mapAddress.rawValue(), size), ByteBuffer.class);
+        if (JavaVersionUtil.JAVA_SPEC >= 21) {
+            return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(mapAddress.rawValue(), (long) size), ByteBuffer.class);
+        } else {
+            return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(mapAddress.rawValue(), size), ByteBuffer.class);
+        }
     }
 
     private static String getUserName(int uid) {
