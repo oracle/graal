@@ -28,14 +28,12 @@ import java.io.PrintWriter;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.util.ReflectionUtil;
 
 public final class ReachabilityTracePrinter {
     public static void printTraceForTypes(String typesTraceOpt, BigBang bb, String reportsPath, String imageName) {
         ReportUtils.report("trace for types", reportsPath, "trace_types_" + imageName, "txt",
-                writer -> printTraceForTypesImpl(typesTraceOpt, bb, writer));
+                        writer -> printTraceForTypesImpl(typesTraceOpt, bb, writer));
     }
 
     public static void printTraceForMethods(String methodsTraceOpt, BigBang bb, String reportsPath, String imageName) {
@@ -45,15 +43,17 @@ public final class ReachabilityTracePrinter {
 
     public static void printTraceForFields(String fieldsTraceOpt, BigBang bb, String reportsPath, String imageName) {
         ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + imageName, "txt",
-                writer -> printTraceForFieldsImpl(fieldsTraceOpt, bb, writer));
+                        writer -> printTraceForFieldsImpl(fieldsTraceOpt, bb, writer));
     }
 
     private static void printTraceForTypesImpl(String typesTraceOpt, BigBang bb, PrintWriter writer) {
-        String[] classNames = typesTraceOpt.split(",");
-        AnalysisMetaAccess metaAccess = bb.getMetaAccess();
-        for (String className : classNames) {
-            Class<?> clazz = ReflectionUtil.lookupClass(false, className);
-            AnalysisType type = metaAccess.lookupJavaType(clazz);
+        String[] patterns = typesTraceOpt.split(",");
+        for (AnalysisType type : bb.getUniverse().getTypes()) {
+            ObjectTreePrinter.SimpleMatcher matcher = new ObjectTreePrinter.SimpleMatcher(patterns);
+
+            if (!matcher.matches(type.toJavaName(true))) {
+                continue;
+            }
 
             if (type.isAllocated()) {
                 String header = "Type " + type.toJavaName() + " is marked as allocated";
