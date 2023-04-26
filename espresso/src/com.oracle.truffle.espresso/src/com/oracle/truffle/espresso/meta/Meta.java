@@ -644,6 +644,10 @@ public final class Meta extends ContextAccessImpl {
             java_lang_System_initPhase3 = null;
         }
 
+        jdk_internal_loader_ClassLoaders$AppClassLoader = diff() //
+                        .klass(VERSION_9_OR_HIGHER, Type.jdk_internal_loader_ClassLoaders$AppClassLoader) //
+                        .notRequiredKlass();
+
         if (getJavaVersion().modulesEnabled()) {
             java_lang_Module = knownKlass(Type.java_lang_Module);
             java_lang_Module_name = java_lang_Module.requireDeclaredField(Name.name, Type.java_lang_String);
@@ -1156,6 +1160,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass jdk_internal_loader_ClassLoaders;
     public final Method jdk_internal_loader_ClassLoaders_platformClassLoader;
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
+    public final ObjectKlass jdk_internal_loader_ClassLoaders$AppClassLoader;
 
     public final ObjectKlass java_lang_Module;
     public final Field java_lang_Module_name;

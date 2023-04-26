@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Idempotent;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
@@ -57,6 +56,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -118,6 +118,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
 
+    static EspressoLanguage getLang(Node node) {
+        return EspressoLanguage.get(node);
+    }
+
     public static final byte UN_INITIALIZED = -1;
     public static final byte NOT_MAPPED = 0;
     public static final byte TYPE_MAPPED = 1;
@@ -128,12 +132,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @CompilationFinal public byte typeConversionState = UN_INITIALIZED;
 
     @ExportMessage
-    @ImportStatic(EspressoLanguage.class)
     abstract static class IsMemberReadable {
         @Specialization(guards = "language.isShared()")
         static boolean doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
-                        @Bind("EspressoLanguage.get(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
             return isMemberReadable(receiver, member, LookupFieldNodeGen.getUncached(), lib);
         }
 
@@ -170,12 +173,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @ExportMessage
-    @ImportStatic(EspressoLanguage.class)
     abstract static class ReadMember {
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
-                        @Bind("EspressoLanguage.get(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException {
             return readMember(receiver, member, LookupFieldNodeGen.getUncached(), LookupDeclaredMethodNodeGen.getUncached(), BranchProfile.getUncached(), lib);
         }
 
@@ -230,12 +232,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @ExportMessage
-    @ImportStatic(EspressoLanguage.class)
     abstract static class IsMemberModifiable {
         @Specialization(guards = "language.isShared()")
         static boolean doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
-                        @Bind("EspressoLanguage.get(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
             return isMemberModifiable(receiver, member, LookupFieldNodeGen.getUncached());
         }
 
@@ -254,13 +255,12 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @ExportMessage
-    @ImportStatic(EspressoLanguage.class)
     abstract static class WriteMember {
         @Specialization(guards = "language.isShared()")
         static void doShared(Klass receiver, String member, Object value,
                         @Shared("error") @Cached BranchProfile error,
                         @CachedLibrary("receiver") InteropLibrary lib,
-                        @Bind("EspressoLanguage.get(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException, UnsupportedTypeException {
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnknownIdentifierException, UnsupportedTypeException {
             writeMember(receiver, member, value, LookupFieldNodeGen.getUncached(), ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached(), error);
         }
 
@@ -282,12 +282,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @ExportMessage
-    @ImportStatic(EspressoLanguage.class)
     abstract static class IsMemberInvocable {
         @Specialization(guards = "language.isShared()")
         static boolean doShared(Klass receiver, String member,
                         @CachedLibrary("receiver") InteropLibrary lib,
-                        @Bind("EspressoLanguage.get(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
             return isMemberInvocable(receiver, member, LookupDeclaredMethodNodeGen.getUncached());
         }
 
@@ -299,12 +298,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @ExportMessage
-    @ImportStatic(EspressoLanguage.class)
     abstract static class InvokeMember {
         @Specialization(guards = "language.isShared()")
         static Object doShared(Klass receiver, String member, Object[] arguments,
                         @CachedLibrary("receiver") InteropLibrary lib,
-                        @Bind("EspressoLanguage.get(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
             return invokeMember(receiver, member, arguments, LookupDeclaredMethodNodeGen.getUncached(), OverLoadedMethodSelectorNodeGen.getUncached(), InvokeEspressoNodeGen.getUncached(),
                             ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached());
         }
@@ -394,12 +392,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @ExportMessage
-    @ImportStatic(EspressoLanguage.class)
     abstract static class IsInstantiable {
         @Specialization(guards = "language.isShared()")
         static boolean doShared(Klass receiver,
                         @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
-                        @Bind("EspressoLanguage.get(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) {
             if (receiver.isPrimitive()) {
                 return doPrimitive(receiver);
             }
@@ -441,7 +438,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     abstract static class Instantiate {
         @Specialization(guards = "language.isShared()")
-        static Object doShared(Klass receiver, Object[] args) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+        static Object doShared(Klass receiver, Object[] args,
+                        @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary lib,
+                        @Bind("getLang(lib)") @SuppressWarnings("unused") EspressoLanguage language) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             if (receiver.isPrimitive()) {
                 return doPrimitive(receiver, args);
             }
@@ -542,7 +541,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
                         @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                        @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
+                        @Cached OverLoadedMethodSelectorNode overloadSelector,
                         @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             ObjectKlass objectKlass = (ObjectKlass) receiver;
             Method[] initCandidates = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);

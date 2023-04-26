@@ -105,15 +105,14 @@ public class ForeignExceptionInterop extends ThrowableInterop {
 
         public static void registerMessages(Class<? extends ForeignExceptionInterop> cls) {
             EspressoInterop.Nodes.registerMessages(cls);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.GetExceptionTypeNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.IsExceptionNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.HasExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.GetExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.HasExceptionMessageNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.GetExceptionMessageNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.HasExceptionStackTraceNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.GetExceptionStackTraceNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionFactory.NodesFactory.ThrowExceptionNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.HasExceptionStackTraceNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.GetExceptionStackTraceNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
         }
 
         static {
