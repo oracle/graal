@@ -130,7 +130,7 @@ public class DarwinStat {
             } else if (Platform.includedIn(Platform.AARCH64.class)) {
                 return lstat_aarch64(path, buf);
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHere("Unknown architecture");
             }
         }
 
