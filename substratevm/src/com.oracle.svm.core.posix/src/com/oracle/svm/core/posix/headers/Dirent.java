@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,54 +25,34 @@
 package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
 
 /**
- * Definitions manually translated from the C header file sys/errno.h.
+ * Definitions manually translated from the C header file dirent.h.
  */
 @CContext(PosixDirectives.class)
-public class Errno {
-
-    @CConstant
-    public static native int EPERM();
-
-    @CConstant
-    public static native int ESRCH();
-
-    @CConstant
-    public static native int EINTR();
-
-    @CConstant
-    public static native int EBADF();
-
-    @CConstant
-    public static native int ECHILD();
-
-    @CConstant
-    public static native int EBUSY();
-
-    @CConstant
-    public static native int ETIMEDOUT();
-
-    @CConstant
-    public static native int EFAULT();
-
-    @CConstant
-    public static native int EINVAL();
-
-    @CConstant
-    public static native int EAGAIN();
-
-    @CConstant
-    public static native int ENOMEM();
-
-    @CConstant
-    public static native int EEXIST();
+public class Dirent {
+    @CFunction
+    public static native DIR fdopendir(int fd);
 
     @CFunction
-    public static native CCharPointer strerror(int errnum);
+    public static native dirent readdir(DIR dir);
+
+    @CFunction
+    public static native int closedir(DIR dir);
+
+    public interface DIR extends PointerBase {
+    }
+
+    @CStruct(addStructKeyword = true)
+    public interface dirent extends PointerBase {
+        @CFieldAddress
+        CCharPointer d_name();
+    }
 }

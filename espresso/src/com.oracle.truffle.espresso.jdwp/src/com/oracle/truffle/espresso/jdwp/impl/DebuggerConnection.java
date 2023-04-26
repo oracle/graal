@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -146,6 +146,10 @@ public final class DebuggerConnection implements Commands {
         };
     }
 
+    boolean isDebuggerThread(Thread thread) {
+        return thread == jdwpTransport || thread == commandProcessor;
+    }
+
     private class CommandProcessorThread implements Runnable {
 
         @Override
@@ -192,9 +196,7 @@ public final class DebuggerConnection implements Commands {
         @Override
         public void run() {
             while (!Thread.currentThread().isInterrupted()) {
-                Object previous = null;
                 try {
-                    previous = controller.enterTruffleContext();
                     processPacket(Packet.fromByteArray(connection.readPacket()));
                 } catch (IOException e) {
                     if (!Thread.currentThread().isInterrupted()) {
@@ -202,8 +204,6 @@ public final class DebuggerConnection implements Commands {
                     }
                 } catch (ConnectionClosedException e) {
                     // we closed the session, so let the thread run dry
-                } finally {
-                    controller.leaveTruffleContext(previous);
                 }
             }
         }
@@ -231,7 +231,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.ALL_CLASSES.createReply(packet, context);
                                     break;
                                 case JDWP.VirtualMachine.ALL_THREADS.ID:
-                                    result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.ALL_THREADS.createReply(packet, context, controller);
                                     break;
                                 case JDWP.VirtualMachine.TOP_LEVEL_THREAD_GROUPS.ID:
                                     result = JDWP.VirtualMachine.TOP_LEVEL_THREAD_GROUPS.createReply(packet, context);
@@ -502,7 +502,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadGroupReference.PARENT.createReply(packet, context);
                                     break;
                                 case JDWP.ThreadGroupReference.CHILDREN.ID:
-                                    result = JDWP.ThreadGroupReference.CHILDREN.createReply(packet, context);
+                                    result = JDWP.ThreadGroupReference.CHILDREN.createReply(packet, context, controller);
                                     break;
                             }
                             break;
@@ -604,10 +604,7 @@ public final class DebuggerConnection implements Commands {
                 }
                 handleReply(packet, result);
             } catch (Throwable t) {
-                // Checkstyle: stop allow error output
-                System.out.println("[internal error]: " + t.getMessage());
-                t.printStackTrace();
-                // Checkstyle: resume allow error output
+                controller.severe("Internal error while processing packet", t);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 reply.errorCode(ErrorCodes.INTERNAL);
                 handleReply(packet, new CommandResult(reply));

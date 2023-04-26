@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CallTarget;
@@ -67,15 +68,7 @@ import com.oracle.truffle.espresso.jdwp.api.VMEventListener;
 
 public final class DebuggerController implements ContextsListener {
 
-    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(JDWPInstrument.ID);
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
-
-    private final ThreadLocal<Boolean> bootStrapping = new ThreadLocal<>() {
-        @Override
-        protected Boolean initialValue() {
-            return true;
-        }
-    };
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
     private final Map<Object, SimpleLock> suspendLocks = Collections.synchronizedMap(new HashMap<>());
@@ -99,13 +92,15 @@ public final class DebuggerController implements ContextsListener {
     private VMEventListener eventListener;
     private TruffleContext truffleContext;
     private Object initialThread;
+    private final TruffleLogger jdwpLogger;
 
-    public DebuggerController(JDWPInstrument instrument) {
+    public DebuggerController(JDWPInstrument instrument, TruffleLogger logger) {
         this.instrument = instrument;
         this.vm = new VirtualMachineImpl();
         this.gcPrevention = new GCPrevention();
         this.threadSuspension = new ThreadSuspension();
         this.eventFilters = new EventFilters();
+        this.jdwpLogger = logger;
     }
 
     public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread, VMEventListener vmEventListener) {
@@ -356,13 +351,24 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
+    public Object[] getVisibleGuestThreads() {
+        Object[] allThreads = context.getAllGuestThreads();
+        ArrayList<Object> visibleThreads = new ArrayList<>(allThreads.length);
+        for (Object thread : allThreads) {
+            if (!instrument.isVMThread(context.asHostThread(thread))) {
+                visibleThreads.add(thread);
+            }
+        }
+        return visibleThreads.toArray(new Object[visibleThreads.size()]);
+    }
+
     public void resumeAll(boolean sessionClosed) {
         Object eventThread = null;
 
         // The order of which to resume threads is not specified, however when RESUME_ALL command is
         // sent while performing a stepping request, some debuggers (IntelliJ is a known case) will
         // expect all other threads but the current stepping thread to be resumed first.
-        for (Object thread : getContext().getAllGuestThreads()) {
+        for (Object thread : getVisibleGuestThreads()) {
             boolean resumed = false;
             SimpleLock suspendLock = getSuspendLock(thread);
             synchronized (suspendLock) {
@@ -433,7 +439,7 @@ public final class DebuggerController implements ContextsListener {
             case SuspendStrategy.ALL:
                 // suspend all but the current thread
                 // at next execution point
-                for (Object thread : getContext().getAllGuestThreads()) {
+                for (Object thread : getVisibleGuestThreads()) {
                     if (context.asGuestThread(Thread.currentThread()) != thread) {
                         suspend(thread);
                     }
@@ -451,7 +457,7 @@ public final class DebuggerController implements ContextsListener {
     public void suspendAll() {
         fine(() -> "Called suspendAll");
 
-        for (Object thread : getContext().getAllGuestThreads()) {
+        for (Object thread : getVisibleGuestThreads()) {
             suspend(thread);
         }
     }
@@ -535,15 +541,14 @@ public final class DebuggerController implements ContextsListener {
 
     public Object enterTruffleContext() {
         if (truffleContext != null) {
-            // we have a truffle context, so bootstrapping phase is over
-            bootStrapping.set(false);
             return truffleContext.enter(null);
         }
         return null;
     }
 
     public void leaveTruffleContext(Object previous) {
-        if (truffleContext != null && !bootStrapping.get()) {
+        if (truffleContext != null) {
+            // pass null as previous since we know the jdwp thread only ever enters one context
             truffleContext.leave(null, previous);
         }
     }
@@ -582,7 +587,7 @@ public final class DebuggerController implements ContextsListener {
                     @Override
                     public void run() {
                         // suspend other threads
-                        for (Object activeThread : getContext().getAllGuestThreads()) {
+                        for (Object activeThread : getVisibleGuestThreads()) {
                             if (activeThread != thread) {
                                 fine(() -> "Request thread suspend for other thread: " + getThreadName(activeThread));
                                 DebuggerController.this.suspend(activeThread);
@@ -662,7 +667,7 @@ public final class DebuggerController implements ContextsListener {
             byte suspensionStrategy = job.getSuspensionStrategy();
 
             if (suspensionStrategy == SuspendStrategy.ALL) {
-                Object[] allThreads = context.getAllGuestThreads();
+                Object[] allThreads = getVisibleGuestThreads();
                 // resume all threads during invocation of method to avoid potential deadlocks
                 for (Object activeThread : allThreads) {
                     if (activeThread != thread) {
@@ -791,12 +796,12 @@ public final class DebuggerController implements ContextsListener {
 
         @Override
         public void onSuspend(SuspendedEvent event) {
-            if (context.isSystemThread()) {
+            Thread hostThread = Thread.currentThread();
+            if (instrument.isVMThread(hostThread)) {
                 // always allow VM threads to run guest code without
                 // the risk of being suspended
                 return;
             }
-            Thread hostThread = Thread.currentThread();
             Object currentThread = getContext().asGuestThread(hostThread);
             fine(() -> "Suspended at: " + event.getSourceSection() + " in thread: " + getThreadName(currentThread));
 
@@ -1061,33 +1066,27 @@ public final class DebuggerController implements ContextsListener {
 
     // Truffle logging
     public void info(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.info(supplier);
-        }
+        jdwpLogger.info(supplier);
     }
 
     public void fine(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.fine(supplier);
-        }
+        jdwpLogger.fine(supplier);
     }
 
     public void finest(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.finest(supplier);
-        }
+        jdwpLogger.finest(supplier);
     }
 
     public void warning(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.warning(supplier);
-        }
+        jdwpLogger.warning(supplier);
     }
 
     public void severe(Supplier<String> supplier) {
-        if (!bootStrapping.get()) {
-            LOGGER.severe(supplier);
-        }
+        jdwpLogger.severe(supplier);
+    }
+
+    public void severe(String message, Throwable error) {
+        jdwpLogger.log(Level.SEVERE, message, error);
     }
 
     @Override

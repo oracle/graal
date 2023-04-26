@@ -164,6 +164,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         shimExports.computeIfAbsent(shimName, s -> new TreeSet<>()).addAll(Arrays.asList(exports));
     }
 
+    private String imageName;
+
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         if (shimExports.containsKey("jvm") || Options.CreateJvmShim.getValue()) {
@@ -182,6 +184,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                 return linkerInvocation;
             });
         }
+        imageName = ((BeforeImageWriteAccessImpl) access).getImageName();
     }
 
     private AfterImageWriteAccessImpl accessImpl;
@@ -295,12 +298,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     /** Returns the import library of the native image. */
     private Path getImageImportLib() {
-        Path image = accessImpl.getImagePath();
-        String imageName = String.valueOf(image.getFileName());
-        String importLibName = imageName.substring(0, imageName.lastIndexOf('.')) + ".lib";
-        Path importLib = accessImpl.getImageKind().isExecutable
-                        ? accessImpl.getTempDirectory().resolve(importLibName)
-                        : image.resolveSibling(importLibName);
+        assert isWindows();
+        Path importLib = accessImpl.getTempDirectory().resolve(imageName + ".lib");
         assert Files.exists(importLib);
         return importLib;
     }

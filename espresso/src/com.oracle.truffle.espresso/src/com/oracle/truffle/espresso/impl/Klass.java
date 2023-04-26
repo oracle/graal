@@ -576,7 +576,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * <li>C is not public, and C and D are members of the same run-time package.
      * </ul>
      */
-    public static boolean checkAccess(Klass klass, Klass accessingKlass) {
+    public static boolean checkAccess(Klass klass, Klass accessingKlass, boolean ignoreMagicAccessor) {
         if (accessingKlass == null) {
             return true;
         }
@@ -601,8 +601,23 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return true;
             }
         }
-        return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
 
+        if (ignoreMagicAccessor) {
+            /*
+             * Prevents any class inheriting from MagicAccessorImpl to have access to
+             * MagicAccessorImpl just because it implements MagicAccessorImpl.
+             * 
+             * Only generated accessors in the {sun|jdk.internal}.reflect package, defined by
+             * {sun|jdk.internal}.reflect.DelegatingClassLoader(s) have access to MagicAccessorImpl.
+             */
+            ObjectKlass magicAccessorImpl = context.getMeta().sun_reflect_MagicAccessorImpl;
+            return !StaticObject.isNull(accessingKlass.getDefiningClassLoader()) &&
+                            context.getMeta().sun_reflect_DelegatingClassLoader.equals(accessingKlass.getDefiningClassLoader().getKlass()) &&
+                            magicAccessorImpl.getRuntimePackage().equals(accessingKlass.getRuntimePackage()) &&
+                            magicAccessorImpl.isAssignableFrom(accessingKlass);
+        }
+
+        return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
     }
 
     public static boolean doModuleAccessChecks(Klass klass, Klass accessingKlass, EspressoContext context) {
@@ -1366,18 +1381,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * Give the accessing klass if there is a chance the method to be resolved is a method handle
      * intrinsics.
      */
-    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode);
+    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode);
 
     public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        return lookupMethod(methodName, signature, null, LookupMode.ALL);
-    }
-
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
-        return lookupMethod(methodName, signature, null, lookupMode);
-    }
-
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
-        return lookupMethod(methodName, signature, accessingKlass, LookupMode.ALL);
+        return lookupMethod(methodName, signature, LookupMode.ALL);
     }
 
     public final Method vtableLookup(int vtableIndex) {
@@ -1431,10 +1438,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (this instanceof ObjectKlass && getContext().advancedRedefinitionEnabled()) {
             // getKlassVersion().getModifiers() introduces a ~10%
             // perf hit on some benchmarks, so put behind a check
-            return this.getClassModifiers();
+            return getRedefinitionAwareModifiers();
         } else {
             return modifiers;
         }
+    }
+
+    public int getRedefinitionAwareModifiers() {
+        return getModifiers();
     }
 
     /**

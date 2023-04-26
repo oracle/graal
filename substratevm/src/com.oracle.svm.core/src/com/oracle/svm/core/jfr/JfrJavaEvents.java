@@ -37,7 +37,7 @@ public class JfrJavaEvents {
     private static final List<Class<? extends Event>> EVENT_CLASSES = new ArrayList<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerEventClass(Class<? extends Event> eventClass) {
+    public static synchronized void registerEventClass(Class<? extends Event> eventClass) {
         EVENT_CLASSES.add(eventClass);
     }
 

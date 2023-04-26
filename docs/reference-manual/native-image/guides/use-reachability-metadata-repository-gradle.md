@@ -17,7 +17,7 @@ Depending on your application dependencies, there are three ways to provide the 
 
 1. [Using the Tracing Agent](#build-a-native-executable-with-the-agent)
 2. [Using the shared GraalVM Reachability Metadata Repository](#build-a-native-executable-using-the-graalvm-reachability-metadata-repository)
-3. [Autodetecting](use-native-image-gradle-plugin.md#build-a-native-executable-with-resources-autodetection) (if the required resources are directly available on the classpath, in the `src/main/resources` directory)
+3. [Autodetecting](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html#build-a-native-executable-with-resources-autodetection) (if the required resources are directly available on the classpath, in the `src/main/resources` directory)
 
 For the Java application used in this guide the first two approaches are applicable. 
 This guide demonstrates how to build a native executable with the [Tracing agent](#build-a-native-executable-with-the-agent) and using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata).

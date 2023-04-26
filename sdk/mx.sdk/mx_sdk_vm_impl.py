@@ -610,6 +610,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         assert _libpolyglot_component is None or len(_libpolyglot_component.library_configs) == 1
         _libpolyglot_macro_dir = (_macros_dir + '/' + GraalVmNativeProperties.macro_name(_libpolyglot_component.library_configs[0]) + '/') if _macros_dir is not None and _libpolyglot_component is not None else None
 
+        graalvm_dists = set()  # the jar distributions mentioned by launchers and libraries
+        component_dists = set()  # the jar distributions directly mentioned by components
+
         for _component in sorted(self.components, key=lambda c: c.name):
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
             _component_type_base = _get_component_type_base(_component)
@@ -685,7 +688,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _add_link('<jdk_base>/', _component_base + _license, _component)
 
             _jre_bin_names = []
-            graalvm_dists = set()
 
             for _launcher_config in sorted(_get_launcher_configs(_component), key=lambda c: c.destination):
                 graalvm_dists.update(_launcher_config.jar_distributions)
@@ -728,7 +730,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _library_project_name = GraalVmNativeImage.project_name(_library_config)
                     # add `LibraryConfig.destination` and the generated header files to the layout
                     _add(layout, _svm_library_dest, _source_type + ':' + _library_project_name, _component)
-                    if not isinstance(_library_config, mx_sdk.LanguageLibraryConfig):
+                    if _library_config.headers:
                         _add(layout, _svm_library_home, _source_type + ':' + _library_project_name + '/*.h', _component)
                 if not stage1 and isinstance(_library_config, mx_sdk.LanguageLibraryConfig) and _library_config.launchers:
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(PolyglotConfig.project_name(_library_config)), _component)
@@ -744,11 +746,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 _add(layout, _libpolyglot_macro_dir, 'dependency:' + _libpolyglot_macro_dist_name(_component))
 
             if not _jlink_libraries():
-                graalvm_dists.difference_update(_component.boot_jars)
-            graalvm_dists.difference_update(_component.jar_distributions)
-            graalvm_dists.difference_update(_component.jvmci_parent_jars)
-            graalvm_dists.difference_update(_component.builder_jar_distributions)
-            _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], _component, with_sources=True)
+                component_dists.update(_component.boot_jars)
+            component_dists.update(_component.jar_distributions)
+            component_dists.update(_component.jvmci_parent_jars)
+            component_dists.update(_component.builder_jar_distributions)
 
             for _provided_executable in _component.provided_executables:
                 if isinstance(_provided_executable, tuple):
@@ -771,6 +772,9 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
 
             if _component.installable:
                 installable_component_lists.setdefault(_component.installable_id, []).append(_component)
+
+        graalvm_dists.difference_update(component_dists)
+        _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], with_sources=True)
 
         installer = get_component('gu', stage1=stage1)
         if installer:
