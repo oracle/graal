@@ -88,11 +88,6 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalLong unparseableStacks = FastThreadLocalFactory.createLong("JfrThreadLocal.unparseableStacks");
     private static final FastThreadLocalWord<SamplerSampleWriterData> samplerWriterData = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerWriterData");
 
-    /* ThreadCPULoad thread-locals. */
-    private static final FastThreadLocalLong cpuTime = FastThreadLocalFactory.createLong("JfrThreadLocal.cpuTime");
-    private static final FastThreadLocalLong userTime = FastThreadLocalFactory.createLong("JfrThreadLocal.userTime");
-    private static final FastThreadLocalLong wallClockTime = FastThreadLocalFactory.createLong("JfrThreadLocal.wallClockTime");
-
     /* Non-thread-local fields. */
     private static final JfrBufferList javaBufferList = new JfrBufferList();
     private static final JfrBufferList nativeBufferList = new JfrBufferList();
@@ -458,35 +453,5 @@ public class JfrThreadLocal implements ThreadListener {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static SamplerSampleWriterData getSamplerWriterData() {
         return samplerWriterData.get();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getCpuTime(IsolateThread thread) {
-        return cpuTime.get(thread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setCpuTime(IsolateThread thread, long value) {
-        cpuTime.set(thread, value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getUserTime(IsolateThread thread) {
-        return userTime.get(thread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setUserTime(IsolateThread thread, long value) {
-        userTime.set(thread, value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getWallClockTime(IsolateThread thread) {
-        return wallClockTime.get(thread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void setWallClockTime(IsolateThread thread, long value) {
-        wallClockTime.set(thread, value);
     }
 }

@@ -41,10 +41,16 @@ import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 
 import static com.oracle.svm.core.thread.PlatformThreads.IsolateThreadConsumer;
 
 public class ThreadCPULoadEvent {
+
+    private static final FastThreadLocalLong cpuTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.cpuTimeTL");
+    private static final FastThreadLocalLong userTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.userTimeTL");
+    private static final FastThreadLocalLong wallClockTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.wallClockTimeTL");
 
     private static final int NANOSECS_PER_MILLISEC = 1_000_000;
     private static volatile int lastActiveProcessorCount;
@@ -75,11 +81,11 @@ public class ThreadCPULoadEvent {
     private static void emitForThread(IsolateThread isolateThread) {
 
         long currCpuTime = getThreadCpuTime(isolateThread, true);
-        long prevCpuTime = JfrThreadLocal.getCpuTime(isolateThread);
+        long prevCpuTime = cpuTimeTL.get(isolateThread);
 
         long currWallClockTime = getWallClockTime();
-        long prevWallClockTime = JfrThreadLocal.getWallClockTime(isolateThread);
-        JfrThreadLocal.setWallClockTime(isolateThread, currWallClockTime);
+        long prevWallClockTime = wallClockTimeTL.get(isolateThread);
+        wallClockTimeTL.set(isolateThread, currWallClockTime);
 
         // Threshold of 1 ms
         if (currCpuTime - prevCpuTime < 1 * NANOSECS_PER_MILLISEC) {
@@ -87,7 +93,7 @@ public class ThreadCPULoadEvent {
         }
 
         long currUserTime = getThreadCpuTime(isolateThread, false);
-        long prevUserTime = JfrThreadLocal.getUserTime(isolateThread);
+        long prevUserTime = userTimeTL.get(isolateThread);
 
         long currSystemTime = currCpuTime - currUserTime;
         long prevSystemTime = prevCpuTime - prevUserTime;
@@ -121,8 +127,8 @@ public class ThreadCPULoadEvent {
             }
         }
 
-        JfrThreadLocal.setCpuTime(isolateThread, currCpuTime);
-        JfrThreadLocal.setUserTime(isolateThread, currUserTime);
+        cpuTimeTL.set(isolateThread, currCpuTime);
+        userTimeTL.set(isolateThread, currUserTime);
 
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
@@ -162,6 +168,6 @@ public class ThreadCPULoadEvent {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initializeWallClockTime(IsolateThread isolateThread) {
-        JfrThreadLocal.setWallClockTime(isolateThread, getWallClockTime());
+        wallClockTimeTL.set(isolateThread, getWallClockTime());
     }
 }
