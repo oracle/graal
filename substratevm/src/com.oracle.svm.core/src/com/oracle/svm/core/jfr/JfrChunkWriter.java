@@ -46,8 +46,8 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
-import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.jfr.sampler.JfrRecurringCallbackExecutionSampler;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -508,7 +508,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     /**
      * While serializing the stack trace data from the active buffers of other threads, we need to
      * ensure there are no races with the recurring callback or SIGPROF-based samplers which could
-     * modify {@link SamplerBufferPool#fullBuffers} and {@link SamplerBufferPool#availableBuffers}.
+     * modify {@code SamplerBufferPool#fullBuffers} and {@code SamplerBufferPool#availableBuffers}.
      * For the {@link JfrRecurringCallbackExecutionSampler}, it is sufficient to mark this method as
      * uninterruptible to prevent execution of the recurring callbacks. If the SIGPROF-based sampler
      * is used, the signal handler may still be executed at any time for any thread (including the

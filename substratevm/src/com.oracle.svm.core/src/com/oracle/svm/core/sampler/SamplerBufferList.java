@@ -39,9 +39,9 @@ import com.oracle.svm.core.jfr.sampler.AbstractJfrExecutionSampler;
 
 /**
  * Nodes should only be removed from this list by
- * {@link SamplerBuffersAccess#processActiveBuffers(boolean)}. Nodes are marked for removal if their
- * buffer field is null. This means that the buffer has been put on the full buffer queue because it
- * is full or the owning thread has exited.
+ * {@link SamplerBuffersAccess#processActiveBuffers()}. Nodes are marked for removal if their buffer
+ * field is null. This means that the buffer has been put on the full buffer queue because it is
+ * full or the owning thread has exited.
  *
  * This class also contains some checks to ensure the BufferList lock won't be held while sampling
  * is enabled. Otherwise, deadlock can occur with a single thread due to recursive locking. This is
