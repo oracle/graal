@@ -24,26 +24,75 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.function.Consumer;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.Truffle;
 
 /**
- * See mx_vm_gate.py#.
+ * Test to ensure that host inlining is enabled only if a Truffle runtime is enabled.
  */
-public class LibgraalTruffleHostInlining {
+public class TruffleHostInliningTest {
 
-    public static void main(String[] args) {
-        switch (args[0]) {
-            case "initRuntime":
-                Truffle.getRuntime();
-                break;
-            case "noRuntime":
-                break;
-            default:
-                throw new IllegalArgumentException(args[0]);
+    @Test
+    public void testWithRuntime() throws IOException, InterruptedException {
+        runHostCompilationTest(() -> {
+            Truffle.getRuntime();
+            TruffleHostInliningTest.testBytecodeInterpreter();
+        }, (log) -> {
+            /*
+             * With an initialized host inlining should trigger and therefore the log output should
+             * contain output.
+             */
+            Assert.assertTrue(log, log.contains("CUTOFF   " + TruffleHostInliningTest.class.getName() + ".boundary()"));
+        });
+    }
+
+    @Test
+    public void testWithoutRuntime() throws IOException, InterruptedException {
+        runHostCompilationTest(() -> {
+            TruffleHostInliningTest.testBytecodeInterpreter();
+        }, (log) -> {
+            /*
+             * Without a runtime host inlining should not trigger and therefore the log output
+             * should be empty.
+             */
+            Assert.assertTrue(log, log.isEmpty());
+        });
+
+    }
+
+    private void runHostCompilationTest(Runnable inProcess, Consumer<String> log) throws IOException, InterruptedException {
+        if (SubprocessTestUtils.isSubprocess()) {
+            inProcess.run();
+        } else {
+            File logFile = File.createTempFile("LibgraalTruffleHostInliningTest", "test");
+            SubprocessTestUtils.newBuilder(getClass(), inProcess).failOnNonZeroExit(true).//
+                            prefixVmOption("-Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~InlineGraph",
+                                            "-Dgraal.MethodFilter=LibgraalTruffleHostInliningTest.*",
+                                            "-Dgraal.CompilationFailureAction=Print",
+                                            "-Dgraal.LogFile=" + logFile.getAbsolutePath(),
+                                            "-Xbatch").// force synchronous compilation
+                            postfixVmOption("-XX:+UseJVMCICompiler").// force Graal host compilation
+                            onSuccess((process) -> {
+                                try {
+                                    log.accept((Files.readString(logFile.toPath())));
+                                } catch (IOException e) {
+                                    throw new AssertionError(e);
+                                }
+                                logFile.delete();
+                            }).run();
         }
+    }
 
+    public static void testBytecodeInterpreter() {
         byte[] bc = new byte[42];
         for (int i = 0; i < bc.length; i++) {
             bc[i] = (byte) (i % 7);

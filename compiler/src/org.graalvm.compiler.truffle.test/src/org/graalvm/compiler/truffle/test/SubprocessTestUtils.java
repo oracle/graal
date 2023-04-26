@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.GraalCompilerOptions;
@@ -54,7 +56,7 @@ import org.junit.Test;
  *                         "engine.CompilationFailureAction", "Throw"));
  *         testCallTarget.call();
  *     };
- *     SubprocessTestUtils.executeInSubprocess(getClass(), testToExecuteInSubprocess);
+ *     SubprocessTestUtils.newBuilder(getClass(), testToExecuteInSubprocess).run();
  * }
  * </pre>
  */
@@ -96,12 +98,9 @@ public final class SubprocessTestUtils {
      * @see SubprocessTestUtils
      */
     public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
-        if (isSubprocess()) {
-            action.run();
-            return null;
-        } else {
-            return execute(findTestMethod(testClass), failOnNonZeroExitCode, additionalVmOptions);
-        }
+        AtomicReference<Subprocess> process = new AtomicReference<>();
+        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(additionalVmOptions).onSuccess((p) -> process.set(p)).run();
+        return process.get();
     }
 
     /**
@@ -131,11 +130,11 @@ public final class SubprocessTestUtils {
         throw new IllegalStateException("Failed to find current test method in class " + testClass);
     }
 
-    private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
+    private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, List<String> prefixVMOptions, List<String> postfixVmOptions) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
         SubprocessUtil.Subprocess subprocess = SubprocessUtil.java(
-                        configure(getVmArgs(), additionalVmOptions),
+                        configure(getVmArgs(), prefixVMOptions, postfixVmOptions),
                         "com.oracle.mxtool.junit.MxJUnitWrapper",
                         String.format("%s#%s", enclosingElement, testName));
         if (failOnNonZeroExitCode && subprocess.exitCode != 0) {
@@ -144,7 +143,7 @@ public final class SubprocessTestUtils {
         return subprocess;
     }
 
-    private static List<String> configure(List<String> vmArgs, String... additionalVmOptions) {
+    private static List<String> configure(List<String> vmArgs, List<String> prefixVMOptions, List<String> postfixVmOptions) {
         List<String> newVmArgs = new ArrayList<>();
         newVmArgs.addAll(vmArgs.stream().filter(vmArg -> {
             for (String toRemove : getForbiddenVmOptions()) {
@@ -152,16 +151,26 @@ public final class SubprocessTestUtils {
                     return false;
                 }
             }
-            for (String additionalVmOption : additionalVmOptions) {
+            for (String additionalVmOption : prefixVMOptions) {
+                if (additionalVmOption.startsWith(TO_REMOVE_PREFIX) && vmArg.startsWith(additionalVmOption.substring(2))) {
+                    return false;
+                }
+            }
+            for (String additionalVmOption : postfixVmOptions) {
                 if (additionalVmOption.startsWith(TO_REMOVE_PREFIX) && vmArg.startsWith(additionalVmOption.substring(2))) {
                     return false;
                 }
             }
             return true;
         }).collect(Collectors.toList()));
-        for (String additionalVmOption : additionalVmOptions) {
+        for (String additionalVmOption : prefixVMOptions) {
             if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
                 newVmArgs.add(1, additionalVmOption);
+            }
+        }
+        for (String additionalVmOption : postfixVmOptions) {
+            if (!additionalVmOption.startsWith(TO_REMOVE_PREFIX)) {
+                newVmArgs.add(additionalVmOption);
             }
         }
         newVmArgs.add(1, String.format("-D%s=%s", CONFIGURED_PROPERTY, "true"));
@@ -197,4 +206,55 @@ public final class SubprocessTestUtils {
     private static String engineOption(String optionName) {
         return "-Dpolyglot.engine." + optionName;
     }
+
+    public static Builder newBuilder(Class<?> testClass, Runnable inProcess) {
+        return new Builder(testClass, inProcess);
+    }
+
+    public static final class Builder {
+
+        private final Class<?> testClass;
+        private final Runnable runnable;
+
+        private final List<String> prefixVmArgs = new ArrayList<>();
+        private final List<String> postfixVmArgs = new ArrayList<>();
+        private boolean failOnNonZeroExit = true;
+        private Consumer<Subprocess> onSuccess;
+
+        private Builder(Class<?> testClass, Runnable run) {
+            this.testClass = testClass;
+            this.runnable = run;
+        }
+
+        public Builder prefixVmOption(String... options) {
+            prefixVmArgs.addAll(List.of(options));
+            return this;
+        }
+
+        public Builder postfixVmOption(String... options) {
+            postfixVmArgs.addAll(List.of(options));
+            return this;
+        }
+
+        public Builder failOnNonZeroExit(boolean b) {
+            failOnNonZeroExit = b;
+            return this;
+        }
+
+        public Builder onSuccess(Consumer<Subprocess> consumer) {
+            this.onSuccess = consumer;
+            return this;
+        }
+
+        public void run() throws IOException, InterruptedException {
+            if (isSubprocess()) {
+                runnable.run();
+            } else {
+                Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs);
+                onSuccess.accept(process);
+            }
+        }
+
+    }
+
 }
