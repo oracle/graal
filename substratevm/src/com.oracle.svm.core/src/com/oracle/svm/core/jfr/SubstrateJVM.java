@@ -330,12 +330,16 @@ public class SubstrateJVM {
      * See {@link JVM#endRecording}.
      */
     public void endRecording() {
-        if (!recording) {
-            return;
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            if (!recording) {
+                return;
+            }
+            JfrEndRecordingOperation vmOp = new JfrEndRecordingOperation();
+            vmOp.enqueue();
+        } finally {
+            chunkWriter.unlock();
         }
-
-        JfrEndRecordingOperation vmOp = new JfrEndRecordingOperation();
-        vmOp.enqueue();
     }
 
     /**

@@ -29,7 +29,6 @@ import static com.oracle.svm.core.jfr.JfrThreadLocal.getNativeBufferList;
 
 import java.nio.charset.StandardCharsets;
 
-import com.oracle.svm.core.sampler.SamplerBuffer;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.IsolateThread;
@@ -47,6 +46,8 @@ import com.oracle.svm.core.os.RawFileOperationSupport.FileAccessMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.FileCreationMode;
 import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.sampler.SamplerBuffersAccess;
+import com.oracle.svm.core.sampler.SamplerBufferPool;
+import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
@@ -506,24 +507,38 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     /**
      * While serializing the stack trace data from the active buffers of other threads, we need to
-     * ensure there is no race with threads that execute the SIGPROF handler or recurring callback
-     * execution. This is accomplished by using a serialized position pointer.
-     * ({@link SamplerBuffer#getSerializedPos()}), similar to the {@link JfrBuffer#getFlushedPos()}.
+     * ensure there are no races with the recurring callback or SIGPROF-based samplers which could
+     * modify {@link SamplerBufferPool#fullBuffers} and {@link SamplerBufferPool#availableBuffers}.
+     * For the {@link JfrRecurringCallbackExecutionSampler}, it is sufficient to mark this method as
+     * uninterruptible to prevent execution of the recurring callbacks. If the SIGPROF-based sampler
+     * is used, the signal handler may still be executed at any time for any thread (including the
+     * current thread). To prevent races, we need to ensure that there are no threads that execute
+     * the SIGPROF handler while we are processing sampler buffers.
      */
     @Uninterruptible(reason = "Prevent JFR recording.")
     private static void processSamplerBuffers(boolean flushpoint) {
+        JfrExecutionSampler.singleton().disallowThreadsInSamplerCode();
         SamplerBuffersAccess.processActiveBuffers(flushpoint);
         SamplerBuffersAccess.processFullBuffers();
+        JfrExecutionSampler.singleton().allowThreadsInSamplerCode();
     }
 
     @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
     private void flushStorage(boolean flushpoint) {
+        if (!flushpoint) {
+            // Order first so events emitted during processing remain with the correct chunk.
+            processSamplerBuffers(flushpoint);
+        }
+
         traverseThreadLocalBuffers(getJavaBufferList(), flushpoint);
         traverseThreadLocalBuffers(getNativeBufferList(), flushpoint);
 
         flushGlobalMemory(flushpoint);
-        // Order last because events in JFR buffers can reference data in sampler buffers.
-        processSamplerBuffers(flushpoint);
+
+        if (flushpoint) {
+            // Order last because events in JFR buffers can reference data in sampler buffers.
+            processSamplerBuffers(flushpoint);
+        }
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")

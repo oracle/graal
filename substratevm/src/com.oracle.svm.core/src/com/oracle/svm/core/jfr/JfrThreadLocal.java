@@ -40,7 +40,6 @@ import com.oracle.svm.core.jfr.events.ThreadEndEvent;
 import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 import com.oracle.svm.core.sampler.SamplerSampleWriterData;
-import com.oracle.svm.core.sampler.SamplerBufferList;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
@@ -92,7 +91,6 @@ public class JfrThreadLocal implements ThreadListener {
     /* Non-thread-local fields. */
     private static final JfrBufferList javaBufferList = new JfrBufferList();
     private static final JfrBufferList nativeBufferList = new JfrBufferList();
-    private static final SamplerBufferList samplerBufferList = new SamplerBufferList();
     private long threadLocalBufferSize;
 
     @Fold
@@ -103,11 +101,6 @@ public class JfrThreadLocal implements ThreadListener {
     @Fold
     public static JfrBufferList getJavaBufferList() {
         return javaBufferList;
-    }
-
-    @Fold
-    public static SamplerBufferList getSamplerBufferList() {
-        return samplerBufferList;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -126,7 +119,6 @@ public class JfrThreadLocal implements ThreadListener {
     public void teardown() {
         getNativeBufferList().teardown();
         getJavaBufferList().teardown();
-        getSamplerBufferList().teardown();
     }
 
     @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")

@@ -39,8 +39,8 @@ import com.oracle.svm.core.thread.NativeSpinLockUtils;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.sampler.SamplerBuffer;
 
-public abstract class BufferNodeAccess {
-    protected BufferNodeAccess() {
+public final class BufferNodeAccess {
+    private BufferNodeAccess() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -98,7 +98,7 @@ public abstract class BufferNodeAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static CIntPointer ptrToLock(BufferNode node) {
+    private static CIntPointer ptrToLock(BufferNode node) {
         return (CIntPointer) ((Pointer) node).add(BufferNode.offsetOfLock());
     }
 

@@ -209,7 +209,7 @@ public final class SamplerSampleWriter {
             reset(data);
             increaseCurrentPos(data, uncommitted);
             assert SamplerBufferAccess.verify(newBuffer);
-            JfrThreadLocal.getSamplerBufferList().addNode(newBuffer);
+            SamplerBufferPool.getSamplerBufferList().addNode(newBuffer);
             return true;
         } finally {
             BufferNodeAccess.unlock(oldNode);

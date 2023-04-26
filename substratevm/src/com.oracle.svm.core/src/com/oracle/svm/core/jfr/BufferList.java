@@ -37,7 +37,16 @@ import com.oracle.svm.core.util.VMError;
 import jdk.internal.misc.Unsafe;
 
 /**
- * Singly linked list that stores {@link BufferNode}s.
+ * Singly linked list that stores {@link BufferNode}s. When entering a safepoint, it is guaranteed
+ * that none of the blocked Java threads holds the list's lock.
+ *
+ * The following invariants are crucial if the list is used for thread-local buffers:
+ * <ul>
+ * <li>Each thread shall only have one active {@link BufferNode} on the list at a time. An inactive
+ * {@link BufferNode} is one that does not have a buffer.</li>
+ * <li>The {@link JfrChunkWriter#lock()} must be acquired by, or on behalf of a thread iterating or
+ * removing nodes from the list.</li>
+ * </ul>
  */
 public abstract class BufferList {
     private static final Unsafe U = Unsafe.getUnsafe();

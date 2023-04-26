@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.BufferNodeAccess;
 import com.oracle.svm.core.jfr.BufferNode;
@@ -43,16 +42,19 @@ public final class SamplerBuffersAccess {
 
     @Uninterruptible(reason = "Locking no transition.")
     public static void processActiveBuffers(boolean flushpoint) {
-        SamplerBufferList samplerBufferList = JfrThreadLocal.getSamplerBufferList();
+        SamplerBufferList samplerBufferList = SamplerBufferPool.getSamplerBufferList();
         BufferNode node = samplerBufferList.getHead();
         BufferNode prev = WordFactory.nullPointer();
 
         while (node.isNonNull()) {
             BufferNode next = node.getNext();
-            assert flushpoint || node.getLock() == 0;
-            // Must block because if nodes are skipped, then flushed events may be missing
-            // stacktrace data
-            BufferNodeAccess.lockNoTransition(node);
+            boolean lockAcquired = BufferNodeAccess.tryLock(node);
+            if (!lockAcquired) {
+                assert flushpoint;
+                // Must block because if nodes are skipped, then flushed events may be missing
+                // stacktrace data
+                BufferNodeAccess.lockNoTransition(node);
+            }
             SamplerBuffer buffer = BufferNodeAccess.getSamplerBuffer(node);
             // Try to remove old nodes. If a node's buffer is null, it means it's no longer needed.
             if (buffer.isNull()) {

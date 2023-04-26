@@ -34,24 +34,12 @@ import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.jfr.BufferNodeAccess;
 import com.oracle.svm.core.jfr.BufferNode;
 import com.oracle.svm.core.jfr.BufferList;
-import com.oracle.svm.core.jfr.JfrChunkWriter;
 
 /**
- * Singly linked list that stores {@link SamplerBuffer}s. When entering a safepoint, it is
- * guaranteed that none of the blocked Java threads holds the list's lock.
- *
  * Nodes should only be removed from this list by
- * {@link SamplerBuffersAccess#processActiveBuffers(boolean)} Nodes are marked for removal if their
+ * {@link SamplerBuffersAccess#processActiveBuffers(boolean)}. Nodes are marked for removal if their
  * buffer field is null. This means that the buffer has been put on the full buffer queue because it
  * is full or the owning thread has exited.
- *
- * The following invariants are crucial if the list is used for thread-local buffers:
- * <ul>
- * <li>Each thread shall only have one active node on the list at a time. An inactive node is one
- * that does not have a buffer.</li>
- * <li>Only threads executing at a safepoint or that hold the {@link JfrChunkWriter#lock()} may
- * iterate or remove nodes from the list.</li>
- * </ul>
  */
 public class SamplerBufferList extends BufferList {
 
@@ -59,15 +47,16 @@ public class SamplerBufferList extends BufferList {
     public SamplerBufferList() {
     }
 
+    /**
+     * This is called after {@link SamplerBufferPool#teardown()}, so all buffers should already be
+     * freed. All nodes in the list can be freed.
+     */
     public void teardown() {
         assert VMOperation.isInProgressAtSafepoint();
 
         BufferNode node = head;
         while (node.isNonNull()) {
-            // If the buffer is still alive, then mark it as removed from the list.
-            SamplerBuffer buffer = BufferNodeAccess.getSamplerBuffer(node);
-            // Buffer should have been removed and put on full list in stopRecording.
-            assert buffer.isNull();
+            assert BufferNodeAccess.getSamplerBuffer(node).isNull();
             BufferNode next = node.getNext();
             BufferNodeAccess.free(node);
             node = next;

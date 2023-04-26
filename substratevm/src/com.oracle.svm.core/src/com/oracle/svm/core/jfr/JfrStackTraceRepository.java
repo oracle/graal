@@ -73,7 +73,6 @@ import com.oracle.svm.core.sampler.SamplerBuffer;
  */
 public class JfrStackTraceRepository implements JfrRepository {
     /** This value is used by multiple threads but only by a single thread at a time. */
-    private static final FrameInfoCursor FRAME_INFO_CURSOR = new FrameInfoCursor();
     private static final int DEFAULT_STACK_DEPTH = 64;
     private static final int MIN_STACK_DEPTH = 1;
     private static final int MAX_STACK_DEPTH = 2048;
@@ -81,6 +80,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     private final VMMutex mutex;
     private final JfrStackTraceEpochData epochData0;
     private final JfrStackTraceEpochData epochData1;
+    private final FrameInfoCursor frameInfoCursor = new FrameInfoCursor();
 
     private int stackTraceDepth;
 
@@ -492,7 +492,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private static int visitRawStackTrace(Pointer rawStackTrace, int sampleSize, JfrNativeEventWriterData data) {
+    private int visitRawStackTrace(Pointer rawStackTrace, int sampleSize, JfrNativeEventWriterData data) {
         int numStackTraceElements = 0;
         Pointer rawStackTraceEnd = rawStackTrace.add(sampleSize);
         Pointer ipPtr = rawStackTrace;
@@ -505,7 +505,7 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording, epoch change, and that the GC frees the CodeInfo.")
-    private static int visitFrame(JfrNativeEventWriterData data, long address) {
+    private int visitFrame(JfrNativeEventWriterData data, long address) {
         CodePointer ip = WordFactory.pointer(address);
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
@@ -523,12 +523,12 @@ public class JfrStackTraceRepository implements JfrRepository {
     }
 
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
-    private static int visitFrame(JfrNativeEventWriterData data, CodeInfo codeInfo, CodePointer ip) {
+    private int visitFrame(JfrNativeEventWriterData data, CodeInfo codeInfo, CodePointer ip) {
         int numStackTraceElements = 0;
-        FRAME_INFO_CURSOR.initialize(codeInfo, ip);
-        while (FRAME_INFO_CURSOR.advance()) {
+        frameInfoCursor.initialize(codeInfo, ip);
+        while (frameInfoCursor.advance()) {
             if (data.isNonNull()) {
-                FrameInfoQueryResult frame = FRAME_INFO_CURSOR.get();
+                FrameInfoQueryResult frame = frameInfoCursor.get();
                 serializeStackTraceElement(data, frame);
             }
             numStackTraceElements++;

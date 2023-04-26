@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.sampler;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,11 +44,17 @@ import com.oracle.svm.core.locks.VMMutex;
  * sampling is enabled, this pool maintains the desirable number of buffers in the system.
  */
 public class SamplerBufferPool {
+    private static final SamplerBufferList samplerBufferList = new SamplerBufferList();
     private final VMMutex mutex;
     private final SamplerBufferStack availableBuffers;
     private final SamplerBufferStack fullBuffers;
 
     private int bufferCount;
+
+    @Fold
+    public static SamplerBufferList getSamplerBufferList() {
+        return samplerBufferList;
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SamplerBufferPool() {
@@ -59,7 +66,8 @@ public class SamplerBufferPool {
     public void teardown() {
         clear(availableBuffers);
         clear(fullBuffers);
-        com.oracle.svm.core.util.VMError.guarantee(bufferCount == 0);
+        assert bufferCount == 0;
+        samplerBufferList.teardown();
     }
 
     private void clear(SamplerBufferStack stack) {
