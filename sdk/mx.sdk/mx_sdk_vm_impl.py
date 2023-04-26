@@ -3326,7 +3326,7 @@ def graalvm_version(version_type):
         """
         out = mx.OutputCapture()
         with mx.DisableJavaDebugging():
-            code = mx_sdk_vm.base_jdk().run_java(['-Xlog:disable', join(dirname(__file__), 'JDKVersionInfo.java')], out=out, err=out)
+            code = mx_sdk_vm.base_jdk().run_java(['-Xlog:disable', join(_suite.mxDir, 'vm', 'java', 'src', 'JDKVersionInfo.java')], out=out, err=out)
         if code == 0:
             m = re.search(r'JDK_VERSION_INFO="(?P<java_vnum>[^\|]*)\|(?P<java_pre>[^\|]*)\|(?P<java_build>[^\|]*)|(?P<java_opt>[^\|]*)"', out.data, re.DOTALL)
             if m:
