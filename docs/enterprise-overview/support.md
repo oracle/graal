@@ -45,7 +45,7 @@ The following table lists supported and experimental features in GraalVM Enterpr
 | LLVM toolchain  | supported     | supported     | supported     | experimental  |
 | JavaScript      | supported     | supported     | supported     | supported     |
 | Node.js         | supported     | supported     | supported     | supported     |
-| Java on Truffle | supported     | supported     | experimental  | experimental  |
+| Java on Truffle | supported     | experimental  | experimental  | experimental  |
 | Python          | experimental  | experimental  | experimental  | not available |
 | Ruby            | experimental  | experimental  | experimental  | not available |
 | R               | experimental  | not available | experimental  | not available |
