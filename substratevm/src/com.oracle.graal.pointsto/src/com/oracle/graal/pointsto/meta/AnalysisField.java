@@ -420,7 +420,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
     }
 
-    protected Object getReadReason() {
+    public Object getReadReason() {
         return isRead;
     }
 
@@ -432,7 +432,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isWrittenUpdater);
     }
 
-    protected Object getWrittenReason() {
+    public Object getWrittenReason() {
         return isWritten;
     }
 

@@ -25,10 +25,16 @@
 package com.oracle.graal.pointsto.reports;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import org.graalvm.compiler.debug.MethodFilter;
 
 public final class ReachabilityTracePrinter {
     public static void printTraceForTypes(String typesTraceOpt, BigBang bb, String reportsPath, String imageName) {
@@ -48,9 +54,8 @@ public final class ReachabilityTracePrinter {
 
     private static void printTraceForTypesImpl(String typesTraceOpt, BigBang bb, PrintWriter writer) {
         String[] patterns = typesTraceOpt.split(",");
+        ObjectTreePrinter.SimpleMatcher matcher = new ObjectTreePrinter.SimpleMatcher(patterns);
         for (AnalysisType type : bb.getUniverse().getTypes()) {
-            ObjectTreePrinter.SimpleMatcher matcher = new ObjectTreePrinter.SimpleMatcher(patterns);
-
             if (!matcher.matches(type.toJavaName(true))) {
                 continue;
             }
@@ -72,10 +77,43 @@ public final class ReachabilityTracePrinter {
     }
 
     private static void printTraceForMethodsImpl(String methodsTraceOpt, BigBang bb, PrintWriter writer) {
+        MethodFilter matcher = MethodFilter.parse(methodsTraceOpt);
+        for (AnalysisMethod method : bb.getUniverse().getMethods()) {
+            if (!matcher.matches(method)) {
+                continue;
+            }
 
+            if (method.isIntrinsicMethod()) {
+                String header = "Method " + method.format("%H.%n(%p)") + " is intrinsic";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, method.getIntrinsicMethodReason(), header);
+                writer.println(trace);
+            } else {
+                String header = "Method " + method.format("%H.%n(%p)") + " is called";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, method.getParsingReason(), header);
+                writer.println(trace);
+            }
+        }
     }
 
     private static void printTraceForFieldsImpl(String fieldsTraceOpt, BigBang bb, PrintWriter writer) {
+        String[] patterns = fieldsTraceOpt.split(",");
+        ObjectTreePrinter.SimpleMatcher matcher = new ObjectTreePrinter.SimpleMatcher(patterns);
+        for (AnalysisField field : bb.getUniverse().getFields()) {
+            if (!matcher.matches(field.getWrapped().format("%H.%n"))) {
+                continue;
+            }
 
+            if (field.isWritten()) {
+                String header = "Field " + field.getName() + " is written";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, field.getWrittenReason(), header);
+                writer.println(trace);
+            }
+
+            if (field.isRead()) {
+                String header = "Field " + field.getName() + " is read";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, field.getReadReason(), header);
+                writer.println(trace);
+            }
+        }
     }
 }
