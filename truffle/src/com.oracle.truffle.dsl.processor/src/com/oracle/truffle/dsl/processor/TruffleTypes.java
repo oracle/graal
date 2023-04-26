@@ -119,6 +119,7 @@ public class TruffleTypes {
     public static final String DirectCallNode_Name = "com.oracle.truffle.api.nodes.DirectCallNode";
     public static final String EncapsulatingNodeReference_Name = "com.oracle.truffle.api.nodes.EncapsulatingNodeReference";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
+    public static final String ExplodeLoop_LoopExplosionKind_Name = "com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
     public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
     public static final String FrameDescriptor_Builder_Name = "com.oracle.truffle.api.frame.FrameDescriptor.Builder";
@@ -170,6 +171,7 @@ public class TruffleTypes {
     public final DeclaredType DirectCallNode = c.getDeclaredType(DirectCallNode_Name);
     public final DeclaredType EncapsulatingNodeReference = c.getDeclaredType(EncapsulatingNodeReference_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
+    public final DeclaredType ExplodeLoop_LoopExplosionKind = c.getDeclaredType(ExplodeLoop_LoopExplosionKind_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
     public final DeclaredType FrameDescriptor_Builder = c.getDeclaredType(FrameDescriptor_Builder_Name);

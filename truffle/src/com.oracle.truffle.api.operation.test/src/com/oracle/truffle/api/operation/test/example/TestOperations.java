@@ -99,6 +99,11 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         return name;
     }
 
+    @Override
+    public String toString() {
+        return name;
+    }
+
     // Expose the protected cloneUninitialized method for testing.
     public TestOperations doCloneUninitialized() {
         return (TestOperations) cloneUninitialized();
@@ -121,6 +126,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         }
 
         @Specialization
+        @TruffleBoundary
         public static String addStrings(String lhs, String rhs) {
             return lhs + rhs;
         }

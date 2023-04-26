@@ -43,6 +43,7 @@ package com.oracle.truffle.dsl.processor.operations.generator;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.addSuppressWarnings;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
+import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createPartialEvaluationConstant;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.addField;
@@ -65,6 +66,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -819,7 +821,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "variadicCount"));
 
-        ex.addAnnotationMirror(new CodeAnnotationMirror(types.ExplodeLoop));
+        ex.addAnnotationMirror(createExplodeLoopAnnotation(null));
 
         CodeTreeBuilder b = ex.createBuilder();
 
@@ -1016,10 +1018,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "initializeCachedNodes");
         CodeTreeBuilder b = ex.createBuilder();
 
+        b.tree(createNeverPartOfCompilation());
         b.startAssert().string("cachedNodes == null").end();
         b.statement("cachedNodes = new Node[numNodes]");
         b.statement("int bci = 0");
-        b.startWhile().string("bci < bc.length").end().startBlock();
+        b.string("loop: ").startWhile().string("bci < bc.length").end().startBlock();
+        b.statement("int nodeIndex");
+        b.statement("Node node");
         b.startSwitch().string("bc[bci]").end().startBlock();
         for (InstructionModel instr : model.getInstructions()) {
             b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
@@ -1027,24 +1032,29 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case CUSTOM:
                 case CUSTOM_SHORT_CIRCUIT:
                     InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
-                    b.statement("int nodeIndex = bc[bci + " + imm.offset + "]");
-                    b.statement(cachedDataClassName(instr) + " node = new " + cachedDataClassName(instr) + "()");
-                    b.statement("cachedNodes[nodeIndex] = insert(node)");
+                    b.statement("nodeIndex = bc[bci + " + imm.offset + "]");
+                    b.statement("node = new " + cachedDataClassName(instr) + "()");
+                    b.statement("bci += " + instr.getInstructionLength());
+                    b.statement("break");
                     break;
                 default:
-                    // do nothing
+                    b.statement("bci += " + instr.getInstructionLength());
+                    b.statement("continue loop");
                     break;
             }
-            b.statement("bci += " + instr.getInstructionLength());
-            b.statement("break");
             b.end();
         }
 
         b.caseDefault().startBlock();
-        b.statement("break");
+        buildThrow(b, AssertionError.class, "\"Should not reach here\"");
         b.end();
 
         b.end(); // } switch
+
+        // node and nodeIndex are guaranteed to be set, since we continue to the top of the loop
+        // when there's no node.
+        b.statement("cachedNodes[nodeIndex] = insert(node)");
+
         b.end(); // } while
         b.startAssert().string("bci == bc.length").end();
 
@@ -3492,7 +3502,16 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createContinueAt() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(baseInterpreter, "continueAt");
+            ex.addAnnotationMirror(createExplodeLoopAnnotation("MERGE_EXPLODE"));
+
             CodeTreeBuilder b = ex.createBuilder();
+
+            b.tree(createPartialEvaluationConstant("bc"));
+            b.tree(createPartialEvaluationConstant("constants"));
+            b.tree(createPartialEvaluationConstant("cachedNodes"));
+            b.tree(createPartialEvaluationConstant("handlers"));
+            b.tree(createPartialEvaluationConstant("startState"));
+            b.tree(createPartialEvaluationConstant("numLocals"));
 
             b.statement("int bci = startState & 0xffff");
             b.statement("int sp = (startState >> 16) & 0xffff");
@@ -3551,17 +3570,17 @@ public class OperationsNodeFactory implements ElementHelpers {
                 switch (instr.kind) {
                     case BRANCH:
                         if (isUncached) {
-                            b.startIf().string("bc[bci +  1] <= bci").end().startBlock();
+                            b.startIf().string("bc[bci + 1] <= bci").end().startBlock();
 
                             b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("$this.changeInterpreters(CACHED_INTERPRETER)");
-                            b.statement("return (sp << 16) | bc[bci +  1]");
+                            b.statement("return (sp << 16) | bc[bci + 1]");
                             b.end();
 
                             b.end();
                         }
-                        b.statement("bci = bc[bci +  1]");
+                        b.statement("bci = bc[bci + 1]");
                         b.statement("continue loop");
                         break;
                     case BRANCH_FALSE:
@@ -4132,11 +4151,31 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private void buildThrowIllegalStateException(CodeTreeBuilder b, String reasonCode) {
-        b.startThrow().startNew(context.getType(IllegalStateException.class));
+        buildThrow(b, IllegalStateException.class, reasonCode);
+    }
+
+    private void buildThrow(CodeTreeBuilder b, Class<? extends Throwable> exceptionClass, String reasonCode) {
+        b.startThrow().startNew(context.getType(exceptionClass));
         if (reasonCode != null) {
             b.string(reasonCode);
         }
         b.end(2);
+    }
+
+    private CodeAnnotationMirror createExplodeLoopAnnotation(String kind) {
+        CodeAnnotationMirror explodeLoop = new CodeAnnotationMirror(types.ExplodeLoop);
+        if (kind != null) {
+            TypeElement loopExplosionKind = ElementUtils.castTypeElement(types.ExplodeLoop_LoopExplosionKind);
+            Optional<Element> enumValue = ElementUtils.getEnumValues(loopExplosionKind).stream().filter(
+                            value -> value.getSimpleName().contentEquals(kind)).findFirst();
+            if (enumValue.isEmpty()) {
+                throw new IllegalArgumentException(String.format("Unknown enum value for %s: %s", loopExplosionKind.getSimpleName(), kind));
+            }
+            CodeAnnotationValue value = new CodeAnnotationValue(enumValue.get());
+            explodeLoop.setElementValue("kind", value);
+
+        }
+        return explodeLoop;
     }
 
     private CodeTree createInstructionConstant(InstructionModel instr) {
