@@ -99,7 +99,7 @@ public final class SubprocessTestUtils {
      */
     public static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
         AtomicReference<Subprocess> process = new AtomicReference<>();
-        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(additionalVmOptions).onSuccess((p) -> process.set(p)).run();
+        newBuilder(testClass, action).failOnNonZeroExit(failOnNonZeroExitCode).prefixVmOption(additionalVmOptions).onExit((p) -> process.set(p)).run();
         return process.get();
     }
 
@@ -219,7 +219,7 @@ public final class SubprocessTestUtils {
         private final List<String> prefixVmArgs = new ArrayList<>();
         private final List<String> postfixVmArgs = new ArrayList<>();
         private boolean failOnNonZeroExit = true;
-        private Consumer<Subprocess> onSuccess;
+        private Consumer<Subprocess> onExit;
 
         private Builder(Class<?> testClass, Runnable run) {
             this.testClass = testClass;
@@ -241,8 +241,8 @@ public final class SubprocessTestUtils {
             return this;
         }
 
-        public Builder onSuccess(Consumer<Subprocess> consumer) {
-            this.onSuccess = consumer;
+        public Builder onExit(Consumer<Subprocess> exit) {
+            this.onExit = exit;
             return this;
         }
 
@@ -251,7 +251,7 @@ public final class SubprocessTestUtils {
                 runnable.run();
             } else {
                 Subprocess process = execute(findTestMethod(testClass), failOnNonZeroExit, prefixVmArgs, postfixVmArgs);
-                onSuccess.accept(process);
+                onExit.accept(process);
             }
         }
 
