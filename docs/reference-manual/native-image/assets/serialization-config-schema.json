@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "default": {
+    "types": [],
+    "lambdaCapturingTypes": [],
+    "proxies": []
+  },
+  "examples": [
+    {
+      "types": [
+        {
+          "condition": {
+            "typeReachable": "com.example.myPackage.ConditionClass"
+          },
+          "name": "java.lang.Class",
+          "customTargetConstructorClass": "com.example.myPackage.CustomTargetConstructorClass"
+        }
+      ],
+      "lambdaCapturingTypes": [
+        {
+          "condition": {
+            "typeReachable": "com.example.myPackage.ConditionLambdaCapturingClass"
+          },
+          "name": "com.example.Class"
+        }
+      ],
+      "proxies": [
+        {
+          "condition": {
+            "typeReachable": "com.example.myPackage.ConditionProxyClass"
+          },
+          "interfaces": [
+            "com.example.interface.name1",
+            "com.example.interface.name2",
+            "com.example.interface.name3"
+          ]
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "types": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to serialize class from <name>"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "type": "string",
+            "title": "Fully qualified class name of the class that should be serialized"
+          },
+          "customTargetConstructorClass": {
+            "type": "string",
+            "title": "Fully qualified class name of the class which constructor should be used instead of serializing class constructor"
+          }
+        },
+        "type": "object"
+      },
+      "title": "List of classes that should be serialized",
+      "type": "array"
+    },
+    "lambdaCapturingTypes": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to serialize lambda classes that are captured by the class referred in <name>"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "type": "string",
+            "title": "Fully qualified class name of the class that captures lambda classes that should be either serialized or deserialized"
+          }
+        },
+        "type": "object"
+      },
+      "title": "List of classes that capture lambdas that should be serialized",
+      "type": "array"
+    },
+    "proxies": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to serialize proxy classes that implements interfaces from <interfaces>"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "type": "object"
+          },
+          "interfaces": {
+            "items": {
+              "type": "string",
+              "title": "Fully qualified name of an interface that is implemented by the proxy that should be serialized"
+            },
+            "type": "array",
+            "title": "List of interfaces that are implemented by the proxy class that should be serialized"
+          }
+        },
+        "type": "object"
+      },
+      "title": "List of proxies that should be serialized",
+      "type": "array"
+    }
+  },
+  "required": [
+    "types",
+    "lambdaCapturingTypes",
+    "proxies"
+  ],
+  "title": "JSON schema for the serialization-config that GraalVM Native Image uses",
+  "type": "object"
+}
