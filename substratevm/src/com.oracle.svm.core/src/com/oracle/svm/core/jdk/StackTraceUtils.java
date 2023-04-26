@@ -269,21 +269,6 @@ final class BacktraceVisitor extends StackFrameVisitor {
     private static final int INITIAL_TRACE_SIZE = 80;
     private long[] trace = new long[INITIAL_TRACE_SIZE];
 
-    static StackTraceElement[] decodeBacktrace(Object backtrace) {
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(true, SubstrateOptions.maxJavaStackTraceDepth());
-        final long[] trace = (long[]) backtrace;
-        for (long address : trace) {
-            if (address == 0) {
-                break;
-            }
-            CodePointer ip = WordFactory.pointer(address);
-            if (decodeCodePointer(visitor, ip)) {
-                break;
-            }
-        }
-        return visitor.trace.toArray(new StackTraceElement[0]);
-    }
-
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
     private static boolean decodeCodePointer(BuildStackTraceVisitor visitor, CodePointer ip) {
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
@@ -346,6 +331,27 @@ final class BacktraceVisitor extends StackFrameVisitor {
         long[] tmp = trace;
         trace = null;
         return tmp;
+    }
+}
+
+/**
+ * Decodes the internal backtrace stored in {@link Target_java_lang_Throwable#backtrace} and creates
+ * the corresponding {@link StackTraceElement} array.
+ */
+final class StackTraceBuilder extends BacktraceDecoder {
+
+    static StackTraceElement[] build(Object backtrace) {
+        var stackTraceBuilder = new StackTraceBuilder();
+        stackTraceBuilder.visitBacktrace(backtrace, Integer.MAX_VALUE, SubstrateOptions.maxJavaStackTraceDepth());
+        return stackTraceBuilder.trace.toArray(new StackTraceElement[0]);
+    }
+
+    private final ArrayList<StackTraceElement> trace = new ArrayList<>();
+
+    @Override
+    protected void processFrameInfo(FrameInfoQueryResult frameInfo) {
+        StackTraceElement sourceReference = frameInfo.getSourceReference();
+        trace.add(sourceReference);
     }
 }
 

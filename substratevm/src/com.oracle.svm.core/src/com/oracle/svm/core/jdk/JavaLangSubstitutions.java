@@ -402,7 +402,7 @@ final class Target_java_lang_StackTraceElement {
             /* Stack trace eagerly created. */
             return stackTrace;
         }
-        return BacktraceVisitor.decodeBacktrace(x);
+        return StackTraceBuilder.build(x);
     }
 
     /**
@@ -419,7 +419,7 @@ final class Target_java_lang_StackTraceElement {
             /* Stack trace eagerly created. */
             return stackTrace;
         }
-        return BacktraceVisitor.decodeBacktrace(x);
+        return StackTraceBuilder.build(x);
     }
 }
 
