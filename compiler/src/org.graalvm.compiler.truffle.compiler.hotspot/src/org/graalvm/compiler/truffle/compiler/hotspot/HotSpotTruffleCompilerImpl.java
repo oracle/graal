@@ -162,6 +162,14 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         return compiler;
     }
 
+    /**
+     * In the past we reused the JVMCI backend from the host compiler directly as a last tier, this
+     * made certain things work in the last tier, but not in the first tier. In order to ensure that
+     * host jvmci compilation and Truffle guest compilation is separated we recreate the
+     * configuration for each tier and keep it separate from the host compiler configuration. This
+     * also ensures that configuration that should only happen for Truffle runtime compilation
+     * cannot influence host compilation and vice versa.
+     */
     private static TruffleTierConfiguration createTierConfiguration(HotSpotGraalRuntimeProvider hotspotGraalRuntime, OptionValues options, HotSpotKnownTruffleTypes knownTruffleTypes,
                     String forceConfigName) {
         String configName = resolveConfigurationName(hotspotGraalRuntime, options, forceConfigName);
