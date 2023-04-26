@@ -40,13 +40,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class LibGraalTruffleHostEnvironment extends TruffleHostEnvironment {
 
+    private final HostMethodInfoCache hostCache = new HostMethodInfoCache();
+
     LibGraalTruffleHostEnvironment(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess) {
         super(runtime, metaAccess);
     }
 
     @Override
     public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
-        return runtime().getHostMethodInfo(method);
+        return hostCache.get(method);
     }
 
     @Override
