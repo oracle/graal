@@ -41,6 +41,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.StringUtil;
 
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
@@ -78,11 +79,17 @@ public final class VMInspectionOptions {
         }
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean hasJfrSupport(String monitoringFeatures) {
-        LocatableMultiOptionValue.Strings strings = LocatableMultiOptionValue.Strings.buildWithCommaDelimiter();
-        strings.valueUpdate(monitoringFeatures);
-        return strings.values().contains(MONITORING_JFR_NAME);
+        if (OS.WINDOWS.isCurrent()) {
+            return false;
+        }
+
+        for (String value : StringUtil.split(monitoringFeatures, ",")) {
+            if (MONITORING_JFR_NAME.equals(value) || MONITORING_ALL_NAME.equals(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

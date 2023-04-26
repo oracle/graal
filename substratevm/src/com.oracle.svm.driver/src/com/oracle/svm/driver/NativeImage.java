@@ -81,6 +81,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
@@ -248,6 +249,7 @@ public class NativeImage {
     final String oHTraceClassInitialization = oH(SubstrateOptions.TraceClassInitialization);
     final String oHTraceObjectInstantiation = oH(SubstrateOptions.TraceObjectInstantiation);
     final String oHTargetPlatform = oH(SubstrateOptions.TargetPlatform);
+    final String oHEnableMonitoringFeatures = oH(VMInspectionOptions.EnableMonitoringFeatures);
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
@@ -1208,9 +1210,20 @@ public class NativeImage {
             imageBuilderJavaArgs.add(DefaultOptionHandler.addModulesOption + "=ALL-DEFAULT");
         }
 
-        boolean useColorfulOutput = configureBuildOutput();
+        /*
+         * If the JFR support should be part of the image, then we need to enable JFR at image
+         * build-time.
+         */
+        String monitoringFeatures = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHEnableMonitoringFeatures);
+        if (monitoringFeatures != null && VMInspectionOptions.hasJfrSupport(monitoringFeatures)) {
+            if (findLastMatchingImageBuilderJavaArg("-XX:StartFlightRecording=") == null) {
+                imageBuilderJavaArgs.add("-XX:StartFlightRecording=disk=false");
+                imageBuilderJavaArgs.add("-Xlog:jfr*=error");
+            }
+        }
 
         List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
+        boolean useColorfulOutput = configureBuildOutput();
         try {
             return buildImage(finalImageBuilderJavaArgs, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
         } finally {
@@ -1218,6 +1231,16 @@ public class NativeImage {
                 performANSIReset();
             }
         }
+    }
+
+    private String findLastMatchingImageBuilderJavaArg(String prefix) {
+        for (int i = imageBuilderJavaArgs.size() - 1; i >= 0; i--) {
+            String arg = imageBuilderJavaArgs.get(i);
+            if (arg.startsWith(prefix)) {
+                return arg;
+            }
+        }
+        return null;
     }
 
     private static void updateArgumentEntryValue(List<String> argList, ArgumentEntry listEntry, String newValue) {
@@ -2000,14 +2023,15 @@ public class NativeImage {
     }
 
     void showOutOfMemoryWarning() {
-        String lastMaxHeapValue = null;
-        for (String arg : imageBuilderJavaArgs) {
-            if (arg.startsWith(oXmx)) {
-                lastMaxHeapValue = arg.substring(oXmx.length());
-            }
+        String maxHeapText = "";
+        String additionalAction = "";
+
+        String lastXmxOption = findLastMatchingImageBuilderJavaArg(oXmx);
+        if (lastXmxOption != null) {
+            String lastMaxHeapValue = lastXmxOption.substring(oXmx.length());
+            maxHeapText = " (The maximum heap size of the process was set to '" + lastMaxHeapValue + "'.)";
+            additionalAction = " or increase the maximum heap size using the '" + oXmx + "' option";
         }
-        String maxHeapText = lastMaxHeapValue == null ? "" : " (The maximum heap size of the process was set to '" + lastMaxHeapValue + "'.)";
-        String additionalAction = lastMaxHeapValue == null ? "" : " or increase the maximum heap size using the '" + oXmx + "' option";
         showMessage("The Native Image build process ran out of memory.%s%nPlease make sure your build system has more memory available%s.", maxHeapText, additionalAction);
     }
 
@@ -2080,10 +2104,8 @@ public class NativeImage {
         NativeImageArgsProcessor argsProcessor = new NativeImageArgsProcessor(null);
         for (String arg : getNativeImageArgs()) {
             argsProcessor.accept(arg);
-            if (arg.matches("--enable-monitoring=(.*,)*(jfr|all)(,.*)*\\Z")) {
-                imageBuilderJavaArgs.add("-XX:StartFlightRecording"); // use JFR at image build time
-            }
         }
+
         return argsProcessor.apply(false);
     }
 
