@@ -39,6 +39,21 @@
  * SOFTWARE.
  */
 
+/**
+ * Used by mx to compute the version of the implementation of the Java Platform.
+ * Prints a string that contains:
+ * - the version number
+ * - the optional pre-release identifier
+ * - the optional build number (typically not available in local builds)
+ * - optional build information
+ * See: {@link mx_sdk_vm_impl.graalvm_version()}
+ *
+ * Examples:
+ * - with `Java(TM) SE Runtime Environment (build 17.0.7+8-LTS-jvmci-23.0-b10)`
+ *   prints: `JDK_VERSION_INFO="17.0.7||+8|-LTS-jvmci-23.0-b10"`
+ * - with `OpenJDK Runtime Environment (build 21-ea+19-1566)`
+ *   prints: `JDK_VERSION_INFO="21|ea|+19|-1566"`
+ */
 public class JDKVersionInfo {
     public static void main(String[] args) {
         Runtime.Version v = Runtime.version();
