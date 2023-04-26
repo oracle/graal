@@ -104,10 +104,9 @@ final class TruffleToLibGraalEntryPoints {
     @TruffleToLibGraal(RegisterRuntime)
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_registerRuntime")
-    public static boolean registerRuntime(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JObject runtime) {
+    public static boolean registerRuntime(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JObject truffleRuntime) {
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, RegisterRuntime, env)) {
-            // do not set the class loader ref if it happens to be already set
-            return LibGraalTruffleHostEnvironmentLookup.registerRuntime(env, runtime);
+            return LibGraalTruffleHostEnvironmentLookup.registerRuntime(env, truffleRuntime);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return false;

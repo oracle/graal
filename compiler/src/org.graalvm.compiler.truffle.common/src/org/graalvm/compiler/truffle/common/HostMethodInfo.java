@@ -27,24 +27,18 @@ package org.graalvm.compiler.truffle.common;
 /**
  * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
  * compiler implementation side.
+ *
+ * @param isTruffleBoundary specifies if the method is annotated by {@code TruffleBoundary}
+ * @param isBytecodeInterpreterSwitch specifies if the method is annotated by
+ *            {@code BytecodeInterpreterSwitch}.
+ * @param isBytecodeInterpreterSwitchBoundary specifies if the method is annotated by
+ *            {@code BytecodeInterpreterSwitchBoundary}
+ * @param isInliningCutoff specifies if the method is annotated by {@code InliningCutoff}
  */
 public record HostMethodInfo(
-                /**
-                 * Determines if {@code method} is annotated by {@code TruffleBoundary}.
-                 */
                 boolean isTruffleBoundary,
-                /**
-                 * Determines if {@code method} is annotated by {@code BytecodeInterpreterSwitch}.
-                 */
                 boolean isBytecodeInterpreterSwitch,
-                /**
-                 * Determines if {@code method} is annotated by
-                 * {@code BytecodeInterpreterSwitchBoundary}.
-                 */
                 boolean isBytecodeInterpreterSwitchBoundary,
-                /**
-                 * Determines if {@code method} is annotated by {@code InliningCutoff}.
-                 */
                 boolean isInliningCutoff) {
 
 }

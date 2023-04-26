@@ -30,35 +30,24 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.LoopExplosionK
 /**
  * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
  * compiler implementation side.
+ *
+ * @param loopExplosion Queries how loops in {@code method} with constant number of invocations
+ *            should be unrolled.
+ * @param inlineForPartialEvaluation Gets an object describing whether and how a method can be
+ *            inlined based on Truffle directives during partial evaluation
+ * @param inlineForTruffleBoundary Gets an object describing whether and how a method can be inlined
+ *            based on Truffle directives after partial evaluation e.g. during later inlining
+ *            phases.
+ * @param isInlineable Determines if {@code method} can be inlined by the runtime (independently
+ *            from Truffle).
+ * @param isSpecializationMethod Determines if {@code method} is annotated by
+ *            {@code Specialization}.
  */
 public record PartialEvaluationMethodInfo(
-                /**
-                 * Queries how loops in {@code method} with constant number of invocations should be
-                 * unrolled.
-                 */
                 LoopExplosionKind loopExplosion,
-
-                /**
-                 * Gets an object describing whether and how a method can be inlined based on
-                 * Truffle directives during partial evaluation.
-                 */
                 InlineKind inlineForPartialEvaluation,
-
-                /**
-                 * Gets an object describing whether and how a method can be inlined based on
-                 * Truffle directives after partial evaluation e.g. during later inlining phases.
-                 */
                 InlineKind inlineForTruffleBoundary,
-
-                /**
-                 * Determines if {@code method} can be inlined by the runtime (independently from
-                 * Truffle).
-                 */
                 boolean isInlineable,
-
-                /**
-                 * Determines if {@code method} is annotated by {@code Specialization}.
-                 */
                 boolean isSpecializationMethod) {
 
 }

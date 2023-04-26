@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
@@ -57,21 +58,21 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEnvironment.Lookup {
 
     private static final int NO_TRUFFLE_REGISTERED = 0;
-    private static final GlobalAtomicLong WEAK_RUNTIME_INSTANCE = new GlobalAtomicLong(NO_TRUFFLE_REGISTERED);
+    private static final GlobalAtomicLong WEAK_TRUFFLE_RUNTIME_INSTANCE = new GlobalAtomicLong(NO_TRUFFLE_REGISTERED);
 
     @RecomputeFieldValue(kind = Kind.Reset) private TruffleHostEnvironment previousRuntime;
 
     @Override
     public TruffleHostEnvironment lookup(ResolvedJavaType forType) {
-        long globalReference = WEAK_RUNTIME_INSTANCE.get();
+        long globalReference = WEAK_TRUFFLE_RUNTIME_INSTANCE.get();
         if (globalReference == NO_TRUFFLE_REGISTERED) {
-            // fast path for non-truffle
+            // fast path if Truffle was not initialized
             return null;
         }
         JNIEnv env = JNIMethodScope.env();
         JObject runtimeLocalRef = JNIUtil.NewLocalRef(env, WordFactory.pointer(globalReference));
         if (runtimeLocalRef.isNull()) {
-            // Truffle was GC'ed
+            // The Truffle runtime was collected by the GC
             return null;
         }
         TruffleHostEnvironment environment = this.previousRuntime;
@@ -84,8 +85,7 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
         }
         ResolvedJavaType runtimeType = LibGraal.asResolvedJavaType(JNIUtil.GetObjectClass(env, runtimeLocalRef).rawValue());
         if (runtimeType == null) {
-            assert false : "The object class needs to be available for a Truffle runtime object.";
-            return null;
+            throw GraalError.shouldNotReachHere("The object class needs to be available for a Truffle runtime object.");
         }
         /*
          * We do not currently validate the forType. But in the future we want to lookup the runtime
@@ -101,10 +101,10 @@ public final class LibGraalTruffleHostEnvironmentLookup implements TruffleHostEn
         return (HSTruffleCompilerRuntime) environment.runtime();
     }
 
-    public static boolean registerRuntime(JNIEnv env, JObject runtime) {
+    public static boolean registerRuntime(JNIEnv env, JObject truffleRuntime) {
         // TODO GR-44222 support multiple runtimes.
-        JWeak globalRuntimeRef = JNIUtil.NewWeakGlobalRef(env, runtime, "");
-        return WEAK_RUNTIME_INSTANCE.compareAndSet(0, globalRuntimeRef.rawValue());
+        JWeak globalRuntimeRef = JNIUtil.NewWeakGlobalRef(env, truffleRuntime, "");
+        return WEAK_TRUFFLE_RUNTIME_INSTANCE.compareAndSet(0, globalRuntimeRef.rawValue());
     }
 
 }

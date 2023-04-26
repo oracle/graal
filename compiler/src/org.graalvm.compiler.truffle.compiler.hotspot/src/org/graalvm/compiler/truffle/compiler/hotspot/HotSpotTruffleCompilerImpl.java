@@ -127,7 +127,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     public static HotSpotTruffleCompilerImpl create(final TruffleCompilerRuntime runtime) {
         OptionValues options = runtime.getGraalOptions(OptionValues.class);
         /*
-         * Host inlining is not necessary for runtime compilation so disable it.
+         * Host inlining is not necessary for Truffle guest compilation so disable it.
          */
         options = new OptionValues(options,
                         HostInliningPhase.Options.TruffleHostInlining, Boolean.FALSE,

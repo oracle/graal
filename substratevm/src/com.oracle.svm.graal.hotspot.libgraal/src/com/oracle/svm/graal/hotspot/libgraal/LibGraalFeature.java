@@ -510,9 +510,9 @@ public class LibGraalFeature implements InternalFeature {
                 String symbol = null;
 
                 /*
-                 * We process all foreign calls of all backends including Truffle backends some
-                 * stubs may be encountered multiple times. It is enough to do this once per stub
-                 * signature.
+                 * We process all foreign calls of all backends including Truffle backends. Some
+                 * stubs may be encountered multiple times with multiple backends. It is enough to
+                 * do this once per stub signature.
                  */
                 if (!LibGraalEntryPoints.STUBS.containsKey(sig)) {
                     CGlobalData<Pointer> data = CGlobalDataFactory.createWord((Pointer) WordFactory.zero(), symbol, nonConstant);

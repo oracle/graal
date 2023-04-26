@@ -61,8 +61,13 @@ final class TruffleToLibGraalCalls {
     @TruffleToLibGraal(InitializeRuntime)
     static native long initializeRuntime(long isolateThreadId, TruffleCompilerRuntime truffleRuntime, long classLoaderDelegateId);
 
+    /**
+     * Registers a Truffle runtime. Returns <code>true</code> if this was the first runtime
+     * registered and <code>false</code> if there were previous calls to
+     * {@link #registerRuntime(long, Object)}.
+     */
     @TruffleToLibGraal(RegisterRuntime)
-    static native boolean registerRuntime(long isolateThreadId, Object runtime);
+    static native boolean registerRuntime(long isolateThreadId, Object truffleRuntime);
 
     @TruffleToLibGraal(GetCompilerConfigurationFactoryName)
     static native String getCompilerConfigurationFactoryName(long isolateThreadId, long truffleRuntimeHandle);

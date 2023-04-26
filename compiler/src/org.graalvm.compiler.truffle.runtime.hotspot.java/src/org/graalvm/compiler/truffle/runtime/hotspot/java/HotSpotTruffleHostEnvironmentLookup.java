@@ -55,7 +55,7 @@ public final class HotSpotTruffleHostEnvironmentLookup implements TruffleHostEnv
             // fast path truffle
             return env;
         }
-        // in an hotspot environment multiple compiler threads might lookup
+        // in a HotSpot environment multiple compiler threads might lookup
         // the environment. Make sure we only create it once.
         synchronized (this) {
             env = this.environment;

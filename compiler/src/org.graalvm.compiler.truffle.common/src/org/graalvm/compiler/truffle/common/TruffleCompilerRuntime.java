@@ -154,7 +154,7 @@ public interface TruffleCompilerRuntime {
      * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
      * compiler implementation side.
      *
-     * @see #getPartialEvaluationMethodInfo(ResolvedJavaMethod) for runtime compilation related
+     * @see #getPartialEvaluationMethodInfo(ResolvedJavaMethod) for guest compilation related
      *      information.
      */
     HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method);

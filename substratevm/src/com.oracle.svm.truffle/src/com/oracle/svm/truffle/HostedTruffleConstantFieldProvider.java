@@ -50,7 +50,7 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
      * <p>
      * However, the "stableness" of the array can be a dynamic property guarded by assumptions in
      * the runtime execution. In other words, it is possible for the array to be considered stable
-     * in a runtime compilation, and for the compilation to be invalidated when the array is
+     * in a Truffle guest compilation, and for the compilation to be invalidated when the array is
      * changed. Therefore, this constant folding must not happen during native image generation, as
      * invalidation of such code is impossible.
      * <p>

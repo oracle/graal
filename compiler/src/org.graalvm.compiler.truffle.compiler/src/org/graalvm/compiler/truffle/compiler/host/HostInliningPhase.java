@@ -1015,9 +1015,9 @@ public class HostInliningPhase extends AbstractInliningPhase {
         String boundary = isTruffleBoundary(context.env, targetMethod);
         if (boundary != null) {
             /*
-             * Similar to runtime compilations, truffle boundary calls indicate the slow path
-             * execution of a mode. We shouldn't force any additional inlining heuristics for such
-             * methods as we do not know
+             * Truffle boundary calls indicate the slow path execution. We shouldn't force any
+             * additional inlining heuristics for such methods as we do not know whether the code
+             * behind is designed for Truffle partial evaluation.
              */
             call.reason = boundary;
             return false;

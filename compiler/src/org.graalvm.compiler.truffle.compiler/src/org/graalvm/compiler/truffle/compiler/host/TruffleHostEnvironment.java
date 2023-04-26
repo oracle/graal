@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * This class manages Truffle resources used during host Java compilation. A host environment is
  * only available if the Truffle runtime was fully initialized. In practice this means that several
  * Truffle classes are needed to be initialized before Truffle can be considered initialized. In
- * addition any {@link #get(ResolvedJavaType) lookup} of the host environment needs to be qualified
+ * addition, any {@link #get(ResolvedJavaType) lookup} of the host environment needs to be qualified
  * using a {@link ResolvedJavaType}. This allows to qualify which Truffle classes should be used if
  * multiple Truffle runtimes are initialized.
  * <p>
@@ -49,21 +49,23 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * provided during guest compilation with {@link TruffleCompilerConfiguration#runtime()} instead.
  * The Truffle host environment may be used for host compilation in four scenarios:
  * <ul>
- * <li>Truffle on HotSpot without libgraal: The runtime object is registered at initialization and
- * used directly as Java object. The object is only registered for optimized runtimes. For other
- * runtimes any lookup will return <code>null</code>.
+ * <li>Truffle on HotSpot without libgraal: The Truffle runtime object is registered at
+ * initialization and used directly as a Java object. The object is only registered for runtimes
+ * that do guest compilation. For other runtimes any lookup will return <code>null</code>.
  * <li>Truffle on HotSpot with libgraal: The runtime object is registered in a global data structure
  * such that the Truffle runtime instance is available for all libgraal isolates using a global JNI
  * weak reference.
- * <li>Truffle on SubstrateVM with runtime compilation (TruffleFeature): Here the runtime object is
- * already available at image build time and we can provide it as a singleton.
- * <li>Truffle on SubstrateVM without runtime compilation (only TruffleBaseFeature): There the
+ * <li>Truffle on SubstrateVM with enabled guest compilation (TruffleFeature): Here the runtime
+ * object is already available at image build time and we can provide it as a singleton.
+ * <li>Truffle on SubstrateVM without enable guest compilation (only TruffleBaseFeature): There the
  * environment is always <code>null</code>.
  * <ul>
  * Note that currently Truffle is limited to support one optimized runtime at a time per Java heap.
  * If a class loader decides to load multiple runtime instances we fail at Truffle initialization
  * time. This restriction may be lifted in the future.
  * <p>
+ * More details on host compilation can be found here: <a href=
+ * "https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md">HostCompilation.md</a>
  */
 public abstract class TruffleHostEnvironment {
 

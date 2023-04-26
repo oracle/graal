@@ -33,8 +33,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Known truffle types only needed for host compilation. For types needed during runtime compilation
- * see {@link KnownTruffleTypes}.
+ * Known truffle types only needed for host compilation. For types needed during Truffle guest
+ * compilation see {@link KnownTruffleTypes}.
  */
 public final class TruffleKnownHostTypes extends AbstractKnownTruffleTypes {
 
