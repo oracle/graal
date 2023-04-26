@@ -51,7 +51,7 @@ public class ThreadCPULoadEvent {
 
     private static final FastThreadLocalLong cpuTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.cpuTimeTL");
     private static final FastThreadLocalLong userTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.userTimeTL");
-    private static final FastThreadLocalLong wallClockTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.wallClockTimeTL");
+    private static final FastThreadLocalLong timeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.timeTL");
 
     private static volatile int lastActiveProcessorCount;
 
@@ -83,9 +83,9 @@ public class ThreadCPULoadEvent {
         long currCpuTime = getThreadCpuTime(isolateThread, true);
         long prevCpuTime = cpuTimeTL.get(isolateThread);
 
-        long currWallClockTime = getWallClockTime();
-        long prevWallClockTime = wallClockTimeTL.get(isolateThread);
-        wallClockTimeTL.set(isolateThread, currWallClockTime);
+        long currTime = getCurrentTime();
+        long prevTime = timeTL.get(isolateThread);
+        timeTL.set(isolateThread, currTime);
 
         // Threshold of 1 ms
         if (currCpuTime - prevCpuTime < 1 * TimeUtils.nanosPerMilli) {
@@ -109,7 +109,7 @@ public class ThreadCPULoadEvent {
 
         long userTime = currUserTime - prevUserTime;
         long systemTime = currSystemTime - prevSystemTime;
-        long wallClockTime = currWallClockTime - prevWallClockTime;
+        long wallClockTime = currTime - prevTime;
         float totalAvailableTime = wallClockTime * processorsCount;
 
         // Avoid reporting percentages above the theoretical max
@@ -162,12 +162,12 @@ public class ThreadCPULoadEvent {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static long getWallClockTime() {
+    private static long getCurrentTime() {
         return System.nanoTime();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initializeWallClockTime(IsolateThread isolateThread) {
-        wallClockTimeTL.set(isolateThread, getWallClockTime());
+        timeTL.set(isolateThread, getCurrentTime());
     }
 }
