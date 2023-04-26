@@ -36,6 +36,8 @@ import java.util.Random;
 import java.util.SplittableRandom;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
@@ -58,6 +60,7 @@ public final class DisallowedImageHeapObjects {
     private static final Method CONTINUATION_IS_STARTED_METHOD;
     private static final Class<?> CLEANER_CLEANABLE_CLASS;
     private static final Class<?> LEGACY_CLEANER_CLASS;
+    private static final Class<?> EVENTWRITER_CLASS;
     static {
         CANCELLABLE_CLASS = ReflectionUtil.lookupClass(false, "sun.nio.fs.Cancellable");
         JDK_VIRTUAL_THREAD_CLASS = ReflectionUtil.lookupClass(true, "java.lang.VirtualThread");
@@ -65,6 +68,11 @@ public final class DisallowedImageHeapObjects {
         CONTINUATION_IS_STARTED_METHOD = (CONTINUATION_CLASS == null) ? null : ReflectionUtil.lookupMethod(CONTINUATION_CLASS, "isStarted");
         CLEANER_CLEANABLE_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.ref.CleanerImpl$CleanerCleanable");
         LEGACY_CLEANER_CLASS = ReflectionUtil.lookupClass(false, "jdk.internal.ref.Cleaner");
+        if (JavaVersionUtil.JAVA_SPEC < 19) {
+            EVENTWRITER_CLASS = ReflectionUtil.lookupClass(false, "jdk.jfr.internal.EventWriter");
+        } else {
+            EVENTWRITER_CLASS = ReflectionUtil.lookupClass(false, "jdk.jfr.internal.event.EventWriter");
+        }
     }
 
     public static void check(Object obj, DisallowedObjectReporter reporter) {
@@ -167,6 +175,12 @@ public final class DisallowedImageHeapObjects {
 
         if (CANCELLABLE_CLASS.isInstance(obj)) {
             throw reporter.raise("Detected an instance of a class that extends " + CANCELLABLE_CLASS.getTypeName() + ": " + obj.getClass().getTypeName() + ". " +
+                            "It contains a pointer to unmanaged C memory, which is no longer available at image runtime.", obj,
+                            "Try avoiding to initialize the class that caused initialization of the object.");
+        }
+
+        if (EVENTWRITER_CLASS.isInstance(obj)) {
+            throw reporter.raise("Detected an instance of a class " + obj.getClass().getTypeName() + ". " +
                             "It contains a pointer to unmanaged C memory, which is no longer available at image runtime.", obj,
                             "Try avoiding to initialize the class that caused initialization of the object.");
         }
