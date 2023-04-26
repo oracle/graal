@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -234,7 +234,10 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof LinkageError || e.getCause() instanceof IllegalAccessError) {
+                Throwable cause = e.getCause();
+                if (cause instanceof NoClassDefFoundError && linkAtBuildTime && LinkAtBuildTimeSupport.failFast()) {
+                    reportUnresolvedElement("type", method.format("%H.%n(%P)"), e);
+                } else if (cause instanceof LinkageError) {
                     /*
                      * Ignore LinkageError if thrown from eager resolution attempt. This is usually
                      * followed by a call to ConstantPool.lookupType() which should return an
