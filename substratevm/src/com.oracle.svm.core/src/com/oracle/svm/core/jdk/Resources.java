@@ -71,7 +71,7 @@ public final class Resources {
      * resourceName) provides implementations for {@code hashCode()} and {@code equals()} needed for
      * the map keys.
      */
-    private final EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
+    private final EconomicMap<Pair<Module, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are
@@ -83,7 +83,7 @@ public final class Resources {
     Resources() {
     }
 
-    public EconomicMap<Pair<String, String>, ResourceStorageEntry> getResourceStorage() {
+    public EconomicMap<Pair<Module, String>, ResourceStorageEntry> getResourceStorage() {
         return resources;
     }
 
@@ -103,6 +103,11 @@ public final class Resources {
         return module == null ? null : module.getName();
     }
 
+    public static Pair<Module, String> createStorageKey(Module module, String resourceName) {
+        Module m = module != null && module.isNamed() ? module : null;
+        return Pair.create(m, resourceName);
+    }
+
     public static byte[] inputStreamToByteArray(InputStream is) {
         try {
             return is.readAllBytes();
@@ -112,10 +117,9 @@ public final class Resources {
     }
 
     private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-        String moduleName = moduleName(module);
         var resources = singleton().resources;
         synchronized (resources) {
-            Pair<String, String> key = Pair.create(moduleName, resourceName);
+            Pair<Module, String> key = createStorageKey(module, resourceName);
             ResourceStorageEntry entry = resources.get(key);
             if (entry == null) {
                 if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
@@ -205,8 +209,7 @@ public final class Resources {
 
     public static ResourceStorageEntry get(Module module, String resourceName) {
         String canonicalResourceName = toCanonicalForm(resourceName);
-        String moduleName = moduleName(module);
-        ResourceStorageEntry entry = singleton().resources.get(Pair.create(moduleName, canonicalResourceName));
+        ResourceStorageEntry entry = singleton().resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             return null;
         }
