@@ -34,6 +34,7 @@ import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class BacktraceDecoder {
@@ -114,5 +115,6 @@ public abstract class BacktraceDecoder {
         return framesDecoded;
     }
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
     protected abstract void processFrameInfo(FrameInfoQueryResult frameInfo);
 }

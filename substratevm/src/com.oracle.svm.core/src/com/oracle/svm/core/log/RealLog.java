@@ -670,7 +670,7 @@ public class RealLog extends Log {
         BACKTRACE_PRINTER_MUTEX.lock();
         try {
             Object backtrace = JDKUtils.getBacktrace(t);
-            return backtracePrinter.printBacktrace(backtrace, maxFrames, SubstrateOptions.maxJavaStackTraceDepth());
+            return backtracePrinter.printBacktrace(backtrace, maxFrames);
         } finally {
             BACKTRACE_PRINTER_MUTEX.unlock();
         }
@@ -690,14 +690,12 @@ public class RealLog extends Log {
 
     private class BacktracePrinter extends BacktraceDecoder {
 
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = """
-                        BacktraceDecoder and this subclass do not allocate, but other subclasses do.
-                        The RestrictHeapAccess is not clever enough to see this.""")
-        protected final int printBacktrace(Object backtrace, int maxFramesProcessed, int maxFramesDecode) {
-            return visitBacktrace(backtrace, maxFramesProcessed, maxFramesDecode);
+        protected final int printBacktrace(Object backtrace, int maxFramesProcessed) {
+            return visitBacktrace(backtrace, maxFramesProcessed, SubstrateOptions.maxJavaStackTraceDepth());
         }
 
         @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
         protected void processFrameInfo(FrameInfoQueryResult frameInfo) {
             printJavaFrame(frameInfo.getSourceClassName(), frameInfo.getSourceMethodName(), frameInfo.getSourceFileName(), frameInfo.getSourceLineNumber());
         }
