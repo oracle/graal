@@ -809,7 +809,7 @@ class NativeImageVM(GraalVm):
             rules.append(
                 mx_benchmark.JsonFixedFileRule(self.config.image_build_stats_file, {
                     "benchmark": benchmarks[0],
-                    "metric.name": "analysis-stats",
+                    "metric.name": "compile-time",
                     "metric.type": "numeric",
                     "metric.unit": "B",
                     "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
