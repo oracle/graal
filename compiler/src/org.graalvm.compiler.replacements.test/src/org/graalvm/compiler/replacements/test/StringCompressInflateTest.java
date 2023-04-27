@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.replacements.StringLatin1InflateNode;
 import org.graalvm.compiler.replacements.StringUTF16CompressNode;
 import org.graalvm.compiler.test.AddExports;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -280,13 +281,20 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
     @Test
     public void testGetChars() throws InvalidInstalledCodeException {
         // Stress String inflation with large offsets
-        String s = new String(new char[Integer.MAX_VALUE - 20]);
+        String s = null;
+        char[] dst = null;
+        try {
+            s = new String(new char[Integer.MAX_VALUE - 20]);
+            dst = new char[s.length()];
+        } catch (OutOfMemoryError e) {
+        }
+        // Use Assume so that we get a nice message that it wasn't actually run
+        Assume.assumeTrue("not enough heap", s != null);
+        Assume.assumeTrue("not enough heap", dst != null);
         InstalledCode code = getCode(getResolvedJavaMethod("getCharsSnippet"));
-        char[] dst = new char[s.length()];
         int offset = 0;
         int size = 1024 * 1024;
         while (offset < s.length()) {
-            System.err.println(offset);
             if (offset + size < 0) {
                 size = s.length() - offset;
             }
