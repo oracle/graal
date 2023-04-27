@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
@@ -265,6 +266,39 @@ public final class PosixPlatformThreads extends PlatformThreads {
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
         int status = Pthread.pthread_join_no_transition((Pthread.pthread_t) threadHandle, threadExitStatus);
         return status == 0;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public ThreadLocalKey createUnmanagedThreadLocal() {
+        Pthread.pthread_key_tPointer key = StackValue.get(Pthread.pthread_key_tPointer.class);
+        PosixUtils.checkStatusIs0(Pthread.pthread_key_create(key, WordFactory.nullPointer()), "pthread_key_create(key, keyDestructor): failed.");
+        return (ThreadLocalKey) key.read();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void deleteUnmanagedThreadLocal(ThreadLocalKey key) {
+        int resultCode = Pthread.pthread_key_delete((Pthread.pthread_key_t) key);
+        PosixUtils.checkStatusIs0(resultCode, "pthread_key_delete(key): failed.");
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @SuppressWarnings("unchecked")
+    public <T extends WordBase> T getUnmanagedThreadLocalValue(ThreadLocalKey key) {
+        /*
+         * Although this method is not async-signal-safe in general we rely on
+         * implementation-specific behavior here.
+         */
+        return (T) Pthread.pthread_getspecific((Pthread.pthread_key_t) key);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setUnmanagedThreadLocalValue(ThreadLocalKey key, WordBase value) {
+        int resultCode = Pthread.pthread_setspecific((Pthread.pthread_key_t) key, (VoidPointer) value);
+        PosixUtils.checkStatusIs0(resultCode, "pthread_setspecific(key, value): wrong arguments.");
     }
 
     @Override

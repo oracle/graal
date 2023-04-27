@@ -36,6 +36,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -79,6 +80,7 @@ final class ReferenceObjectProcessing {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void discoverIfReference(Object object, ObjectReferenceVisitor refVisitor) {
         assert object != null;
         DynamicHub hub = KnownIntrinsics.readHub(object);
@@ -87,6 +89,8 @@ final class ReferenceObjectProcessing {
         }
     }
 
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void discover(Object obj, ObjectReferenceVisitor refVisitor) {
         Reference<?> dr = (Reference<?>) obj;
         // The discovered field might contain an object with a forwarding header
@@ -218,6 +222,7 @@ final class ReferenceObjectProcessing {
         return false;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean maybeUpdateForwardedReference(Reference<?> dr, Pointer referentAddr) {
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
         UnsignedWord header = ObjectHeader.readHeaderFromPointer(referentAddr);
@@ -229,6 +234,7 @@ final class ReferenceObjectProcessing {
         return false;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean willSurviveThisCollection(Object obj) {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);
