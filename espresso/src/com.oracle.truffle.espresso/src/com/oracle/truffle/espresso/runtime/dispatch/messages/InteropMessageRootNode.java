@@ -13,6 +13,7 @@ public final class InteropMessageRootNode extends RootNode {
 
     public InteropMessageRootNode(TruffleLanguage<?> language, InteropMessage node) {
         this(language, node, (ex) -> {
+            throw sneakyThrow(ex);
         });
     }
 
@@ -35,5 +36,10 @@ public final class InteropMessageRootNode extends RootNode {
     @Override
     public String getName() {
         return "RootNode for interop message: '" + node.name() + "'.";
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
+        throw (T) ex;
     }
 }
