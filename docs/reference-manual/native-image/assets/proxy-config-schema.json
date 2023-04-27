@@ -1,6 +1,27 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
   "default": [],
+  "examples": [
+    [
+      {
+        "condition": {
+          "typeReachable": "org.condition.Class"
+        },
+        "interfaces": [
+          "com.interface.Interface1"
+        ]
+      },
+      {
+        "condition": {
+          "typeReachable": "org.condition.package.Class"
+        },
+        "interfaces": [
+          "com.interface.Interface2",
+          "com.interface.Interface3"
+        ]
+      }
+    ]
+  ],
   "items": {
     "properties": {
       "condition": {
