@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
@@ -60,6 +61,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -67,6 +69,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This is a helper class for writing moderately complex
@@ -169,20 +172,38 @@ public class InvocationPluginHelper implements DebugCloseable {
         return b.add(new ArrayLengthNode(x));
     }
 
+    /**
+     * Computes the address of an array element. The {@code array} is expected to be a byte[] while
+     * the {@code kind} may be some larger primitive type.
+     */
+    public ValueNode arrayElementPointerScaled(ValueNode array, JavaKind kind, ValueNode index) {
+        return arrayElementPointer(array, kind, index, true);
+    }
+
+    /**
+     * Computes the address of an array element. The {@code kind} is expected to match type of the
+     * {@code array}.
+     */
     public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index) {
+        return arrayElementPointer(array, kind, index, false);
+    }
+
+    private ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index, boolean scaled) {
+        // Permit scaled addressing within byte arrays
+        JavaKind actualKind = scaled ? JavaKind.Byte : kind;
+        // The visible type of the stamp should either be array type or Object. It's sometimes
+        // Object because of cycles that hide the underlying type.
+        ResolvedJavaType type = StampTool.typeOrNull(array);
+        assert type == null || (type.isArray() && type.getComponentType().getJavaKind() == actualKind) || type.isJavaLangObject() : array.stamp(NodeView.DEFAULT);
         int arrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(kind);
         ValueNode offset = ConstantNode.forIntegerKind(wordKind, arrayBaseOffset);
         if (index != null) {
-            offset = add(offset, scale(asWord(index), kind));
+            ValueNode scaledIndex = shl(asWord(index), CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(kind)));
+            offset = add(offset, scaledIndex);
         }
 
         GraalError.guarantee(offset.getStackKind() == wordKind, "should have been promoted to word: %s", index);
         return b.add(new ComputeObjectAddressNode(array, offset));
-    }
-
-    public ValueNode scale(ValueNode index, JavaKind kind) {
-        int arrayIndexShift = CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(kind));
-        return shl(index, arrayIndexShift);
     }
 
     public ValueNode asWord(ValueNode index) {
@@ -201,6 +222,7 @@ public class InvocationPluginHelper implements DebugCloseable {
             x = origY;
             y = origX;
         }
+        assert !canonicalizedCondition.mustNegate() : canonicalizedCondition;
         return createCompare(canonicalizedCondition.getCanonicalCondition(), x, y);
     }
 
@@ -216,6 +238,9 @@ public class InvocationPluginHelper implements DebugCloseable {
             case LT:
                 assert x.getStackKind() != JavaKind.Object;
                 return IntegerLessThanNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
+            case BT:
+                assert x.getStackKind() != JavaKind.Object;
+                return IntegerBelowNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
             default:
                 throw GraalError.shouldNotReachHere("Unexpected condition: " + cond);
         }
