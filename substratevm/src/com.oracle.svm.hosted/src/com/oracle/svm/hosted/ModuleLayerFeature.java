@@ -54,6 +54,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.jdk.Resources;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.SystemModuleFinders;
@@ -138,7 +139,14 @@ public final class ModuleLayerFeature implements InternalFeature {
     private Object replaceHostedModules(Object source) {
         if (source instanceof Module) {
             Module module = (Module) source;
-            return moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module, module.getDescriptor());
+            Module runtimeModule = moduleLayerFeatureUtils.getOrCreateRuntimeModuleForHostedModule(module, module.getDescriptor());
+
+            /*
+             * Ensure that resources are using the synthesized runtime module instances
+             */
+            Resources.replaceHostedModuleWithRuntimeModule(module, runtimeModule);
+
+            return runtimeModule;
         }
         return source;
     }

@@ -31,10 +31,15 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
@@ -67,9 +72,10 @@ public final class Resources {
     }
 
     /**
-     * The hosted map used to collect registered resources. Using a {@link Pair} of (moduleName,
+     * The hosted map used to collect registered resources. Using a {@link Pair} of (module,
      * resourceName) provides implementations for {@code hashCode()} and {@code equals()} needed for
-     * the map keys.
+     * the map keys. Hosted module instances differ to runtime instances, so the map that ends up in the image heap
+     * is computed after the runtime module instances have been computed {see com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<Pair<Module, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
@@ -81,6 +87,20 @@ public final class Resources {
     private long lastModifiedTime = INVALID_TIMESTAMP;
 
     Resources() {
+    }
+
+    public static void replaceHostedModuleWithRuntimeModule(Module hostedModule, Module runtimeModule) {
+        var resources = singleton().resources;
+        synchronized (resources) {
+            var keysToUpdate = StreamSupport.stream(resources.getKeys().spliterator(), false)
+                    .filter(k -> hostedModule.equals(k.getLeft()))
+                    .toList();
+            for (var oldKey : keysToUpdate) {
+                ResourceStorageEntry entry = resources.removeKey(oldKey);
+                var newKey = createStorageKey(runtimeModule, oldKey.getRight());
+                resources.put(newKey, entry);
+            }
+        }
     }
 
     public EconomicMap<Pair<Module, String>, ResourceStorageEntry> getResourceStorage() {
