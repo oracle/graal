@@ -378,12 +378,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return doPrimitive(receiver, arguments, toInt);
         }
 
-        @Specialization(guards = "isPrimitiveArray(receiver)", replaces = "doPrimitiveArray")
-        static StaticObject doPrimitiveArrayUncached(Klass receiver, Object[] arguments,
-                        @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
-            return doPrimitive(receiver, arguments, toInt);
-        }
-
         private static StaticObject doPrimitive(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
@@ -399,12 +393,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             return doReference(receiver, arguments, toInt);
         }
 
-        @Specialization(guards = "isReferenceArray(receiver)", replaces = "doReferenceArray")
-        static StaticObject doReferenceArrayUncached(Klass receiver, Object[] arguments,
-                        @Cached ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
-            return doReference(receiver, arguments, toInt);
-        }
-
         private static StaticObject doReference(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             EspressoContext context = EspressoContext.get(toInt);
@@ -415,12 +403,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
         @Specialization(guards = "isMultidimensionalArray(receiver)")
         static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
-                        @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
-            return doMulti(receiver, arguments, toInt);
-        }
-
-        @Specialization(guards = "isMultidimensionalArray(receiver)", replaces = "doMultidimensionalArray")
-        static StaticObject doMultidimensionalArrayUncached(Klass receiver, Object[] arguments,
                         @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             return doMulti(receiver, arguments, toInt);
         }
