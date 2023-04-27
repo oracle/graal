@@ -64,7 +64,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
-import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
+import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessRootNode;
 import com.oracle.truffle.espresso.preinit.ContextPatchingException;
 import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -136,9 +136,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private final Assumption noAllocationTracking = Assumption.create("Espresso no allocation tracking assumption");
     // endregion Allocation
 
-    // region Preinit
-    @CompilationFinal private EspressoLanguageCache languageCache;
-    // endregion Preinit
+    // region Preinit and sharing
+    private final EspressoLanguageCache languageCache = new EspressoLanguageCache();
+    @CompilationFinal private boolean isShared = false;
+    // endregion Preinit and sharing
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = locals.createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -180,7 +181,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         // inner context
         // is not under pre-initialization
         boolean isPreinitLanguageInstance = (boolean) env.getConfig().getOrDefault("preinit", false);
-        languageCache = new EspressoLanguageCache(isPreinitLanguageInstance);
+        if (isPreinitLanguageInstance) {
+            languageCache.addCapability(EspressoLanguageCache.CacheCapability.PRE_INITIALIZED);
+        }
 
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
@@ -201,6 +204,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     @Override
+    protected void initializeMultipleContexts() {
+        // Called before any context is created. No racing issues expected.
+        languageCache.addCapability(EspressoLanguageCache.CacheCapability.SHARED);
+        isShared = true;
+    }
+
+    @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
         if (context.getEnv().isPreInitialization()) {
             // Spawn Espresso VM in an inner context. Make sure to initialize the context
@@ -216,6 +226,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 // instance.
                 EspressoContext inner = EspressoContext.get(null);
                 inner.preInitializeContext();
+                languageCache.addCapability(EspressoLanguageCache.CacheCapability.PRE_INITIALIZED);
                 extractDataFrom(inner.getLanguage());
                 languageCache.logCacheStatus();
 
@@ -232,6 +243,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 System.gc();
             }
         } else {
+            languageCache.freezeCapabilities();
             context.initializeContext();
         }
     }
@@ -242,7 +254,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         names = other.getNames();
         types = other.getTypes();
         signatures = other.getSignatures();
-        languageCache = other.getLanguageCache();
+        languageCache.importFrom(other.getLanguageCache());
     }
 
     @Override
@@ -351,12 +363,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             RootNode node = new GetBindingsNode(this);
             return node.getCallTarget();
         }
-        if (ReferenceProcessNode.EVAL_NAME.equals(contents)) {
-            RootNode node = new ReferenceProcessNode(this);
+        if (ReferenceProcessRootNode.EVAL_NAME.equals(contents)) {
+            RootNode node = new ReferenceProcessRootNode(this);
             return node.getCallTarget();
         }
         throw new EspressoParseError(
-                        "Espresso cannot evaluate Java sources directly, only a few special commands are supported: " + GetBindingsNode.EVAL_NAME + " and " + ReferenceProcessNode.EVAL_NAME + "\n" +
+                        "Espresso cannot evaluate Java sources directly, only a few special commands are supported: " + GetBindingsNode.EVAL_NAME + " and " + ReferenceProcessRootNode.EVAL_NAME + "\n" +
                                         "Use the \"" + ID + "\" language bindings to load guest Java classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
     }
 
@@ -490,6 +502,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public void initializeGuestAllocator(TruffleLanguage.Env env) {
         this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
+    }
+
+    public boolean isShared() {
+        return isShared;
     }
 
     @SuppressFBWarnings(value = "DC_DOUBLECHECK", //
