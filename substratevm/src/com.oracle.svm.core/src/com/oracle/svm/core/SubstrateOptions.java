@@ -650,6 +650,10 @@ public class SubstrateOptions {
     @Option(help = "Use old debuginfo", deprecated = true, deprecationMessage = "Please use the -g option.")//
     public static final HostedOptionKey<Boolean> UseOldDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateUseOldDebugInfo);
 
+    public static boolean useDebugInfoGeneration() {
+        return useLIRBackend() && GenerateDebugInfo.getValue() > 0 && !UseOldDebugInfo.getValue();
+    }
+
     private static void validateUseOldDebugInfo(HostedOptionKey<Boolean> optionKey) {
         if (optionKey.getValue() && SubstrateOptions.GenerateDebugInfo.getValue() < 1) {
             throw UserError.abort("The option '%s' can only be used together with '%s'.",
