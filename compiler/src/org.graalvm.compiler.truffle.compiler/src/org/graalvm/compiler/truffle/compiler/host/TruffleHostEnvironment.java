@@ -71,7 +71,7 @@ public abstract class TruffleHostEnvironment {
 
     protected static final int HOST_METHOD_CACHE_SIZE = 4096;
 
-    public static Lookup lookup = GraalServices.loadSingle(Lookup.class, true);
+    private static Lookup lookup = GraalServices.loadSingle(Lookup.class, true);
     private final TruffleCompilerRuntime runtime;
     private final TruffleKnownHostTypes types;
 
