@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "default": {
+    "resources": {},
+    "bundles": []
+  },
+  "examples": [
+    {
+      "resources": {
+        "includes": [
+          {
+            "condition": {
+              "typeReachable": "com.condition.resource.Class"
+            },
+            "pattern": "\\Qcom/pattern/to/be/included\\E"
+          }
+        ],
+        "excludes": [
+          {
+            "condition": {
+              "typeReachable": "com.condition.resource.Class"
+            },
+            "pattern": "\\Qcom/pattern/to/be/excluded\\E"
+          }
+        ]
+      },
+      "bundles": [
+        {
+          "condition": {
+            "typeReachable": "com.condition.Class"
+          },
+          "name": "com.bundle.name"
+        }
+      ]
+    }
+  ],
+  "properties": {
+    "resources": {
+      "properties": {
+        "includes": {
+          "default": [],
+          "items": {
+            "properties": {
+              "condition": {
+                "properties": {
+                  "typeReachable": {
+                    "type": "string",
+                    "title": "Fully qualified class name of the class that must be reachable in order to register resource pattern"
+                  }
+                },
+                "required": [
+                  "typeReachable"
+                ],
+                "type": "object"
+              },
+              "pattern": {
+                "type": "string",
+                "title": "Resource matching pattern"
+              }
+            },
+            "required": [
+              "condition"
+            ],
+            "type": "object"
+          },
+          "type": "array",
+          "title": "List of included resource patterns"
+        },
+        "excludes": {
+          "default": [],
+          "items": {
+            "properties": {
+              "condition": {
+                "properties": {
+                  "typeReachable": {
+                    "type": "string",
+                    "title": "Fully qualified class name of the class that must be reachable in order to exclude resource pattern"
+                  }
+                },
+                "required": [
+                  "typeReachable"
+                ],
+                "type": "object"
+              },
+              "pattern": {
+                "type": "string",
+                "title": "Resource matching pattern"
+              }
+            },
+            "required": [
+              "condition"
+            ],
+            "type": "object"
+          },
+          "type": "array",
+          "title": "List of excluded resource patterns"
+        }
+      },
+      "type": "object",
+      "title": "Set of included and excluded lists of patterns"
+    },
+    "bundles": {
+      "default": [],
+      "items": {
+        "properties": {
+          "condition": {
+            "properties": {
+              "typeReachable": {
+                "type": "string",
+                "title": "Fully qualified class name of the class that must be reachable in order to register resource bundle"
+              }
+            },
+            "required": [
+              "typeReachable"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "type": "string",
+            "title": "Fully qualified name of the resource bundle"
+          },
+          "locales": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "List of locales that should be registered for the resource bundle declared in <name>"
+          }
+        },
+        "required": [
+          "condition"
+        ],
+        "type": "object"
+      },
+      "type": "array",
+      "title": "List of resource bundles that should be registered"
+    }
+  },
+  "type": "object",
+  "title": "JSON schema for the resource-config that GraalVM Native Image uses"
+}
