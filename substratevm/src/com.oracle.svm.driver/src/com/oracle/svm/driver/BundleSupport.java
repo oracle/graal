@@ -325,7 +325,7 @@ final class BundleSupport {
                 if (!containerTool.equals(bundleContainerTool)) {
                     NativeImage.showWarning(String.format("The given bundle file %s was created with container tool '%s' (using '%s').", bundleFileName, bundleContainerTool, containerTool));
                 } else if (containerToolVersion != null && bundleContainerToolVersion != null && !containerToolVersion.equals(bundleContainerToolVersion)) {
-                    NativeImage.showWarning(String.format("The given bundle file %s was created with %s version '%s' (installed '%s').", bundleFileName, containerTool, bundleContainerToolVersion, containerToolVersion));
+                    NativeImage.showWarning(String.format("The given bundle file %s was created with different %s version '%s' (installed '%s').", bundleFileName, containerTool, bundleContainerToolVersion, containerToolVersion));
                 }
             }
         } else {
@@ -560,8 +560,11 @@ final class BundleSupport {
                 throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
             }
             if(bundleContainerTool != null) {
-                String containerToolVersionString = bundleContainerToolVersion == null ? "" : String.format(" version: %s", bundleContainerToolVersion);
-                nativeImage.showMessage(String.format("%sUsing %s%s. Specify other container tool with option '%s'.", BUNDLE_INFO_MESSAGE_PREFIX, bundleContainerTool, containerToolVersionString, ExtendedBundleOptions.container));
+                String containerToolVersionString = bundleContainerToolVersion == null ? "" : String.format(" (%s)", bundleContainerToolVersion);
+                nativeImage.showMessage(String.format("%sBundled native-image was created in a container with %s%s.", BUNDLE_INFO_MESSAGE_PREFIX, bundleContainerTool, containerToolVersionString));
+                if(useContainer) {
+                    nativeImage.showMessage(String.format("%sUsing %s for native-image container build. Specify other container tool with option '%s'.", BUNDLE_INFO_MESSAGE_PREFIX, bundleContainerTool, ExtendedBundleOptions.container));
+                }
             }
         }
 
