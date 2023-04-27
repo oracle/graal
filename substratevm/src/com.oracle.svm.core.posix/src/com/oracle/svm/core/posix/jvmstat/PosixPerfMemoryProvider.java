@@ -42,7 +42,6 @@ import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -54,7 +53,6 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -62,7 +60,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
+import com.oracle.svm.core.jdk.DirectByteBufferUtil;
 import com.oracle.svm.core.jvmstat.PerfManager;
 import com.oracle.svm.core.jvmstat.PerfMemoryPrologue;
 import com.oracle.svm.core.jvmstat.PerfMemoryProvider;
@@ -148,11 +146,7 @@ class PosixPerfMemoryProvider implements PerfMemoryProvider {
 
         /* Clear the shared memory region. */
         LibC.memset(mapAddress, WordFactory.signed(0), WordFactory.unsigned(size));
-        if (JavaVersionUtil.JAVA_SPEC >= 21) {
-            return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(mapAddress.rawValue(), (long) size), ByteBuffer.class);
-        } else {
-            return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer(mapAddress.rawValue(), size), ByteBuffer.class);
-        }
+        return DirectByteBufferUtil.allocate(mapAddress.rawValue(), size);
     }
 
     private static String getUserName(int uid) {
