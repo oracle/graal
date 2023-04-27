@@ -129,7 +129,8 @@ final class BundleSupport {
     private static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
     private String containerImage;
     private String bundleContainerImage;
-    private static final String DEFAULT_CONTAINER_IMAGE = "graalvm-container";
+    private static final String DEFAULT_DOCKERFILE = "FROM registry.fedoraproject.org/fedora-minimal:latest" + System.lineSeparator() +
+            "RUN microdnf -y install gcc g++ zlib-static --nodocs --setopt install_weak_deps=0 && microdnf clean all -y";
     private Path dockerfile;
     private final String containerToolJsonKey = "containerTool";
     private final String containerToolVersionJsonKey = "containerToolVersion";
@@ -292,12 +293,18 @@ final class BundleSupport {
             // TODO load graalvm docker base
             if (dockerfile == null) {
                 dockerfile = Files.createTempFile("Dockerfile", null);
-                Files.write(dockerfile, ("FROM registry.fedoraproject.org/fedora-minimal:latest" + System.lineSeparator() +
-                        "RUN microdnf -y install gcc g++ zlib-static --nodocs --setopt install_weak_deps=0 && microdnf clean all -y").getBytes());
+                Files.write(dockerfile, DEFAULT_DOCKERFILE.getBytes());
                 dockerfile.toFile().deleteOnExit();
+                containerImage = SubstrateUtil.digest(DEFAULT_DOCKERFILE);
+            } else {
+                containerImage = SubstrateUtil.digest(Files.readString(dockerfile));
             }
         } catch (IOException e) {
             throw NativeImage.showError(e.getMessage());
+        }
+
+        if(bundleContainerImage != null && !bundleContainerImage.equals(containerImage)) {
+            NativeImage.showWarning(String.format("The given bundle file %s was created with a different dockerfile.", bundleFileName));
         }
 
         if(bundleContainerTool != null && containerTool == null) {
@@ -336,12 +343,6 @@ final class BundleSupport {
             }
         }
 
-        String imageName = getSignature(dockerfile);
-        containerImage = imageName != null ? imageName : DEFAULT_CONTAINER_IMAGE;
-        if(bundleContainerImage != null && !bundleContainerImage.equals(containerImage)) {
-            NativeImage.showWarning(String.format("The given bundle file %s was created with a different dockerfile.", bundleFileName));
-        }
-
         int exitStatusCode = createContainer();
         switch (ExitStatus.of(exitStatusCode)) {
             case OK:
@@ -356,22 +357,6 @@ final class BundleSupport {
                 String message = String.format("Container build request for '%s' failed with exit status %d",
                         nativeImage.imageName, exitStatusCode);
                 throw NativeImage.showError(message, null, exitStatusCode);
-        }
-    }
-
-    private String getSignature(Path f) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(Files.readAllBytes(f));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : md.digest()) {
-                sb.append(String.format("%02x", b));
-            }
-            return sb.toString();
-        } catch (IOException e) {
-            return null;
-        } catch (NoSuchAlgorithmException e) {
-            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
     }
 
