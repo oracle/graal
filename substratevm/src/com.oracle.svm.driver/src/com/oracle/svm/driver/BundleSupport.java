@@ -365,23 +365,21 @@ final class BundleSupport {
     private int createContainer() {
         ProcessBuilder pbCheckForImage = new ProcessBuilder(containerTool, "images", "-q", containerImage + ":latest");
         ProcessBuilder pb = new ProcessBuilder(containerTool, "build", "-f", dockerfile.toString(), "-t", containerImage, ".");
+
+        String imageId = getFirstProcessResultLine(pbCheckForImage);
+        if(imageId == null) {
+            pb.inheritIO();
+        } else {
+            nativeImage.showMessage(String.format("%sReusing container image %s.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
+        }
+
         Process p = null;
         try {
-            p = pbCheckForImage.start();
-            p.waitFor();
-            String imageId = (new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine();
-            if(imageId == null) {
-                pb.inheritIO();
-            } else {
-                nativeImage.showMessage(String.format("%sReusing container image %s.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
-            }
             p = pb.start();
             int status = p.waitFor();
-            if(imageId != null && status == 0) {
+            if(status == 0 && imageId != null) {
                 Stream<String> result = (new BufferedReader(new InputStreamReader(p.getInputStream()))).lines();
-                p = pbCheckForImage.start();
-                p.waitFor();
-                if(!(new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine().equals(imageId)) {
+                if(!imageId.equals(getFirstProcessResultLine(pbCheckForImage))) {
                     nativeImage.showMessage(String.format("%sUpdated container image %s.", BUNDLE_INFO_MESSAGE_PREFIX, containerImage));
                     result.forEach(System.out::println);
                 }
@@ -404,29 +402,20 @@ final class BundleSupport {
 
     private String getContainerToolVersion(String tool) {
         ProcessBuilder pb = new ProcessBuilder(tool, "--version");
-        Process p = null;
-        try {
-            p = pb.start();
-            p.waitFor();
-            String result = (new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine();
-            return result.contains("version") ? result : null;
-        } catch (IOException | InterruptedException e) {
-            throw NativeImage.showError(e.getMessage());
-        } finally {
-            if (p != null) {
-                p.destroy();
-            }
-        }
+        return getFirstProcessResultLine(pb);
     }
 
     private boolean isRootlessDocker() {
         ProcessBuilder pb = new ProcessBuilder("docker", "context", "show");
+        return getFirstProcessResultLine(pb).equals("rootless");
+    }
+
+    private String getFirstProcessResultLine(ProcessBuilder pb) {
         Process p = null;
         try {
             p = pb.start();
             p.waitFor();
-            String result = (new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine();
-            return result.equals("rootless");
+            return (new BufferedReader(new InputStreamReader(p.getInputStream()))).readLine();
         } catch (IOException | InterruptedException e) {
             throw NativeImage.showError(e.getMessage());
         } finally {
