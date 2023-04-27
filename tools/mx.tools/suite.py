@@ -465,6 +465,14 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.profiler",
+                "exports" : [
+                    # chromeinspector uses com.oracle.truffle.tools.utils.json from profiler
+                    # TODO: com.oracle.truffle.tools.utils.json should become a module shared by
+                    # chromeinspector, profiler, coverage, dap, lsp, warmup
+                    "com.oracle.truffle.tools.utils.json to com.oracle.truffle.tools.chromeinspector",
+                    # chromeinspector uses CPUSampler
+                    "com.oracle.truffle.tools.profiler to com.oracle.truffle.tools.chromeinspector",
+                ],
             },
             "dependencies": [
                 "com.oracle.truffle.tools.profiler",

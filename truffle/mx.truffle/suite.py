@@ -90,6 +90,7 @@ suite = {
     },
 
     "ANTLR4": {
+      "moduleName": "org.antlr.antlr4.runtime",
       "digest" : "sha512:4abb69a3c6895edeec64c11d61886fbeb68eda5ebb21094f596e4f7add8afa9ff049c05fa916264b9185ac9013b16d8eabf44fb65da0b6871997c8f1473a3771",
       "maven" : {
         "groupId" : "org.antlr",
@@ -1095,6 +1096,12 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi",
+        "exports" : [
+          "com.oracle.truffle.nfi.api",
+          "com.oracle.truffle.nfi.backend.spi",
+          "com.oracle.truffle.nfi.backend.spi.types",
+          "com.oracle.truffle.nfi.backend.spi.util",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
