@@ -69,6 +69,7 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.jdk.StringInternSupport;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -160,7 +161,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
-        return objects.get(uncompress(constant));
+        return objects.get(maybeUnwrapString(uncompress(constant)));
     }
 
     protected HostedUniverse getUniverse() {
@@ -307,7 +308,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
         }
 
-        JavaConstant uncompressed = uncompress(constant);
+        JavaConstant uncompressed = maybeUnwrapString(uncompress(constant));
 
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
@@ -322,6 +323,22 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (objectReachabilityInfo != null) {
             objectReachabilityInfo.get(existing).addReason(reason);
         }
+    }
+
+    /**
+     * When a String is represented as an {@link ImageHeapConstant} we unwrap it before using it as
+     * a key for {@link NativeImageHeap#objects}. This is necessary to avoid duplication of
+     * {@link ObjectInfo} for the same String object which can happen when processing the
+     * {@link NativeImageHeap#internedStrings} since the String objects are stored raw and wrapped
+     * as a {@link SubstrateObjectConstant} when processed. Eventually, the constant representation
+     * of raw String objects will be extracted from the shadow heap, so it will always be
+     * {@link ImageHeapConstant} and this will be removed.
+     */
+    private JavaConstant maybeUnwrapString(JavaConstant constant) {
+        if (metaAccess.isInstanceOf(constant, String.class) && constant instanceof ImageHeapConstant ihc) {
+            return ihc.getHostedObject();
+        }
+        return constant;
     }
 
     /**
@@ -606,7 +623,8 @@ public final class NativeImageHeap implements ImageHeap {
         return addToImageHeap(universe.getSnippetReflection().forObject(object), clazz, size, identityHashCode, reason);
     }
 
-    private ObjectInfo addToImageHeap(JavaConstant constant, HostedClass clazz, long size, int identityHashCode, Object reason) {
+    private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
+        JavaConstant constant = maybeUnwrapString(add);
         ObjectInfo info = new ObjectInfo(constant, size, clazz, identityHashCode, reason);
         assert !objects.containsKey(constant) && !isCompressed(constant);
         objects.put(constant, info);
