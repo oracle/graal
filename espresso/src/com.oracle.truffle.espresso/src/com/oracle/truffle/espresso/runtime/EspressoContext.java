@@ -167,6 +167,8 @@ public final class EspressoContext {
     private final Assumption anyHierarchyChanges = Truffle.getRuntime().createAssumption();
     // endregion JDWP
 
+    @CompilationFinal private volatile LazyContextCaches lazyCaches;
+
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
 
     // After a context is finalized, guest code cannot be executed.
@@ -425,6 +427,7 @@ public final class EspressoContext {
             this.shutdownManager = new EspressoShutdownHandler(this, espressoEnv.getThreadRegistry(), espressoEnv.getReferenceDrainer(), espressoEnv.SoftExit);
 
             this.interpreterToVM = new InterpreterToVM(this);
+            this.lazyCaches = new LazyContextCaches(this);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 initializeKnownClass(Type.java_lang_Object);
@@ -802,6 +805,15 @@ public final class EspressoContext {
 
     public EspressoException getOutOfMemory() {
         return outOfMemory;
+    }
+
+    public LazyContextCaches getLazyCaches() {
+        LazyContextCaches cache = this.lazyCaches;
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.fatal("Accessing lazy context cache before context initialization");
+        }
+        return cache;
     }
 
     public void prepareDispose() {
