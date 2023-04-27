@@ -50,18 +50,7 @@ public abstract class AddPathToBindingsNode extends EspressoNode {
     protected void addPath(Object[] args,
                     @Bind("getContext()") EspressoContext context,
                     @CachedLibrary(limit = "1") InteropLibrary lib) throws UnsupportedTypeException, ArityException {
-        argsCheck(args, context);
-        Object path = args[0];
-        if (!lib.isString(path)) {
-            throw UnsupportedTypeException.create(args);
-        }
-        StaticObject guestPath;
-        try {
-            guestPath = context.getMeta().toGuestString(lib.asString(path));
-        } catch (UnsupportedMessageException e) {
-            throw UnsupportedTypeException.create(args);
-        }
-
+        StaticObject guestPath = getGuestPath(args, context, lib);
         context.getLazyCaches().getAddPathToBindingsCache().execute(guestPath);
     }
 
@@ -82,10 +71,20 @@ public abstract class AddPathToBindingsNode extends EspressoNode {
         }
     }
 
-    private static void argsCheck(Object[] args, EspressoContext ctx) throws ArityException, UnsupportedTypeException {
+    private static StaticObject getGuestPath(Object[] args, EspressoContext context, InteropLibrary lib) throws ArityException, UnsupportedTypeException {
         if (args.length != 1) {
             throw ArityException.create(1, 1, args.length);
         }
         Object path = args[0];
+        if (!lib.isString(path)) {
+            throw UnsupportedTypeException.create(args);
+        }
+        StaticObject guestPath;
+        try {
+            guestPath = context.getMeta().toGuestString(lib.asString(path));
+        } catch (UnsupportedMessageException e) {
+            throw UnsupportedTypeException.create(args);
+        }
+        return guestPath;
     }
 }
