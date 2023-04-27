@@ -71,12 +71,20 @@ public abstract class InvokeEspressoNode extends EspressoNode {
 
     abstract Object executeMethod(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted) throws ArityException, UnsupportedTypeException;
 
+    public static ToEspressoNode[] createToEspresso(Method.MethodVersion methodVersion) {
+        Klass[] parameterKlasses = methodVersion.getMethod().resolveParameterKlasses();
+        ToEspressoNode[] toEspresso = new ToEspressoNode[parameterKlasses.length];
+        for (int i = 0; i < parameterKlasses.length; i++) {
+            toEspresso[i] = ToEspressoNode.createToEspresso(parameterKlasses[i], parameterKlasses[i].getMeta());
+        }
+        return toEspresso;
+    }
+
     @ExplodeLoop
     @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getRedefineAssumption()")
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted,
                     @Cached("method") Method.MethodVersion cachedMethod,
-                    @Cached("cachedMethod.getMethod().resolveParameterKlasses()") Klass[] parameterKlasses,
-                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
+                    @Cached("createToEspresso(cachedMethod)") ToEspressoNode[] toEspressoNodes,
                     @Cached(value = "createDirectCallNode(method.getMethod().getCallTarget())") DirectCallNode directCallNode,
                     @Cached InitCheck initCheck,
                     @Cached BranchProfile badArityProfile)
@@ -93,7 +101,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
         Object[] convertedArguments = argsConverted ? arguments : new Object[expectedArity];
         if (!argsConverted) {
             for (int i = 0; i < expectedArity; i++) {
-                convertedArguments[i] = toEspressoNode.execute(arguments[i], parameterKlasses[i]);
+                convertedArguments[i] = toEspressoNodes[i].execute(arguments[i]);
             }
         }
 
