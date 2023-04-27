@@ -645,8 +645,9 @@ public final class Meta extends ContextAccessImpl {
         }
 
         jdk_internal_loader_ClassLoaders$AppClassLoader = diff() //
+                        .klass(VERSION_8_OR_LOWER, Type.sun_misc_Launcher$AppClassLoader) //
                         .klass(VERSION_9_OR_HIGHER, Type.jdk_internal_loader_ClassLoaders$AppClassLoader) //
-                        .notRequiredKlass();
+                        .klass();
 
         if (getJavaVersion().modulesEnabled()) {
             java_lang_Module = knownKlass(Type.java_lang_Module);
