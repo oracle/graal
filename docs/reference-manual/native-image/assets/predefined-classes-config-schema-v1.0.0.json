@@ -1,20 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json",
   "default": [
     {
       "type": "agent-extracted",
       "classes": []
-    }
-  ],
-  "examples": [
-    {
-      "type": "agent-extracted",
-      "classes":[
-        {
-          "nameInfo":"com/example/Class",
-          "hash":"hash987654321hash987654321hash987654321hash987654321"
-        }
-      ]
     }
   ],
   "items": {
@@ -40,9 +30,9 @@
               "title": "Hash value of the predefined class"
             }
           },
+          "additionalProperties": false,
           "type": "object",
           "required": [
-            "nameInfo",
             "hash"
           ]
         },
@@ -50,6 +40,7 @@
         "title": "List of classes that are predefined"
       }
     },
+    "additionalProperties": false,
     "type": "object",
     "title": "List of classes with their origin that are predefined"
   },

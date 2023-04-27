@@ -1,39 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/resource-config-schema-v1.0.0.json",
   "default": {
     "resources": {},
     "bundles": []
   },
-  "examples": [
-    {
-      "resources": {
-        "includes": [
-          {
-            "condition": {
-              "typeReachable": "com.condition.resource.Class"
-            },
-            "pattern": "\\Qcom/pattern/to/be/included\\E"
-          }
-        ],
-        "excludes": [
-          {
-            "condition": {
-              "typeReachable": "com.condition.resource.Class"
-            },
-            "pattern": "\\Qcom/pattern/to/be/excluded\\E"
-          }
-        ]
-      },
-      "bundles": [
-        {
-          "condition": {
-            "typeReachable": "com.condition.Class"
-          },
-          "name": "com.bundle.name"
-        }
-      ]
-    }
-  ],
   "properties": {
     "resources": {
       "properties": {
@@ -51,6 +22,7 @@
                 "required": [
                   "typeReachable"
                 ],
+                "additionalProperties": false,
                 "type": "object"
               },
               "pattern": {
@@ -58,9 +30,7 @@
                 "title": "Resource matching pattern"
               }
             },
-            "required": [
-              "condition"
-            ],
+            "additionalProperties": false,
             "type": "object"
           },
           "type": "array",
@@ -80,6 +50,7 @@
                 "required": [
                   "typeReachable"
                 ],
+                "additionalProperties": false,
                 "type": "object"
               },
               "pattern": {
@@ -87,15 +58,14 @@
                 "title": "Resource matching pattern"
               }
             },
-            "required": [
-              "condition"
-            ],
+            "additionalProperties": false,
             "type": "object"
           },
           "type": "array",
           "title": "List of excluded resource patterns"
         }
       },
+      "additionalProperties": false,
       "type": "object",
       "title": "Set of included and excluded lists of patterns"
     },
@@ -113,6 +83,7 @@
             "required": [
               "typeReachable"
             ],
+            "additionalProperties": false,
             "type": "object"
           },
           "name": {
@@ -125,18 +96,30 @@
               "type": "string"
             },
             "type": "array",
-            "title": "List of locales that should be registered for the resource bundle declared in <name>"
+            "title": "List of locales that should be registered for this resource bundle"
+          },
+          "classNames": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "List of fully qualified classnames of resource bundles that are directly included without performing the lookup by basename and locale."
           }
         },
-        "required": [
-          "condition"
-        ],
+        "additionalProperties": false,
         "type": "object"
       },
       "type": "array",
       "title": "List of resource bundles that should be registered"
     }
   },
+  "required": [
+    "bundles",
+    "resources"
+  ],
+  "additionalProperties": false,
   "type": "object",
-  "title": "JSON schema for the resource-config that GraalVM Native Image uses"
-}
+  "title": "JSON schema for the resource-config that GraalVM Native Image uses",
+  "description": "Native Image will iterate over all resources and match their relative paths against the Java Regex specified in <includes>. If the path matches the Regex, the resource is included. The <excludes> statement instructs Native Image to omit certain included resources that match the given <pattern>"
+  }

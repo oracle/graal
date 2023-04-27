@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/proxy-config-schema-v1.0.0.json",
   "default": [],
   "items": {
     "properties": {
@@ -7,12 +8,13 @@
         "properties": {
           "typeReachable": {
             "type": "string",
-            "title": "Fully qualified class name of the class that must be reachable in order to register dynamic proxy"
+            "title": "Fully qualified class name of the class that must be reachable in order to register the dynamic proxy"
           }
         },
         "required": [
           "typeReachable"
         ],
+        "additionalProperties": false,
         "type": "object"
       },
       "interfaces": {
@@ -25,6 +27,10 @@
         "title": "List of interfaces that dynamic proxy implements"
       }
     },
+    "required": [
+      "interfaces"
+    ],
+    "additionalProperties": false,
     "type": "object"
   },
   "type": "array",
