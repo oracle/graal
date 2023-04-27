@@ -34,30 +34,6 @@ import org.junit.Test;
 
 public class EnumSwitchTest extends GraalCompilerTest {
 
-    enum E {
-        E0,
-        E1,
-        E2,
-        E3,
-        E4,
-        E5,
-        E6,
-        E7,
-        E8,
-        E9,
-        E10,
-        E11,
-        E12,
-        E13,
-        E14,
-        E15,
-        E16,
-        E17,
-        E18,
-        E19,
-        E20
-    }
-
     public int test1Snippet(E e) {
         switch (e) {
             case E0:
@@ -171,4 +147,29 @@ public class EnumSwitchTest extends GraalCompilerTest {
         });
         return ret;
     }
+}
+
+// Declare enum outside test class to avoid javac optimization added by JDK-8299760
+enum E {
+    E0,
+    E1,
+    E2,
+    E3,
+    E4,
+    E5,
+    E6,
+    E7,
+    E8,
+    E9,
+    E10,
+    E11,
+    E12,
+    E13,
+    E14,
+    E15,
+    E16,
+    E17,
+    E18,
+    E19,
+    E20
 }

@@ -253,7 +253,7 @@ public final class JNIReflectionDictionary {
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
         }
-        return p.toObject(JNIAccessibleMethod.class, true);
+        return p.toObject(JNIAccessibleMethod.class, false);
     }
 
     private JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {

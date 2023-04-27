@@ -252,11 +252,6 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     }
 
     @Override
-    public boolean getEnsureVirtualized(VirtualObjectNode virtualObject) {
-        return state.getObjectState(virtualObject).getEnsureVirtualized();
-    }
-
-    @Override
     public void replaceWithVirtual(VirtualObjectNode virtual) {
         closure.addVirtualAlias(virtual, current);
         effects.deleteNode(current);

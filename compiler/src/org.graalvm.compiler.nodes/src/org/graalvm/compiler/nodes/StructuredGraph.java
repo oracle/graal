@@ -44,7 +44,6 @@ import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
@@ -259,7 +258,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
-    public static final long INVALID_GRAPH_ID = -1;
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
 
     private StartNode start;
@@ -391,21 +389,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return true;
         }
         return false;
-    }
-
-    public Stamp getReturnStamp() {
-        Stamp returnStamp = null;
-        for (ReturnNode returnNode : getNodes(ReturnNode.TYPE)) {
-            ValueNode result = returnNode.result();
-            if (result != null) {
-                if (returnStamp == null) {
-                    returnStamp = result.stamp(NodeView.DEFAULT);
-                } else {
-                    returnStamp = returnStamp.meet(result.stamp(NodeView.DEFAULT));
-                }
-            }
-        }
-        return returnStamp;
     }
 
     @Override
@@ -1107,10 +1090,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         if (inliningLog != null && node instanceof Invokable) {
             ((Invokable) node).updateInliningLogAfterRegister(this);
         }
-    }
-
-    public NodeSourcePosition getCallerContext() {
-        return callerContext;
     }
 
     public OptimizationLog getOptimizationLog() {
