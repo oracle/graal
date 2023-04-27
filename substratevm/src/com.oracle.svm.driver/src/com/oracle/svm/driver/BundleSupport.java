@@ -36,8 +36,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -67,7 +65,6 @@ import java.util.stream.Stream;
 
 import com.oracle.svm.core.util.ExitStatus;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.util.json.JSONParser;
 import org.graalvm.util.json.JSONParserException;
 
@@ -395,17 +392,9 @@ final class BundleSupport {
     }
 
     private boolean isToolAvailable(String tool) {
-        String[] paths = SubstrateUtil.split(System.getenv("PATH"), ":");
-        for (String path : paths) {
-            try (Stream<Path> walk = Files.walk(Path.of(path))) {
-                if(walk.anyMatch(p -> p.endsWith(tool))) {
-                    return true;
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return false;
+        return Arrays.stream(SubstrateUtil.split(System.getenv("PATH"), ":"))
+                .map(str -> Path.of(str).resolve(tool))
+                .anyMatch(Files::isExecutable);
     }
 
     private String getContainerToolVersion(String tool) {
