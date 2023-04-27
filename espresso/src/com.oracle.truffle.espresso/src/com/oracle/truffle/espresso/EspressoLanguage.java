@@ -79,7 +79,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
 @Registration(id = EspressoLanguage.ID, //
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
-                contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
+                contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
                 dependentLanguages = "nfi", //
                 website = "https://www.graalvm.org/dev/reference-manual/java-on-truffle/")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
@@ -368,7 +368,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             return node.getCallTarget();
         }
         throw new EspressoParseError(
-                        "Espresso cannot evaluate Java sources directly, only a few special commands are supported: " + GetBindingsNode.EVAL_NAME + " and " + ReferenceProcessRootNode.EVAL_NAME + "\n" +
+                        "Espresso cannot evaluate Java sources directly, only a few special commands are supported: " + GetBindingsNode.EVAL_NAME + " and " + ReferenceProcessRootNode.EVAL_NAME +
+                                        "\n" +
                                         "Use the \"" + ID + "\" language bindings to load guest Java classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
     }
 
