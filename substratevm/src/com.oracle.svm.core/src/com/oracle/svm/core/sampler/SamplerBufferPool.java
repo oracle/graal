@@ -45,7 +45,7 @@ import com.oracle.svm.core.locks.VMMutex;
  * Keeps track of {@link #availableBuffers available} and {@link #fullBuffers full} buffers. If
  * sampling is enabled, this pool maintains the desirable number of buffers in the system.
  *
- * Active {@link SamplerBuffers} have a corresponding {@link BufferNode} which is allocated and
+ * Active {@link SamplerBuffer} have a corresponding {@link BufferNode} which is allocated and
  * assigned before the buffer is acquired. This is to avoid allocations when performing signal
  * handler operations. The following must be true:
  * <ul>
@@ -183,7 +183,7 @@ public class SamplerBufferPool {
     }
 
     /**
-     * This method alocates both the SamplerBuffer and the corresponding BufferNode and links them.
+     * This method allocates both the SamplerBuffer and the corresponding BufferNode and links them.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private SamplerBuffer tryAllocateBuffer0() {

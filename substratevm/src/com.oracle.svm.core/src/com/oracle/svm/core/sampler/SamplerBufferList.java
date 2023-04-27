@@ -67,9 +67,9 @@ public class SamplerBufferList extends BufferList {
 
     /**
      * This method is necessary because allocation cannot be done on code paths used by the
-     * SIGPROF-based execution sampler. The caller of this node must ensure that {@link Buffer} and
-     * {@link BufferNode} already have references to each other in both directions. This method
-     * simply adds the node to the active nodes list.
+     * SIGPROF-based execution sampler. The caller of this node must ensure that
+     * {@link SamplerBuffer} and {@link BufferNode} already have references to each other in both
+     * directions. This method simply adds the node to the active nodes list.
      */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public BufferNode addNode(BufferNode node) {
