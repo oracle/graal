@@ -43,7 +43,9 @@ package com.oracle.truffle.api.test.polyglot;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -180,19 +182,30 @@ public class PolyglotThreadNotificationsTest {
                     ctx.env.getContext().leaveAndEnter(null, ctx.interrupter, (x) -> {
                         for (int i = 0; i < 10; i++) {
                             CountDownLatch otherThreadInLeaveAndEnter = new CountDownLatch(1);
-                            ctx.env.newTruffleThreadBuilder(() -> {
+                            Thread t = ctx.env.newTruffleThreadBuilder(() -> {
                                 ctx.env.getContext().leaveAndEnter(null, ctx.interrupter, (y) -> {
                                     otherThreadInLeaveAndEnter.countDown();
                                     try {
-                                        synchronized (WAIT_OBJECT) {
-                                            WAIT_OBJECT.wait();
+                                        while (true) {
+                                            synchronized (WAIT_OBJECT) {
+                                                WAIT_OBJECT.wait();
+                                            }
                                         }
                                     } finally {
                                         ctx.blockedThreadUnblocked++;
                                     }
-                                    return null;
                                 }, null);
-                            }).build().start();
+                                dontReachThisOrGetStuck();
+                            }).build();
+                            Thread.UncaughtExceptionHandler originalHandler = t.getUncaughtExceptionHandler();
+                            t.setUncaughtExceptionHandler((t1, e) -> {
+                                if (e instanceof ThreadDeath || e.getMessage().endsWith("Execution got interrupted.")) {
+                                    // ignore
+                                } else {
+                                    originalHandler.uncaughtException(t1, e);
+                                }
+                            });
+                            t.start();
                             otherThreadInLeaveAndEnter.await();
                         }
                         return null;
@@ -207,6 +220,19 @@ public class PolyglotThreadNotificationsTest {
                     return NullObject.SINGLETON;
                 }
             }.getCallTarget();
+        }
+
+        @TruffleBoundary
+        private static void dontReachThisOrGetStuck() {
+            try {
+                while (true) {
+                    synchronized (WAIT_OBJECT) {
+                        WAIT_OBJECT.wait();
+                    }
+                }
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
         }
 
         @Override
@@ -237,6 +263,14 @@ public class PolyglotThreadNotificationsTest {
             if (!pe.isCancelled()) {
                 throw pe;
             }
+        }
+    }
+
+    @Test
+    public void testInterruptThreadBlockedInLeaveAndEnter() throws TimeoutException {
+        try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
+            context.eval(CancelThreadBlockedInLeaveAndEnterTestLanguage.ID, "");
+            context.interrupt(Duration.ZERO);
         }
     }
 

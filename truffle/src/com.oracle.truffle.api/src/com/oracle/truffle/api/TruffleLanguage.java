@@ -221,7 +221,7 @@ import com.oracle.truffle.api.source.Source;
  *
  * There are two kinds of threads that access contexts of Truffle guest languages:
  * <ul>
- * <li>Internal threads are {@link Env#newTruffleThreadBuilder(Runnable)} created} and managed by a
+ * <li>Internal threads are {@link Env#newTruffleThreadBuilder(Runnable) created} and managed by a
  * language for a context. All internally created threads need to be stopped when the context is
  * {@link #disposeContext(Object) disposed}.
  * <li>External threads are created and managed by the host application / language launcher. The
@@ -237,7 +237,7 @@ import com.oracle.truffle.api.source.Source;
  * overriding {@link #initializeMultiThreading(Object)}. Threads are
  * {@link #initializeThread(Object, Thread) initialized} and {@link #disposeContext(Object)
  * disposed} before and after use with a context. Languages may
- * {@link Env#newTruffleThreadBuilder(Runnable)} create} new threads if the environment
+ * {@link Env#newTruffleThreadBuilder(Runnable) create} new threads if the environment
  * {@link Env#isCreateThreadAllowed() allows} it.
  * <p>
  * In addition to the two kinds of threads described above, there are
@@ -675,7 +675,7 @@ public abstract class TruffleLanguage<C> {
      * case, the finalization order may be non-deterministic and/or not respect the order specified
      * by language dependencies.
      * <p>
-     * All threads {@link Env#newTruffleThreadBuilder(Runnable)} created} by the language must be
+     * All threads {@link Env#newTruffleThreadBuilder(Runnable) created} by the language must be
      * stopped and joined during finalizeContext. The languages are responsible for fulfilling that
      * contract, otherwise, an {@link AssertionError} is thrown. It's not safe to use the
      * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
@@ -1149,8 +1149,8 @@ public abstract class TruffleLanguage<C> {
      * before after or while a context is disposed. The {@link Thread#currentThread() current
      * thread} may differ from the disposed thread. Disposal of threads is only guaranteed for
      * threads that were created by guest languages, so called
-     * {@link Env#newTruffleThreadBuilder(Runnable)} polyglot threads}. Other threads, created by
-     * the embedder, may be collected by the garbage collector before they can be disposed and may
+     * {@link Env#newTruffleThreadBuilder(Runnable) polyglot threads}. Other threads, created by the
+     * embedder, may be collected by the garbage collector before they can be disposed and may
      * therefore not be disposed.
      *
      * @see #initializeThread(Object, Thread) For usage details.
