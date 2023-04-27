@@ -123,12 +123,13 @@ final class BundleSupport {
     private String bundleContainerTool;
     private String containerToolVersion;
     private String bundleContainerToolVersion;
-    private static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
     private String containerImage;
     private String bundleContainerImage;
+    private Path dockerfile;
+    private Path bundleDockerfile;
+    private static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
     private static final String DEFAULT_DOCKERFILE = "FROM registry.fedoraproject.org/fedora-minimal:latest" + System.lineSeparator() +
             "RUN microdnf -y install gcc g++ zlib-static --nodocs --setopt install_weak_deps=0 && microdnf clean all -y";
-    private Path dockerfile;
     private final String containerToolJsonKey = "containerTool";
     private final String containerToolVersionJsonKey = "containerToolVersion";
     private final String containerImageJsonKey = "containerImage";
@@ -162,14 +163,10 @@ final class BundleSupport {
         try {
             String variant = bundleArg.substring(BUNDLE_OPTION.length() + 1);
             String bundleFilename = null;
-            String extendedOptions = null;
-            String[] variantParts = SubstrateUtil.split(variant, ",", 2);
-            if (variantParts.length == 2) {
-                variant = variantParts[0];
-                extendedOptions = variantParts[1];
-            }
+            String[] options = SubstrateUtil.split(variant, ",");
 
-            variantParts = SubstrateUtil.split(variant, "=", 2);
+            variant = options[0];
+            String[] variantParts = SubstrateUtil.split(variant, "=", 2);
             if (variantParts.length == 2) {
                 variant = variantParts[0];
                 bundleFilename = variantParts[1];
@@ -219,47 +216,51 @@ final class BundleSupport {
                     throw new IllegalArgumentException();
             }
 
-            if(extendedOptions != null) {
-                try {
-                    String[] options = SubstrateUtil.split(extendedOptions, ",");
-                    for (String option : options) {
-                        String[] optionParts = SubstrateUtil.split(option, "=");
-                        switch (ExtendedBundleOptions.get(optionParts[0])) {
-                            case dry_run:
-                                nativeImage.setDryRun(true);
-                                break;
-                            case container:
+            Arrays.stream(options)
+                    .skip(1)
+                    .forEach(option -> {
+                        String optionValue = null;
+                        String[] optionParts = SubstrateUtil.split(option, "=", 2);
+                        if (optionParts.length == 2) {
+                            option = optionParts[0];
+                            optionValue = optionParts[1];
+                        }
+                        switch (ExtendedBundleOptions.get(option)) {
+                            case dry_run -> nativeImage.setDryRun(true);
+                            case container -> {
                                 if (bundleSupport.useContainer) {
-                                    throw NativeImage.showError("native-image bundle allows container option to be specified only once.");
+                                    throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", option));
                                 }
                                 bundleSupport.useContainer = true;
-                                if (optionParts.length == 2 && !optionParts[1].isEmpty()) {
-                                    if (!SUPPORTED_CONTAINER_TOOLS.contains(optionParts[1])) {
-                                        throw NativeImage.showError(String.format("%s is not supported, please use one of the following tools for containerized builds: %s", optionParts[1], SUPPORTED_CONTAINER_TOOLS));
+                                if (optionValue != null) {
+                                    if (!SUPPORTED_CONTAINER_TOOLS.contains(optionValue)) {
+                                        throw NativeImage.showError(String.format("Container Tool '%s' is not supported, please use one of the following tools: %s", optionValue, SUPPORTED_CONTAINER_TOOLS));
                                     }
-                                    bundleSupport.containerTool = optionParts[1];
+                                    bundleSupport.containerTool = optionValue;
                                 }
-                                break;
-                            case dockerfile:
+                            }
+                            case dockerfile -> {
                                 if (!bundleSupport.useContainer) {
-                                    throw NativeImage.showError("native-image bundle allows option dockerfile to be specified only after container option.");
+                                    throw NativeImage.showError(String.format("native-image bundle option %s is only allowed to be used after option %s.", option, ExtendedBundleOptions.container));
                                 }
-                                if (optionParts.length == 2 && !optionParts[1].isEmpty() && Files.exists(Path.of(optionParts[1]))) {
-                                    bundleSupport.dockerfile = Path.of(optionParts[1]);
+                                if (bundleSupport.dockerfile != null) {
+                                    throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", option));
                                 }
-                                break;
-                            default:
-                                throw new IllegalArgumentException();
+                                if (optionValue != null) {
+                                    bundleSupport.dockerfile = Path.of(optionValue);
+                                    if (!Files.isReadable(bundleSupport.dockerfile)) {
+                                        throw NativeImage.showError(String.format("Dockerfile '%s' is not readable", bundleSupport.dockerfile.toAbsolutePath()));
+                                    }
+                                }
+                            }
+                            default -> {
+                                String suggestedOptions = Arrays.stream(ExtendedBundleOptions.values())
+                                        .map(Enum::toString)
+                                        .collect(Collectors.joining(", "));
+                                throw NativeImage.showError(String.format("Unknown option %s. Valid options are: %s.", option, suggestedOptions));
+                            }
                         }
-                    }
-
-                } catch (StringIndexOutOfBoundsException | IllegalArgumentException e) {
-                    String suggestedOptions = Arrays.stream(ExtendedBundleOptions.values())
-                            .map(Enum::toString)
-                            .collect(Collectors.joining(", "));
-                    throw NativeImage.showError("Unknown extended option in " + extendedOptions + ". Valid options are: " + suggestedOptions + ".");
-                }
-            }
+                    });
 
             if(bundleSupport.useContainer) {
                 if (!OS.LINUX.isCurrent()) {
@@ -284,6 +285,10 @@ final class BundleSupport {
 
     private void initializeContainerImage() {
         String bundleFileName = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION).toString();
+
+        if(bundleDockerfile != null && dockerfile == null) {
+            dockerfile = bundleDockerfile;
+        }
 
         // create Dockerfile if not available for writing or loading bundle
         try {
@@ -571,9 +576,9 @@ final class BundleSupport {
             }
         }
 
-        dockerfile = stageDir.resolve("Dockerfile");
-        if(!Files.exists(dockerfile)) {
-            dockerfile = null;
+        bundleDockerfile = stageDir.resolve("Dockerfile");
+        if(!Files.isReadable(bundleDockerfile)) {
+            bundleDockerfile = null;
         }
 
 
