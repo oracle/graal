@@ -31,6 +31,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.jfr.events.ActiveRecordingEvent;
 import jdk.jfr.events.ActiveSettingEvent;
+import jdk.jfr.events.ErrorThrownEvent;
+import jdk.jfr.events.ExceptionStatisticsEvent;
+import jdk.jfr.events.ExceptionThrownEvent;
 import jdk.jfr.events.FileForceEvent;
 import jdk.jfr.events.FileReadEvent;
 import jdk.jfr.events.FileWriteEvent;
@@ -47,8 +50,11 @@ final class Target_jdk_jfr_internal_instrument_JDKEvents {
                     FileWriteEvent.class,
                     SocketReadEvent.class,
                     SocketWriteEvent.class,
+                    ExceptionThrownEvent.class,
+                    ExceptionStatisticsEvent.class,
+                    ErrorThrownEvent.class,
                     ActiveSettingEvent.class,
-                    ActiveRecordingEvent.class
+                    ActiveRecordingEvent.class,
     };
 
     /*
