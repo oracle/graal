@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.runtime.dispatch;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -35,21 +36,16 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
-import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
-import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNodeGen;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
@@ -61,22 +57,20 @@ public final class ListInterop extends IterableInterop {
         return true;
     }
 
-    static LookupAndInvokeKnownMethodNode getSizeLookup() {
-        return LookupAndInvokeKnownMethodNodeGen.create(getMeta().java_util_List, getMeta().java_util_List_size);
-    }
-
     @ExportMessage
     static long getArraySize(StaticObject receiver,
-                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size) {
-        return (int) size.execute(receiver, EMPTY_ARGS);
+                    @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                    @Cached.Shared("size") @Cached LookupAndInvokeKnownMethodNode size) {
+        return (int) size.execute(receiver, listSizeMethod);
     }
 
     @ExportMessage
     static Object readArrayElement(StaticObject receiver, long index,
                     @Cached ListGet listGet,
-                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size,
+                    @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                    @Cached.Shared("size") @Cached LookupAndInvokeKnownMethodNode size,
                     @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException {
-        if (!boundsCheck(receiver, index, size)) {
+        if (!boundsCheck(receiver, index, listSizeMethod, size)) {
             error.enter();
             throw InvalidArrayIndexException.create(index);
         }
@@ -87,9 +81,10 @@ public final class ListInterop extends IterableInterop {
     static void writeArrayElement(StaticObject receiver, long index, Object value,
                     @Cached ListSet listSet,
                     @Cached ListAdd listAdd,
-                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size,
+                    @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                    @Cached.Shared("size") @Cached LookupAndInvokeKnownMethodNode size,
                     @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException, UnsupportedMessageException {
-        int listSize = (int) size.execute(receiver, EMPTY_ARGS);
+        int listSize = (int) size.execute(receiver, listSizeMethod);
         if (!boundsCheck(index, listSize)) {
             // append new element if allowed
             if (index == listSize) {
@@ -106,14 +101,16 @@ public final class ListInterop extends IterableInterop {
 
     @ExportMessage
     static boolean isArrayElementReadable(StaticObject receiver, long index,
-                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size) {
-        return boundsCheck(receiver, index, size);
+                    @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                    @Cached.Shared("size") @Cached LookupAndInvokeKnownMethodNode size) {
+        return boundsCheck(receiver, index, listSizeMethod, size);
     }
 
     @ExportMessage
     static boolean isArrayElementModifiable(StaticObject receiver, long index,
-                    @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size) {
-        return boundsCheck(receiver, index, size);
+                    @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                    @Cached.Shared("size") @Cached LookupAndInvokeKnownMethodNode size) {
+        return boundsCheck(receiver, index, listSizeMethod, size);
     }
 
     @ExportMessage
@@ -126,9 +123,9 @@ public final class ListInterop extends IterableInterop {
 
     // TODO(GR-38619): isArrayElementRemovable
 
-    private static boolean boundsCheck(StaticObject receiver, long index,
+    private static boolean boundsCheck(StaticObject receiver, long index, Method listSize,
                     LookupAndInvokeKnownMethodNode size) {
-        return 0 <= index && index < (int) size.execute(receiver, EMPTY_ARGS);
+        return boundsCheck(index, (int) size.execute(receiver, listSize));
     }
 
     private static boolean boundsCheck(long index, int size) {
@@ -153,24 +150,11 @@ public final class ListInterop extends IterableInterop {
 
         protected abstract Object execute(StaticObject receiver, int index);
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static Object doDirectLookup(StaticObject receiver, int index,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doGetLookup(receiver)") Method method,
-                        @Cached("create(method.getCallTarget())") DirectCallNode callNode) {
-            return callNode.call(receiver, index);
-        }
-
-        @Specialization(replaces = "doDirectLookup")
-        static Object doIndirectLookup(StaticObject receiver, int index,
-                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
-            Method get = doGetLookup(receiver);
-            return invoke.call(get.getCallTarget(), receiver, index);
-        }
-
-        static Method doGetLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Name.get, Signature.Object_int);
+        @Specialization
+        static Object doCached(StaticObject receiver, int index,
+                        @Bind("getMeta().java_util_List_get") Method getMethod,
+                        @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
+            return lookupAndInvoke.execute(receiver, getMethod, index);
         }
     }
 
@@ -195,24 +179,11 @@ public final class ListInterop extends IterableInterop {
 
         protected abstract void execute(StaticObject receiver, int index, Object value) throws ArityException, UnsupportedTypeException;
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static void doDirectLookup(StaticObject receiver, int index, Object value,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doSetLookup(receiver)") Method method,
-                        @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
-            invoke.execute(method, receiver, new Object[]{index, value});
-        }
-
-        @Specialization(replaces = "doDirectLookup")
-        static void doIndirectLookup(StaticObject receiver, int index, Object value,
-                        @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
-            Method set = doSetLookup(receiver);
-            invoke.execute(set, receiver, new Object[]{index, value});
-        }
-
-        static Method doSetLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Name.set, Signature.Object_int_Object);
+        @Specialization
+        static void doCached(StaticObject receiver, int index, Object value,
+                        @Bind("getMeta().java_util_List_set") Method setMethod,
+                        @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
+            lookupAndInvoke.execute(receiver, setMethod, index, value);
         }
     }
 
@@ -240,24 +211,115 @@ public final class ListInterop extends IterableInterop {
 
         protected abstract void execute(StaticObject receiver, Object value) throws ArityException, UnsupportedTypeException;
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static void doDirectLookup(StaticObject receiver, Object value,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doAddLookup(receiver)") Method method,
-                        @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
-            invoke.execute(method, receiver, new Object[]{value});
+        @Specialization
+        static void doCached(StaticObject receiver, Object value,
+                        @Bind("getMeta().java_util_List_add") Method addMethod,
+                        @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
+            lookupAndInvoke.execute(receiver, addMethod, value);
+        }
+    }
+
+    public static class Nodes {
+
+        static {
+            Nodes.registerMessages(ListInterop.class);
         }
 
-        @Specialization(replaces = "doDirectLookup")
-        static void doIndirectLookup(StaticObject receiver, Object value,
-                        @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
-            Method add = doAddLookup(receiver);
-            invoke.execute(add, receiver, new Object[]{value});
+        public static void ensureInitialized() {
         }
 
-        static Method doAddLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Name.add, Signature._boolean_Object);
+        public static void registerMessages(Class<? extends ListInterop> cls) {
+            IterableInterop.Nodes.registerMessages(cls);
+            InteropMessageFactory.register(cls, "hasArrayElements", ListInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
+            InteropMessageFactory.register(cls, "getArraySize", ListInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
+            InteropMessageFactory.register(cls, "readArrayElement", ListInteropFactory.NodesFactory.ReadArrayElementNodeGen::create);
+            InteropMessageFactory.register(cls, "writeArrayElement", ListInteropFactory.NodesFactory.WriteArrayElementNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementReadable", ListInteropFactory.NodesFactory.IsArrayElementReadableNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementModifiable", ListInteropFactory.NodesFactory.isArrayElementModifiableNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementInsertable", ListInteropFactory.NodesFactory.IsArrayElementInsertableNodeGen::create);
+        }
+
+        static abstract class HasArrayElementsNode extends InteropMessage.HasArrayElements {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver) {
+                return true;
+            }
+        }
+
+        static abstract class GetArraySizeNode extends InteropMessage.GetArraySize {
+            @Specialization
+            static long getArraySize(StaticObject receiver,
+                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                            @Cached LookupAndInvokeKnownMethodNode size) {
+                return (int) size.execute(receiver, listSizeMethod);
+            }
+        }
+
+        static abstract class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
+            @Specialization
+            static Object readArrayElement(StaticObject receiver, long index,
+                            @Cached ListGet listGet,
+                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                            @Cached LookupAndInvokeKnownMethodNode size,
+                            @Cached BranchProfile error) throws InvalidArrayIndexException {
+                if (!boundsCheck(receiver, index, listSizeMethod, size)) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return listGet.listGet(receiver, index, error);
+            }
+        }
+
+        static abstract class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
+            @Specialization
+            static void writeArrayElement(StaticObject receiver, long index, Object value,
+                            @Cached ListSet listSet,
+                            @Cached ListAdd listAdd,
+                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                            @Cached LookupAndInvokeKnownMethodNode size,
+                            @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedMessageException {
+                int listSize = (int) size.execute(receiver, listSizeMethod);
+                if (!boundsCheck(index, listSize)) {
+                    // append new element if allowed
+                    if (index == listSize) {
+                        listAdd.listAdd(receiver, value, error);
+                        return;
+                    } else {
+                        error.enter();
+                        throw InvalidArrayIndexException.create(index);
+                    }
+                }
+                // replace existing element
+                listSet.listSet(receiver, index, value, error);
+            }
+        }
+
+        static abstract class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
+            @Specialization
+            static boolean isArrayElementReadable(StaticObject receiver, long index,
+                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                            @Cached LookupAndInvokeKnownMethodNode size) {
+                return boundsCheck(receiver, index, listSizeMethod, size);
+            }
+        }
+
+        static abstract class isArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
+            @Specialization
+            static boolean isArrayElementModifiable(StaticObject receiver, long index,
+                            @Bind("getMeta().java_util_List_size") Method listSizeMethod,
+                            @Cached LookupAndInvokeKnownMethodNode size) {
+                return boundsCheck(receiver, index, listSizeMethod, size);
+            }
+        }
+
+        static abstract class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
+            @Specialization
+            static boolean isArrayElementInsertable(@SuppressWarnings("unused") StaticObject receiver, @SuppressWarnings("unused") long index) {
+                // we can't easily determine is the guest list is modifiable or not,
+                // so we return true here and let writeArrayElement fail in case the
+                // associated guest method throws
+                return true;
+            }
         }
     }
 }

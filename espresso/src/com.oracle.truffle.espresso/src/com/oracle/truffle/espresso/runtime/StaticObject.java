@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.SharedInterop;
 
 /**
  * Implementation of the Espresso object model.
@@ -100,6 +101,9 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     @ExportMessage
     public final Class<?> dispatch() {
+        if (EspressoLanguage.get(null).isShared()) {
+            return SharedInterop.class;
+        }
         if (isNull(this) || isForeignObject()) {
             return BaseInterop.class;
         }

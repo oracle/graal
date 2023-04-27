@@ -23,17 +23,17 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
@@ -46,28 +46,41 @@ public class IterableInterop extends EspressoInterop {
     }
 
     @ExportMessage
-    abstract static class GetIterator {
+    public static Object getIterator(StaticObject receiver,
+                    @Bind("getMeta().java_lang_Iterable_iterator") Method iteratorMethod,
+                    @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
+        return lookupAndInvoke.execute(receiver, iteratorMethod);
+    }
 
-        static final int LIMIT = 3;
+    public static class Nodes {
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static Object doCached(StaticObject receiver,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doIteratorLookup(receiver)") Method method,
-                        @Cached("create(method.getCallTarget())") DirectCallNode callNode) {
-            return callNode.call(receiver);
+        static {
+            Nodes.registerMessages(IterableInterop.class);
         }
 
-        @Specialization(replaces = "doCached")
-        static Object doUncached(StaticObject receiver,
-                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
-            Method iterator = doIteratorLookup(receiver);
-            return invoke.call(iterator.getCallTarget(), receiver);
+        public static void ensureInitialized() {
         }
 
-        static Method doIteratorLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Symbol.Name.iterator, Symbol.Signature.java_util_Iterator);
+        public static void registerMessages(Class<? extends IterableInterop> cls) {
+            EspressoInterop.Nodes.registerMessages(cls);
+            InteropMessageFactory.register(cls, "hasIterator", IterableInteropFactory.NodesFactory.HasIteratorNodeGen::create);
+            InteropMessageFactory.register(cls, "getIterator", IterableInteropFactory.NodesFactory.GetIteratorNodeGen::create);
+        }
+
+        abstract static class HasIteratorNode extends InteropMessage.HasIterator {
+            @Specialization
+            public static boolean hasIterator(@SuppressWarnings("unused") StaticObject receiver) {
+                return true;
+            }
+        }
+
+        abstract static class GetIteratorNode extends InteropMessage.GetIterator {
+            @Specialization
+            public static Object getIterator(StaticObject receiver,
+                            @Bind("getMeta().java_lang_Iterable_iterator") Method iteratorMethod,
+                            @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
+                return lookupAndInvoke.execute(receiver, iteratorMethod);
+            }
         }
     }
 

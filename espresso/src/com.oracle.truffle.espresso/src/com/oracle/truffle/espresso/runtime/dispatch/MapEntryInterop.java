@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.runtime.StaticObject.EMPTY_ARRAY;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -39,6 +40,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
@@ -102,5 +105,94 @@ public class MapEntryInterop extends EspressoInterop {
     static Method doLookup(StaticObject receiver, ObjectKlass k, Method m) {
         assert k.isInterface() && m.getDeclaringKlass() == k;
         return getInteropKlass(receiver).itableLookup(k, m.getITableIndex());
+    }
+
+    @SuppressWarnings("unused")
+    public static class Nodes {
+
+        static {
+            Nodes.registerMessages(MapEntryInterop.class);
+        }
+
+        public static void ensureInitialized() {
+        }
+
+        public static void registerMessages(Class<? extends MapEntryInterop> cls) {
+            EspressoInterop.Nodes.registerMessages(cls);
+            InteropMessageFactory.register(cls, "hasArrayElements", MapEntryInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
+            InteropMessageFactory.register(cls, "getArraySize", MapEntryInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementModifiable", MapEntryInteropFactory.NodesFactory.IsArrayElementModifiableNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementReadable", MapEntryInteropFactory.NodesFactory.IsArrayElementReadableNodeGen::create);
+            InteropMessageFactory.register(cls, "writeArrayElement", MapEntryInteropFactory.NodesFactory.WriteArrayElementNodeGen::create);
+            InteropMessageFactory.register(cls, "readArrayElement", MapEntryInteropFactory.NodesFactory.ReadArrayElementNodeGen::create);
+        }
+
+        static abstract class HasArrayElementsNode extends InteropMessage.HasArrayElements {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver) {
+                return true;
+            }
+        }
+
+        static abstract class GetArraySizeNode extends InteropMessage.GetArraySize {
+            @Specialization
+            long doStaticObject(StaticObject receiver) {
+                return 2;
+            }
+        }
+
+        static abstract class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver, long index) {
+                return index == 1;
+            }
+        }
+
+        static abstract class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver, long index) {
+                return index == 0 || index == 1;
+            }
+        }
+
+        static abstract class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
+            @Specialization
+            void doStaticObject(StaticObject receiver, long index, Object value,
+                            @Cached InvokeEspressoNode invoke) throws InvalidArrayIndexException {
+                if (index != 1) {
+                    throw InvalidArrayIndexException.create(index);
+                }
+                Meta meta = receiver.getKlass().getMeta();
+                Method m = doLookup(receiver, meta.java_util_Map_Entry, meta.java_util_Map_Entry_setValue);
+                try {
+                    invoke.execute(m, receiver, new Object[]{value});
+                } catch (ArityException | UnsupportedTypeException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+        }
+
+        static abstract class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
+            @Specialization
+            Object doStaticObject(StaticObject receiver, long index,
+                            @Cached InvokeEspressoNode invoke) throws InvalidArrayIndexException {
+                Meta meta = receiver.getKlass().getMeta();
+                Method m;
+                if (index == 0) {
+                    m = doLookup(receiver, meta.java_util_Map_Entry, meta.java_util_Map_Entry_getKey);
+                } else if (index == 1) {
+                    m = doLookup(receiver, meta.java_util_Map_Entry, meta.java_util_Map_Entry_getValue);
+                } else {
+                    throw InvalidArrayIndexException.create(index);
+                }
+                try {
+                    return invoke.execute(m, receiver, EMPTY_ARRAY);
+                } catch (ArityException | UnsupportedTypeException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
+        }
     }
 }

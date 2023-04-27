@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -32,6 +33,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
@@ -115,4 +118,111 @@ public class ThrowableInterop extends EspressoInterop {
         return object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String).invokeDirect(object);
     }
 
+    @SuppressWarnings("unused")
+    static class Nodes {
+
+        static {
+            Nodes.registerMessages(ThrowableInterop.class);
+        }
+
+        public static void ensureInitialized() {
+        }
+
+        public static void registerMessages(Class<? extends ThrowableInterop> cls) {
+            EspressoInterop.Nodes.registerMessages(cls);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.IsExceptionNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
+        }
+
+        static {
+            registerMessages(ThrowableInterop.class);
+        }
+
+        abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {
+            @Specialization
+            public ExceptionType doStaticObject(StaticObject receiver) {
+                return ExceptionType.RUNTIME_ERROR;
+            }
+        }
+
+        abstract static class IsExceptionNode extends InteropMessage.IsException {
+            @Specialization
+            public boolean isException(StaticObject receiver) {
+                receiver.checkNotForeign();
+                return true;
+            }
+        }
+
+        abstract static class HasExceptionCauseNode extends InteropMessage.HasExceptionCause {
+            @Specialization
+            public static boolean hasExceptionCause(StaticObject object) {
+                object.checkNotForeign();
+                Meta meta = object.getKlass().getMeta();
+                Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getCause, Symbol.Signature.Throwable);
+                if (resolvedMessageMethod == meta.java_lang_Throwable_getCause) {
+                    // not overridden, then we can trust the field value
+                    StaticObject guestCause = meta.java_lang_Throwable_cause.getObject(object);
+                    return StaticObject.notNull(guestCause) && guestCause != object;
+                } else if (resolvedMessageMethod.isInlinableGetter()) {
+                    // only call the method for a 'has' interop message if it's simple
+                    StaticObject guestCause = (StaticObject) resolvedMessageMethod.invokeDirect(object);
+                    return StaticObject.notNull(guestCause) && guestCause != object;
+                } else {
+                    /*
+                     * not a simple method, so we might end up returning guest null for
+                     * 'getExceptionMessage' which is OK in this case
+                     */
+                    return true;
+                }
+            }
+        }
+
+        abstract static class GetExceptionCauseNode extends InteropMessage.GetExceptionCause {
+            @Specialization
+            public static Object getExceptionCause(StaticObject object) throws UnsupportedMessageException {
+                object.checkNotForeign();
+                if (!hasExceptionCause(object)) {
+                    throw UnsupportedMessageException.create();
+                }
+                return object.getKlass().lookupMethod(Symbol.Name.getCause, Symbol.Signature.Throwable).invokeDirect(object);
+            }
+        }
+
+        abstract static class HasExceptionMessageNode extends InteropMessage.HasExceptionMessage {
+            @Specialization
+            public static boolean hasExceptionMessage(StaticObject object) {
+                object.checkNotForeign();
+                Meta meta = object.getKlass().getMeta();
+                Method resolvedMessageMethod = object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String);
+                if (resolvedMessageMethod == meta.java_lang_Throwable_getMessage) {
+                    // not overridden, then we can trust the field value
+                    return StaticObject.notNull(meta.java_lang_Throwable_detailMessage.getObject(object));
+                } else if (resolvedMessageMethod.isInlinableGetter()) {
+                    // only call the method for a 'has' interop message if it's simple
+                    return StaticObject.notNull((StaticObject) resolvedMessageMethod.invokeDirect(object));
+                } else {
+                    /*
+                     * not a simple method, so we might end up returning guest null for
+                     * 'getExceptionMessage' which is OK in this case
+                     */
+                    return true;
+                }
+            }
+        }
+
+        abstract static class GetExceptionMessageNode extends InteropMessage.GetExceptionMessage {
+            @Specialization
+            public static Object getExceptionMessage(StaticObject object) throws UnsupportedMessageException {
+                object.checkNotForeign();
+                if (!hasExceptionMessage(object)) {
+                    throw UnsupportedMessageException.create();
+                }
+                return object.getKlass().lookupMethod(Symbol.Name.getMessage, Symbol.Signature.String).invokeDirect(object);
+            }
+        }
+    }
 }

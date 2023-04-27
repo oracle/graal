@@ -43,6 +43,8 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 import com.oracle.truffle.espresso.vm.VM;
 
 /**
@@ -71,7 +73,6 @@ public class BaseInterop {
     }
 
     // region ### Meta-objects
-
     @ExportMessage
     public static boolean isMetaObject(StaticObject object) {
         object.checkNotForeign();
@@ -182,21 +183,10 @@ public class BaseInterop {
     // endregion ### Meta-objects
 
     // region ### Identity/hashCode
-
     @ExportMessage
-    public static final class IsIdenticalOrUndefined {
-        @Specialization
-        static TriState doStaticObject(StaticObject receiver, StaticObject other) {
-            receiver.checkNotForeign();
-            other.checkNotForeign();
-            return receiver == other ? TriState.TRUE : TriState.FALSE;
-        }
-
-        @Fallback
-        static TriState doOther(@SuppressWarnings("unused") StaticObject receiver, @SuppressWarnings("unused") Object other) {
-            receiver.checkNotForeign();
-            return TriState.UNDEFINED;
-        }
+    public static TriState isIdenticalOrUndefined(StaticObject receiver, Object other,
+                    @Cached Nodes.IsIdenticalOrUndefinedNode message) {
+        return message.execute(receiver, other);
     }
 
     @ExportMessage
@@ -213,7 +203,6 @@ public class BaseInterop {
     // endregion ### Identity/hashCode
 
     // region ### Language/DisplayString
-
     @SuppressWarnings("unused")
     @ExportMessage
     public static boolean hasLanguage(StaticObject object) {
@@ -228,40 +217,209 @@ public class BaseInterop {
 
     @ExportMessage
     @TruffleBoundary
-    public static Object toDisplayString(StaticObject object, boolean allowSideEffects) {
-        if (object.isForeignObject()) {
-            if (object.getKlass() == null) {
-                return "Foreign object: null";
-            }
-            InteropLibrary interopLibrary = InteropLibrary.getUncached();
-            try {
-                EspressoLanguage language = object.getKlass().getContext().getLanguage();
-                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(language), allowSideEffects));
-            } catch (UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
-            }
-        }
-        if (StaticObject.isNull(object)) {
-            return "NULL";
-        }
-        Klass thisKlass = object.getKlass();
-        Meta meta = thisKlass.getMeta();
-        if (allowSideEffects) {
-            // Call guest toString.
-            int toStringIndex = meta.java_lang_Object_toString.getVTableIndex();
-            Method toString = thisKlass.vtableLookup(toStringIndex);
-            return meta.toHostString((StaticObject) toString.invokeDirect(object));
-        }
-
-        // Handle some special instances without side effects.
-        if (thisKlass == meta.java_lang_Class) {
-            return "class " + thisKlass.getTypeAsString();
-        }
-        if (thisKlass == meta.java_lang_String) {
-            return meta.toHostString(object);
-        }
-        return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(object));
+    public static Object toDisplayString(StaticObject object, boolean allowSideEffects,
+                    @Cached Nodes.ToDisplayStringNode node) {
+        return node.execute(object, allowSideEffects);
     }
 
     // endregion ### Language/DisplayString
+
+    @SuppressWarnings("unused")
+    public static class Nodes {
+
+        static {
+            Nodes.registerMessages(BaseInterop.class);
+        }
+
+        public static void ensureInitialized() {
+        }
+
+        public static void registerMessages(Class<? extends BaseInterop> cls) {
+            InteropMessageFactory.register(cls, "isNull", BaseInteropFactory.NodesFactory.IsNullNodeGen::create);
+            InteropMessageFactory.register(cls, "isString", BaseInteropFactory.NodesFactory.IsStringNodeGen::create);
+            InteropMessageFactory.register(cls, "asString", BaseInteropFactory.NodesFactory.AsStringNodeGen::create);
+            InteropMessageFactory.register(cls, "isMetaObject", BaseInteropFactory.NodesFactory.IsMetaObjectNodeGen::create);
+            InteropMessageFactory.register(cls, "getMetaQualifiedName", BaseInteropFactory.NodesFactory.GetMetaQualifiedNameNodeGen::create);
+            InteropMessageFactory.register(cls, "getMetaSimpleName", BaseInteropFactory.NodesFactory.GetMetaSimpleNameNodeGen::create);
+            InteropMessageFactory.register(cls, "isMetaInstance", BaseInteropFactory.NodesFactory.IsMetaInstanceNodeGen::create);
+            InteropMessageFactory.register(cls, "hasMetaObject", BaseInteropFactory.NodesFactory.HasMetaObjectNodeGen::create);
+            InteropMessageFactory.register(cls, "getMetaObject", BaseInteropFactory.NodesFactory.GetMetaObjectNodeGen::create);
+            InteropMessageFactory.register(cls, "isIdenticalOrUndefined", BaseInteropFactory.NodesFactory.IsIdenticalOrUndefinedNodeGen::create);
+            InteropMessageFactory.register(cls, "identityHashCode", BaseInteropFactory.NodesFactory.IdentityHashCodeNodeGen::create);
+            InteropMessageFactory.register(cls, "hasLanguage", BaseInteropFactory.NodesFactory.HasLanguageNodeGen::create);
+            InteropMessageFactory.register(cls, "getLanguage", BaseInteropFactory.NodesFactory.GetLanguageNodeGen::create);
+            InteropMessageFactory.register(cls, "toDisplayString", BaseInteropFactory.NodesFactory.ToDisplayStringNodeGen::create);
+        }
+
+        static abstract class IsNullNode extends InteropMessage.IsNull {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver) {
+                return StaticObject.isNull(receiver);
+            }
+        }
+
+        static abstract class IsStringNode extends InteropMessage.IsString {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver) {
+                return StaticObject.notNull(receiver) && receiver.getKlass() == receiver.getKlass().getMeta().java_lang_String;
+            }
+        }
+
+        static abstract class AsStringNode extends InteropMessage.AsString {
+            @Specialization
+            String doStaticObject(StaticObject receiver) throws UnsupportedMessageException {
+                receiver.checkNotForeign();
+                if (!isString(receiver)) {
+                    throw UnsupportedMessageException.create();
+                }
+                return Meta.toHostStringStatic(receiver);
+            }
+        }
+
+        static abstract class IsMetaObjectNode extends InteropMessage.IsMetaObject {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver) {
+                receiver.checkNotForeign();
+                return !isNull(receiver) && receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Class;
+            }
+        }
+
+        static abstract class GetMetaQualifiedNameNode extends InteropMessage.GetMetaQualifiedName {
+            @Specialization
+            Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
+                receiver.checkNotForeign();
+                if (isMetaObject(receiver)) {
+                    return receiver.getMirrorKlass().getTypeName();
+                }
+                error.enter();
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        static abstract class GetMetaSimpleNameNode extends InteropMessage.GetMetaSimpleName {
+            @Specialization
+            Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
+                receiver.checkNotForeign();
+                if (isMetaObject(receiver)) {
+                    return receiver.getKlass().getMeta().java_lang_Class_getSimpleName.invokeDirect(receiver);
+                }
+                error.enter();
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        static abstract class IsMetaInstanceNode extends InteropMessage.IsMetaInstance {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver, Object instance,
+                            @Cached BranchProfile error) throws UnsupportedMessageException {
+                receiver.checkNotForeign();
+                if (isMetaObject(receiver)) {
+                    return instance instanceof StaticObject && instanceOf((StaticObject) instance, receiver.getMirrorKlass());
+                }
+                error.enter();
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        static abstract class HasMetaObjectNode extends InteropMessage.HasMetaObject {
+            @Specialization
+            boolean doStaticObject(StaticObject receiver) {
+                if (receiver.isForeignObject()) {
+                    return false;
+                }
+                return !isNull(receiver);
+            }
+        }
+
+        static abstract class GetMetaObjectNode extends InteropMessage.GetMetaObject {
+            @Specialization
+            Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
+                receiver.checkNotForeign();
+                if (hasMetaObject(receiver)) {
+                    return receiver.getKlass().mirror();
+                }
+                error.enter();
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        static abstract class IsIdenticalOrUndefinedNode extends InteropMessage.IsIdenticalOrUndefined {
+            @Specialization
+            public static TriState doStaticObject(StaticObject receiver, StaticObject other) {
+                receiver.checkNotForeign();
+                other.checkNotForeign();
+                return receiver == other ? TriState.TRUE : TriState.FALSE;
+            }
+
+            @Fallback
+            static TriState doOther(@SuppressWarnings("unused") Object receiver, @SuppressWarnings("unused") Object other) {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        static abstract class IdentityHashCodeNode extends InteropMessage.IdentityHashCode {
+            @Specialization
+            static int doStaticObject(StaticObject receiver,
+                            @CachedLibrary(limit = "1") InteropLibrary thisLibrary, @Cached BranchProfile error) throws UnsupportedMessageException {
+                receiver.checkNotForeign();
+                if (thisLibrary.hasIdentity(receiver)) {
+                    return VM.JVM_IHashCode(receiver, null /*- path where language is needed is never reached through here. */);
+                }
+                error.enter();
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        static abstract class HasLanguageNode extends InteropMessage.HasLanguage {
+            @Specialization
+            static boolean doStaticObject(StaticObject receiver) {
+                return true;
+            }
+        }
+
+        static abstract class GetLanguageNode extends InteropMessage.GetLanguage {
+            @Specialization
+            static Class<? extends TruffleLanguage<?>> doStaticObject(StaticObject receiver) {
+                return EspressoLanguage.class;
+            }
+        }
+
+        static abstract class ToDisplayStringNode extends InteropMessage.ToDisplayString {
+            @Specialization
+            static Object doStaticObject(StaticObject receiver, boolean allowSideEffects) {
+                if (receiver.isForeignObject()) {
+                    if (receiver.getKlass() == null) {
+                        return "Foreign receiver: null";
+                    }
+                    InteropLibrary interopLibrary = InteropLibrary.getUncached();
+                    try {
+                        EspressoLanguage language = receiver.getKlass().getContext().getLanguage();
+                        return "Foreign receiver: " + interopLibrary.asString(interopLibrary.toDisplayString(receiver.rawForeignObject(language), allowSideEffects));
+                    } catch (UnsupportedMessageException e) {
+                        throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
+                    }
+                }
+                if (StaticObject.isNull(receiver)) {
+                    return "NULL";
+                }
+                Klass thisKlass = receiver.getKlass();
+                Meta meta = thisKlass.getMeta();
+                if (allowSideEffects) {
+                    // Call guest toString.
+                    int toStringIndex = meta.java_lang_Object_toString.getVTableIndex();
+                    Method toString = thisKlass.vtableLookup(toStringIndex);
+                    return meta.toHostString((StaticObject) toString.invokeDirect(receiver));
+                }
+
+                // Handle some special instances without side effects.
+                if (thisKlass == meta.java_lang_Class) {
+                    return "class " + thisKlass.getTypeAsString();
+                }
+                if (thisKlass == meta.java_lang_String) {
+                    return meta.toHostString(receiver);
+                }
+                return thisKlass.getTypeAsString() + "@" + Integer.toHexString(System.identityHashCode(receiver));
+            }
+        }
+    }
 }

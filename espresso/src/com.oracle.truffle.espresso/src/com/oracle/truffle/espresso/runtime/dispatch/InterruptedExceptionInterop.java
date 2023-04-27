@@ -23,11 +23,14 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
@@ -35,5 +38,28 @@ public class InterruptedExceptionInterop extends ThrowableInterop {
     @ExportMessage
     public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
         return ExceptionType.INTERRUPT;
+    }
+
+    @SuppressWarnings("unused")
+    static class Nodes {
+
+        static {
+            Nodes.registerMessages(InterruptedExceptionInterop.class);
+        }
+
+        public static void ensureInitialized() {
+        }
+
+        public static void registerMessages(Class<? extends ThrowableInterop> cls) {
+            ThrowableInterop.Nodes.registerMessages(cls);
+            InteropMessageFactory.register(cls, "getExceptionTypeNode", InterruptedExceptionInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
+        }
+
+        abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {
+            @Specialization
+            public ExceptionType doStaticObject(StaticObject receiver) {
+                return ExceptionType.INTERRUPT;
+            }
+        }
     }
 }

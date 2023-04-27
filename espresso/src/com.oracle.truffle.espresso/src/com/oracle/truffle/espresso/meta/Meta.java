@@ -848,6 +848,7 @@ public final class Meta extends ContextAccessImpl {
         java_util_List_get = java_util_List.requireDeclaredMethod(Name.get, Signature.Object_int);
         java_util_List_set = java_util_List.requireDeclaredMethod(Name.set, Signature.Object_int_Object);
         java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
+        java_util_List_add = java_util_List.requireDeclaredMethod(Name.add, Signature._boolean_Object);
         assert java_util_List.isInterface();
 
         java_util_Set = knownKlass(Type.java_util_Set);
@@ -1549,6 +1550,7 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_List_get;
     public final Method java_util_List_set;
     public final Method java_util_List_size;
+    public final Method java_util_List_add;
 
     public final ObjectKlass java_util_Set;
     public final Method java_util_Set_add;

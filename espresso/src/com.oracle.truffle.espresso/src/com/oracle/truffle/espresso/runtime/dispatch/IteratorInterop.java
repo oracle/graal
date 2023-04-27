@@ -23,19 +23,19 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
@@ -47,68 +47,72 @@ public class IteratorInterop extends EspressoInterop {
     }
 
     @ExportMessage
-    abstract static class HasIteratorNextElement {
-
-        static final int LIMIT = 3;
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static boolean doCached(StaticObject receiver,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doHasNextLookup(receiver)") Method method,
-                        @Cached("create(method.getCallTarget())") DirectCallNode callNode) {
-            return (boolean) callNode.call(receiver);
-        }
-
-        @Specialization(replaces = "doCached")
-        static boolean doUncached(StaticObject receiver,
-                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
-            Method hasNext = doHasNextLookup(receiver);
-            return (boolean) invoke.call(hasNext.getCallTarget(), receiver);
-        }
-
-        static Method doHasNextLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Symbol.Name.hasNext, Symbol.Signature._boolean);
-        }
+    public static boolean hasIteratorNextElement(StaticObject receiver,
+                    @Bind("getMeta().java_util_Iterator_hasNext") Method hasNext,
+                    @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
+        return (boolean) lookupAndInvoke.execute(receiver, hasNext);
     }
 
     @ExportMessage
-    abstract static class GetIteratorNextElement {
+    static Object getIteratorNextElement(StaticObject receiver,
+                    @Bind("getMeta().java_util_Iterator_next") Method next,
+                    @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) throws StopIterationException {
+        try {
+            return lookupAndInvoke.execute(receiver, next);
+        } catch (EspressoException e) {
+            if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_util_NoSuchElementException)) {
+                throw StopIterationException.create(e);
+            }
+            throw e;
+        }
+    }
 
-        static final int LIMIT = 3;
+    public static class Nodes {
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static Object doCached(StaticObject receiver,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doNextLookup(receiver)") Method method,
-                        @Cached("create(method.getCallTarget())") DirectCallNode callNode) throws StopIterationException {
-            try {
-                return callNode.call(receiver);
-            } catch (EspressoException e) {
-                if (InterpreterToVM.instanceOf(e.getGuestException(), cachedKlass.getMeta().java_util_NoSuchElementException)) {
-                    throw StopIterationException.create(e);
-                }
-                throw e;
+        static {
+            Nodes.registerMessages(IteratorInterop.class);
+        }
+
+        public static void ensureInitialized() {
+        }
+
+        public static void registerMessages(Class<? extends IteratorInterop> cls) {
+            EspressoInterop.Nodes.registerMessages(cls);
+            InteropMessageFactory.register(cls, "isIterator", IteratorInteropFactory.NodesFactory.IsIteratorNodeGen::create);
+            InteropMessageFactory.register(cls, "hasIteratorNextElement", IteratorInteropFactory.NodesFactory.HasIteratorNextElementNodeGen::create);
+            InteropMessageFactory.register(cls, "getIteratorNextElement", IteratorInteropFactory.NodesFactory.GetIteratorNextElementNodeGen::create);
+        }
+
+        static abstract class IsIteratorNode extends InteropMessage.IsIterator {
+            @Specialization
+            static boolean isIterator(StaticObject receiver) {
+                return true;
             }
         }
 
-        @Specialization(replaces = "doCached")
-        static Object doUncached(StaticObject receiver,
-                        @Cached.Exclusive @Cached IndirectCallNode invoke) throws StopIterationException {
-            Method next = doNextLookup(receiver);
-            try {
-                return invoke.call(next.getCallTarget(), receiver);
-            } catch (EspressoException e) {
-                if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_util_NoSuchElementException)) {
-                    throw StopIterationException.create(e);
-                }
-                throw e;
+        static abstract class HasIteratorNextElementNode extends InteropMessage.HasIteratorNextElement {
+            @Specialization
+            static boolean hasIteratorNextElement(StaticObject receiver,
+                            @Bind("getMeta().java_util_Iterator_hasNext") Method hasNext,
+                            @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
+                return (boolean) lookupAndInvoke.execute(receiver, hasNext);
             }
         }
 
-        static Method doNextLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Symbol.Name.next, Symbol.Signature.Object);
+        static abstract class GetIteratorNextElementNode extends InteropMessage.GetIteratorNextElement {
+            @Specialization
+            static Object getIteratorNextElement(StaticObject receiver,
+                            @Bind("getMeta().java_util_Iterator_next") Method next,
+                            @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) throws StopIterationException {
+                try {
+                    return lookupAndInvoke.execute(receiver, next);
+                } catch (EspressoException e) {
+                    if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_util_NoSuchElementException)) {
+                        throw StopIterationException.create(e);
+                    }
+                    throw e;
+                }
+            }
         }
     }
 }
