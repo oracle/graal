@@ -690,7 +690,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> DebugCodeInfoMaxDepth = new HostedOptionKey<>(Integer.MAX_VALUE);
 
     @Option(help = "Do not use SourceMappings for generating DebugCodeInfo (i.e. only use Infopoints)") //
-    public static final HostedOptionKey<Boolean> DebugCodeInfoUseSourceMappings = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> DebugCodeInfoUseSourceMappings = new HostedOptionKey<>(false);
 
     @Option(help = "Emit debuginfo debug.svm.imagebuild.* sections with detailed image-build options.")//
     public static final HostedOptionKey<Boolean> UseImagebuildDebugSections = new HostedOptionKey<>(true);
