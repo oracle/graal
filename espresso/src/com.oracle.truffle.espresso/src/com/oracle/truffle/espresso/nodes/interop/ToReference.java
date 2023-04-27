@@ -715,13 +715,62 @@ public abstract class ToReference extends ToEspressoNode {
 
         @Specialization(guards = {
                         "interop.hasArrayElements(value)",
+                        "!isTypeMappingEnabled(context)",
                         "!isStaticObject(value)",
                         "!interop.isNull(value)",
                         "!isHostString(value)"
         })
         StaticObject doForeignArray(Object value,
+                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                         @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             return StaticObject.createForeign(EspressoLanguage.get(this), getMeta().java_lang_Object, value, interop);
+        }
+
+        @Specialization(guards = {
+                        "interop.hasArrayElements(value)",
+                        "isTypeMappingEnabled(context)",
+                        "!interop.hasMetaObject(value)",
+                        "!isStaticObject(value)",
+                        "!interop.isNull(value)",
+                        "!isHostString(value)"
+        })
+        StaticObject doForeignArrayNoMetaObject(Object value,
+                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
+                        @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Bind("getMeta()") Meta meta) {
+            return StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop);
+        }
+
+        @Specialization(guards = {
+                        "interop.hasArrayElements(value)",
+                        "isTypeMappingEnabled(context)",
+                        "interop.hasMetaObject(value)",
+                        "!isStaticObject(value)",
+                        "!interop.isNull(value)",
+                        "!isHostString(value)"
+        })
+        StaticObject doForeignArrayTypeMapping(Object value,
+                        @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
+                        @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached BranchProfile errorProfile,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            try {
+                Object metaObject = getMetaObjectOrThrow(value, interop);
+                String metaName = getMetaName(metaObject, interop);
+
+                // check if there's a specific type mapping available
+                PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
+                if (converter != null) {
+                    return (StaticObject) converter.convert(StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop));
+                } else {
+                    return StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop);
+                }
+            } catch (ClassCastException e) {
+                errorProfile.enter();
+                throw UnsupportedTypeException.create(new java.lang.Object[]{value},
+                                EspressoError.format("Could not cast foreign object to %s: due to: %s", meta.java_lang_Object.getNameAsString(), e.getMessage()));
+            }
         }
 
         @Specialization(guards = {
@@ -759,8 +808,6 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "isTypeMappingEnabled(context)",
                         "interop.hasMetaObject(value)",
-                        "!interop.hasArrayElements(value)",
-                        "!interop.hasBufferElements(value)",
                         "!interop.isNumber(value)",
                         "!interop.isException(value)",
                         "!isStaticObject(value)",
@@ -1163,6 +1210,19 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isEspressoException(value)",
         })
         StaticObject doForeignBuffer(Object value,
+                        @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) {
+            return StaticObject.createForeign(EspressoLanguage.get(this), meta._byte_array, value, interop);
+        }
+
+        @Specialization(guards = {
+                        "!isStaticObject(value)",
+                        "interop.hasArrayElements(value)",
+                        "!interop.isNull(value)",
+                        "!isHostString(value)",
+                        "!isEspressoException(value)",
+        })
+        StaticObject doForeignArray(Object value,
                         @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) {
             return StaticObject.createForeign(EspressoLanguage.get(this), meta._byte_array, value, interop);
