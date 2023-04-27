@@ -128,8 +128,13 @@ final class BundleSupport {
     private Path dockerfile;
     private Path bundleDockerfile;
     private static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
-    private static final String DEFAULT_DOCKERFILE = "FROM registry.fedoraproject.org/fedora-minimal:latest" + System.lineSeparator() +
-            "RUN microdnf -y install gcc g++ zlib-static --nodocs --setopt install_weak_deps=0 && microdnf clean all -y";
+    private static final String DEFAULT_DOCKERFILE = "ARG BASE_IMAGE=container-registry.oracle.com/os/oraclelinux:8-slim" + System.lineSeparator() +
+            "FROM ${BASE_IMAGE}" + System.lineSeparator() +
+            "RUN microdnf update -y oraclelinux-release-el8 \\" + System.lineSeparator() +
+            "&& microdnf --enablerepo ol8_codeready_builder install bzip2-devel ed gcc gcc-c++ gcc-gfortran gzip file fontconfig less libcurl-devel make openssl openssl-devel readline-devel tar glibc-langpack-en \\" + System.lineSeparator() +
+            "vi which xz-devel zlib-devel findutils glibc-static libstdc++ libstdc++-devel libstdc++-static zlib-static \\" + System.lineSeparator() +
+            "&& microdnf clean all" + System.lineSeparator() +
+            "RUN fc-cache -f -v";
     private final String containerToolJsonKey = "containerTool";
     private final String containerToolVersionJsonKey = "containerToolVersion";
     private final String containerImageJsonKey = "containerImage";
@@ -292,7 +297,6 @@ final class BundleSupport {
 
         // create Dockerfile if not available for writing or loading bundle
         try {
-            // TODO load graalvm docker base
             if (dockerfile == null) {
                 dockerfile = Files.createTempFile("Dockerfile", null);
                 Files.write(dockerfile, DEFAULT_DOCKERFILE.getBytes());
