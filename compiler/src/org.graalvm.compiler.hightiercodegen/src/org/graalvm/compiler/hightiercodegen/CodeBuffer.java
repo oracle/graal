@@ -37,17 +37,13 @@ import org.graalvm.compiler.nodes.ParameterNode;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
 /**
  * Utility class that provides an abstraction layer for emitting code.
  */
 public abstract class CodeBuffer {
-
-    /**
-     * Prefix for indent.
-     */
-    public static final String INDENT_PREFIX = "\t";
 
     /**
      * Current indent level.
@@ -128,9 +124,19 @@ public abstract class CodeBuffer {
         codeBytes.write(b, 0, b.length);
     }
 
+    /**
+     * Emit whitespace for one level of indentation.
+     */
+    protected void emitSingleIndent() {
+        emitText("\t");
+    }
+
+    /**
+     * Emit whitespace for the current level of indentation.
+     */
     private void emitIndent() {
         for (int i = 0; i < scopeIndent; i++) {
-            emitText(INDENT_PREFIX);
+            emitSingleIndent();
         }
     }
 
@@ -150,11 +156,20 @@ public abstract class CodeBuffer {
         emitText(getStringLiteral(s));
     }
 
+    public void emitBoolLiteral(boolean b) {
+        emitText(b ? "true" : "false");
+    }
+
     public void emitKeyword(Keyword keyword) {
         emitText(keyword.toString());
     }
 
     public abstract void emitDeclarationPrefix();
+
+    @SuppressWarnings("unused")
+    public void emitDeclarationPrefix(ResolvedJavaType type) {
+        emitDeclarationPrefix();
+    }
 
     public abstract void emitAnonymousClassHeader(String superClass);
 
@@ -283,6 +298,14 @@ public abstract class CodeBuffer {
         emitWhiteSpace();
     }
 
+    public void emitDeclPrefix(String name, ResolvedJavaType type) {
+        emitDeclarationPrefix(type);
+        emitDeclarationName(name);
+        emitWhiteSpace();
+        emitAssignmentSymbol();
+        emitWhiteSpace();
+    }
+
     public abstract void emitAssignmentSymbol();
 
     public void emitNew() {
@@ -300,6 +323,8 @@ public abstract class CodeBuffer {
     protected abstract void emitTrySymbol();
 
     public abstract void emitCatch(String expName);
+
+    public abstract void emitCatch(String expName, ResolvedJavaType type);
 
     /**
      * Emit a simple linebreak.

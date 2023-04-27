@@ -36,9 +36,12 @@ import org.graalvm.compiler.hightiercodegen.CodeGenTool;
 import org.graalvm.compiler.hightiercodegen.lowerer.PhiResolveLowerer;
 import org.graalvm.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import org.graalvm.compiler.nodes.LoopEndNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
+/**
+ * Abstract interface for generating textual control flow in code from a {@link ControlFlowGraph}s.
+ */
 @SuppressWarnings("try")
 public abstract class IRWalker {
 
