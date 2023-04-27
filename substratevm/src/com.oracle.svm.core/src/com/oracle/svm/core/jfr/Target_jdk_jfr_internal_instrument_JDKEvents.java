@@ -29,41 +29,12 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.jfr.events.ActiveRecordingEvent;
-import jdk.jfr.events.ActiveSettingEvent;
-import jdk.jfr.events.ErrorThrownEvent;
-import jdk.jfr.events.ExceptionStatisticsEvent;
-import jdk.jfr.events.ExceptionThrownEvent;
-import jdk.jfr.events.FileForceEvent;
-import jdk.jfr.events.FileReadEvent;
-import jdk.jfr.events.FileWriteEvent;
-import jdk.jfr.events.SocketReadEvent;
-import jdk.jfr.events.SocketWriteEvent;
-
 @TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_instrument_JDKEvents {
-
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] eventClasses = {
-                    FileForceEvent.class,
-                    FileReadEvent.class,
-                    FileWriteEvent.class,
-                    SocketReadEvent.class,
-                    SocketWriteEvent.class,
-                    ExceptionThrownEvent.class,
-                    ExceptionStatisticsEvent.class,
-                    ErrorThrownEvent.class,
-                    ActiveSettingEvent.class,
-                    ActiveRecordingEvent.class,
-    };
-
     /*
      * This is a list of the classes with instrumentation code that should be applied. In Native
      * Image, instrumentation code is applied during the image build.
      */
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] instrumentationClasses = new Class<?>[]{};
-
-    @Alias //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) private static Class<?>[] mirrorEventClasses = new Class<?>[]{};
 }
