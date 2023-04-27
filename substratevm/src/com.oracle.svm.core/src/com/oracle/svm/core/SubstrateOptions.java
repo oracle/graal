@@ -684,7 +684,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
-    public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(false);
 
     @Option(help = "Specify maximum inlining depth to consider when building DebugCodeInfo") //
     public static final HostedOptionKey<Integer> DebugCodeInfoMaxDepth = new HostedOptionKey<>(Integer.MAX_VALUE);
