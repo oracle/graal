@@ -479,7 +479,7 @@ final class Target_java_lang_Math {
     }
 }
 
-@TargetClass(java.lang.StrictMath.class)
+@TargetClass(value = StrictMath.class, onlyWith = JDK20OrEarlier.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class Target_java_lang_StrictMath {
 
