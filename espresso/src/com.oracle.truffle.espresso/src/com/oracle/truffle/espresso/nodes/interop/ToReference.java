@@ -753,24 +753,10 @@ public abstract class ToReference extends ToEspressoNode {
                         @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                         @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile errorProfile,
+                        @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
-            try {
-                Object metaObject = getMetaObjectOrThrow(value, interop);
-                String metaName = getMetaName(metaObject, interop);
-
-                // check if there's a specific type mapping available
-                PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(metaName);
-                if (converter != null) {
-                    return (StaticObject) converter.convert(StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop));
-                } else {
-                    return StaticObject.createForeign(getLanguage(), meta.java_lang_Object, value, interop);
-                }
-            } catch (ClassCastException e) {
-                errorProfile.enter();
-                throw UnsupportedTypeException.create(new java.lang.Object[]{value},
-                                EspressoError.format("Could not cast foreign object to %s: due to: %s", meta.java_lang_Object.getNameAsString(), e.getMessage()));
-            }
+            return tryTypeConversion(value, interop, lookupProxyKlassNode, lookupTypeConverterNode, errorProfile, meta);
         }
 
         @Specialization(guards = {
@@ -823,6 +809,31 @@ public abstract class ToReference extends ToEspressoNode {
                         @Cached BranchProfile errorProfile,
                         @SuppressWarnings("unused") @Bind("getContext()") EspressoContext context,
                         @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+            return tryTypeConversion(value, interop, lookupProxyKlassNode, lookupTypeConverterNode, errorProfile, meta);
+        }
+
+        @Specialization(guards = {
+                        "!interop.hasMetaObject(value)",
+                        "!interop.hasArrayElements(value)",
+                        "!interop.isBoolean(value)",
+                        "!interop.isNumber(value)",
+                        "!interop.isString(value)",
+                        "!isStaticObject(value)",
+                        "!interop.isNull(value)",
+                        "!isHostString(value)"
+        })
+        StaticObject doForeignObject(Object value,
+                        @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return StaticObject.createForeign(EspressoLanguage.get(this), getMeta().java_lang_Object, value, interop);
+        }
+
+        @Fallback
+        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
+            throw UnsupportedTypeException.create(new Object[]{value}, "java.lang.Object");
+        }
+
+        private StaticObject tryTypeConversion(Object value, InteropLibrary interop, LookupProxyKlassNode lookupProxyKlassNode, LookupTypeConverterNode lookupTypeConverterNode,
+                        BranchProfile errorProfile, Meta meta) throws UnsupportedTypeException {
             try {
                 Object metaObject = getMetaObjectOrThrow(value, interop);
                 String metaName = getMetaName(metaObject, interop);
@@ -845,29 +856,9 @@ public abstract class ToReference extends ToEspressoNode {
                 }
             } catch (ClassCastException e) {
                 errorProfile.enter();
-                throw UnsupportedTypeException.create(new java.lang.Object[]{value},
+                throw UnsupportedTypeException.create(new Object[]{value},
                                 EspressoError.format("Could not cast foreign object to %s: due to: %s", meta.java_lang_Object.getNameAsString(), e.getMessage()));
             }
-        }
-
-        @Specialization(guards = {
-                        "!interop.hasMetaObject(value)",
-                        "!interop.hasArrayElements(value)",
-                        "!interop.isBoolean(value)",
-                        "!interop.isNumber(value)",
-                        "!interop.isString(value)",
-                        "!isStaticObject(value)",
-                        "!interop.isNull(value)",
-                        "!isHostString(value)"
-        })
-        StaticObject doForeignObject(Object value,
-                        @Cached.Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
-            return StaticObject.createForeign(EspressoLanguage.get(this), getMeta().java_lang_Object, value, interop);
-        }
-
-        @Fallback
-        StaticObject doUnsupportedType(Object value) throws UnsupportedTypeException {
-            throw UnsupportedTypeException.create(new Object[]{value}, "java.lang.Object");
         }
     }
 
