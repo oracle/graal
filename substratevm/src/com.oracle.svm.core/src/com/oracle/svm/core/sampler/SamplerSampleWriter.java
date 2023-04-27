@@ -205,7 +205,7 @@ public final class SamplerSampleWriter {
         reset(data);
         increaseCurrentPos(data, uncommitted);
         assert SamplerBufferAccess.verify(newBuffer);
-        SamplerBufferPool.getSamplerBufferList().addNode(newBuffer);
+        SamplerBufferPool.getSamplerBufferList().addNode(newBuffer.getNode());
         return true;
     }
 

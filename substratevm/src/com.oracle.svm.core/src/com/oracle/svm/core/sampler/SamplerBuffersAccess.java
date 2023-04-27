@@ -33,6 +33,7 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.BufferNodeAccess;
 import com.oracle.svm.core.jfr.BufferNode;
+import com.oracle.svm.core.jfr.JfrChunkWriter;
 
 public final class SamplerBuffersAccess {
 
@@ -40,6 +41,10 @@ public final class SamplerBuffersAccess {
     private SamplerBuffersAccess() {
     }
 
+    /**
+     * This is the ony place where the {@link SamplerBufferList} is iterated and {@link BufferNode}s
+     * are freed. The {@link JfrChunkWriter#lock()} must be acquired when calling this method.
+     */
     @Uninterruptible(reason = "Locking no transition.")
     public static void processActiveBuffers() {
         SamplerBufferList samplerBufferList = SamplerBufferPool.getSamplerBufferList();

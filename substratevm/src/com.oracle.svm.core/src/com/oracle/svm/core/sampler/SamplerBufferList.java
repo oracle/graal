@@ -35,18 +35,12 @@ import com.oracle.svm.core.jfr.BufferNodeAccess;
 import com.oracle.svm.core.jfr.BufferNode;
 import com.oracle.svm.core.jfr.BufferList;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jfr.sampler.AbstractJfrExecutionSampler;
 
 /**
  * Nodes should only be removed from this list by
  * {@link SamplerBuffersAccess#processActiveBuffers()}. Nodes are marked for removal if their buffer
  * field is null. This means that the buffer has been put on the full buffer queue because it is
  * full or the owning thread has exited.
- *
- * This class also contains some checks to ensure the BufferList lock won't be held while sampling
- * is enabled. Otherwise, deadlock can occur with a single thread due to recursive locking. This is
- * because the sampler code may add a new node to the {@link SamplerBufferList} when the thread's
- * current {@link SamplerBuffer} reaches capacity.
  */
 public class SamplerBufferList extends BufferList {
 
@@ -71,24 +65,23 @@ public class SamplerBufferList extends BufferList {
         head = WordFactory.nullPointer();
     }
 
-    @Override
+    /**
+     * This method is necessary because allocation cannot be done on code paths used by the
+     * SIGPROF-based execution sampler. The caller of this node must ensure that {@link Buffer} and
+     * {@link BufferNode} already have references to each other in both directions. This method
+     * simply adds the node to the active nodes list.
+     */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public BufferNode getHead() {
-        assert !AbstractJfrExecutionSampler.isExecutionSamplingAllowedInCurrentThread();
-        return super.getHead();
-    }
-
-    @Override
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public BufferNode addNode(com.oracle.svm.core.jfr.Buffer buffer) {
-        assert !AbstractJfrExecutionSampler.isExecutionSamplingAllowedInCurrentThread();
-        return super.addNode(buffer);
-    }
-
-    @Override
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    public void removeNode(BufferNode node, BufferNode prev) {
-        assert !AbstractJfrExecutionSampler.isExecutionSamplingAllowedInCurrentThread();
-        super.removeNode(node, prev);
+    public BufferNode addNode(BufferNode node) {
+        assert node.isNonNull();
+        assert node.getBuffer().isNonNull();
+        lockNoTransition();
+        try {
+            node.setNext(head);
+            head = node;
+            return node;
+        } finally {
+            unlock();
+        }
     }
 }

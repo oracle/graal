@@ -135,12 +135,12 @@ public abstract class BufferList {
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
-    private void lockNoTransition() {
+    protected void lockNoTransition() {
         JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", callerMustBe = true)
-    private void unlock() {
+    protected void unlock() {
         JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
     }
 }

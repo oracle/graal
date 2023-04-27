@@ -37,11 +37,24 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.jfr.BufferNode;
+import com.oracle.svm.core.jfr.BufferNodeAccess;
 import com.oracle.svm.core.locks.VMMutex;
 
 /**
  * Keeps track of {@link #availableBuffers available} and {@link #fullBuffers full} buffers. If
  * sampling is enabled, this pool maintains the desirable number of buffers in the system.
+ *
+ * Active {@link SamplerBuffers} have a corresponding {@link BufferNode} which is allocated and
+ * assigned before the buffer is acquired. This is to avoid allocations when performing signal
+ * handler operations. The following must be true:
+ * <ul>
+ * <li>Buffers on the {@link SamplerBufferPool#availableBuffers} stack or acquired through
+ * {@link SamplerBufferPool#acquireBuffer(boolean)} must have a {@link BufferNode} linked to
+ * them</li>
+ * <li>Buffers pushed to the {@link SamplerBufferPool#fullBuffers} shall never have a
+ * {@link BufferNode} linked to them</li>
+ * </ul>
  */
 public class SamplerBufferPool {
     private static final SamplerBufferList samplerBufferList = new SamplerBufferList();
@@ -97,6 +110,12 @@ public class SamplerBufferPool {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void releaseBuffer(SamplerBuffer buffer) {
         SamplerBufferAccess.reinitialize(buffer);
+        // Assign a new node to the buffer before putting it back in circulation
+        BufferNode node = BufferNodeAccess.allocate(buffer);
+        if (node.isNull()) {
+            free(buffer);
+        }
+        buffer.setNode(node);
         availableBuffers.pushBuffer(buffer);
     }
 
@@ -163,19 +182,33 @@ public class SamplerBufferPool {
         return false;
     }
 
+    /**
+     * This method alocates both the SamplerBuffer and the corresponding BufferNode and links them.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private SamplerBuffer tryAllocateBuffer0() {
         UnsignedWord headerSize = SamplerBufferAccess.getHeaderSize();
         UnsignedWord dataSize = WordFactory.unsigned(SubstrateJVM.getThreadLocal().getThreadLocalBufferSize());
 
         SamplerBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
-        if (result.isNonNull()) {
-            bufferCount++;
-            result.setSize(dataSize);
-            result.setNext(WordFactory.nullPointer());
-            result.setNode(WordFactory.nullPointer());
-            SamplerBufferAccess.reinitialize(result);
+
+        if (result.isNull()) {
+            return WordFactory.nullPointer();
         }
+
+        BufferNode node = BufferNodeAccess.allocate(result);
+
+        if (node.isNull()) {
+            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(result);
+            return WordFactory.nullPointer();
+        }
+
+        bufferCount++;
+        result.setSize(dataSize);
+        result.setNext(WordFactory.nullPointer());
+        result.setNode(node);
+        SamplerBufferAccess.reinitialize(result);
+
         return result;
     }
 
