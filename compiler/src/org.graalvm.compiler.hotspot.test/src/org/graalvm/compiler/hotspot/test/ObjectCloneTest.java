@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,15 +25,51 @@
 package org.graalvm.compiler.hotspot.test;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
+import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.Suites;
+import org.graalvm.compiler.virtual.phases.ea.FinalPartialEscapePhase;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
  * Exercise intrinsification of {@link Object#clone}.
  */
 public class ObjectCloneTest extends GraalCompilerTest {
+
+    @Override
+    protected Suites createSuites(OptionValues opts) {
+        Suites suites = super.createSuites(opts);
+        var pos = suites.getHighTier().findPhase(FinalPartialEscapePhase.class);
+        pos.previous();
+        pos.add(new BasePhase<HighTierContext>() {
+            @Override
+            public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
+                return ALWAYS_APPLICABLE;
+            }
+
+            @Override
+            public CharSequence getName() {
+                return "CheckObjectCloneIntrinsification";
+            }
+
+            @Override
+            protected void run(StructuredGraph graph, HighTierContext context) {
+                int clones = graph.getNodes().filter(ObjectCloneNode.class).count();
+                Assert.assertEquals("number of intrinsified Object.clone() calls in test snippet", 1, clones);
+            }
+        });
+        return suites;
+    }
 
     public static Object cloneArray(int[] array) {
         return array.clone();
@@ -102,5 +138,22 @@ public class ObjectCloneTest extends GraalCompilerTest {
     @Test
     public void testCloneConstantArray() {
         test("cloneConstantArray");
+    }
+
+    public static Object cloneArrayWithImpreciseStamp(int[] inputArray, int count) {
+        int[] array = inputArray;
+        for (int i = 0; i < count; i++) {
+            if (i > 3) {
+                array = new int[i];
+                array[i - 1] = i;
+            }
+            GraalDirectives.controlFlowAnchor();
+        }
+        return array.clone();
+    }
+
+    @Test
+    public void testCloneArrayWithImpreciseStamp() {
+        test("cloneArrayWithImpreciseStamp", ARRAY, ARRAY.length);
     }
 }
