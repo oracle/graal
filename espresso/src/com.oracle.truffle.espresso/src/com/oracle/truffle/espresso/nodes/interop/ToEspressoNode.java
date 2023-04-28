@@ -342,10 +342,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             }
             if (targetType.isArray()) {
                 if (targetType == getMeta()._byte_array) {
-                    if (interop.hasBufferElements(value) && !isHostString(value)) {
-                        return StaticObject.createForeign(EspressoLanguage.get(this), getMeta()._byte_array, value, interop);
-                    }
-                    throw UnsupportedTypeException.create(new Object[]{value}, getMeta()._byte_array.getTypeAsString());
+                    return ToReferenceFactory.ToByteArrayNodeGen.getUncached().execute(value);
                 } else {
                     if (interop.hasArrayElements(value) && !isHostString(value)) {
                         return StaticObject.createForeign(EspressoLanguage.get(this), targetType, value, interop);
