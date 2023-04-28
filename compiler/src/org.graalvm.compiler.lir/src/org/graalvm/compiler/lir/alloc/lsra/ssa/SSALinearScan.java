@@ -40,7 +40,7 @@ import jdk.vm.ci.code.TargetDescription;
 
 public final class SSALinearScan extends LinearScan {
 
-    public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, char[] sortedBlocks,
+    public SSALinearScan(TargetDescription target, LIRGenerationResult res, MoveFactory spillMoveFactory, RegisterAllocationConfig regAllocConfig, int[] sortedBlocks,
                     boolean neverSpillConstants) {
         super(target, res, spillMoveFactory, regAllocConfig, sortedBlocks, neverSpillConstants);
     }

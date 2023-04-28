@@ -58,7 +58,7 @@ public final class AMD64ByteSwapOp extends AMD64LIRInstruction {
                 masm.bswapq(ValueUtil.asRegister(result));
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(input.getPlatformKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

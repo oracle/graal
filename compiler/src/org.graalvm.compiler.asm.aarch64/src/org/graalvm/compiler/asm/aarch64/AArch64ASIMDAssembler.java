@@ -412,7 +412,7 @@ public abstract class AArch64ASIMDAssembler {
                 case FMOVDP:
                     return fmovDPEncodings;
             }
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
         }
 
     }
@@ -487,7 +487,7 @@ public abstract class AArch64ASIMDAssembler {
                 case DOUBLE:
                     return DoubleWord;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(((AArch64Kind) kind).getScalar()); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -517,7 +517,7 @@ public abstract class AArch64ASIMDAssembler {
                 case S8:
                     return DoubleWord;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -788,7 +788,7 @@ public abstract class AArch64ASIMDAssembler {
                 encoding = eSize.encoding;
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(instr); // ExcludeFromJacocoGeneratedReport
         }
         return encoding << 10;
     }
@@ -816,7 +816,7 @@ public abstract class AArch64ASIMDAssembler {
                 offsetEncoding = rs2(offset);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(address.getAddressingMode()); // ExcludeFromJacocoGeneratedReport
         }
         return postIndexEncoding | offsetEncoding | rn(address.getBase());
     }

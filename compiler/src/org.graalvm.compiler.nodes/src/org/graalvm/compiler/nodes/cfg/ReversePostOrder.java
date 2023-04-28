@@ -58,7 +58,7 @@ public class ReversePostOrder {
      * Enqueue the block in the reverse post order with the next index and assign the index to the
      * block itself.
      */
-    private static void enqueueBlockInRPO(HIRBlock b, HIRBlock[] reversePostOrder, char nextIndex) {
+    private static void enqueueBlockInRPO(HIRBlock b, HIRBlock[] reversePostOrder, int nextIndex) {
         reversePostOrder[nextIndex] = b;
         b.setId(nextIndex);
     }
@@ -202,7 +202,7 @@ public class ReversePostOrder {
                 final List<LoopExitNode> loopExits = ol.lb.loopExits().snapshot();
                 for (int i = loopExits.size() - 1; i >= 0; i--) {
                     final LoopExitNode singleExit = loopExits.get(i);
-                    enqueueBlockInRPO(cfg.blockFor(singleExit), rpoBlocks, (char) currentIndex++);
+                    enqueueBlockInRPO(cfg.blockFor(singleExit), rpoBlocks, currentIndex++);
                     visitedNodes.mark(singleExit);
                     pushOrStall(singleExit.next(), toProcess);
                 }
@@ -212,7 +212,7 @@ public class ReversePostOrder {
             final HIRBlock curBlock = cfg.blockFor(cur);
             if (cur == curBlock.getBeginNode()) {
                 // we are at a block start, enqueue the actual block in the RPO
-                enqueueBlockInRPO(curBlock, rpoBlocks, (char) currentIndex++);
+                enqueueBlockInRPO(curBlock, rpoBlocks, currentIndex++);
             }
 
             while (true) {

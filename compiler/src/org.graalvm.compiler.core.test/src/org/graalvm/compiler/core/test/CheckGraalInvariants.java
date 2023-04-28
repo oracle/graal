@@ -376,7 +376,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         if (errors.isEmpty()) {
             // Order outer classes before the inner classes
             classNames.sort((String a, String b) -> a.compareTo(b));
-            List<Class<?>> classes = loadClasses(tool, classNames);
+            List<Class<?>> classes = loadClasses(tool, metaAccess, classNames);
             for (Class<?> c : classes) {
                 String className = c.getName();
                 executor.execute(() -> {
@@ -390,8 +390,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 ResolvedJavaType type = metaAccess.lookupJavaType(c);
                 List<ResolvedJavaMethod> methods = new ArrayList<>();
                 try {
-                    methods.addAll(Arrays.asList(type.getDeclaredMethods()));
-                    methods.addAll(Arrays.asList(type.getDeclaredConstructors()));
+                    methods.addAll(Arrays.asList(type.getDeclaredMethods(false)));
+                    methods.addAll(Arrays.asList(type.getDeclaredConstructors(false)));
                 } catch (Throwable e) {
                     errors.add(String.format("Error while checking %s:%n%s", className, printStackTraceToString(e)));
                 }
@@ -542,7 +542,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         return className.contains("ai.onnxruntime");
     }
 
-    private static List<Class<?>> loadClasses(InvariantsTool tool, List<String> classNames) {
+    private static List<Class<?>> loadClasses(InvariantsTool tool, MetaAccessProvider metaAccess, List<String> classNames) {
         List<Class<?>> classes = new ArrayList<>(classNames.size());
         for (String className : classNames) {
             if (!tool.shouldLoadClass(className)) {
@@ -550,6 +550,14 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             }
             try {
                 Class<?> c = Class.forName(className, false, CheckGraalInvariants.class.getClassLoader());
+
+                /*
+                 * Ensure all types are linked eagerly, so that we can access the bytecode of all
+                 * methods.
+                 */
+                ResolvedJavaType type = metaAccess.lookupJavaType(c);
+                type.link();
+
                 if (Node.class.isAssignableFrom(c)) {
                     /*
                      * Eagerly initialize Node classes because the VerifyNodeCosts checker will

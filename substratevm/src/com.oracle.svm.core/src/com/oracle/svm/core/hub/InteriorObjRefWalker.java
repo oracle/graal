@@ -152,12 +152,17 @@ public class InteriorObjRefWalker {
         Pointer pos = objPointer.add(LayoutEncoding.getArrayBaseOffset(objHub.getLayoutEncoding()));
         Pointer end = pos.add(WordFactory.unsigned(referenceSize).multiply(length));
         while (pos.belowThan(end)) {
-            final boolean visitResult = visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);
+            final boolean visitResult = callVisitor(obj, visitor, isCompressed, pos);
             if (!visitResult) {
                 return false;
             }
             pos = pos.add(referenceSize);
         }
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(Object obj, ObjectReferenceVisitor visitor, boolean isCompressed, Pointer pos) {
+        return visitor.visitObjectReferenceInline(pos, 0, isCompressed, obj);
     }
 }

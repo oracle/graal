@@ -317,7 +317,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public int getFieldOffset(Field field, boolean checkUnsafeAccessed) {
-        VMError.guarantee(metaAccess != null, "Field offsets are available only for compilation and afterwards.");
+        VMError.guarantee(metaAccess instanceof HostedMetaAccess, "Field offsets are available only for compilation and afterwards.");
 
         /*
          * We have to use `optionalLookupJavaField` as fields are omitted when there is no

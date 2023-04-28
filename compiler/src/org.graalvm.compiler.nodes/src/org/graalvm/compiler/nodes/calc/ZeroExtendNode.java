@@ -87,7 +87,12 @@ public final class ZeroExtendNode extends IntegerConvertNode<ZeroExtend> {
     }
 
     private static boolean inputAlwaysPositive(ValueNode v) {
-        return ((IntegerStamp) v.stamp(NodeView.DEFAULT)).isPositive();
+        Stamp s = v.stamp(NodeView.DEFAULT);
+        if (s instanceof IntegerStamp) {
+            return ((IntegerStamp) s).isPositive();
+        } else {
+            return false;
+        }
     }
 
     @Override

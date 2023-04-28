@@ -78,7 +78,7 @@ public final class AMD64HotSpotMathIntrinsicOp extends AMD64LIRInstruction {
                 masm.ftan(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE), stackSlot);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(opcode); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

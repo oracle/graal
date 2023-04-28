@@ -62,7 +62,7 @@ public final class PodReferenceMapDecoder {
             nrefs = UninterruptibleUtils.Byte.toUnsignedInt(baseAddress.readByte(mapOffset.add(1)));
 
             for (int i = 0; i < nrefs; i++) {
-                if (!visitor.visitObjectReferenceInline(baseAddress.add(refOffset), 0, isCompressed, obj)) {
+                if (!callVisitor(baseAddress, visitor, obj, isCompressed, refOffset)) {
                     return false;
                 }
                 refOffset = refOffset.add(referenceSize);
@@ -71,6 +71,11 @@ public final class PodReferenceMapDecoder {
         } while (gap != 0 || nrefs == 0xff);
 
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(Pointer baseAddress, ObjectReferenceVisitor visitor, Object obj, boolean isCompressed, UnsignedWord refOffset) {
+        return visitor.visitObjectReferenceInline(baseAddress.add(refOffset), 0, isCompressed, obj);
     }
 
     /**

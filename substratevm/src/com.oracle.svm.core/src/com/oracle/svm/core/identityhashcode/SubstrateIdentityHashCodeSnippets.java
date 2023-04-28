@@ -70,7 +70,7 @@ final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
         }
         ObjectHeader oh = Heap.getHeap().getObjectHeader();
         Word objPtr = Word.objectToUntrackedPointer(obj);
-        Word header = oh.readHeaderFromPointer(objPtr);
+        Word header = ObjectHeader.readHeaderFromPointer(objPtr);
         if (probability(LIKELY_PROBABILITY, oh.hasOptionalIdentityHashField(header))) {
             int offset = LayoutEncoding.getOptionalIdentityHashOffset(obj);
             identityHashCode = ObjectAccess.readInt(obj, offset, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);

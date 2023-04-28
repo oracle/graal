@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
@@ -65,8 +66,11 @@ final class PolyglotThreadInfo {
      * Only modify if Thread.currentThread() == thread.get().
      */
     private volatile int enteredCount;
+    private volatile TruffleSafepoint.Interrupter leaveAndEnterInterrupter;
+    private boolean enteredForCancellingOrExiting;
     final LinkedList<Object[]> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
+    volatile boolean leaveAndEnterInterrupted;
     private Object originalContextClassLoader = NULL_CLASS_LOADER;
     private ClassLoaderEntry prevContextClassLoader;
     private SpecializationStatisticsEntry executionStatisticsEntry;
@@ -130,6 +134,26 @@ final class PolyglotThreadInfo {
 
     boolean isCurrent() {
         return getThread() == Thread.currentThread();
+    }
+
+    TruffleSafepoint.Interrupter getLeaveAndEnterInterrupter() {
+        return leaveAndEnterInterrupter;
+    }
+
+    boolean isInLeaveAndEnter() {
+        return leaveAndEnterInterrupter != null;
+    }
+
+    void setLeaveAndEnterInterrupter(TruffleSafepoint.Interrupter interrupter) {
+        this.leaveAndEnterInterrupter = interrupter;
+    }
+
+    boolean isEnteredForCancellingOrExiting() {
+        return enteredForCancellingOrExiting;
+    }
+
+    void setEnteredForCancellingOrExiting(boolean enteredForCancellingOrExiting) {
+        this.enteredForCancellingOrExiting = enteredForCancellingOrExiting;
     }
 
     /**
@@ -241,7 +265,8 @@ final class PolyglotThreadInfo {
 
     @Override
     public String toString() {
-        return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
+        return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + ", enteredForCancellingOrExiting=" + enteredForCancellingOrExiting +
+                        ", leaveAndEnterInterrupted=" + leaveAndEnterInterrupted + "]";
     }
 
     @TruffleBoundary

@@ -58,11 +58,26 @@ public class ReportUtils {
     static final String CHILD = "\u251c\u2500\u2500 "; // "|-- "
     static final String LAST_CHILD = "\u2514\u2500\u2500 "; // "`-- "
 
-    public static final Comparator<ResolvedJavaMethod> methodComparator = Comparator.comparing(m -> m.format("%H.%n(%p)"));
+    public static final Comparator<ResolvedJavaMethod> methodComparator = Comparator.comparing(m -> m.format("%H.%n(%P):%R"));
     static final Comparator<AnalysisField> fieldComparator = Comparator.comparing(f -> f.format("%H.%n"));
-    static final Comparator<InvokeInfo> invokeInfoComparator = Comparator.comparing(i -> i.getTargetMethod().format("%H.%n(%p)"));
-    static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%p)"));
+    static final Comparator<InvokeInfo> invokeInfoBCIComparator = Comparator.comparing(i -> i.getPosition().getBCI());
+    static final Comparator<InvokeInfo> invokeInfoComparator = invokeInfoBCIComparator.thenComparing(i -> comparingMethodNames(i.getTargetMethod()));
+    static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%P):%R"));
     static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
+
+    /**
+     *
+     * Lambda function names are still not completely deterministic e.g. in name
+     * Lambda$7ad16f47b695d909/0x00000007c0b4c630.accept(java.lang.Object):void hash part is not
+     * deterministic yet. In order to avoid comparing based on that part, we need to eliminate hash
+     * part from name of lambda function. To read more about Lambda names check GH issue
+     * https://github.com/openjdk/jdk/pull/10024/.
+     *
+     */
+    private static String comparingMethodNames(AnalysisMethod method) {
+        String methodName = method.format("%H.%n(%P):%R");
+        return methodName.contains("$$Lambda$") ? methodName.replaceAll("/[0-9a-fA-Fx]*\\.", ".") : methodName;
+    }
 
     public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
         return report(description, path, name, extension, reporter, true);

@@ -30,9 +30,13 @@ import java.io.IOException;
 
 import org.junit.Assert;
 
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class VMOperationConstantPoolParser extends AbstractSerializerParser {
+    public VMOperationConstantPoolParser(JfrFileParser parser) {
+        super(parser);
+    }
 
     @Override
     public void parse(RecordingInput input) throws IOException {

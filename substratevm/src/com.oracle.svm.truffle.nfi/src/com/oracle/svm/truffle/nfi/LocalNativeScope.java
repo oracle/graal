@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,10 @@ package com.oracle.svm.truffle.nfi;
 import java.util.ArrayList;
 
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class LocalNativeScope implements AutoCloseable {
@@ -39,7 +39,7 @@ public final class LocalNativeScope implements AutoCloseable {
     private final short scopeId;
 
     private int pinCount;
-    private final PinnedObject[] pinned;
+    private final PrimitiveArrayView[] references;
 
     private ArrayList<Object> localHandles;
 
@@ -53,7 +53,7 @@ public final class LocalNativeScope implements AutoCloseable {
         }
 
         pinCount = 0;
-        pinned = patchCount > 0 ? new PinnedObject[patchCount] : null;
+        references = patchCount > 0 ? new PrimitiveArrayView[patchCount] : null;
 
         localHandles = null; // lazy
     }
@@ -98,22 +98,27 @@ public final class LocalNativeScope implements AutoCloseable {
     }
 
     @TruffleBoundary
-    PointerBase pinArray(Object arr) {
-        PinnedObject ret = PinnedObject.create(arr);
-        pinned[pinCount++] = ret;
+    PointerBase refArray(Object arr) {
+        return refArray(arr, false);
+    }
+
+    @TruffleBoundary
+    PointerBase refArray(Object arr, boolean detached) {
+        PrimitiveArrayView ret = detached ? PrimitiveArrayView.createForReading(arr) : PrimitiveArrayView.createForReadingAndWriting(arr);
+        references[pinCount++] = ret;
         return ret.addressOfArrayElement(0);
     }
 
     @TruffleBoundary
-    PointerBase pinString(String str) {
+    PointerBase refString(String str) {
         byte[] array = TruffleNFISupport.javaStringToUtf8(str);
-        return pinArray(array);
+        return refArray(array, true);
     }
 
     @Override
     public void close() {
         for (int i = 0; i < pinCount; i++) {
-            pinned[i].close();
+            references[i].close();
         }
 
         TruffleNFISupport.closeLocalScope(this, parent);

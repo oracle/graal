@@ -35,7 +35,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import com.oracle.objectfile.debugentry.range.SubRange;
 import org.graalvm.compiler.debug.DebugContext;
@@ -44,7 +43,6 @@ import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
@@ -126,41 +124,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     }
 
     private int generateContent(DebugContext context, byte[] buffer) {
-        int pos = 0;
-
-        pos = writeNormalClassLocations(context, buffer, pos);
-        pos = writeDeoptClassLocations(context, buffer, pos);
-
-        return pos;
-    }
-
-    private int writeNormalClassLocations(DebugContext context, byte[] buffer, int pos) {
-        log(context, "  [0x%08x] normal class locations", pos);
-        Cursor cursor = new Cursor(pos);
-        instanceClassStream().filter(ClassEntry::hasCompiledEntries).forEach(classEntry -> {
-            cursor.set(writeMethodLocations(context, classEntry, false, buffer, cursor.get()));
+        Cursor cursor = new Cursor();
+        compiledMethodsStream().forEach(compiledMethod -> {
+            cursor.set(writeCompiledMethodLocations(context, compiledMethod, buffer, cursor.get()));
         });
         return cursor.get();
-    }
-
-    private int writeDeoptClassLocations(DebugContext context, byte[] buffer, int pos) {
-        log(context, "  [0x%08x] deopt class locations", pos);
-        Cursor cursor = new Cursor(pos);
-        instanceClassStream().filter(ClassEntry::hasDeoptCompiledEntries).forEach(classEntry -> {
-            cursor.set(writeMethodLocations(context, classEntry, true, buffer, cursor.get()));
-        });
-        return cursor.get();
-    }
-
-    private int writeMethodLocations(DebugContext context, ClassEntry classEntry, boolean isDeopt, byte[] buffer, int p) {
-        int pos = p;
-        if (!isDeopt || classEntry.hasDeoptCompiledEntries()) {
-            Stream<CompiledMethodEntry> entries = (isDeopt ? classEntry.deoptCompiledEntries() : classEntry.normalCompiledEntries());
-            pos = entries.reduce(pos,
-                            (p1, entry) -> writeCompiledMethodLocations(context, entry, buffer, p1),
-                            (oldPos, newPos) -> newPos);
-        }
-        return pos;
     }
 
     private int writeCompiledMethodLocations(DebugContext context, CompiledMethodEntry compiledEntry, byte[] buffer, int p) {

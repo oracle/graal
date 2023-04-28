@@ -39,7 +39,7 @@ public class OutOfMemoryUtil {
         return reportOutOfMemoryError(OUT_OF_MEMORY_ERROR);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false, mayBeInlined = true)
+    @Uninterruptible(reason = "Not uninterruptible but it doesn't matter for the callers.", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Can't allocate while out of memory.")
     public static OutOfMemoryError reportOutOfMemoryError(OutOfMemoryError error) {
         if (SubstrateGCOptions.ExitOnOutOfMemoryError.getValue()) {

@@ -457,7 +457,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
          * the hosting HotSpot VM, but it is safer to disallow the operation entirely. The offset
          * from the hosting VM can be accessed by explicitly calling `wrapped.getOffset()`.
          */
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

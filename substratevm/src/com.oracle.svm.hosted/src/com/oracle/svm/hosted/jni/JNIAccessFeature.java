@@ -520,7 +520,7 @@ public class JNIAccessFeature implements Feature {
 
     private static boolean anyMethodMatchesIgnoreReturnType(ResolvedJavaType sub, JNIAccessibleMethodDescriptor descriptor) {
         try {
-            for (ResolvedJavaMethod method : sub.getDeclaredMethods()) {
+            for (ResolvedJavaMethod method : sub.getDeclaredMethods(false)) {
                 if (descriptor.matchesIgnoreReturnType(method)) {
                     return true;
                 }

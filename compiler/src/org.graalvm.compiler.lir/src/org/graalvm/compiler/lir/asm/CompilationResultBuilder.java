@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -359,15 +359,6 @@ public class CompilationResultBuilder {
         }
     }
 
-    public void recordInlineDataInCodeWithNote(Constant data, Object note) {
-        assert data != null;
-        int pos = asm.position();
-        debug.log("Inline data in code: pos = %d, data = %s, note = %s", pos, data, note);
-        if (data instanceof VMConstant) {
-            compilationResult.recordDataPatchWithNote(pos, new ConstantReference((VMConstant) data), note);
-        }
-    }
-
     public AbstractAddress recordDataSectionReference(Data data) {
         assert data != null;
         DataSectionReference reference = compilationResult.getDataSection().insertData(data);
@@ -466,7 +457,7 @@ public class CompilationResultBuilder {
      */
     public boolean isSuccessorEdge(LabelRef edge) {
         assert lir != null;
-        char[] order = lir.codeEmittingOrder();
+        int[] order = lir.codeEmittingOrder();
         assert order[currentBlockIndex] == edge.getSourceBlock().getId();
         BasicBlock<?> nextBlock = LIR.getNextBlock(lir.getControlFlowGraph(), order, currentBlockIndex);
         return nextBlock == edge.getTargetBlock();
@@ -579,7 +570,7 @@ public class CompilationResultBuilder {
         }
         boolean emitComment = debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || Options.PrintLIRWithAssembly.getValue(getOptions());
         if (emitComment) {
-            blockComment(String.format("block B%d %s", (int) block.getId(), block.getLoop()));
+            blockComment(String.format("block B%d %s", block.getId(), block.getLoop()));
         }
 
         for (LIRInstruction op : lir.getLIRforBlock(block)) {

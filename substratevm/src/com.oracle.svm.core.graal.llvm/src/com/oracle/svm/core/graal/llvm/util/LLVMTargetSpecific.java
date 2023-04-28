@@ -38,8 +38,8 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
@@ -144,6 +144,19 @@ public interface LLVMTargetSpecific {
                     @SuppressWarnings("unused") LLVMRelocationIteratorRef relocationIteratorRef) {
         return buffer.getInt(offset);
     }
+
+    /**
+     * String representing the target for compilation.
+     */
+    default String getTargetTriple() {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            return "-unknown-darwin";
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
+            return "-unknown-linux-gnu";
+        } else {
+            throw shouldNotReachHere("Unexpected target for LLVM backend: " + ImageSingletons.lookup(Platform.class).toString());
+        }
+    }
 }
 
 @AutomaticallyRegisteredFeature
@@ -237,6 +250,11 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getScratchRegister() {
                 return "rax";
+            }
+
+            @Override
+            public String getTargetTriple() {
+                return "x86_64" + LLVMTargetSpecific.super.getTargetTriple();
             }
         });
     }
@@ -337,6 +355,11 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getScratchRegister() {
                 return "x16";
+            }
+
+            @Override
+            public String getTargetTriple() {
+                return "arm64" + LLVMTargetSpecific.super.getTargetTriple();
             }
         });
     }
@@ -458,6 +481,11 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
                 } else {
                     throw shouldNotReachHere("Stack map has no relocation for offset " + offset);
                 }
+            }
+
+            @Override
+            public String getTargetTriple() {
+                return "riscv64" + LLVMTargetSpecific.super.getTargetTriple();
             }
         });
     }

@@ -328,6 +328,7 @@ final class HeapChunkProvider {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long getFirstAllocationTime() {
         return firstAllocationTime;
     }

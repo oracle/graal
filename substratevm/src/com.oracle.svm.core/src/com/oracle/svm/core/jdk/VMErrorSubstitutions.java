@@ -44,6 +44,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.util.VMError;
 
 @TargetClass(com.oracle.svm.core.util.VMError.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
@@ -57,8 +58,29 @@ final class Target_com_oracle_svm_core_util_VMError {
     @NeverInline("Accessing instruction pointer of the caller frame")
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     @Substitute
-    private static RuntimeException shouldNotReachHere() {
-        throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), null, null);
+    private static RuntimeException shouldNotReachHereSubstitution() {
+        throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), VMError.msgShouldNotReachHereSubstitution, null);
+    }
+
+    @NeverInline("Accessing instruction pointer of the caller frame")
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @Substitute
+    private static RuntimeException shouldNotReachHereOverrideInChild() {
+        throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), VMError.msgShouldNotReachHereOverrideInChild, null);
+    }
+
+    @NeverInline("Accessing instruction pointer of the caller frame")
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @Substitute
+    private static RuntimeException shouldNotReachHereAtRuntime() {
+        throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), VMError.msgShouldNotReachHereAtRuntime, null);
+    }
+
+    @NeverInline("Accessing instruction pointer of the caller frame")
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @Substitute
+    private static RuntimeException shouldNotReachHereUnexpectedInput(@SuppressWarnings("unused") Object input) {
+        throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), VMError.msgShouldNotReachHereUnexpectedInput, null);
     }
 
     @NeverInline("Accessing instruction pointer of the caller frame")
@@ -82,9 +104,16 @@ final class Target_com_oracle_svm_core_util_VMError {
         throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), msg, ex);
     }
 
+    @NeverInline("Accessing instruction pointer of the caller frame")
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
     @Substitute
-    private static RuntimeException unimplemented() {
-        return unsupportedFeature("unimplemented");
+    private static RuntimeException unsupportedPlatform() {
+        throw VMErrorSubstitutions.shouldNotReachHere(KnownIntrinsics.readReturnAddress(), VMError.msgShouldNotReachHereUnsupportedPlatform, null);
+    }
+
+    @Substitute
+    private static RuntimeException intentionallyUnimplemented() {
+        return unsupportedFeature(VMError.msgUnimplementedIntentionally);
     }
 
     @Substitute

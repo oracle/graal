@@ -34,6 +34,7 @@ import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
 import org.graalvm.profdiff.core.optimization.OptimizationTree;
 import org.graalvm.profdiff.core.optimization.OptimizationTreeNode;
+import org.graalvm.profdiff.core.optimization.Position;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -68,9 +69,9 @@ public class OptimizationTreeTest {
             assert unorderedDetailedPhase.isUnorderedCategory() && unorderedDetailedPhase.isVeryDetailedCategory();
             rootPhase.addChild(unorderedDetailedPhase);
             Optimization optimization1 = new Optimization("Optimization1", "Event1", null, null);
-            Optimization optimization2 = new Optimization("Optimization1", "Event1", EconomicMap.of("method", 1), null);
-            Optimization optimization3 = new Optimization("Optimization1", "Event1", EconomicMap.of("method", 1), EconomicMap.of("key", 0));
-            Optimization optimization4 = new Optimization("Optimization1", "Event1", EconomicMap.of("method", 2), null);
+            Optimization optimization2 = new Optimization("Optimization1", "Event1", Position.of("method", 1), null);
+            Optimization optimization3 = new Optimization("Optimization1", "Event1", Position.of("method", 1), EconomicMap.of("key", 0));
+            Optimization optimization4 = new Optimization("Optimization1", "Event1", Position.of("method", 2), null);
             Optimization optimization5 = new Optimization("Optimization1", "Event2", null, null);
             Optimization optimization6 = new Optimization("Optimization2", "Event1", null, null);
             OptimizationPhase subphase1 = new OptimizationPhase("Subphase1$");

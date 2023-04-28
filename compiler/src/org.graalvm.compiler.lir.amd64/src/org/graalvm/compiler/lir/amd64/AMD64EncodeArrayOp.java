@@ -58,10 +58,10 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 5983,
-          lineEnd   = 6141,
-          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
-          sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
+          lineStart = 5977,
+          lineEnd   = 6135,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "90e15d79705bc87ffbefbcaa4bdfa55123c12aba")
 // @formatter:on
 @Opcode("AMD64_ENCODE_ARRAY")
 public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {

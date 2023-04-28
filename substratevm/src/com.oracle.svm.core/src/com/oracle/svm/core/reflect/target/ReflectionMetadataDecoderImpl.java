@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -354,14 +353,10 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
                 return new FieldDescriptor(declaringClass, name);
             }
             Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                field.constructorJDK17OrLater(declaringClass, name, negative ? Object.class : type, modifiers, false, -1, null, null);
-            } else {
-                field.constructorJDK11OrEarlier(declaringClass, name, negative ? Object.class : type, modifiers, -1, null, null);
-            }
+            field.constructor(declaringClass, name, negative ? Object.class : type, modifiers, false, -1, null, null);
             return SubstrateUtil.cast(field, Field.class);
         }
-        boolean trustedFinal = (JavaVersionUtil.JAVA_SPEC >= 17) ? buf.getU1() == 1 : false;
+        boolean trustedFinal = buf.getU1() == 1;
         String signature = decodeName(buf);
         byte[] annotations = decodeByteArray(buf);
         byte[] typeAnnotations = decodeByteArray(buf);
@@ -372,11 +367,7 @@ public class ReflectionMetadataDecoderImpl implements ReflectionMetadataDecoder 
         }
 
         Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            field.constructorJDK17OrLater(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
-        } else {
-            field.constructorJDK11OrEarlier(declaringClass, name, type, modifiers, -1, signature, annotations);
-        }
+        field.constructor(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
         field.offset = offset;
         field.deletedReason = deletedReason;
         SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;

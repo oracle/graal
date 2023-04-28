@@ -61,7 +61,7 @@ public class RISCV64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
 
     @Override
     public void lower(Node n, LoweringTool tool) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplementedOverride();
     }
 
 }

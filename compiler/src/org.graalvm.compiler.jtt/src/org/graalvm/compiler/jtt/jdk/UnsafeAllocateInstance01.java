@@ -95,13 +95,11 @@ public class UnsafeAllocateInstance01 extends JTTTest {
         runTest("testClassForException", Class.class);
     }
 
-    @Ignore("Currently crashes hotspot because primitive classes aren't handled")
     @Test
     public void run5() throws Throwable {
         runTest("testClassForException", void.class);
     }
 
-    @Ignore("Currently crashes hotspot because primitive classes aren't handled")
     @Test
     public void run6() throws Throwable {
         runTest("testClassForException", int.class);

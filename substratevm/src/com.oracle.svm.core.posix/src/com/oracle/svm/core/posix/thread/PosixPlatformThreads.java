@@ -287,6 +287,10 @@ public final class PosixPlatformThreads extends PlatformThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressWarnings("unchecked")
     public <T extends WordBase> T getUnmanagedThreadLocalValue(ThreadLocalKey key) {
+        /*
+         * Although this method is not async-signal-safe in general we rely on
+         * implementation-specific behavior here.
+         */
         return (T) Pthread.pthread_getspecific((Pthread.pthread_key_t) key);
     }
 

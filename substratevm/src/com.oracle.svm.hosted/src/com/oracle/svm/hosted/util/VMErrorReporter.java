@@ -82,8 +82,8 @@ public final class VMErrorReporter {
         pw.println();
         pw.println("| Name | Value |");
         pw.println("| ---- | ----- |");
-        VM vm = VM.getErrorReportingInstance();
-        pw.printf("| Java version and vendor | `%s` (%s) |%n", vm.version, vm.vendor);
+        pw.printf("| Java version | `%s` |%n", VM.getVersion());
+        pw.printf("| Vendor version | `%s` |%n", VM.getVendorVersion());
         pw.printf("| Runtime version | `%s` |%n", System.getProperty("java.runtime.version"));
         if (ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(CCompilerInvoker.class)) {
             pw.printf("| C compiler | `%s` |%n", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription());

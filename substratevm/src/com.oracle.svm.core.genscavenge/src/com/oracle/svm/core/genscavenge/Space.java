@@ -45,6 +45,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
@@ -94,6 +95,7 @@ public final class Space {
         return name;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isEmpty() {
         return (getFirstAlignedHeapChunk().isNull() && getFirstUnalignedHeapChunk().isNull());
     }
@@ -418,7 +420,7 @@ public final class Space {
          * cmpxchng.
          */
         Pointer originalMemory = Word.objectToUntrackedPointer(original);
-        int hubOffset = ObjectHeaderImpl.getHubOffset();
+        int hubOffset = ObjectHeader.getHubOffset();
         long eightHeaderBytes = originalMemory.readLong(hubOffset);
         Word originalHeader = ObjectHeaderImpl.hasShift() ? WordFactory.unsigned(eightHeaderBytes & 0xFFFFFFFFL) : WordFactory.unsigned(eightHeaderBytes);
         ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
@@ -489,7 +491,7 @@ public final class Space {
         UnsignedWord copySize = originalSize;
         boolean addIdentityHashField = false;
         if (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField()) {
-            Word header = ObjectHeaderImpl.readHeaderFromObject(originalObj);
+            Word header = ObjectHeader.readHeaderFromObject(originalObj);
             if (probability(SLOW_PATH_PROBABILITY, ObjectHeaderImpl.hasIdentityHashFromAddressInline(header))) {
                 addIdentityHashField = true;
                 copySize = LayoutEncoding.getSizeFromObjectInlineInGC(originalObj, true);
@@ -599,6 +601,7 @@ public final class Space {
         return chunk;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void absorb(Space src) {
         /*
          * Absorb the chunks of a source into this Space. I cannot just copy the lists, because each

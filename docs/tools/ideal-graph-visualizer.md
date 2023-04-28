@@ -78,7 +78,7 @@ Using a host Ruby application that embeds some Java, you will now dump compiler 
     ruby --jvm --polyglot --vm.Dgraal.Dump=:1 --vm.Dgraal.PrintGraph=Network Test.rb
     ```
 
-This dumps compiler graphs, in the IGV format, over the network to an IGV process listening on [127.0.0.1:4445](127.0.0.1:4445). 
+This dumps compiler graphs, in the IGV format, over the network to an IGV process listening on _127.0.0.1:4445_. 
 Once the connection is made, you are able to see the graphs in the Outline view. 
 Find, for example, the `java.lang.String.char(int)` folder and open its After Parsing graph by double-clicking. 
 If the node has `sourceNodePosition` property, then the Processing window will attempt to display its location and the entire stacktrace.

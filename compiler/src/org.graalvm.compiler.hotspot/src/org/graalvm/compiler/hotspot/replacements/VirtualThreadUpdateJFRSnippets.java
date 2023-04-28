@@ -65,10 +65,10 @@ import jdk.vm.ci.code.Register;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-          lineStart = 3217,
-          lineEnd   = 3343,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
-          sha1      = "1f05b6fd970e976a6bde5487180e488ee72d4ceb")
+          lineStart = 3313,
+          lineEnd   = 3439,
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "1f980401f5d7d9a363577635fd57fc1e24505d91")
 // @formatter:on
 public class VirtualThreadUpdateJFRSnippets implements Snippets {
 
@@ -121,9 +121,9 @@ public class VirtualThreadUpdateJFRSnippets implements Snippets {
 
             if (probability(LIKELY_PROBABILITY, (vthreadEpochRaw & EXCLUDED_MASK) == 0)) {
                 javaThread.writeChar(jfrThreadLocalVthreadEpochOffset(INJECTED_VMCONFIG), (char) (vthreadEpochRaw & EPOCH_MASK), JFR_THREAD_LOCAL_VTHREAD_EPOCH);
-                javaThread.writeByte(jfrThreadLocalVthreadExcludedOffset(INJECTED_VMCONFIG), BOOL_TRUE, JFR_THREAD_LOCAL_VTHREAD_EXCLUDED);
-            } else {
                 javaThread.writeByte(jfrThreadLocalVthreadExcludedOffset(INJECTED_VMCONFIG), BOOL_FALSE, JFR_THREAD_LOCAL_VTHREAD_EXCLUDED);
+            } else {
+                javaThread.writeByte(jfrThreadLocalVthreadExcludedOffset(INJECTED_VMCONFIG), BOOL_TRUE, JFR_THREAD_LOCAL_VTHREAD_EXCLUDED);
             }
             memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
             javaThread.writeByte(jfrThreadLocalVthreadOffset(INJECTED_VMCONFIG), BOOL_TRUE, JFR_THREAD_LOCAL_VTHREAD);

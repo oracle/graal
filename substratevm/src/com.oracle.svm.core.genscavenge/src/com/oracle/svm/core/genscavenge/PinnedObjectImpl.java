@@ -31,6 +31,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -76,12 +77,14 @@ final class PinnedObjectImpl implements PinnedObject {
         } while (!pinHead.compareAndSet(sampleHead, newHead));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static PinnedObjectImpl getPinnedObjects() {
         assert VMOperation.isGCInProgress();
         UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = HeapImpl.getHeapImpl().getPinHead();
         return pinHead.get();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void setPinnedObjects(PinnedObjectImpl list) {
         assert VMOperation.isGCInProgress();
         UninterruptibleUtils.AtomicReference<PinnedObjectImpl> pinHead = HeapImpl.getHeapImpl().getPinHead();
@@ -107,6 +110,7 @@ final class PinnedObjectImpl implements PinnedObject {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Object getObject() {
         assert open : "Should not call getObject() on a closed PinnedObject.";
         return referent;
@@ -114,6 +118,9 @@ final class PinnedObjectImpl implements PinnedObject {
 
     @Override
     public Pointer addressOfObject() {
+        if (!SubstrateOptions.PinnedObjectAddressing.getValue()) {
+            throw new UnsupportedOperationException("Pinned object addressing has been disabled.");
+        }
         assert open : "Should not call addressOfObject() on a closed PinnedObject.";
         return Word.objectToUntrackedPointer(referent);
     }
@@ -129,14 +136,17 @@ final class PinnedObjectImpl implements PinnedObject {
         return (T) addressOfObject().add(offsetOfArrayElement);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isOpen() {
         return open;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PinnedObjectImpl getNext() {
         return next;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setNext(PinnedObjectImpl value) {
         // Avoid useless writes as those would dirty the card table unnecessarily.
         if (value != next) {

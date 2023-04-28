@@ -200,9 +200,11 @@ public abstract class TypeFlow<T> {
         if (graphRef != null) {
             return graphRef;
         }
-        if (source instanceof BytecodePosition && !isClone) {
-            BytecodePosition position = (BytecodePosition) source;
-            return ((PointsToAnalysisMethod) position.getMethod()).getTypeFlow().getMethodFlowsGraph();
+        if (source instanceof BytecodePosition position && !isClone) {
+            MethodTypeFlow methodFlow = ((PointsToAnalysisMethod) position.getMethod()).getTypeFlow();
+            if (methodFlow.flowsGraphCreated()) {
+                return methodFlow.getMethodFlowsGraph();
+            }
         }
         return null;
     }
@@ -349,20 +351,18 @@ public abstract class TypeFlow<T> {
     // manage uses
 
     public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use) {
-        return addUse(bb, use, true, false);
+        return addUse(bb, use, true);
     }
 
     public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState) {
-        return addUse(bb, use, propagateTypeState, false);
-    }
-
-    private boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState, boolean registerInput) {
         if (isSaturated() && propagateTypeState) {
+            /* Register input. */
+            registerInput(bb, use);
             /* Let the use know that this flow is already saturated. */
             notifyUseOfSaturation(bb, use);
             return false;
         }
-        if (doAddUse(bb, use, registerInput)) {
+        if (doAddUse(bb, use)) {
             if (propagateTypeState) {
                 if (isSaturated()) {
                     /*
@@ -388,18 +388,23 @@ public abstract class TypeFlow<T> {
         use.onInputSaturated(bb, this);
     }
 
-    protected boolean doAddUse(PointsToAnalysis bb, TypeFlow<?> use, boolean registerInput) {
+    protected boolean doAddUse(PointsToAnalysis bb, TypeFlow<?> use) {
+        if (use.equals(this)) {
+            return false;
+        }
+        /* Input is always tracked. */
+        registerInput(bb, use);
         if (use.isSaturated()) {
             /* The use is already saturated so it will not be linked. */
             return false;
         }
-        if (use.equals(this)) {
-            return false;
-        }
-        if (bb.trackTypeFlowInputs() || registerInput) {
+        return ConcurrentLightHashSet.addElement(this, USE_UPDATER, use);
+    }
+
+    private void registerInput(PointsToAnalysis bb, TypeFlow<?> use) {
+        if (bb.trackTypeFlowInputs()) {
             use.addInput(this);
         }
-        return ConcurrentLightHashSet.addElement(this, USE_UPDATER, use);
     }
 
     public boolean removeUse(TypeFlow<?> use) {
@@ -418,20 +423,18 @@ public abstract class TypeFlow<T> {
 
     /** Register object that will be notified when the state of this flow changes. */
     public void addObserver(PointsToAnalysis bb, TypeFlow<?> observer) {
-        addObserver(bb, observer, true, false);
+        addObserver(bb, observer, true);
     }
 
     public boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate) {
-        return addObserver(bb, observer, triggerUpdate, false);
-    }
-
-    private boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate, boolean registerObservees) {
         if (isSaturated() && triggerUpdate) {
+            /* Register observee. */
+            registerObservee(bb, observer);
             /* Let the observer know that this flow is already saturated. */
             notifyObserverOfSaturation(bb, observer);
             return false;
         }
-        if (doAddObserver(bb, observer, registerObservees)) {
+        if (doAddObserver(bb, observer)) {
             if (triggerUpdate) {
                 if (isSaturated()) {
                     /* This flow is already saturated, notify the observer. */
@@ -456,7 +459,7 @@ public abstract class TypeFlow<T> {
         observer.onObservedSaturated(bb, this);
     }
 
-    private boolean doAddObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean registerObservees) {
+    private boolean doAddObserver(PointsToAnalysis bb, TypeFlow<?> observer) {
         /*
          * An observer is linked even if it is already saturated itself, hence no
          * 'observer.isSaturated()' check is performed here. For observers the saturation state is
@@ -470,14 +473,17 @@ public abstract class TypeFlow<T> {
         if (observer.equals(this)) {
             return false;
         }
-        if (bb.trackTypeFlowInputs() || registerObservees) {
-            observer.addObservee(this);
-        }
+        registerObservee(bb, observer);
         return ConcurrentLightHashSet.addElement(this, OBSERVERS_UPDATER, observer);
     }
 
+    private void registerObservee(PointsToAnalysis bb, TypeFlow<?> observer) {
+        if (bb.trackTypeFlowInputs()) {
+            observer.addObservee(this);
+        }
+    }
+
     public boolean removeObserver(TypeFlow<?> observer) {
-        observer.removeObservee(this);
         return ConcurrentLightHashSet.removeElement(this, OBSERVERS_UPDATER, observer);
     }
 
@@ -497,10 +503,6 @@ public abstract class TypeFlow<T> {
 
     public Collection<TypeFlow<?>> getObservees() {
         return ConcurrentLightHashSet.getElements(this, OBSERVEES_UPDATER);
-    }
-
-    public boolean removeObservee(TypeFlow<?> observee) {
-        return ConcurrentLightHashSet.removeElement(this, OBSERVEES_UPDATER, observee);
     }
 
     public void clearObservees() {
@@ -532,7 +534,11 @@ public abstract class TypeFlow<T> {
      * incompatible types flowing through such flows will result in an analysis error.
      */
     public TypeState declaredTypeFilter(PointsToAnalysis bb, TypeState newState) {
-        if (!bb.analysisPolicy().relaxTypeFlowConstraints()) {
+        return declaredTypeFilter(bb, newState, true);
+    }
+
+    public TypeState declaredTypeFilter(PointsToAnalysis bb, TypeState newState, boolean onlyWithRelaxedTypeFlowConstraints) {
+        if (onlyWithRelaxedTypeFlowConstraints && !bb.analysisPolicy().relaxTypeFlowConstraints()) {
             /* Type flow constraints are enforced, so no default filtering is done. */
             return newState;
         }

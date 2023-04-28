@@ -119,7 +119,7 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "truffle:TRUFFLE_ASM_9.1",
+                "truffle:TRUFFLE_ASM_9.5",
                 "com.oracle.truffle.espresso.jdwp",
             ],
             "requires": [
@@ -323,7 +323,7 @@ suite = {
                 "tools:TRUFFLE_PROFILER",
             ],
             "exclude": [
-                "truffle:TRUFFLE_ASM_9.1",
+                "truffle:TRUFFLE_ASM_9.5",
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",

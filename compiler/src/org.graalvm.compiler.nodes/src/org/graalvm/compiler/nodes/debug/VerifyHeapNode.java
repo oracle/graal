@@ -57,10 +57,4 @@ public final class VerifyHeapNode extends FixedWithNextNode implements Lowerable
         StructuredGraph graph = position.graph();
         graph.addBeforeFixed(position, graph.add(new VerifyHeapNode()));
     }
-
-    public static void addAfter(FixedWithNextNode position) {
-        StructuredGraph graph = position.graph();
-        graph.addAfterFixed(position, graph.add(new VerifyHeapNode()));
-    }
-
 }

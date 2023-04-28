@@ -110,7 +110,7 @@ public final class BinaryMathIntrinsicNode extends BinaryNode implements Arithme
                 result = gen.emitMathPow(xValue, yValue);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(getOperation()); // ExcludeFromJacocoGeneratedReport
         }
         nodeValueMap.setResult(this, result);
     }

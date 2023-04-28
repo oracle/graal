@@ -66,7 +66,7 @@
   local zgc_builds = [
     c.weekly + hw.x52 + jdk + cc.libgraal + cc.zgc_mode + suite,
   for jdk in cc.bench_jdks
-  for suite in bench.groups.main_suites
+  for suite in bench.groups.main_suites + [bench.specjbb2015]
   ],
 
   local zgc_avx_builds = [

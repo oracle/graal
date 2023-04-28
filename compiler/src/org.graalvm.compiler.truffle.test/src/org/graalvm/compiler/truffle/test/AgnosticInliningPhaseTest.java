@@ -27,15 +27,12 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.polyglot.Context;
 import org.junit.Before;
 
@@ -65,8 +62,7 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         };
         final TruffleTierContext context = new TruffleTierContext(partialEvaluator, callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
                         compilationIdentifier, getSpeculationLog(),
-                        new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
-                            private TruffleInliningData inlining = new TruffleInlining();
+                        new TruffleCompilationTask() {
 
                             @Override
                             public boolean isCancelled() {
@@ -79,15 +75,10 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                             }
 
                             @Override
-                            public TruffleInliningData inliningData() {
-                                return inlining;
-                            }
-
-                            @Override
                             public boolean hasNextTier() {
                                 return false;
                             }
-                        }), null);
+                        }, null);
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, new PostPartialEvaluationSuite(false));
         agnosticInliningPhase.apply(context.graph, context);
         return context.graph;

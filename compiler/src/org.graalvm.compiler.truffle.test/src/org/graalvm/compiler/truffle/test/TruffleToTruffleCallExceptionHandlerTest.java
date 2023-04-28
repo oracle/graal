@@ -112,7 +112,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
          */
         setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.Inlining", "false").build());
         Compilables compilables = new Compilables();
-        StructuredGraph graph = partialEval(compilables.callerNoException, new Object[0], getTruffleCompiler(compilables.calleeNoException).createCompilationIdentifier(compilables.callerNoException));
+        StructuredGraph graph = partialEval(compilables.callerNoException, new Object[0]);
         Assert.assertEquals(0, graph.getNodes().filter(UnwindNode.class).count());
     }
 
@@ -138,8 +138,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
                 Assert.assertTrue(t instanceof RuntimeException);
             }
 
-            StructuredGraph graph = partialEval(compilables.callerWithException, new Object[0],
-                            getTruffleCompiler(compilables.callerWithException).createCompilationIdentifier(compilables.callerWithException));
+            StructuredGraph graph = partialEval(compilables.callerWithException, new Object[0]);
             Assert.assertEquals(1, graph.getNodes().filter(UnwindNode.class).count());
         } finally {
             preventProfileCalls = false;

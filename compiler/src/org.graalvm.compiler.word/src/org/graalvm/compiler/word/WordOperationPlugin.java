@@ -38,6 +38,7 @@ import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -79,6 +80,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.impl.WordFactoryOperation;
 
 import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -95,8 +97,10 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
     protected final JavaKind wordKind;
     private final BarrierSet barrierSet;
     protected final SnippetReflectionProvider snippetReflection;
+    protected final ConstantReflectionProvider constantReflection;
 
-    public WordOperationPlugin(SnippetReflectionProvider snippetReflection, WordTypes wordTypes, BarrierSet barrierSet) {
+    public WordOperationPlugin(SnippetReflectionProvider snippetReflection, ConstantReflectionProvider constantReflection, WordTypes wordTypes, BarrierSet barrierSet) {
+        this.constantReflection = constantReflection;
         this.snippetReflection = snippetReflection;
         this.wordTypes = wordTypes;
         this.wordKind = wordTypes.getWordKind();
@@ -409,6 +413,18 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 assert args.length == 1;
                 WordCastNode wordToObject = b.add(WordCastNode.wordToObject(args[0], wordKind));
                 b.push(returnKind, wordToObject);
+                break;
+
+            case TO_TYPED_OBJECT:
+                assert args.length == 3;
+                assert args[1].isConstant();
+                assert args[2].isConstant();
+                ResolvedJavaType type = constantReflection.asJavaType(args[1].asJavaConstant());
+                boolean nonNull = args[2].asJavaConstant().asInt() != 0;
+                TypeReference trusted = TypeReference.createTrustedWithoutAssumptions(type);
+                ObjectStamp stamp = StampFactory.object(trusted, nonNull);
+                WordCastNode wordToObjectTyped = b.add(WordCastNode.wordToTypedObject(args[0], stamp));
+                b.push(returnKind, wordToObjectTyped);
                 break;
 
             case TO_OBJECT_NON_NULL:

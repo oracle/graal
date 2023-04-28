@@ -44,6 +44,7 @@ import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
+import org.graalvm.profdiff.core.optimization.Position;
 import org.graalvm.profdiff.parser.ExperimentFiles;
 import org.graalvm.profdiff.parser.ExperimentParser;
 import org.graalvm.profdiff.parser.FileView;
@@ -143,7 +144,7 @@ public class ExperimentParserTest {
                     rootPhase.addChild(someTier);
                     someTier.addChild(new Optimization("LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMap.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
+                                    Position.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
                                     EconomicMap.of("unrollFactor", 1)));
                     someTier.addChild(new OptimizationPhase("EmptyPhase"));
                     assertEquals(rootPhase, trees.getOptimizationTree().getRoot());
@@ -160,7 +161,7 @@ public class ExperimentParserTest {
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMap.of("Klass.someMethod()", 2),
+                                    Position.of("Klass.someMethod()", 2),
                                     EconomicMap.of("unrollFactor", 1)));
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",

@@ -54,6 +54,7 @@ final class ChunksAccounting {
         reset();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void reset() {
         alignedCount = 0L;
         unalignedCount = 0L;

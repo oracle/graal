@@ -54,8 +54,8 @@ final class HotSpotTruffleGraphBuilderPlugins {
                 if (!canDelayIntrinsification && receiver.isConstant()) {
                     JavaConstant constant = (JavaConstant) receiver.get().asConstant();
                     if (constant.isNonNull()) {
-                        if (types.classWeakReference.isInstance(constant) || types.classSoftReference.isInstance(constant)) {
-                            JavaConstant referent = b.getConstantReflection().readFieldValue(types.referenceReferent, constant);
+                        if (types.WeakReference.isInstance(constant) || types.SoftReference.isInstance(constant)) {
+                            JavaConstant referent = b.getConstantReflection().readFieldValue(types.Reference_referent, constant);
                             b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
                             return true;
                         }

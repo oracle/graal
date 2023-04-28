@@ -31,11 +31,15 @@ import java.util.SortedSet;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.hightiercodegen.CodeGenTool;
 import org.graalvm.compiler.hightiercodegen.reconstruction.ReconstructionData;
 import org.graalvm.compiler.hightiercodegen.reconstruction.StackifierData;
+import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
+import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
+import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.CatchScopeContainer;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.IfScopeContainer;
 import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.scopes.LoopScopeContainer;
@@ -52,18 +56,23 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 
-import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.StackifierScopeComputation;
-import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlock;
-import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Generates code by using the Stackifier algorithm to handle control flow. See
+ * {@link #lower(DebugContext)} for an example.
+ */
 public class StackifierIRWalker extends IRWalker {
     public static final String LABEL_PREFIX = "looplabel_";
     protected final BlockNestingVerifier blockNestingVerifier;
@@ -187,15 +196,24 @@ public class StackifierIRWalker extends IRWalker {
         StackifierData stackifierData = (StackifierData) reconstructionData;
         stackifierData.debugDump(debugContext);
 
-        // * scan for all phi values needed in stacked scopes
-        for (AbstractMergeNode n : cfg.graph.getNodes(AbstractMergeNode.TYPE)) {
+        predeclareVariables(cfg.graph);
+
+        lowerBlocks(stackifierData.getBlocks());
+    }
+
+    /**
+     * Declare all variables that should be located at the top of the function before lowering, e.g.
+     * PhiNodes.
+     */
+    protected void predeclareVariables(StructuredGraph graph) {
+        // scan for all phi values needed in stacked scopes
+        for (AbstractMergeNode n : graph.getNodes(AbstractMergeNode.TYPE)) {
             for (PhiNode phi : n.phis()) {
                 if (codeGenTool.nodeLowerer().actualUsageCount(phi) > 0) {
                     codeGenTool.nodeLowerer().lower(phi);
                 }
             }
         }
-        lowerBlocks(stackifierData.getBlocks());
     }
 
     /**
@@ -259,7 +277,7 @@ public class StackifierIRWalker extends IRWalker {
                 continue;
             }
 
-            codeGenTool.genComment("Start of block " + currentBlock.getId());
+            codeGenTool.genComment("Start of block " + currentBlock);
 
             labeledBlockStartsAfterLoop.forEach(this::genLabeledBlockHeader);
 
@@ -287,6 +305,8 @@ public class StackifierIRWalker extends IRWalker {
                 lowerIfStackifier(currentBlock, (IfNode) lastNode);
             } else if (lastNode instanceof IntegerSwitchNode) {
                 lowerSwitch((IntegerSwitchNode) lastNode, stackifierData);
+            } else if (lastNode instanceof TypeSwitchNode) {
+                lowerTypeSwitch((TypeSwitchNode) lastNode, stackifierData);
             } else if (isWithExceptionNode(lastNode)) {
                 lowerWithExceptionStackifier(currentBlock, (WithExceptionNode) lastNode);
             } else if ((lastNode instanceof ControlSplitNode) && !(lastNode instanceof BasicArrayCopyNode)) {
@@ -311,7 +331,7 @@ public class StackifierIRWalker extends IRWalker {
 
             verifier.visitNode(lastNode, codeGenTool);
             blockHistory.visitBlock(currentBlock);
-            codeGenTool.genComment("End of block " + currentBlock.getId());
+            codeGenTool.genComment("End of block " + currentBlock);
         }
     }
 
@@ -435,22 +455,39 @@ public class StackifierIRWalker extends IRWalker {
         HIRBlock excpSucc = cfg.blockFor(lastNode.exceptionEdge());
         CatchScopeContainer scopeEntry = (CatchScopeContainer) stackifierData.getScopeEntry(lastNode);
         Scope catchScope = scopeEntry.getCatchScope();
+
+        codeGenTool.genTryBlock();
         /*
          * Since the ExceptionObjectNode is needed inside the catch block already, the
          * ExceptionObjectNode is lowered here together with the InvokeWithExceptionNode and skipped
          * once it is encountered in its own basic block.
          */
-        ExceptionObjectNode excpObj = (ExceptionObjectNode) excpSucc.getBeginNode();
-        codeGenTool.genTryBlock();
         lowerNode(lastNode);
         generateForwardJump(currentBlock, normSucc, stackifierData);
-        codeGenTool.genCatchBlockPrefix(codeGenTool.getExceptionObjectId(excpObj));
+
+        String caughtObjectName = codeGenTool.getExceptionObjectId(excpSucc.getBeginNode());
+        ResolvedJavaType caughtObjectType = codeGenTool.getProviders().getMetaAccess().lookupJavaType(Throwable.class);
+        /*
+         * The exception edge does not necessarily have to be an ExceptionObjectNode. It could also,
+         * for example, be an UnreachableBeginNode. To cover those instances, the default type of
+         * the caught object is set to Throwable, and only changed if the exception edge indeed is
+         * an ExceptionObjectNode
+         */
+        if (excpSucc.getBeginNode()instanceof ExceptionObjectNode excpObj) {
+            caughtObjectType = excpObj.stamp(NodeView.DEFAULT).javaType(codeGenTool.getProviders().getMetaAccess());
+        }
+        codeGenTool.genCatchBlockPrefix(caughtObjectName, caughtObjectType);
+
         if (catchScope != null) {
             lowerBlocks(catchScope.getSortedBlocks());
         } else {
             generateForwardJump(currentBlock, excpSucc, stackifierData);
         }
         codeGenTool.genScopeEnd();
+    }
+
+    protected void lowerIfHeader(IfNode ifNode) {
+        codeGenTool.genIfHeader(ifNode.condition());
     }
 
     /**
@@ -467,7 +504,7 @@ public class StackifierIRWalker extends IRWalker {
         IfScopeContainer ifScopeContainer = (IfScopeContainer) stackifierData.getScopeEntry(lastNode);
         Scope thenScope = ifScopeContainer.getThenScope();
         Scope elseScope = ifScopeContainer.getElseScope();
-        codeGenTool.genIfHeader(lastNode.condition());
+        lowerIfHeader(lastNode);
         if (thenScope != null) {
             lowerBlocks(thenScope.getSortedBlocks());
         } else {
@@ -493,6 +530,27 @@ public class StackifierIRWalker extends IRWalker {
     public static boolean labeledBlockEndsInLoop(LoopScopeContainer loopScopeContainer, LabeledBlock labeledBlock) {
         HIRBlock labeledBlockEnd = labeledBlock.getEnd();
         return loopScopeContainer.getLoopScope().getBlocks().contains(labeledBlockEnd);
+    }
+
+    /**
+     * Generates code for one case of an integer switch node. This only generates the condition
+     * (`case` statement); the block successor must be generated separately.
+     *
+     * @param switchNode the {@link IntegerSwitchNode} that is being lowered
+     * @param successor the block successor corresponding to the case in question.
+     * @param keys the switch keys that have `successor` as their block successor.
+     */
+    protected void lowerSwitchCase(IntegerSwitchNode switchNode, AbstractBeginNode successor, int[] keys) {
+        codeGenTool.genSwitchCase(keys);
+    }
+
+    /**
+     * Generates code for the default case of an integer switch.
+     *
+     * @param switchNode the {@link IntegerSwitchNode} that is being lowered.
+     */
+    protected void lowerSwitchDefaultCase(IntegerSwitchNode switchNode) {
+        codeGenTool.genSwitchDefaultCase();
     }
 
     /**
@@ -581,9 +639,7 @@ public class StackifierIRWalker extends IRWalker {
                     continue;
                 }
             }
-
             ArrayList<Integer> succKeys = new ArrayList<>();
-
             // query all keys that have the succ as block succ
             for (int keyIndex = 0; keyIndex < switchNode.keyCount(); keyIndex++) {
                 // the key
@@ -593,38 +649,155 @@ public class StackifierIRWalker extends IRWalker {
                     succKeys.add(key);
                 }
             }
-
-            assert succKeys.size() > 0;
-
+            assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
             int[] succk = new int[succKeys.size()];
             for (int s = 0; s < succKeys.size(); s++) {
                 succk[s] = succKeys.get(s);
             }
-
-            codeGenTool.genSwitchCase(succk);
-
+            lowerSwitchCase(switchNode, succ, succk);
             if (caseScopes[i] != null) {
                 lowerBlocks(caseScopes[i].getSortedBlocks());
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ), stackifierData);
             }
-            codeGenTool.genBreak();
-
+            codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
-
         if (hasdefault) {
-            codeGenTool.genSwitchDefaultCase();
+            lowerSwitchDefaultCase(switchNode);
             int defaultIndex = switchNode.defaultSuccessorIndex();
             if (caseScopes[defaultIndex] != null) {
                 lowerBlocks(caseScopes[defaultIndex].getSortedBlocks());
             } else {
                 generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()), stackifierData);
             }
-            codeGenTool.genBreak();
+            codeGenTool.genBlockEndBreak();
             codeGenTool.genScopeEnd();
         }
         codeGenTool.genScopeEnd();
+    }
+
+    /**
+     * Lower one case of a type switch (that is, an if or else-if with a type check condition).
+     *
+     * @param switchNode the {@link TypeSwitchNode} that is being lowered
+     * @param succ the block successor corresponding to the case in question.
+     * @param succNum the index in generation order of the case being lowered. Can be used to
+     *            distinguish between if or else-if.
+     * @param succKeys the allowed types for the condition of this case.
+     */
+    protected void lowerTypeSwitchCase(TypeSwitchNode switchNode, AbstractBeginNode succ, int succNum, List<ResolvedJavaType> succKeys) {
+        GraalError.unimplementedParent();
+    }
+
+    /**
+     * Lower the default case of a type switch (which should be lowered as an else statement).
+     *
+     * @param switchNode the {@link TypeSwitchNode} that is being lowered.
+     */
+    protected void lowerTypeSwitchDefaultCase(TypeSwitchNode switchNode) {
+        GraalError.unimplementedParent();
+    }
+
+    /**
+     * Lowers the given {@link TypeSwitchNode}. Since a type switch performs exact type checks
+     * instead of instanceof ones, a pattern-matching switch cannot be used. Therefore, the node is
+     * lowered as a cascade of if-else blocks, where each if checks the type of the input against a
+     * given class.
+     *
+     * Example: Suppose we have the following Java program where A, B, C and D roughly correspond to
+     * basic blocks (for simplicity assume that all these basic blocks end with a
+     * {@link ControlSinkNode}). Further, assume that the following type switch performs exact type
+     * checks:
+     *
+     * <pre>
+     *  Object a;
+     *  ...
+     *  switch(a){
+     *      case Integer:
+     *      case Long:
+     *             A();
+     *             break;
+     *      case Float:
+     *              B();
+     *      case String:
+     *              C();
+     *              break;
+     *      default:
+     *              D();
+     *  }
+     * </pre>
+     *
+     * Witch the topological order A->D->B->C, this will generate the following pseudocode:
+     *
+     * <pre>
+     * block3: {
+     *     block2: {
+     *         block1: {
+     *             block0: {
+     *                 if (Integer.class.equals(a.getClass()) || Long.class.equals(a.getClass())) {
+     *                 } else if (Float.class.equals(a.getClass()) {
+     *                         break block1;
+     *                 } else if (String.class.equals(b.getClass()) {
+     *                         break block2;
+     *                 } else { // default case
+     *                         break block0;
+     *                 } // end type switch
+     *                 A();
+     *             } // block0
+     *             D();
+     *         } // block1
+     *         B();
+     *         break block3;
+     *     } // block2
+     * } // block3
+     * C();
+     * </pre>
+     *
+     * Note that the {@link LabeledBlock} {@code block3} is not necessary, but will be produced
+     * because the Graal IR sometimes produces a {@link HIRBlock} that only contains a
+     * {@link BeginNode} and a {@link EndNode}. Since no code is emitted for such a
+     * {@link HIRBlock}, there is no generated code between the ends of {@code block2} and
+     * {@code block3}.
+     *
+     * Similar to if-then-else, an optimization could pull the code of A, B, C and D inside the case
+     * blocks.
+     *
+     * @param switchNode node to be lowered
+     * @param stackifierData data for forward jumps
+     */
+    public void lowerTypeSwitch(TypeSwitchNode switchNode, StackifierData stackifierData) {
+        boolean hasdefault = switchNode.defaultSuccessor() != null;
+        for (int i = 0; i < switchNode.blockSuccessorCount(); i++) {
+            // one successor
+            AbstractBeginNode succ = switchNode.blockSuccessor(i);
+            // the default case must be lowered at the end
+            if (hasdefault) {
+                if (succ.equals(switchNode.defaultSuccessor())) {
+                    continue;
+                }
+            }
+            ArrayList<ResolvedJavaType> succKeys = new ArrayList<>();
+            // query all keys that have the succ as block succ
+            for (int keyIndex = 0; keyIndex < switchNode.keyCount(); keyIndex++) {
+                ResolvedJavaType key = switchNode.typeAt(keyIndex);
+                AbstractBeginNode keySucc = switchNode.keySuccessor(keyIndex);
+                if (succ.equals(keySucc)) {
+                    succKeys.add(key);
+                }
+            }
+            assert succKeys.size() > 0 : "no keys of " + switchNode + " have " + succ + " as block successor";
+            lowerTypeSwitchCase(switchNode, succ, i, succKeys);
+            generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(succ), stackifierData);
+            codeGenTool.genBlockEndBreak();
+            codeGenTool.genScopeEnd();
+        }
+        if (hasdefault) {
+            lowerTypeSwitchDefaultCase(switchNode);
+            generateForwardJump(cfg.blockFor(switchNode), cfg.blockFor(switchNode.defaultSuccessor()), stackifierData);
+            codeGenTool.genBlockEndBreak();
+            codeGenTool.genScopeEnd();
+        }
     }
 
     private void genLabeledBlockHeader(LabeledBlock labeledBlock) {
@@ -660,13 +833,13 @@ public class StackifierIRWalker extends IRWalker {
          * to be suppressed (i.e. made unreachable) with the break statement to guarantee that the
          * generated loop has the same semantics as the Graal IR.
          */
-        codeGenTool.genBreak();
+        codeGenTool.genBlockEndBreak();
         codeGenTool.genScopeEnd();
         codeGenTool.genComment("End of loop " + label);
     }
 
     private static String getLabel(HIRBlock block) {
         assert block.isLoopHeader();
-        return LABEL_PREFIX + (int) block.getId();
+        return LABEL_PREFIX + block.getId();
     }
 }

@@ -27,6 +27,8 @@ package org.graalvm.compiler.debug;
 import java.util.ArrayList;
 import java.util.Locale;
 
+import jdk.vm.ci.code.Architecture;
+
 /**
  * Indicates a condition that should never occur during normal operation.
  */
@@ -35,20 +37,28 @@ public class GraalError extends Error {
     private static final long serialVersionUID = 531632331813456233L;
     private final ArrayList<String> context = new ArrayList<>();
 
-    public static RuntimeException unimplemented() {
-        throw new GraalError("unimplemented");
-    }
-
     public static RuntimeException unimplemented(String msg) {
         throw new GraalError("unimplemented: %s", msg);
     }
 
-    public static RuntimeException shouldNotReachHere() {
-        throw new GraalError("should not reach here");
+    public static RuntimeException unimplementedOverride() {
+        throw new GraalError("unimplemented override");
+    }
+
+    public static RuntimeException unimplementedParent() {
+        throw new GraalError("unimplemented method in parent class, should be overridden");
+    }
+
+    public static RuntimeException unsupportedArchitecture(Architecture arch) {
+        throw new GraalError("unsupported architecture: %s", arch);
     }
 
     public static RuntimeException shouldNotReachHere(String msg) {
         throw new GraalError("should not reach here: %s", msg);
+    }
+
+    public static RuntimeException shouldNotReachHereUnexpectedValue(Object obj) {
+        throw new GraalError("should not reach here: unexpected value: %s", obj);
     }
 
     public static RuntimeException shouldNotReachHere(Throwable cause) {

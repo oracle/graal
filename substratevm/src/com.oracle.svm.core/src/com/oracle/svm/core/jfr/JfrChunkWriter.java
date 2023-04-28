@@ -301,6 +301,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         /* The code below is only atomic enough because the epoch can't change while flushing. */
         if (SubstrateJVM.getThreadRepo().hasUnflushedData()) {
             writeCheckpointEvent(JfrCheckpointType.Threads, threadCheckpointRepos, false, flushpoint);
+        } else if (!flushpoint) {
+            /* After an epoch change, the previous epoch data must be completely clear. */
+            SubstrateJVM.getThreadRepo().clearPreviousEpoch();
         }
     }
 
@@ -576,6 +579,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
+    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isLockedByCurrentThread() {
         return lock.isOwner();

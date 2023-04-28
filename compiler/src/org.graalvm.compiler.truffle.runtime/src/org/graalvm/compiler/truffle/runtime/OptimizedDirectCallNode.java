@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.common.TruffleCallNode;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -40,12 +38,22 @@ import com.oracle.truffle.api.nodes.NodeInfo;
  * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
  */
 @NodeInfo
-public final class OptimizedDirectCallNode extends DirectCallNode implements TruffleCallNode {
+public final class OptimizedDirectCallNode extends DirectCallNode {
 
+    /*
+     * Reflectively read by the Truffle compiler. See KnownTruffleTypes.
+     */
     private int callCount;
+    /*
+     * Reflectively read by the Truffle compiler. See KnownTruffleTypes.
+     */
     private boolean inliningForced;
     @CompilationFinal private Class<? extends Throwable> exceptionProfile;
-    @CompilationFinal private OptimizedCallTarget splitCallTarget;
+
+    /*
+     * Reflectively read by the Truffle compiler. See KnownTruffleTypes.
+     */
+    @CompilationFinal private OptimizedCallTarget currentCallTarget;
     private volatile boolean splitDecided;
 
     /*
@@ -54,6 +62,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
     OptimizedDirectCallNode(OptimizedCallTarget target) {
         super(target);
         assert target.isSourceCallTarget();
+        this.currentCallTarget = target;
     }
 
     @Override
@@ -121,17 +130,16 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
 
     @Override
     public OptimizedCallTarget getCallTarget() {
-        return (OptimizedCallTarget) super.getCallTarget();
+        return (OptimizedCallTarget) this.callTarget;
     }
 
-    @Override
     public int getCallCount() {
         return callCount;
     }
 
     @Override
     public OptimizedCallTarget getCurrentCallTarget() {
-        return (OptimizedCallTarget) super.getCurrentCallTarget();
+        return currentCallTarget;
     }
 
     public int getKnownCallSiteCount() {
@@ -140,7 +148,10 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
 
     @Override
     public OptimizedCallTarget getClonedCallTarget() {
-        return splitCallTarget;
+        if (currentCallTarget != callTarget) {
+            return currentCallTarget;
+        }
+        return null;
     }
 
     /**
@@ -170,7 +181,8 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
         // Synchronize with atomic() as replace() also takes the same lock
         // and we only want to take one lock to avoid deadlocks.
         atomic(() -> {
-            if (splitCallTarget != null) {
+            if (currentCallTarget != callTarget) {
+                // already split
                 return;
             }
 
@@ -186,7 +198,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode implements Tru
                 // dummy replace to report the split, irrelevant if this node is not adopted
                 replace(this, "Split call node");
             }
-            splitCallTarget = splitTarget;
+            currentCallTarget = splitTarget;
             OptimizedCallTarget.runtime().getListener().onCompilationSplit(this);
         });
     }

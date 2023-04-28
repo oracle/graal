@@ -24,11 +24,11 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot.java;
 
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
@@ -49,11 +49,6 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     @Override
-    protected boolean isPrintGraphEnabled() {
-        return DebugOptions.PrintGraph.getValue(getGraalOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
-    }
-
-    @Override
     protected String initLazyCompilerConfigurationName() {
         final OptionValues options = getGraalOptions(OptionValues.class);
         String factoryName = Options.TruffleCompilerConfiguration.getValue(options);
@@ -63,7 +58,17 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     @Override
-    public TruffleCompiler newTruffleCompiler() {
+    public Object createCompilerEnvironment() {
+        /*
+         * For libgraal and SVM we can initialize the compiler environment eagerly. However, for
+         * HotSpot without libgraal we need to make sure we lazily load all the compiler classes,
+         * hence we lazily initialize it when the first compiler gets initialized.
+         */
+        return new HotSpotTruffleCompilerEnvironment(this);
+    }
+
+    @Override
+    public synchronized TruffleCompiler newTruffleCompiler() {
         return HotSpotTruffleCompilerImpl.create(this);
     }
 }

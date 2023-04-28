@@ -1621,7 +1621,7 @@ final class TStringOps {
     }
 
     private static boolean rangeInBounds(int rangeStart, int rangeLength, int arrayLength) {
-        return Integer.toUnsignedLong(rangeStart + rangeLength) <= arrayLength;
+        return Integer.toUnsignedLong(rangeStart) + Integer.toUnsignedLong(rangeLength) <= arrayLength;
     }
 
     private static boolean isNativePointer(Object arrayB) {

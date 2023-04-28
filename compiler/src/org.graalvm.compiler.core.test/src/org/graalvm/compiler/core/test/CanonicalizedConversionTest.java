@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.junit.Assert;
 import org.junit.Test;
@@ -45,6 +46,7 @@ public class CanonicalizedConversionTest extends GraalCompilerTest {
         int reinterpretCount = 0;
         int floatEqualsCount = 0;
         int addCount = 0;
+        int shiftCount = 0;
         for (Node node : graph.getNodes()) {
             if (node instanceof ReinterpretNode) {
                 reinterpretCount++;
@@ -54,11 +56,15 @@ public class CanonicalizedConversionTest extends GraalCompilerTest {
                 Assert.fail("Unexpected node: " + node);
             } else if (node instanceof AddNode) {
                 addCount++;
+            } else if (node instanceof LeftShiftNode) {
+                shiftCount++;
             }
         }
         Assert.assertEquals(1, reinterpretCount);
         Assert.assertEquals(1, floatEqualsCount);
-        Assert.assertEquals(2, addCount);
+        // x + x + x represented as (x << 1) + x
+        Assert.assertEquals(1, addCount);
+        Assert.assertEquals(1, shiftCount);
     }
 
     @Test

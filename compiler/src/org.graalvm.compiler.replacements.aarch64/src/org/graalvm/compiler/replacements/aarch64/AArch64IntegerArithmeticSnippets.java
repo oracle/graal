@@ -110,7 +110,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         } else if (node instanceof UnsignedRemNode) {
             snippet = kind == JavaKind.Int ? uirem : ulrem;
         } else {
-            throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            throw GraalError.shouldNotReachHereUnexpectedValue(node); // ExcludeFromJacocoGeneratedReport
         }
         StructuredGraph graph = node.graph();
         Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());

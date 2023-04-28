@@ -28,12 +28,12 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.serviceprovider.UnencodedSpeculationReason;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog.SubstrateSpeculation;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -133,8 +133,8 @@ public final class IsolatedSpeculationLog extends IsolatedObjectProxy<Speculatio
     @Override
     public boolean maySpeculate(SpeculationReason reason) {
         byte[] bytes = encodeAsByteArray(reason);
-        try (PinnedObject pinnedBytes = PinnedObject.create(bytes)) {
-            return maySpeculate0(IsolatedCompileContext.get().getClient(), handle, pinnedBytes.addressOfArrayElement(0), bytes.length);
+        try (PrimitiveArrayView refBytes = PrimitiveArrayView.createForReading(bytes)) {
+            return maySpeculate0(IsolatedCompileContext.get().getClient(), handle, refBytes.addressOfArrayElement(0), bytes.length);
         }
     }
 
@@ -142,8 +142,8 @@ public final class IsolatedSpeculationLog extends IsolatedObjectProxy<Speculatio
     public Speculation speculate(SpeculationReason reason) {
         byte[] bytes = encodeAsByteArray(reason);
         ClientHandle<SpeculationReason> reasonHandle;
-        try (PinnedObject pinnedBytes = PinnedObject.create(bytes)) {
-            reasonHandle = speculate0(IsolatedCompileContext.get().getClient(), handle, pinnedBytes.addressOfArrayElement(0), bytes.length);
+        try (PrimitiveArrayView refBytes = PrimitiveArrayView.createForReading(bytes)) {
+            reasonHandle = speculate0(IsolatedCompileContext.get().getClient(), handle, refBytes.addressOfArrayElement(0), bytes.length);
         }
         return new SubstrateSpeculation(new IsolatedSpeculationReason(reasonHandle));
     }

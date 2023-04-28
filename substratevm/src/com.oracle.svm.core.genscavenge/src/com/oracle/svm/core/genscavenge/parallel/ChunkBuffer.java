@@ -92,6 +92,7 @@ public class ChunkBuffer {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isEmpty() {
         assert !ParallelGC.isInParallelPhase();
         return top == 0;

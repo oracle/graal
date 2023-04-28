@@ -269,28 +269,26 @@ public class ParallelGC {
     /**
      * Start parallel phase and wait until all chunks have been processed.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void waitForIdle() {
         GCWorkerThreadState state = getWorkerThreadState();
         assert state.getAllocChunk().isNonNull();
         push(HeapChunk.asPointer(state.getAllocChunk()));
 
-        mutex.lock();
+        mutex.lockNoTransitionUnspecifiedOwner();
         try {
-            while (busyWorkerThreads > 0) {   // wait for worker threads to become ready
-                debugLog().string("PP wait for workers\n");
-                seqPhase.block();
+            while (busyWorkerThreads > 0) {
+                seqPhase.blockNoTransitionUnspecifiedOwner(); // wait for worker threads to become ready
             }
 
-            debugLog().string("PP start workers\n");
             inParallelPhase = true;
-            parPhase.broadcast();       // let worker threads run
+            parPhase.broadcast(); // let worker threads run
 
             while (inParallelPhase) {
-                debugLog().string("PP wait\n");
-                seqPhase.block();       // wait for them to become idle
+                seqPhase.blockNoTransitionUnspecifiedOwner(); // wait for them to become idle
             }
         } finally {
-            mutex.unlock();
+            mutex.unlockNoTransitionUnspecifiedOwner();
         }
 
         haltOnError();
@@ -346,6 +344,7 @@ public class ParallelGC {
     /**
      * Make sure errors are thrown on main GC thread.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void haltOnError() {
         if (error instanceof OutOfMemoryError oome) {
             throw OutOfMemoryUtil.reportOutOfMemoryError(oome);
@@ -375,11 +374,6 @@ public class ParallelGC {
             PlatformThreads.singleton().deleteUnmanagedThreadLocal(workerStateTL);
             workerStateTL = WordFactory.nullPointer();
         }
-    }
-
-    @Uninterruptible(reason = "Called from a GC worker thread.")
-    static Log debugLog() {
-        return Log.noopLog();
     }
 
     @RawStructure

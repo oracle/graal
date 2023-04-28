@@ -104,7 +104,7 @@ public class NodeCostDumpUtil {
                 }
             }
         } catch (IOException ex) {
-            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            GraalError.shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
         }
         System.err.printf("Loaded %d classes...\n", classes.size());
         List<Class<?>> nodeClasses = new ArrayList<>();
@@ -207,7 +207,7 @@ public class NodeCostDumpUtil {
                 }
             });
         } catch (IOException ex) {
-            GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+            GraalError.shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
         }
     }
 

@@ -26,9 +26,11 @@ package org.graalvm.compiler.hightiercodegen.reconstruction.stackifier;
 
 import java.util.Optional;
 
+import org.graalvm.compiler.hightiercodegen.irwalk.StackifierIRWalker;
 import org.graalvm.compiler.hightiercodegen.reconstruction.ReconstructionPhase;
 import org.graalvm.compiler.hightiercodegen.reconstruction.ScheduleWithReconstructionResult;
 import org.graalvm.compiler.hightiercodegen.reconstruction.StackifierData;
+import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -36,8 +38,10 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
-import org.graalvm.compiler.hightiercodegen.reconstruction.stackifier.blocks.LabeledBlockGeneration;
-
+/**
+ * Computes a {@link ScheduleWithReconstructionResult} for the graph, meant specifically for use by
+ * {@link StackifierIRWalker}.
+ */
 public class StackifierReconstructionPhase extends ReconstructionPhase {
     @Override
     protected void run(StructuredGraph graph, CoreProviders providers) {

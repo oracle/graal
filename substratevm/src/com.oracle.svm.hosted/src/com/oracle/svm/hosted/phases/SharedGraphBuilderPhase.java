@@ -205,6 +205,20 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return result;
         }
 
+        @Override
+        protected Object lookupConstant(int cpi, int opcode) {
+            try {
+                return super.lookupConstant(cpi, opcode);
+            } catch (BootstrapMethodError | IncompatibleClassChangeError | IllegalArgumentException ex) {
+                if (linkAtBuildTime) {
+                    reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
+                } else {
+                    replaceWithThrowingAtRuntime(this, ex);
+                }
+                return ex;
+            }
+        }
+
         /**
          * Native image can suffer high contention when synchronizing resolution and initialization
          * of a type referenced by a constant pool entry. Such synchronization should be unnecessary
@@ -340,15 +354,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         protected void handleUnresolvedInvoke(JavaMethod javaMethod, InvokeKind invokeKind) {
             handleUnresolvedMethod(javaMethod);
-        }
-
-        @Override
-        protected void handleBootstrapMethodError(BootstrapMethodError bme, JavaMethod javaMethod) {
-            if (linkAtBuildTime) {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
-            } else {
-                replaceWithThrowingAtRuntime(this, bme);
-            }
         }
 
         /**

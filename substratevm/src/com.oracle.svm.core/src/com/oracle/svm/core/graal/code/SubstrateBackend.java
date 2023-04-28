@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import static com.oracle.svm.core.util.VMError.unimplemented;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import java.lang.reflect.Method;
 
@@ -145,7 +145,7 @@ public abstract class SubstrateBackend extends Backend {
 
     @Override
     public SuitesProvider getSuites() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     public CompilationResult newCompilationResult(CompilationIdentifier compilationIdentifier, String name) {

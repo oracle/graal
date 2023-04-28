@@ -60,6 +60,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.IOAccessor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
@@ -2138,6 +2139,15 @@ public final class Context implements AutoCloseable {
                                         "Builder.allowHostAccess(HostAccess) is set to a HostAccess which was created with HostAccess.Builder.allowIteratorAccess(boolean) set to true, " +
                                                         "but HostAccess.Builder.allowIteratorAccess(boolean) must not be set to true.",
                                         "do not set HostAccess.Builder.allowIteratorAccess(boolean)");
+                    }
+                    if (hostAccess.implementableAnnotations != null && !hostAccess.implementableAnnotations.isEmpty()) {
+                        var annotations = StreamSupport.stream(hostAccess.implementableAnnotations.spliterator(), false).map(Class::getSimpleName).toList();
+                        var builderCommands = annotations.stream().map((n) -> String.format("HostAccess.Builder.allowImplementationsAnnotatedBy(%s.class)", n)).toList();
+                        throw Engine.Builder.throwSandboxException(useSandboxPolicy, String.format(
+                                        "Builder.allowHostAccess(HostAccess) is set to a HostAccess which allows implementations of types annotated by %s, " +
+                                                        "but implementations of annotated types must not be enabled.",
+                                        String.join(", ", annotations)),
+                                        String.format("do not set %s", String.join(", ", builderCommands)));
                     }
                 }
             }

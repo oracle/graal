@@ -180,7 +180,7 @@ public final class UnaryMathIntrinsicNode extends UnaryNode implements Arithmeti
                 result = gen.emitMathTan(input);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(getOperation()); // ExcludeFromJacocoGeneratedReport
         }
         nodeValueMap.setResult(this, result);
     }

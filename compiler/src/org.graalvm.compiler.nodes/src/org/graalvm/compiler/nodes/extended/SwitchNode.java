@@ -42,16 +42,17 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSuccessorList;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ProfileData;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 import jdk.vm.ci.meta.Constant;
 
@@ -103,9 +104,9 @@ public abstract class SwitchNode extends ControlSplitNode {
         double total = 0;
         for (double d : getKeyProbabilities()) {
             total += d;
-            assert d >= 0.0 : "Cannot have negative probabilities in switch node: " + d;
+            GraalError.guarantee(d >= 0.0, "Cannot have negative probabilities in switch node: %s", d);
         }
-        assert total > 0.999 && total < 1.001 : "Total " + total;
+        GraalError.guarantee(total > 0.999 && total < 1.001, "Total probability across branches not equal to one: %.4f", total);
         return true;
     }
 
@@ -159,6 +160,11 @@ public abstract class SwitchNode extends ControlSplitNode {
         profileData = SwitchProbabilityData.create(keyProbabilities, profileData.getProfileSource().combine(successorProfileData.getProfileSource()));
         assert assertProbabilities();
         return true;
+    }
+
+    public void setProfileData(SwitchProbabilityData profileData) {
+        this.profileData = profileData;
+        assert assertProbabilities();
     }
 
     @Override
@@ -253,6 +259,78 @@ public abstract class SwitchNode extends ControlSplitNode {
     @Override
     public AbstractBeginNode getPrimarySuccessor() {
         return null;
+    }
+
+    protected boolean shouldInjectBranchProbabilities() {
+        for (AbstractBeginNode succ : successors) {
+            if (succ.next() instanceof SwitchCaseProbabilityNode) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected void injectBranchProbabilities() {
+        /*
+         * Since multiple keys can point to the same block, we must divide each block's probability
+         * between all keys sharing it.
+         */
+        int[] numKeysPerBlock = new int[blockSuccessorCount()];
+        for (int i = 0; i < keySuccessors.length; ++i) {
+            numKeysPerBlock[keySuccessorIndex(i)]++;
+        }
+
+        double[] nodeProbabilities = new double[keySuccessors.length];
+        for (int i = 0; i < keySuccessors.length; ++i) {
+            AbstractBeginNode succ = keySuccessor(i);
+            /*
+             * When a switch case exits out of a nested loop the SwitchProbabilityNode will be
+             * placed after a series of LoopExits, one per noop lesting level.
+             */
+            while (succ.next() instanceof AbstractBeginNode next) {
+                succ = next;
+            }
+            assertTrue(succ.next() instanceof SwitchCaseProbabilityNode,
+                            "Cannot inject switch probability, since key successor %s is not a SwitchCaseProbabilityNode",
+                            this, succ.next());
+            SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) succ.next();
+
+            ValueNode probabilityNode = caseProbabilityNode.getProbability();
+            if (!probabilityNode.isConstant()) {
+                /*
+                 * If any of the probabilities are not constant we bail out of simplification, which
+                 * will cause compilation to fail later during lowering since the node will be left
+                 * behind
+                 */
+                return;
+            }
+            double probabilityValue = probabilityNode.asJavaConstant().asDouble();
+            if (probabilityValue < 0.0) {
+                throw new GraalError("A negative probability of " + probabilityValue + " is not allowed!");
+            } else if (probabilityValue > 1.0) {
+                throw new GraalError("A probability of more than 1.0 (" + probabilityValue + ") is not allowed!");
+            } else if (Double.isNaN(probabilityValue)) {
+                /*
+                 * We allow NaN if the node is in unreachable code that will eventually fall away,
+                 * or else an error will be thrown during lowering since we keep the node around.
+                 * See analogous case in BranchProbabilityNode.
+                 */
+                return;
+            }
+            nodeProbabilities[i] = probabilityValue / numKeysPerBlock[keySuccessorIndex(i)];
+        }
+
+        for (AbstractBeginNode blockSuccessor : successors) {
+            AbstractBeginNode succ = blockSuccessor;
+            while (succ.next() instanceof AbstractBeginNode next) {
+                succ = next;
+            }
+            SwitchCaseProbabilityNode caseProbabilityNode = (SwitchCaseProbabilityNode) succ.next();
+            caseProbabilityNode.replaceAtUsages(null);
+            graph().removeFixed(caseProbabilityNode);
+        }
+
+        setProfileData(ProfileData.SwitchProbabilityData.create(nodeProbabilities, ProfileData.ProfileSource.INJECTED));
     }
 
     /**

@@ -125,6 +125,14 @@ public class SamplerBufferPool {
         }
     }
 
+    public int getBufferCount() {
+        /*
+         * Buffer count can change at any time when a thread starts/exits, so querying the count is
+         * racy.
+         */
+        return bufferCount;
+    }
+
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     private SamplerBuffer tryAllocateBuffer() {
         mutex.lockNoTransition();

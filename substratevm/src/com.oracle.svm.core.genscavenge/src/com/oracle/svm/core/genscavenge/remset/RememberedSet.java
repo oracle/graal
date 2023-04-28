@@ -96,6 +96,7 @@ public interface RememberedSet extends BarrierSetProvider {
     void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
 
     /** Clears the remembered set of an aligned chunk. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void clearRememberedSet(AlignedHeader chunk);
 
     /** Clears the remembered set of an unaligned chunk. */
@@ -135,16 +136,19 @@ public interface RememberedSet extends BarrierSetProvider {
     /**
      * Walks all dirty objects in an aligned chunk.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**
      * Walks all dirty objects in an unaligned chunk.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**
      * Walks all dirty objects in a {@link Space}.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**

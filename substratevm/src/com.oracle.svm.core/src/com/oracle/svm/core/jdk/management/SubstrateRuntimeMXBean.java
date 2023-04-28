@@ -37,7 +37,6 @@ import java.util.Set;
 
 import javax.management.ObjectName;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -84,7 +83,7 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         try {
             id = ProcessProperties.getProcessID();
         } catch (Throwable t) {
-            id = GraalServices.getGlobalTimeStamp();
+            id = startMillis;
         }
         try {
             hostName = InetAddress.getLocalHost().getHostName();

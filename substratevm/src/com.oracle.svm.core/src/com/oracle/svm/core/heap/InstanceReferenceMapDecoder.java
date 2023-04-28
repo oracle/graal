@@ -34,7 +34,7 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
-import com.oracle.svm.core.util.TypedMemoryReader;
+import com.oracle.svm.core.util.coder.NativeCoder;
 
 @DuplicatedInNativeCode
 public class InstanceReferenceMapDecoder {
@@ -45,7 +45,7 @@ public class InstanceReferenceMapDecoder {
         assert referenceMapEncoding.isNonNull();
 
         Pointer position = NonmovableByteArrayReader.pointerTo(referenceMapEncoding, referenceMapIndex);
-        int entryCount = TypedMemoryReader.getS4(position);
+        int entryCount = position.readInt(0);
         position = position.add(4);
 
         int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
@@ -55,15 +55,15 @@ public class InstanceReferenceMapDecoder {
         UnsignedWord sizeOfEntries = WordFactory.unsigned(InstanceReferenceMapEncoder.MAP_ENTRY_SIZE).multiply(entryCount);
         Pointer end = position.add(sizeOfEntries);
         while (position.belowThan(end)) {
-            int offset = TypedMemoryReader.getS4(position);
+            int offset = position.readInt(0);
             position = position.add(4);
 
-            long count = TypedMemoryReader.getU4(position);
+            long count = NativeCoder.readU4(position);
             position = position.add(4);
 
             Pointer objRef = baseAddress.add(offset);
             for (int c = 0; c < count; c++) {
-                final boolean visitResult = visitor.visitObjectReferenceInline(objRef, 0, compressed, holderObject);
+                final boolean visitResult = callVisitor(visitor, holderObject, compressed, objRef);
                 if (!visitResult) {
                     return false;
                 }
@@ -71,5 +71,10 @@ public class InstanceReferenceMapDecoder {
             }
         }
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(ObjectReferenceVisitor visitor, Object holderObject, boolean compressed, Pointer objRef) {
+        return visitor.visitObjectReferenceInline(objRef, 0, compressed, holderObject);
     }
 }

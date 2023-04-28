@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -87,6 +87,8 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.profiles.BranchProfile;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
 
 public final class LLVMContext {
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
@@ -123,7 +125,7 @@ public final class LLVMContext {
     private final List<LLVMThread> runningThreads = new ArrayList<>();
 
     private final ReentrantLock threadInitLock = new ReentrantLock();
-    private final List<Thread> allRunningThreads = new ArrayList<>();
+    private final EconomicSet<Thread> allRunningThreads = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
     private final List<AggregateTLGlobalInPlaceNode> threadLocalGlobalInitializer = new ArrayList<>();
 
     @CompilationFinal private LLVMThreadingStack threadingStack;
@@ -1058,7 +1060,7 @@ public final class LLVMContext {
 
         @TruffleBoundary
         public Thread[] getAllRunningThreads() {
-            return allRunningThreads.toArray(Thread[]::new);
+            return allRunningThreads.toArray(new Thread[allRunningThreads.size()]);
         }
 
         @TruffleBoundary

@@ -208,7 +208,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
                 case y:
                     return binary.getY();
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(this); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -219,7 +219,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
                 case y:
                     return binary.getX();
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(this); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

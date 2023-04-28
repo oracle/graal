@@ -214,7 +214,7 @@ public class ProgressReporterJsonHelper {
     public enum GeneralInfo implements JsonMetric {
         IMAGE_NAME("name", null),
         JAVA_VERSION("java_version", null),
-        VENDOR("vendor", null),
+        VENDOR_VERSION("vendor_version", null),
         GRAALVM_VERSION("graalvm_version", null),
         GRAAL_COMPILER_OPTIMIZATION_LEVEL("optimization_level", "graal_compiler"),
         GRAAL_COMPILER_MARCH("march", "graal_compiler"),

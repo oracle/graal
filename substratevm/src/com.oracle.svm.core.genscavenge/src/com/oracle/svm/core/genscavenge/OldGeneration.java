@@ -90,6 +90,7 @@ public final class OldGeneration extends Generation {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
         assert originalSpace.isFromSpace();
         if (isAligned) {
@@ -104,10 +105,12 @@ public final class OldGeneration extends Generation {
         getFromSpace().releaseChunks(chunkReleaser);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void prepareForPromotion() {
         toGreyObjectsWalker.setScanStart(getToSpace());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean scanGreyObjects() {
         if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
@@ -141,6 +144,7 @@ public final class OldGeneration extends Generation {
     }
 
     /* Extract all the HeapChunks from FromSpace and append them to ToSpace. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void emptyFromSpaceIntoToSpace() {
         getToSpace().absorb(getFromSpace());
     }

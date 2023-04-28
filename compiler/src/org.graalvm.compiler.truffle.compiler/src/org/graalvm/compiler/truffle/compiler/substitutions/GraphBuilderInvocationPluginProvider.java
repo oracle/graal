@@ -24,9 +24,11 @@
  */
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
-import jdk.vm.ci.code.Architecture;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
+
+import jdk.vm.ci.code.Architecture;
 
 /**
  * Registers invocation plugins that are common across all Truffle compilation tiers.
@@ -37,5 +39,6 @@ import org.graalvm.compiler.phases.util.Providers;
  * Implementations are responsible for checking the architecture if needed.
  */
 public interface GraphBuilderInvocationPluginProvider {
-    void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification);
+
+    void registerInvocationPlugins(InvocationPlugins plugins, KnownTruffleTypes types, Providers providers, Architecture architecture, boolean canDelayIntrinsification);
 }

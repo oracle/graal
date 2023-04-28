@@ -447,7 +447,7 @@ public class AMD64Move {
                     masm.cmpxchgq(asRegister(newValue), address.toAddress());
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(accessKind); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -490,7 +490,7 @@ public class AMD64Move {
                     masm.xaddq(address.toAddress(), asRegister(result));
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(accessKind); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -530,7 +530,7 @@ public class AMD64Move {
                     masm.xchgq(asRegister(result), address.toAddress());
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(accessKind); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
@@ -802,7 +802,7 @@ public class AMD64Move {
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(input.getJavaKind().getStackKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -856,7 +856,7 @@ public class AMD64Move {
                 }
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(input.getJavaKind().getStackKind()); // ExcludeFromJacocoGeneratedReport
         }
 
         switch ((AMD64Kind) result.getPlatformKind()) {

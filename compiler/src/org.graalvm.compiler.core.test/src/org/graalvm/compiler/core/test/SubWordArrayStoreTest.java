@@ -87,7 +87,7 @@ public class SubWordArrayStoreTest extends CustomizedBytecodePatternTest {
             case Char:
                 return UNSAFE.arrayBaseOffset(char[].class);
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -102,7 +102,7 @@ public class SubWordArrayStoreTest extends CustomizedBytecodePatternTest {
             case Char:
                 return T_CHAR;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -116,7 +116,7 @@ public class SubWordArrayStoreTest extends CustomizedBytecodePatternTest {
             case Char:
                 return CASTORE;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -130,7 +130,7 @@ public class SubWordArrayStoreTest extends CustomizedBytecodePatternTest {
             case Char:
                 return CALOAD;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 

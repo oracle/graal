@@ -42,8 +42,8 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.hpp",
           lineStart = 516,
           lineEnd   = 519,
-          commit    = "b1d89f30663aed28783e839c5690f46a2b382002",
-          sha1      = "446563a578452e34c8a2792d62debbfd01dae113")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "95116a9e350c16c09e5eed9db1328a39cb909474")
 // @formatter:on
 public class AArch64FloatToHalfFloatOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64FloatToHalfFloatOp> TYPE = LIRInstructionClass.create(AArch64FloatToHalfFloatOp.class);

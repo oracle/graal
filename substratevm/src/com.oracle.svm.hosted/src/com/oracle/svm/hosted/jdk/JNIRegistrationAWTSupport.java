@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -75,10 +74,6 @@ public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements In
                 jniRegistrationSupport.addJavaShimExports(
                                 "JNU_GetStringPlatformChars",
                                 "JNU_ReleaseStringPlatformChars");
-                if (JavaVersionUtil.JAVA_SPEC == 11) {
-                    jniRegistrationSupport.addJavaShimExports(
-                                    "JNU_ThrowNoSuchFieldError");
-                }
                 /* Since `awt` loads either `awt_headless` or `awt_xawt`, we register them both. */
                 jniRegistrationSupport.registerLibrary("awt_headless");
                 jniRegistrationSupport.registerLibrary("awt_xawt");

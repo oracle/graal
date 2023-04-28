@@ -127,7 +127,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (op instanceof SubNode) {
             return graph().addOrUniqueWithInputs(NegateNode.create(rawStride, NodeView.DEFAULT));
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -153,7 +153,7 @@ public class BasicInductionVariable extends InductionVariable {
         if (op instanceof SubNode) {
             return -rawStride.asJavaConstant().asLong();
         }
-        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+        throw GraalError.shouldNotReachHereUnexpectedValue(op); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

@@ -49,7 +49,6 @@ import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
-import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
  * The common structure of the chunks of memory which make up the heap. HeapChunks are aggregated
@@ -82,11 +81,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
  */
 public final class HeapChunk {
     private HeapChunk() { // all static
-    }
-
-    static class Options {
-        // Accessed via reflection by legacy code (see GR-40046).
-        public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = SerialAndEpsilonGCOptions.HeapChunkHeaderPadding;
     }
 
     static class HeaderPaddingSizeProvider implements IntUnaryOperator {
@@ -312,12 +306,17 @@ public final class HeapChunk {
         Pointer offset = startOffset;
         while (offset.belowThan(getTopPointer(that))) { // crucial: top can move, so always re-read
             Object obj = offset.toObject();
-            if (!visitor.visitObjectInline(obj)) {
+            if (!callVisitor(visitor, obj)) {
                 return false;
             }
             offset = offset.add(LayoutEncoding.getSizeFromObjectInlineInGC(obj));
         }
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(ObjectVisitor visitor, Object obj) {
+        return visitor.visitObjectInline(obj);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -334,7 +333,7 @@ public final class HeapChunk {
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
         if (!GraalDirectives.inIntrinsic()) {
             assert !HeapImpl.getHeapImpl().isInImageHeap(obj) || HeapImpl.usesImageHeapChunks() : "Must be checked before calling this method";
-            assert !ObjectHeaderImpl.getObjectHeaderImpl().isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
+            assert !ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
         }
         if (ObjectHeaderImpl.isAlignedObject(obj)) {
             return AlignedHeapChunk.getEnclosingChunk(obj);

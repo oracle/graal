@@ -61,6 +61,14 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         }
     }
 
+    @Override
+    public Object createCompilerEnvironment() {
+        /*
+         * Compiler environment is isolated.
+         */
+        return null;
+    }
+
     long handle() {
         try (LibGraalScope scope = new LibGraalScope()) {
             return scope.getIsolate().getSingleton(Handle.class, () -> {
@@ -89,14 +97,6 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     protected AutoCloseable openCompilerThreadScope() {
         return new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE);
-    }
-
-    @SuppressWarnings("try")
-    @Override
-    protected boolean isPrintGraphEnabled() {
-        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            return TruffleToLibGraalCalls.isPrintGraphEnabled(getIsolateThread(), handle());
-        }
     }
 
     @Override

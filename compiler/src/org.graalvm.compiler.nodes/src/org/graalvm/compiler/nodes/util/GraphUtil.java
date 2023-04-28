@@ -314,7 +314,7 @@ public class GraphUtil {
                 while (iterator.hasNext()) {
                     Node curNode = iterator.next();
                     if (curNode.isDeleted()) {
-                        GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        GraalError.shouldNotReachHereUnexpectedValue(curNode); // ExcludeFromJacocoGeneratedReport
                     } else {
                         if (curNode instanceof FixedNode && !(curNode instanceof AbstractMergeNode) && curNode.predecessor() != null) {
                             iterator.remove();
@@ -1252,7 +1252,7 @@ public class GraphUtil {
                         MemoryPhiNode newPhi = phi.graph().unique(new MemoryPhiNode(merge, memoryPhi.getLocationIdentity(), new ValueNode[]{memoryPhi.valueAt(trueEnd), memoryPhi.valueAt(falseEnd)}));
                         replacementPhis.put(phi, newPhi);
                     } else {
-                        GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        GraalError.shouldNotReachHereUnexpectedValue(phi); // ExcludeFromJacocoGeneratedReport
                     }
                 }
                 assert loopBegin.phis().count() == replacementPhis.size();

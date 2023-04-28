@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
@@ -61,6 +62,15 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
         /* When the receiver flow saturates start observing the flow of the receiver type. */
         replaceObservedWith(bb, receiverType);
+    }
+
+    protected static boolean allAssignable(BigBang bb, AnalysisType targetType, TypeState state) {
+        for (AnalysisType type : state.types(bb)) {
+            if (!targetType.isAssignableFrom(type)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,14 +29,15 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Add;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -65,9 +66,9 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
             return tryConstantFold;
         }
         if (x.isConstant() && !y.isConstant()) {
-            return canonical(null, op, y, x, view);
+            return canonical(null, op, y, x, view, false);
         } else {
-            return canonical(null, op, x, y, view);
+            return canonical(null, op, x, y, view, false);
         }
     }
 
@@ -76,7 +77,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         return table.getAdd();
     }
 
-    private static ValueNode canonical(AddNode addNode, BinaryOp<Add> op, ValueNode forX, ValueNode forY, NodeView view) {
+    private static ValueNode canonical(AddNode addNode, BinaryOp<Add> op, ValueNode forX, ValueNode forY, NodeView view, boolean allUsagesAvailable) {
         AddNode self = addNode;
         boolean associative = op.isAssociative();
         if (associative) {
@@ -92,6 +93,48 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
                 if (sub.getY() == forX) {
                     // b + (a - b)
                     return sub.getX();
+                }
+            }
+        }
+        if (associative && op.isCommutative() && allUsagesAvailable && forX.stamp(view) instanceof IntegerStamp integerStamp) {
+            /*
+             * Canonicalize iterated adds like x + (x + ... + (x + y)) or ((x + x) + ... + x) + y to
+             * x * N + y. This is easiest to do by finding the root of the computation, i.e., an add
+             * of the expected shape that is not itself an input to such an add, and walking upwards
+             * from there. Only do the transformation if the intermediate additions have no other
+             * uses, otherwise we might produce more work.
+             */
+            AddNode inputAdd = null;
+            if (forX instanceof AddNode add && (add.getX() == forY || add.getY() == forY)) {
+                inputAdd = add;
+            } else if (forY instanceof AddNode add && (add.getX() == forX || add.getY() == forX)) {
+                inputAdd = add;
+            }
+            if (inputAdd != null) {
+                boolean isRoot = true;
+                for (Node usage : self.usages()) {
+                    if (usage instanceof AddNode add && (add.getX() == forX || add.getX() == forY || add.getY() == forX || add.getY() == forY)) {
+                        isRoot = false;
+                        break;
+                    }
+                }
+                if (isRoot) {
+                    ValueNode addend = inputAdd == forX ? forY : forX;
+                    AddNode currentAdd = inputAdd;
+                    int count = 1;
+                    ValueNode other = null;
+                    while ((currentAdd.getX() == addend || currentAdd.getY() == addend) && currentAdd.hasExactlyOneUsage()) {
+                        count++;
+                        other = currentAdd.getX() == addend ? currentAdd.getY() : currentAdd.getX();
+                        if (other instanceof AddNode add) {
+                            currentAdd = add;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (other != null) {
+                        return BinaryArithmeticNode.add(other, BinaryArithmeticNode.mul(ConstantNode.forIntegerStamp(integerStamp, count), addend, view), view);
+                    }
                 }
             }
         }
@@ -162,6 +205,14 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         } else if (forY instanceof NegateNode) {
             return BinaryArithmeticNode.sub(forX, ((NegateNode) forY).getValue(), view);
         }
+        if (forX instanceof NotNode notY && notY.getValue() == forY) {
+            // ~y + y => -1
+            return ConstantNode.forIntegerStamp(forX.stamp(view), -1);
+        }
+        if (forY instanceof NotNode notX && forX == notX.getValue()) {
+            // x + ~x => -1
+            return ConstantNode.forIntegerStamp(forX.stamp(view), -1);
+        }
         if (self == null) {
             self = (AddNode) new AddNode(forX, forY).maybeCommuteInputs();
         }
@@ -186,7 +237,7 @@ public class AddNode extends BinaryArithmeticNode<Add> implements NarrowableArit
         }
         BinaryOp<Add> op = getOp(forX, forY);
         NodeView view = NodeView.from(tool);
-        return canonical(this, op, forX, forY, view);
+        return canonical(this, op, forX, forY, view, tool.allUsagesAvailable());
     }
 
     @Override

@@ -51,9 +51,9 @@ public class MethodEntry extends MemberEntry {
     static final int INLINED = 1 << 2;
     static final int IS_OVERRIDE = 1 << 3;
     static final int IS_CONSTRUCTOR = 1 << 4;
-    int flags;
-    int vtableOffset = -1;
-    final String symbolName;
+    private int flags;
+    private final int vtableOffset;
+    private final String symbolName;
 
     @SuppressWarnings("this-escape")
     public MethodEntry(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo,

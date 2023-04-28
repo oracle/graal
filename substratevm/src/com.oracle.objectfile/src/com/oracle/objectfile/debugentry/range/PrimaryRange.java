@@ -26,7 +26,6 @@
 
 package com.oracle.objectfile.debugentry.range;
 
-import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 
 public class PrimaryRange extends Range {
@@ -44,12 +43,6 @@ public class PrimaryRange extends Range {
         super(methodEntry, lo, hi, line, -1);
         this.firstCallee = null;
         this.lastCallee = null;
-    }
-
-    @Override
-    public int getFileIndex() {
-        ClassEntry owner = methodEntry.ownerType();
-        return owner.localFilesIdx(getFileEntry());
     }
 
     @Override

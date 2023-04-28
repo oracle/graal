@@ -24,14 +24,11 @@
  */
 package org.graalvm.compiler.truffle.common;
 
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance.truffleCompilerRuntime;
-
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,30 +40,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Truffle compiler to exists in separate heaps or even separate processes.
  */
 public interface TruffleCompilerRuntime {
-
-    /**
-     * Gets the singleton runtime instance if it is available other returns {@code null}.
-     */
-    static TruffleCompilerRuntime getRuntimeIfAvailable() {
-        return truffleCompilerRuntime;
-    }
-
-    /**
-     * Gets the singleton runtime instance.
-     *
-     * @throws IllegalStateException if the singleton instance has not been initialized
-     */
-    static TruffleCompilerRuntime getRuntime() {
-        if (truffleCompilerRuntime != null) {
-            return truffleCompilerRuntime;
-        }
-        Object truffleRuntime = TruffleCompilerRuntimeInstance.TRUFFLE_RUNTIME;
-        if (truffleRuntime != null) {
-            throw new InternalError(String.format("Truffle runtime %s (loader: %s) is not a %s (loader: %s)", truffleRuntime, truffleRuntime.getClass().getClassLoader(),
-                            TruffleCompilerRuntime.class.getName(), TruffleCompilerRuntime.class.getClassLoader()));
-        }
-        throw new IllegalStateException("TruffleCompilerRuntime singleton not initialized");
-    }
 
     /**
      * Value returned by {@link TruffleCompilerRuntime#getConstantFieldInfo(ResolvedJavaField)}
@@ -124,6 +97,19 @@ public interface TruffleCompilerRuntime {
 
         private ConstantFieldInfo(int dimensions) {
             this.dimensions = dimensions;
+        }
+
+        @Override
+        public int hashCode() {
+            return dimensions;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof ConstantFieldInfo other) {
+                return dimensions == other.dimensions;
+            }
+            return false;
         }
     }
 
@@ -239,12 +225,6 @@ public interface TruffleCompilerRuntime {
     LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method);
 
     /**
-     * Gets the primary {@link TruffleCompiler} instance associated with this runtime, creating and
-     * initializing it in a thread-safe manner first if necessary.
-     */
-    TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
-
-    /**
      * Gets the {@link CompilableTruffleAST} represented by {@code constant}.
      *
      * @return {@code null} if {@code constant} does not represent a {@link CompilableTruffleAST} or
@@ -256,6 +236,12 @@ public interface TruffleCompilerRuntime {
      * Gets the compiler constant representing the target of {@code callNode}.
      */
     JavaConstant getCallTargetForCallNode(JavaConstant callNode);
+
+    /**
+     * Gets the primary {@link TruffleCompiler} instance associated with this runtime, creating and
+     * initializing it in a thread-safe manner first if necessary.
+     */
+    TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
 
     /**
      * Registers some dependent code on an assumption.
@@ -421,22 +407,6 @@ public interface TruffleCompilerRuntime {
      * instances have undefined semantics and can either return true or false.
      */
     boolean isValueType(ResolvedJavaType type);
-
-    /**
-     * Gets the Java kind corresponding to a {@code FrameSlotKind.tag} value.
-     */
-    JavaKind getJavaKindForFrameSlotKind(int frameSlotKindTag);
-
-    /**
-     * Gets the {@code FrameSlotKind.tag} corresponding to a {@link JavaKind} value.
-     */
-    int getFrameSlotKindTagForJavaKind(JavaKind kind);
-
-    /**
-     * Gets the number of valid {@code FrameSlotKind.tag} values. The valid values are contiguous
-     * from 0 up to but not including the return value.
-     */
-    int getFrameSlotKindTagsCount();
 
     /**
      * Determines if {@code method} can be inlined by the runtime (independently from Truffle).

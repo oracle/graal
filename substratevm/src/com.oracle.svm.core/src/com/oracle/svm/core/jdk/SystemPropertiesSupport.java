@@ -31,7 +31,6 @@ import java.util.Properties;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -130,13 +129,6 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
 
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
-
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            /* AWT system properties are no longer used after JDK 11. */
-            initializeProperty("awt.toolkit", System.getProperty("awt.toolkit"));
-            initializeProperty("java.awt.graphicsenv", System.getProperty("java.awt.graphicsenv"));
-            initializeProperty("java.awt.printerjob", System.getProperty("java.awt.printerjob"));
-        }
 
         lazyRuntimeValues = new HashMap<>();
         lazyRuntimeValues.put("user.name", this::userName);
@@ -307,7 +299,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     }
 
     protected String tmpdirValue() {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented();
     }
 
     protected String javaLibraryPathValue() {

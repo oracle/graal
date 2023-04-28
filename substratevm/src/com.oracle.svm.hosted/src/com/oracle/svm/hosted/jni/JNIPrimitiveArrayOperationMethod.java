@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -122,7 +122,7 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
         if (!EnumSet.of(JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short,
                         JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double).contains(elementKind)) {
 
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(elementKind); // ExcludeFromJacocoGeneratedReport
         }
         this.elementKind = elementKind;
         this.operation = operation;
@@ -168,7 +168,7 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
             args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *buf;
             returnType = metaAccess.lookupJavaType(Void.TYPE);
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(operation); // ExcludeFromJacocoGeneratedReport
         }
         return new SimpleSignature(args, returnType);
     }
@@ -191,12 +191,13 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
                 ValueNode arrayHandle = arguments.get(1);
                 ValueNode array = kit.unboxHandle(arrayHandle);
                 ValueNode isCopy = arguments.get(2);
-                result = kit.pinArrayAndGetAddress(array, isCopy);
+                result = kit.createArrayViewAndGetAddress(array, isCopy);
                 break;
             }
             case RELEASE_ELEMENTS: {
                 ValueNode address = arguments.get(2);
-                kit.unpinArrayByAddress(address);
+                ValueNode mode = arguments.get(3);
+                kit.destroyArrayViewByAddress(address, mode);
                 break;
             }
             case GET_REGION:
@@ -219,7 +220,7 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
                 break;
             }
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(operation); // ExcludeFromJacocoGeneratedReport
         }
         kit.appendStateSplitProxy(state);
         CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);

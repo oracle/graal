@@ -133,6 +133,7 @@ import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.extended.SwitchCaseProbabilityNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
@@ -1809,6 +1810,13 @@ public class StandardGraphBuilderPlugins {
                     return true;
                 }
                 return false;
+            }
+        });
+        r.register(new RequiredInlineOnlyInvocationPlugin("injectSwitchCaseProbability", double.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability) {
+                b.add(new SwitchCaseProbabilityNode(probability));
+                return true;
             }
         });
 

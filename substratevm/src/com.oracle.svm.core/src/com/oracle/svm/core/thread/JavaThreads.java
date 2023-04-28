@@ -114,14 +114,7 @@ public final class JavaThreads {
      * in VM-internal contexts.
      */
     public static boolean isInterrupted(Thread thread) {
-        return getInterruptedFlag(thread);
-    }
-
-    private static boolean getInterruptedFlag(Thread thread) {
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            return toTarget(thread).interruptedJDK17OrLater;
-        }
-        return toTarget(thread).interruptedJDK11OrEarlier;
+        return toTarget(thread).interrupted;
     }
 
     static boolean getAndClearInterrupt(Thread thread) {
@@ -147,11 +140,7 @@ public final class JavaThreads {
     }
 
     static void writeInterruptedFlag(Thread thread, boolean value) {
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            toTarget(thread).interruptedJDK17OrLater = value;
-        } else {
-            toTarget(thread).interruptedJDK11OrEarlier = value;
-        }
+        toTarget(thread).interrupted = value;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

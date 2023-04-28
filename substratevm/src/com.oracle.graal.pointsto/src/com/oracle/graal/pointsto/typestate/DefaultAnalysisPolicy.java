@@ -201,7 +201,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public AnalysisContext allocationContext(PointsToAnalysis bb, MethodFlowsGraph callerGraph) {
-        throw AnalysisError.shouldNotReachHere();
+        throw AnalysisError.shouldNotReachHere("should be overwritten");
     }
 
     @Override

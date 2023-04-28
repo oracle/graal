@@ -30,9 +30,9 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.fromStride;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_BRANCH_TARGET_ALIGNMENT;
 import static org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.PREFERRED_LOOP_ALIGNMENT;
-import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize.fromStride;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
@@ -397,7 +397,7 @@ public final class AArch64ArrayRegionCompareToOp extends AArch64ComplexVectorOp 
                 asm.neon.uxtlVV(fromStride(stride), vecArray, vecArray);
                 break;
             default:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere(strideMax.log2 + " " + stride.log2); // ExcludeFromJacocoGeneratedReport
         }
     }
 

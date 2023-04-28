@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.nodes;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -47,7 +44,6 @@ import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
@@ -262,7 +258,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         }
     }
 
-    public static final long INVALID_GRAPH_ID = -1;
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
 
     private StartNode start;
@@ -336,24 +331,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert !isSubstitution || profileProvider == null;
         this.profileProvider = profileProvider;
         this.isSubstitution = isSubstitution;
-        assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
         this.inliningLog = GraalOptions.TraceInlining.getValue(options) || OptimizationLog.isOptimizationLogEnabled(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.optimizationLog = OptimizationLog.getInstance(this);
-    }
-
-    private static boolean checkIsSubstitutionInvariants(ResolvedJavaMethod method, boolean isSubstitution) {
-        if (!IS_IN_NATIVE_IMAGE && !IS_BUILDING_NATIVE_IMAGE) {
-            if (method != null) {
-                if (method.getAnnotation(Snippet.class) != null) {
-                    assert isSubstitution : "Graph for method " + method.format("%H.%n(%p)") +
-                                    " annotated by " + Snippet.class.getName() +
-                                    " must have its `isSubstitution` field set to true";
-                }
-            }
-        }
-        return true;
     }
 
     public void setLastSchedule(ScheduleResult result) {
@@ -408,21 +389,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return true;
         }
         return false;
-    }
-
-    public Stamp getReturnStamp() {
-        Stamp returnStamp = null;
-        for (ReturnNode returnNode : getNodes(ReturnNode.TYPE)) {
-            ValueNode result = returnNode.result();
-            if (result != null) {
-                if (returnStamp == null) {
-                    returnStamp = result.stamp(NodeView.DEFAULT);
-                } else {
-                    returnStamp = returnStamp.meet(result.stamp(NodeView.DEFAULT));
-                }
-            }
-        }
-        return returnStamp;
     }
 
     @Override
@@ -1124,10 +1090,6 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         if (inliningLog != null && node instanceof Invokable) {
             ((Invokable) node).updateInliningLogAfterRegister(this);
         }
-    }
-
-    public NodeSourcePosition getCallerContext() {
-        return callerContext;
     }
 
     public OptimizationLog getOptimizationLog() {

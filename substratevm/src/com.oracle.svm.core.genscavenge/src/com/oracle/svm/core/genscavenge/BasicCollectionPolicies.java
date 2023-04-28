@@ -50,7 +50,7 @@ final class BasicCollectionPolicies {
     private BasicCollectionPolicies() {
     }
 
-    abstract static class BasicPolicy implements CollectionPolicy {
+    public abstract static class BasicPolicy implements CollectionPolicy {
         protected static UnsignedWord m(long bytes) {
             assert 0 <= bytes;
             return WordFactory.unsigned(bytes).multiply(1024).multiply(1024);

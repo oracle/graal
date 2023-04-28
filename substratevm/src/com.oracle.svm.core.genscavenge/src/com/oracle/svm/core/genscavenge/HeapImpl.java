@@ -71,6 +71,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -192,12 +193,6 @@ public final class HeapImpl extends Heap {
         return walkImageHeapObjects(visitor) && walkCollectedHeapObjects(visitor);
     }
 
-    /** Walk the regions of the heap. */
-    boolean walkMemory(MemoryWalker.Visitor visitor) {
-        VMOperation.guaranteeInProgressAtSafepoint("must only be executed at a safepoint");
-        return walkNativeImageHeapRegions(visitor) && getYoungGeneration().walkHeapChunks(visitor) && getOldGeneration().walkHeapChunks(visitor) && getChunkProvider().walkHeapChunks(visitor);
-    }
-
     /** Tear down the heap and release its memory. */
     @Override
     @Uninterruptible(reason = "Tear-down in progress.")
@@ -217,14 +212,20 @@ public final class HeapImpl extends Heap {
         return objectHeaderImpl;
     }
 
-    ObjectHeaderImpl getObjectHeaderImpl() {
-        return objectHeaderImpl;
+    @Fold
+    static ObjectHeaderImpl getObjectHeaderImpl() {
+        return getHeapImpl().objectHeaderImpl;
     }
 
     @Fold
     @Override
     public GC getGC() {
-        return getGCImpl();
+        return getHeapImpl().gcImpl;
+    }
+
+    @Fold
+    static GCImpl getGCImpl() {
+        return getHeapImpl().gcImpl;
     }
 
     @Fold
@@ -236,10 +237,6 @@ public final class HeapImpl extends Heap {
     @Fold
     public HeapAccounting getAccounting() {
         return accounting;
-    }
-
-    GCImpl getGCImpl() {
-        return gcImpl;
     }
 
     @Override
@@ -265,6 +262,7 @@ public final class HeapImpl extends Heap {
         return oldGeneration;
     }
 
+    @Fold
     AtomicReference<PinnedObjectImpl> getPinHead() {
         return pinHead;
     }
@@ -471,11 +469,6 @@ public final class HeapImpl extends Heap {
         return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
     }
 
-    boolean walkNativeImageHeapRegions(MemoryWalker.ImageHeapRegionVisitor visitor) {
-        return ImageHeapWalker.walkRegions(imageHeapInfo, visitor) &&
-                        (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkRegions(visitor));
-    }
-
     @Override
     public void doReferenceHandling() {
         if (ReferenceHandler.isExecutedManually()) {
@@ -645,6 +638,13 @@ public final class HeapImpl extends Heap {
             }
         }
 
+        if (objectHeaderImpl.isEncodedObjectHeader((Word) value)) {
+            log.string("is the encoded object header for an object of type ");
+            DynamicHub hub = objectHeaderImpl.dynamicHubFromObjectHeader((Word) value);
+            log.string(hub.getName());
+            return true;
+        }
+
         Pointer ptr = (Pointer) value;
         if (printLocationInfo(log, ptr, allowJavaHeapAccess, allowUnsafeOperations)) {
             if (allowJavaHeapAccess && objectHeaderImpl.pointsToObjectHeader(ptr)) {
@@ -700,7 +700,7 @@ public final class HeapImpl extends Heap {
 
     @Override
     public long getMillisSinceLastWholeHeapExamined() {
-        return getGCImpl().getMillisSinceLastWholeHeapExamined();
+        return HeapImpl.getGCImpl().getMillisSinceLastWholeHeapExamined();
     }
 
     @Override
@@ -713,6 +713,7 @@ public final class HeapImpl extends Heap {
         return HeapChunk.getIdentityHashSalt(chunk).rawValue();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static Pointer getImageHeapStart() {
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
         if (imageHeapOffsetInAddressSpace > 0) {

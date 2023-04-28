@@ -69,13 +69,13 @@ import jdk.vm.ci.meta.Value;
 @StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
           lineStart = 2670,
           lineEnd   = 2700,
-          commit    = "afda8fbf0bcea18cbe741e9c693789ebe0c6c4c5",
-          sha1      = "350e5592f4df298c7ee648581bb1e8342edf9a05")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "e1333c6ab2d693fa9231a7365c568d81db63fae7")
 @StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64_aes.cpp",
           lineStart = 112,
           lineEnd   = 283,
-          commit    = "2fe0ce01485d7b84dc109d3d4f24bdd908c0e7cf",
-          sha1      = "0809579798e28fe7d2439e9ac5d5f8e23f1fcd21")
+          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
+          sha1      = "41ef4f49f68c0e08ff4d698c8cc962e392cc16ec")
 // @formatter:on
 public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
 
@@ -348,7 +348,7 @@ public final class AArch64AESEncryptOp extends AArch64LIRInstruction {
                     }
                     break;
                 default:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(index); // ExcludeFromJacocoGeneratedReport
             }
         }
 

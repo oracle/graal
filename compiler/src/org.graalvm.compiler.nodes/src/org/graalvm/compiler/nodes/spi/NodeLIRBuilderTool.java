@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
-import org.graalvm.compiler.options.OptionValues;
 
 public interface NodeLIRBuilderTool extends NodeValueMap {
 
@@ -86,10 +85,6 @@ public interface NodeLIRBuilderTool extends NodeValueMap {
     void emitOverflowCheckBranch(AbstractBeginNode overflowSuccessor, AbstractBeginNode next, Stamp compareStamp, double probability);
 
     void doBlock(HIRBlock block, StructuredGraph graph, BlockMap<List<Node>> blockMap);
-
-    default OptionValues getOptions() {
-        return getLIRGeneratorTool().getResult().getLIR().getOptions();
-    }
 
     void emitReadExceptionObject(ValueNode node);
 

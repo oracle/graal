@@ -28,9 +28,6 @@ import static org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph.INVA
 
 import java.util.Comparator;
 
-import org.graalvm.compiler.core.common.RetryableBailoutException;
-import org.graalvm.compiler.debug.GraalError;
-
 /**
  * Abstract representation of a basic block in the Graal IR. A basic block is the longest sequence
  * of instructions without a jump in between. A sequential ordering of blocks is maintained by
@@ -47,33 +44,28 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
      * Id of this basic block. The id is concurrently used as a unique identifier for the block as
      * well as its index into the @{@link #getBlocks()} array of the associated
      * {@link AbstractControlFlowGraph}.
-     *
-     * The type {@code char} is used to reduce memory usage of the block array and associated
-     * indexing operations. This comes at a certain debugging cost - inspecting block ids in a
-     * debugger is bad because it will display character codes. Use {@link #toString()} to see the
-     * id representation using a number.
      */
-    protected char id = INVALID_BLOCK_ID;
+    protected int id = INVALID_BLOCK_ID;
     /**
      * Block id of the dominator of this block. See
      * <a href="https://en.wikipedia.org/wiki/Dominator_(graph_theory)">dominator theory<a/> for
      * details.
      */
-    private char dominator = INVALID_BLOCK_ID;
+    private int dominator = INVALID_BLOCK_ID;
     /**
      * Block id of the first dominated block. A block can dominate more basic blocks: they are
      * connected sequentially via the {@link BasicBlock#dominatedSibling} index pointer into the
      * {@link #getBlocks()}array.
      */
-    private char firstDominated = INVALID_BLOCK_ID;
+    private int firstDominated = INVALID_BLOCK_ID;
     /**
      * The dominated sibling of this block. See {@link BasicBlock#firstDominated} for details.
      */
-    private char dominatedSibling = INVALID_BLOCK_ID;
+    private int dominatedSibling = INVALID_BLOCK_ID;
     /**
      * See {@link #getDominatorDepth()}.
      */
-    protected char domDepth = 0;
+    protected int domDepth = 0;
     /**
      * Dominator number of this block: the dominator number is assigned for each basic block when
      * building the dominator tree. It is a numbering scheme used for fast and efficient dominance
@@ -88,25 +80,25 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
      * dominated blocks between {@code this} and the deepest dominated block in dominator tree are
      * within the {@code [domNumber;maxChildDomNumber]} interval.
      */
-    private char domNumber = INVALID_BLOCK_ID;
+    private int domNumber = INVALID_BLOCK_ID;
     /**
      * The maximum child dominator number, i.e., the maximum dom number of the deepest dominated
      * block along the particular branch on the dominator tree rooted at this block.
      *
      * See {@link #domNumber} for details.
      */
-    private char maxChildDomNumber = INVALID_BLOCK_ID;
+    private int maxChildDomNumber = INVALID_BLOCK_ID;
     protected final AbstractControlFlowGraph<T> cfg;
 
     protected BasicBlock(AbstractControlFlowGraph<T> cfg) {
         this.cfg = cfg;
     }
 
-    public void setDominatorNumber(char domNumber) {
+    public void setDominatorNumber(int domNumber) {
         this.domNumber = domNumber;
     }
 
-    public void setMaxChildDomNumber(char maxChildDomNumber) {
+    public void setMaxChildDomNumber(int maxChildDomNumber) {
         this.maxChildDomNumber = maxChildDomNumber;
     }
 
@@ -124,7 +116,7 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
         return this.maxChildDomNumber;
     }
 
-    public char getId() {
+    public int getId() {
         return id;
     }
 
@@ -136,7 +128,7 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
         return cfg.getBlocks();
     }
 
-    public void setId(char id) {
+    public void setId(int id) {
         assert id <= AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX;
         this.id = id;
     }
@@ -207,26 +199,7 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
 
     public void setDominator(T dominator) {
         this.dominator = dominator.getId();
-        this.domDepth = addExact(dominator.domDepth, 1);
-    }
-
-    public static char addExact(char x, int y) {
-        int result = x + y;
-        char res = (char) (x + y);
-        if (res != result) {
-            throw new RetryableBailoutException("Graph too large to safely compile in reasonable time. Dominator tree depth ids create numerical overflows");
-        }
-        return res;
-    }
-
-    public static char safeCast(int i) {
-        if (i < 0) {
-            throw GraalError.shouldNotReachHere("Negative block id"); // ExcludeFromJacocoGeneratedReport
-        }
-        if (i > AbstractControlFlowGraph.LAST_VALID_BLOCK_INDEX) {
-            throw new RetryableBailoutException("Graph too large to safely compile in reasonable time.");
-        }
-        return (char) i;
+        this.domDepth = dominator.domDepth + 1;
     }
 
     /**
@@ -264,7 +237,7 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
 
     @Override
     public String toString() {
-        return "B" + (int) id;
+        return "B" + id;
     }
 
     public abstract int getLinearScanNumber();

@@ -332,7 +332,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
      * Creates a thread for the given guest thread. This thread will be ready to be started.
      */
     public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
-        Thread host = getContext().getEnv().createThread(new GuestRunnable(getContext(), guest, exit, dispatch));
+        Thread host = getContext().getEnv().newTruffleThreadBuilder(new GuestRunnable(getContext(), guest, exit, dispatch)).build();
         initializeHiddenFields(guest, host, true);
         // Prepare host thread
         host.setDaemon(isDaemon(guest));

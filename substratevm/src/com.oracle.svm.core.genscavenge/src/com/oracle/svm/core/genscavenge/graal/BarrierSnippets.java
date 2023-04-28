@@ -61,6 +61,7 @@ import com.oracle.svm.core.genscavenge.SerialGCOptions;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
@@ -97,7 +98,7 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         counters().postWriteBarrier.inc();
 
         Object fixedObject = FixedValueAnchorNode.getObject(object);
-        UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
+        UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(fixedObject);
 
         if (SerialGCOptions.VerifyWriteBarriers.getValue() && alwaysAlignedChunk) {
             /*

@@ -236,6 +236,7 @@ final class FirstObjectTable {
      * outside the current card.
      */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getFirstObjectImprecise(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
         Pointer result;
         Pointer firstObject = getFirstObject(tableStart, objectsStart, index);
@@ -253,6 +254,7 @@ final class FirstObjectTable {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Pointer getFirstObject(Pointer tableStart, Pointer objectsStart, UnsignedWord index) {
         UnsignedWord currentIndex = index;
         int currentEntry = getEntryAtIndex(tableStart, currentIndex);
@@ -282,6 +284,8 @@ final class FirstObjectTable {
         return result;
     }
 
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord entryToMemoryOffset(UnsignedWord index, int entry) {
         assert isMemoryOffsetEntry(entry) : "Entry out of bounds.";
         UnsignedWord entryOffset = WordFactory.unsigned(-entry).multiply(memoryOffsetScale());
@@ -368,6 +372,7 @@ final class FirstObjectTable {
         return entry == UNINITIALIZED_ENTRY;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isMemoryOffsetEntry(int entry) {
         assert isValidEntry(entry) : "Invalid entry";
         return MEMORY_OFFSET_MIN <= entry && entry <= MEMORY_OFFSET_MAX;
@@ -379,12 +384,14 @@ final class FirstObjectTable {
         return exponent + EXPONENT_BIAS;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int unbiasExponent(int entry) {
         int exponent = entry - EXPONENT_BIAS;
         assert EXPONENT_MIN <= exponent && exponent <= EXPONENT_MAX : "Exponent out of bounds.";
         return exponent;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord exponentToOffset(int n) {
         assert 0 <= n && n <= 63 : "Exponent out of bounds.";
         return WordFactory.unsigned(1L << n);

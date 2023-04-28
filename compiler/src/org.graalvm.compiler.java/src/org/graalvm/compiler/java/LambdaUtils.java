@@ -108,7 +108,7 @@ public final class LambdaUtils {
     @SuppressWarnings("try")
     public static String findStableLambdaName(ClassInitializationPlugin cip, Providers providers, ResolvedJavaType lambdaType, OptionValues options, DebugContext debug, Object ctx)
                     throws RuntimeException {
-        ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods()).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
+        ResolvedJavaMethod[] lambdaProxyMethods = Arrays.stream(lambdaType.getDeclaredMethods(false)).filter(m -> !m.isBridge() && m.isPublic()).toArray(ResolvedJavaMethod[]::new);
         /*
          * Take only the first method to build a graph, because the graph for all other methods will
          * be the same.
@@ -125,7 +125,7 @@ public final class LambdaUtils {
         if (invokedMethods.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("Lambda without a target invoke: ").append(lambdaType.toClassName());
-            for (ResolvedJavaMethod m : lambdaType.getDeclaredMethods()) {
+            for (ResolvedJavaMethod m : lambdaType.getDeclaredMethods(false)) {
                 sb.append("\n  Method: ").append(m);
             }
             throw new JVMCIError(sb.toString());

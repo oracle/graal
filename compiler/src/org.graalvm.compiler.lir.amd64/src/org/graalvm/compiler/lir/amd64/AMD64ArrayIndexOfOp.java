@@ -755,7 +755,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                         }
                         break;
                     default:
-                        throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                        throw GraalError.shouldNotReachHereUnexpectedValue(stride); // ExcludeFromJacocoGeneratedReport
                 }
                 asm.ptest(vSize, vecTmp[2], vecTmp[2]);
                 asm.jcc(ConditionFlag.NotZero, vectorFound[0], shortJmp);
@@ -796,7 +796,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                 asm.testlAndJcc(cmpResult, cmpResult, ConditionFlag.NotZero, branchTarget, shortJmp);
                 break;
             case ZMM:
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(targetVectorSize); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -833,7 +833,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
                     asm.movdqu(vecDst, src);
                     break;
                 case ZMM:
-                    throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                    throw GraalError.shouldNotReachHereUnexpectedValue(targetVectorSize); // ExcludeFromJacocoGeneratedReport
             }
         }
     }
