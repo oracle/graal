@@ -66,7 +66,7 @@ common + common.frequencies + {
   local graal_common_extras = common.deps.pylint + {
     logs+: [
       "*.bgv",
-      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*",
+      "*/graal_dumps/*/*",
     ],
     timelimit: "30:00",
   },
