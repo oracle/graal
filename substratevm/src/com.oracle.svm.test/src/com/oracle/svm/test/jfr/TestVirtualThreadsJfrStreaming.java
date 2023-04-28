@@ -77,7 +77,7 @@ public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
         Runnable eventEmitter = () -> {
             helper.doEvent();
             try {
-                expectedThreads.add((Long) Thread.class.getMethod("threadId", Runnable.class).invoke(Thread.currentThread()));
+                expectedThreads.add((Long) Thread.class.getMethod("threadId").invoke(Thread.currentThread()));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

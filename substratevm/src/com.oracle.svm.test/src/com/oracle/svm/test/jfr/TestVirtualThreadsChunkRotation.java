@@ -58,7 +58,7 @@ public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
     private final Set<Long> expectedThreads = new HashSet<>();
     private final MonitorWaitHelper helper = new MonitorWaitHelper();
 
-    private volatile boolean wait;
+    private volatile boolean proceed;
 
     @Before
     public void checkJavaVersion() {
@@ -73,13 +73,13 @@ public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
         Runnable eventEmitter = () -> {
             // Busy wait so that they do not unmount.
             while (true) {
-                if (wait) {
+                if (proceed) {
                     break;
                 }
             }
             helper.doEvent();
             try {
-                expectedThreads.add((Long) Thread.class.getMethod("threadId", Runnable.class).invoke(Thread.currentThread()));
+                expectedThreads.add((Long) Thread.class.getMethod("threadId").invoke(Thread.currentThread()));
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -91,7 +91,7 @@ public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
         // Force a chunk rotation
         recording.dump(createTempJfrFile());
         // Once, chunk rotation is over, notify the vthreads they can emit events.
-        wait = true;
+        proceed = true;
         VirtualStressor.join(threads);
         stopRecording(recording, this::validateEvents);
     }
