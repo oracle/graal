@@ -6960,7 +6960,7 @@ public class FlatNodeGenFactory {
         return localVariable;
     }
 
-    private static boolean substituteNodeWithSpecializationClass(SpecializationData specialization) {
+    public static boolean substituteNodeWithSpecializationClass(SpecializationData specialization) {
         if (!useSpecializationClass(specialization)) {
             return false;
         }
