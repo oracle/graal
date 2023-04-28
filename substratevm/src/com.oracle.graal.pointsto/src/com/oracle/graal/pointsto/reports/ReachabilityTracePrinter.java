@@ -25,15 +25,12 @@
 package com.oracle.graal.pointsto.reports;
 
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.compiler.debug.MethodFilter;
 
 public final class ReachabilityTracePrinter {
