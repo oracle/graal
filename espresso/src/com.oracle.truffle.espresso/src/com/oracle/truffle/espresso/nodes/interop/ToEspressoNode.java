@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -311,8 +312,8 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Megamorphic
         @Specialization(replaces = "doCached")
-        public Object doGeneric(Object value, Klass targetType) throws UnsupportedTypeException {
-            InteropLibrary interop = InteropLibrary.getUncached();
+        public Object doGeneric(Object value, Klass targetType,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             if (interop.isNull(value)) {
                 return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
             }
