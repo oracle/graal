@@ -231,6 +231,17 @@ public class InstructionModel implements InfoDumpable {
         }
     }
 
+    public boolean isCustomInstruction() {
+        switch (kind) {
+            case CUSTOM:
+            case CUSTOM_SHORT_CIRCUIT:
+            case CUSTOM_QUICKENED:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     // TODO: code invoking this method should likely be fixed.
     public boolean hasImmediates() {
         return immediates.size() > 0;
