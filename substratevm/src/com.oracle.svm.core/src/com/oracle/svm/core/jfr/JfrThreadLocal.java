@@ -126,7 +126,7 @@ public class JfrThreadLocal implements ThreadListener {
     public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             SubstrateJVM.getThreadRepo().registerThread(javaThread);
-            ThreadCPULoadEvent.initializeWallClockTime(isolateThread);
+            ThreadCPULoadEvent.initializeTime(isolateThread);
             ThreadStartEvent.emit(javaThread);
         }
     }

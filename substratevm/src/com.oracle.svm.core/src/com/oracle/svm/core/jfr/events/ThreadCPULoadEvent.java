@@ -157,7 +157,7 @@ public class ThreadCPULoadEvent {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initializeWallClockTime(IsolateThread isolateThread) {
+    public static void initializeTime(IsolateThread isolateThread) {
         timeTL.set(isolateThread, getCurrentTime());
     }
 
