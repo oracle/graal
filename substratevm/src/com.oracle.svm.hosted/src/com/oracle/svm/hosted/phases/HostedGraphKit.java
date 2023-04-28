@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.memory.BarrierType;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
@@ -51,7 +53,10 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.memory.WriteNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -139,6 +144,10 @@ public class HostedGraphKit extends SubstrateGraphKit {
         }
         createCheckThrowingBytecodeException(IsNullNode.create(object), true, BytecodeExceptionNode.BytecodeExceptionKind.NULL_POINTER);
         return append(PiNode.create(object, StampFactory.objectNonNull()));
+    }
+
+    public void emitWrite(AddressNode at, ValueNode value) {
+        append(new WriteNode(at, LocationIdentity.any(), value, BarrierType.NONE, MemoryOrderMode.PLAIN));
     }
 
     public List<ValueNode> liftArray(ValueNode array, JavaKind[] elementKinds, int length) {

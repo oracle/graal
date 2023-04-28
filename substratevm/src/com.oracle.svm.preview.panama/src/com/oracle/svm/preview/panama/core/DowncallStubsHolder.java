@@ -55,6 +55,10 @@ public class DowncallStubsHolder {
         if (nep.returnsAssignment() != null) {
             builder.append("_r");
         }
+        if (nep.capturesCallState()) {
+            builder.append('_');
+            builder.append(nep.capturedStateMast());
+        }
 
         StringBuilder assignmentsBuilder = new StringBuilder();
         for (var assignment: nep.parametersAssignment()) {

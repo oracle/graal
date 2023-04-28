@@ -31,6 +31,7 @@ import java.util.Objects;
 import com.oracle.svm.core.graal.code.MemoryAssignment;
 
 import jdk.internal.foreign.abi.ABIDescriptor;
+import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.VMStorage;
 
 /**
@@ -41,11 +42,18 @@ public final class NativeEntryPointInfo {
     private final MethodType methodType;
     private final MemoryAssignment[] parameterAssignments;
     private final MemoryAssignment[] returnBuffering;
+    private final int capturedStateMask;
 
-    public NativeEntryPointInfo(MethodType methodType, MemoryAssignment[] cc, MemoryAssignment[] returnBuffering) {
+    public NativeEntryPointInfo(MethodType methodType, MemoryAssignment[] cc, MemoryAssignment[] returnBuffering, int stateCaptureMask) {
+        /*
+            Method type is of the form (<>: argument; []: optional argument)
+            [return buffer address] <call address> [capture state address] <actual arg 1> <actual arg 2> ...
+            where <actual arg i>s are the arguments which end up passed to the C native function
+         */
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
+        this.capturedStateMask = stateCaptureMask;
     }
     public static void checkType(MethodType methodType, boolean needsReturnBuffer, int savedValueMask) {
         if (methodType.parameterType(0) != long.class) {
@@ -70,26 +78,44 @@ public final class NativeEntryPointInfo {
         checkType(methodType, needsReturnBuffer, capturedStateMask);
         var parametersAssignment = AbiUtils.getInstance().toMemoryAssignment(argMoves, false);
         var returnBuffering = needsReturnBuffer ? AbiUtils.getInstance().toMemoryAssignment(returnMoves, true) : null;
-        return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering);
+        capturedStateMask = capturedStateMask & AbiUtils.getInstance().supportedCaptureMask();
+        return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, capturedStateMask);
     }
 
     public int callAddressIndex() {
         return needsReturnBuffer() ? 1 : 0;
     }
 
+    public int captureAddressIndex() {
+        if (!capturesCallState()) {
+            throw new IllegalArgumentException(this + " doesn't have a capture state argument");
+        }
+        return callAddressIndex() + 1;
+    }
+
     /**
      * Method type without any of the special arguments.
      */
     public MethodType nativeMethodType() {
-        return this.methodType.dropParameterTypes(0, callAddressIndex()+1);
+        if (capturesCallState()) {
+            return this.methodType.dropParameterTypes(0, captureAddressIndex() + 1);
+        }
+        else {
+            return this.methodType.dropParameterTypes(0, callAddressIndex() + 1);
+        }
     }
 
     /**
-     * Method type without the call address
+     * Native method type, with a potential (pointer to) return buffer as prefix argument.
+     * Put differently: method type without the call address and the (pointer to) capture buffer (if present).
      */
     public MethodType stubMethodType() {
-        int idx = callAddressIndex();
-        return this.methodType.dropParameterTypes(idx, idx+1);
+        int start = callAddressIndex();
+        int end = start + 1;
+        if (capturesCallState()) {
+            end += 1;
+        }
+        return this.methodType.dropParameterTypes(start, end);
     }
 
     /**
@@ -103,8 +129,16 @@ public final class NativeEntryPointInfo {
         return this.returnBuffering != null;
     }
 
+    public boolean capturesCallState() {
+        return capturedStateMask != 0;
+    }
+
+    public boolean requiresCapture(CapturableState capture) {
+        return (capture.mask() & capturedStateMask) != 0;
+    }
+
     public MemoryAssignment[] parametersAssignment() {
-        assert parameterAssignments.length == this.nativeMethodType().parameterCount();
+        assert parameterAssignments.length == this.nativeMethodType().parameterCount(): Arrays.toString(parameterAssignments) + " ; " + nativeMethodType();
         return parameterAssignments;
     }
 
@@ -112,17 +146,21 @@ public final class NativeEntryPointInfo {
         return returnBuffering;
     }
 
+    public int capturedStateMast() {
+        return capturedStateMask;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         NativeEntryPointInfo that = (NativeEntryPointInfo) o;
-        return methodType.equals(that.methodType) && Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
+        return capturedStateMask == that.capturedStateMask && Objects.equals(methodType, that.methodType) && Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(methodType);
+        int result = Objects.hash(methodType, capturedStateMask);
         result = 31 * result + Arrays.hashCode(parameterAssignments);
         result = 31 * result + Arrays.hashCode(returnBuffering);
         return result;

@@ -38,6 +38,7 @@ import com.oracle.svm.core.graal.code.MemoryAssignment;
 import jdk.internal.foreign.CABI;
 import jdk.internal.foreign.abi.Binding;
 import jdk.internal.foreign.abi.CallingSequence;
+import jdk.internal.foreign.abi.CapturableState;
 import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.x64.X86_64Architecture;
@@ -133,12 +134,17 @@ public abstract class AbiUtils {
             checkType(methodType, needsReturnBuffer, callingSequence.capturedStateMask());
             var parametersAssignment = toMemoryAssignment(argMoves, false);
             var returnBuffering = needsReturnBuffer ? toMemoryAssignment(returnMoves, true) : null;
-            return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering);
+            return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, callingSequence.capturedStateMask());
         }
 
         @Override
         public DataModel dataModel() {
             return DataModel.LP64;
+        }
+
+        @Override
+        public int supportedCaptureMask() {
+            return CapturableState.ERRNO.mask();
         }
     };
 
@@ -166,4 +172,5 @@ public abstract class AbiUtils {
 
     public abstract DataModel dataModel();
 
+    public abstract int supportedCaptureMask();
 }

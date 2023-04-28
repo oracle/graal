@@ -24,13 +24,22 @@
  */
 package com.oracle.svm.preview.panama.hosted;
 
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+
 import java.lang.invoke.MethodType;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
+import org.graalvm.compiler.nodes.CallTargetNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -39,6 +48,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
@@ -47,6 +57,7 @@ import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.preview.panama.core.DowncallStubsHolder;
 import com.oracle.svm.preview.panama.core.NativeEntryPointInfo;
 
+import jdk.internal.foreign.abi.CapturableState;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -57,6 +68,11 @@ class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return SimpleSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
     }
+
+    private record CaptureMethod(Class<?> clazz, String name) {}
+    private final static Map<CapturableState, CaptureMethod> CAPTURE_METHODS = Map.of(
+            CapturableState.ERRNO, new CaptureMethod(LibC.class, "errno")
+    );
 
     private final NativeEntryPointInfo nep;
 
@@ -84,6 +100,12 @@ class DowncallStub extends NonBytecodeMethod {
         arguments = convertArguments(kit, nep.linkMethodType(), arguments.get(0));
 
         ValueNode callAddress = arguments.remove(nep.callAddressIndex());
+        ValueNode captureAddress = null;
+        if (nep.capturesCallState()) {
+            assert nep.captureAddressIndex() > nep.callAddressIndex();
+            // We already removed 1 element from the list, so we must offset the index by one as well
+            captureAddress = arguments.remove(nep.captureAddressIndex() - 1);
+        }
 
         state.clearLocals();
         SubstrateCallingConventionType cc = SubstrateCallingConventionKind.Native.toType(true)
@@ -99,6 +121,41 @@ class DowncallStub extends NonBytecodeMethod {
         );
 
         returnValue = adaptReturnValue(kit, nep.linkMethodType(), returnValue);
+
+        /*
+            Note that we might need to make this stub uninterrruptible
+            as to prevent anything from altering the captured state before it is captured
+         */
+        if (captureAddress != null) {
+            int index = 0;
+
+            // Relies on values() yielding the capturable states in the correct (yet unspecified) order
+            for (var capture : CapturableState.values()) {
+                if (nep.requiresCapture(capture)) {
+                    if (!CAPTURE_METHODS.containsKey(capture)) {
+                        throw unsupportedFeature("Capturing call state of " + capture + " is not supported.");
+                    }
+                    if (index != 0) {
+                        // It should work out of the box, but disabled until tested (only used on Windows)
+                        throw unsupportedFeature("Capturing more than one state is not supported.");
+                    }
+
+                    var captureMethodInfo = CAPTURE_METHODS.get(capture);
+
+                    // This should boil down to a native call
+                    state.clearStack();
+                    InvokeNode captured = kit.createInvoke(captureMethodInfo.clazz, captureMethodInfo.name, CallTargetNode.InvokeKind.Static, state, kit.bci());
+                    captured.setInlineControl(Invoke.InlineControl.Never); // I don't know why, but that is apparently required
+
+                    AddressNode writeAddress = kit.append(new OffsetAddressNode(captureAddress, ConstantNode.forIntegerBits(64, index)));
+                    kit.emitWrite(writeAddress, captured);
+
+                    // Should offset by exactly one int
+                    index += 4;
+                }
+            }
+        }
+
         kit.createReturn(returnValue, JavaKind.Object);
 
         return kit.finalizeGraph();
