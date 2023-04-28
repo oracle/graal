@@ -35,17 +35,17 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.JfrThreadLocal;
+import com.oracle.svm.core.heap.VMOperationInfos;
 
 import com.oracle.svm.core.jdk.Jvm;
 
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.util.TimeUtils;
-
-import static com.oracle.svm.core.thread.PlatformThreads.IsolateThreadConsumer;
 
 public class ThreadCPULoadEvent {
 
@@ -55,14 +55,6 @@ public class ThreadCPULoadEvent {
 
     private static volatile int lastActiveProcessorCount;
 
-    private static final IsolateThreadConsumer threadCPULoadEventConsumer = new IsolateThreadConsumer() {
-
-        @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
-        public void accept(IsolateThread isolateThread) {
-            emitForThread(isolateThread);
-        }
-    };
-
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(IsolateThread isolateThread) {
         if (JfrEvent.ThreadCPULoad.shouldEmit()) {
@@ -70,11 +62,9 @@ public class ThreadCPULoadEvent {
         }
     }
 
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emitEvents() {
-        if (JfrEvent.ThreadCPULoad.shouldEmit()) {
-            PlatformThreads.iterateIsolateThreads(threadCPULoadEventConsumer);
-        }
+        EmitThreadCPULoadEventsVMOperation vmOp = new EmitThreadCPULoadEventsVMOperation();
+        vmOp.enqueue();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -169,5 +159,19 @@ public class ThreadCPULoadEvent {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initializeWallClockTime(IsolateThread isolateThread) {
         timeTL.set(isolateThread, getCurrentTime());
+    }
+
+    private static final class EmitThreadCPULoadEventsVMOperation extends JavaVMOperation {
+
+        EmitThreadCPULoadEventsVMOperation() {
+            super(VMOperationInfos.get(EmitThreadCPULoadEventsVMOperation.class, "Emit ThreadCPULoad events", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                emit(isolateThread);
+            }
+        }
     }
 }
