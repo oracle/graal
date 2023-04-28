@@ -29,7 +29,6 @@ import java.util.List;
 
 import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider.Extension;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleSafepointLoweringSnippet.TruffleHotSpotSafepointLoweringExtension;
 
 /**
@@ -38,11 +37,16 @@ import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleSafepointLowe
  * IMPORTANT: Instances of this class must not have any state as they are cached for the purpose of
  * being available in libgraal.
  */
-@ServiceProvider(DefaultHotSpotLoweringProvider.Extensions.class)
 public final class HotSpotTruffleLoweringExtensions implements DefaultHotSpotLoweringProvider.Extensions {
+
+    final HotSpotKnownTruffleTypes truffleTypes;
+
+    HotSpotTruffleLoweringExtensions(HotSpotKnownTruffleTypes truffleTypes) {
+        this.truffleTypes = truffleTypes;
+    }
 
     @Override
     public List<Extension> createExtensions() {
-        return Collections.singletonList(new TruffleHotSpotSafepointLoweringExtension());
+        return Collections.singletonList(new TruffleHotSpotSafepointLoweringExtension(truffleTypes));
     }
 }

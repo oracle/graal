@@ -64,9 +64,8 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Provides {@link InvocationPlugin}s for Truffle classes. These plugins are not only used during
- * partial evaluation, but also in later phases, and behind
- * {@link com.oracle.truffle.api.CompilerDirectives.TruffleBoundary Truffle boundaries}.
+ * Provides {@link InvocationPlugin}s for Truffle classes. This plugins are applied for host and
+ * guest compilation.
  */
 public class TruffleInvocationPlugins {
 

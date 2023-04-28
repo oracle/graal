@@ -32,8 +32,12 @@ import java.util.Arrays;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
 import jdk.vm.ci.services.Services;
 
@@ -78,6 +82,9 @@ public class LibGraal {
     private static final Method attachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
     private static final Method detachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(Boolean.TYPE), sig());
     private static final Method getFailedSpeculationsAddress = methodIf(unhand, HotSpotSpeculationLog.class, "getFailedSpeculationsAddress");
+
+    private static final Method asResolvedJavaType = methodOrNull(HotSpotJVMCIRuntime.class, "asResolvedJavaType", sig(Long.TYPE));
+    private static final Method getJObjectValue = methodIf(asResolvedJavaType, HotSpotJVMCIRuntime.class, "getJObjectValue", sig(HotSpotObjectConstant.class));
 
     /**
      * Determines if libgraal is available for use.
@@ -202,6 +209,34 @@ public class LibGraal {
     static boolean isCurrentThreadAttached() {
         try {
             return (boolean) isCurrentThreadAttached.invoke(runtime());
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
+    }
+
+    /**
+     * @see HotSpotJVMCIRuntime#getJObjectValue(HotSpotObjectConstant)
+     */
+    public static <T extends PointerBase> T getJObjectValue(HotSpotObjectConstant constant) {
+        if (getJObjectValue == null) {
+            return WordFactory.nullPointer();
+        }
+        try {
+            return WordFactory.pointer((long) getJObjectValue.invoke(runtime(), constant));
+        } catch (Throwable throwable) {
+            throw new InternalError(throwable);
+        }
+    }
+
+    /**
+     * @see HotSpotJVMCIRuntime#asResolvedJavaType(long)
+     */
+    public static HotSpotResolvedJavaType asResolvedJavaType(PointerBase pointer) {
+        if (asResolvedJavaType == null) {
+            return null;
+        }
+        try {
+            return (HotSpotResolvedJavaType) asResolvedJavaType.invoke(runtime(), pointer.rawValue());
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }

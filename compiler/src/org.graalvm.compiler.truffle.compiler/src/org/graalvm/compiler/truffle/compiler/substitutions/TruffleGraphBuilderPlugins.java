@@ -1213,6 +1213,7 @@ public class TruffleGraphBuilderPlugins {
                     Map<String, Object> properties = new LinkedHashMap<>();
                     properties.put("location", location);
                     properties.put("method", targetMethod.format("%h.%n"));
+
                     PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, truffleMethod.getCompilable(),
                                     Collections.singletonList(access),
                                     "location argument not PE-constant", properties);

@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.PauseNode;
@@ -39,7 +38,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -282,13 +280,4 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         return delegate.getTruffleTier();
     }
 
-    @Override
-    public SnippetReflectionProvider getSnippetReflection() {
-        return delegate.getSnippetReflection();
-    }
-
-    @Override
-    public TruffleCompilerConfiguration getConfig() {
-        return delegate.getConfig();
-    }
 }

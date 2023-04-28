@@ -135,8 +135,6 @@ public @interface TruffleFromLibGraal {
         HasNextTier,
         @Signature({boolean.class, Object.class, Object.class})
         IsSameOrSplit,
-        @Signature({boolean.class, Object.class, long.class})
-        IsSpecializationMethod,
         @Signature({boolean.class, Object.class, Object.class, Supplier.class})
         IsSuppressedFailure,
         @Signature({boolean.class, Object.class})
@@ -160,7 +158,9 @@ public @interface TruffleFromLibGraal {
         @Signature({void.class, Object.class, Object.class, Object.class, long.class})
         OnTruffleTierFinished,
         @Signature({Object.class, Object.class, long.class})
-        ReadMethodCache,
+        GetPartialEvaluationMethodInfo,
+        @Signature({Object.class, Object.class, long.class})
+        GetHostMethodInfo,
         @Signature({Consumer.class, Object.class, long.class})
         RegisterOptimizedAssumptionDependency,
         @Signature({void.class, Object.class, int.class, int.class})

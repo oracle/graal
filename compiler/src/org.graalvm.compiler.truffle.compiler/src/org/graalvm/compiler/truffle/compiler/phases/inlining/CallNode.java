@@ -51,7 +51,6 @@ import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -160,7 +159,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
 
     static CompilableTruffleAST getCurrentCallTarget(TruffleTierContext context, JavaConstant directCallNode) {
         JavaConstant constant = context.getConstantReflection().readFieldValue(context.types().OptimizedDirectCallNode_currentCallTarget, directCallNode);
-        return TruffleCompilerEnvironment.get().runtime().asCompilableTruffleAST(constant);
+        return context.runtime().asCompilableTruffleAST(constant);
     }
 
     static int getCallCount(TruffleTierContext context, JavaConstant directCallNode) {

@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.phases;
+package org.graalvm.compiler.truffle.compiler.host;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -34,28 +34,26 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * This phase should ideally already be done using a node plugin when creating the graph. However
- * during PE field plugins are currently broken.
+ * This phase should ideally already be done using a node plugin when creating the graph.
  */
-public class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<HighTierContext> {
+public final class InjectImmutableFrameFieldsPhase extends BasePhase<HighTierContext> {
 
     public static class Options {
         @Option(help = "Whether Truffle should mark final frame fields as immutable.")//
         public static final OptionKey<Boolean> TruffleImmutableFrameFields = new OptionKey<>(true);
     }
 
-    TruffleInjectImmutableFrameFieldsPhase() {
+    InjectImmutableFrameFieldsPhase() {
     }
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        TruffleCompilerEnvironment env = TruffleCompilerEnvironment.getIfInitialized();
+        TruffleHostEnvironment env = TruffleHostEnvironment.get(graph.method());
         if (env == null) {
             return;
         }
@@ -63,15 +61,14 @@ public class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<HighTierCo
         for (Node node : graph.getNodes()) {
             if (node instanceof LoadFieldNode) {
                 LoadFieldNode fieldNode = (LoadFieldNode) node;
-                if (isForcedImmutable(fieldNode.field(), frameType) && !fieldNode.getLocationIdentity().isImmutable()) {
+                if (isForcedImmutable(env, fieldNode.field(), frameType) && !fieldNode.getLocationIdentity().isImmutable()) {
                     graph.replaceFixedWithFixed(fieldNode, graph.add(LoadFieldNode.createOverrideImmutable(fieldNode)));
                 }
             }
         }
     }
 
-    private static boolean isForcedImmutable(ResolvedJavaField field, ResolvedJavaType frameType) {
-        TruffleCompilerEnvironment env = TruffleCompilerEnvironment.getIfInitialized();
+    private static boolean isForcedImmutable(TruffleHostEnvironment env, ResolvedJavaField field, ResolvedJavaType frameType) {
         if (env == null) {
             return false;
         }
@@ -95,10 +92,10 @@ public class TruffleInjectImmutableFrameFieldsPhase extends BasePhase<HighTierCo
 
     public static void install(PhaseSuite<HighTierContext> highTier, OptionValues options) {
         // before lowering phase.
-        if (Options.TruffleImmutableFrameFields.getValue(options) && TruffleCompilerEnvironment.isInitialized()) {
+        if (Options.TruffleImmutableFrameFields.getValue(options)) {
             var phase = highTier.findPhase(HighTierLoweringPhase.class);
             phase.previous();
-            phase.add(new TruffleInjectImmutableFrameFieldsPhase());
+            phase.add(new InjectImmutableFrameFieldsPhase());
         }
     }
 }

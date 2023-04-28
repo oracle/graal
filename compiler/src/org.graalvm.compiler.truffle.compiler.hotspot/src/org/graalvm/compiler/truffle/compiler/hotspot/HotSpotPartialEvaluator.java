@@ -25,27 +25,41 @@
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.util.FieldKey;
+import org.graalvm.compiler.core.common.util.MethodKey;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
+import org.graalvm.compiler.truffle.compiler.TruffleElementCache;
 import org.graalvm.options.OptionValues;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
+    private static final int CONSTANT_INFO_CACHE_SIZE = 1024;
+    private static final int METHOD_INFO_CACHE_SIZE = 1024;
+
     private final AtomicReference<EconomicMap<ResolvedJavaMethod, EncodedGraph>> graphCacheRef;
 
     private int jvmciReservedReference0Offset = -1;
-
     private boolean disableEncodedGraphCachePurges;
+
+    private final PartialEvaluationMethodInfoCache methodInfoCache = new PartialEvaluationMethodInfoCache();
+    private final ConstantFieldInfoCache constantInfoCache = new ConstantFieldInfoCache();
+
+    private final ConcurrentMap<PartialEvaluationMethodInfo, PartialEvaluationMethodInfo> canonicalMethodInfos = new ConcurrentHashMap<>();
 
     public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         super(config, configForRoot);
@@ -64,6 +78,16 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected void initialize(OptionValues options) {
         super.initialize(options);
+    }
+
+    @Override
+    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+        return constantInfoCache.get(field);
+    }
+
+    @Override
+    public PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method) {
+        return methodInfoCache.get(method);
     }
 
     @Override
@@ -128,4 +152,47 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
             return super.getCreateCachedGraphScope();
         }
     }
+
+    final class PartialEvaluationMethodInfoCache extends TruffleElementCache<ResolvedJavaMethod, PartialEvaluationMethodInfo> {
+
+        PartialEvaluationMethodInfoCache() {
+            super(METHOD_INFO_CACHE_SIZE); // cache size
+        }
+
+        @Override
+        protected Object createKey(ResolvedJavaMethod method) {
+            return new MethodKey(method);
+        }
+
+        @Override
+        protected PartialEvaluationMethodInfo computeValue(ResolvedJavaMethod method) {
+            PartialEvaluationMethodInfo methodInfo = config.runtime().getPartialEvaluationMethodInfo(method);
+            /*
+             * We can canonicalize the instances to reduce space required in the cache. There are
+             * only a small number of possible instances of PartialEvaluationMethodInfo as it just
+             * contains a bunch of flags.
+             */
+            return canonicalMethodInfos.computeIfAbsent(methodInfo, k -> k);
+        }
+
+    }
+
+    final class ConstantFieldInfoCache extends TruffleElementCache<ResolvedJavaField, ConstantFieldInfo> {
+
+        ConstantFieldInfoCache() {
+            super(CONSTANT_INFO_CACHE_SIZE); // cache size
+        }
+
+        @Override
+        protected Object createKey(ResolvedJavaField field) {
+            return new FieldKey(field);
+        }
+
+        @Override
+        protected ConstantFieldInfo computeValue(ResolvedJavaField field) {
+            return config.runtime().getConstantFieldInfo(field);
+        }
+
+    }
+
 }

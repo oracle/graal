@@ -69,6 +69,8 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
@@ -84,6 +86,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
@@ -96,9 +99,9 @@ public abstract class PartialEvaluator {
     // Configs
     protected final TruffleCompilerConfiguration config;
     // TODO GR-37097 Move to TruffleCompilerImpl
-    volatile GraphBuilderConfiguration configForParsing;
+    volatile GraphBuilderConfiguration graphBuilderConfigForParsing;
     // Plugins
-    private final GraphBuilderConfiguration configPrototype;
+    private final GraphBuilderConfiguration graphBuilderConfigPrototype;
     private final InvocationPlugins firstTierDecodingPlugins;
     private final InvocationPlugins lastTierDecodingPlugins;
     protected final PELoopExplosionPlugin loopExplosionPlugin = new PELoopExplosionPlugin();
@@ -119,22 +122,20 @@ public abstract class PartialEvaluator {
      */
     // TODO GR-37097 Move to TruffleCompilerImpl
     protected volatile InstrumentPhase.Instrumentation instrumentation;
-    protected final TruffleConstantFieldProvider compilationLocalConstantProvider;
     protected boolean allowAssumptionsDuringParsing;
     protected boolean persistentEncodedGraphCache;
+
+    protected final TruffleConstantFieldProvider constantFieldProvider;
 
     @SuppressWarnings("this-escape")
     public PartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         this.config = config;
         this.types = config.types();
-        this.configPrototype = createGraphBuilderConfig(configForRoot, true);
+        this.graphBuilderConfigPrototype = createGraphBuilderConfig(configForRoot, true);
         this.firstTierDecodingPlugins = createDecodingInvocationPlugins(config.firstTier().partialEvaluator(), configForRoot.getPlugins(), config.firstTier().providers());
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
-        this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(
-                        this.config.lastTier().providers().getConstantFieldProvider(),
-                        this.config.lastTier().providers().getMetaAccess(),
-                        types);
+        this.constantFieldProvider = new TruffleConstantFieldProvider(this, getProviders().getConstantFieldProvider());
     }
 
     protected void initialize(OptionValues options) {
@@ -144,7 +145,7 @@ public abstract class PartialEvaluator {
                         instrumentationCfg.instrumentBoundaries ||
                         !options.get(TracePerformanceWarnings).isEmpty() ||
                         (TruffleOptions.AOT && options.get(TraceTransferToInterpreter));
-        configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
+        graphBuilderConfigForParsing = graphBuilderConfigPrototype.withNodeSourcePosition(graphBuilderConfigPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         options.get(ExcludeAssertions));
 
         this.allowAssumptionsDuringParsing = options.get(ParsePEGraphsWithAssumptions);
@@ -152,6 +153,10 @@ public abstract class PartialEvaluator {
         // disabled if assumptions are allowed.
         this.persistentEncodedGraphCache = options.get(EncodedGraphCache) && !options.get(ParsePEGraphsWithAssumptions);
     }
+
+    public abstract PartialEvaluationMethodInfo getMethodInfo(ResolvedJavaMethod method);
+
+    public abstract ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field);
 
     public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
         return EconomicMap.create();
@@ -185,8 +190,8 @@ public abstract class PartialEvaluator {
         throw new NoSuchMethodError(declaringClass.toJavaName() + "." + name + descriptor);
     }
 
-    public static InlineInvokePlugin.InlineInfo asInlineInfo(ResolvedJavaMethod method) {
-        final TruffleCompilerRuntime.InlineKind inlineKind = TruffleCompilerEnvironment.get().runtime().getInlineKind(method, true);
+    public final InlineInvokePlugin.InlineInfo asInlineInfo(ResolvedJavaMethod method) {
+        final TruffleCompilerRuntime.InlineKind inlineKind = getMethodInfo(method).inlineForPartialEvaluation();
         switch (inlineKind) {
             case DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION:
                 return InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_DEOPTIMIZE_ON_EXCEPTION;
@@ -210,24 +215,25 @@ public abstract class PartialEvaluator {
      * Returns the root {@link GraphBuilderConfiguration}. The root configuration provides plugins
      * used by this {@link PartialEvaluator} but it's not configured with engine options. The root
      * configuration should be used in image generation time where the {@link PartialEvaluator} is
-     * not yet initialized with engine options. At runtime the {@link #getConfig} should be used.
+     * not yet initialized with engine options. At runtime the
+     * {@link #getGraphBuilderConfigForParsing} should be used.
      */
-    public GraphBuilderConfiguration getConfigPrototype() {
-        return configPrototype;
+    public GraphBuilderConfiguration getGraphBuilderConfigPrototype() {
+        return graphBuilderConfigPrototype;
     }
 
     /**
      * Returns the {@link GraphBuilderConfiguration} used by parsing. The returned configuration is
      * configured with engine options. In the image generation time the {@link PartialEvaluator} is
-     * not yet initialized and the {@link #getConfigPrototype} should be used instead.
+     * not yet initialized and the {@link #getGraphBuilderConfigPrototype} should be used instead.
      *
      * @throws IllegalStateException when called on non initialized {@link PartialEvaluator}
      */
-    public GraphBuilderConfiguration getConfig() {
-        if (configForParsing == null) {
+    public GraphBuilderConfiguration getGraphBuilderConfigForParsing() {
+        if (graphBuilderConfigForParsing == null) {
             throw new IllegalStateException("PartialEvaluator is not yet initialized");
         }
-        return configForParsing;
+        return graphBuilderConfigForParsing;
     }
 
     public KnownTruffleTypes getTypes() {
@@ -362,11 +368,11 @@ public abstract class PartialEvaluator {
         }
     }
 
-    private static final class PELoopExplosionPlugin implements LoopExplosionPlugin {
+    private final class PELoopExplosionPlugin implements LoopExplosionPlugin {
 
         @Override
         public LoopExplosionKind loopExplosionKind(ResolvedJavaMethod method) {
-            TruffleCompilerRuntime.LoopExplosionKind explosionKind = TruffleCompilerEnvironment.get().runtime().getLoopExplosionKind(method);
+            TruffleCompilerRuntime.LoopExplosionKind explosionKind = getMethodInfo(method).loopExplosion();
             switch (explosionKind) {
                 case NONE:
                     return LoopExplosionKind.NONE;
@@ -390,7 +396,7 @@ public abstract class PartialEvaluator {
     protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
                     Supplier<AutoCloseable> createCachedGraphScope) {
-        final GraphBuilderConfiguration newConfig = configForParsing.copy();
+        final GraphBuilderConfiguration newConfig = graphBuilderConfigForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
         Plugins plugins = newConfig.getPlugins();
@@ -402,11 +408,11 @@ public abstract class PartialEvaluator {
             plugins.appendInlineInvokePlugin(new InlineDuringParsingPlugin());
         }
         InvocationPlugins decodingPlugins = context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins;
-
         DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
-                        method -> TruffleCompilerEnvironment.get().runtime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
+                        method -> getMethodInfo(method).inlineForPartialEvaluation() == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 
-        Providers compilationUnitProviders = config.lastTier().providers().copyWith(compilationLocalConstantProvider);
+        Providers baseProviders = config.lastTier().providers();
+        Providers compilationUnitProviders = config.lastTier().providers().copyWith(constantFieldProvider);
 
         assert !allowAssumptionsDuringParsing || !persistentEncodedGraphCache;
         return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
@@ -460,8 +466,7 @@ public abstract class PartialEvaluator {
 
     protected void appendParsingNodePlugins(Plugins plugins) {
         if (JavaVersionUtil.JAVA_SPEC < 19) {
-            ResolvedJavaType memorySegmentProxyType = TruffleCompilerEnvironment.get().runtime().resolveType(config.lastTier().providers().getMetaAccess(),
-                            "jdk.internal.access.foreign.MemorySegmentProxy");
+            ResolvedJavaType memorySegmentProxyType = config.types().MemorySegmentProxy;
             for (ResolvedJavaMethod m : memorySegmentProxyType.getDeclaredMethods(false)) {
                 if (m.getName().equals("scope")) {
                     appendMemorySegmentScopePlugin(plugins, m);

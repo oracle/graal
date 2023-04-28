@@ -138,7 +138,7 @@ final class GraphManager {
         partialEvaluator.doGraphPE(context, new InlineInvokePlugin() {
             @Override
             public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-                return PartialEvaluator.asInlineInfo(method);
+                return partialEvaluator.asInlineInfo(method);
             }
         }, graphCacheForInlining);
         InliningUtil.inline(invoke, context.graph, true, partialEvaluator.getCallInlined(), "finalization", AgnosticInliningPhase.class.getName());

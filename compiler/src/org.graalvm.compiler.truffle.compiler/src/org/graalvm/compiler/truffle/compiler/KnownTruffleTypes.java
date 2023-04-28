@@ -69,6 +69,8 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType ReadOnlyBufferException = lookupType(ReadOnlyBufferException.class);
     public final ResolvedJavaType ScopedMemoryAccess_ScopedAccessError = lookupTypeOptional("jdk.internal.misc.ScopedMemoryAccess$ScopedAccessError");
     public final ResolvedJavaType AbstractMemorySegmentImpl = lookupTypeOptional("jdk.internal.foreign.AbstractMemorySegmentImpl");
+    public final ResolvedJavaType MemorySegmentProxy = lookupTypeOptional("jdk.internal.access.foreign.MemorySegmentProxy");
+
     public final Set<ResolvedJavaType> primitiveBoxTypes = Set.of(
                     lookupType(JavaKind.Boolean.toBoxedJavaClass()),
                     lookupType(JavaKind.Byte.toBoxedJavaClass()),
@@ -115,34 +117,14 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField FrameSlotKind_Static = findField(FrameSlotKind, "Static");
     public final ResolvedJavaField FrameSlotKind_tag = findField(FrameSlotKind, "tag");
 
-    public final JavaKind[] FrameSlotKind_tagIndexToJavaKind = createJavaKindByTagIndex(new ResolvedJavaField[]{
-                    FrameSlotKind_Object,
-                    FrameSlotKind_Long,
-                    FrameSlotKind_Int,
-                    FrameSlotKind_Double,
-                    FrameSlotKind_Float,
-                    FrameSlotKind_Boolean,
-                    FrameSlotKind_Byte,
-                    FrameSlotKind_Illegal,
-                    FrameSlotKind_Static,
-    }, new JavaKind[]{
-                    JavaKind.Object,
-                    JavaKind.Long,
-                    JavaKind.Int,
-                    JavaKind.Double,
-                    JavaKind.Float,
-                    JavaKind.Boolean,
-                    JavaKind.Byte,
-                    JavaKind.Illegal,
-                    JavaKind.Illegal,
-    });
-
-    public final EnumMap<JavaKind, Integer> FrameSlotKind_javaKindToTagIndex = createJavaKindMap(FrameSlotKind_tagIndexToJavaKind);
+    public final JavaKind[] FrameSlotKind_tagIndexToJavaKind;
+    public final EnumMap<JavaKind, Integer> FrameSlotKind_javaKindToTagIndex;
 
     // truffle.api.object
     public final ResolvedJavaType Shape = lookupType("com.oracle.truffle.api.object.Shape");
     public final ResolvedJavaType DynamicObject = lookupType("com.oracle.truffle.api.object.DynamicObject");
     public final ResolvedJavaType UnsafeAccess = lookupType("com.oracle.truffle.object.UnsafeAccess");
+    public final ResolvedJavaType enterprise_UnsafeAccess = lookupTypeOptional("com.oracle.truffle.object.enterprise.UnsafeAccess");
 
     // truffle.api.string
     public final ResolvedJavaType TruffleString = lookupType("com.oracle.truffle.api.strings.TruffleString");
@@ -189,13 +171,37 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField OptimizedDirectCallNode_callCount = findField(OptimizedDirectCallNode, "callCount");
 
     public final ResolvedJavaType OptimizedAssumption = lookupType("org.graalvm.compiler.truffle.runtime.OptimizedAssumption");
-
     public final ResolvedJavaType[] skippedExceptionTypes = createSkippedExceptionTypes();
 
     // Checkstyle: resume field name check
+    protected final ConstantReflectionProvider constantReflection;
 
     public KnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
-        super(runtime, metaAccess, constantReflection);
+        super(runtime, metaAccess);
+        this.constantReflection = constantReflection;
+
+        FrameSlotKind_tagIndexToJavaKind = createJavaKindByTagIndex(new ResolvedJavaField[]{
+                        FrameSlotKind_Object,
+                        FrameSlotKind_Long,
+                        FrameSlotKind_Int,
+                        FrameSlotKind_Double,
+                        FrameSlotKind_Float,
+                        FrameSlotKind_Boolean,
+                        FrameSlotKind_Byte,
+                        FrameSlotKind_Illegal,
+                        FrameSlotKind_Static,
+        }, new JavaKind[]{
+                        JavaKind.Object,
+                        JavaKind.Long,
+                        JavaKind.Int,
+                        JavaKind.Double,
+                        JavaKind.Float,
+                        JavaKind.Boolean,
+                        JavaKind.Byte,
+                        JavaKind.Illegal,
+                        JavaKind.Illegal,
+        });
+        FrameSlotKind_javaKindToTagIndex = createJavaKindMap(FrameSlotKind_tagIndexToJavaKind);
     }
 
     private ResolvedJavaType[] createSkippedExceptionTypes() {

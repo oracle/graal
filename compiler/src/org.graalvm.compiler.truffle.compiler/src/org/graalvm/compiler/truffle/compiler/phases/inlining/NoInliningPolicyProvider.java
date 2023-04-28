@@ -39,7 +39,7 @@ public class NoInliningPolicyProvider extends InliningPolicyProvider {
     }
 
     @Override
-    public InliningPolicy get(OptionValues options, CoreProviders providers) {
+    public InliningPolicy get(org.graalvm.compiler.options.OptionValues graalOptions, OptionValues options, CoreProviders providers) {
         return new NoInliningPolicy();
     }
 }

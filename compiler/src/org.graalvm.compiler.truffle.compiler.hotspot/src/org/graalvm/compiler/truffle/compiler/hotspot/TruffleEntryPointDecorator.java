@@ -33,6 +33,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.lir.asm.EntryPointDecorator;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -49,12 +50,12 @@ public abstract class TruffleEntryPointDecorator implements EntryPointDecorator 
     protected final int installedCodeOffset;
     protected final int entryPointOffset;
 
-    public TruffleEntryPointDecorator(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
-        this.metaAccess = metaAccess;
+    public TruffleEntryPointDecorator(TruffleCompilerConfiguration compilerConfig, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers) {
+        this.metaAccess = compilerConfig.lastTier().providers().getMetaAccess();
         this.config = config;
         this.registers = registers;
 
-        var types = HotSpotTruffleCompilerEnvironment.get().types();
+        HotSpotKnownTruffleTypes types = (HotSpotKnownTruffleTypes) compilerConfig.types();
         this.installedCodeOffset = types.HotSpotOptimizedCallTarget_installedCode.getOffset();
         this.entryPointOffset = types.InstalledCode_entryPoint.getOffset();
     }

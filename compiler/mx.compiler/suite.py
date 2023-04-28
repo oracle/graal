@@ -1772,6 +1772,9 @@ suite = {
       "annotationProcessors" : [
           "GRAAL_PROCESSOR",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : "*"
+      },
       "workingSets" : "Graal,Truffle",
     },
 
@@ -1817,6 +1820,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
       "annotationProcessors" : [
+        "GRAAL_PROCESSOR",
         "GRAAL_LIBGRAAL_PROCESSOR",
       ],
       "workingSets" : "Graal,Truffle",

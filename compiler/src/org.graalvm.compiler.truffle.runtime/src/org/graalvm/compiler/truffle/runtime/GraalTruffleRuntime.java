@@ -52,7 +52,10 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -218,6 +221,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      */
     protected abstract String getCompilerConfigurationName();
 
+    public abstract TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
+
     protected GraalTVMCI getTvmci() {
         return tvmci;
     }
@@ -298,15 +303,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
         if (field.isAnnotationPresent(Child.class)) {
-            return TruffleCompilerRuntime.ConstantFieldInfo.CHILD;
+            return ConstantFieldInfo.CHILD;
         }
         if (field.isAnnotationPresent(Children.class)) {
-            return TruffleCompilerRuntime.ConstantFieldInfo.CHILDREN;
+            return ConstantFieldInfo.CHILDREN;
         }
         CompilationFinal cf = field.getAnnotation(CompilationFinal.class);
         if (cf != null) {
             int dimensions = actualStableDimensions(field, cf.dimensions());
-            return TruffleCompilerRuntime.ConstantFieldInfo.forDimensions(dimensions);
+            return ConstantFieldInfo.forDimensions(dimensions);
         }
         return null;
     }
@@ -334,30 +339,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             dimensions++;
         }
         return dimensions;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method) {
-        ExplodeLoop explodeLoop = getAnnotation(ExplodeLoop.class, method);
-        if (explodeLoop == null) {
-            return LoopExplosionKind.NONE;
-        }
-
-        switch (explodeLoop.kind()) {
-            case FULL_UNROLL:
-                return LoopExplosionKind.FULL_UNROLL;
-            case FULL_UNROLL_UNTIL_RETURN:
-                return LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
-            case FULL_EXPLODE:
-                return LoopExplosionKind.FULL_EXPLODE;
-            case FULL_EXPLODE_UNTIL_RETURN:
-                return LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
-            case MERGE_EXPLODE:
-                return LoopExplosionKind.MERGE_EXPLODE;
-            default:
-                throw new InternalError(String.format("Unknown Truffle LoopExplosionKind %s", explodeLoop.kind()));
-        }
     }
 
     @SuppressWarnings("deprecation")
@@ -488,6 +469,90 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         JFRListener.install(this);
         TruffleSplittingStrategy.installListener(this);
         Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+    }
+
+    @Override
+    public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
+        return new HostMethodInfo(isTruffleBoundary(method),
+                        isBytecodeInterpreterSwitch(method),
+                        isBytecodeInterpreterSwitchBoundary(method),
+                        isInliningCutoff(method));
+    }
+
+    private static boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
+        return getAnnotation(BytecodeInterpreterSwitch.class, method) != null;
+    }
+
+    private static boolean isInliningCutoff(ResolvedJavaMethod method) {
+        return getAnnotation(InliningCutoff.class, method) != null;
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method) {
+        return getAnnotation(com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class, method) != null;
+    }
+
+    private static boolean isTruffleBoundary(ResolvedJavaMethod method) {
+        return getAnnotation(TruffleBoundary.class, method) != null;
+    }
+
+    @Override
+    public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
+        TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, method);
+        TruffleCallBoundary truffleCallBoundary = getAnnotation(TruffleCallBoundary.class, method);
+        return new PartialEvaluationMethodInfo(getLoopExplosionKind(method),
+                        getInlineKind(truffleBoundary, truffleCallBoundary, method, true),
+                        getInlineKind(truffleBoundary, truffleCallBoundary, method, false),
+                        method.canBeInlined(),
+                        isSpecializationMethod(method));
+    }
+
+    private static boolean isSpecializationMethod(ResolvedJavaMethod method) {
+        return getAnnotation(Specialization.class, method) != null;
+    }
+
+    private static LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method) {
+        ExplodeLoop explodeLoop = getAnnotation(ExplodeLoop.class, method);
+        if (explodeLoop == null) {
+            return LoopExplosionKind.NONE;
+        }
+        switch (explodeLoop.kind()) {
+            case FULL_UNROLL:
+                return LoopExplosionKind.FULL_UNROLL;
+            case FULL_UNROLL_UNTIL_RETURN:
+                return LoopExplosionKind.FULL_UNROLL_UNTIL_RETURN;
+            case FULL_EXPLODE:
+                return LoopExplosionKind.FULL_EXPLODE;
+            case FULL_EXPLODE_UNTIL_RETURN:
+                return LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
+            case MERGE_EXPLODE:
+                return LoopExplosionKind.MERGE_EXPLODE;
+            default:
+                throw new InternalError(String.format("Unknown Truffle LoopExplosionKind %s", explodeLoop.kind()));
+        }
+    }
+
+    private static InlineKind getInlineKind(TruffleBoundary truffleBoundary, TruffleCallBoundary truffleCallBoundary, ResolvedJavaMethod method, boolean duringPartialEvaluation) {
+        if (truffleBoundary != null) {
+            if (duringPartialEvaluation) {
+                // Since this method is invoked by the bytecode parser plugins, which can be invoked
+                // by the partial evaluator, we want to prevent inlining across the boundary during
+                // partial evaluation,
+                // even if the TruffleBoundary allows inlining after partial evaluation.
+                if (truffleBoundary.transferToInterpreterOnException()) {
+                    return InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION;
+                } else {
+                    return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+                }
+            } else if (!truffleBoundary.allowInlining()) {
+                return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+            }
+        } else if (truffleCallBoundary != null) {
+            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+        } else if (JFRListener.isInstrumented(method)) {
+            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
+        }
+        return InlineKind.INLINE;
     }
 
     public final void initializeKnownMethods(MetaAccessProvider metaAccess) {
@@ -965,91 +1030,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public InlineKind getInlineKind(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
-        TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, original);
-        if (truffleBoundary != null) {
-            if (duringPartialEvaluation) {
-                // Since this method is invoked by the bytecode parser plugins, which can be invoked
-                // by the partial evaluator, we want to prevent inlining across the boundary during
-                // partial evaluation,
-                // even if the TruffleBoundary allows inlining after partial evaluation.
-                if (truffleBoundary.transferToInterpreterOnException()) {
-                    return InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION;
-                } else {
-                    return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-                }
-            } else if (!truffleBoundary.allowInlining()) {
-                return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-            }
-        } else if (getAnnotation(TruffleCallBoundary.class, original) != null) {
-            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-        } else if (JFRListener.isInstrumented(original)) {
-            return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
-        }
-        return InlineKind.INLINE;
-    }
-
-    @Override
-    public boolean isInlineable(ResolvedJavaMethod method) {
-        /*
-         * Ensure that methods excluded from inlining are also never inlined during Truffle
-         * compilation.
-         */
-        return method.canBeInlined();
-    }
-
-    @Override
-    public boolean isTruffleBoundary(ResolvedJavaMethod method) {
-        return getAnnotation(TruffleBoundary.class, method) != null;
-    }
-
-    @Override
-    public boolean isSpecializationMethod(ResolvedJavaMethod method) {
-        return getAnnotation(Specialization.class, method) != null;
-    }
-
-    @Override
-    public boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method) {
-        return getAnnotation(BytecodeInterpreterSwitch.class, method) != null;
-    }
-
-    @Override
-    public boolean isInliningCutoff(ResolvedJavaMethod method) {
-        return getAnnotation(InliningCutoff.class, method) != null;
-    }
-
-    /**
-     * Determines if {@code method} is an inInterpeter method.
-     */
-    @Override
-    public boolean isInInterpreter(ResolvedJavaMethod method) {
-        return method.getName().equals("inInterpreter") && method.getDeclaringClass().toClassName().equals(CompilerDirectives.class.getName());
-    }
-
-    /**
-     * Determines if {@code method} is an inInterpeter method.
-     */
-    @Override
-    public boolean isInInterpreterFastPath(ResolvedJavaMethod method) {
-        return method.getName().equals("inInterpreterFastPath") && method.getDeclaringClass().toClassName().equals(HostCompilerDirectives.class.getName());
-    }
-
-    /**
-     * Determines if {@code method} is a method is a transferToInterpreter method.
-     */
-    @Override
-    public boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
-        return (method.getName().equals("transferToInterpreter") || method.getName().equals("transferToInterpreterAndInvalidate")) &&
-                        method.getDeclaringClass().toClassName().equals(CompilerDirectives.class.getName());
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method) {
-        return getAnnotation(com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary.class, method) != null;
-    }
-
-    @Override
     public void log(String loggerId, CompilableTruffleAST compilable, String message) {
         ((OptimizedCallTarget) compilable).engine.getLogger(loggerId).log(Level.INFO, message);
     }
@@ -1206,11 +1186,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public long getStackOverflowLimit() {
         throw new UnsupportedOperationException();
     }
-
-    /*
-     * This method is called reflectively by TruffleCompilerEnvironment.
-     */
-    public abstract Object createCompilerEnvironment();
 
     public static class StackTraceHelper {
         public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {

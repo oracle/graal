@@ -75,7 +75,7 @@ final class ParsingInlineInvokePlugin implements InlineInvokePlugin {
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         }
 
-        InlineInfo inlineInfo = PartialEvaluator.asInlineInfo(original);
+        InlineInfo inlineInfo = partialEvaluator.asInlineInfo(original);
         if (!inlineInfo.allowsInlining()) {
             return inlineInfo;
         }

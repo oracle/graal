@@ -31,7 +31,6 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.AddTestNode;
@@ -112,7 +111,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         } catch (GraalBailoutException t) {
             // Expected verification error occurred.
             StackTraceElement[] trace = t.getStackTrace();
-            if (getTruffleCompiler(null).getPartialEvaluator().getConfig().trackNodeSourcePosition() || GraalOptions.TrackNodeSourcePosition.getValue(getInitialOptions())) {
+            if (getTruffleCompiler(null).getPartialEvaluator().getGraphBuilderConfigForParsing().trackNodeSourcePosition() || GraalOptions.TrackNodeSourcePosition.getValue(getInitialOptions())) {
                 assertStack(trace[0], "com.oracle.truffle.api.CompilerAsserts", "neverPartOfCompilation", "CompilerAsserts.java");
                 assertStack(trace[1], "org.graalvm.compiler.truffle.test.nodes.NeverPartOfCompilationTestNode", "execute", "NeverPartOfCompilationTestNode.java");
                 assertStack(trace[2], "org.graalvm.compiler.truffle.test.nodes.RootTestNode", "execute", "RootTestNode.java");
@@ -677,7 +676,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
     @Test
     public void allowedRecursion() {
-        OptionValues graalOptions = TruffleCompilerEnvironment.get().runtime().getGraalOptions(OptionValues.class);
+        OptionValues graalOptions = getGraalOptions();
         /* Recursion depth just below the threshold that reports it as too deep recursion. */
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue(graalOptions) - 5);
@@ -686,7 +685,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
 
     @Test(expected = BailoutException.class)
     public void tooDeepRecursion() {
-        OptionValues graalOptions = TruffleCompilerEnvironment.get().runtime().getGraalOptions(OptionValues.class);
+        OptionValues graalOptions = getGraalOptions();
         /* Recursion depth just above the threshold that reports it as too deep recursion. */
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new RecursionTestNode(PEGraphDecoder.Options.InliningDepthError.getValue(graalOptions));

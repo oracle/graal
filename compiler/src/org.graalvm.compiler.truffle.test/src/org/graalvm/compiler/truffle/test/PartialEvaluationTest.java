@@ -47,7 +47,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
@@ -294,7 +293,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
                 }
                 TruffleTier truffleTier = compiler.getTruffleTier();
                 final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
-                try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(compilable.getOptionValues())) {
+                try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(compiler.getConfig().runtime(), compilable.getOptionValues())) {
                     final TruffleTierContext context = new TruffleTierContext(partialEvaluator, compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable),
                                     compilation.getCompilationId(), speculationLog,
                                     task,
@@ -313,7 +312,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected OptionValues getGraalOptions() {
-        OptionValues options = TruffleCompilerEnvironment.get().runtime().getGraalOptions(OptionValues.class);
+        OptionValues options = getTruffleCompiler().getConfig().runtime().getGraalOptions(OptionValues.class);
         if (preventDumping) {
             options = new OptionValues(options, DumpOnError, false);
         }

@@ -37,7 +37,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -64,19 +63,18 @@ import jdk.vm.ci.meta.Signature;
 final class ExpansionStatistics {
 
     private final Set<CompilationTier> enabledStages = new HashSet<>();
-
+    private final PartialEvaluator partialEvaluator;
     private volatile CompilableTruffleAST previousCompilation;
     private final Set<CompilationTier> traceMethodExpansion;
     private final Set<CompilationTier> traceNodeExpansion;
     private final Map<CompilationTier, Map<ResolvedJavaMethod, Stats>> methodExpansionStatistics = new HashMap<>();
     private final Map<CompilationTier, Map<NodeClassKey, Stats>> nodeExpansionStatistics = new HashMap<>();
     private final Map<CompilationTier, Map<NodeSpecializationKey, Stats>> specializationExpansionStatistics = new HashMap<>();
-    private final ConcurrentHashMap<ResolvedJavaMethod, Boolean> isSpecializationMethodCache = new ConcurrentHashMap<>();
 
-    private ExpansionStatistics(
+    private ExpansionStatistics(PartialEvaluator partialEvaluator,
                     Set<CompilationTier> traceMethodExpansion, Set<CompilationTier> traceNodeExpansion,
                     Set<CompilationTier> methodExpansionStatistics, Set<CompilationTier> nodeExpansionStatistics) {
-
+        this.partialEvaluator = partialEvaluator;
         this.traceMethodExpansion = traceMethodExpansion;
         this.traceNodeExpansion = traceNodeExpansion;
         for (CompilationTier tier : methodExpansionStatistics) {
@@ -91,7 +89,7 @@ final class ExpansionStatistics {
         this.enabledStages.addAll(nodeExpansionStatistics);
     }
 
-    static ExpansionStatistics create(org.graalvm.options.OptionValues options) {
+    static ExpansionStatistics create(PartialEvaluator partialEvaluator, org.graalvm.options.OptionValues options) {
         if (!isEnabled(options)) {
             return null;
         }
@@ -106,7 +104,7 @@ final class ExpansionStatistics {
             traceMethodExpansion = new HashSet<>(traceMethodExpansion);
             traceMethodExpansion.add(CompilationTier.truffleTier);
         }
-        return new ExpansionStatistics(traceMethodExpansion, traceNodeExpansion, methodExpansionStatistics, nodeExpansionStatistics);
+        return new ExpansionStatistics(partialEvaluator, traceMethodExpansion, traceNodeExpansion, methodExpansionStatistics, nodeExpansionStatistics);
     }
 
     static boolean isEnabled(org.graalvm.options.OptionValues options) {
@@ -181,7 +179,7 @@ final class ExpansionStatistics {
             combineExpansionStatistics(tier, this.nodeExpansionStatistics, classSums);
 
             Map<NodeSpecializationKey, Stats> specializationSums = new HashMap<>();
-            nodeTree.acceptStats(specializationSums, (tree) -> new NodeSpecializationKey(tree, isSpecializationMethodCache), compilable.getName());
+            nodeTree.acceptStats(specializationSums, (tree) -> new NodeSpecializationKey(tree), compilable.getName());
 
             combineExpansionStatistics(tier, this.specializationExpansionStatistics, specializationSums);
         }
@@ -204,7 +202,7 @@ final class ExpansionStatistics {
         }
     }
 
-    private static <T, S> void printHistogram(CompilableTruffleAST ast, CompilationTier tier,
+    private <T, S> void printHistogram(CompilableTruffleAST ast, CompilationTier tier,
                     Map<T, Stats> statsMap, Function<T, String> labelFunction,
                     Map<S, Stats> subGroupMap, Function<S, String> subGroupLabelFunction,
                     Function<S, T> subGroupToGroup, String kind) {
@@ -262,7 +260,7 @@ final class ExpansionStatistics {
 
             }
         }
-        TruffleCompilerEnvironment.get().runtime().log(ast, String.format("%s expansion statistics after %s:%n%s", kind, tier.toString(), writer.toString()));
+        partialEvaluator.config.runtime().log(ast, String.format("%s expansion statistics after %s:%n%s", kind, tier.toString(), writer.toString()));
     }
 
     private static void printHistogramStats(PrintWriter w, String indent, int maxLabelLength, String label, Stats stats) {
@@ -291,7 +289,7 @@ final class ExpansionStatistics {
         return Long.compare(e1.getValue().count.getSum(), e0.getValue().count.getSum());
     }
 
-    private static TreeNode buildMethodTree(StructuredGraph graph) {
+    private TreeNode buildMethodTree(StructuredGraph graph) {
         TreeNode root = new TreeNode(null, null, ExpansionStatistics::buildMethodTreeLabel);
         SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
@@ -321,7 +319,7 @@ final class ExpansionStatistics {
         return formatQualifiedMethod(pos.getMethod());
     }
 
-    private static TreeNode resolveMethodTree(TreeNode root, NodeSourcePosition pos) {
+    private TreeNode resolveMethodTree(TreeNode root, NodeSourcePosition pos) {
         if (pos == null) {
             return root;
         }
@@ -343,12 +341,12 @@ final class ExpansionStatistics {
         }
     }
 
-    private static void printExpansionTree(CompilableTruffleAST compilable, TreeNode tree, CompilationTier tier) {
+    private void printExpansionTree(CompilableTruffleAST compilable, TreeNode tree, CompilationTier tier) {
         StringWriter writer = new StringWriter();
         try (PrintWriter w = new PrintWriter(writer)) {
             tree.print(w);
         }
-        TruffleCompilerEnvironment.get().runtime().log(compilable, String.format("Expansion tree for %s after %s:%n%s", compilable.getName(), tier.toString(), writer.toString()));
+        partialEvaluator.config.runtime().log(compilable, String.format("Expansion tree for %s after %s:%n%s", compilable.getName(), tier.toString(), writer.toString()));
     }
 
     private static String formatQualifiedMethod(ResolvedJavaMethod method) {
@@ -501,9 +499,9 @@ final class ExpansionStatistics {
         private final NodeClassKey classKey;
         private final Set<ResolvedJavaMethod> specializations;
 
-        NodeSpecializationKey(TreeNode tree, ConcurrentHashMap<ResolvedJavaMethod, Boolean> isSpecializationCache) {
+        NodeSpecializationKey(TreeNode tree) {
             this.classKey = new NodeClassKey(tree);
-            this.specializations = tree.findSpecializationMethods(isSpecializationCache);
+            this.specializations = tree.findSpecializationMethods();
         }
 
         @Override
@@ -705,7 +703,7 @@ final class ExpansionStatistics {
 
     }
 
-    static final class TreeNode {
+    final class TreeNode {
 
         static final double UNSET_FREQUENCY = -0.0d;
 
@@ -724,7 +722,7 @@ final class ExpansionStatistics {
             this.label = label;
         }
 
-        Set<ResolvedJavaMethod> findSpecializationMethods(ConcurrentHashMap<ResolvedJavaMethod, Boolean> cache) {
+        Set<ResolvedJavaMethod> findSpecializationMethods() {
             Set<ResolvedJavaMethod> specializations = new HashSet<>();
             int nodeId = getTruffleNodeId(position);
 
@@ -737,34 +735,29 @@ final class ExpansionStatistics {
                         break;
                     }
                     ResolvedJavaMethod method = currentPos.getMethod();
-                    if (method != null && isSpecializationMethod(method, cache)) {
+                    if (method != null && isSpecializationMethod(method)) {
                         specializations.add(currentPos.getMethod());
                     }
                     currentPos = currentPos.getCaller();
                 }
             }
-            findSpecializationMethodsWithNodeId(specializations, nodeId, cache);
+            findSpecializationMethodsWithNodeId(specializations, nodeId);
 
             return specializations;
         }
 
-        private static boolean isSpecializationMethod(ResolvedJavaMethod method, ConcurrentHashMap<ResolvedJavaMethod, Boolean> cache) {
-            /*
-             * We cache because libgraal jni transitions are expensive and we need to query this
-             * property many times for the methods. If GR-25553 gets to be implemented then we
-             * should just use the normal annotation API that is internally cached.
-             */
-            return cache.computeIfAbsent(method, (m) -> TruffleCompilerEnvironment.get().runtime().isSpecializationMethod(m));
+        private boolean isSpecializationMethod(ResolvedJavaMethod method) {
+            return partialEvaluator.getMethodInfo(method).isSpecializationMethod();
         }
 
-        private void findSpecializationMethodsWithNodeId(Set<ResolvedJavaMethod> specializations, int nodeId, ConcurrentHashMap<ResolvedJavaMethod, Boolean> cache) {
+        private void findSpecializationMethodsWithNodeId(Set<ResolvedJavaMethod> specializations, int nodeId) {
             for (Node node : graalNodes) {
                 NodeSourcePosition currentPos = node.getNodeSourcePosition();
                 while (currentPos != null) {
                     SourceLanguagePosition sourceLang = currentPos.getSourceLanguage();
                     if (sourceLang != null && sourceLang.getNodeId() == nodeId) {
                         ResolvedJavaMethod method = currentPos.getMethod();
-                        if (method != null && isSpecializationMethod(method, cache)) {
+                        if (method != null && isSpecializationMethod(method)) {
                             specializations.add(currentPos.getMethod());
                         }
                     }
@@ -772,7 +765,7 @@ final class ExpansionStatistics {
                 }
             }
             for (TreeNode child : children.values()) {
-                child.findSpecializationMethodsWithNodeId(specializations, nodeId, cache);
+                child.findSpecializationMethodsWithNodeId(specializations, nodeId);
             }
         }
 

@@ -33,7 +33,7 @@ public final class ReportPerformanceWarningsPhase extends BasePhase<TruffleTierC
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         if (context.handler != null) {
-            context.handler.reportPerformanceWarnings(context.compilable, graph);
+            context.handler.reportPerformanceWarnings(context);
         }
     }
 }

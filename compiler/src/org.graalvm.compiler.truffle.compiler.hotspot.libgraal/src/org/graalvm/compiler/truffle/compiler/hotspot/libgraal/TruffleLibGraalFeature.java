@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler;
+package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.nativeimage.hosted.Feature;
 
-/**
- * This interface declares additional methods from {@link TruffleCompilerImpl} which are not
- * declared in {@link TruffleCompiler}, but which existing code has come to rely on by casting
- * instances to {@link TruffleCompilerImpl}. With this interface, it becomes possible to implement a
- * working {@link TruffleCompiler} without subclassing {@link TruffleCompilerImpl}. Ideally, this
- * interface wouldn't exist and its methods would either be declared in {@link TruffleCompiler} or
- * be provided through other means.
- */
-public interface TruffleCompilerBase extends TruffleCompiler {
+public class TruffleLibGraalFeature implements Feature {
 
-    PartialEvaluator getPartialEvaluator();
-
-    SnippetReflectionProvider getSnippetReflection();
-
-    TruffleTier getTruffleTier();
-
-    TruffleCompilerConfiguration getConfig();
+    @SuppressWarnings({"try", "unchecked"})
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        TruffleHostEnvironment.overrideLookup(new LibGraalTruffleHostEnvironmentLookup());
+    }
 }

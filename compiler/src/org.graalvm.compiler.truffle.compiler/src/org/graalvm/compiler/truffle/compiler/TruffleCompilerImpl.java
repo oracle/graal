@@ -115,7 +115,7 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
  */
-public abstract class TruffleCompilerImpl implements TruffleCompilerBase, CompilationWatchDog.EventHandler {
+public abstract class TruffleCompilerImpl implements TruffleCompiler, CompilationWatchDog.EventHandler {
 
     protected TruffleCompilerConfiguration config;
     protected final GraphBuilderConfiguration builderConfig;
@@ -137,8 +137,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     public TruffleCompilerImpl(TruffleCompilerConfiguration config) {
         this.config = config;
         this.codeInstallationTaskFactory = new TrufflePostCodeInstallationTaskFactory();
+
         for (Backend backend : config.backends()) {
-            backend.addCodeInstallationTask(codeInstallationTaskFactory);
+            initializeBackend(backend);
         }
 
         GraphBuilderConfiguration baseConfig = GraphBuilderConfiguration.getDefault(new Plugins(this.config.plugins()));
@@ -153,7 +154,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         this.partialEvaluator = createPartialEvaluator(config);
     }
 
-    @Override
+    public void initializeBackend(Backend backend) {
+        backend.addCodeInstallationTask(codeInstallationTaskFactory);
+    }
+
     public TruffleCompilerConfiguration getConfig() {
         return config;
     }
@@ -232,13 +236,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
 
     @SuppressWarnings("static-method")
     public final TruffleCompilation openCompilation(TruffleCompilationTask task, CompilableTruffleAST compilable) {
-        TruffleCompilation compilation = new TruffleCompilation(task, compilable);
+        TruffleCompilation compilation = new TruffleCompilation(config.runtime(), task, compilable);
         compilation.setCompilationId(createCompilationIdentifier(task, compilable));
         return compilation;
     }
 
     private DebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
-        OptionValues graalOptions = TruffleCompilerEnvironment.get().runtime().getGraalOptions(OptionValues.class);
+        OptionValues graalOptions = config.runtime().getGraalOptions(OptionValues.class);
         final DebugContext debugContext;
         if (compilation == null) {
             debugContext = new Builder(graalOptions).build();
@@ -259,7 +263,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
-                    try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
+                    try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(config.runtime(), compilable)))) {
                         final org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
                         partialEvaluator.initialize(options);
                         truffleTier = newTruffleTier(options);
@@ -277,7 +281,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
-                        new PostPartialEvaluationSuite(options.get(IterativePartialEscape)));
+                        new PostPartialEvaluationSuite(config.runtime().getGraalOptions(OptionValues.class), options.get(IterativePartialEscape)));
     }
 
     /**
@@ -415,7 +419,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             synchronized (this) {
                 local = expansionStatistics;
                 if (local == null) {
-                    this.expansionStatistics = local = ExpansionStatistics.create(options);
+                    this.expansionStatistics = local = ExpansionStatistics.create(partialEvaluator, options);
                     this.expansionStatisticsInitialized = true;
                 }
             }
@@ -494,7 +498,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
         StructuredGraph graph;
         try (DebugCloseable a = PartialEvaluationTime.start(debug);
                         DebugCloseable c = PartialEvaluationMemUse.start(debug);
-                        PerformanceInformationHandler handler = PerformanceInformationHandler.install(wrapper.options)) {
+                        PerformanceInformationHandler handler = PerformanceInformationHandler.install(config.runtime(), wrapper.options)) {
 
             /*
              * TODO GR-37097 Merge TruffleTierConfiguration and TruffleCompilationWrapper so that
@@ -560,7 +564,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             throw debug.handle(e);
         }
         if (debug.isDumpEnabled(DebugContext.BASIC_LEVEL)) {
-            debug.dump(DebugContext.BASIC_LEVEL, TruffleAST.create(config, task, compilable, inlining != null ? inlining.getCallTree() : null), "After TruffleTier");
+            debug.dump(DebugContext.BASIC_LEVEL, TruffleAST.create(partialEvaluator, task, compilable, inlining != null ? inlining.getCallTree() : null), "After TruffleTier");
         }
 
         CompilationResult result = null;
@@ -614,12 +618,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
 
     public abstract PhaseSuite<HighTierContext> createGraphBuilderSuite(TruffleTierConfiguration tier);
 
-    @Override
     public PartialEvaluator getPartialEvaluator() {
         return partialEvaluator;
     }
 
-    @Override
     public TruffleTier getTruffleTier() {
         return truffleTier;
     }
@@ -734,8 +736,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     /**
      * Handles a Truffle compilation failure by calling {@code failure.handle()}.
      */
-    private static boolean isSuppressedFailure(CompilableTruffleAST compilable, Throwable cause) {
-        return TruffleCompilerEnvironment.get().runtime().isSuppressedFailure(
+    private boolean isSuppressedFailure(CompilableTruffleAST compilable, Throwable cause) {
+        return config.runtime().isSuppressedFailure(
                         compilable, () -> CompilableTruffleAST.serializeException(cause));
     }
 
@@ -766,7 +768,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             if (result == null || result.getAssumptions() == null) {
                 return;
             }
-            TruffleCompilerRuntime runtime = TruffleCompilerEnvironment.get().runtime();
+            TruffleCompilerRuntime runtime = config.runtime();
             ArrayList<Assumption> newAssumptions = new ArrayList<>();
             for (Assumption assumption : result.getAssumptions()) {
                 if (assumption != null && assumption instanceof TruffleAssumption) {
@@ -827,6 +829,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
             if (errors != null) {
                 StringBuilder sb = new StringBuilder("There were errors while notifying assumptions:");
                 for (Throwable e : errors) {
+                    e.printStackTrace();
                     sb.append(System.lineSeparator()).append("  ").append(e);
                 }
                 throw new RetryableBailoutException(sb.toString());
@@ -843,7 +846,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase, Compil
     protected void afterCodeInstallation(CompilationResult result, InstalledCode installedCode) {
     }
 
-    @Override
     public final SnippetReflectionProvider getSnippetReflection() {
         return config.snippetReflection();
     }

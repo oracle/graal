@@ -24,22 +24,21 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProvider {
-    private final ConcurrentHashMap<ResolvedJavaField, ConstantFieldInfo> cachedConstantFieldInfo;
+final class TruffleConstantFieldProvider implements ConstantFieldProvider {
 
-    public TruffleConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
-        super(graalConstantFieldProvider, metaAccess, types);
-        this.cachedConstantFieldInfo = new ConcurrentHashMap<>();
+    private final PartialEvaluator partialEvaluator;
+    private final ConstantFieldProvider delegate;
+
+    TruffleConstantFieldProvider(PartialEvaluator partialEvaluator, ConstantFieldProvider delegate) {
+        this.partialEvaluator = partialEvaluator;
+        this.delegate = delegate;
     }
 
     @Override
@@ -48,10 +47,6 @@ public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProv
         if (!isStaticField && tool.getReceiver().isNull()) {
             // can't be optimized
             return null;
-        }
-        T wellKnownField = readWellKnownConstantTruffleField(field, tool);
-        if (wellKnownField != null) {
-            return wellKnownField;
         }
 
         boolean isArrayField = field.getType().isArray();
@@ -66,7 +61,7 @@ public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProv
         }
 
         boolean hasObjectKind = field.getType().getJavaKind() == JavaKind.Object;
-        ConstantFieldInfo info = getConstantFieldInfo(field);
+        ConstantFieldInfo info = partialEvaluator.getConstantFieldInfo(field);
         if (info != null) {
             if (info.isChildren()) {
                 int stableDimensions = isArrayField ? 1 : 0;
@@ -84,31 +79,31 @@ public class TruffleConstantFieldProvider extends TruffleStringConstantFieldProv
                 return tool.foldConstant(tool.readValue());
             }
         }
-
         if (isArrayField) {
             return readConstantFieldFast(field, tool);
         }
         return null;
     }
 
-    private ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
-        return cachedConstantFieldInfo.computeIfAbsent(field, f -> TruffleCompilerEnvironment.get().runtime().getConstantFieldInfo(f));
-    }
-
     private <T> T readConstantFieldFast(ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        T ret = graalConstantFieldProvider.readConstantField(field, tool);
+        T ret = delegate.readConstantField(field, tool);
         if (ret == null && field.isFinal()) {
             ret = tool.foldConstant(tool.readValue());
         }
         return ret;
     }
 
+    @Override
+    public boolean maybeFinal(ResolvedJavaField field) {
+        return delegate.maybeFinal(field);
+    }
+
     private JavaConstant verifyFieldValue(ResolvedJavaField field, JavaConstant constant, ConstantFieldInfo info) {
         assert !info.isChild() || constant.isNull() ||
-                        types.Node.isAssignableFrom(metaAccess.lookupJavaType(constant)) : String.format(
+                        partialEvaluator.types.Node.isAssignableFrom(partialEvaluator.getProviders().getMetaAccess().lookupJavaType(constant)) : String.format(
                                         "@Child field value must be a Node: %s, but was: %s", field, constant);
         assert !info.isChildren() || constant.isNull() ||
-                        metaAccess.lookupJavaType(constant).isArray() : String.format("@Children field value must be an array: %s, but was: %s", field, constant);
+                        partialEvaluator.getProviders().getMetaAccess().lookupJavaType(constant).isArray() : String.format("@Children field value must be an array: %s, but was: %s", field, constant);
         return constant;
     }
 }

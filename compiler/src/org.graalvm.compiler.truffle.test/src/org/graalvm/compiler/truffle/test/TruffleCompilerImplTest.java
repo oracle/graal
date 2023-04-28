@@ -27,7 +27,9 @@ package org.graalvm.compiler.truffle.test;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
@@ -66,9 +68,24 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
         }
     }
 
+    @Override
+    protected Providers getProviders() {
+        if (truffleCompiler == null) {
+            return super.getProviders();
+        }
+        return getTruffleCompiler().getConfig().lastTier().providers();
+    }
+
+    @Override
+    protected Backend getBackend() {
+        if (truffleCompiler == null) {
+            return super.getBackend();
+        }
+        return getTruffleCompiler().getConfig().lastTier().backend();
+    }
+
     public KnownTruffleTypes getTypes() {
-        TruffleCompilerImpl compiler = getTruffleCompiler();
-        return compiler.getConfig().types();
+        return getTruffleCompiler().getConfig().types();
     }
 
     protected final TruffleCompilerImpl getTruffleCompiler() {

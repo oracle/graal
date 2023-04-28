@@ -31,12 +31,10 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
 import jdk.vm.ci.meta.JavaConstant;
-
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
-import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
 /**
  * Instruments calls to {@code TruffleBoundary}-annotated methods in the graph, by adding execution
@@ -75,10 +73,9 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
     @Override
     protected void instrumentGraph(StructuredGraph graph, TruffleTierContext context, JavaConstant tableConstant) {
-        TruffleCompilerRuntime runtime = TruffleCompilerEnvironment.get().runtime();
         MethodFilter methodFilter = methodFilter(context);
         for (Node n : graph.getNodes()) {
-            if (n instanceof Invoke && runtime.isTruffleBoundary(((Invoke) n).callTarget().targetMethod())) {
+            if (n instanceof Invoke invoke && context.getPartialEvaluator().getMethodInfo(invoke.callTarget().targetMethod()).inlineForPartialEvaluation() != InlineKind.INLINE) {
                 Point p = getOrCreatePoint(n, methodFilter);
                 if (p != null) {
                     insertCounter(graph, context, tableConstant, (FixedWithNextNode) n.predecessor(), p.slotIndex(0));

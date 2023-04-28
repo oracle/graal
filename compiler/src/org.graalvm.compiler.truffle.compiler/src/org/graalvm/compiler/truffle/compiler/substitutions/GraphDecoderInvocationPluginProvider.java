@@ -39,5 +39,7 @@ import jdk.vm.ci.code.Architecture;
  * Implementations are responsible for checking the architecture if needed.
  */
 public interface GraphDecoderInvocationPluginProvider {
+
     void registerInvocationPlugins(Providers providers, Architecture architecture, String compilerConfiguration, InvocationPlugins plugins, boolean canDelayIntrinsification);
+
 }

@@ -214,6 +214,9 @@ public final class JNI {
         @CField("GetArrayLength")
         GetArrayLength getGetArrayLength();
 
+        @CField("NewLocalRef")
+        NewLocalRef getNewLocalRef();
+
         @CField("NewObjectArray")
         NewObjectArray getNewObjectArray();
 
@@ -827,6 +830,11 @@ public final class JNI {
 
         @InvokeCFunctionPointer(transition = Transition.NO_TRANSITION)
         JObject callNoTransition(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
+    }
+
+    public interface NewLocalRef extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JObject call(JNIEnv env, JObject obj);
     }
 
     public interface NewObjectArray extends CFunctionPointer {

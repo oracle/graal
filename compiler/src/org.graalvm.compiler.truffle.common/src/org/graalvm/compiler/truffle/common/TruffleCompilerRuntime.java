@@ -42,78 +42,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public interface TruffleCompilerRuntime {
 
     /**
-     * Value returned by {@link TruffleCompilerRuntime#getConstantFieldInfo(ResolvedJavaField)}
-     * describing how a field read can be constant folded based on Truffle annotations.
-     */
-    final class ConstantFieldInfo {
-
-        /**
-         * Denotes a field is annotated by {@code com.oracle.truffle.api.nodes.Node.Child}.
-         */
-        public static final ConstantFieldInfo CHILD = new ConstantFieldInfo(-1);
-
-        /**
-         * Denotes a field is annotated by {@code com.oracle.truffle.api.nodes.Node.Children}.
-         */
-        public static final ConstantFieldInfo CHILDREN = new ConstantFieldInfo(-2);
-
-        private final int dimensions;
-
-        /**
-         * Determines if this object is {@link #CHILD}.
-         */
-        public boolean isChild() {
-            return dimensions == -1;
-        }
-
-        /**
-         * Determines if this object is {@link #CHILDREN}.
-         */
-        public boolean isChildren() {
-            return dimensions == -2;
-        }
-
-        /**
-         * Gets the number of array dimensions to be marked as compilation final. This value is only
-         * non-zero for array type fields.
-         *
-         * @return a value between 0 and the number of declared array dimensions (inclusive)
-         */
-        public int getDimensions() {
-            return Math.max(0, dimensions);
-        }
-
-        /**
-         * Gets a {@link ConstantFieldInfo} object for a field.
-         *
-         * @param dimensions the number of array dimensions to be marked as compilation final
-         */
-        public static ConstantFieldInfo forDimensions(int dimensions) {
-            if (dimensions < 0) {
-                throw new IllegalArgumentException("Negative dimensions not allowed");
-            }
-            return new ConstantFieldInfo(dimensions);
-        }
-
-        private ConstantFieldInfo(int dimensions) {
-            this.dimensions = dimensions;
-        }
-
-        @Override
-        public int hashCode() {
-            return dimensions;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof ConstantFieldInfo other) {
-                return dimensions == other.dimensions;
-            }
-            return false;
-        }
-    }
-
-    /**
      * Controls behavior of {@code ExplodeLoop} annotation.
      *
      */
@@ -211,18 +139,38 @@ public interface TruffleCompilerRuntime {
     }
 
     /**
+     * Returns Truffle related method information during host compilation. Do not call this method
+     * directly use PartialEvaluator#getMethodInfo instead.
+     *
+     * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
+     * compiler implementation side.
+     */
+    PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method);
+
+    /**
+     * Returns Truffle related method information during host compilation. Do not call this method
+     * directly use TruffleHostEnvironment#getHostMethodInfo instead.
+     *
+     * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
+     * compiler implementation side.
+     *
+     * @see #getPartialEvaluationMethodInfo(ResolvedJavaMethod) for guest compilation related
+     *      information.
+     */
+    HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method);
+
+    /**
      * Gets an object describing how a read of {@code field} can be constant folded based on Truffle
-     * annotations.
+     * annotations. Do not call this method directly use PartialEvaluator#getConstantFieldInfo
+     * instead.
+     *
+     * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
+     * compiler implementation side.
      *
      * @return {@code null} if there are no constant folding related Truffle annotations on
      *         {@code field}
      */
     ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field);
-
-    /**
-     * Queries how loops in {@code method} with constant number of invocations should be unrolled.
-     */
-    LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method);
 
     /**
      * Gets the {@link CompilableTruffleAST} represented by {@code constant}.
@@ -236,12 +184,6 @@ public interface TruffleCompilerRuntime {
      * Gets the compiler constant representing the target of {@code callNode}.
      */
     JavaConstant getCallTargetForCallNode(JavaConstant callNode);
-
-    /**
-     * Gets the primary {@link TruffleCompiler} instance associated with this runtime, creating and
-     * initializing it in a thread-safe manner first if necessary.
-     */
-    TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable);
 
     /**
      * Registers some dependent code on an assumption.
@@ -394,70 +336,15 @@ public interface TruffleCompilerRuntime {
     }
 
     /**
-     * Gets an object describing whether and how a method can be inlined based on Truffle
-     * directives.
-     *
-     * @param original candidate for inlining
-     * @param duringPartialEvaluation whether the inlining context is partial evaluation
-     */
-    InlineKind getInlineKind(ResolvedJavaMethod original, boolean duringPartialEvaluation);
-
-    /**
      * Determines if {@code type} is a value type. Reference comparisons (==) between value type
      * instances have undefined semantics and can either return true or false.
      */
     boolean isValueType(ResolvedJavaType type);
 
     /**
-     * Determines if {@code method} can be inlined by the runtime (independently from Truffle).
-     */
-    boolean isInlineable(ResolvedJavaMethod method);
-
-    /**
-     * Determines if {@code method} is annotated by {@code TruffleBoundary}.
-     */
-    boolean isTruffleBoundary(ResolvedJavaMethod method);
-
-    /**
-     * Determines if {@code method} is annotated by {@code Specialization}.
-     */
-    boolean isSpecializationMethod(ResolvedJavaMethod method);
-
-    /**
-     * Determines if {@code method} is annotated by {@code BytecodeInterpreterSwitch}.
-     */
-    boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod method);
-
-    /**
-     * Determines if {@code method} is annotated by {@code InliningCutoff}.
-     */
-    boolean isInliningCutoff(ResolvedJavaMethod method);
-
-    /**
-     * Determines if {@code method} is annotated by {@code BytecodeInterpreterSwitchBoundary}.
-     */
-    boolean isBytecodeInterpreterSwitchBoundary(ResolvedJavaMethod method);
-
-    /**
      * Determines if the exception which happened during the compilation is suppressed and should be
      * silent.
      */
     boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException);
-
-    /**
-     * Determines if {@code method} is the inInterpeter method from CompilerDirectives.
-     */
-    boolean isInInterpreter(ResolvedJavaMethod targetMethod);
-
-    /**
-     * Determines if {@code method} is the inInterpeterFastPath method from HostCompilerDirectives.
-     */
-    boolean isInInterpreterFastPath(ResolvedJavaMethod targetMethod);
-
-    /**
-     * Determines if {@code method} is a method is a transferToInterpreter method from
-     * CompilerDirectives.
-     */
-    boolean isTransferToInterpreterMethod(ResolvedJavaMethod method);
 
 }

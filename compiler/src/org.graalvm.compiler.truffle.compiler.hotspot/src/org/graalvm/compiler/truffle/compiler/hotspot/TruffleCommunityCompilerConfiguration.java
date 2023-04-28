@@ -27,24 +27,56 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleInjectImmutableFrameFieldsPhase;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 
+import jdk.vm.ci.code.Architecture;
+
+/**
+ * Central place to register Truffle related compiler phases and plugins for host Java compilation
+ * on HotSpot.
+ * <p>
+ * Note that this configuration is also used as basis for Truffle guest compilation on HotSpot.
+ * Therefore make sure that phases which are only relevant for host compilations are explicitly
+ * disabled for Truffle guest compilation in
+ * {@link HotSpotTruffleCompilerImpl#create(TruffleCompilerRuntime)}.
+ * <p>
+ * Note that on SubstrateVM TruffleBaseFeature and TruffleFeature must be used for this purpose,
+ * this configuration is NOT loaded. So make sure SVM configuration is in sync if you make changes
+ * here.
+ */
 public final class TruffleCommunityCompilerConfiguration extends CommunityCompilerConfiguration {
 
     @Override
     public HighTier createHighTier(OptionValues options) {
         HighTier highTier = super.createHighTier(options);
-        TruffleHostInliningPhase.install(highTier, options);
-        TruffleInjectImmutableFrameFieldsPhase.install(highTier, options);
+        installCommunityHighTier(options, highTier);
         return highTier;
     }
 
+    public static void installCommunityHighTier(OptionValues options, HighTier defaultHighTier) {
+        HostInliningPhase.install(defaultHighTier, options);
+        InjectImmutableFrameFieldsPhase.install(defaultHighTier, options);
+    }
+
     @Override
-    public void registerGraphBuilderPlugins(Plugins plugins, OptionValues options) {
-        super.registerGraphBuilderPlugins(plugins, options);
-        TruffleHostInliningPhase.installInlineInvokePlugin(plugins, options);
+    public void registerGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options, Replacements replacements) {
+        super.registerGraphBuilderPlugins(arch, plugins, options, replacements);
+        registerCommunityGraphBuilderPlugins(arch, plugins, options, replacements);
+    }
+
+    public static void registerCommunityGraphBuilderPlugins(Architecture arch, Plugins plugins, OptionValues options, Replacements replacements) {
+        HostInliningPhase.installInlineInvokePlugin(plugins, options);
+        plugins.getInvocationPlugins().defer(new Runnable() {
+            @Override
+            public void run() {
+                TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins(), replacements);
+            }
+        });
     }
 
 }

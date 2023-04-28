@@ -28,18 +28,16 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
 public final class InliningAcrossTruffleBoundaryPhase extends BasePhase<TruffleTierContext> {
     @Override
     protected void run(StructuredGraph graph, TruffleTierContext context) {
         graph.checkCancellation();
-        TruffleCompilerRuntime rt = TruffleCompilerEnvironment.get().runtime();
-        for (MethodCallTargetNode mct : graph.getNodes(MethodCallTargetNode.TYPE)) {
-            TruffleCompilerRuntime.InlineKind inlineKind = rt.getInlineKind(mct.targetMethod(), false);
+        for (MethodCallTargetNode node : graph.getNodes(MethodCallTargetNode.TYPE)) {
+            TruffleCompilerRuntime.InlineKind inlineKind = context.partialEvaluator.getMethodInfo(node.targetMethod()).inlineForTruffleBoundary();
             if (!inlineKind.allowsInlining()) {
-                mct.invoke().setUseForInlining(false);
+                node.invoke().setUseForInlining(false);
             }
         }
     }

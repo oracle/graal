@@ -27,7 +27,7 @@ Truffle host inlining leverages these properties and forces inlining during host
 The general assumption is that code important for runtime compilation is also important for interpreter execution.
 Whenever a PE boundary is detected, the host inlining phase no longer makes any inlining decisions and defers them to later inlining phases better suited for regular Java code.
 
-The source code for this phase can be found in [TruffleHostInliningPhase](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/TruffleHostInliningPhase.java).
+The source code for this phase can be found in [HostInliningPhase](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/HostInliningPhase.java).
 
 Truffle host inlining is applied when compiling a method annotated with `@HostCompilerDirectives.BytecodeInterpreterSwitch`.
 The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` for native images and `-Dgraal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
@@ -52,7 +52,7 @@ If a method exceeds the limit, it is likely that the same code also has a high c
 
 ## Debugging Host Inlining
 
-The inlining decisions performed by this phase is best debugged with `-H:Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
+The inlining decisions performed by this phase is best debugged with `-H:Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
 
 Consider the following example, which shows previously described common patterns of partial evaluatable code in Truffle interpreters:
 
@@ -158,7 +158,7 @@ class BytecodeNode extends Node {
 We can run this as a unittest in the Graal repository (see class `HostInliningBytecodeInterpreterExampleTest`) by running the following command line in `graal/compiler`:
 
 ```
-mx unittest  -Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase -Dgraal.Dump=:3  HostInliningBytecodeInterpreterExampleTest
+mx unittest  -Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase -Dgraal.Dump=:3  HostInliningBytecodeInterpreterExampleTest
 ```
 
 This prints:
@@ -168,7 +168,7 @@ This prints:
   [thread:1] scope: main.Testing
   Context: HotSpotMethod<HostInliningBytecodeInterpreterExampleTest$BytecodeNode.execute()>
   Context: StructuredGraph:1{HotSpotMethod<HostInliningBytecodeInterpreterExampleTest$BytecodeNode.execute()>}
-      [thread:1] scope: main.Testing.EnterpriseHighTier.TruffleHostInliningPhase
+      [thread:1] scope: main.Testing.EnterpriseHighTier.HostInliningPhase
       Truffle host inlining completed after 2 rounds. Graph cost changed from 136 to 137 after inlining:
       Root[org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.execute]
           INLINE org.graalvm.compiler.truffle.test.HostInliningBytecodeInterpreterExampleTest$BytecodeNode.add(int, int)                      [inlined    2, monomorphic false, deopt false, inInterpreter false, propDeopt false, subTreeInvokes    0, subTreeCost    8, incomplete false,  reason null]

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.core.common.util;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -32,6 +33,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * example, a JVMCI implementation can scope the validity of a {@link ResolvedJavaMethod} to a
  * single compilation such that VM resources held by the {@link ResolvedJavaMethod} object can be
  * released once compilation ends.
+ *
+ * @see FieldKey for keys created with {@link ResolvedJavaField}
  */
 public final class MethodKey {
 
@@ -40,9 +43,6 @@ public final class MethodKey {
     private final String descriptor;
     private final int hashCode;
 
-    /**
-     * Creates a key representing {@code method}.
-     */
     public MethodKey(ResolvedJavaMethod method) {
         this.declaringClass = method.getDeclaringClass().getName();
         this.name = method.getName();

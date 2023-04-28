@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.phases;
+package org.graalvm.compiler.truffle.compiler.host;
 
 import static org.graalvm.compiler.core.common.GraalOptions.Intrinsify;
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Optional;
@@ -78,9 +78,8 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -97,7 +96,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  * For more details on this phase see the <a href=
  * "https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md">documentation</a>
  */
-public class TruffleHostInliningPhase extends AbstractInliningPhase {
+public class HostInliningPhase extends AbstractInliningPhase {
 
     public static class Options {
         @Option(help = "Whether Truffle host inlining is enabled.")//
@@ -127,49 +126,53 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     protected final CanonicalizerPhase canonicalizer;
 
-    public TruffleHostInliningPhase(CanonicalizerPhase canonicalizer) {
+    public HostInliningPhase(CanonicalizerPhase canonicalizer) {
         this.canonicalizer = canonicalizer;
     }
 
-    protected boolean isEnabledFor(ResolvedJavaMethod method) {
-        return isBytecodeInterpreterSwitch(method);
+    protected boolean isEnabledFor(TruffleHostEnvironment env, ResolvedJavaMethod method) {
+        return isBytecodeInterpreterSwitch(env, method);
     }
 
-    private boolean isTransferToInterpreterMethod(ResolvedJavaMethod method) {
-        return TruffleCompilerEnvironment.get().runtime().isTransferToInterpreterMethod(translateMethod(method));
-    }
-
-    private boolean isInInterpreter(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerEnvironment.get().runtime().isInInterpreter(translateMethod(targetMethod));
-    }
-
-    private boolean isInInterpreterFastPath(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerEnvironment.get().runtime().isInInterpreterFastPath(translateMethod(targetMethod));
-    }
-
-    protected String isTruffleBoundary(ResolvedJavaMethod targetMethod) {
-        if (TruffleCompilerEnvironment.get().runtime().isTruffleBoundary(translateMethod(targetMethod))) {
+    protected String isTruffleBoundary(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+        if (env.getHostMethodInfo(translateMethod(targetMethod)).isTruffleBoundary()) {
             return "truffle boundary";
         }
         return null;
     }
 
-    private boolean isBytecodeInterpreterSwitch(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerEnvironment.get().runtime().isBytecodeInterpreterSwitch(translateMethod(targetMethod));
+    private boolean isBytecodeInterpreterSwitch(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+        return env.getHostMethodInfo(translateMethod(targetMethod)).isBytecodeInterpreterSwitch();
     }
 
-    private boolean isInliningCutoff(ResolvedJavaMethod targetMethod) {
-        return TruffleCompilerEnvironment.get().runtime().isInliningCutoff(translateMethod(targetMethod));
+    private boolean isInliningCutoff(TruffleHostEnvironment env, ResolvedJavaMethod targetMethod) {
+        return env.getHostMethodInfo(translateMethod(targetMethod)).isInliningCutoff();
     }
 
     protected ResolvedJavaMethod translateMethod(ResolvedJavaMethod method) {
         return method;
     }
 
+    private boolean isInInterpreter(InliningPhaseContext context, ResolvedJavaMethod method) {
+        return context.types().isInInterpreter(translateMethod(method));
+    }
+
+    private boolean isInInterpreterFastPath(InliningPhaseContext context, ResolvedJavaMethod method) {
+        return context.types().isInInterpreterFastPath(translateMethod(method));
+    }
+
+    private boolean isTransferToInterpreterMethod(InliningPhaseContext context, ResolvedJavaMethod method) {
+        return context.types().isTransferToInterpreterMethod(translateMethod(method));
+    }
+
     @Override
     protected final void run(StructuredGraph graph, HighTierContext highTierContext) {
         ResolvedJavaMethod method = graph.method();
-        if (!isEnabledFor(method)) {
+        TruffleHostEnvironment env = TruffleHostEnvironment.get(method);
+        if (env == null) {
+            return;
+        }
+        if (!isEnabledFor(env, method)) {
             /*
              * Make sure this method only applies to interpreter methods. We check this early as we
              * assume that there are much more non-interpreter methods than interpreter methods in a
@@ -178,7 +181,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return;
         }
 
-        runImpl(new InliningPhaseContext(highTierContext, graph, TruffleCompilerEnvironment.get(), isBytecodeInterpreterSwitch(method)));
+        runImpl(new InliningPhaseContext(highTierContext, graph, env, isBytecodeInterpreterSwitch(env, method)));
     }
 
     private void runImpl(InliningPhaseContext context) {
@@ -414,7 +417,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 for (Node input : condition.inputs()) {
                     if (input instanceof Invoke) {
                         ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
-                        if (targetMethod != null && isInInterpreter(targetMethod)) {
+                        if (targetMethod != null && isInInterpreter(context, targetMethod)) {
                             inInterpreterBlocks.add(ifNode.falseSuccessor());
                             break;
                         }
@@ -439,7 +442,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         for (Node input : condition.inputs()) {
                             if (input instanceof Invoke) {
                                 ResolvedJavaMethod targetMethod = ((Invoke) input).getTargetMethod();
-                                if (targetMethod != null && isInInterpreter(targetMethod)) {
+                                if (targetMethod != null && isInInterpreter(context, targetMethod)) {
                                     HIRBlock dominatedSilbling = block.getFirstDominated();
                                     while (dominatedSilbling != null) {
                                         inInterpreterBlocks.add(dominatedSilbling.getBeginNode());
@@ -464,7 +467,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                 }
 
                 boolean deoptimized = caller.deoptimized || isBlockOrDominatorContainedIn(block, deoptimizedBlocks);
-                if (isTransferToInterpreterMethod(newTargetMethod)) {
+                if (isTransferToInterpreterMethod(context, newTargetMethod)) {
                     /*
                      * If we detect a deopt we mark the entire block as a deoptimized block. It is
                      * probably rare that a deopt is found in the middle of a block, but that deopt
@@ -491,7 +494,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                  * The idea is to support composed bytecodes witches from multiple methods. For that
                  * we always need to inline all bytecode switches first.
                  */
-                boolean forceShallowInline = context.isBytecodeSwitch && (caller.forceShallowInline || caller.parent == null) && isBytecodeInterpreterSwitch(invoke.getTargetMethod());
+                boolean forceShallowInline = context.isBytecodeSwitch && (caller.forceShallowInline || caller.parent == null) && isBytecodeInterpreterSwitch(context.env, invoke.getTargetMethod());
 
                 CallTree callee = new CallTree(caller, invoke, deoptimized, unwind, inInterpreter, forceShallowInline);
                 children.add(callee);
@@ -577,7 +580,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     /**
      * Traverses the call graph starting at {@code method} based on invokes in each traversed
      * method's entry block, stopping at depth {@link #MAX_PEEK_PROPAGATE_DEOPT}` to find a
-     * {@link #isTransferToInterpreterMethod}.
+     * {@link TruffleKnownHostTypes#isTransferToInterpreterMethod}.
      */
     private BackPropagation peekPropagatesDeoptOrUnwind(InliningPhaseContext context, Invoke callerInvoke, ResolvedJavaMethod method, int depth) {
         if (depth > MAX_PEEK_PROPAGATE_DEOPT) {
@@ -598,7 +601,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                     continue;
                 }
 
-                if (isTransferToInterpreterMethod(targetMethod)) {
+                if (isTransferToInterpreterMethod(context, targetMethod)) {
                     return BackPropagation.DEOPT;
                 } else if (invoke.getInvokeKind().isDirect()) {
                     if (!targetMethod.canBeInlined()) {
@@ -911,14 +914,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        if (isTransferToInterpreterMethod(targetMethod)) {
+        if (isTransferToInterpreterMethod(context, targetMethod)) {
             /*
              * Always inline the transfer to interpreter method.
              */
             return true;
         }
 
-        if (isInInterpreter(targetMethod) || isInInterpreterFastPath(targetMethod)) {
+        if (isInInterpreter(context, targetMethod) || isInInterpreterFastPath(context, targetMethod)) {
             /*
              * Always inline inInterpreter method.
              */
@@ -973,7 +976,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         }
 
-        if (isInliningCutoff(targetMethod)) {
+        if (isInliningCutoff(context.env, targetMethod)) {
             call.reason = "method annotated with @InliningCutoff";
             return false;
         }
@@ -1009,18 +1012,18 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return false;
         }
 
-        String boundary = isTruffleBoundary(targetMethod);
+        String boundary = isTruffleBoundary(context.env, targetMethod);
         if (boundary != null) {
             /*
-             * Similar to runtime compilations, truffle boundary calls indicate the slow path
-             * execution of a mode. We shouldn't force any additional inlining heuristics for such
-             * methods as we do not know
+             * Truffle boundary calls indicate the slow path execution. We shouldn't force any
+             * additional inlining heuristics for such methods as we do not know whether the code
+             * behind is designed for Truffle partial evaluation.
              */
             call.reason = boundary;
             return false;
         }
 
-        if (isBytecodeInterpreterSwitch(targetMethod)) {
+        if (isBytecodeInterpreterSwitch(context.env, targetMethod)) {
             call.reason = "bytecode interpreter switch must not be inlined";
             return false;
         }
@@ -1284,15 +1287,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
     }
 
     public static void install(HighTier highTier, OptionValues options) {
-        TruffleCompilerEnvironment env = TruffleCompilerEnvironment.getIfInitialized();
-        if (env == null) {
-            return;
-        }
-
         if (!Options.TruffleHostInlining.getValue(options)) {
             return;
         }
-        TruffleHostInliningPhase phase = new TruffleHostInliningPhase(CanonicalizerPhase.create());
+        HostInliningPhase phase = new HostInliningPhase(CanonicalizerPhase.create());
         ListIterator<BasePhase<? super HighTierContext>> insertionPoint = highTier.findPhase(AbstractInliningPhase.class);
         if (insertionPoint == null) {
             highTier.prependPhase(phase);
@@ -1308,21 +1306,27 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
-    public static boolean shouldDenyTrivialInliningInAllMethods(ResolvedJavaMethod callee) {
-        return TruffleCompilerEnvironment.get().runtime().isInliningCutoff(callee);
+    public static boolean shouldDenyTrivialInliningInAllMethods(TruffleHostEnvironment env, ResolvedJavaMethod callee) {
+        return env.getHostMethodInfo(callee).isInliningCutoff();
     }
 
-    public static boolean shouldDenyTrivialInlining(ResolvedJavaMethod callee) {
-        TruffleCompilerRuntime r = TruffleCompilerEnvironment.get().runtime();
-        return (r.isBytecodeInterpreterSwitch(callee) || r.isInliningCutoff(callee) || r.isTruffleBoundary(callee) || r.isInInterpreterFastPath(callee) || r.isInInterpreter(callee) ||
-                        r.isTransferToInterpreterMethod(callee));
+    public static boolean shouldDenyTrivialInlining(TruffleHostEnvironment env, ResolvedJavaMethod callee) {
+        TruffleKnownHostTypes types = env.types();
+        HostMethodInfo info = env.getHostMethodInfo(callee);
+        return (info.isBytecodeInterpreterSwitch() ||
+                        info.isInliningCutoff() ||
+                        info.isTruffleBoundary() ||
+                        types.isInInterpreter(callee) ||
+                        types.isInInterpreterFastPath(callee) ||
+                        types.isTransferToInterpreterMethod(callee));
     }
 
     static final class BytecodeParserInlineInvokePlugin implements InlineInvokePlugin {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] args) {
-            if (TruffleCompilerEnvironment.getIfInitialized() != null && shouldDenyTrivialInlining(targetMethod)) {
+            TruffleHostEnvironment env = TruffleHostEnvironment.get(b.getMethod());
+            if (env != null && shouldDenyTrivialInlining(env, targetMethod)) {
                 /*
                  * We deny bytecode parser inlining for any method that is relevant for Truffle host
                  * inlining. This is important otherwise we might miss some PE boundaries during
@@ -1340,7 +1344,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         final HighTierContext highTierContext;
         final StructuredGraph graph;
         final OptionValues options;
-        final TruffleCompilerEnvironment env;
+        final TruffleHostEnvironment env;
         final boolean isBytecodeSwitch;
         final int maxSubtreeInvokes;
         final boolean printExplored;
@@ -1352,7 +1356,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
          */
         final EconomicMap<ResolvedJavaMethod, StructuredGraph> graphCache = EconomicMap.create(Equivalence.DEFAULT);
 
-        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleCompilerEnvironment env, boolean isBytecodeSwitch) {
+        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleHostEnvironment env, boolean isBytecodeSwitch) {
             this.highTierContext = context;
             this.graph = graph;
             this.options = graph.getOptions();
@@ -1360,6 +1364,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             this.isBytecodeSwitch = isBytecodeSwitch;
             this.maxSubtreeInvokes = Options.TruffleHostInliningMaxSubtreeInvokes.getValue(options);
             this.printExplored = Options.TruffleHostInliningPrintExplored.getValue(options);
+        }
+
+        TruffleKnownHostTypes types() {
+            return env.types();
         }
 
     }
@@ -1433,7 +1441,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         /**
          * Set if a monomorphic call site was resolved. We remember the decision from
-         * {@link TruffleHostInliningPhase#shouldInlineMonomorphic(InliningPhaseContext, CallTree, ResolvedJavaMethod)}
+         * {@link HostInliningPhase#shouldInlineMonomorphic(InliningPhaseContext, CallTree, ResolvedJavaMethod)}
          * to speed up later exploration.
          */
         ResolvedJavaMethod monomorphicTargetMethod;

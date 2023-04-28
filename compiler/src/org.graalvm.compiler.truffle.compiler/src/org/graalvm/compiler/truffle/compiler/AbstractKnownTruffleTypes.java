@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.compiler;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +34,6 @@ import java.util.Map;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -47,17 +47,15 @@ import jdk.vm.ci.meta.Signature;
  * The reason this class exists is to make sure fields are initialized, such that type, method and
  * field lookup can be expressed directly in the field initializer.
  */
-abstract class AbstractKnownTruffleTypes {
+public abstract class AbstractKnownTruffleTypes {
 
     private final TruffleCompilerRuntime runtime;
     protected final MetaAccessProvider metaAccess;
-    protected final ConstantReflectionProvider constantReflection;
     private TypeCache typeCache;
 
-    protected AbstractKnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {
+    protected AbstractKnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess) {
         this.runtime = runtime;
         this.metaAccess = metaAccess;
-        this.constantReflection = constantReflection;
     }
 
     protected final ResolvedJavaType lookupType(String className) {
@@ -99,7 +97,13 @@ abstract class AbstractKnownTruffleTypes {
     }
 
     protected final ResolvedJavaMethod findMethod(ResolvedJavaType declaringClass, String name, ResolvedJavaType... types) {
-        for (ResolvedJavaMethod method : getTypeCache(declaringClass).methods.get(name)) {
+        Collection<ResolvedJavaMethod> methods = getTypeCache(declaringClass).methods.get(name);
+        return findMethod(declaringClass, name, methods, types);
+    }
+
+    private static ResolvedJavaMethod findMethod(ResolvedJavaType declaringClass, String name, Collection<ResolvedJavaMethod> methods, ResolvedJavaType... types) throws NoSuchMethodError {
+        for (ResolvedJavaMethod method : methods) {
+            assert method.getName().equals(name);
             Signature signature = method.getSignature();
             int parameterCount = signature.getParameterCount(false);
             if (parameterCount == types.length) {

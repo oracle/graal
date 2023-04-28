@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.compiler.hotspot.amd64;
+package org.graalvm.compiler.truffle.common;
 
-import org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
+/**
+ * TODO GR-44222 as soon as the annotation API is available in libgraal this can be moved to the
+ * compiler implementation side.
+ *
+ * @param isTruffleBoundary specifies if the method is annotated by {@code TruffleBoundary}
+ * @param isBytecodeInterpreterSwitch specifies if the method is annotated by
+ *            {@code BytecodeInterpreterSwitch}.
+ * @param isBytecodeInterpreterSwitchBoundary specifies if the method is annotated by
+ *            {@code BytecodeInterpreterSwitchBoundary}
+ * @param isInliningCutoff specifies if the method is annotated by {@code InliningCutoff}
+ */
+public record HostMethodInfo(
+                boolean isTruffleBoundary,
+                boolean isBytecodeInterpreterSwitch,
+                boolean isBytecodeInterpreterSwitchBoundary,
+                boolean isInliningCutoff) {
 
-import jdk.vm.ci.code.Architecture;
-
-@ServiceProvider(HotSpotInvocationPluginProvider.class)
-public class AMD64HotSpotTruffleInvocationPluginProvider implements HotSpotInvocationPluginProvider {
-
-    @Override
-    public void registerInvocationPlugins(Architecture architecture, InvocationPlugins plugins, Replacements replacements) {
-        TruffleInvocationPlugins.register(architecture, plugins, replacements);
-    }
 }

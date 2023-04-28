@@ -45,28 +45,14 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
-    /**
-     * Handle to a HSTruffleCompilerRuntime object in an libgraal heap.
-     */
-    static final class Handle extends LibGraalObject {
-        Handle(long handle) {
-            super(handle);
-        }
-    }
-
     @SuppressWarnings("try")
     LibGraalTruffleRuntime() {
         try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             runtime().registerNativeMethods(TruffleToLibGraalCalls.class);
+            if (!TruffleToLibGraalCalls.registerRuntime(getIsolateThread(), this)) {
+                throw new IllegalStateException("Truffle with libgraal cannot be loaded in multiple class loaders. Make sure Truffle is loaded with the system class loader.");
+            }
         }
-    }
-
-    @Override
-    public Object createCompilerEnvironment() {
-        /*
-         * Compiler environment is isolated.
-         */
-        return null;
     }
 
     long handle() {
@@ -80,7 +66,6 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         }
     }
 
-    @SuppressWarnings("try")
     @Override
     public HotSpotTruffleCompiler newTruffleCompiler() {
         return new LibGraalHotSpotTruffleCompiler(this);
@@ -102,5 +87,14 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @Override
     protected boolean isSuppressedTruffleRuntimeException(Throwable throwable) {
         return throwable instanceof DestroyedIsolateException && ((DestroyedIsolateException) throwable).isVmExit();
+    }
+
+    /**
+     * Handle to a HSTruffleCompilerRuntime object in an libgraal heap.
+     */
+    static final class Handle extends LibGraalObject {
+        Handle(long handle) {
+            super(handle);
+        }
     }
 }

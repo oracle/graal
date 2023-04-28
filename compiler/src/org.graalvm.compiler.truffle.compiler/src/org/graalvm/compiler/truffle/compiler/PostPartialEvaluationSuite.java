@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.compiler;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -37,16 +38,16 @@ import org.graalvm.compiler.truffle.compiler.phases.PhiTransformPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
+
     @SuppressWarnings("this-escape")
-    public PostPartialEvaluationSuite(boolean iterativePartialEscape) {
+    public PostPartialEvaluationSuite(OptionValues optionValues, boolean iterativePartialEscape) {
         CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
         appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizerPhase));
         appendPhase(new InlineReplacementsPhase());
         appendPhase(new ConditionalEliminationPhase(false));
         appendPhase(canonicalizerPhase);
         appendPhase(new FrameAccessVerificationPhase());
-        appendPhase(new PartialEscapePhase(iterativePartialEscape, canonicalizerPhase,
-                        TruffleCompilerEnvironment.get().runtime().getGraalOptions(org.graalvm.compiler.options.OptionValues.class)));
+        appendPhase(new PartialEscapePhase(iterativePartialEscape, canonicalizerPhase, optionValues));
         appendPhase(new PhiTransformPhase(canonicalizerPhase));
     }
 

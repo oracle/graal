@@ -28,8 +28,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.EntryPointDecorator;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 
 /**
  * A service for creating a specialized {@link CompilationResultBuilder} used to inject code into
@@ -49,7 +48,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  */
 public abstract class TruffleCallBoundaryInstrumentationFactory {
 
-    public abstract EntryPointDecorator create(MetaAccessProvider metaAccess, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers);
+    public abstract EntryPointDecorator create(TruffleCompilerConfiguration compilerConfig, GraalHotSpotVMConfig config, HotSpotRegistersProvider registers);
 
     /**
      * Gets the architecture supported by this factory.
