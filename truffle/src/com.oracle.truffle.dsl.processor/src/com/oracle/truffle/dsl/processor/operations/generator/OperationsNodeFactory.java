@@ -3502,16 +3502,15 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createContinueAt() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(baseInterpreter, "continueAt");
-            ex.addAnnotationMirror(createExplodeLoopAnnotation("MERGE_EXPLODE"));
-
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.tree(createPartialEvaluationConstant("bc"));
-            b.tree(createPartialEvaluationConstant("constants"));
-            b.tree(createPartialEvaluationConstant("cachedNodes"));
-            b.tree(createPartialEvaluationConstant("handlers"));
-            b.tree(createPartialEvaluationConstant("startState"));
-            b.tree(createPartialEvaluationConstant("numLocals"));
+            if (isUncached) {
+                // TODO: generate different static methods rather than different BaseInterpreter
+                // subclasses. Then, we can insert this deopt before the uncached call.
+                b.tree(createTransferToInterpreterAndInvalidate("this"));
+            } else {
+                ex.addAnnotationMirror(createExplodeLoopAnnotation("MERGE_EXPLODE"));
+            }
 
             b.statement("int bci = startState & 0xffff");
             b.statement("int sp = (startState >> 16) & 0xffff");
@@ -3689,16 +3688,18 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("frame.setObject(sp - 1, mergeVariadic((Object[])frame.getObject(sp - 1)))");
                         break;
                     case CUSTOM: {
-                        buildCustomInstructionExecute(b, instr, true);
+                        buildCustomInstructionExecute(b, instr, false);
                         break;
                     }
                     case CUSTOM_SHORT_CIRCUIT:
-                        buildCustomInstructionExecute(b, instr, false);
+                        buildCustomInstructionExecute(b, instr, true);
 
-                        b.startIf().string("result", instr.continueWhen ? "!=" : "==", "Boolean.TRUE").end().startBlock();
+                        b.startIf().string("result", instr.continueWhen ? " != " : " == ", "Boolean.TRUE").end().startBlock();
+                        // don't pop (the argument used in the SC op is the result)
                         b.statement("bci = bc[bci + 1]");
                         b.statement("continue loop");
                         b.end().startElseBlock();
+                        b.statement("frame.clear(sp - 1)");
                         b.statement("sp -= 1");
                         b.statement("bci += " + instr.getInstructionLength());
                         b.statement("continue loop");
@@ -3751,9 +3752,46 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private void buildCustomInstructionExecute(CodeTreeBuilder b, InstructionModel instr, boolean doPush) {
+        private void buildCustomInstructionExecute(CodeTreeBuilder continueAtBuilder, InstructionModel instr, boolean isShortCircuit) {
+            // To reduce bytecode in the dispatch loop, extract each implementation into a helper.
+            String helperName = customInstructionHelperName(instr);
+
+            TypeMirror returnType = isShortCircuit ? context.getType(Object.class) : context.getType(void.class);
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, FINAL), returnType, helperName);
+            interpreterType.add(ex);
+
+            // In continueAt, just call the helper.
+            if (isShortCircuit) {
+                // continueAt needs the boolean result to decide whether to branch.
+                continueAtBuilder.startAssign("Object result");
+            } else {
+                continueAtBuilder.startStatement();
+            }
+            continueAtBuilder.startCall(helperName);
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            continueAtBuilder.string("frame");
+            if (!isUncached) {
+                ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
+                continueAtBuilder.string("cachedNodes");
+            }
+
+            List<CodeVariableElement> extraParams = List.of(
+                            new CodeVariableElement(operationNodeGen.asType(), "$this"),
+                            new CodeVariableElement(context.getType(short[].class), "bc"),
+                            new CodeVariableElement(context.getType(int.class), "bci"),
+                            new CodeVariableElement(context.getType(int.class), "sp"));
+
+            for (CodeVariableElement param : extraParams) {
+                ex.addParameter(param);
+                continueAtBuilder.string(param.getName());
+            }
+            continueAtBuilder.end(2);
+
             TypeMirror cachedType = new GeneratedTypeMirror("", cachedDataClassName(instr));
-            Signature signature = instr.signature;
+            boolean isVoid = instr.signature.isVoid;
+
+            // Create the helper.
+            CodeTreeBuilder b = ex.createBuilder();
 
             if (!isUncached && model.enableTracing) {
                 b.startBlock();
@@ -3778,23 +3816,38 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            String extraArguments = "$this, bc, bci, sp";
+            // since an instruction produces at most one value, stackEffect is at most 1.
+            int stackEffect = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
 
-            if (doPush) {
-                int stackOffset = -instr.signature.valueCount + (instr.signature.isVoid ? 0 : 1);
-                b.statement("int resultSp = sp + " + stackOffset);
+            if (!isUncached) {
+                // if cached, retrieve the node
+                InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
+                String nodeIndex = "bc[bci + " + imm.offset + "]";
+                CodeTree readNode = CodeTreeBuilder.createBuilder().cast(cachedType, "cachedNodes[" + nodeIndex + "]").build();
+                b.declaration(cachedType, "node", readNode);
+            }
+
+            if (isVoid) {
+                b.startStatement();
+            } else if (isShortCircuit) {
+                assert stackEffect == 0 : "Short circuit operation should push and pop a single value.";
+                b.startReturn();
+            } else {
+                b.startAssign("Object result");
             }
 
             if (isUncached) {
-                if (signature.isVoid) {
-                    b.startStatement();
-                } else {
-                    b.startAssign("Object result");
-                }
-
                 b.staticReference(cachedType, "UNCACHED").startCall(".executeUncached");
-                b.string("frame");
+            } else if (isVoid) {
+                b.string("node").startCall(".executeVoid");
+            } else {
+                b.string("node").startCall(".executeObject");
+            }
 
+            b.string("frame");
+
+            // the uncached node takes all of its parameters. the cached node computes them itself.
+            if (isUncached) {
                 for (int i = 0; i < instr.signature.valueCount; i++) {
                     TypeMirror targetType = instr.signature.getParameterType(i);
                     b.startGroup();
@@ -3820,49 +3873,47 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("bc[bci + " + (immediate.offset + 1) + "]"); // length
                     b.end();
                 }
+            }
 
-                b.string(extraArguments);
-                b.end(2);
+            b.variables(extraParams);
+            b.end(2);
 
-                if (!signature.isVoid && doPush) {
-                    b.statement("frame.setObject(resultSp - 1, result)");
-                }
-            } else {
-                // cached
-                InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
-                b.statement("int nodeIndex = bc[bci + " + imm.offset + "]");
-
-                CodeTree readNode = CodeTreeBuilder.createBuilder().cast(cachedType, "cachedNodes[nodeIndex]").build();
-                b.declaration(cachedType, "node", readNode);
-
-                if (signature.isVoid) {
-                    b.startStatement();
-                    b.string("node").startCall(".executeVoid");
-                    b.string("frame");
-                    b.string(extraArguments);
-                    b.end(2);
+            if (!isVoid && !isShortCircuit) {
+                if (stackEffect == 1) {
+                    b.statement("frame.setObject(sp, result)");
                 } else {
-                    b.startAssign("Object result");
-                    b.string("node").startCall(".executeObject");
-                    b.string("frame");
-                    b.string(extraArguments);
-                    b.end(2);
-
-                    if (doPush) {
-                        b.statement("frame.setObject(resultSp - 1, result)");
-                    }
+                    b.statement("frame.setObject(sp - " + (1 - stackEffect) + ", result)");
                 }
             }
 
-            for (int i = 0; i < instr.signature.valueCount - (instr.signature.isVoid ? 0 : 1); i++) {
-                b.statement("frame.clear(resultSp + " + i + ")");
+            for (int i = stackEffect; i < 0; i++) {
+                // When stackEffect is negative, values should be cleared from the top of the stack.
+                b.statement("frame.clear(sp - " + -i + ")");
             }
 
-            if (doPush) {
-                b.statement("sp = resultSp");
+            // NB: we update sp inside continueAt (not in the helper method).
+            if (stackEffect > 0) {
+                continueAtBuilder.statement("sp += " + stackEffect);
+            } else if (stackEffect < 0) {
+                continueAtBuilder.statement("sp -= " + -stackEffect);
             }
         }
 
+        private String customInstructionHelperName(InstructionModel instr) {
+            String withoutPrefix = switch (instr.kind) {
+                case CUSTOM -> {
+                    assert instr.name.startsWith("c.");
+                    yield instr.name.substring(2);
+                }
+                case CUSTOM_SHORT_CIRCUIT -> {
+                    assert instr.name.startsWith("sc.");
+                    yield instr.name.substring(3);
+                }
+                default -> throw new AssertionError("Unexpected instruction " + instr + " with kind " + instr.kind.name());
+            };
+
+            return "do" + Arrays.stream(withoutPrefix.split("\\.")).map(part -> firstLetterUpperCase(part)).collect(Collectors.joining());
+        }
     }
 
     class OperationLocalImplFactory {

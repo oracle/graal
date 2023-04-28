@@ -149,11 +149,10 @@ public class InstructionModel implements InfoDumpable {
 
             for (int i = 0; i < valueCount; i++) {
                 sb.append(valueBoxingElimination[i] ? "box" : "obj");
+                if (isVariadic && i == valueCount - 1) {
+                    sb.append("...");
+                }
                 sb.append(", ");
-            }
-
-            if (isVariadic) {
-                sb.append("obj..., ");
             }
 
             for (int i = 0; i < localSetterCount; i++) {
