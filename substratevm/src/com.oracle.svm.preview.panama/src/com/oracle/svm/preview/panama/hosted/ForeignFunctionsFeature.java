@@ -39,6 +39,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeForeignFunctionsAccessSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
@@ -50,6 +52,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -64,28 +67,26 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticallyRegisteredFeature
 @Platforms(Platform.HOSTED_ONLY.class)
-@SuppressWarnings("unused")
-public class ForeignFunctionsFeature implements Feature, InternalFeature {
+public class ForeignFunctionsFeature implements InternalFeature {
     private static boolean isPreviewEnabled() {
         try {
             return (boolean) ReflectionUtil.lookupMethod(
-                    ReflectionUtil.lookupClass(false, "jdk.internal.misc.PreviewFeatures"),
-                    "isEnabled"
-            ).invoke(null);
+                            ReflectionUtil.lookupClass(false, "jdk.internal.misc.PreviewFeatures"),
+                            "isEnabled").invoke(null);
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
 
     private static final int FIRST_SUPPORTED_PREVIEW = 20;
-    private static final int FIRST_SUPPORTED_NON_PREVIEW = Integer.MAX_VALUE-1; // TBD
+    private static final int FIRST_SUPPORTED_NON_PREVIEW = Integer.MAX_VALUE - 1; // TBD
 
-    private final static Map<String, String[]> REQUIRES_CONCEALED = Map.of(
-            "jdk.internal.vm.ci", new String[]{ "jdk.vm.ci.code", "jdk.vm.ci.meta" },
-            "java.base", new String[]{ "jdk.internal.foreign", "jdk.internal.foreign.abi", "jdk.internal.foreign.abi.x64", "jdk.internal.foreign.abi.x64.sysv" }
-    );
+    private static final Map<String, String[]> REQUIRES_CONCEALED = Map.of(
+                    "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta"},
+                    "java.base", new String[]{"jdk.internal.foreign", "jdk.internal.foreign.abi", "jdk.internal.foreign.abi.x64", "jdk.internal.foreign.abi.x64.sysv"});
 
     private boolean sealed = false;
+    private final RuntimeForeignFunctionsAccessSupportImpl accessSupport = new RuntimeForeignFunctionsAccessSupportImpl();
     private final Set<NativeEntryPointInfo> stubsToRegister = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<NativeEntryPointInfo, ResolvedJavaMethod> stubsToCreate = new HashMap<>();
 
@@ -98,15 +99,36 @@ public class ForeignFunctionsFeature implements Feature, InternalFeature {
         UserError.guarantee(!sealed, "Registration of foreign functions was closed.");
     }
 
+    private class RuntimeForeignFunctionsAccessSupportImpl extends ConditionalConfigurationRegistry implements RuntimeForeignFunctionsAccessSupport {
+
+        @Override
+        public void registerForDowncall(ConfigurationCondition condition, Object descO, Object... optionsO) {
+            checkNotSealed();
+            if (!(descO instanceof FunctionDescriptor)) {
+                throw new IllegalArgumentException("Desc must be an instance of " + FunctionDescriptor.class);
+            }
+            FunctionDescriptor desc = (FunctionDescriptor) descO;
+            Linker.Option[] options = new Linker.Option[optionsO.length];
+
+            for (int i = 0; i < optionsO.length; ++i) {
+                if (!(optionsO[i] instanceof Linker.Option)) {
+                    throw new IllegalArgumentException(i + "th option must be an instance of " + Linker.Option.class);
+                }
+                options[i] = (Linker.Option) optionsO[i];
+            }
+
+            registerConditionalConfiguration(condition, () -> stubsToRegister.add(AbiUtils.getInstance().makeEntrypoint(desc, options)));
+        }
+    }
+
     public void registerEntrypoint(NativeEntryPointInfo nepi) {
         checkNotSealed();
         stubsToRegister.add(nepi);
     }
+
     public void registerEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
         registerEntrypoint(AbiUtils.getInstance().makeEntrypoint(desc, options));
     }
-
-
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -118,55 +140,52 @@ public class ForeignFunctionsFeature implements Feature, InternalFeature {
         return SubstrateOptions.ForeignFunctions.getValue();
     }
 
-
-
     @Override
     public void duringSetup(DuringSetupAccess c) {
         FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) c;
         MetaAccessProvider metaAccess = config.getMetaAccess().getWrapped();
 
         assert (JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_PREVIEW && isPreviewEnabled()) ||
-                JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_NON_PREVIEW;
+                        JavaVersionUtil.JAVA_SPEC >= FIRST_SUPPORTED_NON_PREVIEW;
 
         boolean supportForeignFunctions = !SubstrateOptions.useLLVMBackend();
 
         if (supportForeignFunctions) {
             ImageSingletons.add(ForeignFunctionsRuntime.class, new ForeignFunctionsRuntime());
+            ImageSingletons.add(RuntimeForeignFunctionsAccessSupport.class, accessSupport);
+            config.registerSubstitutionProcessor(new ForeignFunctionsSubstitutionProcessor(metaAccess));
         } else {
             if (SubstrateOptions.useLLVMBackend()) {
                 throw UserError.abort("Foreign functions interface is in use, but is not supported together with the LLVM backend.");
-            }
-            else {
+            } else {
                 throw UserError.abort("Foreign functions interface is in use, but is not supported for an unspecified reason.");
             }
         }
-
-        config.registerSubstitutionProcessor(new ForeignFunctionsSubstitutionProcessor(metaAccess));
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        for (var modulePackages: REQUIRES_CONCEALED.entrySet()) {
+        for (var modulePackages : REQUIRES_CONCEALED.entrySet()) {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ForeignFunctionsFeature.class, false, modulePackages.getKey(), modulePackages.getValue());
         }
+        ModuleSupport.allowNativeAccess(ForeignFunctionsFeature.class);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         var access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
 
-        ConfigurationParser parser = new ForeignFunctionsConfigurationParser();
+        ConfigurationParser parser = new ForeignFunctionsConfigurationParser(accessSupport);
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
-                ConfigurationFiles.Options.ForeignFunctionsConfigurationFiles, ConfigurationFiles.Options.ForeignFunctionsResources, ConfigurationFile.FOREIGN_FUNCTIONS.getFileName());
+                        ConfigurationFiles.Options.ForeignFunctionsConfigurationFiles, ConfigurationFiles.Options.ForeignFunctionsResources, ConfigurationFile.FOREIGN_FUNCTIONS.getFileName());
 
-        // Specializing the lambda form would define a new class, which is not allowed in SubstrateVM
+        // Specializing the lambda form would define a new class, which is not allowed in
+        // SubstrateVM
         access.registerFieldValueTransformer(
-                ReflectionUtil.lookupField(
-                        ReflectionUtil.lookupClass(false, "jdk.internal.foreign.abi.DowncallLinker"),
-                        "USE_SPEC"
-                ),
-                (receiver, originalValue) -> false
-        );
+                        ReflectionUtil.lookupField(
+                                        ReflectionUtil.lookupClass(false, "jdk.internal.foreign.abi.DowncallLinker"),
+                                        "USE_SPEC"),
+                        (receiver, originalValue) -> false);
     }
 
     @Override
@@ -176,9 +195,10 @@ public class ForeignFunctionsFeature implements Feature, InternalFeature {
         }
         var access = (FeatureImpl.DuringAnalysisAccessImpl) a;
 
-        for(NativeEntryPointInfo nepi: stubsToRegister) {
+        for (NativeEntryPointInfo nepi : stubsToRegister) {
             stubsToCreate.computeIfAbsent(nepi, ignored -> {
-                ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped()); // Why getWrapped?
+                ResolvedJavaMethod stub = new DowncallStub(nepi, access.getMetaAccess().getWrapped()); // Why
+                                                                                                       // getWrapped?
                 AnalysisMethod analysisStub = access.getUniverse().lookup(stub);
                 access.getBigBang().addRootMethod(analysisStub, false);
                 return analysisStub;
@@ -193,17 +213,11 @@ public class ForeignFunctionsFeature implements Feature, InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess a) {
         sealed = true;
         ProgressReporter.singleton().setForeignFunctionsInfo(stubsToCreate.size());
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess a) {
-        for(var nepiStubPair: stubsToCreate.entrySet()) {
+        for (var nepiStubPair : stubsToCreate.entrySet()) {
             ForeignFunctionsRuntime.singleton().addStubPointer(
-                    nepiStubPair.getKey(),
-                    new MethodPointer(nepiStubPair.getValue())
-            );
+                            nepiStubPair.getKey(),
+                            new MethodPointer(nepiStubPair.getValue()));
         }
         stubsToCreate.clear();
     }
 }
-

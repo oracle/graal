@@ -38,10 +38,8 @@ import jdk.internal.foreign.abi.VMStorage;
 @SuppressWarnings("unused")
 public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
 
-    @Alias
-    private final MethodType methodType;
-    @Alias
-    public final long downcallStubAddress;
+    @Alias private final MethodType methodType;
+    @Alias public final long downcallStubAddress;
 
     public Target_jdk_internal_foreign_abi_NativeEntryPoint(MethodType methodType, long downcallStubAddress) {
         this.methodType = methodType;
@@ -50,10 +48,10 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
 
     @Substitute
     public static Target_jdk_internal_foreign_abi_NativeEntryPoint make(ABIDescriptor abi,
-                                                                        VMStorage[] argMoves, VMStorage[] returnMoves,
-                                                                        MethodType methodType,
-                                                                        boolean needsReturnBuffer,
-                                                                        int capturedStateMask) {
+                    VMStorage[] argMoves, VMStorage[] returnMoves,
+                    MethodType methodType,
+                    boolean needsReturnBuffer,
+                    int capturedStateMask) {
         var info = NativeEntryPointInfo.make(abi, argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask);
         long addr = ForeignFunctionsRuntime.singleton().getStubPointer(info).rawValue();
         return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.linkMethodType(), addr);
@@ -64,4 +62,3 @@ public final class Target_jdk_internal_foreign_abi_NativeEntryPoint {
         return methodType;
     }
 }
-

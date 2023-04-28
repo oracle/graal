@@ -269,11 +269,14 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         JavaKind[] kinds = new JavaKind[locations.length];
 
         if (type.returnSaving != null) {
-            // returnSaving implies an additional (prefix) parameter pointing to the buffer to use for saving.
-            // We pretend it is the first stack argument to the function: this means the function will safely ignore it,
+            // returnSaving implies an additional (prefix) parameter pointing to the buffer to use
+            // for saving.
+            // We pretend it is the first stack argument to the function: this means the function
+            // will safely ignore it,
             // but we will be able to access it right after the call concludes.
             startAt = 1;
-            // The actual allocation is done after allocating all other parameters, as it must be done last
+            // The actual allocation is done after allocating all other parameters, as it must be
+            // done last
             // (it needs to be placed first on the stack, and this is done in reverse order)
         }
 
@@ -286,7 +289,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 kinds[i] = kind;
 
                 if (type.nativeABI() && Platform.includedIn(Platform.WINDOWS.class)) {
-                    // Strictly positional: float parameters consume a general register and vice versa
+                    // Strictly positional: float parameters consume a general register and vice
+                    // versa
                     currentGeneral = i;
                     currentXMM = i;
                 }
@@ -321,12 +325,13 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
                 /*
                  * The AMD64 ABI does not specify whether subword (i.e., boolean, byte, char, short)
-                 * values should be extended to 32 bits. Hence, for incoming native calls, we can only
-                 * assume the bits sizes as specified in the standard.
+                 * values should be extended to 32 bits. Hence, for incoming native calls, we can
+                 * only assume the bits sizes as specified in the standard.
                  *
                  * Since within the graal compiler subwords are already extended to 32 bits, we save
-                 * extended values in outgoing calls. Note that some compilers also expect arguments to
-                 * be extended (https://reviews.llvm.org/rG1db979bae832563efde2523bb36ddabad43293d8).
+                 * extended values in outgoing calls. Note that some compilers also expect arguments
+                 * to be extended
+                 * (https://reviews.llvm.org/rG1db979bae832563efde2523bb36ddabad43293d8).
                  */
                 ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
                 if (register != null) {
@@ -336,8 +341,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                     currentStackOffset += Math.max(paramValueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
                 }
             }
-        }
-        else {
+        } else {
             final int baseStackOffset = currentStackOffset;
             Set<Register> usedRegisters = new HashSet<>();
             assert parameterTypes.length == type.fixedParameterAssignment.length + startAt;
@@ -348,7 +352,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
                 ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
 
-                var storage = type.fixedParameterAssignment[i-startAt];
+                var storage = type.fixedParameterAssignment[i - startAt];
                 switch (storage.kind()) {
                     case INTEGER -> {
                         assert Set.of(JavaKind.Byte, JavaKind.Boolean, JavaKind.Short, JavaKind.Char, JavaKind.Int, JavaKind.Long, JavaKind.Object).contains(kind);
@@ -375,7 +379,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         }
 
         if (type.returnSaving != null) {
-            assert type.fixedParameterAssignment == null || type.fixedParameterAssignment.length+1 == locations.length;
+            assert type.fixedParameterAssignment == null || type.fixedParameterAssignment.length + 1 == locations.length;
             assert parameterTypes[0].getJavaKind() == JavaKind.Long;
             JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[0], metaAccess, target);
             ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());

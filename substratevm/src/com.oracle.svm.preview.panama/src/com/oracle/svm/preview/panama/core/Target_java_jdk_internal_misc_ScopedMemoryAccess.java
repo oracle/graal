@@ -28,23 +28,17 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-/**
- * System lookups are currently unsupported, but this would be possible and might be useful to do
- * so. There would be two issues to solve; other than that, the JDK's implementation can be reused:
- * - The library path(s): there might not be a JDK on the machine running the native image - On
- * linux64, the loaded libraries are {libc, libm, libdl} - Library loading: libraries are currently
- * loaded in "the global scope", which is not exactly the correct behavior
- */
-@TargetClass(className = "jdk.internal.foreign.SystemLookup")
-@Substitute
-@SuppressWarnings("unused")
-public final class Target_jdk_internal_foreign_SystemLookup {
-    @Delete("Default lookup is not supported.")
-    public static native Target_jdk_internal_foreign_SystemLookup getInstance();
-}
+import jdk.internal.foreign.MemorySessionImpl;
 
-@TargetClass(className = "jdk.internal.foreign.SystemLookup", innerClass = "WindowsFallbackSymbols")
-@Delete
-@SuppressWarnings("unused")
-final class Target_jdk_internal_foreign_SystemLookup_WindowsFallbackSymbols {
+/**
+ * Gracefully handle unsupported features.
+ */
+@TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess")
+public final class Target_java_jdk_internal_misc_ScopedMemoryAccess {
+    @Substitute
+    static void registerNatives() {
+    }
+
+    @Delete("Arena.openShared is not yet supported.")
+    native boolean closeScope0(MemorySessionImpl session);
 }

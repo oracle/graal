@@ -36,7 +36,6 @@ import jdk.vm.ci.code.CallingConvention;
  */
 public final class SubstrateCallingConventionType implements CallingConvention.Type {
 
-
     public final SubstrateCallingConventionKind kind;
     /** Determines if this is a request for the outgoing argument locations at a call site. */
     public final boolean outgoing;
@@ -68,8 +67,8 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
     }
 
     /**
-     * Allows to manually assign which location (i.e. which register or
-     * stack location) to use for each argument.
+     * Allows to manually assign which location (i.e. which register or stack location) to use for
+     * each argument.
      */
     public SubstrateCallingConventionType withParametersAssigned(MemoryAssignment[] fixedRegisters) {
         assert nativeABI();
@@ -77,17 +76,19 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
     }
 
     /**
-     * Allows to retrieve the return of a function. When said return is more than one word long, we have no way of
-     * representing it as a value. Thus, this value will instead be store from the registers containing it
-     * into a buffer provided (as a pointer) as a prefix argument to the function.
-     *
-     * Note that, even if used in conjunction with {@link SubstrateCallingConventionType#withParametersAssigned},
-     * the location of the extra argument (i.e. the pointer to return buffer) should not be assigned to a location,
-     * as this will be handled by the backend.
+     * Allows to retrieve the return of a function. When said return is more than one word long, we
+     * have no way of representing it as a value. Thus, this value will instead be stored from the
+     * registers containing it into a buffer provided (as a pointer) as a prefix argument to the
+     * function.
+     * <p>
+     * Note that, even if used in conjunction with
+     * {@link SubstrateCallingConventionType#withParametersAssigned}, the location of the extra
+     * argument (i.e. the pointer to the return buffer) should not be assigned to a location, as
+     * this will be handled by the backend.
      */
-    public SubstrateCallingConventionType withReturnSaving(MemoryAssignment[] returnSaving) {
+    public SubstrateCallingConventionType withReturnSaving(MemoryAssignment[] newReturnSaving) {
         assert nativeABI();
-        return new SubstrateCallingConventionType(this.kind, this.outgoing, this.fixedParameterAssignment, returnSaving);
+        return new SubstrateCallingConventionType(this.kind, this.outgoing, this.fixedParameterAssignment, newReturnSaving);
     }
 
     public boolean nativeABI() {
@@ -96,8 +97,12 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         SubstrateCallingConventionType that = (SubstrateCallingConventionType) o;
         return outgoing == that.outgoing && kind == that.kind && Arrays.equals(fixedParameterAssignment, that.fixedParameterAssignment) && Arrays.equals(returnSaving, that.returnSaving);
     }

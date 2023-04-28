@@ -433,8 +433,7 @@ public class SubstrateOptions {
     @Option(help = "Export Invocation API symbols.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIExportSymbols = new HostedOptionKey<>(true);
 
-    @Option(help = "Enable Foreign Functions feature.")
-    public static final HostedOptionKey<Boolean> ForeignFunctions = new HostedOptionKey<>(true);
+    @Option(help = "Enable Foreign Functions support.") public static final HostedOptionKey<Boolean> ForeignFunctions = new HostedOptionKey<>(true);
 
     @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);

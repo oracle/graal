@@ -2016,6 +2016,7 @@ suite = {
                     ],
                 },
             },
+            "maven" : False,
         },
 
         "SVM_LLVM" : {

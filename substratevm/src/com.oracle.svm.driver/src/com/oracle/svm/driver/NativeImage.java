@@ -1869,13 +1869,18 @@ public class NativeImage {
     }
 
     public void enablePreview() {
-        if (config.libPreviewDir == null) {
-            return;
+        if (config.libPreviewDir == null && PreviewFeatures.values().length > 0) {
+            throw showError("The irectory containing the preview modules was not found.");
         }
 
         for (var preview : PreviewFeatures.values()) {
             if (preview.requirementsMet()) {
-                addImageBuilderModulePath(config.libPreviewDir.resolve(preview.getLibName() + ".jar"));
+                Path libPath = config.libPreviewDir == null ? null : config.libPreviewDir.resolve(preview.getLibName() + ".jar");
+                if (libPath != null && Files.exists(libPath)) {
+                    addImageBuilderModulePath(libPath);
+                } else {
+                    throw showError("Preview library " + preview.getLibName() + " should be enabled, but was not found.");
+                }
             }
         }
     }

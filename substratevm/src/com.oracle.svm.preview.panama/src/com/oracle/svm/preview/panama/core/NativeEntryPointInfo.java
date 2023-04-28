@@ -46,31 +46,31 @@ public final class NativeEntryPointInfo {
 
     public NativeEntryPointInfo(MethodType methodType, MemoryAssignment[] cc, MemoryAssignment[] returnBuffering, int stateCaptureMask) {
         /*
-            Method type is of the form (<>: argument; []: optional argument)
-            [return buffer address] <call address> [capture state address] <actual arg 1> <actual arg 2> ...
-            where <actual arg i>s are the arguments which end up passed to the C native function
+         * Method type is of the form (<>: argument; []: optional argument) [return buffer address]
+         * <call address> [capture state address] <actual arg 1> <actual arg 2> ... where <actual
+         * arg i>s are the arguments which end up passed to the C native function
          */
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
         this.capturedStateMask = stateCaptureMask;
     }
+
     public static void checkType(MethodType methodType, boolean needsReturnBuffer, int savedValueMask) {
         if (methodType.parameterType(0) != long.class) {
             throw new AssertionError("Address expected as first param: " + methodType);
         }
         int checkIdx = 1;
-        if ((needsReturnBuffer && methodType.parameterType(checkIdx++) != long.class)
-                || (savedValueMask != 0 && methodType.parameterType(checkIdx) != long.class)) {
-            throw new AssertionError("return buffer and/or preserved value address expected: " + methodType);
+        if ((needsReturnBuffer && methodType.parameterType(checkIdx++) != long.class) || (savedValueMask != 0 && methodType.parameterType(checkIdx) != long.class)) {
+            throw new AssertionError("Return buffer and/or preserved value address expected: " + methodType);
         }
     }
 
-    public static NativeEntryPointInfo make(@SuppressWarnings("unused") ABIDescriptor abi,
-                                            VMStorage[] argMoves, VMStorage[] returnMoves,
-                                            MethodType methodType,
-                                            boolean needsReturnBuffer,
-                                            int capturedStateMask) {
+    public static NativeEntryPointInfo make(@SuppressWarnings("unused") ABIDescriptor ignoreAbi,
+                    VMStorage[] argMoves, VMStorage[] returnMoves,
+                    MethodType methodType,
+                    boolean needsReturnBuffer,
+                    int capturedStateMask) {
         if (returnMoves.length > 1 != needsReturnBuffer) {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
@@ -99,15 +99,15 @@ public final class NativeEntryPointInfo {
     public MethodType nativeMethodType() {
         if (capturesCallState()) {
             return this.methodType.dropParameterTypes(0, captureAddressIndex() + 1);
-        }
-        else {
+        } else {
             return this.methodType.dropParameterTypes(0, callAddressIndex() + 1);
         }
     }
 
     /**
-     * Native method type, with a potential (pointer to) return buffer as prefix argument.
-     * Put differently: method type without the call address and the (pointer to) capture buffer (if present).
+     * Native method type, with a potential (pointer to) return buffer as prefix argument. Put
+     * differently: method type without the call address and the (pointer to) capture buffer (if
+     * present).
      */
     public MethodType stubMethodType() {
         int start = callAddressIndex();
@@ -138,7 +138,7 @@ public final class NativeEntryPointInfo {
     }
 
     public MemoryAssignment[] parametersAssignment() {
-        assert parameterAssignments.length == this.nativeMethodType().parameterCount(): Arrays.toString(parameterAssignments) + " ; " + nativeMethodType();
+        assert parameterAssignments.length == this.nativeMethodType().parameterCount() : Arrays.toString(parameterAssignments) + " ; " + nativeMethodType();
         return parameterAssignments;
     }
 
@@ -146,16 +146,21 @@ public final class NativeEntryPointInfo {
         return returnBuffering;
     }
 
-    public int capturedStateMast() {
+    public int capturedStateMask() {
         return capturedStateMask;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         NativeEntryPointInfo that = (NativeEntryPointInfo) o;
-        return capturedStateMask == that.capturedStateMask && Objects.equals(methodType, that.methodType) && Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
+        return capturedStateMask == that.capturedStateMask && Objects.equals(methodType, that.methodType) && Arrays.equals(parameterAssignments, that.parameterAssignments) &&
+                        Arrays.equals(returnBuffering, that.returnBuffering);
     }
 
     @Override

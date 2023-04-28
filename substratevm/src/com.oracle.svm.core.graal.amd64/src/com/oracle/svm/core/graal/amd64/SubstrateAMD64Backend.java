@@ -33,8 +33,8 @@ import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.xmmRegistersAVX512;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -46,7 +46,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.graal.code.MemoryAssignment;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -150,6 +149,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.graal.code.MemoryAssignment;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -904,10 +904,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             if (cc.returnSaving != null) {
                 // The pointer to the return buffer is passed as first argument
                 Value baseSaveLocation = parameters[0];
-                RegisterValue scratch = r10.asValue(parameters[0].getValueKind()); // One of x86 scratch registers
+                // Could be any x86 scratch register
+                RegisterValue scratch = r10.asValue(parameters[0].getValueKind());
                 gen.emitMove(scratch, baseSaveLocation);
                 long offset = 0;
-                for (MemoryAssignment ret: cc.returnSaving) {
+                for (MemoryAssignment ret : cc.returnSaving) {
                     Value saveLocation = gen.getArithmetic().emitAdd(scratch, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
                     switch (ret.kind()) {
                         case INTEGER -> {
@@ -923,7 +924,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                             offset += 16;
                         }
                         case STACK -> throw unsupportedFeature("Return should never happen on stack");
-                    };
+                    }
                 }
             }
         }

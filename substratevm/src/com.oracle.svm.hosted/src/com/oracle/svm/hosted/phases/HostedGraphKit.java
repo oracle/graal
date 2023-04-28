@@ -33,7 +33,6 @@ import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -150,13 +149,19 @@ public class HostedGraphKit extends SubstrateGraphKit {
         append(new WriteNode(at, LocationIdentity.any(), value, BarrierType.NONE, MemoryOrderMode.PLAIN));
     }
 
+    /**
+     * Lift a node representing an array into a list of nodes representing the values in that array.
+     * 
+     * @param array The array to lift
+     * @param elementKinds The kinds of the elements in the array
+     * @param length The length of the array
+     */
     public List<ValueNode> liftArray(ValueNode array, JavaKind[] elementKinds, int length) {
         assert elementKinds.length == length;
 
         List<ValueNode> result = new ArrayList<>();
-        GuardingNode argsBoundsCheckGuard = AbstractBeginNode.prevBegin(lastFixedNode);
         for (int i = 0; i < length; ++i) {
-            ValueNode load = createLoadIndexed(array, i, elementKinds[i], argsBoundsCheckGuard);
+            ValueNode load = createLoadIndexed(array, i, elementKinds[i], null);
             append(load);
             result.add(load);
         }
@@ -171,9 +176,8 @@ public class HostedGraphKit extends SubstrateGraphKit {
 
     public ValueNode getLastArrayElement(ValueNode array, JavaKind elementKind) {
         ValueNode length = append(new ArrayLengthNode(array));
-        GuardingNode argsBoundsCheckGuard = AbstractBeginNode.prevBegin(lastFixedNode);
         ValueNode index = BinaryArithmeticNode.sub(length, ConstantNode.forInt(1, getGraph()));
-        ValueNode load = createLoadIndexed(array, index, elementKind, argsBoundsCheckGuard);
+        ValueNode load = createLoadIndexed(array, index, elementKind, null);
         append(load);
         return load;
     }

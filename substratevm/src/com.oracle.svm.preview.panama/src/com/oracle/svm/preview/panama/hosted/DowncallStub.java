@@ -69,21 +69,21 @@ class DowncallStub extends NonBytecodeMethod {
         return SimpleSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
     }
 
-    private record CaptureMethod(Class<?> clazz, String name) {}
-    private final static Map<CapturableState, CaptureMethod> CAPTURE_METHODS = Map.of(
-            CapturableState.ERRNO, new CaptureMethod(LibC.class, "errno")
-    );
+    private record CaptureMethod(Class<?> clazz, String name) {
+    }
+
+    private static final Map<CapturableState, CaptureMethod> CAPTURE_METHODS = Map.of(
+                    CapturableState.ERRNO, new CaptureMethod(LibC.class, "errno"));
 
     private final NativeEntryPointInfo nep;
 
-    public DowncallStub(NativeEntryPointInfo nep, MetaAccessProvider metaAccess) {
+    DowncallStub(NativeEntryPointInfo nep, MetaAccessProvider metaAccess) {
         super(
-                DowncallStubsHolder.stubName(nep),
-                true,
-                metaAccess.lookupJavaType(DowncallStubsHolder.class),
-                createSignature(metaAccess),
-                DowncallStubsHolder.getConstantPool(metaAccess)
-        );
+                        DowncallStubsHolder.stubName(nep),
+                        true,
+                        metaAccess.lookupJavaType(DowncallStubsHolder.class),
+                        createSignature(metaAccess),
+                        DowncallStubsHolder.getConstantPool(metaAccess));
         this.nep = nep;
         checkSignature(nep.linkMethodType());
     }
@@ -103,40 +103,43 @@ class DowncallStub extends NonBytecodeMethod {
         ValueNode captureAddress = null;
         if (nep.capturesCallState()) {
             assert nep.captureAddressIndex() > nep.callAddressIndex();
-            // We already removed 1 element from the list, so we must offset the index by one as well
+            // We already removed 1 element from the list, so we must offset the index by one as
+            // well
             captureAddress = arguments.remove(nep.captureAddressIndex() - 1);
         }
 
         state.clearLocals();
         SubstrateCallingConventionType cc = SubstrateCallingConventionKind.Native.toType(true)
-                .withParametersAssigned(nep.parametersAssignment())
-                .withReturnSaving(nep.returnsAssignment()); // Assignment might be null, in which case this is a no-op
+                        .withParametersAssigned(nep.parametersAssignment())
+                        .withReturnSaving(nep.returnsAssignment()); // Assignment might be null, in
+                                                                    // which case this is a no-op
         ValueNode returnValue = kit.createCFunctionCall(
-                callAddress,
-                arguments,
-                SimpleSignature.fromMethodType(nep.stubMethodType(), kit.getMetaAccess()),
-                VMThreads.StatusSupport.getNewThreadStatus(CFunction.Transition.TO_NATIVE),
-                deoptimizationTarget,
-                cc
-        );
+                        callAddress,
+                        arguments,
+                        SimpleSignature.fromMethodType(nep.stubMethodType(), kit.getMetaAccess()),
+                        VMThreads.StatusSupport.getNewThreadStatus(CFunction.Transition.TO_NATIVE),
+                        deoptimizationTarget,
+                        cc);
 
         returnValue = adaptReturnValue(kit, nep.linkMethodType(), returnValue);
 
         /*
-            Note that we might need to make this stub uninterrruptible
-            as to prevent anything from altering the captured state before it is captured
+         * Note that we might need to make this stub uninterrruptible as to prevent anything from
+         * altering the captured state before it is captured
          */
         if (captureAddress != null) {
             int index = 0;
 
-            // Relies on values() yielding the capturable states in the correct (yet unspecified) order
+            // Relies on values() yielding the capturable states in the correct (yet unspecified)
+            // order
             for (var capture : CapturableState.values()) {
                 if (nep.requiresCapture(capture)) {
                     if (!CAPTURE_METHODS.containsKey(capture)) {
                         throw unsupportedFeature("Capturing call state of " + capture + " is not supported.");
                     }
                     if (index != 0) {
-                        // It should work out of the box, but disabled until tested (only used on Windows)
+                        // It should work out of the box, but disabled until tested (only used on
+                        // Windows)
                         throw unsupportedFeature("Capturing more than one state is not supported.");
                     }
 
@@ -145,7 +148,9 @@ class DowncallStub extends NonBytecodeMethod {
                     // This should boil down to a native call
                     state.clearStack();
                     InvokeNode captured = kit.createInvoke(captureMethodInfo.clazz, captureMethodInfo.name, CallTargetNode.InvokeKind.Static, state, kit.bci());
-                    captured.setInlineControl(Invoke.InlineControl.Never); // I don't know why, but that is apparently required
+                    captured.setInlineControl(Invoke.InlineControl.Never); // I don't know why, but
+                                                                           // that is apparently
+                                                                           // required
 
                     AddressNode writeAddress = kit.append(new OffsetAddressNode(captureAddress, ConstantNode.forIntegerBits(64, index)));
                     kit.emitWrite(writeAddress, captured);
@@ -175,8 +180,6 @@ class DowncallStub extends NonBytecodeMethod {
             checkClass(signature.parameterType(i), "param" + i);
         }
     }
-
-    // TODO: figure out how to prevent boxing
 
     private static List<ValueNode> convertArguments(HostedGraphKit kit, MethodType signature, ValueNode argumentsArray) {
         var args = kit.liftArray(argumentsArray, JavaKind.Object, signature.parameterCount() + 1);

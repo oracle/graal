@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.riscv64;
 
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.allRegisters;
 import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f10;
 import static org.graalvm.compiler.core.riscv64.ShadowedRISCV64.f11;
@@ -218,8 +219,8 @@ public class SubstrateRISCV64RegisterConfig implements SubstrateRegisterConfig {
     @Override
     public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
-        if (type.fixedParameterAssignment != null) {
-            throw unimplemented();
+        if (type.fixedParameterAssignment != null || type.returnSaving != null) {
+            throw unsupportedFeature("Fixed parameter assignments and return saving are not yet supported on this platform.");
         }
 
         boolean isEntryPoint = type.nativeABI() && !type.outgoing;

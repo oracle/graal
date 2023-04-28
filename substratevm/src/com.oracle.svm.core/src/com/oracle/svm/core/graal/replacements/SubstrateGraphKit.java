@@ -252,19 +252,18 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
-                                          SubstrateCallingConventionKind callKind) {
+                    SubstrateCallingConventionKind callKind) {
         return createIndirectCall(targetAddress, arguments, parameterTypes, returnStamp, returnKind, callKind.toType(true));
     }
 
-
     private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
-                                          CallingConvention.Type callKind) {
+                    CallingConvention.Type callKind) {
         frameState.clearStack();
 
         int bci = bci();
         CallTargetNode callTarget = getGraph().add(
-                new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
-                        callKind, InvokeKind.Static));
+                        new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
+                                        callKind, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         // Insert framestate.

@@ -240,7 +240,7 @@ final class Util_java_lang_invoke_MethodHandle {
         }
     }
 
-    static Object linkToNative(Object... args) throws Throwable {
+    static Object linkToNative(@SuppressWarnings("unused") Object... ignoreArgs) throws Throwable {
         throw unsupportedFeature("Foreign downcalls feature is not enabled.");
     }
 }
