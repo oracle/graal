@@ -31,16 +31,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -74,8 +71,9 @@ public final class Resources {
     /**
      * The hosted map used to collect registered resources. Using a {@link Pair} of (module,
      * resourceName) provides implementations for {@code hashCode()} and {@code equals()} needed for
-     * the map keys. Hosted module instances differ to runtime instances, so the map that ends up in the image heap
-     * is computed after the runtime module instances have been computed {see com.oracle.svm.hosted.ModuleLayerFeature}.
+     * the map keys. Hosted module instances differ to runtime instances, so the map that ends up in
+     * the image heap is computed after the runtime module instances have been computed {see
+     * com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<Pair<Module, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
@@ -93,8 +91,8 @@ public final class Resources {
         var resources = singleton().resources;
         synchronized (resources) {
             var keysToUpdate = StreamSupport.stream(resources.getKeys().spliterator(), false)
-                    .filter(k -> hostedModule.equals(k.getLeft()))
-                    .toList();
+                            .filter(k -> hostedModule.equals(k.getLeft()))
+                            .toList();
             for (var oldKey : keysToUpdate) {
                 ResourceStorageEntry entry = resources.removeKey(oldKey);
                 var newKey = createStorageKey(runtimeModule, oldKey.getRight());
@@ -137,6 +135,7 @@ public final class Resources {
     }
 
     private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
+        VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         var resources = singleton().resources;
         synchronized (resources) {
             Pair<Module, String> key = createStorageKey(module, resourceName);
