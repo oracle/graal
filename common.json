@@ -40,7 +40,7 @@
     "labsjdk-ce-21-llvm": {"name": "labsjdk",   "version": "ce-21+19-jvmci-23.1-b01-sulong", "platformspecific": true },
     "labsjdk-ee-21":      {"name": "labsjdk",   "version": "ee-21+19-jvmci-23.1-b01", "platformspecific": true },
     "labsjdk-ee-21Debug": {"name": "labsjdk",   "version": "ee-21+19-jvmci-23.1-b01-debug", "platformspecific": true },
-    "labsjdk-ee-21-llvm": {"name": "labsjdk",   "version": "ee-21+19-jvmci-23.1-b01-sulong", "platformspecific": true },
+    "labsjdk-ee-21-llvm": {"name": "labsjdk",   "version": "ee-21+19-jvmci-23.1-b01-sulong", "platformspecific": true }
 
   },
 
