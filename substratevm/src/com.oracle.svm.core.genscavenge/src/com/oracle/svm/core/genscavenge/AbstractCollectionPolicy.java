@@ -243,6 +243,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getSurvivorSpacesCapacity() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         guaranteeSizeParametersInitialized();
@@ -290,6 +291,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getTenuringAge() {
         assert VMOperation.isGCInProgress() : "use only during GC";
         return tenuringThreshold;

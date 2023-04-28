@@ -31,7 +31,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -57,26 +57,25 @@ final class GreyObjectsWalker {
      * Take a snapshot of a Space, such that all Objects in the Space are now black, and any new
      * Objects in the Space will be grey, and can have an ObjectVisitor applied to them.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setScanStart(Space s) {
-        Log trace = Log.noopLog().string("[Space.GreyObjectsWalker.setScanStart:").string("  s: ").string(s.getName());
         space = s;
         AlignedHeapChunk.AlignedHeader aChunk = s.getLastAlignedHeapChunk();
         alignedHeapChunk = aChunk;
-        trace.string("  alignedHeapChunk: ").zhex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
         alignedTop = (aChunk.isNonNull() ? HeapChunk.getTopPointer(aChunk) : WordFactory.nullPointer());
-        trace.string("  alignedTop: ").zhex(alignedTop);
         unalignedHeapChunk = s.getLastUnalignedHeapChunk();
-        trace.string("  unalignedChunkPointer: ").zhex(unalignedHeapChunk).string("]").newline();
     }
 
     /** Compare the snapshot to the current state of the Space to see if there are grey Objects. */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean haveGreyObjects() {
         return alignedHeapChunk.notEqual(space.getLastAlignedHeapChunk()) || alignedHeapChunk.isNonNull() && alignedTop.notEqual(HeapChunk.getTopPointer(alignedHeapChunk)) ||
                         unalignedHeapChunk.notEqual(space.getLastUnalignedHeapChunk());
     }
 
     @NeverInline("Split the GC into reasonable compilation units")
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     void walkGreyObjects() {
         while (haveGreyObjects()) {
             walkAlignedGreyObjects();
@@ -85,6 +84,7 @@ final class GreyObjectsWalker {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkAlignedGreyObjects() {
         AlignedHeapChunk.AlignedHeader aChunk;
         if (alignedHeapChunk.isNull() && alignedTop.isNull()) {
@@ -113,6 +113,7 @@ final class GreyObjectsWalker {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkUnalignedGreyObjects() {
         /* Visit the Objects in the UnalignedChunk after the snapshot UnalignedChunk. */
         UnalignedHeapChunk.UnalignedHeader uChunk;

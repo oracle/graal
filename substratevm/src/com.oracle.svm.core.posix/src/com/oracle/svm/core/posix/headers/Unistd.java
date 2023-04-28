@@ -78,6 +78,9 @@ public class Unistd {
     public static native int _SC_PAGE_SIZE();
 
     @CConstant
+    public static native int _SC_GETPW_R_SIZE_MAX();
+
+    @CConstant
     @Platforms(Platform.LINUX.class)
     public static native int _SC_PHYS_PAGES();
 
@@ -96,9 +99,6 @@ public class Unistd {
 
     @CFunction
     public static native int getuid();
-
-    @CFunction
-    public static native int geteuid();
 
     @CFunction
     public static native int getgid();
@@ -139,5 +139,8 @@ public class Unistd {
 
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int getpid();
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int geteuid();
     }
 }

@@ -128,6 +128,9 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public void simplify(SimplifierTool tool) {
+        if (shouldInjectBranchProbabilities()) {
+            injectBranchProbabilities();
+        }
         NodeView view = NodeView.from(tool);
         if (value() instanceof ConstantNode) {
             Constant constant = value().asConstant();

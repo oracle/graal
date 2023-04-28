@@ -95,7 +95,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         } else {
             VMError.guarantee(ReferenceAccess.singleton().haveCompressedReferences(), "Ensures hubs (at the start of the image heap) remain addressable");
             numReservedBits = numMinimumReservedBits + 2;
-            VMError.guarantee(numReservedBits <= numAlignmentBits || ReferenceAccess.singleton().getCompressEncoding().hasShift(),
+            VMError.guarantee(numReservedBits <= numAlignmentBits || hasShift(),
                             "With no shift, forwarding references are stored directly in the header (with 64-bit, must be) and we cannot use non-alignment header bits");
         }
         numReservedExtraBits = numReservedBits - numAlignmentBits;
@@ -104,7 +104,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Fold
     public static ObjectHeaderImpl getObjectHeaderImpl() {
-        ObjectHeaderImpl oh = HeapImpl.getHeapImpl().getObjectHeaderImpl();
+        ObjectHeaderImpl oh = HeapImpl.getObjectHeaderImpl();
         assert oh != null;
         return oh;
     }
@@ -166,6 +166,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return header.and(IDHASH_STATE_BITS).equal(inFieldState);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void setIdentityHashInField(Object o) {
         assert VMOperation.isGCInProgress();
         VMError.guarantee(!hasFixedIdentityHashField());
@@ -297,8 +298,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         VMError.guarantee((header >>> numReservedExtraBits) == hubOffsetFromHeapBase, "Hub is too far from heap base for encoding in object header");
         assert (header & reservedBitsMask) == 0 : "Object header bits must be zero initially";
         if (HeapImpl.usesImageHeapCardMarking()) {
-            if (obj.getPartition() instanceof ChunkedImageHeapPartition) {
-                ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) obj.getPartition();
+            if (obj.getPartition() instanceof ChunkedImageHeapPartition partition) {
                 if (partition.isWritable()) {
                     header |= REMEMBERED_SET_BIT.rawValue();
                 }
@@ -320,6 +320,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return !isUnalignedObject(o);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAlignedHeader(UnsignedWord header) {
         return !isUnalignedHeader(header);
     }
@@ -335,12 +336,14 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return header.and(UNALIGNED_BIT).notEqual(0);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setRememberedSetBit(Object o) {
         UnsignedWord oldHeader = readHeaderFromObject(o);
         UnsignedWord newHeader = oldHeader.or(REMEMBERED_SET_BIT);
         writeHeaderToObject(o, newHeader);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean hasRememberedSet(UnsignedWord header) {
         return header.and(REMEMBERED_SET_BIT).notEqual(0);
     }
@@ -356,14 +359,16 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return header.and(FORWARDED_BIT).notEqual(0);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Object getForwardedObject(Pointer ptr) {
         return getForwardedObject(ptr, readHeaderFromPointer(ptr));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Object getForwardedObject(Pointer ptr, UnsignedWord header) {
         assert isForwardedHeader(header);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
+            if (hasShift()) {
                 // References compressed with shift have no bits to spare, so the forwarding
                 // reference is stored separately, after the object header
                 ObjectLayout layout = ConfigurationValues.getObjectLayout();
@@ -380,24 +385,33 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     /** In an Object, install a forwarding pointer to a different Object. */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void installForwardingPointer(Object original, Object copy) {
         assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
-        UnsignedWord forwardHeader;
+        UnsignedWord forwardHeader = getForwardHeader(copy);
+        ObjectAccess.writeLong(original, getHubOffset(), forwardHeader.rawValue());
+        assert isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
+    }
+
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private UnsignedWord getForwardHeader(Object copy) {
+        UnsignedWord result;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
+            UnsignedWord compressedCopy = ReferenceAccess.singleton().getCompressedRepresentation(copy);
+            if (hasShift()) {
                 // Compression with a shift uses all bits of a reference, so store the forwarding
                 // pointer in the location following the hub pointer.
-                forwardHeader = WordFactory.unsigned(0xe0e0e0e0e0e0e0e0L);
-                ObjectAccess.writeObject(original, getHubOffset() + getReferenceSize(), copy);
+                result = compressedCopy.shiftLeft(32).or(WordFactory.unsigned(0x00000000e0e0e0e0L));
             } else {
-                forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);
+                result = compressedCopy;
             }
         } else {
-            forwardHeader = Word.objectToUntrackedPointer(copy);
+            result = Word.objectToUntrackedPointer(copy);
         }
-        assert getHeaderBitsFromHeader(forwardHeader).equal(0);
-        writeHeaderToObject(original, forwardHeader.or(FORWARDED_BIT));
-        assert isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
+
+        assert getHeaderBitsFromHeader(result).equal(0);
+        return result.or(FORWARDED_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -405,6 +419,11 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         assert !isProducedHeapChunkZapped(header) : "Produced chunk zap value";
         assert !isConsumedHeapChunkZapped(header) : "Consumed chunk zap value";
         return header.and(reservedBitsMask);
+    }
+
+    @Fold
+    static boolean hasShift() {
+        return ReferenceAccess.singleton().getCompressEncoding().hasShift();
     }
 
     @Fold

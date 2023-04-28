@@ -367,6 +367,11 @@ suite = {
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
+    "org.graalvm.toolchain.test" : {
+      "class" : "ToolchainTestProject",
+      "subDir" : "src",
+      "buildDependencies" : ["LLVM_TOOLCHAIN"],
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -681,6 +686,7 @@ ML=<path:LLVM_TOOLCHAIN>\\bin\\llvm-ml
       },
       "dependencies": [
         "LLVM_TOOLCHAIN",
+        "org.graalvm.toolchain.test",
       ],
     },
   },

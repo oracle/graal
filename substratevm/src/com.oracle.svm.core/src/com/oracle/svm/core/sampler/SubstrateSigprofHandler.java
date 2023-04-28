@@ -32,7 +32,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.IsolateListenerSupport.IsolateListener;
@@ -44,6 +43,8 @@ import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
 import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.AbstractJfrExecutionSampler;
+import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.PlatformThreads.ThreadLocalKey;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
@@ -61,7 +62,7 @@ import com.oracle.svm.core.thread.VMThreads;
  */
 public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSampler implements IsolateListener, ThreadListener {
     private static final CGlobalData<Pointer> SIGNAL_HANDLER_ISOLATE = CGlobalDataFactory.createWord();
-    private UnsignedWord keyForNativeThreadLocal;
+    private ThreadLocalKey keyForNativeThreadLocal;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected SubstrateSigprofHandler() {
@@ -75,15 +76,15 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     @Override
     @Uninterruptible(reason = "Thread state not set up yet.")
     public void afterCreateIsolate(Isolate isolate) {
-        keyForNativeThreadLocal = createNativeThreadLocal();
+        keyForNativeThreadLocal = PlatformThreads.singleton().createUnmanagedThreadLocal();
     }
 
     @Override
     @Uninterruptible(reason = "The isolate teardown is in progress.")
     public void onIsolateTeardown() {
-        UnsignedWord oldKey = keyForNativeThreadLocal;
+        ThreadLocalKey oldKey = keyForNativeThreadLocal;
         keyForNativeThreadLocal = WordFactory.nullPointer();
-        deleteNativeThreadLocal(oldKey);
+        PlatformThreads.singleton().deleteUnmanagedThreadLocal(oldKey);
     }
 
     @Override
@@ -175,18 +176,6 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract UnsignedWord createNativeThreadLocal();
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void deleteNativeThreadLocal(UnsignedWord key);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void setNativeThreadLocalValue(UnsignedWord key, IsolateThread value);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract IsolateThread getNativeThreadLocalValue(UnsignedWord key);
-
     /**
      * Called from the platform dependent sigprof handler to enter isolate.
      */
@@ -205,8 +194,8 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
 
         /* We are keeping reference to isolate thread inside OS thread local area. */
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            UnsignedWord key = singleton().keyForNativeThreadLocal;
-            IsolateThread thread = singleton().getNativeThreadLocalValue(key);
+            ThreadLocalKey key = singleton().keyForNativeThreadLocal;
+            IsolateThread thread = PlatformThreads.singleton().getUnmanagedThreadLocalValue(key);
             if (thread.isNull()) {
                 /* Thread is not yet initialized or already detached from isolate. */
                 return false;
@@ -220,6 +209,6 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void storeIsolateThreadInNativeThreadLocal(IsolateThread isolateThread) {
-        setNativeThreadLocalValue(keyForNativeThreadLocal, isolateThread);
+        PlatformThreads.singleton().setUnmanagedThreadLocalValue(keyForNativeThreadLocal, isolateThread);
     }
 }

@@ -459,7 +459,7 @@ public abstract class PartialEvaluator {
     }
 
     protected void appendParsingNodePlugins(Plugins plugins) {
-        if (JavaVersionUtil.JAVA_SPEC >= 16 && JavaVersionUtil.JAVA_SPEC < 19) {
+        if (JavaVersionUtil.JAVA_SPEC < 19) {
             ResolvedJavaType memorySegmentProxyType = TruffleCompilerEnvironment.get().runtime().resolveType(config.lastTier().providers().getMetaAccess(),
                             "jdk.internal.access.foreign.MemorySegmentProxy");
             for (ResolvedJavaMethod m : memorySegmentProxyType.getDeclaredMethods(false)) {

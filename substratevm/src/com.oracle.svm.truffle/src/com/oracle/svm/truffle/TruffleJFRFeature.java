@@ -32,9 +32,9 @@ import org.graalvm.compiler.truffle.jfr.EventFactory.Provider;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jfr.JfrFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.UserError;
 
 @AutomaticallyRegisteredFeature
@@ -54,7 +54,10 @@ public class TruffleJFRFeature implements InternalFeature {
     }
 
     private static boolean isEnabled() {
-        // The substratevm JFR implementation is not yet stable on the JDK 17, see GR-38866.
-        return ImageSingletons.contains(TruffleFeature.class) && ImageSingletons.contains(JfrFeature.class) && JavaVersionUtil.JAVA_SPEC < 17;
+        /*
+         * GR-38866: Does not work on JDK 17 due to the Truffle module not being open to the JFR
+         * module, but the problematic code was removed for later JDKs.
+         */
+        return ImageSingletons.contains(TruffleFeature.class) && ImageSingletons.contains(JfrFeature.class) && JavaVersionUtil.JAVA_SPEC > 17;
     }
 }

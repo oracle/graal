@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.hightiercodegen;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hightiercodegen.variables.ResolvedVar;
@@ -108,6 +109,9 @@ import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.word.WordCastNode;
 
+/**
+ * This class is responsible for generating code for individual {@link Node}s in the graph.
+ */
 public abstract class NodeLowerer {
 
     protected final CodeGenTool codeGenTool;
@@ -128,14 +132,19 @@ public abstract class NodeLowerer {
              * Here we assume a value node is first visited in the scheduled order of basic blocks.
              * All nodes that depend on it come after in the schedule.
              */
-            codeGenTool.genResolvedVarDeclPrefix(resolvedVar.getName());
-            resolvedVar.setDefinitionLowered();
+            lowerVarDeclPrefix(resolvedVar);
         }
 
         dispatch(node);
 
         codeGenTool.genResolvedVarDeclPostfix(nodeDebugInfo(node));
     }
+
+    /**
+     * Generates the code for the declaration and assignment of a variable, but not the value it's
+     * assigned to. Also sets the variable's definition as lowered if it wasn't already.
+     */
+    protected abstract void lowerVarDeclPrefix(ResolvedVar resolvedVar);
 
     /**
      * Generates code that represents the value of the given node.
@@ -147,10 +156,10 @@ public abstract class NodeLowerer {
      * {@link #lowerStatement(Node)}.
      */
     public final void lowerValue(ValueNode node) {
-        assert isActiveValueNode(node);
+        assert isActiveValueNode(node) : "Attempted to lower " + node + " which is not an active value node";
         ResolvedVar resolvedVar = codeGenTool.getAllocatedVariable(node);
         if (resolvedVar != null) {
-            assert resolvedVar.isDefinitionLowered();
+            assert resolvedVar.isDefinitionLowered() : "Variable definition for node " + node + " was not lowered before use";
             lower(resolvedVar);
         } else {
             dispatch(node);
@@ -325,8 +334,9 @@ public abstract class NodeLowerer {
         } else if (node instanceof ClassIsAssignableFromNode) {
             lower((ClassIsAssignableFromNode) node);
         } else {
-            assert !isForbiddenNode(node) : reportForbiddenNode(node);
-            assert isIgnored(node) : "Cannot lower node: " + node;
+            if (!isIgnored(node)) {
+                handleUnknownNodeType(node);
+            }
         }
     }
 
@@ -336,6 +346,14 @@ public abstract class NodeLowerer {
     protected abstract boolean isForbiddenNode(Node node);
 
     protected abstract String reportForbiddenNode(Node node);
+
+    /**
+     * Called when a node is encountered that is neither handled by {@link #dispatch}, forbidden or
+     * ignored.
+     */
+    protected void handleUnknownNodeType(Node node) {
+        throw GraalError.unimplemented("Could not lower node: " + node);
+    }
 
     protected abstract void lower(BlackholeNode node);
 

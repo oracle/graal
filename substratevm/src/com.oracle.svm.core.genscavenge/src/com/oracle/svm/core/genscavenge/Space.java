@@ -94,6 +94,7 @@ public final class Space {
         return name;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isEmpty() {
         return (getFirstAlignedHeapChunk().isNull() && getFirstUnalignedHeapChunk().isNull());
     }
@@ -109,10 +110,12 @@ public final class Space {
         return age == 0;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isYoungSpace() {
         return age <= HeapParameters.getMaxSurvivorSpaces();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isSurvivorSpace() {
         return age > 0 && age <= HeapParameters.getMaxSurvivorSpaces();
     }
@@ -122,14 +125,17 @@ public final class Space {
         return age == (HeapParameters.getMaxSurvivorSpaces() + 1);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getAge() {
         return age;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getNextAgeForPromotion() {
         return age + 1;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isFromSpace() {
         return isFromSpace;
     }
@@ -168,6 +174,7 @@ public final class Space {
      * Allocate memory from an AlignedHeapChunk in this Space.
      */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Pointer allocateMemory(UnsignedWord objectSize) {
         Pointer result = WordFactory.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
@@ -182,6 +189,7 @@ public final class Space {
         return allocateInNewChunk(objectSize);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Pointer allocateInNewChunk(UnsignedWord objectSize) {
         AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
         if (newChunk.isNonNull()) {
@@ -190,6 +198,7 @@ public final class Space {
         return WordFactory.nullPointer();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void releaseChunks(ChunkReleaser chunkReleaser) {
         chunkReleaser.add(firstAlignedHeapChunk);
         chunkReleaser.add(firstUnalignedHeapChunk);
@@ -229,6 +238,7 @@ public final class Space {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void extractAlignedHeapChunk(AlignedHeapChunk.AlignedHeader aChunk) {
         assert VMOperation.isGCInProgress() : "Should only be called by the collector.";
         extractAlignedHeapChunkUninterruptibly(aChunk);
@@ -282,6 +292,7 @@ public final class Space {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void extractUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader uChunk) {
         assert VMOperation.isGCInProgress() : "Trying to extract an unaligned chunk but not in a VMOperation.";
         extractUnalignedHeapChunkUninterruptibly(uChunk);
@@ -350,6 +361,7 @@ public final class Space {
 
     /** Promote an aligned Object to this Space. */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Object promoteAlignedObject(Object original, Space originalSpace) {
         assert ObjectHeaderImpl.isAlignedObject(original);
         assert this != originalSpace && originalSpace.isFromSpace();
@@ -362,6 +374,7 @@ public final class Space {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Object copyAlignedObject(Object originalObj) {
         assert VMOperation.isGCInProgress();
         assert ObjectHeaderImpl.isAlignedObject(originalObj);
@@ -408,6 +421,7 @@ public final class Space {
     }
 
     /** Promote an AlignedHeapChunk by moving it to this space. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
@@ -425,6 +439,7 @@ public final class Space {
     }
 
     /** Promote an UnalignedHeapChunk by moving it to this Space. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void promoteUnalignedHeapChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
@@ -441,6 +456,7 @@ public final class Space {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk() {
         AlignedHeapChunk.AlignedHeader chunk;
         if (isYoungSpace()) {
@@ -455,6 +471,7 @@ public final class Space {
         return chunk;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void absorb(Space src) {
         /*
          * Absorb the chunks of a source into this Space. I cannot just copy the lists, because each

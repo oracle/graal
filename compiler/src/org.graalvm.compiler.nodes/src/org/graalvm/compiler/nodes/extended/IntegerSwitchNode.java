@@ -182,6 +182,9 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
     @Override
     public void simplify(SimplifierTool tool) {
+        if (shouldInjectBranchProbabilities()) {
+            injectBranchProbabilities();
+        }
         NodeView view = NodeView.from(tool);
         if (blockSuccessorCount() == 1) {
             tool.addToWorkList(defaultSuccessor());

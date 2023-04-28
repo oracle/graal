@@ -98,6 +98,7 @@ public class VMCondition {
     /**
      * Wakes up a single thread that is waiting on this condition.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
         throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
     }

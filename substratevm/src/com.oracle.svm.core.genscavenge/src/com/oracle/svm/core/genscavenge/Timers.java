@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -46,10 +47,12 @@ final class Timer implements AutoCloseable {
         return name;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Timer open() {
         return openAt(System.nanoTime());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Timer openAt(long nanoTime) {
         openNanos = nanoTime;
         wasOpened = true;
@@ -59,10 +62,12 @@ final class Timer implements AutoCloseable {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void close() {
         closeAt(System.nanoTime());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void closeAt(long nanoTime) {
         closeNanos = nanoTime;
         wasClosed = true;
@@ -77,6 +82,7 @@ final class Timer implements AutoCloseable {
         collectedNanos = 0L;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getOpenedTime() {
         if (!wasOpened) {
             /* If a timer was not opened, pretend it was opened at the start of the VM. */
