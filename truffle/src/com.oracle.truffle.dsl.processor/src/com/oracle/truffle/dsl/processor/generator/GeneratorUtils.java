@@ -43,7 +43,9 @@ package com.oracle.truffle.dsl.processor.generator;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.fromTypeMirror;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.STATIC;
+import static javax.lang.model.element.Modifier.FINAL;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -479,5 +481,40 @@ public class GeneratorUtils {
             }
             executable.addThrownType(thrownType);
         }
+    }
+
+    public static List<Element> createUnsafeSingleton() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        TypeMirror unsafeType = context.getDeclaredType(sun.misc.Unsafe.class);
+
+        CodeVariableElement unsafeSingleton = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), unsafeType, "UNSAFE");
+        unsafeSingleton.createInitBuilder().startCall("getUnsafe").end();
+
+        CodeExecutableElement getUnsafeMethod = new CodeExecutableElement(Set.of(PRIVATE, STATIC), unsafeType, "getUnsafe");
+        CodeTreeBuilder b = getUnsafeMethod.createBuilder();
+        b.startTryBlock();
+
+        // return Unsafe.getUnsafe()
+        b.startReturn().startStaticCall(unsafeType, "getUnsafe").end(2);
+
+        b.end().startCatchBlock(context.getDeclaredType(SecurityException.class), "e1");
+
+        // if that fails, access theUnsafe using reflection
+        b.startTryBlock();
+
+        CodeTree getTheUnsafe = CodeTreeBuilder.createBuilder().startCall("Unsafe.class.getDeclaredField").string("\"theUnsafe\"").end().build();
+        b.declaration(context.getDeclaredType(Field.class), "theUnsafeInstance", getTheUnsafe);
+        b.startStatement().startCall("theUnsafeInstance", "setAccessible").string("true").end(2);
+        b.startReturn().cast(unsafeType).startCall("theUnsafeInstance", "get").string("Unsafe.class").end(2);
+
+        b.end().startCatchBlock(context.getDeclaredType(Exception.class), "e2");
+
+        b.startThrow().startNew(context.getDeclaredType(RuntimeException.class)).string("\"exception while trying to get Unsafe.theUnsafe via reflection:\"").string("e2").end(2);
+
+        b.end(); // inner catch
+
+        b.end(); // outer catch
+
+        return List.of(unsafeSingleton, getUnsafeMethod);
     }
 }

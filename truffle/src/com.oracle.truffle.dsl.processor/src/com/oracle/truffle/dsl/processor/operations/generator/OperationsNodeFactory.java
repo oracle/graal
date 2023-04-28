@@ -66,6 +66,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -168,7 +169,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         emptyObjectArray = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
 
         if (model.generateUncached) {
-            uncachedInterpreter = model.generateUncached ? new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "UncachedInterpreter") : null;
+            uncachedInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "UncachedInterpreter");
         } else {
             uncachedInterpreter = null;
         }
@@ -192,6 +193,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         // interpreter and for each variant.
         operationNodeGen.add(new BaseInterpreterFactory().create());
         if (model.generateUncached) {
+            // Transitioning between Uncached and Cached requires memory barriers, so we need Unsafe
+            operationNodeGen.addAll(GeneratorUtils.createUnsafeSingleton());
+
             operationNodeGen.add(new InterpreterFactory(uncachedInterpreter, true, false).create());
             operationNodeGen.add(createInterpreterVariantField(uncachedInterpreter, "UNCACHED"));
         }
@@ -334,7 +338,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         consts.addElementsTo(operationNodeGen);
 
         // Define a helper to initialize the cached nodes.
-        operationNodeGen.add(createInitializeCachedNodes());
+        operationNodeGen.add(createCreateCachedNodes());
 
         // TODO: this method is here for debugging and should probably be omitted before we release
         operationNodeGen.add(createDumpBytecode());
@@ -416,12 +420,12 @@ public class OperationsNodeFactory implements ElementHelpers {
         // The base copy method performs a shallow copy of all fields.
         // Some fields should be manually reinitialized to default values.
         b.statement("clone.interpreter = " + (model.generateUncached ? "UN" : "") + "CACHED_INTERPRETER");
-        b.statement("clone.cachedNodes = null");
 
         if (model.generateUncached) {
+            b.statement("clone.cachedNodes = null");
             b.statement("clone.uncachedExecuteCount = 16");
         } else {
-            b.statement("clone.initializeCachedNodes()");
+            b.statement("clone.cachedNodes = clone.createCachedNodes()");
         }
 
         b.startReturn().string("clone").end();
@@ -999,7 +1003,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         // from it.
         if (model.generateUncached) {
             b.startIf().string("interpreter == UNCACHED_INTERPRETER").end().startBlock();
-            b.statement("initializeCachedNodes()");
+            b.declaration(new ArrayCodeTypeMirror(types.Node), "nodes", "createCachedNodes()");
+            b.lineComment("For thread-safety, ensure that all stores into \"nodes\" happen before we make \"cachedNodes\" point at it.");
+            b.startStatement().startCall("UNSAFE", "storeFence").end(2);
+            b.startAssign("cachedNodes").string("nodes").end();
             b.end(); // } if
         }
 
@@ -1014,34 +1021,39 @@ public class OperationsNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeExecutableElement createInitializeCachedNodes() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "initializeCachedNodes");
+    private CodeExecutableElement createCreateCachedNodes() {
+        TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "createCachedNodes");
         CodeTreeBuilder b = ex.createBuilder();
 
         b.tree(createNeverPartOfCompilation());
-        b.startAssert().string("cachedNodes == null").end();
-        b.statement("cachedNodes = new Node[numNodes]");
+        b.declaration(nodeArrayType, "result", "new Node[numNodes]");
         b.statement("int bci = 0");
         b.string("loop: ").startWhile().string("bci < bc.length").end().startBlock();
         b.statement("int nodeIndex");
         b.statement("Node node");
         b.startSwitch().string("bc[bci]").end().startBlock();
-        for (InstructionModel instr : model.getInstructions()) {
-            b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
-            switch (instr.kind) {
-                case CUSTOM:
-                case CUSTOM_SHORT_CIRCUIT:
-                    InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
-                    b.statement("nodeIndex = bc[bci + " + imm.offset + "]");
-                    b.statement("node = new " + cachedDataClassName(instr) + "()");
-                    b.statement("bci += " + instr.getInstructionLength());
-                    b.statement("break");
-                    break;
-                default:
-                    b.statement("bci += " + instr.getInstructionLength());
-                    b.statement("continue loop");
-                    break;
+
+        Map<Boolean, List<InstructionModel>> instructionsGroupedByIsCustom = model.getInstructions().stream().collect(Collectors.partitioningBy(instr -> instr.isCustomInstruction()));
+        Map<Integer, List<InstructionModel>> builtinsGroupedByLength = instructionsGroupedByIsCustom.get(false).stream().collect(Collectors.groupingBy(instr -> instr.getInstructionLength()));
+
+        for (Map.Entry<Integer, List<InstructionModel>> entry : builtinsGroupedByLength.entrySet()) {
+            for (InstructionModel instr : entry.getValue()) {
+                b.startCase().tree(createInstructionConstant(instr)).end();
             }
+            b.startBlock();
+            b.statement("bci += " + entry.getKey());
+            b.statement("continue loop");
+            b.end();
+        }
+
+        for (InstructionModel instr : instructionsGroupedByIsCustom.get(true)) {
+            b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
+            InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
+            b.statement("nodeIndex = bc[bci + " + imm.offset + "]");
+            b.statement("node = new " + cachedDataClassName(instr) + "()");
+            b.statement("bci += " + instr.getInstructionLength());
+            b.statement("break");
             b.end();
         }
 
@@ -1053,10 +1065,12 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // node and nodeIndex are guaranteed to be set, since we continue to the top of the loop
         // when there's no node.
-        b.statement("cachedNodes[nodeIndex] = insert(node)");
+        b.statement("result[nodeIndex] = insert(node)");
 
         b.end(); // } while
         b.startAssert().string("bci == bc.length").end();
+
+        b.startReturn().string("result").end();
 
         return ex;
     }
@@ -2395,10 +2409,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.startAssign("result.basicBlockBoundary").string("Arrays.copyOf(basicBlockBoundary, bci)").end();
             }
 
+            b.startAssign("result.numNodes").string("numNodes").end();
             if (!model.generateUncached) {
                 // If we don't start out in uncached, we need to initialize the cached nodes from
                 // the start.
-                b.statement("result.initializeCachedNodes()");
+                b.statement("result.cachedNodes = result.createCachedNodes()");
             }
 
             if (model.enableYield) {
@@ -2410,7 +2425,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startAssign("result.handlers").string("Arrays.copyOf(exHandlers, exHandlerCount)").end();
             b.startAssign("result.numLocals").string("numLocals").end();
-            b.startAssign("result.numNodes").string("numNodes").end();
             b.startAssign("result.buildIndex").string("buildIndex").end();
 
             if (model.hasBoxingElimination() && !model.generateUncached) {
