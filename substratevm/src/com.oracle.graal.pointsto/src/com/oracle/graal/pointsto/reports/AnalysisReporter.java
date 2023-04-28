@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 public class AnalysisReporter {
     public static void printAnalysisReports(String imageName, OptionValues options, String reportsPath, BigBang bb) {
@@ -55,19 +56,22 @@ public class AnalysisReporter {
                 AnalysisHeapHistogramPrinter.print(bb, reportsPath, baseImageName);
             }
 
-            String typesTraceOpt = AnalysisReportsOptions.PrintTypeReachabilityTrace.getValue(options);
+            String typesTraceOpt = AnalysisReportsOptions.ThrowOnTypeReachable.getValue(options);
             if (!typesTraceOpt.isEmpty()) {
                 ReachabilityTracePrinter.printTraceForTypes(typesTraceOpt, bb, reportsPath, baseImageName);
+                throw AnalysisError.interruptAnalysis("Compilation stopped as the type is reachable: " + typesTraceOpt);
             }
 
-            String methodsTraceOpt = AnalysisReportsOptions.PrintMethodReachabilityTrace.getValue(options);
+            String methodsTraceOpt = AnalysisReportsOptions.ThrowOnMethodReachable.getValue(options);
             if (!methodsTraceOpt.isEmpty()) {
                 ReachabilityTracePrinter.printTraceForMethods(methodsTraceOpt, bb, reportsPath, baseImageName);
+                throw AnalysisError.interruptAnalysis("Compilation stopped as the method is reachable: " + methodsTraceOpt);
             }
 
-            String fieldsTraceOpt = AnalysisReportsOptions.PrintFieldReachabilityTrace.getValue(options);
+            String fieldsTraceOpt = AnalysisReportsOptions.ThrowOnFieldReachable.getValue(options);
             if (!fieldsTraceOpt.isEmpty()) {
                 ReachabilityTracePrinter.printTraceForFields(fieldsTraceOpt, bb, reportsPath, baseImageName);
+                throw AnalysisError.interruptAnalysis("Compilation stopped as the field is reachable: " + fieldsTraceOpt);
             }
 
             if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {

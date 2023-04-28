@@ -70,6 +70,9 @@ public final class ReachabilityTracePrinter {
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getReachableReason(), header);
                 writer.println(trace);
             }
+
+            // print the first trace to avoid overwhelming users with information
+            break;
         }
     }
 
@@ -89,6 +92,9 @@ public final class ReachabilityTracePrinter {
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, method.getParsingReason(), header);
                 writer.println(trace);
             }
+
+            // print the first trace to avoid overwhelming users with information
+            break;
         }
     }
 
@@ -124,6 +130,8 @@ public final class ReachabilityTracePrinter {
                 writer.println(trace);
             }
 
+            // print the first trace to avoid overwhelming users with information
+            break;
         }
     }
 }
