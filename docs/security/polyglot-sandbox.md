@@ -506,7 +506,7 @@ If you believe you have found a security vulnerability, please submit a report t
 Please refer to [Reporting Vulnerabilities](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html) for additional information including our public encryption key for secure email.
 We ask that you do not contact project contributors directly or through other channels about a report.
 
-
 ### Related Documentation
-- [Security Guide](security-guide.md)
-- [Native Image Security Aspects](native-image.md)
+
+- [Polyglot Sandboxing](polyglot-sandbox.md)
+- [Security Considerations in Native Image](native-image.md)

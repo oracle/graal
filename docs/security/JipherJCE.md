@@ -1,13 +1,13 @@
 ---
 layout: ni-docs
-toc_group: native-image
+toc_group: security-guide
 link_title: Jipher JCE with Native Image
-permalink: /reference-manual/native-image/Jipher/
+permalink: /security-guide/native-image/Jipher/
 ---
 
 # Jipher JCE with Native Image
 
-Jipher JCE is an Oracle-developed [Java Cryptography Architecture (JCA)](JCASecurityServices.md) provider that packages a pre-configured and FIPS compliant version of OpenSSL 3.0. 
+Jipher JCE is an Oracle-developed [Java Cryptography Architecture (JCA)](../reference-manual/native-image/JCASecurityServices.md) provider that packages a pre-configured and FIPS compliant version of OpenSSL 3.0. 
 The Jipher provider supports algorithms which are allowed by [FIPS](https://en.wikipedia.org/wiki/FIPS_140), including the OpenSSL 3.0's FIPS module. 
 Jipher provides competitive performance compared to Bouncy Castle or the default JDK providers.
 It is recommended to enable Jipher with Native Image in contexts where only FIPS-allowed algorithms should be used. 
@@ -19,7 +19,7 @@ This page describes how to use Jipher with GraalVM Native Image.
 
 ## Install Jipher
 
-Jipher is distributed as a separate component and can be added to GraalVM with the [GraalVM Updater](../graalvm-updater.md) tool.
+Jipher is distributed as a separate component and can be added to GraalVM with the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool.
 
 Run this command to install Jipher:
 ```shell
@@ -30,8 +30,8 @@ This adds Jipher JAR files to the GraalVM's lib directory: `lib/jipher/jipher-jc
 ## Build a Native Executable with Jipher
 
 JCA algorithms rely on reflection. 
-To include all required code paths in the native executable during ahead-of-time compilation, the `native-image` tool needs to be made aware of any dynamically accessed Java code at run time, via reflection, as well as the native code which may be invoked. (Learn more [here](NativeImageBasics.md#static-analysis)).
-This can be done by providing the JSON-based [metadata collected by the agent](AutomaticMetadataCollection.md). 
+To include all required code paths in the native executable during ahead-of-time compilation, the `native-image` tool needs to be made aware of any dynamically accessed Java code at run time, via reflection, as well as the native code which may be invoked. (Learn more [here](../reference-manual/native-image/NativeImageBasics.md#static-analysis)).
+This can be done by providing the JSON-based [metadata collected by the agent](../reference-manual/native-image/AutomaticMetadataCollection.md). 
 Any dynamically-accessed JCA services through Jipher are automatically registered by the agent too.
 
 The steps below show how to embedded Jipher in a native executable, using a simple Java application that does some RSA based signature creation and validation.
@@ -169,10 +169,9 @@ The steps below show how to embedded Jipher in a native executable, using a simp
         
 When Jipher **is not** embedded in a native executable, but is instead being loaded by the JVM, it extracts the native libraries and the _openssl.cnf_ file embedded in the JAR to the filesystem and then dynamically loads them into the JVM process. 
 When Jipher **is** embedded in a native executable, it continues to extract the native libraries and the _openssl.cnf_ file to the filesystem and dynamically load them into the native process.
-Jipher is recommended for GraalVM Native Image when only FIPS-allowed algorithm should be used. Learn more about JCA services support in Native Image [here](JCASecurityServices.md).
+Jipher is recommended for GraalVM Native Image when only FIPS-allowed algorithm should be used. Learn more about JCA services support in Native Image [here](../reference-manual/native-image/JCASecurityServices.md).
 
 ### Related Documentation
 
-* [JCA Security Services in Native Image](JCASecurityServices.md)
-* [Java Native Interface (JNI) in Native Image](JNI.md)
-* [Collect Metadata with the Tracing Agent](AutomaticMetadataCollection.md)
+* [Native Image Security Aspects](native-image.md)
+* [JCA Security Services in Native Image](../reference-manual/native-image/JCASecurityServices.md)

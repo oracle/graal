@@ -4,7 +4,7 @@ toc_group: security-guide
 link_title: Security Considerations in Native Image
 permalink: /security-guide/native-image/
 ---
-# Native Image
+# Security Considerations in Native Image
 
 The `native-image` builder generates a snapshot of an application after startup and bundles it in a binary executable.
 
@@ -100,5 +100,7 @@ Native Image will not allow a Java Security Manager to be enabled because this f
 Attempting to set a security manager will trigger a runtime error.
 
 ## Related Documentation
+
 - [Security Guide](security-guide.md)
 - [Polyglot Sandboxing](polyglot-sandbox.md)
+- [Jipher JCE with Native Image](JipherJCE.md)

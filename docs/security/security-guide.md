@@ -84,5 +84,6 @@ When downgrading to GraalVM Community Edition, native code execution is only pos
 This also applies to languages implemented with Truffle that allow for native code extensions, such as Python and Ruby.
 
 ### Related Documentation
+
 - [Polyglot Sandboxing](polyglot-sandbox.md)
-- [Native Image Security Aspects](native-image.md)
+- [Security Considerations in Native Image](native-image.md)
