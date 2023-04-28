@@ -65,4 +65,4 @@ If relying on the third-party code that does not comply to the above requirement
 ### Further Reading
 
 * [URL Protocols in Native Image](URLProtocols.md)
-* [Jipher JCE with Native Image](JipherJCE.md)
+* [Jipher JCE with Native Image](../../security/JipherJCE.md)
