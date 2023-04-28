@@ -151,7 +151,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
                     ValueNode right = lowerBitValue == 1 ? forX : new LeftShiftNode(forX, ConstantNode.forInt(CodeUtil.log2(lowerBitValue)));
                     return AddNode.create(left, right, view);
                 } else {
-                    // e.g., 0b1111_1101
+                    // e.g., 0b1111_1100
                     int shiftToRoundUpToPowerOf2 = CodeUtil.log2(highestBitValue) + 1;
                     long subValue = (1 << shiftToRoundUpToPowerOf2) - i;
                     if (CodeUtil.isPowerOf2(subValue) && shiftToRoundUpToPowerOf2 < ((IntegerStamp) stamp).getBits()) {
