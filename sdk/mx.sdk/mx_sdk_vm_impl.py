@@ -3322,34 +3322,16 @@ def graalvm_version(version_type):
 
     def base_jdk_version_info():
         """
-        :rtype: (str, str, str)
+        :rtype: (str, str, str, str)
         """
-        full_version = None
-        version = None
-        qualifier = None
-        build = None
-
-        out = mx.LinesOutputCapture()
+        out = mx.OutputCapture()
         with mx.DisableJavaDebugging():
-            code = mx_sdk_vm.base_jdk().run_java(['-version'], out=out, err=out)
+            code = mx_sdk_vm.base_jdk().run_java(['-Xlog:disable', join(_suite.mxDir, 'vm', 'java', 'src', 'JDKVersionInfo.java')], out=out, err=out)
         if code == 0:
-            for line in out.lines:
-                version_match = re.search(r'version "(?P<full_version>(?P<version>[0-9.]+)(-(?P<qualifier>.+))?)"', line)
-                if version_match is not None:
-                    assert full_version is None
-                    full_version = version_match.group('full_version')
-                    version = version_match.group('version')
-                    qualifier = version_match.group('qualifier')
-                elif full_version is not None:
-                    build_match = re.search(r'Runtime Environment .*\(.*build ' + full_version + r'\+(?P<build>[0-9]+)', line)
-                    if build_match is not None:
-                        assert build is None
-                        build = build_match.group('build')
-            if version is None or build is None:
-                raise mx.abort('VM info extraction failed. Output:\n' + '\n'.join(out.lines))
-            return version, qualifier, build
-        else:
-            raise mx.abort('VM info extraction failed. Exit code: ' + str(code))
+            m = re.search(r'JDK_VERSION_INFO="(?P<java_vnum>[^\|]*)\|(?P<java_pre>[^\|]*)\|(?P<java_build>[^\|]*)|(?P<java_opt>[^\|]*)"', out.data, re.DOTALL)
+            if m:
+                return m.group('java_vnum', 'java_pre', 'java_build', 'java_opt')
+        raise mx.abort(f'VM info extraction failed. Exit code: {code}\nOutput: {out.data}')
 
     if version_type == 'graalvm':
         return _suite.release_version()
@@ -3357,15 +3339,17 @@ def graalvm_version(version_type):
         if _base_jdk_version_info is None:
             _base_jdk_version_info = base_jdk_version_info()
 
-        jdk_version, jdk_qualifier, jdk_build = _base_jdk_version_info
+        java_vnum, java_pre, java_build, _ = _base_jdk_version_info
         if version_type == 'vendor':
-            pre_release_id = '' if _suite.is_release() else '-dev'
-            if jdk_qualifier:
-                pre_release_id += '.' if pre_release_id else '-'
-                pre_release_id += jdk_qualifier
+            graalvm_pre = '' if _suite.is_release() else '-dev'
+            if java_pre:
+                graalvm_pre += '.' if graalvm_pre else '-'
+                graalvm_pre += java_pre
         else:
             assert version_type == 'base-dir', version_type
-            pre_release_id = ''
+            graalvm_pre = ''
+        # Ignores `java_opt` (`Runtime.version().optional()`)
+        #
         # Examples:
         #
         # ```
@@ -3379,10 +3363,10 @@ def graalvm_version(version_type):
         # OpenJDK Runtime Environment (build 21-ea+16-1326)
         # ```
         # -> `21-dev.ea+16.1`
-        return '{jdk_version}{pre_release_id}{jdk_build}.{release_build}'.format(
-            jdk_version=jdk_version,
-            pre_release_id=pre_release_id,
-            jdk_build='+' + jdk_build,
+        return '{java_vnum}{graalvm_pre}{java_build}.{release_build}'.format(
+            java_vnum=java_vnum,
+            graalvm_pre=graalvm_pre,
+            java_build=java_build,
             release_build=mx_sdk_vm.release_build
         )
 
