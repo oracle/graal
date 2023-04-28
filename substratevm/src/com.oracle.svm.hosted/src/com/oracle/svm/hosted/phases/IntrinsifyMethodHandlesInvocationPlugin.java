@@ -921,6 +921,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 if (pred.getClass() == NewInstanceNode.class && transplanted.containsKey(pred)) {
                     Node tNew = transplanted.get(pred);
                     pushToFrameStack((ValueNode) tNew);
+                } else {
+                    /*
+                     * Not an invokedynamic. A void method handle call returns null, push it to the
+                     * bytecode stack in case the following instruction wants to consume it.
+                     */
+                    pushToFrameStack(ConstantNode.forConstant(JavaConstant.NULL_POINTER, b.getMetaAccess(), b.getGraph()));
                 }
             }
 

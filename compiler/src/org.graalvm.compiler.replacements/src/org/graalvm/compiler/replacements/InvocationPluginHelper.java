@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProfileData;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -346,6 +347,14 @@ public class InvocationPluginHelper implements DebugCloseable {
         return otherSuccessor;
     }
 
+    /**
+     * Emits the {@code origReturnValue} and connects it to any other return values emitted before.
+     * <p/>
+     *
+     * This will add the return value to the graph if necessary. If the return value is a
+     * {@link StateSplit}, it should <em>not</em> be added to the graph using
+     * {@link GraphBuilderContext#add(ValueNode)} before calling this method.
+     */
     public void emitFinalReturn(JavaKind kind, ValueNode origReturnValue) {
         ValueNode returnValue = origReturnValue;
         assert !emittedReturn : "must only have one final return";

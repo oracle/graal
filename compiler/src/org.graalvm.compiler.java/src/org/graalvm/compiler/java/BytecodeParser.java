@@ -3908,6 +3908,13 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         sideEffect.setStateAfter(stateAfter);
     }
 
+    @Override
+    public void setStateAfterSkipVerification(StateSplit sideEffect) {
+        boolean wasEnabled = frameState.disableStateVerification();
+        setStateAfter(sideEffect);
+        frameState.setStateVerification(wasEnabled);
+    }
+
     protected NodeSourcePosition createBytecodePosition() {
         NodeSourcePosition bytecodePosition = frameState.createBytecodePosition(bci());
         return bytecodePosition;

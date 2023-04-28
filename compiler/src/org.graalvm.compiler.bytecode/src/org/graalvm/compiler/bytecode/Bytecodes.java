@@ -658,6 +658,16 @@ public class Bytecodes {
     }
 
     /**
+     * Determines if a given opcode denotes an invoke.
+     *
+     * @param opcode
+     * @return {@code true} iff {@code opcode} is an invoke
+     */
+    public static boolean isInvoke(int opcode) {
+        return (flagsArray[opcode & 0xff] & INVOKE) != 0;
+    }
+
+    /**
      * Gets the arithmetic operator name for a given opcode. If {@code opcode} does not denote an
      * arithmetic instruction, then the {@linkplain #nameOf(int) name} of the opcode is returned
      * instead.
