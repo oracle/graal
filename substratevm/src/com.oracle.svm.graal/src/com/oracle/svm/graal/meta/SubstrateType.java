@@ -157,7 +157,7 @@ public class SubstrateType implements SharedType {
 
     @Override
     public boolean isEnum() {
-        throw new InternalError("isEnum for " + hub.getName() + " unimplemented");
+        throw VMError.unimplemented("Enum support not implemented");
     }
 
     @Override
