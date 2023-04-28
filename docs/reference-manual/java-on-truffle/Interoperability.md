@@ -1,5 +1,5 @@
 ---
-layout: docs-experimental
+layout: docs
 toc_group: espresso
 link_title: Interoperability with Truffle Languages
 permalink: /reference-manual/java-on-truffle/interoperability/
