@@ -183,7 +183,7 @@ public final class JavaThreads {
 
     static void join(Thread thread, long millis) throws InterruptedException {
         if (millis < 0) {
-            throw new IllegalArgumentException("timeout value is negative");
+            throw new IllegalArgumentException("Timeout value is negative");
         }
         if (supportsVirtual() && isVirtual(thread)) {
             VirtualThreads.singleton().join(thread, millis);
@@ -266,7 +266,7 @@ public final class JavaThreads {
                     boolean allowThreadLocals,
                     boolean inheritThreadLocals) {
         if (name == null) {
-            throw new NullPointerException("name cannot be null");
+            throw new NullPointerException("The name cannot be null");
         }
         tjlt.name = name;
 

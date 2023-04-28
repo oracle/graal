@@ -250,7 +250,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
             long intervalNanos = unit.toNanos(interval);
             if (intervalNanos < 1) {
-                throw new IllegalArgumentException("intervalNanos");
+                throw new IllegalArgumentException("The intervalNanos field is less than one.");
             }
 
             RecurringCallbackTimer timer = createRecurringCallbackTimer(intervalNanos, callback);

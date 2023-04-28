@@ -287,7 +287,7 @@ public final class ReferenceInternals {
                 return field;
             }
         }
-        throw new GraalError("missing field " + fieldName + " in type " + type);
+        throw new GraalError("Missing field " + fieldName + " in type " + type);
     }
 
     private ReferenceInternals() {
