@@ -34,6 +34,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
@@ -41,12 +42,19 @@ import com.oracle.svm.core.util.VMError;
 public final class HeapParameters {
     @Platforms(Platform.HOSTED_ONLY.class)
     static void initialize() {
-        if (!SubstrateUtil.isPowerOf2(getAlignedHeapChunkSize().rawValue())) {
-            throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", getAlignedHeapChunkSize().rawValue());
+        long alignedChunkSize = getAlignedHeapChunkSize().rawValue();
+        if (!SubstrateUtil.isPowerOf2(alignedChunkSize)) {
+            throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", alignedChunkSize);
         }
-        if (!getLargeArrayThreshold().belowOrEqual(getAlignedHeapChunkSize())) {
-            throw UserError.abort("LargeArrayThreshold (%d) should be below or equal to AlignedHeapChunkSize (%d).",
-                            getLargeArrayThreshold().rawValue(), getAlignedHeapChunkSize().rawValue());
+        long maxLargeArrayThreshold = alignedChunkSize - RememberedSet.get().getHeaderSizeOfAlignedChunk().rawValue() + 1;
+        if (SerialAndEpsilonGCOptions.AlignedHeapChunkSize.hasBeenSet() && !SerialAndEpsilonGCOptions.LargeArrayThreshold.hasBeenSet()) {
+            throw UserError.abort("When setting AlignedHeapChunkSize, LargeArrayThreshold should be explicitly set to a value between 1 " +
+                            "and the usable size of an aligned chunk + 1 (currently %d).", maxLargeArrayThreshold);
+        }
+        long largeArrayThreshold = getLargeArrayThreshold().rawValue();
+        if (largeArrayThreshold <= 0 || largeArrayThreshold > maxLargeArrayThreshold) {
+            throw UserError.abort("LargeArrayThreshold (set to %d) should be between 1 and the usable size of an aligned chunk + 1 (currently %d).",
+                            largeArrayThreshold, maxLargeArrayThreshold);
         }
     }
 
@@ -123,24 +131,7 @@ public final class HeapParameters {
 
     @Fold
     public static UnsignedWord getLargeArrayThreshold() {
-        long largeArrayThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
-        if (largeArrayThreshold != 0) {
-            return WordFactory.unsigned(largeArrayThreshold);
-        } else {
-            long alignedChunkSize = SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getValue();
-            if (alignedChunkSize == SerialAndEpsilonGCOptions.AlignedHeapChunkSize.getDefaultValue()) {
-                /*
-                 * With the default chunk size of 512K, we found that a threshold of 1/4, so 128K,
-                 * gives noticeably better performance for some (Truffle) workloads than 1/8 (64K),
-                 * while fragmentation still does not appear to be a significant problem.
-                 */
-                return WordFactory.unsigned(128 * 1024L);
-            } else {
-                // For a long time, the threshold has been 1/8 of the aligned chunk size.
-                // We preserve that setting for custom chunk sizes.
-                return WordFactory.unsigned(alignedChunkSize).unsignedDivide(8);
-            }
-        }
+        return WordFactory.unsigned(SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue());
     }
 
     /*
