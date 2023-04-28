@@ -129,12 +129,6 @@ public class OperationsNodeFactory implements ElementHelpers {
     // All of the definitions that follow are nested inside of this class.
     private final CodeTypeElement operationNodeGen;
 
-    // The interpreter classes that execute the bytecode.
-    private final CodeTypeElement baseInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC, ABSTRACT), ElementKind.CLASS, null, "BaseInterpreter");
-    private final CodeTypeElement uncachedInterpreter;
-    private final CodeTypeElement cachedInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "CachedInterpreter");
-    private final CodeTypeElement instrumentableInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "InstrumentableInterpreter");
-
     // The builder class invoked by the language parser to generate the bytecode.
     private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
     private final DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
@@ -168,12 +162,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.templateType.getSimpleName() + "Gen", model.templateType.asType());
         emptyObjectArray = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
 
-        if (model.generateUncached) {
-            uncachedInterpreter = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "UncachedInterpreter");
-        } else {
-            uncachedInterpreter = null;
-        }
-
         if (model.enableYield) {
             continuationRoot = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRoot");
             continuationLocationImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationLocationImpl");
@@ -191,19 +179,16 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // Define the interpreter implementations. The root node defines fields for the current
         // interpreter and for each variant.
-        operationNodeGen.add(new BaseInterpreterFactory().create());
         if (model.generateUncached) {
             // Transitioning between Uncached and Cached requires memory barriers, so we need Unsafe
             operationNodeGen.addAll(GeneratorUtils.createUnsafeSingleton());
 
-            operationNodeGen.add(new InterpreterFactory(uncachedInterpreter, true, false).create());
-            operationNodeGen.add(createInterpreterVariantField(uncachedInterpreter, "UNCACHED"));
+            operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER0).create());
         }
-        operationNodeGen.add(new InterpreterFactory(cachedInterpreter, false, false).create());
-        operationNodeGen.add(createInterpreterVariantField(cachedInterpreter, "CACHED"));
-        operationNodeGen.add(new InterpreterFactory(instrumentableInterpreter, false, true).create());
-        operationNodeGen.add(createInterpreterVariantField(instrumentableInterpreter, "INSTRUMENTABLE"));
-        operationNodeGen.add(createInterpreterField());
+        operationNodeGen.addAll(createInterpreterTiers());
+        operationNodeGen.add(createCurrentTierField());
+        operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER1).create());
+        operationNodeGen.add(new ContinueAtFactory(InterpreterTier.INSTRUMENTED).create());
 
         // Define the builder class.
         operationNodeGen.add(new BuilderFactory().create());
@@ -239,9 +224,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createExecute());
 
         // Define a continueAt method.
-        // This method delegates to the current interpreter's continueAt, handling the case where
-        // the interpreter changes itself to another one (e.g., Uncached becomes Cached because the
-        // method is hot).
+        // This method delegates to the current tier's continueAt, handling the case where
+        // the tier changes.
         operationNodeGen.add(createContinueAt());
 
         // Define the static method to create a root node.
@@ -419,7 +403,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // The base copy method performs a shallow copy of all fields.
         // Some fields should be manually reinitialized to default values.
-        b.statement("clone.interpreter = " + (model.generateUncached ? "UN" : "") + "CACHED_INTERPRETER");
+        b.statement("clone.currentTier = " + (model.generateUncached ? InterpreterTier.TIER0.name() : InterpreterTier.TIER1.name()));
 
         if (model.generateUncached) {
             b.statement("clone.cachedNodes = null");
@@ -433,22 +417,58 @@ public class OperationsNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeVariableElement createInterpreterField() {
-        CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE), baseInterpreter.asType(), "interpreter");
+    private enum InterpreterTier {
+        TIER0("Tier0", true, false),
+        TIER1("Tier1", false, false),
+        INSTRUMENTED("Instrumented", false, true);
+
+        final String friendlyName;
+        final boolean isUncached;
+        final boolean isInstrumented;
+
+        private InterpreterTier(String friendlyName, boolean isUncached, boolean isInstrumented) {
+            this.friendlyName = friendlyName;
+            this.isUncached = isUncached;
+            this.isInstrumented = isInstrumented;
+        }
+
+        public String interpreterClassName() {
+            return friendlyName + "Interpreter";
+        }
+    }
+
+    private List<InterpreterTier> getInterpreterTiers() {
+        List<InterpreterTier> tiers = new ArrayList<>();
+        if (model.generateUncached) {
+            tiers.add(InterpreterTier.TIER0);
+        }
+        tiers.add(InterpreterTier.TIER1);
+        tiers.add(InterpreterTier.INSTRUMENTED);
+        return tiers;
+    }
+
+    private List<CodeVariableElement> createInterpreterTiers() {
+        List<InterpreterTier> tiers = getInterpreterTiers();
+
+        List<CodeVariableElement> results = new ArrayList<>();
+        for (int i = 0; i < tiers.size(); i++) {
+            CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(int.class), tiers.get(i).name());
+            fld.createInitBuilder().string(i).end();
+            results.add(fld);
+        }
+        return results;
+    }
+
+    private CodeVariableElement createCurrentTierField() {
+        CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "currentTier");
         fld = compFinal(fld);
 
         if (model.generateUncached) {
-            fld.createInitBuilder().string("UNCACHED_INTERPRETER");
+            fld.createInitBuilder().string(InterpreterTier.TIER0.name());
         } else {
-            fld.createInitBuilder().string("CACHED_INTERPRETER");
+            fld.createInitBuilder().string(InterpreterTier.TIER1.name());
         }
 
-        return fld;
-    }
-
-    private static CodeVariableElement createInterpreterVariantField(CodeTypeElement interpreterType, String name) {
-        CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), interpreterType.asType(), name + "_INTERPRETER");
-        fld.createInitBuilder().startNew(interpreterType.asType()).end();
         return fld;
     }
 
@@ -547,24 +567,38 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.statement("int state = startState");
 
         b.startWhile().string("true").end().startBlock();
-        b.startAssign("state").startCall("interpreter.continueAt");
-        b.string("this, frame");
-        if (model.enableYield) {
-            b.string("generatorFrame");
+
+        b.startSwitch().string("currentTier").end().startBlock();
+
+        for (InterpreterTier tier : getInterpreterTiers()) {
+            b.startCase().string(tier.name()).end().startBlock();
+            if (tier.isUncached) {
+                // We don't want to compile this code path.
+                b.tree(createTransferToInterpreterAndInvalidate("this"));
+            }
+            b.startAssign("state").startCall(tier.interpreterClassName() + ".continueAt");
+            b.string("this, frame");
+            if (model.enableYield) {
+                b.string("generatorFrame");
+            }
+            b.string("bc");
+            b.string("constants");
+            b.string("handlers");
+            b.string("numLocals");
+            if (!tier.isUncached) {
+                b.string("cachedNodes");
+            }
+            b.string("state");
+            b.end(2);
+            b.statement("break");
+            b.end();
         }
-        b.string("bc");
-        b.string("constants");
-        b.string("cachedNodes");
-        b.string("handlers");
-        b.string("state");
-        b.string("numLocals");
-        if (model.hasBoxingElimination()) {
-            b.string("localBoxingState");
-        }
-        b.end(2);
+        b.end(); // switch
+
         b.startIf().string("(state & 0xffff) == 0xffff").end().startBlock();
         b.statement("break");
         b.end().startElseBlock();
+        b.lineComment("tier changed");
         b.tree(createTransferToInterpreterAndInvalidate("this"));
         b.end();
         b.end();
@@ -984,15 +1018,15 @@ public class OperationsNodeFactory implements ElementHelpers {
     private CodeExecutableElement createChangeInterpreters() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "changeInterpreters");
 
-        ex.addParameter(new CodeVariableElement(baseInterpreter.asType(), "toInterpreter"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "newTier"));
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.startIf().string("toInterpreter == interpreter").end().startBlock();
+        b.startIf().string("newTier == currentTier").end().startBlock();
         b.returnStatement();
         b.end();
 
-        b.startIf().string("toInterpreter == CACHED_INTERPRETER && interpreter == INSTRUMENTABLE_INTERPRETER").end().startBlock();
+        b.startIf().string("newTier == TIER1 && currentTier == INSTRUMENTED").end().startBlock();
         b.returnStatement();
         b.end();
 
@@ -1002,7 +1036,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         // If we generate an uncached version, we need to initialize the cached nodes when switching
         // from it.
         if (model.generateUncached) {
-            b.startIf().string("interpreter == UNCACHED_INTERPRETER").end().startBlock();
+            b.startIf().string("currentTier == TIER0").end().startBlock();
             b.declaration(new ArrayCodeTypeMirror(types.Node), "nodes", "createCachedNodes()");
             b.lineComment("For thread-safety, ensure that all stores into \"nodes\" happen before we make \"cachedNodes\" point at it.");
             b.startStatement().startCall("UNSAFE", "storeFence").end(2);
@@ -1010,13 +1044,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end(); // } if
         }
 
-        if (model.hasBoxingElimination() && model.generateUncached) {
-            b.startIf().string("interpreter == UNCACHED_INTERPRETER").end().startBlock();
-            b.statement("localBoxingState = new byte[numLocals]");
-            b.end();
-        }
-
-        b.statement("interpreter = toInterpreter");
+        b.statement("currentTier = newTier");
 
         return ex;
     }
@@ -3465,16 +3493,26 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
     }
 
-    class BaseInterpreterFactory {
-        private CodeTypeElement create() {
-            baseInterpreter.add(createContinueAt());
+    class ContinueAtFactory {
+        private InterpreterTier tier;
 
-            return baseInterpreter;
+        ContinueAtFactory(InterpreterTier tier) {
+            this.tier = tier;
         }
 
-        private CodeExecutableElement createContinueAt() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(ABSTRACT), context.getType(int.class), "continueAt");
+        private CodeTypeElement create() {
+            CodeTypeElement interpreterType = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, tier.interpreterClassName());
+            interpreterType.addAll(createContinueAt());
+            return interpreterType;
+        }
 
+        private List<CodeExecutableElement> createContinueAt() {
+            // This method returns a list containing the continueAt method plus helper methods for
+            // custom instructions. The helper methods help reduce the bytecode size of the dispatch
+            // loop.
+            List<CodeExecutableElement> results = new ArrayList<>();
+
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(int.class), "continueAt");
             ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
@@ -3482,47 +3520,18 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
             ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "constants"));
-            ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
             ex.addParameter(new CodeVariableElement(context.getType(int[].class), "handlers"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "numLocals"));
-            if (model.hasBoxingElimination()) {
-                ex.addParameter(new CodeVariableElement(context.getType(byte[].class), "localBoxingState"));
+            if (!tier.isUncached) {
+                ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
             }
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
 
-            return ex;
-        }
-    }
+            results.add(ex);
 
-    class InterpreterFactory {
-
-        private CodeTypeElement interpreterType;
-        private boolean isUncached;
-        private boolean isInstrumented;
-
-        InterpreterFactory(CodeTypeElement type, boolean isUncached, boolean isInstrumented) {
-            this.interpreterType = type;
-            this.isUncached = isUncached;
-            this.isInstrumented = isInstrumented;
-        }
-
-        private CodeTypeElement create() {
-            interpreterType.setSuperClass(baseInterpreter.asType());
-
-            interpreterType.add(createContinueAt());
-
-            return interpreterType;
-        }
-
-        private CodeExecutableElement createContinueAt() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(baseInterpreter, "continueAt");
             CodeTreeBuilder b = ex.createBuilder();
 
-            if (isUncached) {
-                // TODO: generate different static methods rather than different BaseInterpreter
-                // subclasses. Then, we can insert this deopt before the uncached call.
-                b.tree(createTransferToInterpreterAndInvalidate("this"));
-            } else {
+            if (!tier.isUncached) {
                 ex.addAnnotationMirror(createExplodeLoopAnnotation("MERGE_EXPLODE"));
             }
 
@@ -3543,7 +3552,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.startTryBlock();
             }
 
-            if (isUncached) {
+            if (tier.isUncached) {
                 b.statement("int uncachedExecuteCount = $this.uncachedExecuteCount");
             }
 
@@ -3561,7 +3570,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             for (InstructionModel instr : model.getInstructions()) {
 
-                if (instr.isInstrumentationOnly() && !isInstrumented) {
+                if (instr.isInstrumentationOnly() && !tier.isInstrumented) {
                     continue;
                 }
 
@@ -3582,12 +3591,12 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 switch (instr.kind) {
                     case BRANCH:
-                        if (isUncached) {
+                        if (tier.isUncached) {
                             b.startIf().string("bc[bci + 1] <= bci").end().startBlock();
 
                             b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("$this.changeInterpreters(CACHED_INTERPRETER)");
+                            b.statement("$this.changeInterpreters(TIER1)");
                             b.statement("return (sp << 16) | bc[bci + 1]");
                             b.end();
 
@@ -3635,10 +3644,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("sp -= 1");
                         break;
                     case RETURN:
-                        if (isUncached) {
+                        if (tier.isUncached) {
                             b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("$this.changeInterpreters(CACHED_INTERPRETER)");
+                            b.statement("$this.changeInterpreters(TIER1)");
                             b.end().startElseBlock();
                             b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
                             b.end();
@@ -3702,11 +3711,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("frame.setObject(sp - 1, mergeVariadic((Object[])frame.getObject(sp - 1)))");
                         break;
                     case CUSTOM: {
-                        buildCustomInstructionExecute(b, instr, false);
+                        results.add(buildCustomInstructionExecute(b, instr, false));
                         break;
                     }
                     case CUSTOM_SHORT_CIRCUIT:
-                        buildCustomInstructionExecute(b, instr, true);
+                        results.add(buildCustomInstructionExecute(b, instr, true));
 
                         b.startIf().string("result", instr.continueWhen ? " != " : " == ", "Boolean.TRUE").end().startBlock();
                         // don't pop (the argument used in the SC op is the result)
@@ -3763,16 +3772,17 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.end();
             }
 
-            return ex;
+            return results;
         }
 
-        private void buildCustomInstructionExecute(CodeTreeBuilder continueAtBuilder, InstructionModel instr, boolean isShortCircuit) {
+        // Generate a helper method that implements the custom instruction. Also emits a call to the
+        // helper inside continueAt.
+        private CodeExecutableElement buildCustomInstructionExecute(CodeTreeBuilder continueAtBuilder, InstructionModel instr, boolean isShortCircuit) {
             // To reduce bytecode in the dispatch loop, extract each implementation into a helper.
             String helperName = customInstructionHelperName(instr);
 
             TypeMirror returnType = isShortCircuit ? context.getType(Object.class) : context.getType(void.class);
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, FINAL), returnType, helperName);
-            interpreterType.add(ex);
+            CodeExecutableElement helper = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), returnType, helperName);
 
             // In continueAt, just call the helper.
             if (isShortCircuit) {
@@ -3782,10 +3792,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                 continueAtBuilder.startStatement();
             }
             continueAtBuilder.startCall(helperName);
-            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            helper.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             continueAtBuilder.string("frame");
-            if (!isUncached) {
-                ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
+            if (!tier.isUncached) {
+                helper.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
                 continueAtBuilder.string("cachedNodes");
             }
 
@@ -3796,7 +3806,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             new CodeVariableElement(context.getType(int.class), "sp"));
 
             for (CodeVariableElement param : extraParams) {
-                ex.addParameter(param);
+                helper.addParameter(param);
                 continueAtBuilder.string(param.getName());
             }
             continueAtBuilder.end(2);
@@ -3805,9 +3815,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             boolean isVoid = instr.signature.isVoid;
 
             // Create the helper.
-            CodeTreeBuilder b = ex.createBuilder();
+            CodeTreeBuilder b = helper.createBuilder();
 
-            if (!isUncached && model.enableTracing) {
+            if (!tier.isUncached && model.enableTracing) {
                 b.startBlock();
 
                 b.startAssign("var specInfo").startStaticCall(types.Introspection, "getSpecializations");
@@ -3833,7 +3843,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             // since an instruction produces at most one value, stackEffect is at most 1.
             int stackEffect = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
 
-            if (!isUncached) {
+            if (!tier.isUncached) {
                 // if cached, retrieve the node
                 InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
                 String nodeIndex = "bc[bci + " + imm.offset + "]";
@@ -3850,7 +3860,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.startAssign("Object result");
             }
 
-            if (isUncached) {
+            if (tier.isUncached) {
                 b.staticReference(cachedType, "UNCACHED").startCall(".executeUncached");
             } else if (isVoid) {
                 b.string("node").startCall(".executeVoid");
@@ -3861,7 +3871,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("frame");
 
             // the uncached node takes all of its parameters. the cached node computes them itself.
-            if (isUncached) {
+            if (tier.isUncached) {
                 for (int i = 0; i < instr.signature.valueCount; i++) {
                     TypeMirror targetType = instr.signature.getParameterType(i);
                     b.startGroup();
@@ -3911,6 +3921,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             } else if (stackEffect < 0) {
                 continueAtBuilder.statement("sp -= " + -stackEffect);
             }
+
+            return helper;
         }
 
         private String customInstructionHelperName(InstructionModel instr) {
@@ -3990,7 +4002,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
     }
 
-    // todo: the next two classes could probably be merged into one
     class ContinuationRootFactory {
         private CodeTypeElement create() {
             continuationRoot.setEnclosingElement(operationNodeGen);
