@@ -45,16 +45,20 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+/**
+ * In charge of substituting
+ * {@link com.oracle.svm.core.methodhandles.Util_java_lang_invoke_MethodHandle}'s stub with a
+ * graph-based implementation.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 class ForeignFunctionsSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
 
-    public ForeignFunctionsSubstitutionProcessor(MetaAccessProvider metaAccessProvider) {
+    ForeignFunctionsSubstitutionProcessor(MetaAccessProvider metaAccessProvider) {
         Method linkToNative = ReflectionUtil.lookupMethod(
-                ReflectionUtil.lookupClass(false, "com.oracle.svm.core.methodhandles.Util_java_lang_invoke_MethodHandle"),
-                "linkToNative",
-                Object[].class
-        );
+                        ReflectionUtil.lookupClass(false, "com.oracle.svm.core.methodhandles.Util_java_lang_invoke_MethodHandle"),
+                        "linkToNative",
+                        Object[].class);
         ResolvedJavaMethod resolvedLinkToNative = metaAccessProvider.lookupJavaMethod(linkToNative);
 
         this.methodSubstitutions = Map.of(resolvedLinkToNative, new LinkToNative(resolvedLinkToNative));
@@ -81,7 +85,7 @@ class LinkToNative extends NonBytecodeMethod {
 
     ResolvedJavaMethod original;
 
-    public LinkToNative(ResolvedJavaMethod original) {
+    LinkToNative(ResolvedJavaMethod original) {
         super(original.getName(), original.isStatic(), original.getDeclaringClass(), original.getSignature(), original.getConstantPool());
         this.original = original;
     }
@@ -95,12 +99,10 @@ class LinkToNative extends NonBytecodeMethod {
         ValueNode argumentArray = arguments.get(0);
         ValueNode nep = kit.getLastArrayElement(arguments.get(0), JavaKind.Object);
         ValueNode nepAddress = kit.createLoadField(
-                nep,
-                providers.getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(
-                        ReflectionUtil.lookupClass(true, "jdk.internal.foreign.abi.NativeEntryPoint"),
-                        "downcallStubAddress"
-                ))
-        );
+                        nep,
+                        providers.getMetaAccess().lookupJavaField(ReflectionUtil.lookupField(
+                                        ReflectionUtil.lookupClass(true, "jdk.internal.foreign.abi.NativeEntryPoint"),
+                                        "downcallStubAddress")));
 
         ValueNode ret = kit.createIndirectCall(nepAddress, List.of(argumentArray), DowncallStub.createSignature(providers.getMetaAccess()), SubstrateCallingConventionKind.Java);
         kit.createReturn(ret, JavaKind.Object);

@@ -405,13 +405,13 @@ public class ProgressReporter {
         recordJsonMetric(AnalysisResults.FIELD_JNI, (numJNIFields >= 0 ? numJNIFields : UNAVAILABLE_METRIC));
         if (numJNIClasses >= 0) {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
-                    .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
+                            .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
         String stubsFormat = "%,8d stubs";
         recordJsonMetric(AnalysisResults.FOREIGN_FUNCTIONS_DOWNCALL_STUBS, (numForeignFunctionsDowncallStubs >= 0 ? numForeignFunctionsDowncallStubs : UNAVAILABLE_METRIC));
         if (numForeignFunctionsDowncallStubs >= 0) {
             l().a(stubsFormat, numForeignFunctionsDowncallStubs)
-                    .a(" registered for foreign downcalls").println();
+                            .a(" registered for foreign downcalls").println();
         }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {

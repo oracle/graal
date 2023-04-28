@@ -24,9 +24,24 @@
  */
 package com.oracle.svm.core.graal.code;
 
-public record MemoryAssignment(Kind kind, int index) {
-    public enum Kind {
-        INTEGER, FLOAT, STACK
+// The formatter doesn't enjoy records and then conflicts with checkstyle
+
+// Checkstyle: stop
+
+/**
+ * Represent a register or a stack offset.
+ *
+ * The interpretation of index depends on the kind and architecture, e.g.
+ * - If kind=STACK, then index represent an offset;
+ * - If kind=INTEGER and the architecture is AMD64, then AMD64.cpuRegisters[index] is the designated location;
+ * - If kind=FLOAT and the architecture is AMD64, then AMD64.xmmRegistersAVX512[index] is the designated location;
+ */
+public record MemoryAssignment(Kind kind,int index){//
+public enum Kind {
+    INTEGER,
+    FLOAT,
+    STACK
+
     }
 
     @Override

@@ -29,28 +29,33 @@ import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeForeignFunctionsAccessSupport;
 
 import com.oracle.svm.core.configure.ConfigurationParser;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 @SuppressWarnings("unused")
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
+    private final RuntimeForeignFunctionsAccessSupport accessSupport;
 
-    public ForeignFunctionsConfigurationParser() {
+    public ForeignFunctionsConfigurationParser(RuntimeForeignFunctionsAccessSupport access) {
         super(true);
+
+        this.accessSupport = access;
     }
 
     @Override
     public void parseAndRegister(Object json, URI origin) {
-        var topLevel = asMap(json, "first level of document must be an map");
+        var topLevel = asMap(json, "first level of document must be a map");
         checkAttributes(topLevel, "foreign methods categories", List.of("downcalls"));
         parseDowncallSignatures(asList(topLevel.get("downcalls"), "downcalls must be an array of method signatures"));
     }
 
     private void parseDowncallSignatures(List<Object> signatures) {
-        for (Object signature: signatures) {
+        for (Object signature : signatures) {
             String input = asString(signature, "downcalls's elements must be function descriptors");
-            ForeignFunctionsFeature.singleton().registerEntrypoint(FunctionDescriptorParser.parse(input));
+            accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), FunctionDescriptorParser.parse(input));
         }
     }
 }

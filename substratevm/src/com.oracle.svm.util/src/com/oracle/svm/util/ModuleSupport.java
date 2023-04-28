@@ -24,11 +24,16 @@
  */
 package com.oracle.svm.util;
 
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -52,6 +57,10 @@ public final class ModuleSupport {
     private static boolean isModulePathBuild() {
         return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
     }
+
+    // These two are only available with JDK19+
+    @Platforms(Platform.HOSTED_ONLY.class) private static final Method ENABLE_NATIVE_ACCESS = ReflectionUtil.lookupMethod(true, Module.class, "implAddEnableNativeAccess");
+    @Platforms(Platform.HOSTED_ONLY.class) private static final Method ENABLE_NATIVE_ACCESS_ALL_UNNAMED = ReflectionUtil.lookupMethod(true, Module.class, "implAddEnableNativeAccessToAllUnnamed");
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public enum Access {
@@ -140,5 +149,22 @@ public final class ModuleSupport {
             }
         }
         access.giveAccess(namedAccessingModule, declaringModule, packageName);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void allowNativeAccess(Class<?> accessingClass) {
+        if (JavaVersionUtil.JAVA_SPEC < 19) {
+            throw new IllegalStateException("JDK >= 19 is required to allow native access.");
+        }
+
+        try {
+            if (accessingClass != null && accessingClass.getModule().isNamed()) {
+                ENABLE_NATIVE_ACCESS.invoke(accessingClass.getModule());
+            } else {
+                ENABLE_NATIVE_ACCESS_ALL_UNNAMED.invoke(null);
+            }
+        } catch (IllegalAccessException | InvocationTargetException | NullPointerException e) {
+            throw shouldNotReachHere(e);
+        }
     }
 }

@@ -53,9 +53,8 @@ public class SimpleSignature implements Signature {
 
     public static SimpleSignature fromMethodType(MethodType mt, MetaAccessProvider metaAccess) {
         return new SimpleSignature(
-                Arrays.stream(mt.parameterArray()).map(metaAccess::lookupJavaType).collect(Collectors.toList()),
-                metaAccess.lookupJavaType(mt.returnType())
-        );
+                        Arrays.stream(mt.parameterArray()).map(metaAccess::lookupJavaType).collect(Collectors.toList()),
+                        metaAccess.lookupJavaType(mt.returnType()));
     }
 
     private static ResolvedJavaType resolveType(JavaKind kind, MetaAccessProvider metaAccess) {

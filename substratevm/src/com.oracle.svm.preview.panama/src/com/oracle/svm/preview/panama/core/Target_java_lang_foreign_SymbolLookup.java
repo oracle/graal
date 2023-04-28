@@ -24,15 +24,13 @@
  */
 package com.oracle.svm.preview.panama.core;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentScope;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.internal.loader.NativeLibrary;
@@ -45,17 +43,13 @@ public final class Target_java_lang_foreign_SymbolLookup {
     native Optional<MemorySegment> find(String name);
 
     /**
-     * Note that this method will have a behavior which is slightly different
-     * from the one in the JDK: like loadLibrary, the lookup is classloader agnostic,
-     * which means that loading a library in a classloader and then looking it up
-     * from another one will succeed.
+     * Note that this method will have a behavior which is slightly different from the one in the
+     * JDK: like loadLibrary, the lookup is classloader agnostic, which means that loading a library
+     * in a classloader and then looking it up from another one will succeed.
      */
     @Alias
     static native Target_java_lang_foreign_SymbolLookup loaderLookup();
 
-
-    @Substitute
-    static <Z> Target_java_lang_foreign_SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, SegmentScope libScope) {
-        throw unsupportedFeature("Library lookup are not supported.");
-    }
+    @Delete("Library lookup are not supported.")
+    static native <Z> Target_java_lang_foreign_SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, SegmentScope libScope);
 }

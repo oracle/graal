@@ -1718,6 +1718,7 @@ public class NativeImage {
 
     public enum PreviewFeatures {
         PANAMA(JavaVersionUtil.JAVA_SPEC >= 20, "panama");
+
         private final boolean requirementsMet;
         private final String libName;
 
@@ -1729,19 +1730,25 @@ public class NativeImage {
         public boolean requirementsMet() {
             return requirementsMet;
         }
+
         public String getLibName() {
             return libName;
         }
     }
 
     public void enablePreview() {
-        if (config.libPreviewDir == null) {
-            return;
+        if (config.libPreviewDir == null && PreviewFeatures.values().length > 0) {
+            throw showError("The irectory containing the preview modules was not found.");
         }
 
-        for (var preview: PreviewFeatures.values()) {
+        for (var preview : PreviewFeatures.values()) {
             if (preview.requirementsMet()) {
-                addImageBuilderModulePath(config.libPreviewDir.resolve(preview.getLibName() + ".jar"));
+                Path libPath = config.libPreviewDir == null ? null : config.libPreviewDir.resolve(preview.getLibName() + ".jar");
+                if (libPath != null && Files.exists(libPath)) {
+                    addImageBuilderModulePath(libPath);
+                } else {
+                    throw showError("Preview library " + preview.getLibName() + " should be enabled, but was not found.");
+                }
             }
         }
     }
@@ -2084,19 +2091,19 @@ public class NativeImage {
     protected static List<Path> getJars(Path dir, List<String> baseNameList) {
         try {
             return Files.list(dir)
-                        .filter(p -> {
-                            String jarFileName = p.getFileName().toString();
-                            String jarSuffix = ".jar";
-                            if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
-                                return false;
-                            }
-                            if (baseNameList.isEmpty()) {
-                                return true;
-                            }
-                            String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
-                            return baseNameList.contains(jarBaseName);
-                        })
-                        .collect(Collectors.toList());
+                            .filter(p -> {
+                                String jarFileName = p.getFileName().toString();
+                                String jarSuffix = ".jar";
+                                if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
+                                    return false;
+                                }
+                                if (baseNameList.isEmpty()) {
+                                    return true;
+                                }
+                                String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+                                return baseNameList.contains(jarBaseName);
+                            })
+                            .collect(Collectors.toList());
         } catch (IOException e) {
             throw showError("Unable to use jar-files from directory " + dir, e);
         }

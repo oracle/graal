@@ -44,11 +44,12 @@ public class ForeignFunctionsRuntime {
 
     private final EconomicMap<NativeEntryPointInfo, FunctionPointerHolder> stubs = EconomicMap.create();
 
-    public ForeignFunctionsRuntime() {}
+    public ForeignFunctionsRuntime() {
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addStubPointer(NativeEntryPointInfo nepi, CFunctionPointer ptr) {
-        assert(!stubs.containsKey(nepi));
+        assert (!stubs.containsKey(nepi));
         stubs.put(nepi, new FunctionPointerHolder(ptr));
     }
 
@@ -56,8 +57,7 @@ public class ForeignFunctionsRuntime {
         FunctionPointerHolder pointer = stubs.get(nep);
         if (pointer == null) {
             throw unsupportedFeature("Cannot perform downcall if the descriptor was not registered.");
-        }
-        else {
+        } else {
             return pointer.functionPointer;
         }
     }

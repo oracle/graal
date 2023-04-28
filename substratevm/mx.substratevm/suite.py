@@ -653,7 +653,7 @@ suite = {
                 "com.oracle.svm.hosted.dashboard",
             ],
         },
-        
+
         "com.oracle.svm.preview.panama": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1932,6 +1932,7 @@ suite = {
                     ],
                 },
             },
+            "maven" : False,
         },
 
         "SVM_LLVM" : {

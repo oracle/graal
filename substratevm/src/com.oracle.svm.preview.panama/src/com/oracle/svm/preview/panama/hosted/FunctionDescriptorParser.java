@@ -34,11 +34,39 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+/**
+ * Parses a string into a {@link java.lang.foreign.FunctionDescriptor}. The syntax is highly
+ * inspired from how function descriptors are printed by hotspot, but with some slight changes to
+ * make it a bit more readable.
+ * 
+ * <pre>
+ * {@code
+ *     Descriptor ::= '(' Layout* ')'  (Layout | Void)
+ *     Layout ::= SimpleLayout  [ '%' Alignment ]
+ *     SimpleLayout ::= ValueLayout | StructLayout | UnionLayout | SequenceLayout
+ *     StructLayout ::= '{' Layout* '}' |
+ *     UnionLayout ::=  '<' Layout* '>'
+ *     SequenceLayout ::= '[' Size ':' Layout ']'
+ *     ValueLayout ::= 'z8' | 'b8' | 's16' | 'i32' | 'j64' | 'f32' | 'd64' | 'a??'
+ *                              | 'Z8' | 'B8' | 'S16' | 'I32' | 'J64' | 'F32' | 'D64' | 'A??'
+ *     PaddingLayout ::= 'x' Int
+ *     Void ::= 'v'
+ *     Size ::= Int
+ *     Alignment ::= Int
+ *     Int ::= a positive (decimal) integer
+ * }
+ * </pre>
+ * 
+ * The byte endianess of a value layout is defined the by capitalization of the first and only
+ * letter (Capital means big-endian, lower means little-endian). The '??' in 'a??'/'A??' should be
+ * replaced by the size (in bits) of a pointer on the platform under consideration.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class FunctionDescriptorParser {
-    private FunctionDescriptorParser() {}
+    private FunctionDescriptorParser() {
+    }
 
-    private static class Impl {
+    private static final class Impl {
         private final String layout;
         private int at;
 
@@ -82,13 +110,13 @@ public final class FunctionDescriptorParser {
             MemoryLayout[] arguments = parseSequence('(', ')', this::parseLayout).toArray(new MemoryLayout[0]);
             if (peek() == 'v') {
                 consume();
-                return FunctionDescriptor.ofVoid(arguments); //FunctionDescriptor.ofVoid(arguments);
+                return FunctionDescriptor.ofVoid(arguments); // FunctionDescriptor.ofVoid(arguments);
             } else {
                 return FunctionDescriptor.of(parseLayout(), arguments);
             }
         }
 
-        private int parseInt() {
+        private long parseInt() {
             int start = at;
             boolean atLeastOneDigit = Character.isDigit(peek());
 
@@ -99,11 +127,11 @@ public final class FunctionDescriptorParser {
             while (Character.isDigit(peek())) {
                 consume();
             }
-            return Integer.parseInt(layout.substring(start, at));
+            return Long.parseLong(layout.substring(start, at));
         }
 
         private MemoryLayout parseLayout() {
-            return switch (Character.toUpperCase(peek())) {
+            MemoryLayout layout = switch (Character.toUpperCase(peek())) {
                 case 'Z' -> parseValueLayout(boolean.class);
                 case 'B' -> parseValueLayout(byte.class);
                 case 'S' -> parseValueLayout(short.class);
@@ -120,6 +148,18 @@ public final class FunctionDescriptorParser {
                 default -> handleError("Unknown carrier: " + peek());
             };
 
+            // Modifiers
+            switch (peek()) {
+                // Name
+                case '(' -> handleError("Layout parser does not support naming layouts: " + layout);
+                // Alignment
+                case '%' -> {
+                    consume();
+                    layout = layout.withBitAlignment(parseInt());
+                }
+            }
+
+            return layout;
         }
 
         private MemoryLayout parseUnionLayout() {
@@ -137,7 +177,7 @@ public final class FunctionDescriptorParser {
 
         private MemoryLayout parseSequenceLayout() {
             consumeChecked('[');
-            int size = parseInt();
+            long size = parseInt();
             consumeChecked(':');
             MemoryLayout element = parseLayout();
             consumeChecked(']');
@@ -151,34 +191,16 @@ public final class FunctionDescriptorParser {
             }
             consume();
             MemoryLayout layout = MemoryLayout.valueLayout(carrier, order);
-            int size = parseInt();
+            long size = parseInt();
             assert layout.bitSize() == size;
-
-            // Modifiers
-            switch (peek()) {
-                // Name
-                case '(' -> handleError("Layout should not carry names: " + layout);
-                // Alignment
-                case '%' -> {
-                    consume();
-                    layout = layout.withBitAlignment(parseInt());
-                }
-            }
 
             return layout;
         }
 
         private void checkDone() {
             if (this.at < layout.length()) {
-                handleError("Layout parsing ended (at " + this.at + ")before its end: " + layout);
+                handleError("Layout parsing ended (at " + this.at + ") before its end: " + layout);
             }
-        }
-    }
-
-    @SuppressWarnings("serial")
-    public final static class FunctionDescriptorParserException extends RuntimeException {
-        public FunctionDescriptorParserException(final String msg) {
-            super(msg);
         }
     }
 
@@ -187,6 +209,13 @@ public final class FunctionDescriptorParser {
         FunctionDescriptor res = parser.parseDescriptor();
         parser.checkDone();
         return res;
+    }
+
+    @SuppressWarnings("serial")
+    public static final class FunctionDescriptorParserException extends RuntimeException {
+        public FunctionDescriptorParserException(final String msg) {
+            super(msg);
+        }
     }
 
     private static <T> T handleError(String msg) {

@@ -32,16 +32,21 @@ import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
-/** Downcall stubs will be synthesized in this class */
+/** Downcall stubs will be synthesized in this class. */
 @InternalVMMethod
-public class DowncallStubsHolder {
+public final class DowncallStubsHolder {
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
         return metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
     /**
      * Naming scheme:
-     * downcall_(<c argument>*)<c return type>_<digest of <paramsMemoryAssignment>[_<returnMemoryAssignment>]>
+     * 
+     * <pre>
+     *     downcall_(<c argument>*)<c return type>_<digest of <paramsMemoryAssignment>[_<returnMemoryAssignment>]>
+     * </pre>
+     * 
+     * .
      */
     public static String stubName(NativeEntryPointInfo nep) {
         StringBuilder builder = new StringBuilder("downcall_(");
@@ -51,17 +56,16 @@ public class DowncallStubsHolder {
         builder.append(")");
         builder.append(JavaKind.fromJavaClass(nep.nativeMethodType().returnType()).getTypeChar());
 
-
         if (nep.returnsAssignment() != null) {
             builder.append("_r");
         }
         if (nep.capturesCallState()) {
             builder.append('_');
-            builder.append(nep.capturedStateMast());
+            builder.append(nep.capturedStateMask());
         }
 
         StringBuilder assignmentsBuilder = new StringBuilder();
-        for (var assignment: nep.parametersAssignment()) {
+        for (var assignment : nep.parametersAssignment()) {
             assignmentsBuilder.append(assignment);
         }
 
@@ -74,8 +78,7 @@ public class DowncallStubsHolder {
 
         builder.append('_');
         builder.append(SubstrateUtil.digest(
-                assignmentsBuilder.toString()
-        ));
+                        assignmentsBuilder.toString()));
 
         // Can be useful for debugging, but makes name quite long
         // builder.append("__").append(assignmentsBuilder);
@@ -83,5 +86,6 @@ public class DowncallStubsHolder {
         return builder.toString();
     }
 
-    private DowncallStubsHolder() {}
+    private DowncallStubsHolder() {
+    }
 }
