@@ -1527,12 +1527,19 @@ public class MethodTypeFlowBuilder {
             if (bb.strengthenGraalGraphs()) {
                 flowsGraph.addNodeFlow(bb, invoke, invokeFlow);
             }
+
+            /*
+             * Directly add the invoke as an observer of the receiver flow. There's no need to use
+             * an observer dependency link between the respective builders because both the invoke
+             * and the param builders are registered as sinks. Moreover, the receiver itself may be
+             * replaced with a filter by the call to getReceiverType() above.
+             */
+            if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Virtual || invokeKind == InvokeKind.Interface) {
+                bb.analysisPolicy().addOriginalObserver(bb, actualParameters[0], invokeFlow);
+            }
+
             return invokeFlow;
         });
-
-        if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Virtual || invokeKind == InvokeKind.Interface) {
-            invokeBuilder.addObserverDependency(actualParametersBuilders[0]);
-        }
 
         if (invoke.asNode().getStackKind() == JavaKind.Object) {
             /* Create the actual return builder. */
@@ -1604,7 +1611,9 @@ public class MethodTypeFlowBuilder {
                     BytecodePosition invokeLocation, TypeFlow<?>[] actualParameters) {
         if (invokeKind.hasReceiver()) {
             AnalysisType declaringType = targetMethod.getDeclaringClass();
-            AnalysisType receiverStampType = (AnalysisType) StampTool.typeOrNull(arguments.get(0), bb.getMetaAccess());
+            /* Unproxify the receiver node to match the behaviour in TypeFlowsOfNodes.lookup() */
+            ValueNode receiverNode = GraphUtil.unproxify(arguments.get(0));
+            AnalysisType receiverStampType = (AnalysisType) StampTool.typeOrNull(receiverNode, bb.getMetaAccess());
             if (receiverStampType == null || !receiverStampType.equals(declaringType) && receiverStampType.isAssignableFrom(declaringType)) {
                 /* The argument stamp type is less precise. Filter with the declaring type. */
                 FilterTypeFlow receiverFilter = new FilterTypeFlow(invokeLocation, declaringType, false, true, true);
