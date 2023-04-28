@@ -29,6 +29,7 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Array;
 import java.util.Objects;
 
+import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.word.UnsignedWord;
 
@@ -379,6 +380,22 @@ final class Target_java_lang_reflect_Array {
             }
         }
         throw new IllegalArgumentException();
+    }
+
+    @Substitute
+    public static Object newInstance(Class<?> componentType, int length) {
+        if (componentType == null) {
+            throw new NullPointerException();
+        }
+        if (componentType.equals(void.class) ||
+                        (componentType.isArray() && SubstrateUtil.arrayTypeDimension(componentType) >= 255)) {
+            throw new IllegalArgumentException();
+        }
+        if (length < 0) {
+            throw new NegativeArraySizeException();
+        }
+
+        return DynamicNewArrayNode.newArray(componentType, length);
     }
 
     @Substitute

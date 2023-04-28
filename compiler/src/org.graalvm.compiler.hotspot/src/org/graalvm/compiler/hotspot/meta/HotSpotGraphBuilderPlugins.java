@@ -524,6 +524,16 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
+
+        r.register(new InvocationPlugin("newInstance", Class.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
+                ValueNode componentTypeNonNull = b.nullCheckedValue(componentType);
+                ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(length);
+                b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentTypeNonNull, lengthPositive, true));
+                return true;
+            }
+        });
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, WordTypes wordTypes, ArrayCopyForeignCalls foreignCalls, GraalHotSpotVMConfig vmConfig) {
