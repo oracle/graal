@@ -506,15 +506,10 @@ public abstract class PlatformThreads {
         currentVThreadId.set(JavaThreads.getThreadId(thread));
     }
 
-    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static boolean isCarrier(Thread thread) {
-        return toTarget(thread).vthread != null;
-    }
-
+    /** Returns the mounted virtual thread if one exists, otherwise null.*/
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static Thread getVThread(Thread thread) {
-        Target_java_lang_Thread tjlt = toTarget(thread);
-        return (tjlt.vthread != null) ? tjlt.vthread : thread;
+        return toTarget(thread).vthread;
     }
 
     @Uninterruptible(reason = "Called during isolate initialization")

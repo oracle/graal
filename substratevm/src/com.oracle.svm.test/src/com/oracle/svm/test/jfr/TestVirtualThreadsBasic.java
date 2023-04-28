@@ -28,6 +28,8 @@ package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.HashSet;
 import java.util.List;
@@ -36,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import jdk.jfr.Recording;
 import org.junit.Test;
+import org.junit.Before;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
@@ -53,6 +56,11 @@ public class TestVirtualThreadsBasic extends JfrRecordingTest {
     private final AtomicInteger emittedEventsPerType = new AtomicInteger(0);
     private final Set<Long> expectedThreads = new HashSet<>();
 
+    @Before
+    public void checkJavaVersion() {
+        assumeTrue("skipping JFR virtual thread tests", org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 19);
+    }
+
     @Test
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.JavaMonitorWait.getName()};
@@ -60,7 +68,11 @@ public class TestVirtualThreadsBasic extends JfrRecordingTest {
 
         Runnable eventEmitter = () -> {
             helper.doEvent();
-            expectedThreads.add(Thread.currentThread().threadId());
+            try {
+                expectedThreads.add((Long) Thread.class.getMethod("threadId", Runnable.class).invoke(Thread.currentThread()));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             emittedEventsPerType.incrementAndGet();
         };
 
@@ -73,7 +85,7 @@ public class TestVirtualThreadsBasic extends JfrRecordingTest {
         for (RecordedEvent event : events) {
             if (event.<RecordedClass> getValue("monitorClass").getName().equals(MonitorWaitHelper.class.getName())) {
                 RecordedThread recordedThread = event.getThread("eventThread");
-                assertTrue("Virtual thread data is missing.", recordedThread != null);
+                assertNotNull("Virtual thread data is missing.", recordedThread);
                 Long thread = recordedThread.getJavaThreadId();
                 expectedThreads.remove(thread);
                 count++;

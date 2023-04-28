@@ -702,8 +702,8 @@ public class SubstrateJVM {
 
         @Override
         protected void operate() {
-            SubstrateJVM.getThreadRepo().registerRunningThreads();
             SubstrateJVM.get().recording = true;
+            SubstrateJVM.getThreadRepo().registerRunningThreads();
             /* Recording is enabled, so JFR events can be triggered at any time. */
 
             JfrExecutionSampler.singleton().update();

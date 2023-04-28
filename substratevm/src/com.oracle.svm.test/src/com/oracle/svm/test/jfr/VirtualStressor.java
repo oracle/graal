@@ -26,6 +26,7 @@
 
 package com.oracle.svm.test.jfr;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,21 +36,15 @@ import java.util.List;
 public class VirtualStressor {
     @SuppressWarnings("preview")
     public static void execute(int numberOfThreads, Runnable task) throws Exception {
-        List<Thread> threads = new ArrayList<>();
-        for (int n = 0; n < numberOfThreads; ++n) {
-            Thread t = Thread.startVirtualThread(task);
-            threads.add(t);
-        }
-        for (Thread t : threads) {
-            t.join();
-        }
+        join(executeAsync(numberOfThreads, task));
     }
 
     @SuppressWarnings("preview")
     public static List<Thread> executeAsync(int numberOfThreads, Runnable task) throws Exception {
         List<Thread> threads = new ArrayList<>();
         for (int n = 0; n < numberOfThreads; ++n) {
-            Thread t = Thread.startVirtualThread(task);
+            Method startVirtualThread = Thread.class.getMethod("startVirtualThread", Runnable.class);
+            Thread t = (Thread) startVirtualThread.invoke(null, task);
             threads.add(t);
         }
         return threads;

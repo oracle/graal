@@ -87,8 +87,9 @@ public final class JfrThreadRepository implements JfrRepository {
             if (thread != null) {
                 registerThread(thread);
                 // Re-register vthreads that are already mounted.
-                if (PlatformThreads.isCarrier(thread)) {
-                    registerThread(PlatformThreads.getVThread(thread));
+                Thread vthread = PlatformThreads.getVThread(thread);
+                if (vthread != null) {
+                    registerThread(vthread);
                 }
             }
         }
@@ -96,6 +97,10 @@ public final class JfrThreadRepository implements JfrRepository {
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void registerThread(Thread thread) {
+        if (!SubstrateJVM.get().isRecording()) {
+            return;
+        }
+
         long threadId = JavaThreads.getThreadId(thread);
 
         JfrVisited visitedThread = StackValue.get(JfrVisited.class);

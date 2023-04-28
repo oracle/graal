@@ -47,7 +47,6 @@ import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
 public final class Target_java_lang_VirtualThread {
@@ -167,9 +166,7 @@ public final class Target_java_lang_VirtualThread {
         }
 
         carrier.setCurrentThread(asThread(this));
-        if (HasJfrSupport.get()) {
-            SubstrateJVM.getThreadRepo().registerThread(asThread(this));
-        }
+        SubstrateJVM.getThreadRepo().registerThread(asThread(this));
     }
 
     @Substitute
