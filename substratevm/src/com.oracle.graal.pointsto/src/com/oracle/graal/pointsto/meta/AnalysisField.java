@@ -440,7 +440,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return AtomicUtils.isSet(this, isFoldedUpdater);
     }
 
-    protected Object getFoldedReason() {
+    public Object getFoldedReason() {
         return isFolded;
     }
 

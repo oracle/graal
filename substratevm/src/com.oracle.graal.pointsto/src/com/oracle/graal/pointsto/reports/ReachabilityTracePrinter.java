@@ -114,6 +114,19 @@ public final class ReachabilityTracePrinter {
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, field.getReadReason(), header);
                 writer.println(trace);
             }
+
+            if (field.isAccessed()) {
+                String header = "Field " + field.getName() + " is accessed unsafely";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, field.getAccessedReason(), header);
+                writer.println(trace);
+            }
+
+            if (field.isFolded()) {
+                String header = "Field " + field.getName() + " is folded";
+                String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, field.getFoldedReason(), header);
+                writer.println(trace);
+            }
+
         }
     }
 }
