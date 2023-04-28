@@ -375,10 +375,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "isPrimitiveArray(receiver)")
         static StaticObject doPrimitiveArray(Klass receiver, Object[] arguments,
                         @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
-            return doPrimitive(receiver, arguments, toInt);
-        }
-
-        private static StaticObject doPrimitive(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
             EspressoContext context = EspressoContext.get(toInt);
@@ -390,10 +386,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "isReferenceArray(receiver)")
         static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
                         @Cached ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
-            return doReference(receiver, arguments, toInt);
-        }
-
-        private static StaticObject doReference(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws UnsupportedTypeException, ArityException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             EspressoContext context = EspressoContext.get(toInt);
             int length = getLength(arguments, toInt);
@@ -404,10 +396,6 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         @Specialization(guards = "isMultidimensionalArray(receiver)")
         static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
                         @Cached ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
-            return doMulti(receiver, arguments, toInt);
-        }
-
-        private static StaticObject doMulti(Klass receiver, Object[] arguments, ToPrimitive.ToInt toInt) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
             if (arrayKlass.getDimension() != arguments.length) {
