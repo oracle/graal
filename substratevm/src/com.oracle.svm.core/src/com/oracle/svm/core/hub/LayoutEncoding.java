@@ -329,16 +329,19 @@ public class LayoutEncoding {
         return getSizeFromObject(obj);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInGC(Object obj) {
         return getSizeFromObjectInlineInGC(obj);
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInlineInGC(Object obj) {
         return getSizeFromObjectInlineInGC(obj, false);
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getSizeFromObjectInlineInGC(Object obj, boolean addOptionalIdHashField) {
         boolean withOptionalIdHashField = addOptionalIdHashField ||
                         (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && checkOptionalIdentityHashField(obj));
@@ -365,11 +368,13 @@ public class LayoutEncoding {
         return oh.hasOptionalIdentityHashField(header);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectEndInGC(Object obj) {
         return getObjectEndInlineInGC(obj);
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectEndInlineInGC(Object obj) {
         UnsignedWord size = getSizeFromObjectInlineInGC(obj, false);
         return Word.objectToUntrackedPointer(obj).add(size);

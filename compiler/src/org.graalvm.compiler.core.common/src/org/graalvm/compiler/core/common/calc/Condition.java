@@ -116,7 +116,7 @@ public enum Condition {
             case BT:
                 return UnsignedMath.belowThan(left, right);
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     public static final class CanonicalizedCondition {
@@ -163,7 +163,7 @@ public enum Condition {
                 canonicalCondition = CanonicalCondition.BT;
                 break;
             default:
-                throw new IllegalArgumentException(this.toString());
+                throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
         }
         return new CanonicalizedCondition(canonicalCondition, canonicalMirror(), canonicalNegate());
     }
@@ -197,7 +197,7 @@ public enum Condition {
             case AE:
                 return false;
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -227,7 +227,7 @@ public enum Condition {
             case AE:
                 return false;
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -257,7 +257,7 @@ public enum Condition {
             case AE:
                 return true;
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -288,7 +288,7 @@ public enum Condition {
             case AE:
                 return BT;
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     public boolean implies(Condition other) {
@@ -317,7 +317,7 @@ public enum Condition {
             case AE:
                 return false;
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -348,7 +348,7 @@ public enum Condition {
             case AE:
                 return BE;
         }
-        throw new IllegalArgumentException();
+        throw new IllegalArgumentException(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -357,15 +357,6 @@ public enum Condition {
      */
     public final boolean isUnsigned() {
         return this == Condition.BT || this == Condition.BE || this == Condition.AT || this == Condition.AE;
-    }
-
-    /**
-     * Checks if this conditional operation is commutative.
-     *
-     * @return {@code true} if this operation is commutative
-     */
-    public final boolean isCommutative() {
-        return this == EQ || this == NE;
     }
 
     /**
@@ -426,7 +417,7 @@ public enum Condition {
                     case BT:
                         return UnsignedMath.belowThan(x, y);
                     default:
-                        throw new GraalError("expected condition: %s", this);
+                        throw new GraalError("expected condition: %s", this); // ExcludeFromJacocoGeneratedReport
                 }
             }
             case Long: {
@@ -454,7 +445,7 @@ public enum Condition {
                     case BT:
                         return UnsignedMath.belowThan(x, y);
                     default:
-                        throw new GraalError("expected condition: %s", this);
+                        throw new GraalError("expected condition: %s", this); // ExcludeFromJacocoGeneratedReport
                 }
             }
             case Float: {
@@ -477,7 +468,7 @@ public enum Condition {
                     case GE:
                         return x >= y;
                     default:
-                        throw new GraalError("expected condition: %s", this);
+                        throw new GraalError("expected condition: %s", this); // ExcludeFromJacocoGeneratedReport
                 }
             }
             case Double: {
@@ -500,11 +491,11 @@ public enum Condition {
                     case GE:
                         return x >= y;
                     default:
-                        throw new GraalError("expected condition: %s", this);
+                        throw new GraalError("expected condition: %s", this); // ExcludeFromJacocoGeneratedReport
                 }
             }
             default:
-                throw new GraalError("expected value kind %s while folding condition: %s", lp.getJavaKind(), this);
+                throw new GraalError("expected value kind %s while folding condition: %s", lp.getJavaKind(), this); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -625,7 +616,7 @@ public enum Condition {
                 return in(other, EQ, AE, AT);
             }
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -714,7 +705,7 @@ public enum Condition {
                     return null;
                 }
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 
     public Condition meet(Condition other) {
@@ -799,6 +790,6 @@ public enum Condition {
                     return null;
                 }
         }
-        throw new IllegalArgumentException(this.toString());
+        throw new IllegalArgumentException(this.toString()); // ExcludeFromJacocoGeneratedReport
     }
 }

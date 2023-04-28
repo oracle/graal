@@ -67,6 +67,7 @@ public class VMThreadLocalMTSupport {
         return (int) result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walk(IsolateThread isolateThread, ObjectReferenceVisitor referenceVisitor) {
         NonmovableArray<Byte> threadRefMapEncoding = NonmovableArrays.fromImageHeap(vmThreadReferenceMapEncoding);
         InstanceReferenceMapDecoder.walkOffsetsFromPointer((Pointer) isolateThread, threadRefMapEncoding, vmThreadReferenceMapIndex, referenceVisitor, null);

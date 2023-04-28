@@ -128,22 +128,9 @@ public class VMMutex {
     public void unlockNoTransitionUnspecifiedOwner() {
         /*
          * Ideally, this method would be annotated with @Uninterruptible(callerMustBe = true) but
-         * this isn't possible because of legacy code, see GR-44619.
+         * this isn't possible because of legacy code, see GR-45784.
          */
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
-    }
-
-    /* Legacy code, see GR-44619. */
-    @Deprecated(forRemoval = true)
-    public void unlockWithoutChecks() {
-        throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
-    }
-
-    /* Legacy code, see GR-44619. */
-    @Deprecated(forRemoval = true)
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void assertNotOwner(String message) {
-        assert !isOwner() : message;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

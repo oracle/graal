@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.util.VMError;
@@ -55,6 +56,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean visitObjectInline(Object o) {
         ReferenceObjectProcessing.discoverIfReference(o, objRefVisitor);
         InteriorObjRefWalker.walkObjectInline(o, objRefVisitor);

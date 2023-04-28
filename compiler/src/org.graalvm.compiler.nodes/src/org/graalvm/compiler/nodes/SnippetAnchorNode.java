@@ -32,13 +32,14 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.extended.AnchoringNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 @NodeInfo(allowedUsageTypes = {Value, Anchor, Guard}, cycles = CYCLES_0, size = SIZE_0)
-public final class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode {
+public final class SnippetAnchorNode extends FixedWithNextNode implements Simplifiable, GuardingNode, AnchoringNode {
     public static final NodeClass<SnippetAnchorNode> TYPE = NodeClass.create(SnippetAnchorNode.class);
 
     public SnippetAnchorNode() {

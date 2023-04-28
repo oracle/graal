@@ -25,6 +25,12 @@
 
 package org.graalvm.compiler.hightiercodegen;
 
+/**
+ * Abstract interface to facilitate lowering of various objects.
+ *
+ * Methods that want to accept multiple different types for lowering, especially as part of a list
+ * of arguments, can accept {@link IEmitter} instead of having to create many overloaded methods.
+ */
 public interface IEmitter {
     void lower(CodeGenTool codeGenTool);
 }

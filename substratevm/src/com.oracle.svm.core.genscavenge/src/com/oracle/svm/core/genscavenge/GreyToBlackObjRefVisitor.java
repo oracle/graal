@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -59,12 +60,14 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
         return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
     }
 
     @Override
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
         assert !objRef.isNull();
@@ -131,16 +134,22 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Override
         void close();
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void noteObjRef();
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void noteNullReferent();
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void noteForwardedReferent();
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void noteNonHeapReferent();
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void noteCopiedReferent();
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void noteUnmodifiedReference();
 
         void toLog();
@@ -185,31 +194,37 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteObjRef() {
             objRef += 1L;
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteNullReferent() {
             nullReferent += 1L;
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteForwardedReferent() {
             forwardedReferent += 1L;
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteNonHeapReferent() {
             nonHeapReferent += 1L;
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteCopiedReferent() {
             copiedReferent += 1L;
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteUnmodifiedReference() {
             unmodifiedReference += 1L;
         }
@@ -244,26 +259,32 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteObjRef() {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteNullReferent() {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteForwardedReferent() {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteNonHeapReferent() {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteCopiedReferent() {
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteUnmodifiedReference() {
         }
 

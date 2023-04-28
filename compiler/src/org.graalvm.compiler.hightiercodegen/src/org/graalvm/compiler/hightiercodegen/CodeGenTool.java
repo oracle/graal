@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hightiercodegen.variables.ResolvedVar;
 import org.graalvm.compiler.hightiercodegen.variables.VariableAllocation;
@@ -37,12 +38,17 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Abstract interface for code generation. Its methods operate at a generally higher level of
+ * abstraction (e.g. {@link #genArrayLoad}, {@link #genFunctionCall}) compared to
+ * {@link CodeBuffer}, which is mainly concerned with emitting individual tokens.
+ */
 public abstract class CodeGenTool {
 
     protected final CodeBuffer codeBuffer;
@@ -55,7 +61,7 @@ public abstract class CodeGenTool {
 
     /**
      * Used for generating method-scoped unique IDs.
-     *
+     * <p>
      * Its value is reset to 0 in {@link CodeGenTool#prepareForMethod(StructuredGraph)}.
      */
     private int methodScopeUniqueID = 0;
@@ -66,9 +72,9 @@ public abstract class CodeGenTool {
     }
 
     /**
-     * Generates an efficient representation of an integer value literal.
+     * Generates an efficient representation of an integral literal.
      */
-    public static String getEfficientIntLiteral(int i) {
+    public static String getEfficientIntLiteral(long i) {
         StringBuilder sb = new StringBuilder();
         /*
          * Once a number gets larger than 10^6, representing it in hex gets cheaper in terms of
@@ -77,13 +83,13 @@ public abstract class CodeGenTool {
          * 10^6 takes 7 decimal digits and also 7 hex digits (0xF4240) to represent. After that
          * point, hex is more efficient.
          */
-        int abs = Math.abs(i);
+        long abs = Math.abs(i);
         if (abs >= 1000000) {
             if (i < 0) {
                 sb.append('-');
             }
             sb.append("0x");
-            sb.append(Integer.toHexString(abs));
+            sb.append(Long.toHexString(abs));
         } else {
             // Write in decimal
             sb.append(i);
@@ -91,6 +97,8 @@ public abstract class CodeGenTool {
 
         return sb.toString();
     }
+
+    public abstract CoreProviders getProviders();
 
     /**
      * Prepare the current object to be ready for use in generating code for a method.
@@ -106,7 +114,7 @@ public abstract class CodeGenTool {
 
     /**
      * Generate a unique ID within the scope of the current method.
-     *
+     * <p>
      * Invariant: each call of this method will return a different value for the current method
      * under lowering.
      */
@@ -167,19 +175,27 @@ public abstract class CodeGenTool {
     public abstract void genMethodHeader(StructuredGraph graph, ResolvedJavaMethod method, List<ParameterNode> parameters);
 
     public void genArrayLoad(ValueNode index, ValueNode array) {
-        nodeLowerer().lowerValue(array);
+        genArrayLoad(Emitter.of(index), Emitter.of(array));
+    }
+
+    public void genArrayLoad(IEmitter index, IEmitter array) {
+        lower(array);
         genArrayAccessPrefix();
-        nodeLowerer().lowerValue(index);
+        lower(index);
         genArrayAccessPostfix();
     }
 
-    public void genArrayStore(IEmitter index, ValueNode array, ValueNode value) {
-        nodeLowerer().lowerValue(array);
+    public void genArrayStore(IEmitter index, IEmitter array, IEmitter value) {
+        lower(array);
         genArrayAccessPrefix();
         lower(index);
         genArrayAccessPostfix();
         genAssignment();
-        nodeLowerer().lowerValue(value);
+        lower(value);
+    }
+
+    public void genArrayStore(IEmitter index, ValueNode array, ValueNode value) {
+        genArrayStore(index, Emitter.of(array), Emitter.of(value));
     }
 
     protected abstract void genArrayAccessPostfix();
@@ -202,9 +218,13 @@ public abstract class CodeGenTool {
         codeBuffer.emitNewLine();
     }
 
-    public void genIfHeader(LogicNode logicNode) {
+    public void genIfHeader(LogicNode condition) {
+        genIfHeader(Emitter.of(condition));
+    }
+
+    public void genIfHeader(IEmitter condition) {
         codeBuffer.emitIfHeaderLeft();
-        lowerValue(logicNode);
+        lower(condition);
         codeBuffer.emitIfHeaderRight();
     }
 
@@ -247,9 +267,13 @@ public abstract class CodeGenTool {
         codeBuffer.emitInsEnd();
     }
 
-    public void genReturn(ValueNode returnValue) {
+    public void genReturn(IEmitter returnValue) {
         genReturnPrefix();
-        lowerValue(returnValue);
+        lower(returnValue);
+    }
+
+    public void genReturn(ValueNode returnValue) {
+        genReturn(Emitter.of(returnValue));
     }
 
     private void genReturnPrefix() {
@@ -274,6 +298,14 @@ public abstract class CodeGenTool {
         codeBuffer.emitBreakLabel(label);
     }
 
+    /**
+     * Generates a break statement at the end of a loop or a switch case statement, used to kill the
+     * implicit loop back-edge.
+     */
+    public void genBlockEndBreak() {
+        genBreak();
+    }
+
     public void genLabel(String label) {
         codeBuffer.emitLabel(label);
     }
@@ -290,6 +322,15 @@ public abstract class CodeGenTool {
         codeBuffer.emitDeclPrefix(name);
     }
 
+    @SuppressWarnings("unused")
+    public void genResolvedVarDeclPrefix(String name, ValueNode node) {
+        genResolvedVarDeclPrefix(name);
+    }
+
+    public void genResolvedVarDeclPrefix(String name, ResolvedJavaType javaType) {
+        codeBuffer.emitDeclPrefix(name, javaType);
+    }
+
     public abstract void genResolvedVarDeclPostfix(String comment);
 
     public void genResolvedVarAssignmentPrefix(String name) {
@@ -302,6 +343,11 @@ public abstract class CodeGenTool {
     public abstract void genNewInstance(ResolvedJavaType t);
 
     /**
+     * @param arrayType the array type to be generated (not the component type)
+     */
+    public abstract void genNewArray(ResolvedJavaType arrayType, IEmitter length);
+
+    /**
      * Generates a declaration without initialization. Marks the definition as lowered.
      *
      * @param node used to look up the variable name to be declared
@@ -310,7 +356,7 @@ public abstract class CodeGenTool {
 
     /**
      * Generates a comma-separated list of the given inputs.
-     *
+     * <p>
      * If an input is a {@link Node}, it is lowered in place, otherwise the object is converted to a
      * string.
      */
@@ -336,10 +382,18 @@ public abstract class CodeGenTool {
         codeBuffer.emitCatch(expName);
     }
 
+    public void genCatchBlockPrefix(String expName, Stamp stamp) {
+        genCatchBlockPrefix(expName, stamp.javaType(getProviders().getMetaAccess()));
+    }
+
+    public void genCatchBlockPrefix(String expName, ResolvedJavaType javaType) {
+        codeBuffer.emitCatch(expName, javaType);
+    }
+
     public abstract void genThrow(ValueNode exception);
 
     @SuppressWarnings("deprecation")
-    public String getExceptionObjectId(ExceptionObjectNode n) {
+    public String getExceptionObjectId(Node n) {
         return "exception_object_" + n.getId();
     }
 

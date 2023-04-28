@@ -69,7 +69,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
@@ -323,7 +322,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static final Method getPermittedSubclasses = ReflectionUtil.lookupMethod(true, Class.class, "getPermittedSubclasses");
 
     private Class<?>[] getPermittedSubclasses(MetaAccessProvider metaAccess, Class<?> clazz) {
-        if (JavaVersionUtil.JAVA_SPEC < 17 || (dataBuilder.getEnabledReflectionQueries(clazz) & ALL_PERMITTED_SUBCLASSES_FLAG) == 0) {
+        if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_PERMITTED_SUBCLASSES_FLAG) == 0) {
             return null;
         }
         try {
@@ -335,7 +334,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     }
 
     private Class<?>[] getNestMembers(MetaAccessProvider metaAccess, Class<?> clazz) {
-        if (JavaVersionUtil.JAVA_SPEC < 17 || (dataBuilder.getEnabledReflectionQueries(clazz) & ALL_NEST_MEMBERS_FLAG) == 0) {
+        if ((dataBuilder.getEnabledReflectionQueries(clazz) & ALL_NEST_MEMBERS_FLAG) == 0) {
             return null;
         }
         return filterDeletedClasses(metaAccess, clazz.getNestMembers());
@@ -433,9 +432,6 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     private static final Method isFieldTrustedFinal = ReflectionUtil.lookupMethod(true, Field.class, "isTrustedFinal");
 
     private static boolean isTrustedFinal(Field field) {
-        if (JavaVersionUtil.JAVA_SPEC < 17) {
-            return false;
-        }
         try {
             return (boolean) isFieldTrustedFinal.invoke(field);
         } catch (IllegalAccessException | InvocationTargetException e) {

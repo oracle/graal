@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,41 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.core.posix.headers;
 
-import com.oracle.svm.core.util.TimeUtils;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.word.PointerBase;
 
-/** Only used by legacy code (GR-44513). */
-public abstract class ParkEvent extends Parker {
-    public interface ParkEventFactory extends ParkerFactory {
+// Checkstyle: stop
+
+/**
+ * Definitions manually translated from the C header file dirent.h.
+ */
+@CContext(PosixDirectives.class)
+public class Dirent {
+    @CFunction
+    public static native DIR fdopendir(int fd);
+
+    @CFunction
+    public static native dirent readdir(DIR dir);
+
+    @CFunction
+    public static native int closedir(DIR dir);
+
+    public interface DIR extends PointerBase {
     }
 
-    @Override
-    protected void park(boolean isAbsolute, long time) {
-        assert time >= 0;
-
-        if (time == 0) {
-            condWait();
-            return;
-        }
-
-        long remainingNanos = computeRemainingNanos(isAbsolute, time);
-        if (remainingNanos > 0) {
-            condTimedWait(remainingNanos);
-        }
+    @CStruct(addStructKeyword = true)
+    public interface dirent extends PointerBase {
+        @CFieldAddress
+        CCharPointer d_name();
     }
-
-    private static long computeRemainingNanos(boolean isAbsolute, long time) {
-        if (isAbsolute) {
-            return TimeUtils.millisToNanos(time - System.currentTimeMillis());
-        }
-        /* A relative time is already in nanoseconds. */
-        return time;
-    }
-
-    /** {@link #park} indefinitely. */
-    protected abstract void condWait();
-
-    /** {@link #park} for a duration in nanoseconds. */
-    protected abstract void condTimedWait(long durationNanos);
 }

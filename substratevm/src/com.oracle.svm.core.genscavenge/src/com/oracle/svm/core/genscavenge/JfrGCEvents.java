@@ -28,9 +28,11 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 
 class JfrGCEvents {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long startGCPhasePause() {
         if (hasJfrSupport()) {
             return jfrSupport().startGCPhasePause();
@@ -38,6 +40,7 @@ class JfrGCEvents {
         return 0;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void emitGCPhasePauseEvent(UnsignedWord gcEpoch, String name, long start) {
         if (hasJfrSupport()) {
             int level = jfrSupport().stopGCPhasePause();

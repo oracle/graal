@@ -2009,7 +2009,7 @@ public final class Meta extends ContextAccessImpl {
     public Klass resolveSymbolAndAccessCheck(Symbol<Type> type, Klass accessingKlass) {
         assert accessingKlass != null;
         Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError, accessingKlass.protectionDomain());
-        if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
+        if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
             throw throwException(java_lang_IllegalAccessError);
         }
         return klass;

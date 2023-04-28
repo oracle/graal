@@ -371,6 +371,7 @@ final class PthreadVMCondition extends VMCondition {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
         PthreadVMLockSupport.checkResult(Pthread.pthread_cond_signal(getStructPointer()), "pthread_cond_signal");
     }

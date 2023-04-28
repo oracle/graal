@@ -518,19 +518,6 @@ public class StableProfileProvider implements ProfileProvider {
         String formatLamdaName(ResolvedJavaMethod m);
     }
 
-    public static final LambdaNameFormatter NO_LAMBDA_FORMATTER = new LambdaNameFormatter() {
-
-        @Override
-        public boolean isLambda(ResolvedJavaMethod m) {
-            return false;
-        }
-
-        @Override
-        public String formatLamdaName(ResolvedJavaMethod m) {
-            return m.format(METHOD_FORMAT);
-        }
-    };
-
     /**
      * A interface describing if stable profile serialization to disk should include a type or not.
      * For some types, especially in the context of profile pollution, re-creating an exact state is

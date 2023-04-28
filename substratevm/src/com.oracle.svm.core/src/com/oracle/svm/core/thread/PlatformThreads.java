@@ -64,10 +64,13 @@ import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.ComparableWord;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
@@ -557,6 +560,29 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean joinThreadUnmanaged(OSThreadHandle threadHandle, WordPointer threadExitStatus) {
         throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.joinThreadUnmanaged directly.");
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public ThreadLocalKey createUnmanagedThreadLocal() {
+        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.createNativeThreadLocal directly.");
+    }
+
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void deleteUnmanagedThreadLocal(ThreadLocalKey key) {
+        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.deleteNativeThreadLocal directly.");
+    }
+
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public <T extends WordBase> T getUnmanagedThreadLocalValue(ThreadLocalKey key) {
+        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.getNativeThreadLocalValue directly.");
+    }
+
+    @SuppressWarnings("unused")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setUnmanagedThreadLocalValue(ThreadLocalKey key, WordBase value) {
+        throw VMError.shouldNotReachHere("Shouldn't call PlatformThreads.setNativeThreadLocalValue directly.");
     }
 
     @SuppressWarnings("unused")
@@ -1189,7 +1215,18 @@ public abstract class PlatformThreads {
         }
     }
 
+    @RawStructure
     public interface OSThreadHandle extends PointerBase {
+    }
+
+    @RawPointerTo(OSThreadHandle.class)
+    public interface OSThreadHandlePointer extends PointerBase {
+        void write(int index, OSThreadHandle value);
+
+        OSThreadHandle read(int index);
+    }
+
+    public interface ThreadLocalKey extends ComparableWord {
     }
 }
 
