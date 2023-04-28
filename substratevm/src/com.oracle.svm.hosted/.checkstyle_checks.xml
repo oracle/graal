@@ -28,11 +28,12 @@
       <property name="message" value="'format' passed to UserError.abort() or UserError.guarantee() must not start with a lowercase letter"/>
       <property name="ignoreComments" value="true"/>
     </module>
-     <module name="RegexpSinglelineJava">
+
+    <module name="RegexpSinglelineJava">
       <property name="id" value="exceptionsAndErrors"/>
       <metadata name="net.sf.eclipsecs.core.comment" value="Consistent exception and error messages."/>
       <property name="severity" value="error"/> 
-      <property name="format" value="(Error|Exception)\(&quot;[a-z]"/>
+      <property name="format" value=" [A-Z][a-zA-Z0-9]*(Error|Exception)\(&quot;[a-z]"/>
       <property name="message" value="Exception and error messages must not start with a lowercase letter"/>
       <property name="ignoreComments" value="true"/>
     </module>
