@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -91,7 +91,7 @@ def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
     """
-    source_path = join(_suite.dir, 'src', 'org.graalvm.compiler.hotspot', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
+    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
     out = mx.OutputCapture()
     mx.run([jdk.java, '-Xlog:disable', source_path], out=out)
     global _jdk_jvmci_version
@@ -400,7 +400,53 @@ def _run_benchmark(suite, name, args, vmargs):
         mx.abort("Gate for {} benchmark '{}' failed!".format(suite, name))
     return exit_code, suite, results
 
+def _check_forbidden_imports(projects, package_substrings, exceptions=None):
+    """
+    Checks Java source files in `projects` to ensure there is no import from
+    a class in a package whose name does not match `package_substrings`
+    of a package whose name matches `package_substrings`.
+
+    :param projects: list of JavaProjects
+    :param package_substrings: package name substrings
+    :param exceptions: set of unqualified Java source file names for which a failing
+                       check produces a warning instead of an abort
+    """
+    # Assumes package name components start with lower case letter and
+    # classes start with upper-case letter
+    importStatementRe = re.compile(r'\s*import\s+(?:static\s+)?([a-zA-Z\d_$\.]+\*?)\s*;\s*')
+    importedRe = re.compile(r'((?:[a-z][a-zA-Z\d_$]*\.)*[a-z][a-zA-Z\d_$]*)\.(?:(?:[A-Z][a-zA-Z\d_$]*)|\*)')
+    for project in projects:
+        for source_dir in project.source_dirs():
+            for root, _, files in os.walk(source_dir):
+                java_sources = [name for name in files if name.endswith('.java') and name != 'module-info.java']
+                if len(java_sources) != 0:
+                    java_package = root[len(source_dir) + 1:].replace(os.sep, '.')
+                    if not any((s in java_package for s in package_substrings)):
+                        for n in java_sources:
+                            java_source = join(root, n)
+                            with open(java_source) as fp:
+                                for i, line in enumerate(fp):
+                                    m = importStatementRe.match(line)
+                                    if m:
+                                        imported = m.group(1)
+                                        m = importedRe.match(imported)
+                                        lineNo = i + 1
+                                        if not m:
+                                            mx.abort(java_source + ':' + str(lineNo) + ': import statement does not match expected pattern:\n' + line)
+                                        imported_package = m.group(1)
+                                        for s in package_substrings:
+                                            if s in imported_package:
+                                                message = f'{java_source}:{lineNo}: forbidden import of a "{s}" package: {imported_package}\n{line}'
+                                                if exceptions and n in exceptions:
+                                                    mx.warn(message)
+                                                else:
+                                                    mx.abort(message)
+
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
+    with Task('CheckForbiddenImports:Compiler', tasks, tags=['style']) as t:
+        # Ensure HotSpot-independent compiler classes do not import HotSpot-specific classes
+        if t: _check_forbidden_imports([mx.project('jdk.internal.vm.compiler')], ('hotspot', 'libgraal'))
+
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
 
@@ -1404,5 +1450,6 @@ def mx_post_parse_cmd_line(opts):
     for dist in _suite.dists:
         if hasattr(dist, 'set_archiveparticipant'):
             dist.set_archiveparticipant(GraalArchiveParticipant(dist, isTest=dist.name.endswith('_TEST')))
+
     global _vm_prefix
     _vm_prefix = opts.vm_prefix
