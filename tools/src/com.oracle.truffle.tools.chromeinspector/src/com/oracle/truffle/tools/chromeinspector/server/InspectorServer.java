@@ -342,6 +342,16 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
 
     @Override
     public void onStart() {
+        InetSocketAddress address = getAddress();
+        if (address.getPort() == 0) {
+            InetSocketAddress realAddress = new InetSocketAddress(address.getAddress(), getPort());
+            // Set this server for the real address.
+            synchronized (SERVERS) {
+                InspectorServer wss = SERVERS.remove(address);
+                assert wss == this;
+                SERVERS.put(realAddress, wss);
+            }
+        }
         started.countDown();
     }
 

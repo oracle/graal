@@ -424,7 +424,7 @@ public class RelativeSourceInspectDebugTest {
     @SuppressWarnings("unchecked")
     private static void checkSourcePathToURI(String sourcePath, String uriArray, Consumer<URI> validator) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (Context context = Context.newBuilder().option("inspect.SourcePath", sourcePath).out(out).err(out).build()) {
+        try (Context context = Context.newBuilder().option("inspect", "0").option("inspect.SourcePath", sourcePath).out(out).err(out).build()) {
             Instrument inspector = context.getEngine().getInstruments().get("inspect");
             OptionValues optionValues = (OptionValues) ReflectionUtils.getField(ReflectionUtils.getField(inspector, "receiver"), "optionValues");
             List<URI> spValue = (List<URI>) optionValues.get(inspector.getOptions().get("inspect.SourcePath").getKey());
