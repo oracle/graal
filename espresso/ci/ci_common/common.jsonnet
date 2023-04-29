@@ -24,16 +24,23 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     ],
   },
 
-  linux: self.common + graal_common.linux_amd64 + {
+  linux_amd64: self.common + graal_common.linux_amd64 + {
     packages+: {
       '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
       '01:binutils': '==2.34',
-      ruby: "==2.6.5",
+      ruby: "==3.0.2",
     },
   },
 
-  x52: self.linux + {
+  x52: {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
+  },
+
+  linux_aarch64: self.common + graal_common.linux_aarch64 + {
+    packages+: {
+      '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+      ruby: "==3.0.2",
+    },
   },
 
   darwin_amd64: self.common + graal_common.darwin_amd64 + {
@@ -44,10 +51,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     capabilities+: ['darwin_mojave', 'ram32gb'],
   },
 
-  windows: self.common + graal_common.windows_amd64 + {
+  darwin_aarch64: self.common + graal_common.darwin_aarch64 + {
+    environment+: {
+      // for compatibility with macOS Big Sur
+      MACOSX_DEPLOYMENT_TARGET: '11.0',
+    },
   },
-  windows_17: self.windows + devkits["windows-jdk17"],
-  windows_20: self.windows + devkits["windows-jdk20"],
+
+  windows: self.common + graal_common.windows_amd64,
 
   // generic targets
   gate:            {targets+: ['gate'], timelimit: "1:00:00"},
@@ -59,59 +70,70 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
+  linux_amd64_17:    graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.linux_amd64,
+  linux_amd64_20:    graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.linux_amd64,
+  darwin_amd64_17:   graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.darwin_amd64,
+  darwin_amd64_20:   graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.darwin_amd64,
+  linux_aarch64_17:  graal_common.labsjdk17                              + self.linux_aarch64,
+  linux_aarch64_20:  graal_common.labsjdk20                              + self.linux_aarch64,
+  darwin_aarch64_17: graal_common.labsjdk17                              + self.darwin_aarch64,
+  darwin_aarch64_20: graal_common.labsjdk20                              + self.darwin_aarch64,
+  windows_17:        graal_common.labsjdk17                              + self.windows + devkits["windows-jdk17"],
+  windows_20:        graal_common.labsjdk20                              + self.windows + devkits["windows-jdk20"],
+
   // precise targets and capabilities
-  jdk17_gate_linux              : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.gate          + self.linux,
-  jdk17_gate_darwin             : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.gate          + self.darwin_amd64,
-  jdk17_gate_windows            : graal_common.labsjdk17                              + self.gate          + self.windows_17,
-  jdk17_bench_linux             : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.bench         + self.x52,
-  jdk17_bench_darwin            : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.bench         + self.darwin_amd64,
-  jdk17_bench_windows           : graal_common.labsjdk17                              + self.bench         + self.windows_17,
-  jdk17_daily_linux             : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.daily         + self.linux,
-  jdk17_daily_darwin            : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.daily         + self.darwin_amd64,
-  jdk17_daily_windows           : graal_common.labsjdk17                              + self.daily         + self.windows_17,
-  jdk17_daily_bench_linux       : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.dailyBench    + self.x52,
-  jdk17_daily_bench_darwin      : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.dailyBench    + self.darwin_amd64,
-  jdk17_daily_bench_windows     : graal_common.labsjdk17                              + self.dailyBench    + self.windows_17,
-  jdk17_weekly_linux            : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.weekly        + self.linux,
-  jdk17_weekly_darwin           : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.weekly        + self.darwin_amd64,
-  jdk17_weekly_windows          : graal_common.labsjdk17                              + self.weekly        + self.windows_17,
-  jdk17_weekly_bench_linux      : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.weeklyBench   + self.x52,
-  jdk17_weekly_bench_darwin     : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.weeklyBench   + self.darwin_amd64,
-  jdk17_weekly_bench_windows    : graal_common.labsjdk17                              + self.weeklyBench   + self.windows_17,
-  jdk17_on_demand_linux         : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemand      + self.linux,
-  jdk17_on_demand_darwin        : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemand      + self.darwin_amd64,
-  jdk17_on_demand_windows       : graal_common.labsjdk17                              + self.onDemand      + self.windows_17,
-  jdk17_on_demand_bench_linux   : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemandBench + self.x52,
-  jdk17_on_demand_bench_darwin  : graal_common.labsjdk17 + graal_common.labsjdk17LLVM + self.onDemandBench + self.darwin_amd64,
-  jdk17_on_demand_bench_windows : graal_common.labsjdk17                              + self.onDemandBench + self.windows_17,
+  jdk17_gate_linux              : self.gate          + self.linux_amd64_17,
+  jdk17_gate_darwin             : self.gate          + self.darwin_amd64_17,
+  jdk17_gate_windows            : self.gate          + self.windows_17,
+  jdk17_bench_linux             : self.bench         + self.linux_amd64_17 + self.x52,
+  jdk17_bench_darwin            : self.bench         + self.darwin_amd64_17,
+  jdk17_bench_windows           : self.bench         + self.windows_17,
+  jdk17_daily_linux             : self.daily         + self.linux_amd64_17,
+  jdk17_daily_darwin            : self.daily         + self.darwin_amd64_17,
+  jdk17_daily_windows           : self.daily         + self.windows_17,
+  jdk17_daily_bench_linux       : self.dailyBench    + self.linux_amd64_17 + self.x52,
+  jdk17_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_17,
+  jdk17_daily_bench_windows     : self.dailyBench    + self.windows_17,
+  jdk17_weekly_linux            : self.weekly        + self.linux_amd64_17,
+  jdk17_weekly_darwin           : self.weekly        + self.darwin_amd64_17,
+  jdk17_weekly_windows          : self.weekly        + self.windows_17,
+  jdk17_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_17 + self.x52,
+  jdk17_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_17,
+  jdk17_weekly_bench_windows    : self.weeklyBench   + self.windows_17,
+  jdk17_on_demand_linux         : self.onDemand      + self.linux_amd64_17,
+  jdk17_on_demand_darwin        : self.onDemand      + self.darwin_amd64_17,
+  jdk17_on_demand_windows       : self.onDemand      + self.windows_17,
+  jdk17_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_17 + self.x52,
+  jdk17_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_17,
+  jdk17_on_demand_bench_windows : self.onDemandBench + self.windows_17,
 
-  jdk19_gate_linux              : graal_common.labsjdk19 + graal_common.labsjdk19LLVM + self.gate          + self.linux,
-  jdk19_weekly_linux            : graal_common.labsjdk19 + graal_common.labsjdk19LLVM + self.weekly        + self.linux,
+  jdk19_gate_linux              : graal_common.labsjdk19 + graal_common.labsjdk19LLVM + self.gate          + self.linux_amd64,
+  jdk19_weekly_linux            : graal_common.labsjdk19 + graal_common.labsjdk19LLVM + self.weekly        + self.linux_amd64,
 
-  jdk20_gate_linux              : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.gate          + self.linux,
-  jdk20_gate_darwin             : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.gate          + self.darwin_amd64,
-  jdk20_gate_windows            : graal_common.labsjdk20                              + self.gate          + self.windows_20,
-  jdk20_bench_linux             : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.bench         + self.x52,
-  jdk20_bench_darwin            : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.bench         + self.darwin_amd64,
-  jdk20_bench_windows           : graal_common.labsjdk20                              + self.bench         + self.windows_20,
-  jdk20_daily_linux             : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.daily         + self.linux,
-  jdk20_daily_darwin            : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.daily         + self.darwin_amd64,
-  jdk20_daily_windows           : graal_common.labsjdk20                              + self.daily         + self.windows_20,
-  jdk20_daily_bench_linux       : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.dailyBench    + self.x52,
-  jdk20_daily_bench_darwin      : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.dailyBench    + self.darwin_amd64,
-  jdk20_daily_bench_windows     : graal_common.labsjdk20                              + self.dailyBench    + self.windows_20,
-  jdk20_weekly_linux            : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.weekly        + self.linux,
-  jdk20_weekly_darwin           : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.weekly        + self.darwin_amd64,
-  jdk20_weekly_windows          : graal_common.labsjdk20                              + self.weekly        + self.windows_20,
-  jdk20_weekly_bench_linux      : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.weeklyBench   + self.x52,
-  jdk20_weekly_bench_darwin     : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.weeklyBench   + self.darwin_amd64,
-  jdk20_weekly_bench_windows    : graal_common.labsjdk20                              + self.weeklyBench   + self.windows_20,
-  jdk20_on_demand_linux         : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.onDemand      + self.linux,
-  jdk20_on_demand_darwin        : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.onDemand      + self.darwin_amd64,
-  jdk20_on_demand_windows       : graal_common.labsjdk20                              + self.onDemand      + self.windows_20,
-  jdk20_on_demand_bench_linux   : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.onDemandBench + self.x52,
-  jdk20_on_demand_bench_darwin  : graal_common.labsjdk20 + graal_common.labsjdk20LLVM + self.onDemandBench + self.darwin_amd64,
-  jdk20_on_demand_bench_windows : graal_common.labsjdk20                              + self.onDemandBench + self.windows_20,
+  jdk20_gate_linux              : self.gate          + self.linux_amd64_20,
+  jdk20_gate_darwin             : self.gate          + self.darwin_amd64_20,
+  jdk20_gate_windows            : self.gate          + self.windows_20,
+  jdk20_bench_linux             : self.bench         + self.linux_amd64_20 + self.x52,
+  jdk20_bench_darwin            : self.bench         + self.darwin_amd64_20,
+  jdk20_bench_windows           : self.bench         + self.windows_20,
+  jdk20_daily_linux             : self.daily         + self.linux_amd64_20,
+  jdk20_daily_darwin            : self.daily         + self.darwin_amd64_20,
+  jdk20_daily_windows           : self.daily         + self.windows_20,
+  jdk20_daily_bench_linux       : self.dailyBench    + self.linux_amd64_20 + self.x52,
+  jdk20_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_20,
+  jdk20_daily_bench_windows     : self.dailyBench    + self.windows_20,
+  jdk20_weekly_linux            : self.weekly        + self.linux_amd64_20,
+  jdk20_weekly_darwin           : self.weekly        + self.darwin_amd64_20,
+  jdk20_weekly_windows          : self.weekly        + self.windows_20,
+  jdk20_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_20 + self.x52,
+  jdk20_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_20,
+  jdk20_weekly_bench_windows    : self.weeklyBench   + self.windows_20,
+  jdk20_on_demand_linux         : self.onDemand      + self.linux_amd64_20,
+  jdk20_on_demand_darwin        : self.onDemand      + self.darwin_amd64_20,
+  jdk20_on_demand_windows       : self.onDemand      + self.windows_20,
+  jdk20_on_demand_bench_linux   : self.onDemandBench + self.linux_amd64_20 + self.x52,
+  jdk20_on_demand_bench_darwin  : self.onDemandBench + self.darwin_amd64_20,
+  jdk20_on_demand_bench_windows : self.onDemandBench + self.windows_20,
 
   // shared snippets
   eclipse: {
