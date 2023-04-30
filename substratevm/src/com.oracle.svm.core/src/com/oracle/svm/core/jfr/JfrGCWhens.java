@@ -25,19 +25,25 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.Arrays;
-
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 public class JfrGCWhens {
-    private JfrGCWhen[] whens;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrGCWhens() {
-        whens = new JfrGCWhen[0];
+    private JfrGCWhen[] whens = new JfrGCWhen[]{
+                    new JfrGCWhen(0, "Before GC"), new JfrGCWhen(1, "After GC")
+    };
+
+    public JfrGCWhen getBeforeGCWhen() {
+        return whens[0];
+    }
+
+    public JfrGCWhen getAfterGCWhen() {
+        return whens[1];
+    }
+
+    public JfrGCWhen[] getWhens() {
+        return whens;
     }
 
     @Fold
@@ -45,18 +51,4 @@ public class JfrGCWhens {
         return ImageSingletons.lookup(JfrGCWhens.class);
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized JfrGCWhen addGCWhen(String when) {
-        int id = whens.length;
-        JfrGCWhen result = new JfrGCWhen(id, when);
-
-        JfrGCWhen[] newArr = Arrays.copyOf(whens, id + 1);
-        newArr[id] = result;
-        whens = newArr;
-        return result;
-    }
-
-    public JfrGCWhen[] getWhens() {
-        return whens;
-    }
 }
