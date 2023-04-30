@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -99,6 +100,12 @@ class JfrGCHeapSummaryEventSupport {
 
 @AutomaticallyRegisteredFeature
 class JfrGCHeapSummaryEventFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.UseSerialGC.getValue();
+    }
+
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
