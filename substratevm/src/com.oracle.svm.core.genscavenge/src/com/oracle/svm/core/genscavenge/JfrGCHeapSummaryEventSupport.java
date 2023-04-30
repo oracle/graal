@@ -29,11 +29,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrGCWhen;
@@ -41,46 +39,41 @@ import com.oracle.svm.core.jfr.JfrGCWhens;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
-import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.JfrType;
 
 class JfrGCHeapSummaryEventSupport {
 
-    private final JfrGCWhen before; 
+    private final JfrGCWhen before;
     private final JfrGCWhen after;
 
-    public JfrGCHeapSummaryEventSupport(JfrGCWhen before, JfrGCWhen after){
+    JfrGCHeapSummaryEventSupport(JfrGCWhen before, JfrGCWhen after) {
         this.before = before;
         this.after = after;
     }
 
-
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public void emitGCHeapSummaryEventBeforeGC(UnsignedWord gcEpoch, long start, long heapUsed) {
-        
+
         if (JfrEvent.GCHeapSummary.shouldEmit()) {
-        
+
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-        
+
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.GCHeapSummary);
-        
-            JfrNativeEventWriter.putLong(data, start);  //   @Label("Start Time") @Timestamp("TICKS") long startTime;
-            
+
+            JfrNativeEventWriter.putLong(data, start); //   @Label("Start Time") @Timestamp("TICKS") long startTime;
+
             JfrNativeEventWriter.putLong(data, gcEpoch.rawValue()); //  @Label("GC Identifier") int gcId;
             JfrNativeEventWriter.putLong(data, before.getId()); //  @Label("When") String when;
-        
+
             // VirtualSpace
-            JfrNativeEventWriter.putLong(data, 0L);     // start
-            JfrNativeEventWriter.putLong(data, 0L);     // committedEnd : ulong
-            JfrNativeEventWriter.putLong(data, 0L);     // committedSize : ulong
-            JfrNativeEventWriter.putLong(data, 0L);     // reservedEnd : ulong
-            JfrNativeEventWriter.putLong(data, 0L);     // reservedSize : ulong
-        
+            JfrNativeEventWriter.putLong(data, 0L); // start
+            JfrNativeEventWriter.putLong(data, 0L); // committedEnd : ulong
+            JfrNativeEventWriter.putLong(data, 0L); // committedSize : ulong
+            JfrNativeEventWriter.putLong(data, 0L); // reservedEnd : ulong
+            JfrNativeEventWriter.putLong(data, 0L); // reservedSize : ulong
+
             JfrNativeEventWriter.putLong(data, heapUsed); //  @Unsigned @DataAmount("BYTES")  @Label("Heap Used") @Description("Bytes allocated by objects in the heap")  long heapUsed;
-        
+
             JfrNativeEventWriter.endSmallEvent(data);
         }
 
@@ -88,34 +81,33 @@ class JfrGCHeapSummaryEventSupport {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public void emitGCHeapSummaryEventAfterGC(UnsignedWord gcEpoch, long start, long heapUsed) {
-        
+
         if (JfrEvent.GCHeapSummary.shouldEmit()) {
-        
+
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-        
+
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.GCHeapSummary);
-        
+
             JfrNativeEventWriter.putLong(data, start); //   @Label("Start Time") @Timestamp("TICKS") long startTime;
-        
+
             JfrNativeEventWriter.putLong(data, gcEpoch.rawValue()); //  @Label("GC Identifier") int gcId;
             JfrNativeEventWriter.putLong(data, after.getId()); //  @Label("When") String when;
-        
+
             // VirtualSpace           
-            JfrNativeEventWriter.putLong(data, 0L);     // start
-            JfrNativeEventWriter.putLong(data, 0L);     // committedEnd : ulong
-            JfrNativeEventWriter.putLong(data, 0L);     // committedSize : ulong
-            JfrNativeEventWriter.putLong(data, 0L);     // reservedEnd : ulong
-            JfrNativeEventWriter.putLong(data, 0L);     // reservedSize : ulong
-        
+            JfrNativeEventWriter.putLong(data, 0L); // start
+            JfrNativeEventWriter.putLong(data, 0L); // committedEnd : ulong
+            JfrNativeEventWriter.putLong(data, 0L); // committedSize : ulong
+            JfrNativeEventWriter.putLong(data, 0L); // reservedEnd : ulong
+            JfrNativeEventWriter.putLong(data, 0L); // reservedSize : ulong
+
             JfrNativeEventWriter.putLong(data, heapUsed); //  @Unsigned @DataAmount("BYTES")  @Label("Heap Used") @Description("Bytes allocated by objects in the heap")  long heapUsed;
-        
+
             JfrNativeEventWriter.endSmallEvent(data);
         }
-        
+
     }
 }
-
 
 @AutomaticallyRegisteredFeature
 class JfrGCHeapSummaryEventFeature implements InternalFeature {
@@ -123,8 +115,6 @@ class JfrGCHeapSummaryEventFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (HasJfrSupport.get()) {
-
-            //ImageSingletons.add(JfrGCWhens.class, new JfrGCWhens());
 
             JfrGCWhen before = JfrGCWhens.singleton().addGCWhen("Before GC");
 

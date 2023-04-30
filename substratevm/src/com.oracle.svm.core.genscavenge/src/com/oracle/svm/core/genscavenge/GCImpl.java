@@ -93,8 +93,6 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.genscavenge.JfrGCHeapSummaryEvent;
-import com.oracle.svm.core.genscavenge.JfrGCHeapSummaryEventSupport;
 
 /**
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
