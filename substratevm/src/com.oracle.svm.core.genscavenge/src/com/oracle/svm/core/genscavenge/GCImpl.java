@@ -208,7 +208,7 @@ public final class GCImpl implements GC {
 
         GCCause cause = GCCause.fromId(data.getCauseId());
         printGCBefore(cause.getName());
-        JfrGCHeapSummaryEvent.emitJfrGCHeapSummaryEventBeforeGC(getCollectionEpoch(), JfrTicks.elapsedTicks(),getChunkBytes().rawValue());
+        JfrGCHeapSummaryEvent.emitJfrGCHeapSummaryEventBeforeGC(getCollectionEpoch(), JfrTicks.elapsedTicks(), getChunkBytes().rawValue());
         boolean outOfMemory = collectImpl(cause, data.getRequestingNanoTime(), data.getForceFullGC());
         JfrGCHeapSummaryEvent.emitJfrGCHeapSummaryEventAfterGC(getCollectionEpoch(), JfrTicks.elapsedTicks(), getChunkBytes().rawValue());
         printGCAfter(cause.getName());

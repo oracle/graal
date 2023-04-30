@@ -37,7 +37,6 @@ import com.oracle.svm.core.jfr.JfrEvent;
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 
-
 public class TestGCHeapSummaryEvent extends JfrRecordingTest {
 
     @Test

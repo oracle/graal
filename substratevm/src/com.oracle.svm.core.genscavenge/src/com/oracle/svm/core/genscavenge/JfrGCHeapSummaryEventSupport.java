@@ -73,10 +73,10 @@ class JfrGCHeapSummaryEventSupport {
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.GCHeapSummary);
 
             JfrNativeEventWriter.putLong(data, start); // @Label("Start Time") @Timestamp("TICKS")
-                                                       // long startTime;
+                                                      // long startTime;
 
             JfrNativeEventWriter.putLong(data, gcEpoch.rawValue()); // @Label("GC Identifier") int
-                                                                    // gcId;
+                                                                   // gcId;
             JfrNativeEventWriter.putLong(data, gcWhen.getId()); // @Label("When") String when;
 
             // VirtualSpace
@@ -87,9 +87,9 @@ class JfrGCHeapSummaryEventSupport {
             JfrNativeEventWriter.putLong(data, 0L); // reservedSize : ulong
 
             JfrNativeEventWriter.putLong(data, heapUsed); // @Unsigned @DataAmount("BYTES")
-                                                          // @Label("Heap Used") @Description("Bytes
-                                                          // allocated by objects in the heap") long
-                                                          // heapUsed;
+                                                         // @Label("Heap Used") @Description("Bytes
+                                                         // allocated by objects in the heap") long
+                                                         // heapUsed;
 
             JfrNativeEventWriter.endSmallEvent(data);
         }
@@ -108,7 +108,6 @@ class JfrGCHeapSummaryEventFeature implements InternalFeature {
             JfrGCWhen after = JfrGCWhens.singleton().getAfterGCWhen();
 
             ImageSingletons.add(JfrGCHeapSummaryEventSupport.class, new JfrGCHeapSummaryEventSupport(before, after));
-
         }
     }
 

@@ -28,18 +28,17 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 
-
 class JfrGCHeapSummaryEvent {
 
-    public static void emitJfrGCHeapSummaryEventBeforeGC(UnsignedWord gcEpoch,long start,long heapUsed) {
-        if (hasJfrSupport() ) {
-            jfrSupport().emitGCHeapSummaryEventBeforeGC(gcEpoch, start,heapUsed);
+    public static void emitJfrGCHeapSummaryEventBeforeGC(UnsignedWord gcEpoch, long start, long heapUsed) {
+        if (hasJfrSupport()) {
+            jfrSupport().emitGCHeapSummaryEventBeforeGC(gcEpoch, start, heapUsed);
         }
     }
 
     public static void emitJfrGCHeapSummaryEventAfterGC(UnsignedWord gcEpoch, long start, long heapUsed) {
         if (hasJfrSupport()) {
-            jfrSupport().emitGCHeapSummaryEventAfterGC(gcEpoch, start,heapUsed);
+            jfrSupport().emitGCHeapSummaryEventAfterGC(gcEpoch, start, heapUsed);
         }
     }
 
