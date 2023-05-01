@@ -445,7 +445,7 @@
   ],
 
   # Builds run on only on jdk21
-  local jdk21_builds = [self.make_build("21", os_arch, task, jdk_name="oraclejdk").build
+  local jdk21_builds = [self.make_build("21", os_arch, task).build
     for os_arch in all_os_arches
     for task in [
       "test",
