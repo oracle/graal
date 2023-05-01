@@ -596,7 +596,7 @@ public final class ReflectionPlugins {
 
         /* Any other object that is not a Class. */
         Object result = snippetReflection.asObject(Object.class, argConstant);
-        if (ALLOWED_CONSTANT_CLASSES.contains(result.getClass())) {
+        if (result != null && ALLOWED_CONSTANT_CLASSES.contains(result.getClass())) {
             return result;
         }
         return null;
