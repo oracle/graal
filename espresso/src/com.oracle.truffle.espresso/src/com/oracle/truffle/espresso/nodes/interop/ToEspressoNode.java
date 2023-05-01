@@ -36,7 +36,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -44,7 +43,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
-import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOfFactory;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -77,100 +75,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                 case Char:
                     return ToPrimitiveFactory.ToCharNodeGen.create();
                 case Void:
-                    return new ToReference.ToVoid();
+                    return ToReferenceFactory.ToVoidNodeGen.create();
             }
         }
-        if (targetType.getMeta().isBoxed(targetType)) {
-            if (targetType == meta.java_lang_Boolean) {
-                return ToReferenceFactory.ToBooleanNodeGen.create();
-            }
-            if (targetType == meta.java_lang_Character) {
-                return ToReferenceFactory.ToCharNodeGen.create();
-            }
-            if (targetType == meta.java_lang_Integer) {
-                return ToReferenceFactory.ToIntegerNodeGen.create();
-            }
-            if (targetType == meta.java_lang_Byte) {
-                return ToReferenceFactory.ToByteNodeGen.create();
-            }
-            if (targetType == meta.java_lang_Short) {
-                return ToReferenceFactory.ToShortNodeGen.create();
-            }
-            if (targetType == meta.java_lang_Long) {
-                return ToReferenceFactory.ToLongNodeGen.create();
-            }
-            if (targetType == meta.java_lang_Float) {
-                return ToReferenceFactory.ToFloatNodeGen.create();
-            }
-            if (targetType == meta.java_lang_Double) {
-                return ToReferenceFactory.ToDoubleNodeGen.create();
-            }
-        }
-        if (targetType == meta.java_lang_Number) {
-            return ToReferenceFactory.ToNumberNodeGen.create();
-        }
-        if (targetType == meta._byte_array) {
-            return ToReferenceFactory.ToByteArrayNodeGen.create();
-        }
-        if (targetType.isArray()) {
-            return ToReferenceFactory.ToArrayNodeGen.create((ArrayKlass) targetType);
-        }
-        if (targetType.isJavaLangObject()) {
-            return ToReferenceFactory.ToJavaLangObjectNodeGen.create();
-        }
-        if (targetType == meta.java_lang_String) {
-            return ToReferenceFactory.ToStringNodeGen.create();
-        }
-        if (targetType.isInterface()) {
-            if (isTypeMappingEnabled(targetType)) {
-                return ToReferenceFactory.ToMappedInterfaceNodeGen.create((ObjectKlass) targetType);
-            } else if (targetType == meta.java_lang_CharSequence) {
-                return ToReferenceFactory.ToCharSequenceNodeGen.create();
-            } else {
-                return ToReferenceFactory.ToUnknownNodeGen.create((ObjectKlass) targetType);
-            }
-        }
-        if (isForeignException(targetType, meta)) {
-            return ToReferenceFactory.ToForeignExceptionNodeGen.create();
-        }
-        if (targetType == meta.java_lang_Throwable) {
-            return ToReferenceFactory.ToThrowableNodeGen.create();
-        }
-        if (targetType == meta.java_lang_Exception) {
-            return ToReferenceFactory.ToExceptionNodeGen.create();
-        }
-        if (targetType == meta.java_lang_RuntimeException) {
-            return ToReferenceFactory.ToRuntimeExceptionNodeGen.create();
-        }
-        if (targetType == meta.java_time_LocalDate) {
-            return ToReferenceFactory.ToLocalDateNodeGen.create();
-        }
-        if (targetType == meta.java_time_LocalTime) {
-            return ToReferenceFactory.ToLocalTimeNodeGen.create();
-        }
-        if (targetType == meta.java_time_LocalDateTime) {
-            return ToReferenceFactory.ToLocalDateTimeNodeGen.create();
-        }
-        if (targetType == meta.java_time_ZonedDateTime) {
-            return ToReferenceFactory.ToZonedDateTimeNodeGen.create();
-        }
-        if (targetType == meta.java_time_Instant) {
-            return ToReferenceFactory.ToInstantNodeGen.create();
-        }
-        if (targetType == meta.java_time_Duration) {
-            return ToReferenceFactory.ToDurationNodeGen.create();
-        }
-        if (targetType == meta.java_time_ZoneId) {
-            return ToReferenceFactory.ToZoneIdNodeGen.create();
-        }
-        if (targetType == meta.java_util_Date) {
-            return ToReferenceFactory.ToDateNodeGen.create();
-        }
-        if (isTypeConverterEnabled(targetType)) {
-            return ToReferenceFactory.ToMappedTypeNodeGen.create((ObjectKlass) targetType);
-        } else {
-            return ToReferenceFactory.ToUnknownNodeGen.create((ObjectKlass) targetType);
-        }
+        return ToReference.createToReference(targetType, meta);
     }
 
     @TruffleBoundary
@@ -194,97 +102,10 @@ public abstract class ToEspressoNode extends EspressoNode {
                 case Char:
                     return ToPrimitiveFactory.ToCharNodeGen.getUncached();
                 case Void:
-                    return new ToReference.ToVoid();
+                    return ToReferenceFactory.ToVoidNodeGen.getUncached();
             }
         }
-        if (targetType.getMeta().isBoxed(targetType)) {
-            if (targetType == meta.java_lang_Boolean) {
-                return ToReferenceFactory.ToBooleanNodeGen.getUncached();
-            }
-            if (targetType == meta.java_lang_Character) {
-                return ToReferenceFactory.ToCharNodeGen.getUncached();
-            }
-            if (targetType == meta.java_lang_Integer) {
-                return ToReferenceFactory.ToIntegerNodeGen.getUncached();
-            }
-            if (targetType == meta.java_lang_Byte) {
-                return ToReferenceFactory.ToByteNodeGen.getUncached();
-            }
-            if (targetType == meta.java_lang_Short) {
-                return ToReferenceFactory.ToShortNodeGen.getUncached();
-            }
-            if (targetType == meta.java_lang_Long) {
-                return ToReferenceFactory.ToLongNodeGen.getUncached();
-            }
-            if (targetType == meta.java_lang_Float) {
-                return ToReferenceFactory.ToFloatNodeGen.getUncached();
-            }
-            if (targetType == meta.java_lang_Double) {
-                return ToReferenceFactory.ToDoubleNodeGen.getUncached();
-            }
-        }
-        if (targetType == meta.java_lang_Number) {
-            return ToReferenceFactory.ToNumberNodeGen.getUncached();
-        }
-        if (targetType == meta._byte_array) {
-            return ToReferenceFactory.ToByteArrayNodeGen.getUncached();
-        }
-        if (targetType.isArray()) {
-            throw new IllegalStateException("Generic arrays type mappings must be handled separately!");
-        }
-        if (targetType.isJavaLangObject()) {
-            return ToReferenceFactory.ToJavaLangObjectNodeGen.getUncached();
-        }
-        if (targetType == meta.java_lang_String) {
-            return ToReferenceFactory.ToStringNodeGen.getUncached();
-        }
-        if (targetType.isInterface()) {
-            if (targetType == meta.java_lang_CharSequence) {
-                return ToReferenceFactory.ToCharSequenceNodeGen.getUncached();
-            }
-            if (isTypeMappingEnabled(targetType)) {
-                throw new IllegalStateException("Interface type mappings must be handled separately!");
-            } else {
-                throw new IllegalStateException("unknown types must be handled separately!");
-            }
-        }
-        if (isForeignException(targetType, meta)) {
-            return ToReferenceFactory.ToForeignExceptionNodeGen.getUncached();
-        }
-        if (targetType == meta.java_lang_Throwable) {
-            return ToReferenceFactory.ToThrowableNodeGen.getUncached();
-        }
-        if (targetType == meta.java_lang_Exception) {
-            return ToReferenceFactory.ToExceptionNodeGen.getUncached();
-        }
-        if (targetType == meta.java_lang_RuntimeException) {
-            return ToReferenceFactory.ToRuntimeExceptionNodeGen.getUncached();
-        }
-        if (targetType == meta.java_time_LocalDate) {
-            return ToReferenceFactory.ToLocalDateNodeGen.getUncached();
-        }
-        if (targetType == meta.java_time_LocalTime) {
-            return ToReferenceFactory.ToLocalTimeNodeGen.getUncached();
-        }
-        if (targetType == meta.java_time_LocalDateTime) {
-            return ToReferenceFactory.ToLocalDateTimeNodeGen.getUncached();
-        }
-        if (targetType == meta.java_time_ZonedDateTime) {
-            return ToReferenceFactory.ToZonedDateTimeNodeGen.getUncached();
-        }
-        if (targetType == meta.java_time_Instant) {
-            return ToReferenceFactory.ToInstantNodeGen.getUncached();
-        }
-        if (targetType == meta.java_time_Duration) {
-            return ToReferenceFactory.ToDurationNodeGen.getUncached();
-        }
-        if (targetType == meta.java_time_ZoneId) {
-            return ToReferenceFactory.ToZoneIdNodeGen.getUncached();
-        }
-        if (targetType == meta.java_util_Date) {
-            return ToReferenceFactory.ToDateNodeGen.getUncached();
-        }
-        throw new IllegalStateException("unknown types must be handled separately!");
+        return ToReference.getUncachedToReference(targetType, meta);
     }
 
     @NodeInfo(shortName = "Dynamic toEspresso node")
@@ -303,28 +124,40 @@ public abstract class ToEspressoNode extends EspressoNode {
             return ToEspressoNode.getUncachedToEspresso(targetType, targetType.getMeta());
         }
 
+        public static boolean isStaticObject(Object value) {
+            return value instanceof StaticObject;
+        }
+
+        @Specialization
+        public Object doStaticObject(StaticObject value, @SuppressWarnings("unused") Klass targetType,
+                        @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
+            if (StaticObject.isNull(value) || instanceOf.execute(value.getKlass(), targetType)) {
+                return value; // pass through, NULL coercion not needed.
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", targetType.getTypeAsString()));
+        }
+
+        @Specialization(guards = "interop.isNull(value)")
+        public Object doForeignNull(Object value, @SuppressWarnings("unused") Klass targetType,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+            return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
+        }
+
         @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
         public Object doCached(Object value, @SuppressWarnings("unused") Klass targetType,
                         @SuppressWarnings("unused") @Cached("targetType") Klass cachedTargetType,
-                        @Cached("createToEspressoNode(cachedTargetType)") ToEspressoNode toEspressoNode) throws UnsupportedTypeException {
+                        @Cached("createToEspressoNode(cachedTargetType)") ToEspressoNode toEspressoNode,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             return toEspressoNode.execute(value);
         }
 
         @Megamorphic
-        @Specialization(replaces = "doCached")
+        @Specialization(replaces = "doCached", guards = {
+                        "!isStaticObject(value)",
+                        "!interop.isNull(value)"
+        })
         public Object doGeneric(Object value, Klass targetType,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-            if (interop.isNull(value)) {
-                return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
-            }
-            if (value instanceof StaticObject) {
-                StaticObject staticObject = (StaticObject) value;
-                InstanceOf.Dynamic instanceOf = InstanceOfFactory.DynamicNodeGen.getUncached();
-                if (StaticObject.isNull(staticObject) || instanceOf.execute(staticObject.getKlass(), targetType)) {
-                    return value; // pass through, NULL coercion not needed.
-                }
-                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", targetType.getTypeAsString()));
-            }
             if (targetType.isInterface()) {
                 if (isTypeMappingEnabled(targetType)) {
                     try {

@@ -39,7 +39,6 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.DRETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.FRETURN;
-import static com.oracle.truffle.api.impl.asm.Opcodes.GETSTATIC;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ICONST_0;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
@@ -692,11 +691,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
             if (returnType.isPrimitive()) {
                 JavaKind kind = returnType.getJavaKind();
-                mv.visitFieldInsn(
-                                GETSTATIC,
-                                kind.toBoxedJavaClass().getName().replace('.', '/'),
-                                "TYPE",
-                                "Ljava/lang/Class;");
+                mv.visitLdcInsn(Type.getType(kind.toBoxedJavaClass()));
             } else {
                 mv.visitLdcInsn(Type.getType(returnType.getTypeAsString()));
             }
