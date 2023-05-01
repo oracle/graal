@@ -235,7 +235,7 @@ def _truffle_gate_runner(args, tasks):
     with Task('Truffle Signature Tests', tasks) as t:
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
-        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast']))
+        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
         with Task('Truffle DSL max state bit tests', tasks) as t:
             if t:
@@ -254,7 +254,7 @@ def _truffle_gate_state_bitwidth_tests():
         build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
                       '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]
 
-        unittest_args = ['--suite', 'truffle', '--enable-timing', '--fail-fast', '-Dtruffle.dsl.StateBitWidth={0}'.format(run_bits),
+        unittest_args = ['--suite', 'truffle', '--enable-timing', '--max-class-failures=25', '-Dtruffle.dsl.StateBitWidth={0}'.format(run_bits),
                          'com.oracle.truffle.api.dsl.test', 'com.oracle.truffle.api.library.test', 'com.oracle.truffle.sl.test']
         try:
             mx.build(build_args)

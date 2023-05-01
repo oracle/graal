@@ -279,8 +279,10 @@ class UnitTestRun:
                     extra_args = []
                 if Task.tags is None or 'coverage' not in Task.tags: # pylint: disable=unsupported-membership-test
                     # If this is a coverage execution, we want maximal coverage
-                    # and thus must not fail fast.
-                    extra_args += ['--fail-fast']
+                    # and thus must not fail fast. Otherwise, stop after the first 25
+                    # failures. This guards against systemic test failure while still
+                    # allowing a gate to reveal numerous failures.
+                    extra_args += ['--max-class-failures=25']
                 if t:
                     tags = {'task' : t.title}
                     unittest(['--suite', suite] + extra_args + self.args +
@@ -1223,7 +1225,7 @@ def java_base_unittest(args):
     if get_graaljdk().debug_args:
         mx.warn('Ignoring Java debugger arguments because base JDK doesn\'t include jdwp')
     with mx.DisableJavaDebugging():
-        mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
+        mx_unittest.unittest(['--suite', 'compiler', '--max-class-failures=25'] + extra_args + args)
 
 def javadoc(args):
     # metadata package was deprecated, exclude it
