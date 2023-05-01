@@ -95,10 +95,23 @@ public class TestOperationsParserTest {
     }
 
     private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
+        testOrderingWithArguments(expectException, root, null, order);
+    }
+
+    private static void testOrderingWithArguments(boolean expectException, RootCallTarget root, Object[] args, Long... order) {
         List<Object> result = new ArrayList<>();
 
+        Object[] allArgs;
+        if (args == null) {
+            allArgs = new Object[] {result};
+        } else {
+            allArgs = new Object[args.length + 1];
+            allArgs[0] = result;
+            System.arraycopy(args, 0, allArgs, 1, args.length);
+        }
+
         try {
-            root.call(result);
+            root.call(allArgs);
             if (expectException) {
                 Assert.fail();
             }
@@ -122,6 +135,12 @@ public class TestOperationsParserTest {
         b.emitLoadArgument(0);
         b.emitLoadConstant(value);
         b.endAppenderOperation();
+    }
+
+    private static void emitThrow(TestOperationsGen.Builder b, long value) {
+        b.beginThrowOperation();
+        b.emitLoadConstant(value);
+        b.endThrowOperation();
     }
 
     private static void assertInstructionEquals(Instruction instr, int bci, String name) {
@@ -310,9 +329,9 @@ public class TestOperationsParserTest {
     @Test
     public void testTryCatch() {
         // try {
-        //   if (arg0 < 0) throw
-        // } catch {
-        //   return 1;
+        //   if (arg0 < 0) throw arg0+1
+        // } catch ex {
+        //   return ex.value;
         // }
         // return 0;
 
@@ -328,11 +347,20 @@ public class TestOperationsParserTest {
             b.emitLoadConstant(0L);
             b.endLessThanOperation();
 
-            b.emitThrowOperation();
+            b.beginThrowOperation();
+            b.beginAddOperation();
+            b.emitLoadArgument(0);
+            b.emitLoadConstant(1L);
+            b.endAddOperation();
+            b.endThrowOperation();
 
             b.endIfThen();
 
-            emitReturn(b, 1);
+            b.beginReturn();
+            b.beginReadExceptionOperation();
+            b.emitLoadLocal(local);
+            b.endReadExceptionOperation();
+            b.endReturn();
 
             b.endTryCatch();
 
@@ -341,7 +369,7 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        assertEquals(1L, root.call(-1L));
+        assertEquals(-42L, root.call(-43L));
         assertEquals(0L, root.call(1L));
     }
 
@@ -497,7 +525,7 @@ public class TestOperationsParserTest {
     public void testFinallyTryException() {
         // try {
         //   arg0.append(1);
-        //   throw;
+        //   throw 0;
         //   arg0.append(2);
         // } finally {
         //   arg0.append(3);
@@ -510,7 +538,7 @@ public class TestOperationsParserTest {
 
                 b.beginBlock();
                     emitAppend(b, 1);
-                    b.emitThrowOperation();
+                    emitThrow(b, 0);
                     emitAppend(b, 2);
                 b.endBlock();
             b.endFinallyTry();
@@ -754,7 +782,7 @@ public class TestOperationsParserTest {
         //   arg0.append(2);
         // } finally {
         //   arg0.append(3);
-        //   if (false) {
+        //   if (arg1) {
         //     arg0.append(4);
         //   }
         //   arg0.append(5);
@@ -769,7 +797,7 @@ public class TestOperationsParserTest {
                     emitAppend(b, 3);
 
                     b.beginIfThen();
-                    b.emitLoadConstant(false);
+                    b.emitLoadArgument(1);
                     emitAppend(b, 4);
                     b.endIfThen();
 
@@ -789,7 +817,8 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 5L);
+        testOrderingWithArguments(false, root, new Object[] {false}, 1L, 3L, 5L);
+        testOrderingWithArguments(false, root, new Object[] {true}, 1L, 3L, 4L, 5L);
     }
 
     @Test
@@ -800,7 +829,7 @@ public class TestOperationsParserTest {
         //   arg0.append(2);
         // } finally {
         //   arg0.append(3);
-        //   if (false) {
+        //   if (arg1) {
         //     arg0.append(4);
         //   } else {
         //     arg0.append(5);
@@ -817,7 +846,7 @@ public class TestOperationsParserTest {
                     emitAppend(b, 3);
 
                     b.beginIfThenElse();
-                        b.emitLoadConstant(false);
+                        b.emitLoadArgument(1);
 
                         emitAppend(b, 4);
 
@@ -840,7 +869,8 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        testOrdering(false, root, 1L, 3L, 5L, 6L);
+        testOrderingWithArguments(false, root, new Object[] {false}, 1L, 3L, 5L, 6L);
+        testOrderingWithArguments(false, root, new Object[] {true}, 1L, 3L, 4L, 6L);
     }
 
     @Test
@@ -1127,7 +1157,7 @@ public class TestOperationsParserTest {
                     b.beginTryCatch(b.createLocal());
                         b.beginBlock();
                             emitAppend(b, 4);
-                            b.emitThrowOperation();
+                            emitThrow(b, 0);
                             emitAppend(b, 5);
                         b.endBlock();
 
@@ -1550,7 +1580,7 @@ public class TestOperationsParserTest {
         // try {
         //   try {
         //     arg0.append(1);
-        //     throw;
+        //     throw 0;
         //     arg0.append(2);
         //   } finally {
         //     arg0.append(3);
@@ -1574,7 +1604,7 @@ public class TestOperationsParserTest {
 
                     b.beginBlock();
                         emitAppend(b, 1);
-                        b.emitThrowOperation();
+                        emitThrow(b, 0);
                         emitAppend(b, 2);
                     b.endBlock();
                 b.endFinallyTry();
@@ -1590,12 +1620,12 @@ public class TestOperationsParserTest {
     public void testFinallyTryNestedFinallyThrow() {
         // try {
         //   arg0.append(1);
-        //   throw;
+        //   throw 0;
         //   arg0.append(2);
         // } finally {
         //   try {
         //     arg0.append(3);
-        //     throw;
+        //     throw 0;
         //     arg0.append(4);
         //   } finally {
         //     arg0.append(5);
@@ -1613,14 +1643,14 @@ public class TestOperationsParserTest {
 
                     b.beginBlock();
                         emitAppend(b, 3);
-                        b.emitThrowOperation();
+                        emitThrow(b, 0);
                         emitAppend(b, 4);
                     b.endBlock();
                 b.endFinallyTry();
 
                 b.beginBlock();
                     emitAppend(b, 1);
-                    b.emitThrowOperation();
+                    emitThrow(b, 0);
                     emitAppend(b, 2);
                 b.endBlock();
             b.endFinallyTry();
@@ -1664,7 +1694,7 @@ public class TestOperationsParserTest {
     public void testFinallyTryNoExceptException() {
         // try {
         //   arg0.append(1);
-        //   throw;
+        //   throw 0;
         //   arg0.append(2);
         // } finally noexcept {
         //   arg0.append(3);
@@ -1678,7 +1708,7 @@ public class TestOperationsParserTest {
 
                 b.beginBlock();
                     emitAppend(b, 1);
-                    b.emitThrowOperation();
+                    emitThrow(b, 0);
                     emitAppend(b, 2);
                 b.endBlock();
             b.endFinallyTryNoExcept();
@@ -2106,7 +2136,10 @@ public class TestOperationsParserTest {
 
     @Test
     public void testBranchOutwardValid() {
-        // { goto lbl; 2 }
+        // {
+        //   if(arg0 < 0) goto lbl;
+        //   return 123;
+        // }
         // lbl:
         // return 42;
 
@@ -2116,8 +2149,18 @@ public class TestOperationsParserTest {
             OperationLabel lbl = b.createLabel();
 
             b.beginBlock();
+              b.beginIfThen();
+
+              b.beginLessThanOperation();
+              b.emitLoadArgument(0);
+              b.emitLoadConstant(0L);
+              b.endLessThanOperation();
+
               b.emitBranch(lbl);
-              b.emitLoadConstant(2L);
+
+              b.endIfThen();
+
+              emitReturn(b, 123L);
             b.endBlock();
 
             b.emitLabel(lbl);
@@ -2127,7 +2170,8 @@ public class TestOperationsParserTest {
             b.endRoot();
         });
 
-        assertEquals(42L, root.call());
+        assertEquals(123L, root.call(1L));
+        assertEquals(42L, root.call(-1L));
     }
 
     @Test
