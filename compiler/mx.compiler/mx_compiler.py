@@ -106,7 +106,7 @@ if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
 
 mx_gate.add_jacoco_includes(['org.graalvm.*'])
 mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
-mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution'])
+mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
 
 def _get_graal_option(vmargs, name, default=None, prefix='-Dgraal.'):
     """
