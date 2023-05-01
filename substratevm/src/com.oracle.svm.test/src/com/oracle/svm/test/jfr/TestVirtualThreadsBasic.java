@@ -42,12 +42,16 @@ import org.junit.Before;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 
 /**
- * This test checks that virtual threads are recorded correctly in JFR events.
+ * This test checks that virtual threads are recorded correctly in JFR events. Reflection is used
+ * for JDK 19+ APIs for compatibility with JDK 17. Once JDK 17 support ends, the reflection can be
+ * replaced.
  */
 public class TestVirtualThreadsBasic extends JfrRecordingTest {
     private static final int THREADS = 5;
@@ -58,7 +62,7 @@ public class TestVirtualThreadsBasic extends JfrRecordingTest {
 
     @Before
     public void checkJavaVersion() {
-        assumeTrue("skipping JFR virtual thread tests", org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 19);
+        assumeTrue("skipping JFR virtual thread tests", JavaVersionUtil.JAVA_SPEC >= 19);
     }
 
     @Test

@@ -94,7 +94,9 @@ public abstract class AbstractJfrTest {
 
             List<RecordedEvent> events = getEvents(path, state.testedEvents);
             checkEvents(events, state.testedEvents);
-            validator.validate(events);
+            if (validator != null) {
+                validator.validate(events);
+            }
         } catch (Exception e) {
             Assert.fail("Failed to parse recording: " + e.getMessage());
         }

@@ -506,7 +506,7 @@ public abstract class PlatformThreads {
         currentVThreadId.set(JavaThreads.getThreadId(thread));
     }
 
-    /** Returns the mounted virtual thread if one exists, otherwise null.*/
+    /** Returns the mounted virtual thread if one exists, otherwise null. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static Thread getVThread(Thread thread) {
         return toTarget(thread).vthread;

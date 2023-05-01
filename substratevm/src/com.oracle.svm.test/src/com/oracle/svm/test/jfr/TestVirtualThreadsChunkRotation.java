@@ -41,6 +41,8 @@ import org.junit.Before;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;
@@ -49,7 +51,8 @@ import jdk.jfr.consumer.RecordedThread;
 /**
  * This test checks that virtual threads are recorded correctly in JFR events after a chunk
  * rotation. Specifically, this catches the case where vthreads are not properly re-registered with
- * the thread constant pool after a chunk rotation.
+ * the thread constant pool after a chunk rotation. Reflection is used for JDK 19+ APIs for
+ * compatibility with JDK 17. Once JDK 17 support ends, the reflection can be replaced.
  */
 public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
     private static final int THREADS = 3;
@@ -62,7 +65,7 @@ public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
 
     @Before
     public void checkJavaVersion() {
-        assumeTrue("skipping JFR virtual thread tests", org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 19);
+        assumeTrue("skipping JFR virtual thread tests", JavaVersionUtil.JAVA_SPEC >= 19);
     }
 
     @Test
@@ -86,11 +89,11 @@ public class TestVirtualThreadsChunkRotation extends JfrRecordingTest {
             emittedEventsPerType.incrementAndGet();
         };
 
-        // Start vthreads
+        // Start vthreads which should also register them with the thread constant pool.
         List<Thread> threads = VirtualStressor.executeAsync(THREADS, eventEmitter);
-        // Force a chunk rotation
+        // Force a chunk rotation.
         recording.dump(createTempJfrFile());
-        // Once, chunk rotation is over, notify the vthreads they can emit events.
+        // Once, the chunk rotation is over, notify the vthreads they can emit events.
         proceed = true;
         VirtualStressor.join(threads);
         stopRecording(recording, this::validateEvents);

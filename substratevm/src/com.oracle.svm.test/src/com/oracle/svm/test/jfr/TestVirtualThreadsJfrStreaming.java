@@ -30,7 +30,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -39,13 +38,16 @@ import org.junit.Before;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
 import jdk.jfr.consumer.RecordedClass;
-import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 import jdk.jfr.consumer.RecordingStream;
 
 /**
  * This tests checks that virtual thread IDs are recorded correctly in events that are streamed.
+ * Reflection is used for JDK 19+ APIs for compatibility with JDK 17. Once JDK 17 support ends, the
+ * reflection can be replaced.
  */
 public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
     private static final int THREADS = 5;
@@ -57,7 +59,7 @@ public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
 
     @Before
     public void checkJavaVersion() {
-        assumeTrue("skipping JFR virtual thread tests", org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC >= 19);
+        assumeTrue("skipping JFR virtual thread tests", JavaVersionUtil.JAVA_SPEC >= 19);
     }
 
     @Test
@@ -87,10 +89,6 @@ public class TestVirtualThreadsJfrStreaming extends JfrStreamingTest {
         VirtualStressor.execute(THREADS, eventEmitter);
         waitUntilTrue(() -> emittedEventsPerType.get() == EXPECTED_EVENTS);
         waitUntilTrue(() -> expectedThreads.isEmpty());
-        stopStream(stream, this::validateEvents);
-    }
-
-    private void validateEvents(List<RecordedEvent> events) {
-        // ignore
+        stopStream(stream, null);
     }
 }

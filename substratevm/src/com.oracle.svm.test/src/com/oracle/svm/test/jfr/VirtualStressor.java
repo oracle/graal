@@ -31,7 +31,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Class to help run multiple virtual threads executing some task.
+ * Class to help run multiple virtual threads executing some task. Reflection is used for JDK 19+
+ * virtual thread APIs for compatibility with JDK 17. Once JDK 17 support ends, the reflection can
+ * be replaced.
  */
 public class VirtualStressor {
     @SuppressWarnings("preview")

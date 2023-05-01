@@ -839,7 +839,6 @@ suite = {
                 "SVM_PROCESSOR",
             ],
             "javaCompliance" : "17+",
-            "javaPreviewNeeded": "17+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
