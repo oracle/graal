@@ -123,6 +123,7 @@ public final class ReflectionPlugins {
     private final AnalysisUniverse aUniverse;
     private final ParsingReason reason;
     private final FallbackFeature fallbackFeature;
+    private final ClassInitializationSupport classInitializationSupport;
 
     private ReflectionPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
                     ClassInitializationPlugin classInitializationPlugin, AnalysisUniverse aUniverse, ParsingReason reason, FallbackFeature fallbackFeature) {
@@ -133,6 +134,8 @@ public final class ReflectionPlugins {
         this.aUniverse = aUniverse;
         this.reason = reason;
         this.fallbackFeature = fallbackFeature;
+
+        this.classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
     }
 
     public static void registerInvocationPlugins(ImageClassLoader imageClassLoader, SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions,
@@ -221,7 +224,7 @@ public final class ReflectionPlugins {
             /* VarHandles.makeFieldHandle() triggers init of receiver class (JDK-8291065). */
             Object classArg = args[0];
             if (classArg instanceof Class<?>) {
-                if (shouldInitializeAtRuntime((Class<?>) classArg)) {
+                if (classInitializationSupport.shouldInitializeAtRuntime((Class<?>) classArg)) {
                     /* Skip the folding and register the field for run time reflection. */
                     if (reason.duringAnalysis()) {
                         Field field = ReflectionUtil.lookupField(true, (Class<?>) args[0], (String) args[1]);
@@ -244,7 +247,7 @@ public final class ReflectionPlugins {
             Object fieldArg = args[0];
             if (fieldArg instanceof Field) {
                 Field field = (Field) fieldArg;
-                if (isStatic(field) && shouldInitializeAtRuntime(field.getDeclaringClass())) {
+                if (isStatic(field) && classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
                     /* Skip the folding and register the field for run time reflection. */
                     if (reason.duringAnalysis()) {
                         RuntimeReflection.register(field);
@@ -534,11 +537,6 @@ public final class ReflectionPlugins {
         } catch (LinkageError e) {
             // Ignore, the call should be registered manually
         }
-    }
-
-    private static boolean shouldInitializeAtRuntime(Class<?> classArg) {
-        ClassInitializationSupport classInitializationSupport = (ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        return classInitializationSupport.shouldInitializeAtRuntime(classArg);
     }
 
     private static boolean isStatic(Field field) {
