@@ -196,6 +196,7 @@ public class ProfilingInfoTest extends GraalCompilerTest {
 
     @Test
     public void testExceptionSeen() {
+        Assume.assumeTrue("GR-45918", Runtime.version().feature() < 21);
         // NullPointerException
         ProfilingInfo info = profile("nullPointerExceptionSnippet", 5);
         Assert.assertEquals(TriState.FALSE, info.getExceptionSeen(1));
