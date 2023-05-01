@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.typestate;
 
-import java.util.BitSet;
 import java.util.Collections;
 import java.util.Iterator;
 
@@ -41,8 +40,8 @@ public class SingleTypeState extends TypeState {
     protected boolean merged;
 
     /** Creates a new type state from incoming objects. */
-    public SingleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type) {
-        super(properties);
+    @SuppressWarnings("this-escape")
+    public SingleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type) {
         this.type = type;
         this.canBeNull = canBeNull;
         this.merged = false;
@@ -51,8 +50,8 @@ public class SingleTypeState extends TypeState {
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
+    @SuppressWarnings("this-escape")
     protected SingleTypeState(PointsToAnalysis bb, boolean canBeNull, SingleTypeState other) {
-        super(other.properties);
         this.type = other.type;
         this.canBeNull = canBeNull;
         this.merged = other.merged;
@@ -83,11 +82,6 @@ public class SingleTypeState extends TypeState {
     @Override
     public final boolean containsType(AnalysisType exactType) {
         return type.equals(exactType);
-    }
-
-    @Override
-    public final boolean hasExactTypes(BitSet inputTypesBitSet) {
-        return inputTypesBitSet.cardinality() == 1 && inputTypesBitSet.get(type.getId());
     }
 
     @Override

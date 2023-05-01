@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,6 +53,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
@@ -63,11 +64,13 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -89,6 +92,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -106,6 +110,8 @@ public class NativeImageClassLoaderSupport {
     private final EconomicSet<String> emptySet;
     private final EconomicSet<URI> builderURILocations;
 
+    private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
+
     private final URLClassLoader classPathClassLoader;
     private final ClassLoader classLoader;
 
@@ -115,13 +121,14 @@ public class NativeImageClassLoaderSupport {
 
     public final AnnotationExtractor annotationExtractor;
 
+    @SuppressWarnings("this-escape")
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
 
         classes = EconomicMap.create();
         packages = EconomicMap.create();
         emptySet = EconomicSet.create();
         builderURILocations = EconomicSet.create();
-
+        serviceProviders = new ConcurrentHashMap<>();
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Arrays.stream(classPathClassLoader.getURLs())
@@ -156,6 +163,9 @@ public class NativeImageClassLoaderSupport {
         ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
+        allLayers(moduleLayerForImageBuild).stream()
+                        .flatMap(layer -> layer.modules().stream())
+                        .forEach(this::registerModulePathServiceProviders);
 
         classLoader = getSingleClassloader(moduleLayer);
 
@@ -217,7 +227,7 @@ public class NativeImageClassLoaderSupport {
     protected static class Util {
 
         static URL[] verifyClassPathAndConvertToURLs(String[] classpath) {
-            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().flatMap(Util::toClassPathEntries);
+            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().map(Path::of).filter(Util::verifyClassPathEntry);
             return pathStream.map(v -> {
                 try {
                     return toRealPath(v).toUri().toURL();
@@ -235,26 +245,21 @@ public class NativeImageClassLoaderSupport {
             }
         }
 
-        static Stream<Path> toClassPathEntries(String classPathEntry) {
-            Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
-            if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
-                try {
-                    return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
-                } catch (IOException e) {
-                    return Stream.empty();
-                }
+        private static boolean verifyClassPathEntry(Path cpEntry) {
+            if (ClasspathUtils.isJar(cpEntry)) {
+                return true;
             }
-            if (Files.isReadable(entry)) {
-                return Stream.of(entry);
+            if (Files.isDirectory(cpEntry) && Files.isReadable(cpEntry)) {
+                return true;
             }
-            return Stream.empty();
+            return false;
         }
 
         static Path urlToPath(URL url) {
             try {
                 return Paths.get(url.toURI());
             } catch (URISyntaxException e) {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHere(e);
             }
         }
     }
@@ -294,7 +299,7 @@ public class NativeImageClassLoaderSupport {
     /**
      * Creates a finder from a module path specified by the {@code prop} system property.
      */
-    private static ModuleFinder finderFor(String prop) {
+    static ModuleFinder finderFor(String prop) {
         String s = System.getProperty(prop);
         if (s == null || s.isEmpty()) {
             return null;
@@ -343,6 +348,21 @@ public class NativeImageClassLoaderSupport {
             }
         }
         return singleClassloader;
+    }
+
+    private void registerModulePathServiceProviders(Module module) {
+        ModuleDescriptor descriptor = module.getDescriptor();
+        for (ModuleDescriptor.Provides provides : descriptor.provides()) {
+            serviceProviders(provides.service()).addAll(provides.providers());
+        }
+    }
+
+    private LinkedHashSet<String> serviceProviders(String serviceName) {
+        return serviceProviders.computeIfAbsent(serviceName, unused -> new LinkedHashSet<>());
+    }
+
+    void serviceProvidersForEach(BiConsumer<String, Collection<String>> action) {
+        serviceProviders.forEach((key, val) -> action.accept(key, Collections.unmodifiableCollection(val)));
     }
 
     private static void implAddReadsAllUnnamed(Module module) {
@@ -583,14 +603,6 @@ public class NativeImageClassLoaderSupport {
         return ((Module) module).getDescriptor().mainClass();
     }
 
-    final Path excludeDirectoriesRoot = Paths.get("/");
-    final Set<Path> excludeDirectories = getExcludeDirectories();
-
-    private Set<Path> getExcludeDirectories() {
-        return Stream.of("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
-                        .map(excludeDirectoriesRoot::resolve).collect(Collectors.toUnmodifiableSet());
-    }
-
     private final class LoadClassHandler {
 
         private final ForkJoinPool executor;
@@ -690,7 +702,7 @@ public class NativeImageClassLoaderSupport {
                 }
             } else {
                 URI container = path.toUri();
-                loadClassesFromPath(container, path, excludeDirectoriesRoot, excludeDirectories);
+                loadClassesFromPath(container, path, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT, ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES);
             }
         }
 
@@ -719,6 +731,7 @@ public class NativeImageClassLoaderSupport {
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                     assert !excludes.contains(file.getParent()) : "Visiting file '" + file + "' with excluded parent directory";
                     String fileName = root.relativize(file).toString();
+                    registerClassPathServiceProviders(fileName, file);
                     String className = extractClassName(fileName, fileSystemSeparatorChar);
                     if (className != null) {
                         currentlyProcessedEntry = file.toUri().toString();
@@ -739,6 +752,41 @@ public class NativeImageClassLoaderSupport {
                 Files.walkFileTree(root, visitor);
             } catch (IOException ex) {
                 throw shouldNotReachHere(ex);
+            }
+        }
+
+        private static final String SERVICE_PREFIX = "META-INF/services/";
+        private static final String SERVICE_PREFIX_VARIANT = File.separatorChar == '/' ? null : SERVICE_PREFIX.replace('/', File.separatorChar);
+
+        private void registerClassPathServiceProviders(String fileName, Path serviceRegistrationFile) {
+            boolean found = fileName.startsWith(SERVICE_PREFIX) || (SERVICE_PREFIX_VARIANT != null && fileName.startsWith(SERVICE_PREFIX_VARIANT));
+            if (!found) {
+                return;
+            }
+            Path serviceFileName = serviceRegistrationFile.getFileName();
+            if (serviceFileName == null) {
+                return;
+            }
+            String serviceName = serviceFileName.toString();
+            if (!serviceName.isEmpty()) {
+                List<String> providerNames = new ArrayList<>();
+                try (Stream<String> serviceConfig = Files.lines(serviceRegistrationFile)) {
+                    serviceConfig.forEach(ln -> {
+                        int ci = ln.indexOf('#');
+                        String providerName = (ci >= 0 ? ln.substring(0, ci) : ln).trim();
+                        if (!providerName.isEmpty()) {
+                            providerNames.add(providerName);
+                        }
+                    });
+                } catch (Exception e) {
+                    System.out.println("Warning: Image builder cannot read service configuration file " + fileName);
+                }
+                if (!providerNames.isEmpty()) {
+                    LinkedHashSet<String> providersForService = serviceProviders(serviceName);
+                    synchronized (providersForService) {
+                        providersForService.addAll(providerNames);
+                    }
+                }
             }
         }
 

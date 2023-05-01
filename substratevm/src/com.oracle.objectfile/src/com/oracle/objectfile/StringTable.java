@@ -54,6 +54,7 @@ public class StringTable {
         this(ByteBuffer.wrap(bytes));
     }
 
+    @SuppressWarnings("this-escape")
     public StringTable(ByteBuffer buffer) {
         read(buffer);
     }
@@ -105,9 +106,9 @@ public class StringTable {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder("str\nindex   string\n==========================================================================\n");
+        StringBuilder sb = new StringBuilder(String.format("str%nindex   string%n==========================================================================%n"));
         for (Integer idx : stringMap.keySet()) {
-            sb.append(String.format("%5d   %s\n", idx, stringMap.get(idx)));
+            sb.append(String.format("%5d   %s%n", idx, stringMap.get(idx)));
         }
         return sb.toString();
     }

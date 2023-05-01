@@ -251,11 +251,11 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
             if (nextPhase) {
                 getContext().getLogger().severe("Could not gracefully stop executing threads in context closing.");
                 getContext().getLogger().severe(() -> {
-                    String str = "Threads still alive: ";
+                    StringBuilder str = new StringBuilder("Threads still alive: ");
                     for (StaticObject guest : getManagedThreads()) {
-                        str = str + getThreadAccess().getHost(guest);
+                        str.append(getThreadAccess().getHost(guest));
                     }
-                    return str;
+                    return str.toString();
                 });
                 if (getContext().getEspressoEnv().AllowHostExit) {
                     // Needed until we can release rogue threads from Truffle (GR-28701).

@@ -147,7 +147,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
         getReceiver().removeObserver(this);
 
         /* Unlink all callees. */
-        for (AnalysisMethod callee : getAllCallees(false)) {
+        for (AnalysisMethod callee : super.getAllCallees()) {
             MethodFlowsGraphInfo calleeFlows = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getMethodFlowsGraphInfo();
             /* Iterate over the actual parameters in caller context. */
             for (int i = 0; i < actualParameters.length; i++) {

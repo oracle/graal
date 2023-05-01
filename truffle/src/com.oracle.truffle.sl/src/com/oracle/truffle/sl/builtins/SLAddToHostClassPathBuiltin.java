@@ -57,7 +57,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLAddToHostClassPathBuiltin extends SLBuiltinNode {
 
     @Specialization
-    protected Object execute(TruffleString classPath,
+    protected Object doDefault(TruffleString classPath,
                     @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         addToHostClassPath(toJavaStringNode.execute(classPath));
         return SLNull.SINGLETON;

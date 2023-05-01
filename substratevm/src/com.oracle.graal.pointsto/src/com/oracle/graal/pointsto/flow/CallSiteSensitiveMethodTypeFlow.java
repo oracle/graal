@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -81,7 +82,7 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
     }
 
     @Override
-    protected void initFlowsGraph(PointsToAnalysis bb) {
+    protected void initFlowsGraph(PointsToAnalysis bb, List<TypeFlow<?>> postInitFlows) {
         // nothing to do, cloning does all the initialization
     }
 
@@ -93,11 +94,6 @@ public class CallSiteSensitiveMethodTypeFlow extends MethodTypeFlow {
     public Collection<MethodFlowsGraph> getFlows() {
         ensureFlowsGraphSealed();
         return clonedMethodFlows.values();
-    }
-
-    public MethodFlowsGraph getFlows(AnalysisContext calleeContext) {
-        ensureFlowsGraphSealed();
-        return clonedMethodFlows.get(calleeContext);
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import java.lang.invoke.MethodHandles.Lookup;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -71,6 +72,11 @@ final class NodeAccessor extends Accessor {
     static final class AccessNodes extends NodeSupport {
 
         @Override
+        public Lookup nodeLookup() {
+            return Node.lookup();
+        }
+
+        @Override
         public boolean isInstrumentable(RootNode rootNode) {
             return rootNode.isInstrumentable();
         }
@@ -88,6 +94,11 @@ final class NodeAccessor extends Accessor {
         @Override
         public int adoptChildrenAndCount(RootNode rootNode) {
             return rootNode.adoptChildrenAndCount();
+        }
+
+        @Override
+        public int computeSize(RootNode rootNode) {
+            return rootNode.computeSize();
         }
 
         @Override
@@ -158,8 +169,8 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public Object translateStackTraceElement(TruffleStackTraceElement stackTraceLement) {
-            return stackTraceLement.getTarget().getRootNode().translateStackTraceElement(stackTraceLement);
+        public Object translateStackTraceElement(TruffleStackTraceElement stackTraceElement) {
+            return stackTraceElement.getTarget().getRootNode().translateStackTraceElement(stackTraceElement);
         }
 
         @Override

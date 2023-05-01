@@ -28,9 +28,9 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
-import com.oracle.graal.pointsto.util.GraalAccess;
-import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.util.AnnotationWrapper;
+import com.oracle.svm.hosted.ameta.ReadableJavaField;
+import com.oracle.svm.hosted.annotation.AnnotationWrapper;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
@@ -56,7 +56,7 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     }
 
     @Override
-    public boolean allowConstantFolding() {
+    public boolean isValueAvailableBeforeAnalysis() {
         return true;
     }
 
@@ -66,15 +66,15 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     }
 
     @Override
-    public JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
+    public JavaConstant readValue(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport, JavaConstant receiver) {
         /* First try reading the value using the original field. */
-        JavaConstant value = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+        JavaConstant value = ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, original, receiver);
         if (value == null) {
             /*
              * If the original field didn't yield a value, try reading using the annotated field.
              * The value can be null only if the receiver doesn't contain the field.
              */
-            value = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), annotated, receiver);
+            value = ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, annotated, receiver);
         }
         return value;
     }
@@ -133,6 +133,6 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
+        return OriginalFieldProvider.getJavaField(original);
     }
 }

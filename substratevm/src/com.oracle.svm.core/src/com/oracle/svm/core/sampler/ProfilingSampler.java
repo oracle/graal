@@ -27,10 +27,7 @@ package com.oracle.svm.core.sampler;
 import org.graalvm.collections.LockFreePrefixTree;
 
 public interface ProfilingSampler {
-
-    boolean isCollectingActive();
-
-    void registerSampler();
-
     LockFreePrefixTree prefixTree();
+
+    void reset();
 }

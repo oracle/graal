@@ -154,8 +154,8 @@ public class AcceptsTest extends AbstractParametrizedLibraryTest {
 
         @ExportMessage
         // invalid receiver type
-        @ExpectError("Invalid parameter type. Expected 'ErrorAccepts1' but was 'Object'. %")
-        static boolean accepts(Object receiver) {
+        static boolean accepts(@ExpectError("Invalid parameter type. Expected 'ErrorAccepts1' but was 'Object'. %") //
+        Object receiver) {
             return true;
         }
 

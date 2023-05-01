@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
@@ -47,8 +46,6 @@ import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
 public final class JDWP {
-
-    public static final TruffleLogger LOGGER = TruffleLogger.getLogger(JDWPInstrument.ID);
 
     public static final String JAVA_LANG_OBJECT = "Ljava/lang/Object;";
 
@@ -81,7 +78,7 @@ public final class JDWP {
         static class CLASSES_BY_SIGNATURE {
             public static final int ID = 2;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, DebuggerController controller, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -102,7 +99,7 @@ public final class JDWP {
                         reply.writeInt(klass.getStatus());
                     }
                 } catch (IllegalStateException e) {
-                    LOGGER.warning(() -> "Invalid class name in CLASSES_BY_SIGNATURE: " + signature);
+                    controller.warning(() -> "Invalid class name in CLASSES_BY_SIGNATURE: " + signature);
                     reply.writeInt(0);
                 }
                 return new CommandResult(reply);
@@ -132,9 +129,9 @@ public final class JDWP {
         static class ALL_THREADS {
             public static final int ID = 4;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
-                Object[] allThreads = context.getAllGuestThreads();
+                Object[] allThreads = controller.getVisibleGuestThreads();
                 reply.writeInt(allThreads.length);
 
                 for (Object t : allThreads) {
@@ -193,13 +190,13 @@ public final class JDWP {
             public static final int ID = 8;
 
             static CommandResult createReply(Packet packet, DebuggerController controller) {
-                LOGGER.fine("Suspend all packet");
+                controller.fine(() -> "Suspend all packet");
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.suspendAll();
 
                 // give threads time to suspend before returning
-                for (Object guestThread : controller.getContext().getAllGuestThreads()) {
+                for (Object guestThread : controller.getVisibleGuestThreads()) {
                     SuspendedInfo info = controller.getSuspendedInfo(guestThread);
                     if (info instanceof UnknownSuspendedInfo) {
                         awaitSuspendedInfo(controller, guestThread, info);
@@ -213,7 +210,7 @@ public final class JDWP {
             public static final int ID = 9;
 
             static CommandResult createReply(Packet packet, DebuggerController controller) {
-                LOGGER.fine(() -> "Resume all packet");
+                controller.fine(() -> "Resume all packet");
 
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 controller.resumeAll(false);
@@ -390,7 +387,7 @@ public final class JDWP {
                 JDWPContext context = controller.getContext();
                 int classes = input.readInt();
 
-                LOGGER.fine(() -> "Request to redefine %d classes received " + classes);
+                controller.fine(() -> "Request to redefine %d classes received " + classes);
                 List<RedefineInfo> redefineInfos = new ArrayList<>(classes);
 
                 for (int i = 0; i < classes; i++) {
@@ -418,22 +415,25 @@ public final class JDWP {
 
                 // ensure redefinition atomicity by suspending all
                 // guest threads during the redefine transaction
-                Object[] allGuestThreads = context.getAllGuestThreads();
+                Object[] allGuestThreads = controller.getVisibleGuestThreads();
+                Object prev = null;
                 try {
+                    prev = controller.enterTruffleContext();
                     for (Object guestThread : allGuestThreads) {
                         controller.suspend(guestThread);
                     }
                     int errorCode = context.redefineClasses(redefineInfos);
                     if (errorCode != 0) {
                         reply.errorCode(errorCode);
-                        LOGGER.warning(() -> "Redefine failed with error code: " + errorCode);
+                        controller.warning(() -> "Redefine failed with error code: " + errorCode);
                         return new CommandResult(reply);
                     }
-                    LOGGER.fine(() -> "Redefine successful");
+                    controller.fine(() -> "Redefine successful");
                 } finally {
                     for (Object guestThread : allGuestThreads) {
                         controller.resume(guestThread, false);
                     }
+                    controller.leaveTruffleContext(prev);
                 }
                 return new CommandResult(reply);
             }
@@ -1154,7 +1154,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                LOGGER.fine(() -> "trying to invoke static method: " + method.getNameAsString());
+                controller.fine(() -> "trying to invoke static method: " + method.getNameAsString());
 
                 int arguments = input.readInt();
 
@@ -1184,27 +1184,18 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
-                                entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 // Checkstyle: stop allow error output
-                                if (entered) {
-                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
-                                } else {
-                                    System.err.println("Internal Espresso error: " + t.getMessage());
-                                }
+                                System.err.println("Internal Espresso error: " + t.getMessage());
                                 t.printStackTrace();
                                 // Checkstyle: resume allow error output
                             } finally {
                                 connection.handleReply(packet, commandResult);
-                                if (entered) {
-                                    controller.leaveTruffleContext();
-                                }
                             }
                         }
                     }).start();
@@ -1245,11 +1236,11 @@ public final class JDWP {
 
                 MethodRef method = verifyMethodRef(input.readLong(), reply, context);
                 if (method == null) {
-                    LOGGER.warning(() -> "not a valid method");
+                    controller.warning(() -> "not a valid method");
                     return new CommandResult(reply);
                 }
 
-                LOGGER.fine(() -> "trying to invoke constructor in klass: " + klass.getNameAsString());
+                controller.fine(() -> "trying to invoke constructor in klass: " + klass.getNameAsString());
 
                 int arguments = input.readInt();
 
@@ -1355,7 +1346,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                LOGGER.fine(() -> "trying to invoke interface method: " + method.getNameAsString());
+                controller.fine(() -> "trying to invoke interface method: " + method.getNameAsString());
 
                 int arguments = input.readInt();
 
@@ -1385,27 +1376,18 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
-                                entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 // Checkstyle: stop allow error output
-                                if (entered) {
-                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
-                                } else {
-                                    System.err.println("Internal Espresso error: " + t.getMessage());
-                                }
+                                System.err.println("Internal Espresso error: " + t.getMessage());
                                 t.printStackTrace();
                                 // Checkstyle: resume allow error output
                             } finally {
                                 connection.handleReply(packet, commandResult);
-                                if (entered) {
-                                    controller.leaveTruffleContext();
-                                }
                             }
                         }
                     }).start();
@@ -1796,7 +1778,7 @@ public final class JDWP {
                     reply.writeInt(entryCount);
 
                     ArrayList<Object> waiters = new ArrayList<>();
-                    for (Object activeThread : context.getAllGuestThreads()) {
+                    for (Object activeThread : controller.getVisibleGuestThreads()) {
                         if (activeThread == monitorOwnerThread) {
                             continue;
                         }
@@ -1824,7 +1806,7 @@ public final class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
-                LOGGER.fine(() -> "Invoke method through jdwp");
+                controller.fine(() -> "Invoke method through jdwp");
 
                 JDWPContext context = controller.getContext();
 
@@ -1874,7 +1856,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                LOGGER.fine("trying to invoke method: " + method.getNameAsString());
+                controller.fine(() -> "trying to invoke method: " + method.getNameAsString());
 
                 int invocationOptions = input.readInt();
                 byte suspensionStrategy = invocationOptions == 1 ? SuspendStrategy.EVENT_THREAD : SuspendStrategy.ALL;
@@ -1895,27 +1877,18 @@ public final class JDWP {
                     new Thread(new Runnable() {
                         @Override
                         public void run() {
-                            boolean entered = false;
                             CommandResult commandResult = new CommandResult(reply);
                             try {
                                 ThreadJob<?>.JobResult<?> result = job.getResult();
                                 writeMethodResult(reply, context, result, thread, controller);
                             } catch (Throwable t) {
-                                entered = controller.enterTruffleContext();
                                 reply.errorCode(ErrorCodes.INTERNAL);
                                 // Checkstyle: stop allow error output
-                                if (entered) {
-                                    LOGGER.warning(() -> "Internal Espresso error: " + t);
-                                } else {
-                                    System.err.println("Internal Espresso error: " + t.getMessage());
-                                }
+                                System.err.println("Internal Espresso error: " + t.getMessage());
                                 t.printStackTrace();
                                 // Checkstyle: resume allow error output
                             } finally {
                                 connection.handleReply(packet, commandResult);
-                                if (entered) {
-                                    controller.leaveTruffleContext();
-                                }
                             }
                         }
                     }).start();
@@ -2034,7 +2007,7 @@ public final class JDWP {
         static class NAME {
             public static final int ID = 1;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, DebuggerController controller, JDWPContext context) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -2042,7 +2015,7 @@ public final class JDWP {
                 Object thread = verifyThread(threadId, reply, context, false);
 
                 if (thread == null) {
-                    LOGGER.fine(() -> "null thread discovered with ID: " + threadId);
+                    controller.fine(() -> "null thread discovered with ID: " + threadId);
 
                     return new CommandResult(reply);
                 }
@@ -2051,7 +2024,7 @@ public final class JDWP {
 
                 reply.writeString(threadName);
 
-                LOGGER.fine(() -> "thread name: " + threadName);
+                controller.fine(() -> "thread name: " + threadName);
 
                 return new CommandResult(reply);
             }
@@ -2071,7 +2044,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                LOGGER.fine(() -> "suspend thread packet for thread: " + controller.getContext().getThreadName(thread));
+                controller.fine(() -> "suspend thread packet for thread: " + controller.getContext().getThreadName(thread));
 
                 controller.suspend(thread);
                 return new CommandResult(reply);
@@ -2092,7 +2065,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                LOGGER.fine(() -> "resume thread packet for thread: " + controller.getContext().getThreadName(thread));
+                controller.fine(() -> "resume thread packet for thread: " + controller.getContext().getThreadName(thread));
 
                 controller.resume(thread, false);
                 return new CommandResult(reply);
@@ -2136,7 +2109,7 @@ public final class JDWP {
                 int suspended = controller.getThreadSuspension().getSuspensionCount(thread) > 0 ? 1 : 0;
                 reply.writeInt(suspended);
 
-                LOGGER.fine(() -> "status command for thread: " + context.getThreadName(thread) + " with status: " + threadStatus + " suspended: " + suspended);
+                controller.fine(() -> "status command for thread: " + context.getThreadName(thread) + " with status: " + threadStatus + " suspended: " + suspended);
 
                 return new CommandResult(reply);
             }
@@ -2201,20 +2174,20 @@ public final class JDWP {
                 int length = input.readInt();
                 final int requestedLength = length;
 
-                LOGGER.fine(() -> "requesting frames for thread: " + controller.getContext().getThreadName(thread));
-                LOGGER.fine(() -> "startFrame requested: " + startFrame);
-                LOGGER.fine(() -> "Number of frames requested: " + requestedLength);
+                controller.fine(() -> "requesting frames for thread: " + controller.getContext().getThreadName(thread));
+                controller.fine(() -> "startFrame requested: " + startFrame);
+                controller.fine(() -> "Number of frames requested: " + requestedLength);
 
                 SuspendedInfo suspendedInfo = controller.getSuspendedInfo(thread);
 
                 if (suspendedInfo == null) {
-                    LOGGER.fine(() -> "THREAD_NOT_SUSPENDED: " + controller.getContext().getThreadName(thread));
+                    controller.fine(() -> "THREAD_NOT_SUSPENDED: " + controller.getContext().getThreadName(thread));
                     reply.errorCode(ErrorCodes.THREAD_NOT_SUSPENDED);
                     return new CommandResult(reply);
                 }
 
                 if (suspendedInfo instanceof UnknownSuspendedInfo) {
-                    LOGGER.fine(() -> "Unknown suspension info for thread: " + controller.getContext().getThreadName(thread));
+                    controller.fine(() -> "Unknown suspension info for thread: " + controller.getContext().getThreadName(thread));
                     suspendedInfo = awaitSuspendedInfo(controller, thread, suspendedInfo);
                     if (suspendedInfo instanceof UnknownSuspendedInfo) {
                         // we can't return any frames for a not yet suspended thread
@@ -2230,7 +2203,7 @@ public final class JDWP {
                 }
                 reply.writeInt(length);
                 final int finalLength = length;
-                LOGGER.fine(() -> "returning " + finalLength + " frames for thread: " + controller.getContext().getThreadName(thread));
+                controller.fine(() -> "returning " + finalLength + " frames for thread: " + controller.getContext().getThreadName(thread));
 
                 for (int i = startFrame; i < startFrame + length; i++) {
                     CallFrame frame = frames[i];
@@ -2270,7 +2243,7 @@ public final class JDWP {
                 }
                 int length = suspendedInfo.getStackFrames().length;
                 reply.writeInt(suspendedInfo.getStackFrames().length);
-                LOGGER.fine(() -> "current frame count: " + length + " for thread: " + controller.getContext().getThreadName(thread));
+                controller.fine(() -> "current frame count: " + length + " for thread: " + controller.getContext().getThreadName(thread));
 
                 return new CommandResult(reply);
             }
@@ -2415,7 +2388,7 @@ public final class JDWP {
                 }
 
                 int suspensionCount = controller.getThreadSuspension().getSuspensionCount(thread);
-                LOGGER.fine(() -> "suspension count: " + suspensionCount + " returned for thread: " + controller.getContext().getThreadName(thread));
+                controller.fine(() -> "suspension count: " + suspensionCount + " returned for thread: " + controller.getContext().getThreadName(thread));
 
                 reply.writeInt(suspensionCount);
                 return new CommandResult(reply);
@@ -2572,7 +2545,7 @@ public final class JDWP {
         static class CHILDREN {
             public static final int ID = 3;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, JDWPContext context, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
 
@@ -2583,8 +2556,15 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                Object[] children = context.getChildrenThreads(threadGroup);
-                reply.writeInt(children.length);
+                ArrayList<Object> children = new ArrayList<>();
+                for (Object thread : controller.getVisibleGuestThreads()) {
+                    Object otherGroup = context.getThreadGroup(thread);
+                    if (otherGroup == threadGroup) {
+                        children.add(thread);
+                    }
+                }
+
+                reply.writeInt(children.size());
                 for (Object child : children) {
                     reply.writeLong(context.getIds().getIdAsLong(child));
                 }
@@ -3034,7 +3014,7 @@ public final class JDWP {
         SuspendedInfo result = suspendedInfo;
         Thread hostThread = controller.getContext().asHostThread(thread);
         if (hostThread.getState() == Thread.State.RUNNABLE) {
-            LOGGER.fine(() -> "Awaiting suspended info for thread " + controller.getContext().getThreadName(thread));
+            controller.fine(() -> "Awaiting suspended info for thread " + controller.getContext().getThreadName(thread));
 
             long timeout = System.currentTimeMillis() + SUSPEND_TIMEOUT;
             while (result instanceof UnknownSuspendedInfo && System.currentTimeMillis() < timeout) {
@@ -3047,7 +3027,7 @@ public final class JDWP {
             }
         }
         if (result instanceof UnknownSuspendedInfo) {
-            LOGGER.fine(() -> "Still no suspended info for thread " + controller.getContext().getThreadName(thread));
+            controller.fine(() -> "Still no suspended info for thread " + controller.getContext().getThreadName(thread));
         }
         return result;
     }
@@ -3288,6 +3268,10 @@ public final class JDWP {
     private static Object verifyThread(long threadId, PacketStream reply, JDWPContext context, boolean checkTerminated) {
         Object thread = context.getIds().fromId((int) threadId);
 
+        if (thread == null) {
+            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+            return null;
+        }
         if (thread == context.getNullObject() || !context.isValidThread(thread, checkTerminated)) {
             reply.errorCode(ErrorCodes.INVALID_THREAD);
             return null;
@@ -3298,7 +3282,7 @@ public final class JDWP {
     private static Object verifyThreadGroup(long threadGroupId, PacketStream reply, JDWPContext context) {
         Object threadGroup = context.getIds().fromId((int) threadGroupId);
 
-        if (threadGroup == context.getNullObject()) {
+        if (threadGroup == null || threadGroup == context.getNullObject()) {
             reply.errorCode(ErrorCodes.INVALID_OBJECT);
             return null;
         }

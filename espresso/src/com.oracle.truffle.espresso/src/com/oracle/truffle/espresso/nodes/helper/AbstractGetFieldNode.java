@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes.helper;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -144,6 +145,7 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
+    @Idempotent
     boolean isValueField(Meta meta) {
         return getField() == meta.java_lang_Integer_value;
     }
@@ -198,6 +200,7 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
+    @Idempotent
     boolean isValueField(Meta meta) {
         return getField() == meta.java_lang_Boolean_value;
     }
@@ -257,6 +260,7 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
+    @Idempotent
     boolean isValueField(Meta meta) {
         return getField() == meta.java_lang_Character_value;
     }
@@ -311,6 +315,7 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
+    @Idempotent
     boolean isValueField(Meta meta) {
         return getField() == meta.java_lang_Short_value;
     }
@@ -365,6 +370,7 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
+    @Idempotent
     boolean isValueField(Meta meta) {
         return getField() == meta.java_lang_Byte_value;
     }
@@ -419,6 +425,7 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
+    @Idempotent
     boolean isValueField(Meta meta) {
         return getField() == meta.java_lang_Long_value;
     }
@@ -473,6 +480,7 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
+    @Idempotent
     boolean isValueField(Meta meta) {
         return getField() == meta.java_lang_Float_value;
     }
@@ -527,6 +535,7 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
         }
     }
 
+    @Idempotent
     boolean isValueField(Meta meta) {
         return getField() == meta.java_lang_Double_value;
     }

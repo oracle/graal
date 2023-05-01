@@ -51,12 +51,17 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
@@ -64,10 +69,12 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -165,11 +172,12 @@ final class EarlyClassInitializerAnalysis {
         plugins.appendInlineInvokePlugin(new AbortOnRecursiveInliningPlugin());
         AbortOnUnitializedClassPlugin classInitializationPlugin = new AbortOnUnitializedClassPlugin(analyzedClasses);
         plugins.setClassInitializationPlugin(classInitializationPlugin);
-        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess(), originalProviders.getSnippetReflection()));
+        plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(originalProviders.getMetaAccess()));
 
         SubstrateGraphBuilderPlugins.registerClassDesiredAssertionStatusPlugin(invocationPlugins, originalProviders.getSnippetReflection());
+        FallbackFeature fallbackFeature = ImageSingletons.contains(FallbackFeature.class) ? ImageSingletons.lookup(FallbackFeature.class) : null;
         ReflectionPlugins.registerInvocationPlugins(classInitializationSupport.loader, originalProviders.getSnippetReflection(), null, classInitializationPlugin, invocationPlugins, null,
-                        ParsingReason.EarlyClassInitializerAnalysis);
+                        ParsingReason.EarlyClassInitializerAnalysis, fallbackFeature);
 
         GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
 
@@ -276,6 +284,31 @@ final class AbortOnDisallowedNode extends Graph.NodeEventListener {
             throw new ClassInitializerHasSideEffectsException("Access of thread-local value");
         } else if (node instanceof UnsafeAccessNode) {
             throw VMError.shouldNotReachHere("Intrinsification of Unsafe methods is not enabled during bytecode parsing");
+
+        } else if (node instanceof NewArrayNode) {
+            checkArrayAllocationLength(((NewArrayNode) node).length());
+        } else if (node instanceof NewMultiArrayNode) {
+            var dimensions = ((NewMultiArrayNode) node).dimensions();
+            for (var dimension : dimensions) {
+                checkArrayAllocationLength(dimension);
+            }
+        }
+    }
+
+    private static void checkArrayAllocationLength(ValueNode lengthNode) {
+        JavaConstant lengthConstant = lengthNode.asJavaConstant();
+        if (lengthConstant != null) {
+            int length = lengthConstant.asInt();
+            if (length < 0 || length > 100_000) {
+                /*
+                 * Ensure that also the late class initialization after static analysis does not
+                 * attempt to initialize.
+                 */
+                Class<?> clazz = OriginalClassProvider.getJavaClass(lengthNode.graph().method().getDeclaringClass());
+                ((ProvenSafeClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class)).mustNotBeProvenSafe.add(clazz);
+
+                throw new ClassInitializerHasSideEffectsException("Allocation of too large array in class initializer");
+            }
         }
     }
 }

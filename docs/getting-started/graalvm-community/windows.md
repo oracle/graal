@@ -7,29 +7,31 @@ permalink: /docs/getting-started/windows/
 
 # Installation on Windows Platforms
 
-You can install GraalVM Community Edition on the Windows operating system from an archive file (_zip_).
+We provide GraalVM Community Edition for Windows on AMD64 architecture. You can install it on Windows from an archive file (_zip_).
 Follow these steps:
 
-1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java 11 based or Java 17 based distribution for Windows, and download.
+1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java **11**, **17** or **19** based distribution for Windows, and download.
+
 2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
+
 3. Unzip the archive to your file system.
+
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 7, 8, and 10.
   - Point the `PATH` environment variable to the GraalVM `bin` directory:
-  ```shell
-  setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
-  ```
+    ```shell
+    setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
+    ```
   - Set the `JAVA_HOME` environment variable to resolve to the GraalVM installation directory:
-  ```shell
-  setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
-  ```
+    ```shell
+    setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
+    ```
   Note that the `/M` flag, equivalent to `-m`, requires elevated user privileges.
 
-5. Restart Command Prompt to reload the environment variables. Then use the
-following command to check whether the variables were set correctly:
-```shell
-echo %PATH%
-echo %JAVA_HOME%
-```
+5. Restart Command Prompt to reload the environment variables. Then use the following command to check whether the variables were set correctly:
+    ```shell
+    echo %PATH%
+    echo %JAVA_HOME%
+    ```
 
 Alternatively, you can set up environment variables through a Windows GUI:
 
@@ -51,16 +53,13 @@ To run GraalVM Community Edition based on OpenJDK 8u292 on a Windows platform, t
 ## Supported Functionalities
 
 The GraalVM Community distribution for Windows platforms includes OpenJDK with the GraalVM compiler enabled, the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool to install additional functionalities and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
-Currently, the GraalVM environment on Windows can be extended with [Native Image](../../reference-manual/native-image/README.md), [Java on Truffle](../../reference-manual/java-on-truffle/README.md), [LLVM runtime](../../reference-manual/llvm/README.md), WebAssembly, JavaScript and Node.js support.
+Currently, the GraalVM environment on Windows can be extended with [Java on Truffle](../../reference-manual/java-on-truffle/README.md), [LLVM runtime](../../reference-manual/llvm/README.md), WebAssembly, JavaScript, and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows
 On Windows, Native Image requires Visual Studio and Microsoft Visual C++(MSVC).
-You can use Visual Studio 2017 version 15.9 or later.
+You can use Visual Studio 2022 version 17.1.0 or later.
 There are two installation options:
 - Install the Visual Studio Build Tools with the Windows 10 SDK
 - Install Visual Studio with the Windows 10 SDK
-
-The last prerequisite is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/).
-On Windows, the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
 
 Step-by-step instructions on installing Visual Studio Build Tools and Windows 10 SDK, and starting using Native Image can be found [here](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).

@@ -376,7 +376,7 @@ public class JNIAccessFeature implements Feature {
 
             SimpleSignature compatibleSignature = JNIJavaCallWrapperMethod.getGeneralizedSignatureForTarget(targetMethod, originalMetaAccess);
             JNIJavaCallWrapperMethod callWrapperMethod = javaCallWrapperMethods.computeIfAbsent(compatibleSignature,
-                            signature -> factory.create(signature, originalMetaAccess, access.getBigBang().getProviders().getWordTypes()));
+                            signature -> factory.create(signature, originalMetaAccess, access.getBigBang().getWordTypes()));
             access.registerAsRoot(universe.lookup(callWrapperMethod), true);
 
             JNIJavaCallVariantWrapperGroup variantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), false);
@@ -394,7 +394,7 @@ public class JNIAccessFeature implements Feature {
         var map = nonVirtual ? nonvirtualCallVariantWrappers : callVariantWrappers;
         return map.computeIfAbsent(wrapperSignature, signature -> {
             MetaAccessProvider originalMetaAccess = access.getUniverse().getOriginalMetaAccess();
-            WordTypes wordTypes = access.getBigBang().getProviders().getWordTypes();
+            WordTypes wordTypes = access.getBigBang().getWordTypes();
             var varargs = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VARARGS, nonVirtual, originalMetaAccess, wordTypes);
             var array = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.ARRAY, nonVirtual, originalMetaAccess, wordTypes);
             var valist = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VA_LIST, nonVirtual, originalMetaAccess, wordTypes);
@@ -425,7 +425,7 @@ public class JNIAccessFeature implements Feature {
                 // For convenience, make the array type reachable if its elemental type becomes
                 // such, allowing the array creation via JNI without an explicit reflection config.
                 access.registerReachabilityHandler(a -> access.getBigBang().registerTypeAsAllocated(fieldType, "Is accessed via JNI."),
-                                ((AnalysisType) fieldType.getElementalType()).getJavaClass());
+                                (fieldType.getElementalType()).getJavaClass());
             }
         } else if (field.isStatic() && field.isFinal()) {
             MaterializedConstantFields.singleton().register(field);
@@ -520,7 +520,7 @@ public class JNIAccessFeature implements Feature {
 
     private static boolean anyMethodMatchesIgnoreReturnType(ResolvedJavaType sub, JNIAccessibleMethodDescriptor descriptor) {
         try {
-            for (ResolvedJavaMethod method : sub.getDeclaredMethods()) {
+            for (ResolvedJavaMethod method : sub.getDeclaredMethods(false)) {
                 if (descriptor.matchesIgnoreReturnType(method)) {
                     return true;
                 }

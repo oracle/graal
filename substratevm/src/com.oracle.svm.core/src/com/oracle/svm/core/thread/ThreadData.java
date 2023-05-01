@@ -25,7 +25,6 @@
 package com.oracle.svm.core.thread;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
 
@@ -39,71 +38,61 @@ import jdk.internal.misc.Unsafe;
  * unexpectedly.
  */
 public final class ThreadData extends UnacquiredThreadData {
-    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
-    private static final long LOCK_OFFSET;
-    private static final long UNSAFE_PARK_EVENT_OFFSET;
-    private static final long SLEEP_PARK_EVENT_OFFSET;
+    private static final Unsafe U = Unsafe.getUnsafe();
+    private static final long LOCK_OFFSET = U.objectFieldOffset(ThreadData.class, "lock");
+    private static final long UNSAFE_PARK_EVENT_OFFSET = U.objectFieldOffset(ThreadData.class, "unsafeParker");
+    private static final long SLEEP_PARK_EVENT_OFFSET = U.objectFieldOffset(ThreadData.class, "sleepParker");
 
-    static {
-        try {
-            LOCK_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("lock"));
-            UNSAFE_PARK_EVENT_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("unsafeParkEvent"));
-            SLEEP_PARK_EVENT_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("sleepParkEvent"));
-        } catch (Throwable ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
-    private volatile int lock;
+    @SuppressWarnings("unused") private volatile int lock;
     private boolean detached;
     private long refCount;
 
-    private volatile ParkEvent unsafeParkEvent;
-    private volatile ParkEvent sleepParkEvent;
+    private volatile Parker unsafeParker;
+    private volatile Parker sleepParker;
 
     /**
-     * Returns the {@link ParkEvent} for {@link Thread#sleep}. May return null, if the
-     * {@link ParkEvent} wasn't initialized yet. If this method is called to access the
-     * {@link ParkEvent} of another thread, then the returned value must not be used after
-     * {@link #release() releasing} the {@link ThreadData}.
+     * Returns the {@link Parker} for {@link Thread#sleep}. May return null, if the {@link Parker}
+     * wasn't initialized yet. If this method is called to access the {@link Parker} of another
+     * thread, then the returned value must not be used after {@link #release() releasing} the
+     * {@link ThreadData}.
      */
-    public ParkEvent getSleepParkEvent() {
+    public Parker getSleepParker() {
         assert isForCurrentThread() || refCount > 0;
-        return sleepParkEvent;
+        return sleepParker;
     }
 
     /**
-     * Returns the {@link ParkEvent} for {@link Unsafe#park} and {@link Unsafe#unpark}. If this
-     * method is called to access the {@link ParkEvent} of another thread, then the returned value
-     * must not be used after {@link #release() releasing} the {@link ThreadData}.
+     * Returns the {@link Parker} for {@link Unsafe#park} and {@link Unsafe#unpark}. If this method
+     * is called to access the {@link Parker} of another thread, then the returned value must not be
+     * used after {@link #release() releasing} the {@link ThreadData}.
      */
-    public ParkEvent ensureUnsafeParkEvent() {
+    public Parker ensureUnsafeParker() {
         assert isForCurrentThread() || refCount > 0;
 
-        ParkEvent existingEvent = unsafeParkEvent;
+        Parker existingEvent = unsafeParker;
         if (existingEvent != null) {
             return existingEvent;
         }
 
-        initializeParkEvent(UNSAFE_PARK_EVENT_OFFSET, false);
-        return unsafeParkEvent;
+        initializeParker(UNSAFE_PARK_EVENT_OFFSET, false);
+        return unsafeParker;
     }
 
     /**
-     * Returns the {@link ParkEvent} for {@link Thread#sleep}. If this method is called to access
-     * the {@link ParkEvent} of another thread, then the returned value must not be used after
+     * Returns the {@link Parker} for {@link Thread#sleep}. If this method is called to access the
+     * {@link Parker} of another thread, then the returned value must not be used after
      * {@link #release() releasing} the {@link ThreadData}.
      */
-    public ParkEvent ensureSleepParkEvent() {
+    public Parker ensureSleepParker() {
         assert isForCurrentThread() || refCount > 0;
 
-        ParkEvent existingEvent = sleepParkEvent;
+        Parker existingEvent = sleepParker;
         if (existingEvent != null) {
             return existingEvent;
         }
 
-        initializeParkEvent(SLEEP_PARK_EVENT_OFFSET, true);
-        return sleepParkEvent;
+        initializeParker(SLEEP_PARK_EVENT_OFFSET, true);
+        return sleepParker;
     }
 
     /**
@@ -115,7 +104,7 @@ public final class ThreadData extends UnacquiredThreadData {
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public ThreadData acquire() {
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
             if (detached) {
                 return null;
@@ -124,14 +113,14 @@ public final class ThreadData extends UnacquiredThreadData {
             refCount++;
             return this;
         } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+            JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
     /** Decreases the reference count. The data may be freed if the reference count reaches zero. */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void release() {
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
             assert refCount > 0;
             refCount--;
@@ -139,7 +128,7 @@ public final class ThreadData extends UnacquiredThreadData {
                 free();
             }
         } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+            JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
@@ -154,59 +143,54 @@ public final class ThreadData extends UnacquiredThreadData {
         assert isForCurrentThread() || VMOperation.isInProgressAtSafepoint() : "may only be called by the detaching thread or at a safepoint";
         assert !detached : "may only be called once";
 
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
             detached = true;
             if (refCount == 0) {
                 free();
             }
         } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+            JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void free() {
-        assert isLocked();
-        if (unsafeParkEvent != null) {
-            unsafeParkEvent.release();
-            unsafeParkEvent = null;
+        assert JavaSpinLockUtils.isLocked(this, LOCK_OFFSET);
+        if (unsafeParker != null) {
+            unsafeParker.release();
+            unsafeParker = null;
         }
-        if (sleepParkEvent != null) {
-            sleepParkEvent.release();
-            sleepParkEvent = null;
+        if (sleepParker != null) {
+            sleepParker.release();
+            sleepParker = null;
         }
     }
 
-    private void initializeParkEvent(long offset, boolean isSleepEvent) {
-        ParkEvent newEvent = ParkEvent.acquire(isSleepEvent);
-        if (!tryToStoreParkEvent(offset, newEvent)) {
+    private void initializeParker(long offset, boolean isSleepEvent) {
+        Parker newEvent = Parker.acquire(isSleepEvent);
+        if (!tryToStoreParker(offset, newEvent)) {
             newEvent.release();
         }
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private boolean tryToStoreParkEvent(long offset, ParkEvent newEvent) {
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
+    private boolean tryToStoreParker(long offset, Parker newEvent) {
+        JavaSpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
-            if (UNSAFE.getObject(this, offset) != null) {
+            if (U.getObject(this, offset) != null) {
                 return false;
             }
-            UNSAFE.putObjectVolatile(this, offset, newEvent);
+            U.putObjectVolatile(this, offset, newEvent);
             return true;
         } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+            JavaSpinLockUtils.unlock(this, LOCK_OFFSET);
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean isForCurrentThread() {
         return this == PlatformThreads.getCurrentThreadData();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private boolean isLocked() {
-        return lock == 1;
     }
 }
 

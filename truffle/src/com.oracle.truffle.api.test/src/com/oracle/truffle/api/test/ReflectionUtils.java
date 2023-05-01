@@ -166,23 +166,33 @@ public class ReflectionUtils {
 
     public static Method requireDeclaredMethod(Class<?> clazz, String name, Class<?>[] argTypes) {
         try {
+            Class<?> lookupClass = clazz;
             Method found = null;
-            if (argTypes == null) {
-                // search just by name
-                for (Method search : clazz.getDeclaredMethods()) {
-                    if (search.getName().equals(name)) {
-                        if (found != null) {
-                            throw new AssertionError("Ambiguous method name " + search + " " + found + ". Use argTypes to disamgbiguate.");
+
+            while (found == null && lookupClass != null) {
+                if (argTypes == null) {
+                    // search just by name
+                    for (Method search : lookupClass.getDeclaredMethods()) {
+                        if (search.getName().equals(name)) {
+                            if (found != null) {
+                                throw new AssertionError("Ambiguous method name " + search + " " + found + ". Use argTypes to disamgbiguate.");
+                            }
+                            found = search;
                         }
-                        found = search;
+                    }
+                } else {
+                    try {
+                        found = lookupClass.getDeclaredMethod(name, argTypes);
+                    } catch (NoSuchMethodException e) {
                     }
                 }
-                if (found == null) {
-                    throw new NoSuchMethodException(name);
-                }
-            } else {
-                found = clazz.getDeclaredMethod(name, argTypes);
+                lookupClass = lookupClass.getSuperclass();
             }
+
+            if (found == null) {
+                throw new NoSuchMethodException(name);
+            }
+
             setAccessible(found, true);
             return found;
         } catch (Exception e) {

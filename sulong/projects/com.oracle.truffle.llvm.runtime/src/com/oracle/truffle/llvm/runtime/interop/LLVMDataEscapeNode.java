@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,9 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.floating.LLVM128BitFloat;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVM128BitFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVM80BitFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMDoubleDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMFloatDataEscapeNodeGen;
@@ -87,6 +89,8 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
                     return LLVMDoubleDataEscapeNodeGen.create();
                 case X86_FP80:
                     return LLVM80BitFloatDataEscapeNodeGen.create();
+                case F128:
+                    return LLVM128BitFloatDataEscapeNodeGen.create();
                 default:
                     throw new AssertionError("unexpected type in LLVMDataEscapeNode: " + type);
             }
@@ -288,6 +292,20 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     }
 
     @GenerateUncached
+    public abstract static class LLVM128BitFloatDataEscapeNode extends LLVMDataEscapeNode {
+
+        @Specialization
+        static LLVMPointer escaping128BitFloat(LLVM128BitFloat escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            /*
+             * Currently there is no way to represent FP128 values as interop values, except via the
+             * Truffle NFI. The NFI expects an interop "buffer" to be able to deserialize it.
+             */
+            byte[] value = escapingValue.getBytes();
+            return LLVMManagedPointer.create(value).export(new Buffer(false, 16));
+        }
+    }
+
+    @GenerateUncached
     @ReportPolymorphism
     public abstract static class LLVMPointerDataEscapeNode extends LLVMDataEscapeNode {
 
@@ -305,14 +323,14 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return object instanceof Long || object instanceof Double;
         }
 
-        @Specialization(guards = {"!isPrimitiveValue(object)", "foreigns.isForeign(object)"}, limit = "3")
+        @Specialization(guards = {"!isPrimitiveValue(object)", "foreigns.isForeign(object)"}, limit = "5")
         @GenerateAOT.Exclude
         static Object escapingForeignNonPointer(Object object, @SuppressWarnings("unused") LLVMInteropType.Structured type,
                         @CachedLibrary("object") LLVMAsForeignLibrary foreigns) {
             return foreigns.asForeign(object);
         }
 
-        @Specialization(guards = "!foreigns.isForeign(address)", limit = "3")
+        @Specialization(guards = "!foreigns.isForeign(address)", limit = "5")
         @GenerateAOT.Exclude
         static Object escapingManaged(LLVMPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type,
                         @SuppressWarnings("unused") @CachedLibrary("address") LLVMAsForeignLibrary foreigns,

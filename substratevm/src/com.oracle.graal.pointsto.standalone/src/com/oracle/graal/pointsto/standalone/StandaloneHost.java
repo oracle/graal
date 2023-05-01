@@ -26,20 +26,22 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import com.oracle.graal.pointsto.api.HostVM;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.standalone.plugins.StandaloneGraphBuilderPhase;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import java.util.Comparator;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
-import java.util.Comparator;
-import java.util.concurrent.ConcurrentHashMap;
+import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.standalone.plugins.StandaloneGraphBuilderPhase;
+import com.oracle.graal.pointsto.util.AnalysisError;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class StandaloneHost extends HostVM {
     private final ConcurrentHashMap<AnalysisType, Class<?>> typeToClass = new ConcurrentHashMap<>();
@@ -70,7 +72,7 @@ public class StandaloneHost extends HostVM {
     }
 
     @Override
-    public void initializeType(AnalysisType type) {
+    public void onTypeReachable(AnalysisType type) {
         if (!type.isReachable()) {
             AnalysisError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + type);
         }
@@ -81,9 +83,9 @@ public class StandaloneHost extends HostVM {
     }
 
     @Override
-    public GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
+    public GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders builderProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     IntrinsicContext initialIntrinsicContext) {
-        return new StandaloneGraphBuilderPhase(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        return new StandaloneGraphBuilderPhase(builderProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
     }
 
     public void setImageName(String name) {

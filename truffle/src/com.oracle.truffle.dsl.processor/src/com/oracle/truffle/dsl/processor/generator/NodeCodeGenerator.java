@@ -83,9 +83,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             if (rootTypes.size() != 1) {
                 throw new AssertionError();
             }
-            rootTypes.get(0).addAll(constants.libraries.values());
-            rootTypes.get(0).addAll(constants.contextReferences.values());
-            rootTypes.get(0).addAll(constants.languageReferences.values());
+            constants.addElementsTo(rootTypes.get(0));
         }
         return rootTypes;
     }
@@ -237,9 +235,12 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
     }
 
     public static TypeMirror nodeType(NodeData node) {
+        return nodeElement(node).asType();
+    }
+
+    public static CodeTypeElement nodeElement(NodeData node) {
         TypeElement element = node.getTemplateType();
-        CodeTypeElement type = (CodeTypeElement) buildClassName(element, true, node.isGenerateFactory());
-        return type.asType();
+        return (CodeTypeElement) buildClassName(element, true, node.isGenerateFactory());
     }
 
     public static TypeMirror factoryOrNodeType(NodeData node) {
@@ -271,19 +272,37 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             return Collections.emptyList();
         }
 
-        CodeTypeElement type = GeneratorUtils.createClass(node, null, modifiers(FINAL), createNodeTypeName(node.getTemplateType()), node.getTemplateType().asType());
+        TypeMirror superType;
+        if (node.isGenerateCached()) {
+            superType = node.getTemplateType().asType();
+        } else {
+            superType = context.getType(Object.class);
+        }
+        CodeTypeElement type = GeneratorUtils.createClass(node, null, modifiers(FINAL), createNodeTypeName(node.getTemplateType()), superType);
+
         ElementUtils.setVisibility(type.getModifiers(), node.getVisibility());
         if (node.hasErrors()) {
             generateErrorNode(context, node, type);
             return Arrays.asList(type);
         }
 
-        type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, constants).create(type);
+        NodeConstants nodeConstants = new NodeConstants();
+        try {
+            type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, constants, nodeConstants).create(type);
+        } catch (Throwable t) {
+            Exception e = new Exception("Generating node " + node.getNodeId());
+            e.setStackTrace(new StackTraceElement[0]);
+            t.addSuppressed(e);
+            throw t;
+        }
+        nodeConstants.prependToClass(type);
 
         return Arrays.asList(type);
     }
 
     private static void generateErrorNode(ProcessorContext context, NodeData node, CodeTypeElement type) {
+        type.setSuperClass(node.getTemplateType().asType());
+
         for (ExecutableElement superConstructor : GeneratorUtils.findUserConstructors(node.getTemplateType().asType())) {
             CodeExecutableElement constructor = GeneratorUtils.createConstructorUsingFields(modifiers(), type, superConstructor);
             ElementUtils.setVisibility(constructor.getModifiers(), ElementUtils.getVisibility(superConstructor.getModifiers()));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -113,6 +113,7 @@ public final class CallTreePrinter {
         public String format() {
             return methodNode.method.format(METHOD_FORMAT) + " id-ref=" + methodNode.id;
         }
+
     }
 
     static class MethodNode implements Node {
@@ -193,11 +194,16 @@ public final class CallTreePrinter {
                 }
             }
         }
+
         roots.sort(methodComparator);
         for (AnalysisMethod m : roots) {
             methodToNode.put(m, new MethodNode(m, true));
         }
-        /* Walk the call graph starting from the roots, do a breadth-first tree reduction. */
+
+        /*
+         * Walk the call graph starting from the roots (deterministically sorted), do a
+         * breadth-first tree reduction.
+         */
         ArrayDeque<MethodNode> workList = new ArrayDeque<>(methodToNode.values());
 
         while (!workList.isEmpty()) {
@@ -210,10 +216,17 @@ public final class CallTreePrinter {
             for (var invokeInfo : node.method.getInvokes()) {
                 invokeInfos.add(invokeInfo);
             }
+
+            /*
+             * In order to have deterministic order of invokes we sort them by position and names.
+             * In case of Lambda names we avoid the non-deterministic hash part while sorting.
+             */
             invokeInfos.sort(invokeInfoComparator);
+
             for (var invokeInfo : invokeInfos) {
                 processInvoke(invokeInfo, node, workList);
             }
+
         }
     }
 
@@ -236,7 +249,6 @@ public final class CallTreePrinter {
     }
 
     static class SourceReference {
-        static final SourceReference UNKNOWN_SOURCE_REFERENCE = new SourceReference(-1, null);
 
         final int bci;
         final StackTraceElement trace;

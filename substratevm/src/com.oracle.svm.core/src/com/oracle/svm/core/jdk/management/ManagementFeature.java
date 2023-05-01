@@ -47,12 +47,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.RuntimeSupportFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.ThreadListenerSupportFeature;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
 /** See {@link ManagementSupport} for documentation. */
@@ -67,7 +67,13 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Inte
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ManagementSupport managementSupport = new ManagementSupport();
+        SubstrateRuntimeMXBean runtimeMXBean = new SubstrateRuntimeMXBean();
+        ImageSingletons.add(SubstrateRuntimeMXBean.class, runtimeMXBean);
+
+        SubstrateThreadMXBean threadMXBean = new SubstrateThreadMXBean();
+        ImageSingletons.add(SubstrateThreadMXBean.class, threadMXBean);
+
+        ManagementSupport managementSupport = new ManagementSupport(runtimeMXBean, threadMXBean);
         ImageSingletons.add(ManagementSupport.class, managementSupport);
         ThreadListenerSupport.get().register(managementSupport);
     }

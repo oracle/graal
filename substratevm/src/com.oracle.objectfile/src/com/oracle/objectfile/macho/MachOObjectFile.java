@@ -919,6 +919,7 @@ public final class MachOObjectFile extends ObjectFile {
 
         LoadCommandKind cmdKind; // 'cmd' in the struct definition
 
+        @SuppressWarnings("this-escape")
         public LoadCommand(String name, LoadCommandKind k) {
             super(name);
             this.cmdKind = k;
@@ -1545,6 +1546,7 @@ public final class MachOObjectFile extends ObjectFile {
             return getImpl().isReferenceable();
         }
 
+        @SuppressWarnings("this-escape")
         public MachOSection(String name, int alignment, Segment64Command segment, SectionType t, EnumSet<SectionFlag> flags) {
             super(name, alignment);
             if (name.length() > 16) {
@@ -1800,9 +1802,9 @@ public final class MachOObjectFile extends ObjectFile {
         @Override
         public String toString() {
             return String.format("Section Info, name %s, segment %s", sectName, segName) +
-                            String.format("\n  address %#x, size %d (%2$#x), offset %d (%3$#x), align %#x", addr, size, offset, align) +
-                            String.format("\n  first relocation entry at %d (%1$#x), number of relocation entries %d", reloff, nreloc) +
-                            String.format("\n  flags %#x, reserved %d %d", flags, reserved1, reserved2);
+                            String.format("%n  address %#x, size %d (%2$#x), offset %d (%3$#x), align %#x", addr, size, offset, align) +
+                            String.format("%n  first relocation entry at %d (%1$#x), number of relocation entries %d", reloff, nreloc) +
+                            String.format("%n  flags %#x, reserved %d %d", flags, reserved1, reserved2);
         }
     }
 

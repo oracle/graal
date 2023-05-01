@@ -61,6 +61,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.ThreadsAccess;
 
 @GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
 public final class Management extends NativeEnv {
@@ -302,10 +303,9 @@ public final class Management extends NativeEnv {
                 }
             }
 
-            if (StaticObject.isNull(thread)) {
+            if (StaticObject.isNull(thread) || !getThreadAccess().isAlive(thread)) {
                 getInterpreterToVM().setArrayObject(language, StaticObject.NULL, i, infoArray);
             } else {
-
                 int threadStatus = meta.getThreadAccess().getState(thread);
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
@@ -449,8 +449,9 @@ public final class Management extends NativeEnv {
                 return ProcessHandle.current().pid();
             case JMM_THREAD_DAEMON_COUNT:
                 int daemonCount = 0;
+                ThreadsAccess threadAccess = getContext().getThreadAccess();
                 for (StaticObject t : getContext().getActiveThreads()) {
-                    if ((boolean) getMeta().java_lang_Thread_daemon.get(t)) {
+                    if (threadAccess.isDaemon(t)) {
                         ++daemonCount;
                     }
                 }
@@ -630,6 +631,17 @@ public final class Management extends NativeEnv {
                 getInterpreterToVM().setArrayLong(language, 0L, i, sizeArray);
             }
         }
+    }
+
+    @ManagementImpl
+    public @JavaType(Thread[].class) StaticObject FindCircularBlockedThreads(@Inject Meta meta) {
+        return FindDeadlocks(true, meta);
+    }
+
+    @ManagementImpl
+    public @JavaType(Thread[].class) StaticObject FindDeadlocks(boolean objectMonitorsOnly, @Inject Meta meta) {
+        getLogger().warning(() -> "Calling unimplemented Management.FindDeadlocks(" + objectMonitorsOnly + ")");
+        return StaticObject.createArray(meta.java_lang_Thread.getArrayClass(), StaticObject.EMPTY_ARRAY, getContext());
     }
 
     // Checkstyle: resume method name check

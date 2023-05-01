@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,8 +102,7 @@ public abstract class CPUFeatureAccessFeatureBase {
 
         ArrayList<String> unknownFeatures = new ArrayList<>();
         for (var feature : allCPUFeatures) {
-            GraalError.guarantee(fieldToOffset.containsKey(feature.name()), "No field f%s in %s", feature.name(), cpuFeatureStructClass.getName());
-            int fieldOffset = fieldToOffset.get(feature.name());
+            int fieldOffset = fieldToOffset.get(feature.name(), -1);
             if (fieldOffset < 0) {
                 unknownFeatures.add(feature.name());
             } else {
@@ -116,9 +115,10 @@ public abstract class CPUFeatureAccessFeatureBase {
             }
         }
         if (!unknownFeatures.isEmpty()) {
-            throw VMError.shouldNotReachHere("Native image does not support the following JVMCI CPU features: " + unknownFeatures);
+            throw VMError.shouldNotReachHere("The image does not support the following JVMCI CPU features: " + unknownFeatures);
         }
-        String errorMessage = "Current target does not support the following CPU features that are required by the image: " + buildtimeCPUFeatures.toString() + "\n\0";
+        String errorMessage = "The current machine does not support all of the following CPU features that are required by the image: " + buildtimeCPUFeatures.toString() + "." +
+                        System.lineSeparator() + "Please rebuild the executable with an appropriate setting of the -march option.\0";
         var cpuFeatureAccess = createCPUFeatureAccessSingleton(buildtimeCPUFeatures, cpuFeatureEnumToStructOffset, errorMessage.getBytes(StandardCharsets.UTF_8), requiredFeaturesStruct);
         ImageSingletons.add(CPUFeatureAccess.class, cpuFeatureAccess);
     }

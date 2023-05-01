@@ -33,17 +33,17 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
+import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.ThreadListener;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.event.Event;
@@ -53,6 +53,16 @@ import jdk.jfr.internal.LogTag;
 
 /**
  * Manager class that handles most JFR Java API, see {@link Target_jdk_jfr_internal_JVM}.
+ * <p>
+ * Here is the execution order of relevant API methods:
+ * <ul>
+ * <li>{@link #createJFR} - initialize the JFR infrastructure but don't record any events yet.</li>
+ * <li>{@link #setOutput} - set the path of the file where the JFR data should be written to.</li>
+ * <li>{@link #beginRecording} - start recording JFR events.</li>
+ * <li>{@link #setOutput} - either switch to a new file or close the current file.</li>
+ * <li>{@link #endRecording()} - end recording JFR events.</li>
+ * <li>{@link #destroyJFR()} - destroy the JFR infrastructure and free data.</li>
+ * </ul>
  */
 public class SubstrateJVM {
     private final List<Configuration> knownConfigurations;
@@ -63,21 +73,21 @@ public class SubstrateJVM {
     private final JfrThreadRepository threadRepo;
     private final JfrStackTraceRepository stackTraceRepo;
     private final JfrMethodRepository methodRepo;
-    private final JfrConstantPool[] repositories;
-
     private final JfrThreadLocal threadLocal;
     private final JfrGlobalMemory globalMemory;
+    private final SamplerBufferPool samplerBufferPool;
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
     private final JfrRecorderThread recorderThread;
 
     private final JfrLogging jfrLogging;
 
     private boolean initialized;
-    // We need this separate field for all JDK versions, i.e., even for versions where the field
-    // JVM.recording is present (JVM.recording is not set for all the cases that we are interested
-    // in).
+    /*
+     * We need this separate field for all JDK versions, i.e., even for versions where the field
+     * JVM.recording is present (JVM.recording is not set for all the cases that we are interested
+     * in).
+     */
     private volatile boolean recording;
-    private byte[] metadataDescriptor;
     private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -92,28 +102,22 @@ public class SubstrateJVM {
             eventSettings[i] = new JfrNativeEventSetting();
         }
 
+        stackTraceRepo = new JfrStackTraceRepository();
         symbolRepo = new JfrSymbolRepository();
         typeRepo = new JfrTypeRepository();
         threadRepo = new JfrThreadRepository();
-        stackTraceRepo = new JfrStackTraceRepository();
         methodRepo = new JfrMethodRepository();
-        /*
-         * The ordering in the array dictates the writing order of constant pools in the recording.
-         * Current rules: 1. methodRepo should be after stackTraceRepo; 2. typeRepo should be after
-         * methodRepo and stackTraceRepo; 3. symbolRepo should be on end.
-         */
-        repositories = new JfrConstantPool[]{stackTraceRepo, methodRepo, typeRepo, threadRepo, symbolRepo};
 
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
-        unlockedChunkWriter = new JfrChunkWriter(globalMemory);
+        samplerBufferPool = new SamplerBufferPool();
+        unlockedChunkWriter = new JfrChunkWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo);
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
 
         jfrLogging = new JfrLogging();
 
         initialized = false;
         recording = false;
-        metadataDescriptor = null;
     }
 
     @Fold
@@ -137,13 +141,18 @@ public class SubstrateJVM {
     }
 
     @Fold
-    public static ThreadListener getThreadLocal() {
+    public static JfrThreadLocal getThreadLocal() {
         return get().threadLocal;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getParentThreadId(IsolateThread isolateThread) {
-        return get().threadLocal.getParentThreadId(isolateThread);
+    @Fold
+    public static SamplerBufferPool getSamplerBufferPool() {
+        return get().samplerBufferPool;
+    }
+
+    @Fold
+    public static JfrUnlockedChunkWriter getChunkWriter() {
+        return get().unlockedChunkWriter;
     }
 
     @Fold
@@ -186,13 +195,9 @@ public class SubstrateJVM {
         }
     }
 
-    public static boolean isInitialized() {
-        return get().initialized;
-    }
-
-    @Uninterruptible(reason = "Prevent races with threads that start/stop recording.", callerMustBe = true)
-    public static boolean isRecording() {
-        return get().recording;
+    @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
+    protected boolean isRecording() {
+        return recording;
     }
 
     /**
@@ -214,14 +219,15 @@ public class SubstrateJVM {
         unlockedChunkWriter.initialize(options.maxChunkSize.getValue());
 
         recorderThread.start();
+
         initialized = true;
         return true;
     }
 
     /**
      * See {@link JVM#destroyJFR}. This method is only called after the recording was already
-     * stopped. So, no JFR events can be triggered by this or any other thread and we don't need to
-     * take any precautions here.
+     * stopped. As no JFR events can be triggered by the current or any other thread, we don't need
+     * to take any precautions here.
      */
     public boolean destroyJFR() {
         assert !recording : "must already have been stopped";
@@ -229,25 +235,21 @@ public class SubstrateJVM {
             return false;
         }
 
-        recorderThread.setStopped(true);
-        recorderThread.signal();
+        recorderThread.shutdown();
+
+        JfrTeardownOperation vmOp = new JfrTeardownOperation();
+        vmOp.enqueue();
+
         try {
             recorderThread.join();
         } catch (InterruptedException e) {
             throw VMError.shouldNotReachHere(e);
         }
 
-        globalMemory.teardown();
-        symbolRepo.teardown();
-        threadRepo.teardown();
-        stackTraceRepo.teardown();
-        methodRepo.teardown();
-
-        initialized = false;
         return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(long eventTypeId, int skipCount) {
         if (isStackTraceEnabled(eventTypeId)) {
             return getStackTraceId(skipCount);
@@ -256,18 +258,26 @@ public class SubstrateJVM {
         }
     }
 
-    /** See {@link JVM#getStackTraceId}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    /**
+     * See {@link JVM#getStackTraceId}.
+     */
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(int skipCount) {
-        return stackTraceRepo.getStackTraceId(skipCount);
+        if (isRecording()) {
+            return stackTraceRepo.getStackTraceId(skipCount);
+        }
+        return 0L;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getStackTraceId(JfrEvent eventType, int skipCount) {
         return getStackTraceId(eventType.getId(), skipCount);
     }
 
-    /** See {@link JVM#getThreadId}. */
+    /**
+     * See {@link JVM#getThreadId}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getThreadId(Thread thread) {
         if (HasJfrSupport.get()) {
             return JavaThreads.getThreadId(thread);
@@ -276,23 +286,32 @@ public class SubstrateJVM {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getThreadId(IsolateThread isolateThread) {
+    public static long getCurrentThreadId() {
         if (HasJfrSupport.get()) {
-            long threadId = get().threadLocal.getTraceId(isolateThread);
-            VMError.guarantee(threadId > 0);
-            return threadId;
+            return JavaThreads.getCurrentThreadId();
         }
         return 0;
     }
 
-    /** See {@link JVM#storeMetadataDescriptor}. */
+    /**
+     * See {@link JVM#storeMetadataDescriptor}.
+     */
     public void storeMetadataDescriptor(byte[] bytes) {
-        metadataDescriptor = bytes;
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            chunkWriter.setMetadata(bytes);
+        } finally {
+            chunkWriter.unlock();
+        }
     }
 
-    /** See {@link JVM#beginRecording}. */
+    /**
+     * See {@link JVM#beginRecording}.
+     */
     public void beginRecording() {
-        assert !recording;
+        if (recording) {
+            return;
+        }
 
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
@@ -307,22 +326,27 @@ public class SubstrateJVM {
         vmOp.enqueue();
     }
 
-    /** See {@link JVM#endRecording}. */
+    /**
+     * See {@link JVM#endRecording}.
+     */
     public void endRecording() {
-        assert recording;
+        if (!recording) {
+            return;
+        }
+
         JfrEndRecordingOperation vmOp = new JfrEndRecordingOperation();
         vmOp.enqueue();
     }
 
-    /** See {@link JVM#isRecording}. This is not thread safe */
-    public boolean unsafeIsRecording() {
-        return recording;
-    }
-
-    /** See {@link JVM#getClassId}. */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    /**
+     * See {@link JVM#getClassId}.
+     */
+    @Uninterruptible(reason = "Result is only valid until epoch changes.", callerMustBe = true)
     public long getClassId(Class<?> clazz) {
-        return typeRepo.getClassId(clazz);
+        if (isRecording()) {
+            return typeRepo.getClassId(clazz);
+        }
+        return 0L;
     }
 
     /**
@@ -335,9 +359,8 @@ public class SubstrateJVM {
             if (recording) {
                 boolean existingFile = chunkWriter.hasOpenFile();
                 if (existingFile) {
-                    chunkWriter.closeFile(metadataDescriptor, repositories);
+                    chunkWriter.closeFile();
                 }
-
                 if (file != null) {
                     chunkWriter.openFile(file);
                     // If in-memory recording was active so far, we should notify the recorder
@@ -354,64 +377,93 @@ public class SubstrateJVM {
         }
     }
 
-    /** See {@link JVM#setFileNotification}. */
+    /**
+     * See {@link JVM#setFileNotification}.
+     */
     public void setFileNotification(long delta) {
         options.maxChunkSize.setUserValue(delta);
     }
 
-    /** See {@link JVM#setGlobalBufferCount}. */
+    /**
+     * See {@link JVM#setGlobalBufferCount}.
+     */
     public void setGlobalBufferCount(long count) {
         options.globalBufferCount.setUserValue(count);
     }
 
-    /** See {@link JVM#setGlobalBufferSize}. */
+    /**
+     * See {@link JVM#setGlobalBufferSize}.
+     */
     public void setGlobalBufferSize(long size) {
         options.globalBufferSize.setUserValue(size);
     }
 
-    /** See {@link JVM#setMemorySize}. */
+    /**
+     * See {@link JVM#setMemorySize}.
+     */
     public void setMemorySize(long size) {
         options.memorySize.setUserValue(size);
     }
 
-    /** See {@code JVM#setMethodSamplingInterval}. */
+    /**
+     * See {@code JVM#setMethodSamplingInterval}.
+     */
     public void setMethodSamplingInterval(long type, long intervalMillis) {
-        long millis = intervalMillis;
         if (type != JfrEvent.ExecutionSample.getId()) {
             // JFR is currently only supporting ExecutionSample event, but this method is called
             // during JFR startup, so we can't throw an error.
             return;
         }
 
-        if (millis > 0) {
-            SubstrateJVM.get().setEnabled(type, true);
-            /* Stacktrace walk is disabled by default for ExecutionSample. */
-            SubstrateJVM.get().setStackTraceEnabled(type, true);
-        } else {
-            millis = 0;
+        JfrExecutionSampler.singleton().setIntervalMillis(intervalMillis);
+
+        if (intervalMillis > 0) {
+            setStackTraceEnabled(type, true);
+            setEnabled(type, true);
         }
-        ExecutionSampleEvent.setSamplingInterval(millis);
+
+        updateSampler();
     }
 
-    /** See {@code JVM#setSampleThreads}. */
+    @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.")
+    private void updateSampler() {
+        if (recording) {
+            updateSampler0();
+        }
+    }
+
+    @Uninterruptible(reason = "The executed VM operation rechecks if JFR recording is active.", calleeMustBe = false)
+    private static void updateSampler0() {
+        JfrExecutionSampler.singleton().update();
+    }
+
+    /**
+     * See {@code JVM#setSampleThreads}.
+     */
     public void setSampleThreads(boolean sampleThreads) {
         setEnabled(JfrEvent.ExecutionSample.getId(), sampleThreads);
         setEnabled(JfrEvent.NativeMethodSample.getId(), sampleThreads);
     }
 
-    /** See {@link JVM#setCompressedIntegers}. */
+    /**
+     * See {@link JVM#setCompressedIntegers}.
+     */
     public void setCompressedIntegers(boolean compressed) {
         if (!compressed) {
             throw new IllegalStateException("JFR currently only supports compressed integers.");
         }
     }
 
-    /** See {@link JVM#setStackDepth}. */
+    /**
+     * See {@link JVM#setStackDepth}.
+     */
     public void setStackDepth(int depth) {
         stackTraceRepo.setStackTraceDepth(depth);
     }
 
-    /** See {@link JVM#setStackTraceEnabled}. */
+    /**
+     * See {@link JVM#setStackTraceEnabled}.
+     */
     public void setStackTraceEnabled(long eventTypeId, boolean enabled) {
         eventSettings[NumUtil.safeToInt(eventTypeId)].setStackTrace(enabled);
     }
@@ -422,54 +474,83 @@ public class SubstrateJVM {
         return eventSettings[(int) eventTypeId].hasStackTrace();
     }
 
-    /** See {@link JVM#setThreadBufferSize}. */
+    /**
+     * See {@link JVM#setThreadBufferSize}.
+     */
     public void setThreadBufferSize(long size) {
         options.threadBufferSize.setUserValue(size);
     }
 
-    /** See {@link JVM#flush}. */
+    /**
+     * See {@link JVM#flush}.
+     */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
         assert writer != null;
         assert uncommittedSize >= 0;
 
         JfrBuffer oldBuffer = threadLocal.getJavaBuffer();
-        assert oldBuffer.isNonNull();
-
-        JfrBuffer newBuffer = JfrThreadLocal.flush(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
+        assert oldBuffer.isNonNull() : "Java EventWriter should not be used otherwise";
+        JfrBuffer newBuffer = JfrThreadLocal.flushToGlobalMemory(oldBuffer, WordFactory.unsigned(uncommittedSize), requestedSize);
         if (newBuffer.isNull()) {
-            // The flush failed for some reason, so mark the EventWriter as invalid for this write
-            // attempt.
-            JfrEventWriterAccess.setStartPosition(writer, oldBuffer.getPos().rawValue());
-            JfrEventWriterAccess.setCurrentPosition(writer, oldBuffer.getPos().rawValue());
-            JfrEventWriterAccess.setValid(writer, false);
+            /* The flush failed, so mark the EventWriter as invalid for this write attempt. */
+            JfrEventWriterAccess.update(writer, oldBuffer, 0, false);
         } else {
-            // Update the EventWriter so that it uses the correct buffer and positions.
-            Pointer newCurrentPos = newBuffer.getPos().add(uncommittedSize);
-            JfrEventWriterAccess.setStartPosition(writer, newBuffer.getPos().rawValue());
-            JfrEventWriterAccess.setCurrentPosition(writer, newCurrentPos.rawValue());
-            if (newBuffer.notEqual(oldBuffer)) {
-                JfrEventWriterAccess.setStartPositionAddress(writer, JfrBufferAccess.getAddressOfPos(newBuffer).rawValue());
-                JfrEventWriterAccess.setMaxPosition(writer, JfrBufferAccess.getDataEnd(newBuffer).rawValue());
-            }
+            JfrEventWriterAccess.update(writer, newBuffer, uncommittedSize, true);
         }
 
-        // Return false to signal that there is no need to do another flush at the end of the
-        // current event.
+        /*
+         * Return false to signal that there is no need to do another flush at the end of the
+         * current event.
+         */
         return false;
     }
 
-    /** See {@link JVM#setRepositoryLocation}. */
+    public void flush() {
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            if (recording) {
+                boolean existingFile = chunkWriter.hasOpenFile();
+                if (existingFile) {
+                    chunkWriter.flush();
+                }
+            }
+        } finally {
+            chunkWriter.unlock();
+        }
+    }
+
+    public void markChunkFinal() {
+        JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
+        try {
+            if (recording) {
+                boolean existingFile = chunkWriter.hasOpenFile();
+                if (existingFile) {
+                    chunkWriter.markChunkFinal();
+                }
+            }
+        } finally {
+            chunkWriter.unlock();
+        }
+    }
+
+    /**
+     * See {@link JVM#setRepositoryLocation}.
+     */
     public void setRepositoryLocation(@SuppressWarnings("unused") String dirText) {
         // Would only be used in case of an emergency dump, which is not supported at the moment.
     }
 
-    /** See {@code JfrEmergencyDump::set_dump_path}. */
+    /**
+     * See {@code JfrEmergencyDump::set_dump_path}.
+     */
     public void setDumpPath(String dumpPathText) {
         dumpPath = dumpPathText;
     }
 
-    /** See {@code JVM#getDumpPath()}. */
+    /**
+     * See {@code JVM#getDumpPath()}.
+     */
     public String getDumpPath() {
         if (dumpPath == null) {
             dumpPath = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("user.home", null).toString();
@@ -477,12 +558,16 @@ public class SubstrateJVM {
         return dumpPath;
     }
 
-    /** See {@link JVM#abort}. */
+    /**
+     * See {@link JVM#abort}.
+     */
     public void abort(String errorMsg) {
         throw VMError.shouldNotReachHere(errorMsg);
     }
 
-    /** See {@link JVM#shouldRotateDisk}. */
+    /**
+     * See {@link JVM#shouldRotateDisk}.
+     */
     public boolean shouldRotateDisk() {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
@@ -501,29 +586,53 @@ public class SubstrateJVM {
         }
     }
 
-    /** See {@link JVM#log}. */
+    /**
+     * See {@link JVM#log}.
+     */
     public void log(int tagSetId, int level, String message) {
         jfrLogging.log(tagSetId, level, message);
     }
 
-    /** See {@link JVM#subscribeLogLevel}. */
+    /**
+     * See {@link JVM#logEvent}.
+     */
+    public void logEvent(int level, String[] lines, boolean system) {
+        jfrLogging.logEvent(level, lines, system);
+    }
+
+    /**
+     * See {@link JVM#subscribeLogLevel}.
+     */
     public void subscribeLogLevel(@SuppressWarnings("unused") LogTag lt, @SuppressWarnings("unused") int tagSetId) {
         // Currently unused because logging support is minimal.
     }
 
-    /** See {@link JVM#getEventWriter}. */
+    /**
+     * See {@link JVM#getEventWriter}.
+     */
     public Target_jdk_jfr_internal_EventWriter getEventWriter() {
         return threadLocal.getEventWriter();
     }
 
-    /** See {@link JVM#newEventWriter}. */
+    /**
+     * See {@link JVM#newEventWriter}.
+     */
     public Target_jdk_jfr_internal_EventWriter newEventWriter() {
         return threadLocal.newEventWriter();
     }
 
-    /** See {@link JVM#setEnabled}. */
-    public void setEnabled(long eventTypeId, boolean enabled) {
-        eventSettings[NumUtil.safeToInt(eventTypeId)].setEnabled(enabled);
+    /**
+     * See {@link JVM#setEnabled}.
+     */
+    public void setEnabled(long eventTypeId, boolean newValue) {
+        boolean oldValue = eventSettings[NumUtil.safeToInt(eventTypeId)].isEnabled();
+        if (newValue != oldValue) {
+            eventSettings[NumUtil.safeToInt(eventTypeId)].setEnabled(newValue);
+
+            if (eventTypeId == JfrEvent.ExecutionSample.getId()) {
+                updateSampler();
+            }
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -541,13 +650,17 @@ public class SubstrateJVM {
         return eventSettings[(int) event.getId()].isLarge();
     }
 
-    /** See {@link JVM#setThreshold}. */
+    /**
+     * See {@link JVM#setThreshold}.
+     */
     public boolean setThreshold(long eventTypeId, long ticks) {
         eventSettings[NumUtil.safeToInt(eventTypeId)].setThresholdTicks(ticks);
         return true;
     }
 
-    /** See {@link JVM#setCutoff}. */
+    /**
+     * See {@link JVM#setCutoff}.
+     */
     public boolean setCutoff(long eventTypeId, long cutoffTicks) {
         eventSettings[NumUtil.safeToInt(eventTypeId)].setCutoffTicks(cutoffTicks);
         return true;
@@ -562,6 +675,26 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
+    public void setExcluded(Thread thread, boolean excluded) {
+        getThreadLocal().setExcluded(thread, excluded);
+    }
+
+    public boolean isExcluded(Thread thread) {
+        /*
+         * Only the current thread is passed to this method in JDK 17, 19, and 20. Eventually, we
+         * will need to implement that in a more general way though, see GR-44616.
+         */
+        if (!thread.equals(Thread.currentThread())) {
+            return false;
+        }
+        return isCurrentThreadExcluded();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isCurrentThreadExcluded() {
+        return getThreadLocal().isCurrentThreadExcluded();
+    }
+
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
         JfrBeginRecordingOperation() {
             super(VMOperationInfos.get(JfrBeginRecordingOperation.class, "JFR begin recording", SystemEffect.SAFEPOINT));
@@ -569,10 +702,11 @@ public class SubstrateJVM {
 
         @Override
         protected void operate() {
-            SubstrateJVM.get().recording = true;
             SubstrateJVM.getThreadRepo().registerRunningThreads();
-            // After changing the value of recording to true, JFR events can be triggered at any
-            // time.
+            SubstrateJVM.get().recording = true;
+            /* Recording is enabled, so JFR events can be triggered at any time. */
+
+            JfrExecutionSampler.singleton().update();
         }
     }
 
@@ -581,11 +715,50 @@ public class SubstrateJVM {
             super(VMOperationInfos.get(JfrEndRecordingOperation.class, "JFR end recording", SystemEffect.SAFEPOINT));
         }
 
+        /**
+         * When the safepoint ends, it is guaranteed that all {@link JfrNativeEventWriter}s finished
+         * their job and that no further JFR events will be triggered. It is also guaranteed that no
+         * thread executes any code related to the execution sampling.
+         */
         @Override
         protected void operate() {
             SubstrateJVM.get().recording = false;
-            // After the safepoint, it is guaranteed that all JfrNativeEventWriters finished their
-            // job and that no further JFR events will be triggered.
+            JfrExecutionSampler.singleton().update();
+
+            /* No further JFR events are emitted, so free some JFR-related buffers. */
+            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                JfrThreadLocal.stopRecording(isolateThread, false);
+            }
+
+            /*
+             * If JFR recording is restarted later on, then it needs to start with a clean state.
+             * Therefore, we clear all data that is still pending.
+             */
+            SubstrateJVM.getThreadLocal().teardown();
+            SubstrateJVM.getSamplerBufferPool().teardown();
+            SubstrateJVM.getGlobalMemory().clear();
+        }
+    }
+
+    private class JfrTeardownOperation extends JavaVMOperation {
+        JfrTeardownOperation() {
+            super(VMOperationInfos.get(JfrTeardownOperation.class, "JFR teardown", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            if (!initialized) {
+                return;
+            }
+
+            globalMemory.teardown();
+            symbolRepo.teardown();
+            threadRepo.teardown();
+            stackTraceRepo.teardown();
+            methodRepo.teardown();
+            typeRepo.teardown();
+
+            initialized = false;
         }
     }
 }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -27,7 +27,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
 project(com.oracle.truffle.llvm.libraries.native LANGUAGES C)
 
 set(TRUFFLE_NFI_NATIVE_INCLUDE)
@@ -42,7 +42,7 @@ add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME}
 
 add_library(sulong-native SHARED
     src/misc.c
-    src/fp80.c
+    src/longdouble.c
     src/globals.c
 )
 if(NOT WIN32)

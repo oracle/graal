@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.FALSE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.TRUE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
 import java.util.Arrays;
@@ -37,6 +38,7 @@ import java.util.stream.IntStream;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 
 import com.oracle.svm.core.FrameAccess;
@@ -57,6 +59,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 public class LLVMIRBuilder implements AutoCloseable {
     private static final String DEFAULT_INSTR_NAME = "";
+    private static final LLVMTypeRef[] EMPTY_TYPES = new LLVMTypeRef[0];
 
     private LLVMContextRef context;
     private LLVMBuilderRef builder;
@@ -66,6 +69,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     private final boolean primary;
     private final LLVMHelperFunctions helpers;
 
+    @SuppressWarnings("this-escape")
     public LLVMIRBuilder(String name) {
         this.context = LLVM.LLVMContextCreate();
         this.builder = LLVM.LLVMCreateBuilderInContext(context);
@@ -91,13 +95,17 @@ public class LLVMIRBuilder implements AutoCloseable {
     /* Module */
 
     public byte[] getBitcode() {
-        LLVMMemoryBufferRef buffer = LLVM.LLVMWriteBitcodeToMemoryBuffer(module);
-        BytePointer start = LLVM.LLVMGetBufferStart(buffer);
-        int size = NumUtil.safeToInt(LLVM.LLVMGetBufferSize(buffer));
+        final byte[] bitcode;
+        final LLVMMemoryBufferRef buffer = LLVM.LLVMWriteBitcodeToMemoryBuffer(module);
 
-        byte[] bitcode = new byte[size];
-        start.get(bitcode, 0, size);
-        LLVM.LLVMDisposeMemoryBuffer(buffer);
+        try (BytePointer start = LLVM.LLVMGetBufferStart(buffer)) {
+            final int size = NumUtil.safeToInt(LLVM.LLVMGetBufferSize(buffer));
+
+            bitcode = new byte[size];
+            start.get(bitcode, 0, size);
+        } finally {
+            LLVM.LLVMDisposeMemoryBuffer(buffer);
+        }
         return bitcode;
     }
 
@@ -150,6 +158,10 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public static void setLinkage(LLVMValueRef global, LinkageType linkage) {
         LLVM.LLVMSetLinkage(global, linkage.code);
+    }
+
+    public void setTarget(String target) {
+        LLVM.LLVMSetTarget(module, target);
     }
 
     public enum LinkageType {
@@ -218,6 +230,27 @@ public class LLVMIRBuilder implements AutoCloseable {
         }
     }
 
+    public void setFunctionCallingConvention(LLVMCallingConvention cc) {
+        setFunctionCallingConvention(function, cc);
+    }
+
+    public void setFunctionCallingConvention(LLVMValueRef func, LLVMCallingConvention cc) {
+        LLVM.LLVMSetFunctionCallConv(func, cc.value);
+    }
+
+    public void setInstructionCallingConvention(LLVMValueRef instr, LLVMCallingConvention cc) {
+        LLVM.LLVMSetInstructionCallConv(instr, cc.value);
+    }
+
+    public enum LLVMCallingConvention {
+        GraalCallingConvention(487);
+
+        private final int value;
+
+        LLVMCallingConvention(int value) {
+            this.value = value;
+        }
+    }
     /* Basic blocks */
 
     public LLVMBasicBlockRef appendBasicBlock(String name) {
@@ -405,14 +438,20 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public static int countElementTypes(LLVMTypeRef structType) {
+        assert LLVM.LLVMGetTypeKind(structType) == LLVM.LLVMStructTypeKind;
+
         return LLVM.LLVMCountStructElementTypes(structType);
     }
 
     private static LLVMTypeRef getTypeAtIndex(LLVMTypeRef structType, int index) {
+        assert LLVM.LLVMGetTypeKind(structType) == LLVM.LLVMStructTypeKind;
+
         return LLVM.LLVMStructGetTypeAtIndex(structType, index);
     }
 
     private static LLVMTypeRef[] getElementTypes(LLVMTypeRef structType) {
+        assert LLVM.LLVMGetTypeKind(structType) == LLVM.LLVMStructTypeKind;
+
         LLVMTypeRef[] types = new LLVMTypeRef[countElementTypes(structType)];
         for (int i = 0; i < types.length; ++i) {
             types[i] = getTypeAtIndex(structType, i);
@@ -442,6 +481,10 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public static LLVMTypeRef[] getParamTypes(LLVMTypeRef functionType) {
         int numParams = LLVM.LLVMCountParamTypes(functionType);
+        if (numParams == 0) {
+            return EMPTY_TYPES;
+        }
+
         PointerPointer<LLVMTypeRef> argTypesPointer = new PointerPointer<>(numParams);
         LLVM.LLVMGetParamTypes(functionType, argTypesPointer);
         return IntStream.range(0, numParams).mapToObj(i -> argTypesPointer.get(LLVMTypeRef.class, i)).toArray(LLVMTypeRef[]::new);
@@ -488,7 +531,8 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public static String intrinsicType(LLVMTypeRef type) {
-        switch (LLVM.LLVMGetTypeKind(type)) {
+        int kindType = LLVM.LLVMGetTypeKind(type);
+        switch (kindType) {
             case LLVM.LLVMIntegerTypeKind:
                 return "i" + integerTypeWidth(type);
             case LLVM.LLVMFloatTypeKind:
@@ -506,7 +550,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 String types = Arrays.stream(getElementTypes(type)).map(LLVMIRBuilder::intrinsicType).collect(Collectors.joining(""));
                 return "sl_" + types + "s";
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(kindType); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -637,6 +681,11 @@ public class LLVMIRBuilder implements AutoCloseable {
     public LLVMValueRef buildReadRegister(LLVMValueRef register) {
         LLVMTypeRef readRegisterType = functionType(wordType(), metadataType());
         return buildIntrinsicCall("llvm.read_register." + intrinsicType(wordType()), readRegisterType, register);
+    }
+
+    public void buildWriteRegister(LLVMValueRef register, LLVMValueRef value) {
+        LLVMTypeRef writeRegisterType = functionType(voidType(), metadataType(), wordType());
+        buildIntrinsicCall("llvm.write_register." + intrinsicType(wordType()), writeRegisterType, register, value);
     }
 
     public LLVMValueRef buildExtractValue(LLVMValueRef struct, int i) {
@@ -835,7 +884,7 @@ public class LLVMIRBuilder implements AutoCloseable {
             case LLVM.LLVMDoubleTypeKind:
                 return buildFCmp(cond, a, b, unordered);
             default:
-                throw shouldNotReachHere(dumpTypes("comparison", aType, bType));
+                throw shouldNotReachHere(dumpTypes("comparison", aType, bType)); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -873,7 +922,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 conditionCode = LLVM.LLVMIntULT;
                 break;
             default:
-                throw shouldNotReachHere("invalid condition");
+                throw shouldNotReachHere("invalid condition"); // ExcludeFromJacocoGeneratedReport
         }
         return LLVM.LLVMBuildICmp(builder, conditionCode, a, b, DEFAULT_INSTR_NAME);
     }
@@ -900,7 +949,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 conditionCode = (unordered) ? LLVM.LLVMRealUGE : LLVM.LLVMRealOGE;
                 break;
             default:
-                throw shouldNotReachHere("invalid condition");
+                throw shouldNotReachHere("invalid condition"); // ExcludeFromJacocoGeneratedReport
         }
         return LLVM.LLVMBuildFCmp(builder, conditionCode, a, b, DEFAULT_INSTR_NAME);
     }
@@ -932,7 +981,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 unaryBuilder = LLVM::LLVMBuildFNeg;
                 break;
             default:
-                throw shouldNotReachHere(dumpTypes("invalid negation type", type));
+                throw shouldNotReachHere(dumpTypes("invalid negation type", type)); // ExcludeFromJacocoGeneratedReport
         }
 
         return unaryBuilder.build(builder, a, DEFAULT_INSTR_NAME);
@@ -981,7 +1030,7 @@ public class LLVMIRBuilder implements AutoCloseable {
                 binaryBuilder = realBuilder;
                 break;
             default:
-                throw shouldNotReachHere(dumpValues("invalid binary operation arguments", a, b));
+                throw shouldNotReachHere(dumpValues("invalid binary operation arguments", a, b)); // ExcludeFromJacocoGeneratedReport
         }
 
         return binaryBuilder.build(builder, a, b, DEFAULT_INSTR_NAME);
@@ -1049,6 +1098,45 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public LLVMValueRef buildBswap(LLVMValueRef a) {
         return buildIntrinsicOp("bswap", a);
+    }
+
+    // LLVM fptosi instruction returns poison if the input is NaN or outside the integer range.
+    // However, LLVM llvm.fptosi.sat.* intrinsic functions follow the Java semantics.
+    public LLVMValueRef buildSaturatingFloatingPointToInteger(FloatConvert op, LLVMValueRef a) {
+        final LLVMTypeRef retType;
+        switch (op) {
+            case F2I:
+            case D2I:
+                retType = intType();
+                break;
+
+            case F2L:
+            case D2L:
+                retType = longType();
+                break;
+
+            default:
+                throw shouldNotReachHere("Invalid FloatConvert type: " + op);
+        }
+
+        final LLVMTypeRef argType;
+        switch (op) {
+            case F2I:
+            case F2L:
+                argType = floatType();
+                break;
+
+            case D2I:
+            case D2L:
+                argType = doubleType();
+                break;
+
+            default:
+                throw shouldNotReachHere("Invalid FloatConvert type: " + op);
+        }
+
+        final String intrinsicName = "llvm.fptosi.sat." + intrinsicType(retType) + "." + intrinsicType(argType);
+        return buildIntrinsicCall(intrinsicName, functionType(retType, argType), a);
     }
 
     private LLVMValueRef buildIntrinsicOp(String name, LLVMTypeRef retType, LLVMValueRef... args) {
@@ -1138,10 +1226,6 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMBuildPtrToInt(builder, value, wordType(), DEFAULT_INSTR_NAME);
     }
 
-    public LLVMValueRef buildFPToSI(LLVMValueRef value, LLVMTypeRef type) {
-        return LLVM.LLVMBuildFPToSI(builder, value, type, DEFAULT_INSTR_NAME);
-    }
-
     public LLVMValueRef buildSIToFP(LLVMValueRef value, LLVMTypeRef type) {
         return LLVM.LLVMBuildSIToFP(builder, value, type, DEFAULT_INSTR_NAME);
     }
@@ -1176,22 +1260,41 @@ public class LLVMIRBuilder implements AutoCloseable {
         return LLVM.LLVMBuildGEP(builder, base, new PointerPointer<>(indices), indices.length, DEFAULT_INSTR_NAME);
     }
 
-    public LLVMValueRef buildLoad(LLVMValueRef address, LLVMTypeRef type) {
+    private LLVMValueRef buildLoadHelper(LLVMValueRef address, LLVMTypeRef type, int alignment) {
         LLVMTypeRef addressType = LLVM.LLVMTypeOf(address);
         if (isObjectType(type) && !isObjectType(addressType)) {
             boolean compressed = isCompressedPointerType(type);
             return buildCall(helpers.getLoadObjectFromUntrackedPointerFunction(compressed), address);
         }
         LLVMValueRef castedAddress = buildBitcast(address, pointerType(type, isObjectType(addressType), false));
-        return buildLoad(castedAddress);
+        return alignment > 0 ? buildAlignedLoad(castedAddress, alignment) : buildLoad(castedAddress);
+    }
+
+    public LLVMValueRef buildLoad(LLVMValueRef address, LLVMTypeRef type) {
+        return buildLoadHelper(address, type, 0);
+    }
+
+    public LLVMValueRef buildAlignedLoad(LLVMValueRef address, LLVMTypeRef type, int alignment) {
+        return buildLoadHelper(address, type, alignment);
     }
 
     public LLVMValueRef buildLoad(LLVMValueRef address) {
         return LLVM.LLVMBuildLoad(builder, address, DEFAULT_INSTR_NAME);
     }
 
+    public LLVMValueRef buildAlignedLoad(LLVMValueRef address, int alignment) {
+        LLVMValueRef load = LLVM.LLVMBuildLoad(builder, address, DEFAULT_INSTR_NAME);
+        LLVM.LLVMSetAlignment(load, alignment);
+        return load;
+    }
+
     public void buildStore(LLVMValueRef value, LLVMValueRef address) {
         LLVM.LLVMBuildStore(builder, value, address);
+    }
+
+    public void buildAlignedStore(LLVMValueRef value, LLVMValueRef address, int alignment) {
+        LLVMValueRef store = LLVM.LLVMBuildStore(builder, value, address);
+        LLVM.LLVMSetAlignment(store, alignment);
     }
 
     public void buildVolatileStore(LLVMValueRef value, LLVMValueRef address, int alignment) {
@@ -1293,7 +1396,7 @@ public class LLVMIRBuilder implements AutoCloseable {
             case VOLATILE:
                 return LLVM.LLVMAtomicOrderingSequentiallyConsistent;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(memoryOrder); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

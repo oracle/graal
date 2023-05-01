@@ -64,25 +64,25 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
-    private final GeneratorClassLoader gcl;
+    private final GeneratorClassLoaders gcls;
     private final Class<?> storageSuperClass;
     private final Class<T> storageFactoryInterface;
 
-    private FieldBasedShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
-        this.gcl = gcl;
+    private FieldBasedShapeGenerator(GeneratorClassLoaders gcls, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+        this.gcls = gcls;
         this.storageSuperClass = storageSuperClass;
         this.storageFactoryInterface = storageFactoryInterface;
     }
 
     @SuppressWarnings("unchecked")
-    static <T> FieldBasedShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
-        return new FieldBasedShapeGenerator<>(gcl, storageSuperClass, storageFactoryInterface);
+    static <T> FieldBasedShapeGenerator<T> getShapeGenerator(GeneratorClassLoaders gcls, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+        return new FieldBasedShapeGenerator<>(gcls, storageSuperClass, storageFactoryInterface);
     }
 
     @Override
     StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
-        Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties, storageClassName);
-        Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
+        Class<?> generatedStorageClass = generateStorage(gcls, storageSuperClass, staticProperties, storageClassName);
+        Class<? extends T> generatedFactoryClass = generateFactory(gcls, generatedStorageClass, storageFactoryInterface);
         for (Entry<String, StaticProperty> entry : staticProperties.entrySet()) {
             // We need to resolve field types so that loads are stamped with the proper type
             int offset = getObjectFieldOffset(generatedStorageClass, entry.getKey());
@@ -163,7 +163,7 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, Map<String, StaticProperty> staticProperties, String storageClassName) {
+    private static Class<?> generateStorage(GeneratorClassLoaders gcls, Class<?> storageSuperClass, Map<String, StaticProperty> staticProperties, String storageClassName) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
         ClassWriter storageWriter = new ClassWriter(0);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
@@ -171,11 +171,11 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addStorageConstructors(storageWriter, storageSuperClass, storageSuperName);
         addStorageFields(storageWriter, staticProperties);
         storageWriter.visitEnd();
-        return load(gcl, storageClassName, storageWriter.toByteArray());
+        return load(gcls, storageClassName, storageWriter.toByteArray(), true);
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> Class<? extends T> generateFactory(GeneratorClassLoader gcl, Class<?> storageClass, Class<T> storageFactoryInterface) {
+    private static <T> Class<? extends T> generateFactory(GeneratorClassLoaders gcls, Class<?> storageClass, Class<T> storageFactoryInterface) {
         ClassWriter factoryWriter = new ClassWriter(0);
         int factoryAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
         String factoryName = generateFactoryName(storageClass);
@@ -183,6 +183,6 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addFactoryConstructor(factoryWriter);
         addFactoryMethods(factoryWriter, storageClass, storageFactoryInterface);
         factoryWriter.visitEnd();
-        return (Class<? extends T>) load(gcl, factoryName, factoryWriter.toByteArray());
+        return (Class<? extends T>) load(gcls, factoryName, factoryWriter.toByteArray(), false);
     }
 }

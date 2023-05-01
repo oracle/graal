@@ -246,7 +246,7 @@ final class TypeInitializerGraph {
     }
 
     private void addInitializer(AnalysisType t) {
-        ResolvedJavaType rt = t.getWrappedWithoutResolve();
+        ResolvedJavaType rt = t.getWrapped();
         boolean isSubstituted = false;
         if (rt instanceof SubstitutionType) {
             SubstitutionType substitutionType = (SubstitutionType) rt;

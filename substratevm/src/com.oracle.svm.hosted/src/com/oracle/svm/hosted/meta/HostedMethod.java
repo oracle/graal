@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.core.util.VMError.unimplemented;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -56,13 +57,18 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
@@ -81,7 +87,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public final class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider, MultiMethod {
+public final class HostedMethod extends HostedElement implements SharedMethod, WrappedJavaMethod, GraphProvider, JavaMethodContext, OriginalMethodProvider, MultiMethod {
 
     public static final String METHOD_NAME_COLLISION_SEPARATOR = "%";
 
@@ -252,12 +258,12 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     @Override
     public boolean hasCodeOffsetInImage() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public int getCodeOffsetInImage() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -291,6 +297,26 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
         return compilationInfo.canDeoptForTesting() || multiMethodKey == SubstrateCompilationDirectives.RUNTIME_COMPILED_METHOD;
     }
 
+    @Override
+    public boolean isUninterruptible() {
+        return Uninterruptible.Utils.isUninterruptible(wrapped);
+    }
+
+    @Override
+    public boolean needSafepointCheck() {
+        return SubstrateSafepointInsertionPhase.needSafepointCheck(wrapped);
+    }
+
+    @Override
+    public boolean isForeignCallTarget() {
+        return isAnnotationPresent(SubstrateForeignCallTarget.class);
+    }
+
+    @Override
+    public boolean isSnippet() {
+        return isAnnotationPresent(Snippet.class);
+    }
+
     public boolean hasVTableIndex() {
         return vtableIndex != -1;
     }
@@ -317,6 +343,11 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
     @Override
     public boolean isEntryPoint() {
         return wrapped.isEntryPoint();
+    }
+
+    @Override
+    public SubstrateCallingConventionKind getCallingConventionKind() {
+        return ExplicitCallingConvention.Util.getCallingConventionKind(wrapped, isEntryPoint());
     }
 
     @Override
@@ -471,7 +502,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     @Override
     public void reprofile() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -486,12 +517,12 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     @Override
     public boolean isDefault() {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
     public SpeculationLog getSpeculationLog() {
-        throw shouldNotReachHere();
+        throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override
@@ -506,7 +537,7 @@ public final class HostedMethod implements SharedMethod, WrappedJavaMethod, Grap
 
     @Override
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
+        return wrapped.getJavaMethod();
     }
 
     @Override
@@ -579,7 +610,7 @@ class HostedMethodNameFactory implements InternalFeature {
         }
 
         boolean added = uniqueShortNames.add(result.getRight());
-        VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: " + result.getRight());
+        VMError.guarantee(added, "failed to generate uniqueShortName for HostedMethod: %s", result.getRight());
 
         return result;
     }

@@ -93,6 +93,21 @@ import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
  * enable exports to be used for AOT by setting {@link ExportLibrary#useForAOT()} to
  * <code>true</code>.
  *
+ * <h3>Deprecating Messages</h3>
+ *
+ * If a library message gets deprecated using the {@link Deprecated} annotation then all exports
+ * will get a deprecation warning. This can be useful to evolve libraries over time in a compatible
+ * way.
+ * <p>
+ * Sometimes it is needed to remove or modify types of parameters as part of evolution. In this case
+ * it is possible to declare multiple overloads of the same library message where all but one method
+ * are annotated with {@link Deprecated}. The non-deprecated method must use more generic or the
+ * same parameter types. For example, this allows to evolve message with parameter {@link String} to
+ * evolve into {@link Object}. It is also possible to add or remove parameter types in the
+ * non-deprecated method. These restrictions are necessary in order to ensure that exports of that
+ * message never export the new overload after recompilation unless the parameter types were
+ * updated.
+ *
  * @see DefaultExport to specify default exports.
  * @see Abstract to make messages abstract if they have a default implemetnation
  * @since 19.0
@@ -237,7 +252,9 @@ public @interface GenerateLibrary {
 
         /**
          * Specifies a message to be abstract only if another message is implemented. Multiple other
-         * messages can be specified.
+         * messages can be specified. If the list is empty, the message is always abstract unless
+         * {@link Abstract#ifExportedAsWarning()} is not empty. If the list is not empty it takes
+         * precedence over {@link Abstract#ifExportedAsWarning()}.
          * <p>
          * <b>For example:</b>
          *
@@ -264,6 +281,35 @@ public @interface GenerateLibrary {
          */
         String[] ifExported() default {};
 
+        /**
+         * Specifies a message to be abstract only if another message is implemented. Multiple other
+         * messages can be specified. The message is not actually made abstract unless it is in the
+         * {@link Abstract#ifExported()} list. Only a warning is produced that prompts the user to
+         * implement the message
+         * <p>
+         * <b>For example:</b>
+         *
+         * <pre>
+         * &#64;GenerateLibrary
+         * public abstract class MaybeNumberLibrary extends Library {
+         *
+         *     public boolean isNumber(Object receiver) {
+         *         return false;
+         *     }
+         *
+         *     &#64;Abstract(ifExportedAsWarning = "isNumber")
+         *     public Number getNumber(Object receiver) {
+         *         throw new UnsupportedOperationException();
+         *     }
+         * }
+         * </pre>
+         *
+         * In this example, if the isNumber message is exported and the getNumber message is not,
+         * the user gets a warning.
+         *
+         * @since 23.0
+         */
+        String[] ifExportedAsWarning() default {};
     }
 
     /**

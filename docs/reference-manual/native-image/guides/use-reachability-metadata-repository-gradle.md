@@ -1,23 +1,23 @@
 ---
 layout: ni-docs
 toc_group: how-to-guides
-link_title: Use Shared Reachability Metadata with Native Image Gradle Plugin
+link_title: Configure Native Image Using Shared Reachability Metadata
 permalink: /reference-manual/native-image/guides/use-reachability-metadata-repository-gradle/
 ---
 
-# Use Shared Reachability Metadata with Native Image Gradle Plugin
+# Configure Native Image Using Shared Reachability Metadata
 
 With the Gradle plugin for GraalVM Native Image you can easily build a native executable from a Java application. The plugin is provided as part of the [Native Build Tools project](https://graalvm.github.io/native-build-tools/latest/index.html) and uses the [Gradle build tool](https://gradle.org/).
-If the application does not load dynamically any classes at run time, then your workflow is just one command: `./gradlew nativeRun`. 
+If the application does not dynamically load any classes at run time, then your workflow is just one command: `./gradlew nativeRun`. 
 
-In the real-world scenario, your application will, most likely, call either Java Reflection, Dynamic Proxy objects, or call some native code, or access classpath resources - the dynamic features which the `native-image` tool must be aware of at build time, and provided in the form of [metadata](../ReachabilityMetadata.md). 
+In the real-world, your application will, most likely, call either Java Reflection, Dynamic Proxy objects, or call some native code, or access resources on the class path - dynamic features that the `native-image` tool must be aware of at build time, and provided in the form of [metadata](../ReachabilityMetadata.md). 
 Native Image loads classes dynamically at build time, and not at run time.
 
-Depending on your application dependencies, there could be three ways to provide the metadata with the Native Image Gradle Plugin:
+Depending on your application dependencies, there are three ways to provide the metadata with the Native Image Gradle Plugin:
 
 1. [Using the Tracing Agent](#build-a-native-executable-with-the-agent)
 2. [Using the shared GraalVM Reachability Metadata Repository](#build-a-native-executable-using-the-graalvm-reachability-metadata-repository)
-3. [Autodetecting](use-native-image-gradle-plugin.md#build-a-native-executable-with-resources-autodetection) (if the required resources are directly available on the classpath, in the `src/main/resources` directory)
+3. [Autodetecting](https://graalvm.github.io/native-build-tools/latest/gradle-plugin-quickstart.html#build-a-native-executable-with-resources-autodetection) (if the required resources are directly available on the classpath, in the `src/main/resources` directory)
 
 For the Java application used in this guide the first two approaches are applicable. 
 This guide demonstrates how to build a native executable with the [Tracing agent](#build-a-native-executable-with-the-agent) and using the [GraalVM Reachability Metadata Repository](https://github.com/oracle/graalvm-reachability-metadata).
@@ -25,13 +25,16 @@ The goal is to show users the difference, and prove how using shared metadata ca
 
 We recommend that you follow the instructions and create the application step-by-step. Alternatively, you can go right to the [completed example](https://github.com/graalvm/native-build-tools/tree/master/samples/metadata-repo-integration).
 
-> You must have [GraalVM installed with Native Image support](../README.md#install-native-image). 
-
 ## Prepare a Demo Application
 
-1. Create a new Java project with **Gradle** in your favorite IDE, called "H2Example", in the `org.graalvm.example` package.
+1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
+    ```bash
+    bash <(curl -sL https://get.graalvm.org/jdk)
+    ``
 
-2. Rename the default `app` directory to `H2Example`, then rename the default filename `App.java` to `H2Example.java` and replace its contents with the following: 
+2. Create a new Java project with **Gradle** in your favorite IDE, called "H2Example", in the `org.graalvm.example` package.
+
+3. Rename the default `app` directory to `H2Example`, then rename the default filename `App.java` to `H2Example.java` and replace its contents with the following: 
 
     ```java
     package org.graalvm.example;
@@ -115,17 +118,16 @@ We recommend that you follow the instructions and create the application step-by
     }
     ```
 
-3. Delete the `H2Example/src/test/java` directory.
+4. Delete the `H2Example/src/test/java` directory.
 
-4. Open the Gradle configuration file _build.gradle_, and update the main class in the `application` section:
-
+5. Open the Gradle configuration file _build.gradle_, and update the main class in the `application` section:
     ```xml
     application {
         mainClass.set('org.graalvm.example.H2Example')
     }
     ```
-5. Add explicit dependency on [H2 Database](https://www.h2database.com/html/main.html), an open source SQL database for Java. The application interacts with this database through the JDBC driver. Insert the following line in the `dependencies` section of _build.gradle_:
 
+6. Add explicit dependency on [H2 Database](https://www.h2database.com/html/main.html), an open source SQL database for Java. The application interacts with this database through the JDBC driver. Insert the following line in the `dependencies` section of _build.gradle_:
     ```xml
     dependencies {
         implementation("com.h2database:h2:2.1.210")
@@ -135,8 +137,8 @@ We recommend that you follow the instructions and create the application step-by
 
     The next steps will be focused what you should do to enable the Native Image Gradle plugin.
 
-6. Register the Native Image Gradle plugin. Add the following to `plugins` section of your project’s _build.gradle_ file:
 
+7. Register the Native Image Gradle plugin. Add the following to `plugins` section of your project’s _build.gradle_ file:
     ```xml
     plugins {
     // ...
@@ -144,8 +146,9 @@ We recommend that you follow the instructions and create the application step-by
     }
     ```
     The plugin discovers which JAR files it needs to pass to the `native-image` builder and what the executable main class should be.
+    
 
-7. The plugin is not yet available on the Gradle Plugin Portal, so declare an additional plugin repository. Open the _settings.gradle_ file and replace the default content with this:
+8. The plugin is not yet available on the Gradle Plugin Portal, so declare an additional plugin repository. Open the _settings.gradle_ file and replace the default content with this:
 
     ```xml
     pluginManagement {

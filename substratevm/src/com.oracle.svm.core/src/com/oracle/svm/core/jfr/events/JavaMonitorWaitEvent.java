@@ -26,15 +26,16 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.compiler.word.Word;
+
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import org.graalvm.compiler.word.Word;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 
 public class JavaMonitorWaitEvent {
     public static void emit(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
@@ -45,7 +46,7 @@ public class JavaMonitorWaitEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emit0(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.JavaMonitorWait)) {
+        if (JfrEvent.JavaMonitorWait.shouldEmit()) {
             JfrNativeEventWriterData data = org.graalvm.nativeimage.StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.JavaMonitorWait);

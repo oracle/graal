@@ -40,23 +40,22 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.errors.RbErrorMessages;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class RubyTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=Ruby,Encoding=UTF-16";
+        return "Flavor=Ruby";
     }
 
-    void testUTF8(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        testBytes(pattern, flags, Encodings.UTF_8, input, fromIndex, isMatch, captureGroupBounds);
-    }
-
-    void testLatin1(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        testBytes(pattern, flags, Encodings.LATIN_1, input, fromIndex, isMatch, captureGroupBounds);
+    @Override
+    Encodings.Encoding getTRegexEncoding() {
+        return Encodings.UTF_16;
     }
 
     @Test
@@ -221,15 +220,15 @@ public class RubyTests extends RegexTestBase {
         // https://bugs.ruby-lang.org/issues/18009
         for (int i = 0; i < 26; i++) {
             String input = String.valueOf((char) ('a' + i));
-            testUTF8("\\W", "i", input, 0, false);
-            testUTF8("[^\\w]", "i", input, 0, false);
-            testUTF8("[[^\\w]]", "i", input, 0, false);
-            testUTF8("[^[^\\w]]", "i", input, 0, true, 0, 1);
+            test("\\W", "i", Encodings.UTF_8, input, 0, false);
+            test("[^\\w]", "i", Encodings.UTF_8, input, 0, false);
+            test("[[^\\w]]", "i", Encodings.UTF_8, input, 0, false);
+            test("[^[^\\w]]", "i", Encodings.UTF_8, input, 0, true, 0, 1);
         }
 
-        testUTF8("[\\w]", "i", "\u212a", 0, false);
-        testUTF8("[kx]", "i", "\u212a", 0, true, 0, 3);
-        testUTF8("[\\w&&kx]", "i", "\u212a", 0, true, 0, 3);
+        test("[\\w]", "i", Encodings.UTF_8, "\u212a", 0, false);
+        test("[kx]", "i", Encodings.UTF_8, "\u212a", 0, true, 0, 3);
+        test("[\\w&&kx]", "i", Encodings.UTF_8, "\u212a", 0, true, 0, 3);
     }
 
     @Test
@@ -299,7 +298,7 @@ public class RubyTests extends RegexTestBase {
     @Test
     public void caseClosureDoesntEscapeEncodingRange() {
         // This shouldn't throw an AssertionError because of encountering the 'st' ligature.
-        testLatin1("test", "i", "test", 0, true, 0, 4);
+        test("test", "i", Encodings.LATIN_1, "test", 0, true, 0, 4);
     }
 
     @Test
@@ -326,9 +325,9 @@ public class RubyTests extends RegexTestBase {
     public void inverseOfUnicodeCharClassInSmallerEncoding() {
         // check(eval('/\A[[:^alpha:]0]\z/'), %w(0 1 .), "a") from test_posix_bracket in
         // test/mri/tests/ruby/test_regexp.rb
-        testLatin1("\\A[[:^alpha:]0]\\z", "", "0", 0, true, 0, 1);
-        testLatin1("\\A[[:^alpha:]0]\\z", "", "1", 0, true, 0, 1);
-        testLatin1("\\A[[:^alpha:]0]\\z", "", "a", 0, false);
+        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "0", 0, true, 0, 1);
+        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "1", 0, true, 0, 1);
+        test("\\A[[:^alpha:]0]\\z", "", Encodings.LATIN_1, "a", 0, false);
     }
 
     @Test
@@ -418,9 +417,9 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void recursiveSubexpressionCalls() {
-        testUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
-        testUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
-        testUnsupported("a\\g<0>?", "");
+        expectUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
+        expectUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
+        expectUnsupported("a\\g<0>?", "");
     }
 
     @Test
@@ -536,6 +535,35 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void gr41489() {
-        testUnsupported("\\((?>[^)(]+|\\g<0>)*\\)", "");
+        expectUnsupported("\\((?>[^)(]+|\\g<0>)*\\)", "");
+    }
+
+    @Test
+    public void quantifierOverflow() {
+        long max = Integer.MAX_VALUE;
+        test(String.format("x{%d,%d}", max, max + 1), "", "x", 0, false);
+        test(String.format("x{%d,}", max), "", "x", 0, false);
+        test(String.format("x{%d,}", max + 1), "", "x", 0, false);
+        expectSyntaxError(String.format("x{%d,%d}", max + 1, max), "", RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT);
+    }
+
+    @Test
+    public void testConditionalBackReferencesWithLookArounds() {
+        /// Test temporal ordering of lookaround assertions and conditional back-references in DFAs.
+        test("(?=(?(1)a|b))(b)", "", "b", 0, true, 0, 1, 0, 1);
+        test("(?=x(?(1)a|b))(x)b", "", "xb", 0, true, 0, 2, 0, 1);
+        test("(?=xy(?(1)a|b))(x)yb", "", "xyb", 0, true, 0, 3, 0, 1);
+        test("(?=(a))(?(1)a|b)", "", "a", 0, true, 0, 1, 0, 1);
+        test("(?=a(x))(?(1)a|b)x", "", "ax", 0, true, 0, 2, 1, 2);
+        test("(?=ax(y))(?(1)a|b)xy", "", "axy", 0, true, 0, 3, 2, 3);
+        test("(?(1)a|b)(?<=(b))", "", "b", 0, true, 0, 1, 0, 1);
+        test("x(?(1)a|b)(?<=(x)b)", "", "xb", 0, true, 0, 2, 0, 1);
+        test("xy(?(1)a|b)(?<=(x)yb)", "", "xyb", 0, true, 0, 3, 0, 1);
+
+        // Conditional back-reference and capture group within lookahead.
+        test("(?=(a)(?(1)a|b))", "", "aa", 0, true, 0, 0, 0, 1);
+        test("(?=(a)x(?(1)a|b))", "", "axa", 0, true, 0, 0, 0, 1);
+        test("(?=(a)xy(?(1)a|b))", "", "axya", 0, true, 0, 0, 0, 1);
+        test("(?=(?(1)a|b)())", "", "b", 0, true, 0, 0, 1, 1);
     }
 }

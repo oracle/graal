@@ -24,18 +24,14 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.util.function.BooleanSupplier;
-
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.util.ReflectionUtil;
 
 /**
- * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
+ * This file contains the VM-level events that Native Image supports on all JDK versions. The event
+ * IDs depend on the JDK version (see metadata.xml file) and are computed at image build time.
  */
 public final class JfrEvent {
     public static final JfrEvent ThreadStart = create("jdk.ThreadStart");
@@ -60,26 +56,17 @@ public final class JfrEvent {
     public static final JfrEvent SafepointEnd = create("jdk.SafepointEnd");
     public static final JfrEvent ExecuteVMOperation = create("jdk.ExecuteVMOperation");
     public static final JfrEvent JavaMonitorEnter = create("jdk.JavaMonitorEnter");
-    public static final JfrEvent ThreadSleep = create("jdk.ThreadSleep", JDK17OrEarlier.class);
     public static final JfrEvent ThreadPark = create("jdk.ThreadPark");
     public static final JfrEvent JavaMonitorWait = create("jdk.JavaMonitorWait");
+    public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate");
+    public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB");
 
     private final long id;
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static JfrEvent create(String name) {
-        return create(name, TargetClass.AlwaysIncluded.class);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static JfrEvent create(String name, Class<? extends BooleanSupplier> onlyWith) {
-        BooleanSupplier onlyWithProvider = ReflectionUtil.newInstance(onlyWith);
-        if (onlyWithProvider.getAsBoolean()) {
-            return new JfrEvent(name);
-        } else {
-            return null;
-        }
+    public static JfrEvent create(String name) {
+        return new JfrEvent(name);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -96,5 +83,10 @@ public final class JfrEvent {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public String getName() {
         return name;
+    }
+
+    @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
+    public boolean shouldEmit() {
+        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this) && !SubstrateJVM.get().isCurrentThreadExcluded();
     }
 }

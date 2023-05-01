@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -192,15 +192,10 @@ public abstract class ClangLikeBase extends Driver {
         return sulongArgs;
     }
 
-    protected void getDebugCompilerArgs(List<String> sulongArgs) {
-        // use -gdwarf-5 instead of -g to enable source file checksums
-        sulongArgs.add("-gdwarf-5");
-    }
-
     protected void getCompilerArgs(List<String> sulongArgs) {
-        sulongArgs.addAll(Arrays.asList("-flto=full", "-O1"));
+        // use -gdwarf-5 instead of -g to enable source file checksums
+        sulongArgs.addAll(Arrays.asList("-flto=full", "-gdwarf-5", "-O1"));
         sulongArgs.addAll(getVectorInstructionSetFlags());
-        getDebugCompilerArgs(sulongArgs);
 
         if (os == OS.WINDOWS) {
             sulongArgs.add("-stdlib++-isystem");
@@ -233,16 +228,21 @@ public abstract class ClangLikeBase extends Driver {
 
     protected void getLinkerArgs(List<String> sulongArgs) {
         if (os == OS.LINUX) {
-            sulongArgs.addAll(Arrays.asList("-fuse-ld=" + getLLVMExecutable(LinuxLinker.LLD), "-Wl," + String.join(",", LinuxLinker.getLinkerFlags())));
+            sulongArgs.add("-fuse-ld=lld");
+            sulongArgs.add("--ld-path=" + getLLVMExecutable(LinuxLinker.LLD));
+            sulongArgs.add("-Wl," + String.join(",", LinuxLinker.getLinkerFlags()));
         } else if (os == OS.WINDOWS) {
             /*
              * This should rather be `"-fuse-ld=" + getLLVMExecutable(WindowsLinker.LLD_LINK)` to be
              * sure to pick up the right executable, but for some reason using absolute paths for
              * `-fuse-ld` does not work on Windows.
              */
-            sulongArgs.addAll(Arrays.asList("-fuse-ld=" + WindowsLinker.LLD_LINK, "-Wl," + String.join(",", WindowsLinker.getLinkerFlags())));
+            sulongArgs.add("-fuse-ld=lld-link");
+            sulongArgs.add("--ld-path=" + getLLVMExecutable(WindowsLinker.LLD_LINK));
+            sulongArgs.add("-Wl," + String.join(",", WindowsLinker.getLinkerFlags()));
         } else if (os == OS.DARWIN) {
-            sulongArgs.add("-fuse-ld=" + DarwinLinker.LD);
+            sulongArgs.add("-fuse-ld=" + DarwinLinker.LD_NAME);
+            sulongArgs.add("-Wl," + String.join(",", DarwinLinker.getLinkerFlags(this)));
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -172,9 +172,10 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     }
 
     @ExportMessage
+    @ImportStatic(LLVMLanguage.class)
     static class Execute {
 
-        @Specialization(limit = "5", guards = "self == cachedSelf", assumptions = "singleContextAssumption()")
+        @Specialization(limit = "5", guards = {"self == cachedSelf", "isSingleContext($node)"})
         static Object doDescriptor(@SuppressWarnings("unused") LLVMFunctionDescriptor self, Object[] args,
                         @Cached("self") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedSelf,
                         @Cached("createCall(cachedSelf)") DirectCallNode call) {
@@ -198,10 +199,6 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             DirectCallNode callNode = DirectCallNode.create(self.getFunctionCode().getForeignCallTarget());
             callNode.forceInlining();
             return callNode;
-        }
-
-        protected static Assumption singleContextAssumption() {
-            return LLVMLanguage.get(null).singleContextAssumption;
         }
 
     }

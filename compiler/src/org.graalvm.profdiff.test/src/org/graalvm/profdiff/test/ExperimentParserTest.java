@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.io.BufferedReader;
@@ -41,15 +40,16 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.Experiment;
 import org.graalvm.profdiff.core.ExperimentId;
-import org.graalvm.profdiff.core.VerbosityLevel;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
+import org.graalvm.profdiff.core.inlining.ReceiverTypeProfile;
 import org.graalvm.profdiff.core.optimization.Optimization;
 import org.graalvm.profdiff.core.optimization.OptimizationPhase;
-import org.graalvm.profdiff.parser.experiment.ExperimentFiles;
-import org.graalvm.profdiff.parser.experiment.ExperimentParser;
-import org.graalvm.profdiff.parser.experiment.FileView;
-import org.graalvm.profdiff.util.StdoutWriter;
-import org.graalvm.profdiff.util.Writer;
+import org.graalvm.profdiff.core.optimization.Position;
+import org.graalvm.profdiff.parser.ExperimentFiles;
+import org.graalvm.profdiff.parser.ExperimentParser;
+import org.graalvm.profdiff.parser.FileView;
+import org.graalvm.profdiff.core.StdoutWriter;
+import org.graalvm.profdiff.core.Writer;
 import org.junit.Test;
 
 public class ExperimentParserTest {
@@ -121,7 +121,7 @@ public class ExperimentParserTest {
     @Test
     public void testExperimentParser() throws Exception {
         ExperimentFiles experimentFiles = new ExperimentResources();
-        Writer writer = new StdoutWriter(VerbosityLevel.DEFAULT);
+        Writer writer = new StdoutWriter(null);
         ExperimentParser experimentParser = new ExperimentParser(experimentFiles, writer);
         Experiment experiment = experimentParser.parse();
         assertEquals("16102", experiment.getExecutionId());
@@ -136,28 +136,32 @@ public class ExperimentParserTest {
                     assertEquals("foo.bar.Foo$Bar.methodName()",
                                     compilationUnit.getMethod().getMethodName());
 
-                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null);
-                    inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44, false, List.of("not inlined")));
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null, false);
+                    inliningTreeRoot.addChild(new InliningTreeNode("java.lang.String.equals(Object)", 44, false, List.of("not inlined"), false, null, true));
                     assertEquals(inliningTreeRoot, trees.getInliningTree().getRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     OptimizationPhase someTier = new OptimizationPhase("SomeTier");
                     rootPhase.addChild(someTier);
                     someTier.addChild(new Optimization("LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMap.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
+                                    Position.of("foo.bar.Foo$Bar.innerMethod()", 30, "foo.bar.Foo$Bar.methodName()", 68),
                                     EconomicMap.of("unrollFactor", 1)));
                     someTier.addChild(new OptimizationPhase("EmptyPhase"));
                     assertEquals(rootPhase, trees.getOptimizationTree().getRoot());
                     break;
                 }
                 case "2": {
-                    assertEquals("org.example.myMethod(org.example.Foo, org.example.Class$Context)",
+                    assertEquals("Klass.someMethod()",
                                     compilationUnit.getMethod().getMethodName());
+                    InliningTreeNode inliningTreeRoot = new InliningTreeNode(compilationUnit.getMethod().getMethodName(), -1, true, null, false, null, false);
+                    ReceiverTypeProfile receiverTypeProfile = new ReceiverTypeProfile(true, List.of(new ReceiverTypeProfile.ProfiledType("KlassImpl", 1.0, "KlassImpl.abstractMethod()")));
+                    inliningTreeRoot.addChild(new InliningTreeNode("Klass.abstractMethod()", 1, false, null, true, receiverTypeProfile, true));
+                    assertEquals(inliningTreeRoot, trees.getInliningTree().getRoot());
                     OptimizationPhase rootPhase = new OptimizationPhase("RootPhase");
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
                                     "PartialUnroll",
-                                    EconomicMap.of("org.example.myMethod(org.example.Foo, org.example.Class$Context)", 2),
+                                    Position.of("Klass.someMethod()", 2),
                                     EconomicMap.of("unrollFactor", 1)));
                     rootPhase.addChild(new Optimization(
                                     "LoopTransformation",
@@ -165,7 +169,6 @@ public class ExperimentParserTest {
                                     null,
                                     EconomicMap.of("unrollFactor", 2)));
                     assertEquals(rootPhase, trees.getOptimizationTree().getRoot());
-                    assertNull(trees.getInliningTree().getRoot());
                     break;
                 }
                 default:

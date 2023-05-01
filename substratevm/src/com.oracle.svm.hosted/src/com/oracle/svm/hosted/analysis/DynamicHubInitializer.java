@@ -41,18 +41,18 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class DynamicHubInitializer {
 
@@ -84,9 +84,8 @@ public class DynamicHubInitializer {
 
     public void initializeMetaData(ImageHeapScanner heapScanner, AnalysisType type) {
         assert type.isReachable() : "Type " + type.toJavaName(true) + " is not marked as reachable.";
-        if (BuildPhaseProvider.isAnalysisFinished()) {
-            throw VMError.shouldNotReachHere("Initializing type metadata after analysis: " + type);
-        }
+
+        AnalysisError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Initializing type metadata after analysis for %s.", type.toJavaName(true));
 
         Class<?> javaClass = type.getJavaClass();
         heapScanner.rescanObject(javaClass.getPackage());
@@ -97,76 +96,74 @@ public class DynamicHubInitializer {
          * the first time we see this hub.
          */
         heapScanner.rescanObject(hub, OtherReason.HUB);
-        if (hub.getClassInitializationInfo() == null) {
-            buildClassInitializationInfo(heapScanner, type, hub);
-        }
-        if (hub.getSignature() == null) {
-            fillSignature(type, hub);
-        }
+
+        buildClassInitializationInfo(heapScanner, type, hub);
+        fillSignature(type, hub);
 
         if (type.getJavaKind() == JavaKind.Object) {
             if (type.isArray()) {
+                AnalysisError.guarantee(hub.getComponentHub().getArrayHub() == null, "Array hub already initialized for %s.", type.getComponentType().toJavaName(true));
                 hub.getComponentHub().setArrayHub(hub);
                 heapScanner.rescanField(hub.getComponentHub(), dynamicHubArrayHubField);
             }
 
-            if (hub.getInterfacesEncoding() == null) {
-                fillInterfaces(type, hub);
-                heapScanner.rescanField(hub, dynamicHubInterfacesEncodingField);
-            }
+            fillInterfaces(type, hub);
+            heapScanner.rescanField(hub, dynamicHubInterfacesEncodingField);
 
-            /*
-             * Support for Java enumerations.
-             */
-            if (type.isEnum() && hub.shouldInitEnumConstants()) {
+            /* Support for Java enumerations. */
+            if (type.isEnum()) {
+                AnalysisError.guarantee(hub.shouldInitEnumConstants(), "Enum constants already initialized for %s.", type.toJavaName(true));
                 if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(type)) {
                     hub.initEnumConstantsAtRuntime(javaClass);
                 } else {
-                    /*
-                     * We want to retrieve the enum constant array that is maintained as a private
-                     * static field in the enumeration class. We do not want a copy because that
-                     * would mean we have the array twice in the native image: as the static field,
-                     * and in the enumConstant field of DynamicHub. The only way to get the original
-                     * value is via a reflective field access, and we even have to guess the field
-                     * name.
-                     */
-                    AnalysisField found = null;
-                    for (AnalysisField f : type.getStaticFields()) {
-                        if (f.getName().endsWith("$VALUES")) {
-                            if (found != null) {
-                                /*
-                                 * Enumeration has more than one static field with enumeration
-                                 * values. Bailout and use Class.getEnumConstants() to get the value
-                                 * instead.
-                                 */
-                                found = null;
-                                break;
-                            }
-                            found = f;
-                        }
-                    }
-                    Enum<?>[] enumConstants;
-                    if (found == null) {
-                        /*
-                         * We could not find a unique $VALUES field, so we use the value returned by
-                         * Class.getEnumConstants(). This is not ideal since
-                         * Class.getEnumConstants() returns a copy of the array, so we will have two
-                         * arrays with the same content in the image heap, but it is better than
-                         * failing image generation.
-                         */
-                        enumConstants = (Enum<?>[]) javaClass.getEnumConstants();
-                    } else {
-                        enumConstants = (Enum<?>[]) SubstrateObjectConstant.asObject(constantReflection.readFieldValue(found, null));
-                        assert enumConstants != null;
-                    }
-                    hub.initEnumConstants(enumConstants);
+                    hub.initEnumConstants(retrieveEnumConstantArray(type, javaClass));
                 }
                 heapScanner.rescanField(hub, dynamicHubAnnotationsEnumConstantsReferenceField);
             }
         }
     }
 
+    private Enum<?>[] retrieveEnumConstantArray(AnalysisType type, Class<?> javaClass) {
+        /*
+         * We want to retrieve the enum constant array that is maintained as a private static field
+         * in the enumeration class. We do not want a copy because that would mean we have the array
+         * twice in the native image: as the static field, and in the enumConstant field of
+         * DynamicHub. The only way to get the original value is via a reflective field access, and
+         * we even have to guess the field name.
+         */
+        AnalysisField found = null;
+        for (ResolvedJavaField javaField : type.getStaticFields()) {
+            AnalysisField f = (AnalysisField) javaField;
+            if (f.getName().endsWith("$VALUES")) {
+                if (found != null) {
+                    /*
+                     * Enumeration has more than one static field with enumeration values. Bailout
+                     * and use Class.getEnumConstants() to get the value instead.
+                     */
+                    found = null;
+                    break;
+                }
+                found = f;
+            }
+        }
+        Enum<?>[] enumConstants;
+        if (found == null) {
+            /*
+             * We could not find a unique $VALUES field, so we use the value returned by
+             * Class.getEnumConstants(). This is not ideal since Class.getEnumConstants() returns a
+             * copy of the array, so we will have two arrays with the same content in the image
+             * heap, but it is better than failing image generation.
+             */
+            enumConstants = (Enum<?>[]) javaClass.getEnumConstants();
+        } else {
+            enumConstants = metaAccess.getUniverse().getSnippetReflection().asObject(Enum[].class, constantReflection.readFieldValue(found, null));
+            assert enumConstants != null;
+        }
+        return enumConstants;
+    }
+
     private void buildClassInitializationInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
+        AnalysisError.guarantee(hub.getClassInitializationInfo() == null, "Class initialization info already computed for %s.", type.toJavaName(true));
         ClassInitializationInfo info;
         if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(type)) {
             info = buildRuntimeInitializationInfo(type);
@@ -218,12 +215,13 @@ public class DynamicHubInitializer {
     private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");
 
     private static void fillSignature(AnalysisType type, DynamicHub hub) {
+        AnalysisError.guarantee(hub.getSignature() == null, "Signature already computed for %s.", type.toJavaName(true));
         Class<?> javaClass = type.getJavaClass();
         String signature;
         try {
             signature = (String) getSignature.invoke(javaClass);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
         hub.setSignature(signature);
     }
@@ -258,6 +256,7 @@ public class DynamicHubInitializer {
      * Fill array returned by Class.getInterfaces().
      */
     private void fillInterfaces(AnalysisType type, DynamicHub hub) {
+        AnalysisError.guarantee(hub.getInterfacesEncoding() == null, "Interfaces already computed for %s.", type.toJavaName(true));
         AnalysisType[] aInterfaces = type.getInterfaces();
         if (aInterfaces.length == 0) {
             hub.setInterfacesEncoding(null);

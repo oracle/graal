@@ -24,11 +24,13 @@
  */
 package com.oracle.graal.pointsto.phases;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -44,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @SuppressWarnings("unused")
 public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Scope> {
 
-    public static final InlineBeforeAnalysisPolicy<Scope> NO_INLINING = new InlineBeforeAnalysisPolicy<>();
+    public static final InlineBeforeAnalysisPolicy<Scope> NO_INLINING = new InlineBeforeAnalysisPolicy<>(new NodePlugin[0]);
 
     /**
      * A place for policy implementations to store per-callee information like the number of nodes
@@ -53,27 +55,38 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
     public interface Scope {
     }
 
-    protected InlineBeforeAnalysisPolicy() {
+    protected final NodePlugin[] nodePlugins;
+
+    protected InlineBeforeAnalysisPolicy(NodePlugin[] nodePlugins) {
+        this.nodePlugins = nodePlugins;
     }
 
     protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
         return false;
     }
 
-    protected S createTopScope() {
+    protected boolean tryInvocationPlugins() {
+        /*
+         * If an invocation plugin was unable to be used during bytecode parsing, then it will be
+         * retried during graph decoding. In the default case this should not happen.
+         */
+        return false;
+    }
+
+    protected S createRootScope() {
         return null;
     }
 
     protected S openCalleeScope(S outer) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     protected void commitCalleeScope(S outer, S callee) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     protected void abortCalleeScope(S outer, S callee) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 
     /**
@@ -86,6 +99,6 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
      * current list of usages. The list of usages is often but not always empty.
      */
     protected boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, S scope, Node node) {
-        throw GraalError.unimplemented();
+        throw GraalError.unimplementedParent(); // ExcludeFromJacocoGeneratedReport
     }
 }

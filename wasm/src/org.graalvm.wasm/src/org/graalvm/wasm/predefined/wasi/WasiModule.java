@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,15 +48,20 @@ import org.graalvm.wasm.predefined.BuiltinModule;
 
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
+import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_64_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 
 public final class WasiModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 16;
+    private static final int NUMBER_OF_FUNCTIONS = 27;
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
-        importMemory(instance, "main", "memory", 0, MAX_MEMORY_DECLARATION_SIZE);
+        if (context.getContextOptions().supportMemory64()) {
+            importMemory(instance, "main", "memory", 0, MAX_MEMORY_64_DECLARATION_SIZE, true);
+        } else {
+            importMemory(instance, "main", "memory", 0, MAX_MEMORY_DECLARATION_SIZE, false);
+        }
         defineFunction(instance, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, instance));
         defineFunction(instance, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, instance));
         defineFunction(instance, "environ_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiEnvironSizesGetNode(language, instance));
@@ -74,6 +79,22 @@ public final class WasiModule extends BuiltinModule {
         defineFunction(instance, "fd_filestat_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdFilestatGetNode(language, instance));
         defineFunction(instance, "path_open", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I64_TYPE, I64_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE),
                         new WasiPathOpenNode(language, instance));
+        defineFunction(instance, "path_create_directory", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathCreateDirectoryNode(language, instance));
+        defineFunction(instance, "path_remove_directory", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathRemoveDirectoryNode(language, instance));
+        defineFunction(instance, "path_filestat_set_times", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I64_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE),
+                        new WasiPathFilestatSetTimesNode(language, instance));
+        defineFunction(instance, "path_link", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathLinkNode(language, instance));
+        defineFunction(instance, "path_rename", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathRenameNode(language, instance));
+        defineFunction(instance, "path_symlink", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathSymlinkNode(language, instance));
+        defineFunction(instance, "path_unlink_file", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathUnlinkFileNode(language, instance));
+        defineFunction(instance, "path_readlink", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathReadLinkNode(language, instance));
+        defineFunction(instance, "path_filestat_get", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiPathFileStatGetNode(language, instance));
+        defineFunction(instance, "sched_yield", types(), types(I32_TYPE), new WasiSchedYieldNode(language, instance));
+        if (context.getContextOptions().constantRandomGet()) {
+            defineFunction(instance, "random_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiConstantRandomGetNode(language, instance));
+        } else {
+            defineFunction(instance, "random_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiRandomGetNode(language, instance));
+        }
         return instance;
     }
 

@@ -228,14 +228,14 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     private boolean registerDeclaredConstructors(AnalysisType type) {
-        for (AnalysisMethod method : type.getDeclaredConstructors()) {
+        for (AnalysisMethod method : type.getDeclaredConstructors(false)) {
             whiteList.add(new AnalysisMethodNode(method));
         }
         return true;
     }
 
     private boolean registerDeclaredMethods(AnalysisType type) {
-        for (AnalysisMethod method : type.getDeclaredMethods()) {
+        for (AnalysisMethod method : type.getDeclaredMethods(false)) {
             whiteList.add(new AnalysisMethodNode(method));
         }
         return true;
@@ -269,7 +269,7 @@ final class WhiteListParser extends ConfigurationParser {
         private final BigBang bb;
 
         SignaturePredicate(AnalysisType owner, List<? extends ResolvedJavaType> params, BigBang bb) {
-            this.owner = Objects.requireNonNull(owner, "Owner must be non null.").getWrappedWithoutResolve();
+            this.owner = Objects.requireNonNull(owner, "Owner must be non null.").getWrapped();
             this.params = Objects.requireNonNull(params, "Params must be non null.");
             this.bb = Objects.requireNonNull(bb, "BigBang must be non null.");
         }

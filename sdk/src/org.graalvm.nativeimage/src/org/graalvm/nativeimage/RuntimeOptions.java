@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,10 +74,14 @@ public final class RuntimeOptions {
     }
 
     /**
-     * Classes of options that can be queried through {@link #getOptions(EnumSet)}.
+     * Classes of options that can be queried through {@code getOptions(EnumSet)}.
+     * 
+     * @deprecated This class was mistakenly made API and will be removed in a future version. If
+     *             your codebase depends on it, let us know by creating an issue on GitHub.
      *
      * @since 19.0
      */
+    @Deprecated(since = "23.0", forRemoval = true)
     public enum OptionClass {
         VM,
         Compiler
@@ -86,8 +90,13 @@ public final class RuntimeOptions {
     /**
      * Returns available run time options for the selected {@linkplain OptionClass option classes}.
      *
+     * @deprecated This method was mistakenly made an API method and will be removed in a future
+     *             version. If your codebase depends on it, let us know by creating an issue on
+     *             GitHub.
+     *
      * @since 19.0
      */
+    @Deprecated(since = "23.0", forRemoval = true)
     public static OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
         return ImageSingletons.lookup(RuntimeOptionsSupport.class).getOptions(classes);
     }
@@ -95,8 +104,13 @@ public final class RuntimeOptions {
     /**
      * Returns all available run time options.
      *
+     * @deprecated This method was mistakenly made an API method and will be removed in a future
+     *             version. If your codebase depends on it, let us know by creating an issue on
+     *             GitHub.
+     *
      * @since 19.0
      */
+    @Deprecated(since = "23.0", forRemoval = true)
     public static OptionDescriptors getOptions() {
         return getOptions(EnumSet.allOf(OptionClass.class));
     }

@@ -1,0 +1,8 @@
+Manifest-Version: 1.0
+AutoUpdate-Show-In-Client: true
+OpenIDE-Module: org.graalvm.visualizer.shell
+OpenIDE-Module-Layer: org/graalvm/visualizer/shell/resources/mf-layer.xml
+OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/shell/Bundle.properties
+OpenIDE-Module-Requires: org.openide.windows.WindowManager
+OpenIDE-Module-Specification-Version: 1.1
+

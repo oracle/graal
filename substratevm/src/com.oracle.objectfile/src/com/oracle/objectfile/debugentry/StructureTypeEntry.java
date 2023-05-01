@@ -43,7 +43,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
     /**
      * Details of fields located in this instance.
      */
-    protected List<FieldEntry> fields;
+    protected final List<FieldEntry> fields;
 
     public StructureTypeEntry(String typeName, int size) {
         super(typeName, size);
@@ -66,7 +66,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
         int fieldSize = debugFieldInfo.size();
         int fieldoffset = debugFieldInfo.offset();
         int fieldModifiers = debugFieldInfo.modifiers();
-        debugContext.log("typename %s adding %s field %s type %s size %s at offset 0x%x\n",
+        debugContext.log("typename %s adding %s field %s type %s size %s at offset 0x%x%n",
                         typeName, memberModifiers(fieldModifiers), fieldName, valueTypeName, fieldSize, fieldoffset);
         TypeEntry valueTypeEntry = debugInfoBase.lookupTypeEntry(valueType);
         /*

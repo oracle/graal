@@ -370,8 +370,9 @@ public class ProfilerCLITest {
             period = sampler.getPeriod();
             sampleCount = samplerData.getSamples();
             gatherSelfHitTimes = sampler.isGatherSelfHitTimes();
-            context.close();
+            sampler.setCollecting(false);
         }
+        context.close();
         JSONArray contexts = (JSONArray) new JSONObject(out.toString()).get("contexts");
         JSONObject firstContext = (JSONObject) contexts.get(0);
 

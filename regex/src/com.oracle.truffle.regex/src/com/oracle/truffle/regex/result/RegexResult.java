@@ -60,11 +60,13 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.util.EmptyArrays;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
@@ -99,7 +101,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GET_START, PROP_GET_END, PROP_LAST_GROUP);
 
-    private final Object input;
+    private final TruffleString input;
     private final int fromIndex;
 
     private final int start;
@@ -108,7 +110,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
     private final CallTarget lazyCallTarget;
 
-    protected RegexResult(Object input, int fromIndex, int start, int end, int[] result, CallTarget lazyCallTarget) {
+    protected RegexResult(TruffleString input, int fromIndex, int start, int end, int[] result, CallTarget lazyCallTarget) {
         this.input = input;
         this.fromIndex = fromIndex;
         this.start = start;
@@ -144,11 +146,11 @@ public final class RegexResult extends AbstractConstantKeysObject {
         return RegexResult.create((int[]) executorResult);
     }
 
-    public static RegexResult createLazy(Object input, int fromIndex, int start, int end, CallTarget lazyCallTarget) {
+    public static RegexResult createLazy(TruffleString input, int fromIndex, int start, int end, CallTarget lazyCallTarget) {
         return new RegexResult(input, fromIndex, start, end, null, lazyCallTarget);
     }
 
-    public Object getInput() {
+    public TruffleString getInput() {
         return input;
     }
 
@@ -169,12 +171,12 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     public int getStart(int groupNumber) {
-        int index = groupNumber * 2;
+        int index = Group.groupNumberToBoundaryIndexStart(groupNumber);
         return groupNumber >= result.length >> 1 ? -1 : result[index];
     }
 
     public int getEnd(int groupNumber) {
-        int index = groupNumber * 2 + 1;
+        int index = Group.groupNumberToBoundaryIndexEnd(groupNumber);
         return groupNumber >= result.length >> 1 ? -1 : result[index];
     }
 
@@ -236,20 +238,23 @@ public final class RegexResult extends AbstractConstantKeysObject {
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2")
         static int lastGroupIdentity(RegexResult receiver, String symbol,
-                        @Cached("symbol") String cachedSymbol) {
-            return receiver.getLastGroup();
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached RegexResultGetLastGroupNode getLastGroupNode) {
+            return getLastGroupNode.execute(receiver);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2", replaces = "lastGroupIdentity")
         static int lastGroupEquals(RegexResult receiver, String symbol,
-                        @Cached("symbol") String cachedSymbol) {
-            return receiver.getLastGroup();
+                        @Cached("symbol") String cachedSymbol,
+                        @Cached RegexResultGetLastGroupNode getLastGroupNode) {
+            return getLastGroupNode.execute(receiver);
         }
 
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"isMatchEquals", "getStartEquals", "getEndEquals"})
-        static Object readGeneric(RegexResult receiver, String symbol) throws UnknownIdentifierException {
+        static Object readGeneric(RegexResult receiver, String symbol,
+                        @Cached RegexResultGetLastGroupNode getLastGroupNode) throws UnknownIdentifierException {
             switch (symbol) {
                 case PROP_IS_MATCH:
                     return receiver != getNoMatchInstance();
@@ -258,7 +263,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
                 case PROP_GET_END:
                     return new RegexResultGetEndMethod(receiver);
                 case PROP_LAST_GROUP:
-                    return receiver.getLastGroup();
+                    return getLastGroupNode.execute(receiver);
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);
@@ -311,20 +316,9 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     @Override
-    public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
-        switch (symbol) {
-            case PROP_IS_MATCH:
-                return this != getNoMatchInstance();
-            case PROP_GET_START:
-                return new RegexResultGetStartMethod(this);
-            case PROP_GET_END:
-                return new RegexResultGetEndMethod(this);
-            case PROP_LAST_GROUP:
-                return getLastGroup();
-            default:
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw UnknownIdentifierException.create(symbol);
-        }
+    public Object readMemberImpl(String symbol) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -513,17 +507,13 @@ public final class RegexResult extends AbstractConstantKeysObject {
                 lazyProfile.enter();
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
-            int i = groupNumber * 2 + 1;
+            int i = Group.groupNumberToBoundaryIndexEnd(groupNumber);
             return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
     }
 
     @GenerateUncached
     public abstract static class RegexResultGetStartNode extends Node {
-
-        public static RegexResultGetStartNode create() {
-            return RegexResultFactory.RegexResultGetStartNodeGen.create();
-        }
 
         public abstract int execute(Object receiver, int groupNumber);
 
@@ -536,12 +526,34 @@ public final class RegexResult extends AbstractConstantKeysObject {
                 lazyProfile.enter();
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
-            int i = groupNumber * 2;
+            int i = Group.groupNumberToBoundaryIndexStart(groupNumber);
             return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
+        }
+
+        public static RegexResultGetStartNode create() {
+            return RegexResultFactory.RegexResultGetStartNodeGen.create();
         }
 
         public static RegexResultGetStartNode getUncached() {
             return RegexResultFactory.RegexResultGetStartNodeGen.getUncached();
+        }
+    }
+
+    @GenerateUncached
+    public abstract static class RegexResultGetLastGroupNode extends Node {
+
+        public abstract int execute(Object receiver);
+
+        @Specialization
+        static int doResult(RegexResult receiver,
+                        @Cached BranchProfile lazyProfile,
+                        @Cached DispatchNode getIndicesCall) {
+            if (receiver.result == null) {
+                assert receiver.lazyCallTarget != null;
+                lazyProfile.enter();
+                getIndicesCall.execute(receiver.lazyCallTarget, receiver);
+            }
+            return receiver.getLastGroup();
         }
     }
 

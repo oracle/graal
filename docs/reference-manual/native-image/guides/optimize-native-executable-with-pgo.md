@@ -12,7 +12,7 @@ You can optimize this native executable even more for additional performance gai
 
 With PGO you can collect the profiling data in advance and then feed it to the `native-image` tool, which will use this information to optimize the performance of the resulting binary.
 
-> Note: PGO is available with GraalVM Enterprise Edition only.
+> Note: PGO is not available in GraalVM Community Edition.
 
 This guide shows how to apply PGO and transform your Java application into an optimized native executable.
 
@@ -181,9 +181,9 @@ Follow these steps to build an optimized native executable using PGO.
     You should get the performance comparable to, or faster, than the Java version of the program. For example, on a machine with 16 GB of memory and 8 cores, the `TOTAL time` for 10 iterations reduced from ~2200 to ~270 milliseconds.
 
 This guide showed how you can optimize native executables for additional performance gain and higher throughput.
-GraalVM Enterprise Edition offers extra benefits for building native executables, such as  Profile-Guided Optimizations (PGO). 
+Oracle GraalVM offers extra benefits for building native executables, such as Profile-Guided Optimizations (PGO). 
 With PGO you "train" your application for specific workloads and significantly improve the performance.
 
 ### Related Documentation
 
-- [Improving performance of GraalVM native images with profile-guided optimizations](https://medium.com/graalvm/improving-performance-of-graalvm-native-images-with-profile-guided-optimizations-9c431a834edb)
+- [Optimize Cloud Native Java Apps with Oracle GraalVM PGO](https://luna.oracle.com/lab/3f0b7c86-6105-4b7a-9a3b-eb73b251a1aa)

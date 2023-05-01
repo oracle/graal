@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,6 +60,8 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 /*
+ * Legacy implementation, only used by other legacy code (see GR-44538).
+ *
  * This class writes Java heap in hprof binary format. The class is heavily
  * influenced by 'HeapHprofBinWriter' implementation.
  */
@@ -1491,7 +1493,7 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
 
         @Override
         public AllocationFreeFileOutputStream newStreamFor(FileOutputStream fileOutputStream) throws IOException {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime();
         }
 
         @Override
@@ -1523,7 +1525,7 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
 
         @Override
         protected long position(long offset) throws IOException {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime();
         }
     }
 

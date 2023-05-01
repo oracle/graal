@@ -20,6 +20,24 @@
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Class.getSimpleName calls"/>
     </module>
 
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="userError"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Consistent format strings for UserError."/>
+      <property name="severity" value="error"/> 
+      <property name="format" value="UserError\.(abort|guarantee)\(([a-zA-Z$0-9!]+, )?&quot;[a-z]"/>
+      <property name="message" value="'format' passed to UserError.abort() or UserError.guarantee() must not start with a lowercase letter"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="newLinesFormatStrings"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Proper new lines in format strings"/>
+      <property name="severity" value="error"/> 
+      <property name="format" value="((err|out|String)\.format|printf)\(&quot;.*\\n"/>
+      <property name="message" value="Format strings must use %n instead of \n for new lines"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+
     <module name="AvoidStarImport">
       <property name="allowClassImports" value="false"/>
       <property name="allowStaticMemberImports" value="false"/>

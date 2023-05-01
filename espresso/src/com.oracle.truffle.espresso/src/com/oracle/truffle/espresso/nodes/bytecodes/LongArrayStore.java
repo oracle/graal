@@ -58,7 +58,7 @@ public abstract class LongArrayStore extends EspressoNode {
     public abstract void execute(StaticObject receiver, int index, long value);
 
     @Specialization
-    void executeWithNullCheck(StaticObject array, int index, long value,
+    void doWithNullCheck(StaticObject array, int index, long value,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck longArrayStore) {
         longArrayStore.execute(nullCheck.execute(array), index, value);

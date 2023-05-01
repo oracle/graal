@@ -437,6 +437,20 @@ JNIEXPORT void JNICALL JVM_SetExtentLocalCache(JNIEnv *env, jclass threadClass, 
   UNIMPLEMENTED(JVM_SetExtentLocalCache);
 }
 
+JNIEXPORT jobject JNICALL JVM_ScopedValueCache(JNIEnv *env, jclass threadClass) {
+    UNIMPLEMENTED(JVM_ScopedValueCache);
+    return NULL;
+}
+
+JNIEXPORT void JNICALL JVM_SetScopedValueCache(JNIEnv *env, jclass threadClass, jobject theCache) {
+UNIMPLEMENTED(JVM_SetScopedValueCache);
+}
+
+JNIEXPORT jobject JNICALL JVM_FindScopedValueBindings(JNIEnv *env, jclass threadClass) {
+    UNIMPLEMENTED(JVM_FindScopedValueBindings);
+    return NULL;
+}
+
 JNIEXPORT jlong JNICALL JVM_GetNextThreadIdOffset(JNIEnv *env, jclass threadClass) {
   UNIMPLEMENTED(JVM_GetNextThreadIdOffset);
   return 0L;
@@ -792,6 +806,10 @@ JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject acti
 JNIEXPORT jobject JNICALL JVM_GetInheritedAccessControlContext(JNIEnv *env, jclass cls) {
   IMPLEMENTED(JVM_GetInheritedAccessControlContext);
   return (*getEnv())->JVM_GetInheritedAccessControlContext(env, cls);
+}
+
+JNIEXPORT void JNICALL JVM_EnsureMaterializedForStackWalk_func(JNIEnv* env, jobject vthread, jobject value) {
+    UNIMPLEMENTED(JVM_EnsureMaterializedForStackWalk_func);
 }
 
 JNIEXPORT jobject JNICALL JVM_GetStackAccessControlContext(JNIEnv *env, jclass cls) {
@@ -1624,6 +1642,15 @@ JNIEXPORT void JNICALL JVM_VirtualThreadUnmountEnd(JNIEnv* env, jobject vthread,
   UNIMPLEMENTED(JVM_VirtualThreadUnmountEnd);
 }
 
+JNIEXPORT void JNICALL JVM_VirtualThreadHideFrames(JNIEnv* env, jobject vthread, jboolean hide) {
+  UNIMPLEMENTED(JVM_VirtualThreadHideFrames);
+}
+
+JNIEXPORT jint JNICALL JVM_GetClassFileVersion(JNIEnv *env, jclass current) {
+  UNIMPLEMENTED(JVM_GetClassFileVersion);
+  return 0;
+}
+
 // region Invocation API
 
 jboolean is_supported_jni_version(jint version) {
@@ -1633,7 +1660,10 @@ jboolean is_supported_jni_version(jint version) {
         case JNI_VERSION_1_6:
         case JNI_VERSION_1_8:
         case JNI_VERSION_9:
-        case JNI_VERSION_10: return JNI_TRUE;
+        case JNI_VERSION_10:
+        case JNI_VERSION_19:
+        case JNI_VERSION_20:
+		return JNI_TRUE;
     }
     return JNI_FALSE;
 }
@@ -1897,7 +1927,7 @@ jint DetachCurrentThread(JavaVM *vm) {
 
 jint GetEnv(JavaVM *vm, void **penv, jint version) {
     if ((*vm)->reserved1 != MOKA_LATTE) {
-        fprintf(stderr, "AttachCurrentThread: not a MOKA_LATTE" OS_NEWLINE_STR);
+        fprintf(stderr, "GetEnv: not a MOKA_LATTE" OS_NEWLINE_STR);
         return JNI_ERR;
     }
     JavaVM *espressoJavaVM = (*vm)->reserved2;

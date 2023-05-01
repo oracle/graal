@@ -30,23 +30,31 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.TimerCollection;
+
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public class StandalonePointsToAnalysis extends PointsToAnalysis {
     private Set<AnalysisMethod> addedClinits = ConcurrentHashMap.newKeySet();
 
-    public StandalonePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
+    public StandalonePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM,
+                    AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
+                    ForkJoinPool executorService, Runnable heartbeatCallback,
                     TimerCollection timerCollection) {
-        super(options, universe, providers, hostVM, executorService, heartbeatCallback, new UnsupportedFeatures(), timerCollection, true);
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, heartbeatCallback, new UnsupportedFeatures(), timerCollection,
+                        true);
     }
 
     @Override
@@ -67,10 +75,10 @@ public class StandalonePointsToAnalysis extends PointsToAnalysis {
     }
 
     @Override
-    public void onTypeInitialized(AnalysisType type) {
+    public void onTypeReachable(AnalysisType type) {
         AnalysisMethod clinitMethod = type.getClassInitializer();
         if (clinitMethod != null && !addedClinits.contains(clinitMethod)) {
-            addRootMethod(clinitMethod, true).registerAsImplementationInvoked(type);
+            addRootMethod(clinitMethod, true);
             addedClinits.add(clinitMethod);
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,10 +54,15 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
+
+import jdk.management.jfr.FlightRecorderMXBean;
 
 /**
  * This class provides the SVM support implementation for the MXBean that provide VM introspection,
@@ -76,14 +81,14 @@ import com.sun.jmx.mbeanserver.MXBeanLookup;
  *
  * Support for {@link ManagementFactory#getPlatformMBeanServer()}: The {@link MBeanServer} that
  * makes all MXBean available too is allocated lazily at run time. This has advantages and
- * disadvantages. The {@link MBeanServer} and all the bean registrations is a quite heavyweight data
- * structure. All the attributes and operations of the beans are stored in several nested hash maps.
- * Putting all of that in the image heap would increase the image heap size, but also avoid the
- * allocation at run time on first access. Unfortunately, there are also many additional global
+ * disadvantages. The {@link MBeanServer} and all the bean registrations is a quite heavy-weight
+ * data structure. All the attributes and operations of the beans are stored in several nested hash
+ * maps. Putting all of that in the image heap would increase the image heap size, but also avoid
+ * the allocation at run time on first access. Unfortunately, there are also many additional global
  * caches for bean and attribute lookup, for example in {@link MXBeanLookup}, MXBeanIntrospector,
  * and {@link MBeanServerFactory}. Beans from the hosting VM that runs the image build must not be
  * made available at runtime using these caches, i.e., a complicated re-build of the caches would be
- * necessary at image build time. Therefore we opted to inialize the {@link MBeanServer} at run
+ * necessary at image build time. Therefore we opted to initialize the {@link MBeanServer} at run
  * time.
  *
  * This has two important consequences: 1) There must not be any {@link MBeanServer} in the image
@@ -114,24 +119,23 @@ public final class ManagementSupport implements ThreadListener {
 
     private final SubstrateClassLoadingMXBean classLoadingMXBean;
     private final SubstrateCompilationMXBean compilationMXBean;
-    private final SubstrateRuntimeMXBean runtimeMXBean;
     private final SubstrateThreadMXBean threadMXBean;
 
     /* Initialized lazily at run time. */
     private OperatingSystemMXBean osMXBean;
+    private FlightRecorderMXBean flightRecorderMXBean;
 
     /** The singleton MBean server for the platform, initialized lazily at run time. */
     MBeanServer platformMBeanServer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    ManagementSupport() {
+    ManagementSupport(SubstrateRuntimeMXBean runtimeMXBean, SubstrateThreadMXBean threadMXBean) {
         platformManagedObjectsMap = new HashMap<>();
         platformManagedObjectsSet = Collections.newSetFromMap(new IdentityHashMap<>());
 
         classLoadingMXBean = new SubstrateClassLoadingMXBean();
         compilationMXBean = new SubstrateCompilationMXBean();
-        runtimeMXBean = new SubstrateRuntimeMXBean();
-        threadMXBean = new SubstrateThreadMXBean();
+        this.threadMXBean = threadMXBean;
 
         /*
          * Register the platform objects defined in this package. Note that more platform objects
@@ -142,16 +146,11 @@ public final class ManagementSupport implements ThreadListener {
         addPlatformManagedObjectSingleton(java.lang.management.RuntimeMXBean.class, runtimeMXBean);
         addPlatformManagedObjectSingleton(com.sun.management.ThreadMXBean.class, threadMXBean);
         /*
-         * The following platform objects must be registered as existing and valid, even though we
-         * do not have an implementation yet.
-         */
-        addPlatformManagedObjectList(java.lang.management.MemoryPoolMXBean.class, Collections.emptyList());
-        addPlatformManagedObjectList(java.lang.management.BufferPoolMXBean.class, Collections.emptyList());
-        /*
          * Register the platform object for the OS using a supplier that lazily initializes it at
          * run time.
          */
         doAddPlatformManagedObjectSingleton(getOsMXBeanInterface(), (PlatformManagedObjectSupplier) this::getOsMXBean);
+        doAddPlatformManagedObjectSingleton(FlightRecorderMXBean.class, (PlatformManagedObjectSupplier) this::getFlightRecorderMXBean);
     }
 
     private static Class<?> getOsMXBeanInterface() {
@@ -171,6 +170,21 @@ public final class ManagementSupport implements ThreadListener {
             osMXBean = SubstrateUtil.cast(osMXBeanImpl, OperatingSystemMXBean.class);
         }
         return osMXBean;
+    }
+
+    private synchronized FlightRecorderMXBean getFlightRecorderMXBean() {
+        /**
+         * Requires JFR support and that JMX is user-enabled because
+         * {@code jdk.management.jfr.FlightRecorderMXBeanImpl} makes
+         * {@code com.sun.jmx.mbeanserver.MBeanSupport} reachable.
+         */
+        if (!(HasJfrSupport.get() && JmxIncluded.get())) {
+            return null;
+        }
+        if (flightRecorderMXBean == null) {
+            flightRecorderMXBean = SubstrateUtil.cast(new Target_jdk_management_jfr_FlightRecorderMXBeanImpl(), FlightRecorderMXBean.class);
+        }
+        return flightRecorderMXBean;
     }
 
     @Fold
@@ -265,13 +279,13 @@ public final class ManagementSupport implements ThreadListener {
         return true;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
     @Override
-    public void beforeThreadRun(IsolateThread isolateThread, Thread javaThread) {
+    public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
         threadMXBean.noteThreadStart(javaThread);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
     @Override
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         threadMXBean.noteThreadFinish(javaThread);
@@ -290,6 +304,9 @@ public final class ManagementSupport implements ThreadListener {
 
     /* Modified version of JDK 11: ManagementFactory.addMXBean */
     private static void addMXBean(MBeanServer mbs, PlatformManagedObject pmo) {
+        if (pmo == null) {
+            return;
+        }
         ObjectName oname = pmo.getObjectName();
         // Make DynamicMBean out of MXBean by wrapping it with a StandardMBean
         final DynamicMBean dmbean;
@@ -309,6 +326,11 @@ public final class ManagementSupport implements ThreadListener {
 
     Set<Class<?>> getPlatformManagementInterfaces() {
         return Collections.unmodifiableSet(platformManagedObjectsMap.keySet());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Set<PlatformManagedObject> getPlatformManagedObjects() {
+        return platformManagedObjectsSet;
     }
 
     <T extends PlatformManagedObject> T getPlatformMXBean(Class<T> mxbeanInterface) {
@@ -343,10 +365,10 @@ public final class ManagementSupport implements ThreadListener {
      * {@linkplain #handleLazyPlatformManagedObjectSingleton special handling} when retrieving
      * stored platform objects.
      */
-    private interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, PlatformManagedObject {
+    public interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, PlatformManagedObject {
         @Override
         default ObjectName getObjectName() {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereOverrideInChild(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -358,5 +380,13 @@ public final class ManagementSupport implements ThreadListener {
         assert object instanceof PlatformManagedObject;
         return object instanceof PlatformManagedObjectSupplier ? ((PlatformManagedObjectSupplier) object).get()
                         : (PlatformManagedObject) object;
+    }
+}
+
+// This is required because FlightRecorderMXBeanImpl is only accessible within its package.
+@TargetClass(className = "jdk.management.jfr.FlightRecorderMXBeanImpl")
+final class Target_jdk_management_jfr_FlightRecorderMXBeanImpl {
+    @Alias
+    Target_jdk_management_jfr_FlightRecorderMXBeanImpl() {
     }
 }

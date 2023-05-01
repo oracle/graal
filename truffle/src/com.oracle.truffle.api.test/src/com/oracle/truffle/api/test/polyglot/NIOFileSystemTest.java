@@ -451,7 +451,9 @@ public class NIOFileSystemTest {
         Path targetRelative = config.fs().parsePath("testCreateDirectory1");
         Path targetAbsolute = config.workDir().resolve(targetRelative);
         expectException(() -> config.fs().createDirectory(targetAbsolute, (FileAttribute<?>[]) null), NullPointerException.class);
-        expectException(() -> config.fs().createDirectory(targetAbsolute, new FileAttribute<?>[]{null}), NullPointerException.class);
+        if (config.strictCreateDirectoryAttrs) {
+            expectException(() -> config.fs().createDirectory(targetAbsolute, new FileAttribute<?>[]{null}), NullPointerException.class);
+        }
         config.fs().createDirectory(targetRelative);
         Assert.assertTrue(Files.isDirectory(targetAbsolute));
         Path targetAbsolute2 = config.workDir().resolve("testCreateDirectory2");

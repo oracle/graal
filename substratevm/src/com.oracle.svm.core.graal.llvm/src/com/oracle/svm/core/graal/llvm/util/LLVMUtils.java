@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.llvm.util;
 
 import static com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM.LLVMTypeOf;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.debug.GraalError.unimplemented;
+import static org.graalvm.compiler.debug.GraalError.unimplementedOverride;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -36,7 +36,6 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 
 import com.oracle.svm.core.graal.llvm.LLVMGenerator;
-import com.oracle.svm.core.graal.llvm.LLVMGenerator.SpecialRegister;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
@@ -152,10 +151,10 @@ public class LLVMUtils {
      */
     public static class LLVMPendingSpecialRegisterRead extends LLVMVariable implements LLVMValueWrapper {
         private final LLVMGenerator gen;
-        private final SpecialRegister reg;
+        private final LLVMValueRef reg;
         private final LLVMValueRef offset;
 
-        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, SpecialRegister reg) {
+        public LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef reg) {
             this(gen, reg, null);
         }
 
@@ -163,7 +162,7 @@ public class LLVMUtils {
             this(pendingRead.gen, pendingRead.reg, offset);
         }
 
-        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, SpecialRegister reg, LLVMValueRef offset) {
+        private LLVMPendingSpecialRegisterRead(LLVMGenerator gen, LLVMValueRef reg, LLVMValueRef offset) {
             super(LLVMKind.toLIRKind(gen.getBuilder().wordType()));
             this.gen = gen;
             this.reg = reg;
@@ -173,7 +172,7 @@ public class LLVMUtils {
         @Override
         public LLVMValueRef get() {
             LLVMIRBuilder builder = gen.getBuilder();
-            LLVMValueRef register = gen.getSpecialRegisterValue(reg);
+            LLVMValueRef register = builder.buildReadRegister(reg);
             return offset == null ? register : builder.buildGEP(builder.buildIntToPtr(register, builder.rawPointerType()), offset);
         }
     }
@@ -198,7 +197,7 @@ public class LLVMUtils {
                 case 64:
                     return LIRKind.value(new LLVMKind(builder.doubleType()));
                 default:
-                    throw shouldNotReachHere("invalid float type");
+                    throw shouldNotReachHere("invalid float type"); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -219,7 +218,7 @@ public class LLVMUtils {
 
         @Override
         public LIRKind getNarrowPointerKind() {
-            throw unimplemented();
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -255,7 +254,7 @@ public class LLVMUtils {
 
         @Override
         public Key getKey() {
-            throw unimplemented();
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -269,7 +268,7 @@ public class LLVMUtils {
                 case LLVM.LLVMPointerTypeKind:
                     return 8;
                 default:
-                    throw shouldNotReachHere("invalid kind");
+                    throw shouldNotReachHere("invalid kind"); // ExcludeFromJacocoGeneratedReport
             }
         }
 
@@ -280,7 +279,7 @@ public class LLVMUtils {
 
         @Override
         public char getTypeChar() {
-            throw unimplemented();
+            throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

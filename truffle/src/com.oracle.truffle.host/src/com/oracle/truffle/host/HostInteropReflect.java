@@ -51,6 +51,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 
 final class HostInteropReflect {
@@ -223,7 +224,7 @@ final class HostInteropReflect {
     }
 
     @TruffleBoundary
-    static Object newAdapterInstance(HostContext hostContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
+    static Object newAdapterInstance(Node node, HostContext hostContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
         if (TruffleOptions.AOT) {
             throw HostEngineException.unsupported(hostContext.access, "Unsupported target type.");
         }
@@ -235,7 +236,7 @@ final class HostInteropReflect {
         HostMethodDesc.SingleMethod adapterConstructor = adapter.getValueConstructor();
         Object[] arguments = new Object[]{obj};
         try {
-            return ((HostObject) HostExecuteNodeGen.getUncached().execute(adapterConstructor, null, arguments, hostContext)).obj;
+            return ((HostObject) HostExecuteNodeGen.getUncached().execute(node, adapterConstructor, null, arguments, hostContext)).obj;
         } catch (UnsupportedTypeException e) {
             throw HostInteropErrors.invalidExecuteArgumentType(hostContext, null, e.getSuppliedValues());
         } catch (ArityException e) {

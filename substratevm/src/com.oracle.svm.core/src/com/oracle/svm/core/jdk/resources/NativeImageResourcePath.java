@@ -391,9 +391,7 @@ public class NativeImageResourcePath implements Path {
         try {
             return new URI(
                             "resource",
-                            fileSystem.getResourcePath().toUri() +
-                                            "!" +
-                                            fileSystem.getString(toAbsolutePath().path),
+                            fileSystem.getString(toAbsolutePath().path),
                             null);
         } catch (URISyntaxException e) {
             throw new AssertionError(e);

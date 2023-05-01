@@ -57,7 +57,7 @@ public abstract class DoubleArrayLoad extends EspressoNode {
     public abstract double execute(StaticObject receiver, int index);
 
     @Specialization
-    double executeWithNullCheck(StaticObject array, int index,
+    double doWithNullCheck(StaticObject array, int index,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck doubleArrayLoad) {
         return doubleArrayLoad.execute(nullCheck.execute(array), index);

@@ -46,6 +46,7 @@ import java.util.function.Predicate;
 
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -259,7 +260,23 @@ abstract class BreakpointLocation {
             if (key == null) {
                 return f.tagIs(DebuggerTags.AlwaysHalt.class).build();
             }
-            f.sourceSectionEquals(location);
+            if (column > 0) {
+                // we have precise column, we adhere to the location
+                f.sourceSectionEquals(location);
+            } else {
+                // We do not have specific column, we need to filter the whole line
+                switch (suspendAnchor) {
+                    case BEFORE:
+                        f.lineStartsIn(IndexRange.byLength(location.getStartLine(), 1));
+                        break;
+                    case AFTER:
+                        f.lineEndsIn(IndexRange.byLength(location.getEndLine(), 1));
+                        break;
+                    default:
+                        throw new IllegalArgumentException(suspendAnchor.name());
+                }
+                f.sourceIs(location.getSource());
+            }
             setTags(f, sourceElements);
             return f.build();
         }

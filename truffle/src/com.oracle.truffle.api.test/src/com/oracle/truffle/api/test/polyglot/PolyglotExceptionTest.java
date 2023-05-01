@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,6 +81,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -412,7 +413,8 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                     }
                 }
                 if (TruffleTestAssumptions.isWeakEncapsulation()) { // GR-35913
-                    assertTrue(foundFrame);
+                    // No guest stack trace injected into OutOfMemoryError.
+                    assertFalse(foundFrame);
                 }
             });
         }
@@ -454,7 +456,8 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                     }
                 }
                 if (TruffleTestAssumptions.isWeakEncapsulation()) { // GR-35913
-                    assertTrue(foundFrame);
+                    // No guest stack trace injected into StackOverflowError.
+                    assertFalse(foundFrame);
                 }
             });
         }
@@ -740,6 +743,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         abstract Object execute(VirtualFrame frame);
     }
 
+    @GenerateInline(false)
     abstract static class ReadBindingsNode extends BaseNode {
 
         @Specialization

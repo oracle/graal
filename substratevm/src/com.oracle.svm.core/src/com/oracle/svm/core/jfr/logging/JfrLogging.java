@@ -30,6 +30,7 @@ import java.util.Set;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -37,7 +38,6 @@ import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
 public class JfrLogging {
-    private final JfrLogConfiguration configuration;
     private final String[] logLevels;
     private final String[] logTagSets;
     private int levelDecorationFill = 0;
@@ -45,16 +45,26 @@ public class JfrLogging {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrLogging() {
-        configuration = new JfrLogConfiguration();
         logLevels = createLogLevels();
         logTagSets = createLogTagSets();
     }
 
     public void parseConfiguration(String config) {
-        configuration.parse(config);
+        JfrLogConfiguration.parse(config);
+    }
+
+    public void warnInternal(String message) {
+        int tagSetId = SubstrateUtil.cast(LogTag.JFR_SYSTEM, Target_jdk_jfr_internal_LogTag.class).id;
+        log(tagSetId, JfrLogConfiguration.JfrLogLevel.WARNING.level, message);
     }
 
     public void log(int tagSetId, int level, String message) {
+        if (message == null) {
+            return;
+        }
+        verifyLogLevel(level);
+        verifyLogTagSetId(tagSetId);
+
         String levelDecoration = logLevels[level];
         String tagSetDecoration = logTagSets[tagSetId];
 
@@ -72,6 +82,31 @@ public class JfrLogging {
         log.string(tagSetDecoration, tagSetDecorationFill, Log.LEFT_ALIGN);
         log.string("] ");
         log.string(message).newline();
+    }
+
+    public void logEvent(int level, String[] lines, boolean system) {
+        if (lines == null) {
+            return;
+        }
+        verifyLogLevel(level);
+
+        LogTag logTag = system ? LogTag.JFR_SYSTEM_EVENT : LogTag.JFR_EVENT;
+        int tagSetId = SubstrateUtil.cast(logTag, Target_jdk_jfr_internal_LogTag.class).id;
+        for (String line : lines) {
+            log(tagSetId, level, line);
+        }
+    }
+
+    private void verifyLogLevel(int level) {
+        if (level < 0 || level >= logLevels.length || logLevels[level] == null) {
+            throw new IllegalArgumentException("LogLevel passed is outside valid range");
+        }
+    }
+
+    private void verifyLogTagSetId(int tagSetId) {
+        if (tagSetId < 0 || tagSetId >= logTagSets.length) {
+            throw new IllegalArgumentException("LogTagSet id is outside valid range");
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

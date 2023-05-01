@@ -229,8 +229,8 @@ public class LanguageFinalizationFailureTest {
         @Override
         protected void disposeContext(ExecutableContext context) {
             AtomicReference<Throwable> throwableRef = new AtomicReference<>();
-            Thread t = context.env.createThread(() -> {
-            });
+            Thread t = context.env.newTruffleThreadBuilder(() -> {
+            }).build();
             t.setUncaughtExceptionHandler((t1, e) -> throwableRef.set(e));
             t.start();
             try {

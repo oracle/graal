@@ -28,16 +28,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.profdiff.core.TreeNode;
-import org.graalvm.profdiff.matching.tree.DeltaTree;
-import org.graalvm.profdiff.matching.tree.DeltaTreeNode;
-import org.graalvm.profdiff.matching.tree.EditScript;
-import org.junit.Assert;
+import org.graalvm.profdiff.diff.DeltaTree;
+import org.graalvm.profdiff.diff.DeltaTreeNode;
+import org.graalvm.profdiff.diff.EditScript;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class DeltaTreeTest {
     private static class MockTreeNode extends TreeNode<MockTreeNode> {
         protected MockTreeNode() {
             super(null);
+        }
+    }
+
+    private static class MockInfoNode extends MockTreeNode {
+        @Override
+        public boolean isInfoNode() {
+            return true;
         }
     }
 
@@ -53,23 +61,55 @@ public class DeltaTreeTest {
         editScript.insert(new MockTreeNode(), 1);
         editScript.identity(new MockTreeNode(), new MockTreeNode(), 0);
         EditScript<MockTreeNode> convertedEditScript = DeltaTree.fromEditScript(editScript).asEditScript();
-        Assert.assertEquals(editScript.getDeltaNodes().toList(), convertedEditScript.getDeltaNodes().toList());
+        assertEquals(editScript.getOperations().toList(), convertedEditScript.getOperations().toList());
     }
 
+    /**
+     * Tests that {@link DeltaTree#pruneIdentities()} keeps only differences with context and
+     * relevant info nodes.
+     *
+     * The tested delta tree in preorder is:
+     *
+     * <pre>
+     *      . root
+     *          . identity
+     *              . info1
+     *              . anonymous
+     *              + insertion
+     *              - deletion
+     *              * relabeling
+     *          . deleteMe
+     *              . info2
+     * </pre>
+     *
+     * The expected delta tree after pruning is:
+     *
+     * <pre>
+     *      . root
+     *          . identity
+     *              . info1
+     *              + insertion
+     *              - deletion
+     *              * relabeling
+     * </pre>
+     */
     @Test
     public void pruneIdentities() {
         DeltaTreeNode<MockTreeNode> root = new DeltaTreeNode<>(0, true, new MockTreeNode(), new MockTreeNode());
         root.addChild(true, new MockTreeNode(), new MockTreeNode());
         DeltaTreeNode<MockTreeNode> identity = root.addChild(true, new MockTreeNode(), new MockTreeNode());
+        DeltaTreeNode<MockTreeNode> info1 = identity.addChild(true, new MockInfoNode(), new MockInfoNode());
         identity.addChild(true, new MockTreeNode(), new MockTreeNode());
         DeltaTreeNode<MockTreeNode> insertion = identity.addChild(false, null, new MockTreeNode());
         DeltaTreeNode<MockTreeNode> deletion = identity.addChild(false, new MockTreeNode(), null);
         DeltaTreeNode<MockTreeNode> relabeling = identity.addChild(false, new MockTreeNode(), new MockTreeNode());
+        DeltaTreeNode<MockTreeNode> deleteMe = root.addChild(true, new MockTreeNode(), new MockTreeNode());
+        deleteMe.addChild(true, new MockInfoNode(), new MockInfoNode());
         DeltaTree<MockTreeNode> deltaTree = new DeltaTree<>(root);
         deltaTree.pruneIdentities();
-        List<DeltaTreeNode<MockTreeNode>> expectedPreorder = List.of(root, identity, insertion, deletion, relabeling);
+        List<DeltaTreeNode<MockTreeNode>> expectedPreorder = List.of(root, identity, info1, insertion, deletion, relabeling);
         List<DeltaTreeNode<MockTreeNode>> actualPreorder = new ArrayList<>();
         deltaTree.forEach(actualPreorder::add);
-        Assert.assertEquals(expectedPreorder, actualPreorder);
+        assertEquals(expectedPreorder, actualPreorder);
     }
 }

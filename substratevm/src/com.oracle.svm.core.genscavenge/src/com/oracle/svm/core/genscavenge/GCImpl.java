@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,15 +43,13 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -74,6 +72,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeCacheCleaner;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -90,6 +89,7 @@ import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -99,7 +99,6 @@ import com.oracle.svm.core.util.VMError;
 public final class GCImpl implements GC {
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
-    private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
     private final RuntimeCodeCacheWalker runtimeCodeCacheWalker = new RuntimeCodeCacheWalker(greyToBlackObjRefVisitor);
     private final RuntimeCodeCacheCleaner runtimeCodeCacheCleaner = new RuntimeCodeCacheCleaner();
 
@@ -115,6 +114,7 @@ public final class GCImpl implements GC {
     private UnsignedWord sizeBefore = WordFactory.zero();
     private boolean collectionInProgress = false;
     private UnsignedWord collectionEpoch = WordFactory.zero();
+    private long lastWholeHeapExaminedTimeMillis = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
@@ -129,6 +129,11 @@ public final class GCImpl implements GC {
         } else {
             return "Serial GC";
         }
+    }
+
+    @Override
+    public String getDefaultMaxHeapSize() {
+        return String.format("%s%% of RAM", SerialAndEpsilonGCOptions.MaximumHeapSizePercent.getValue());
     }
 
     @Override
@@ -173,7 +178,6 @@ public final class GCImpl implements GC {
         int size = SizeOf.get(CollectionVMOperationData.class);
         CollectionVMOperationData data = StackValue.get(size);
         UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
-        data.setNativeVMOperation(collectOperation);
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());
         data.setRequestingNanoTime(System.nanoTime());
@@ -196,7 +200,6 @@ public final class GCImpl implements GC {
         startCollectionOrExit();
 
         timers.resetAllExceptMutator();
-        collectionEpoch = collectionEpoch.add(1);
 
         /* Flush all TLAB chunks to eden. */
         ThreadLocalAllocation.disableAndFlushForAllThreads();
@@ -287,6 +290,9 @@ public final class GCImpl implements GC {
             }
             scavenge(!complete);
             verifyAfterGC();
+            if (complete) {
+                lastWholeHeapExaminedTimeMillis = System.currentTimeMillis();
+            }
         } finally {
             collectionTimer.close();
         }
@@ -294,6 +300,8 @@ public final class GCImpl implements GC {
         HeapImpl.getHeapImpl().getAccounting().setEdenAndYoungGenBytes(WordFactory.zero(), accounting.getYoungChunkBytesAfter());
         accounting.afterCollection(completeCollection, collectionTimer);
         policy.onCollectionEnd(completeCollection, cause);
+
+        GenScavengeMemoryPoolMXBeans.notifyAfterCollection(accounting);
 
         UnsignedWord usedBytes = getChunkBytes();
         UnsignedWord freeBytes = policy.getCurrentHeapCapacity().subtract(usedBytes);
@@ -303,7 +311,7 @@ public final class GCImpl implements GC {
     }
 
     private void verifyBeforeGC() {
-        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+        if (SubstrateGCOptions.VerifyHeap.getValue() && SerialGCOptions.VerifyBeforeGC.getValue()) {
             Timer verifyBeforeTimer = timers.verifyBefore.open();
             try {
                 boolean success = true;
@@ -313,7 +321,7 @@ public final class GCImpl implements GC {
                 if (!success) {
                     String kind = getGCKind();
                     Log.log().string("Heap verification failed before ").string(kind).string(" garbage collection.").newline();
-                    VMError.shouldNotReachHere();
+                    VMError.shouldNotReachHereAtRuntime();
                 }
             } finally {
                 verifyBeforeTimer.close();
@@ -322,7 +330,7 @@ public final class GCImpl implements GC {
     }
 
     private void verifyAfterGC() {
-        if (SubstrateGCOptions.VerifyHeap.getValue()) {
+        if (SubstrateGCOptions.VerifyHeap.getValue() && SerialGCOptions.VerifyAfterGC.getValue()) {
             Timer verifyAfterTime = timers.verifyAfter.open();
             try {
                 boolean success = true;
@@ -332,7 +340,7 @@ public final class GCImpl implements GC {
                 if (!success) {
                     String kind = getGCKind();
                     Log.log().string("Heap verification failed after ").string(kind).string(" garbage collection.").newline();
-                    VMError.shouldNotReachHere();
+                    VMError.shouldNotReachHereAtRuntime();
                 }
             } finally {
                 verifyAfterTime.close();
@@ -358,7 +366,7 @@ public final class GCImpl implements GC {
         Log verboseGCLog = Log.log();
         HeapImpl heap = HeapImpl.getHeapImpl();
         sizeBefore = ((SubstrateGCOptions.PrintGC.getValue() || SerialGCOptions.PrintHeapShape.getValue()) ? getChunkBytes() : WordFactory.zero());
-        if (SubstrateGCOptions.VerboseGC.getValue() && getCollectionEpoch().equal(1)) {
+        if (SubstrateGCOptions.VerboseGC.getValue() && getCollectionEpoch().equal(0)) {
             verboseGCLog.string("[Heap policy parameters: ").newline();
             verboseGCLog.string("  YoungGenerationSize: ").unsigned(getPolicy().getMaximumYoungGenerationSize()).newline();
             verboseGCLog.string("      MaximumHeapSize: ").unsigned(getPolicy().getMaximumHeapSize()).newline();
@@ -505,7 +513,7 @@ public final class GCImpl implements GC {
 
     @Fold
     public static GCImpl getGCImpl() {
-        GCImpl gcImpl = HeapImpl.getHeapImpl().getGCImpl();
+        GCImpl gcImpl = HeapImpl.getGCImpl();
         assert gcImpl != null;
         return gcImpl;
     }
@@ -515,6 +523,7 @@ public final class GCImpl implements GC {
         collect(cause, true);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCompleteCollection() {
         return completeCollection;
     }
@@ -528,11 +537,7 @@ public final class GCImpl implements GC {
             try {
                 startTicks = JfrGCEvents.startGCPhasePause();
                 try {
-                    if (incremental) {
-                        cheneyScanFromDirtyRoots();
-                    } else {
-                        cheneyScanFromRoots();
-                    }
+                    cheneyScan(incremental);
                 } finally {
                     JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan" : "Scan", startTicks);
                 }
@@ -610,6 +615,7 @@ public final class GCImpl implements GC {
      * compiled code to the Java heap must be consider as either strong or weak references,
      * depending on whether the code is currently on the execution stack.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkRuntimeCodeCache() {
         Timer walkRuntimeCodeCacheTimer = timers.walkRuntimeCodeCache.open();
         try {
@@ -628,6 +634,16 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "We don't want any safepoint checks in the core part of the GC.")
+    private void cheneyScan(boolean incremental) {
+        if (incremental) {
+            cheneyScanFromDirtyRoots();
+        } else {
+            cheneyScanFromRoots();
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void cheneyScanFromRoots() {
         Timer cheneyScanFromRootsTimer = timers.cheneyScanFromRoots.open();
         try {
@@ -697,6 +713,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void cheneyScanFromDirtyRoots() {
         Timer cheneyScanFromDirtyRootsTimer = timers.cheneyScanFromDirtyRoots.open();
         try {
@@ -788,6 +805,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void promoteChunksWithPinnedObjects() {
         Timer promotePinnedObjectsTimer = timers.promotePinnedObjects.open();
         try {
@@ -811,6 +829,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static PinnedObjectImpl removeClosedPinnedObjects(PinnedObjectImpl list) {
         PinnedObjectImpl firstOpen = null;
         PinnedObjectImpl lastOpen = null;
@@ -839,7 +858,7 @@ public final class GCImpl implements GC {
     @NeverInline("Starting a stack walk in the caller frame. " +
                     "Note that we could start the stack frame also further down the stack, because GC stack frames must not access any objects that are processed by the GC. " +
                     "But we don't store stack frame information for the first frame we would need to process.")
-    @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.", calleeMustBe = false)
+    @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.")
     private void blackenStackRoots() {
         Timer blackenStackRootsTimer = timers.blackenStackRoots.open();
         try {
@@ -881,7 +900,7 @@ public final class GCImpl implements GC {
      * {@link SimpleCodeInfoQueryResult} twice per frame, and also ensures that there are no virtual
      * calls to a stack frame visitor.
      */
-    @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.", calleeMustBe = false)
+    @Uninterruptible(reason = "Required by called JavaStackWalker methods. We are at a safepoint during GC, so it does not change anything for this method.")
     private void walkStack(JavaStackWalk walk) {
         assert VMOperation.isGCInProgress() : "This methods accesses a CodeInfo without a tether";
 
@@ -933,17 +952,21 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void walkThreadLocals() {
         if (SubstrateOptions.MultiThreaded.getValue()) {
             Timer walkThreadLocalsTimer = timers.walkThreadLocals.open();
             try {
-                ThreadLocalMTWalker.walk(greyToBlackObjRefVisitor);
+                for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                    VMThreadLocalMTSupport.singleton().walk(isolateThread, greyToBlackObjRefVisitor);
+                }
             } finally {
                 walkThreadLocalsTimer.close();
             }
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenDirtyImageHeapRoots() {
         if (!HeapImpl.usesImageHeapCardMarking()) {
             blackenImageHeapRoots();
@@ -966,6 +989,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenDirtyImageHeapChunkRoots(AlignedHeader firstAligned, UnalignedHeader firstUnaligned) {
         /*
          * We clean and remark cards of the image heap only during complete collections when we also
@@ -987,6 +1011,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenImageHeapRoots() {
         if (HeapImpl.usesImageHeapCardMarking()) {
             // Avoid scanning the entire image heap even for complete collections: its remembered
@@ -997,22 +1022,25 @@ public final class GCImpl implements GC {
 
         Timer blackenImageHeapRootsTimer = timers.blackenImageHeapRoots.open();
         try {
-            HeapImpl.getHeapImpl().walkNativeImageHeapRegions(blackenImageHeapRootsVisitor);
+            blackenImageHeapRoots(HeapImpl.getImageHeapInfo());
+            if (AuxiliaryImageHeap.isPresent()) {
+                ImageHeapInfo auxImageHeapInfo = AuxiliaryImageHeap.singleton().getImageHeapInfo();
+                if (auxImageHeapInfo != null) {
+                    blackenImageHeapRoots(auxImageHeapInfo);
+                }
+            }
         } finally {
             blackenImageHeapRootsTimer.close();
         }
     }
 
-    private class BlackenImageHeapRootsVisitor implements MemoryWalker.ImageHeapRegionVisitor {
-        @Override
-        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
-            if (access.containsReferences(region) && access.isWritable(region)) {
-                access.visitObjects(region, greyToBlackObjectVisitor);
-            }
-            return true;
-        }
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void blackenImageHeapRoots(ImageHeapInfo imageHeapInfo) {
+        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableReferenceObject, imageHeapInfo.lastWritableReferenceObject, greyToBlackObjectVisitor, true);
+        ImageHeapWalker.walkPartitionInline(imageHeapInfo.firstWritableHugeObject, imageHeapInfo.lastWritableHugeObject, greyToBlackObjectVisitor, false);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void blackenDirtyCardRoots() {
         Timer blackenDirtyCardRootsTimer = timers.blackenDirtyCardRoots.open();
         try {
@@ -1027,6 +1055,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void prepareForPromotion(boolean isIncremental) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         heap.getOldGeneration().prepareForPromotion();
@@ -1035,6 +1064,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void scanGreyObjects(boolean isIncremental) {
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
         try {
@@ -1048,6 +1078,7 @@ public final class GCImpl implements GC {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static void scanGreyObjectsLoop() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         YoungGeneration youngGen = heap.getYoungGeneration();
@@ -1060,6 +1091,7 @@ public final class GCImpl implements GC {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressWarnings("static-method")
     Object promoteObject(Object original, UnsignedWord header) {
         HeapImpl heap = HeapImpl.getHeapImpl();
@@ -1093,6 +1125,7 @@ public final class GCImpl implements GC {
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Header<?> getChunk(Object obj, boolean isAligned) {
         if (isAligned) {
             return AlignedHeapChunk.getEnclosingChunk(obj);
@@ -1101,6 +1134,7 @@ public final class GCImpl implements GC {
         return UnalignedHeapChunk.getEnclosingChunk(obj);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void promotePinnedObject(PinnedObjectImpl pinned) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         Object referent = pinned.getObject();
@@ -1151,6 +1185,7 @@ public final class GCImpl implements GC {
 
     private void finishCollection() {
         assert collectionInProgress;
+        collectionEpoch = collectionEpoch.add(1);
         collectionInProgress = false;
     }
 
@@ -1179,6 +1214,17 @@ public final class GCImpl implements GC {
         return collectionEpoch;
     }
 
+    public long getMillisSinceLastWholeHeapExamined() {
+        long startMillis;
+        if (lastWholeHeapExaminedTimeMillis < 0) {
+            // no full GC has yet been run, use time since the first allocation
+            startMillis = HeapImpl.getChunkProvider().getFirstAllocationTime() / 1_000_000;
+        } else {
+            startMillis = lastWholeHeapExaminedTimeMillis;
+        }
+        return System.currentTimeMillis() - startMillis;
+    }
+
     public GCAccounting getAccounting() {
         return accounting;
     }
@@ -1193,6 +1239,7 @@ public final class GCImpl implements GC {
         return getPolicy() instanceof NeverCollect;
     }
 
+    @Fold
     GreyToBlackObjectVisitor getGreyToBlackObjectVisitor() {
         return greyToBlackObjectVisitor;
     }
@@ -1242,7 +1289,7 @@ public final class GCImpl implements GC {
              */
             ImplicitExceptions.activateImplicitExceptionsAreFatal();
             try {
-                HeapImpl.getHeapImpl().getGCImpl().collectOperation((CollectionVMOperationData) data);
+                HeapImpl.getGCImpl().collectOperation((CollectionVMOperationData) data);
             } catch (Throwable t) {
                 throw VMError.shouldNotReachHere(t);
             } finally {
@@ -1253,7 +1300,7 @@ public final class GCImpl implements GC {
         @Override
         protected boolean hasWork(NativeVMOperationData data) {
             CollectionVMOperationData d = (CollectionVMOperationData) data;
-            return HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
+            return HeapImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
         }
     }
 
@@ -1302,6 +1349,7 @@ public final class GCImpl implements GC {
             return firstAligned.isNull() && firstUnaligned.isNull();
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void add(AlignedHeader chunks) {
             if (chunks.isNonNull()) {
                 assert HeapChunk.getPrevious(chunks).isNull() : "prev must be null";
@@ -1314,6 +1362,7 @@ public final class GCImpl implements GC {
             }
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void add(UnalignedHeader chunks) {
             if (chunks.isNonNull()) {
                 assert HeapChunk.getPrevious(chunks).isNull() : "prev must be null";
@@ -1337,6 +1386,7 @@ public final class GCImpl implements GC {
             }
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private static <T extends Header<T>> T getLast(T chunks) {
             T prev = chunks;
             T next = HeapChunk.getNext(prev);

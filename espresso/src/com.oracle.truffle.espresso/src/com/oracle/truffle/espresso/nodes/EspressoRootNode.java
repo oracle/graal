@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,11 +26,13 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -39,6 +41,7 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.ForeignStackTraceElementObject;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
@@ -130,6 +133,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     @Override
     public String getQualifiedName() {
         return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
+    }
+
+    @Override
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        Node location = element.getLocation();
+        return new ForeignStackTraceElementObject(getMethod(), location != null ? location.getEncapsulatingSourceSection() : getEncapsulatingSourceSection());
     }
 
     @Override
@@ -320,6 +329,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             Method method = getMethod();
             assert method.isSynchronized();
             assert method.getDeclaringKlass().isInitializedOrInitializing() : method.getDeclaringKlass();
+            methodNode.beforeInstumentation(frame);
             StaticObject monitor = method.isStatic()
                             ? /* class */ method.getDeclaringKlass().mirror()
                             : /* receiver */ (StaticObject) frame.getArguments()[0];
@@ -362,6 +372,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             if (usesMonitors()) {
                 initMonitorStack(frame, new MonitorStack());
             }
+            methodNode.beforeInstumentation(frame);
             return methodNode.execute(frame);
         }
     }

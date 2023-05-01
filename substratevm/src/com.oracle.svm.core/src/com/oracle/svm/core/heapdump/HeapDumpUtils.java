@@ -57,7 +57,11 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
-/** A collection of utilities that might assist heap dumps. */
+/**
+ * Legacy implementation, only used by other legacy code (see GR-44538).
+ *
+ * A collection of utilities that might assist heap dumps.
+ */
 public class HeapDumpUtils {
 
     @UnknownObjectField(types = {byte[].class}) private byte[] fieldsMap;
@@ -66,7 +70,7 @@ public class HeapDumpUtils {
     private final TestingBackDoor testingBackDoor;
 
     /** Constructor. */
-    HeapDumpUtils() {
+    public HeapDumpUtils() {
         this.testingBackDoor = new TestingBackDoor(this);
     }
 
@@ -98,7 +102,12 @@ public class HeapDumpUtils {
     public int instanceSizeOf(Class<?> cls) {
         final int encoding = DynamicHub.fromClass(cls).getLayoutEncoding();
         if (LayoutEncoding.isPureInstance(encoding)) {
-            return (int) LayoutEncoding.getPureInstanceSize(encoding).rawValue();
+            /*
+             * May underestimate the object size if the identity hashcode field is optional. This is
+             * the best that what can do because the HPROF format does not support that instances of
+             * one class have different object sizes.
+             */
+            return (int) LayoutEncoding.getPureInstanceAllocationSize(encoding).rawValue();
         } else {
             return 0;
         }
@@ -320,7 +329,7 @@ public class HeapDumpUtils {
             if (obj == null) {
                 result = 0;
             } else {
-                final UnsignedWord objectSize = LayoutEncoding.getSizeFromObject(obj);
+                final UnsignedWord objectSize = LayoutEncoding.getMomentarySizeFromObject(obj);
                 result = objectSize.rawValue();
             }
             return result;

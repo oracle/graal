@@ -51,18 +51,6 @@ public interface SamplerBuffer extends PointerBase {
     void setNext(SamplerBuffer buffer);
 
     /**
-     * Returns the JFR id of the thread that owns this buffer.
-     */
-    @RawField
-    long getOwner();
-
-    /**
-     * Sets the JFR id of the thread that owns this buffer.
-     */
-    @RawField
-    void setOwner(long threadId);
-
-    /**
      * Returns the current position. Any data before this position is valid sample data.
      */
     @RawField
@@ -85,16 +73,4 @@ public interface SamplerBuffer extends PointerBase {
      */
     @RawField
     void setSize(UnsignedWord value);
-
-    /**
-     * Should this buffer be freed after processing the data in it.
-     */
-    @RawField
-    boolean getFreeable();
-
-    /**
-     * Sets the freeable status of the buffer.
-     */
-    @RawField
-    void setFreeable(boolean freeable);
 }

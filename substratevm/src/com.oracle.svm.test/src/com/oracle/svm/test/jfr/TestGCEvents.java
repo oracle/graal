@@ -26,24 +26,30 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+
 import org.junit.Test;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
-public class TestGCEvents extends JfrTest {
-    @Override
-    public String[] getTestedEvents() {
-        return new String[]{
-                        JfrEvent.GarbageCollection.getName(),
-                        JfrEvent.GCPhasePauseEvent.getName(),
-                        JfrEvent.GCPhasePauseLevel1Event.getName(),
-                        JfrEvent.GCPhasePauseLevel2Event.getName(),
-                        JfrEvent.ExecuteVMOperation.getName()
-        };
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
+
+public class TestGCEvents extends JfrRecordingTest {
+    @Test
+    public void test() throws Throwable {
+        String[] events = new String[]{JfrEvent.GarbageCollection.getName(), JfrEvent.GCPhasePauseEvent.getName(), JfrEvent.GCPhasePauseLevel1Event.getName(),
+                        JfrEvent.GCPhasePauseLevel2Event.getName(), JfrEvent.ExecuteVMOperation.getName()};
+        Recording recording = startRecording(events);
+
+        System.gc();
+
+        stopRecording(recording, TestGCEvents::validateEvents);
     }
 
-    @Test
-    public void test() throws Exception {
-        System.gc();
+    private static void validateEvents(List<RecordedEvent> events) {
+        assertTrue(events.size() > 0);
     }
 }

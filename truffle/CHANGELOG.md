@@ -2,6 +2,23 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## 23.1.0
+
+* GR-45123 Added `GenerateInline#inlineByDefault` to force usage of inlined node variant even when the node has also a cached variant (`@GenerateCached(true)`).
+* GR-45036 Improved IGV IR dumping. Dump folders for Truffle now include the compilation tier to differentiate compilations better. Inlined IR graphs are now additionally dumped in separate folders if dump level is >= 2.
+* GR-45036 Improved IGV AST dumping. The Truffle AST is now dumped as part of the IR dump folder. The dumped AST tree now shows all inlined ASTS in a single tree. Individual functions can be grouped using the "Cluster nodes" function in IGV (top status bar). Root nodes now display their name e.g. `SLFunctionBody (root add)`. Every AST node now has a property `graalIRNode` that allows to find the corresponding Graal IR constant if there is one. 
+* GR-45284 Added Graal debug options `TruffleTrustedNonNullCast` and `TruffleTrustedTypeCast` that allow disabling trusted non-null and type casts in Truffle, respectively. Note that disabling trusted type casts effectively disables non-null casts, too.
+## Version 23.1.0
+
+* GR-44211 Added `TruffleLanguage.Env#newTruffleThreadBuilder(Runnable)` to create a builder for threads that have access to the appropriate `TruffleContext`. All existing `TruffleLanguage.Env#createThread` methods have been deprecated. On top of what the deprecated methods provided, the builder now allows to specify `beforeEnter` and `afterLeave` callbacks for the created threads.
+* GR-44211 Added `TruffleContext#leaveAndEnter(Node, Interrupter, InterruptibleFunction, Object)` to be able to interrupt the function run when the context is not entered. The exisiting API `TruffleContext#leaveAndEnter(Node, Supplier)` is deprecated.
+* GR-44211 Removed the deprecated method `TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)`.
+* GR-44211 Added `TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)`. It replaces the method `TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)` that is now deprecated.
+* GR-44211 Added `TruffleSafepoint#setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)` to be able to return an object from the interruptible functional method.
+* GR-44211 Added `TruffleSafepoint#setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)` as a short-cut method to allow setting the blocked status for methods that throw `InterruptedException` and support interrupting using `Thread#interrupt()`.
+
+
+
 ## Version 23.0.0
 
 * GR-38526 Added `TruffleLanguage.Env#isSocketIOAllowed()`. The method returns true if access to network sockets is allowed.
@@ -16,6 +33,53 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-39189 Added attach methods on the `Instrumenter` class, that take `NearestSectionFilter` as a parameter. The new `NearestSectionFilter` class can be used to instrument or detect nearest locations to a given source line and column. For example, this can be used to implement breakpoints, where the exact line or column is not always precise and the location needs to be updated when new code is loaded.
 * GR-39189 Added `InstrumentableNode.findNearestNodeAt(int line, int column, ...)` to find the nearest node to the given source line and column. This is an alternative to the existing method that takes character offset.
 * GR-42674 It has been documented that methods `TruffleLanguage.Env#getPublicTruffleFile`, `TruffleLanguage.Env#getInternalTruffleFile`, `TruffleLanguage.Env#getTruffleFileInternal` and `TruffleInstrument.Env#getPublicTruffleFile` can throw `IllegalArgumentException` when the path string cannot be converted to a `Path` or uri preconditions required by the `FileSystem` do not hold.
+* GR-31342 Implemented several new features for Truffle DSL and improved its performance:
+	* Added an `@GenerateInline` annotation that allows Truffle nodes to be object-inlined automatically. Object-inlined Truffle nodes become singletons and therefore reduce memory footprint. Please see the [tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/DSLNodeObjectInlining.md) for further details.
+	* Added an `@GenerateCached` annotation that allows users to control the generation of cached nodes. Use `@GenerateCached(false)` to disable cached node generation when all usages of nodes are object-inlined to save code footprint.
+	* Updated Truffle DSL nodes no longer require the node lock during specialization, resulting in improved first execution performance. CAS-style inline cache updates are now used to avoid deadlocks when calling CallTarget.call(...) in guards. Inline caches continue to guarantee no duplicate values and are not affected by race conditions. Language implementations should be aware that the reduced contention may reveal other thread-safety issues in the language.
+	* Improved Truffle DSL node memory footprint by merging generated fields for state and exclude bit sets and improving specialization data class generation to consider activation probability. Specializations should be ordered by activation probability for optimal results.
+	* Improved memory footprint by automatically inlining cached parameter values of enum types into the state bitset
+	* Added `@Cached(neverDefault=true|false)` option to indicate whether the cache initializer will ever return a `null` or primitive default value. Truffle DSL now emits a warning if it is beneficial to set this property. Alternatively, the new `@NeverDefault` annotation may be used on the bound method or variable. The generated code layout can benefit from this information and reduce memory overhead. If never default is set to `true`, then the DSL will now use the default value instead internally as a marker for uninitialized values.
+	* `@Shared` cached values may now use primitive values. Also, `@Shared` can now be used for caches contained in specializations with multiple instances. This means that the shared cache will be used across all instances of a specialization.
+	* Truffle DSL now generates many more Javadoc comments in the generated code that try to explain the decisions of the code generator. 
+	* Added inlined variants for all Truffle profiles in `com.oracle.truffle.api.profiles`. The DSL now emits recommendation warnings when inlined profiles should be used instead of the allocated ones.
+	* Truffle DSL now emits many more warnings for recommendations. For example, it emits warnings for inlining opportunities, cached sharing or when a cache initializer should be designated as `@NeverDefault`. To ease migration work, we added several new ways to suppress the warnings temporarily for a Java package. For a list of possible warnings and further usage instructions, see the new [warnings page](https://github.com/oracle/graal/blob/master/truffle/docs/DSLWarnings.md) in the docs.
+	* The DSL now produces warnings for specializations with multiple instances but an unspecified limit. The new warning can be resolved by specifying the desired limit (previously, default `"3"` was assumed)
+	* Added the capability to unroll specializations with multiple instances. Unrolling in combination with node object inlining may further reduce the memory footprint of a Truffle node. In particular, if all cached states can be encoded into the state bit set of the generated node. See `@Specialization(...unroll=2)` for further details
+
+* GR-31342 Deprecated `ConditionProfile.createBinaryProfile()` and `ConditionProfile.createCountingProfile()`. Use `ConditionProfile.create()` and `CountingConditionProfile.create()` instead.
+* GR-31342 Added `ValueProfile.create()` that automatically creates an exact class value profile. This allows its usage in `@Cached` without specifying a cached initializer.
+* GR-31342 The node `insert` method is now public instead of protected. This avoids the need to create cumbersome accessor methods when needed in corner-cases.
+* GR-43599 Specifying the sharing group in `@Shared` is now optional for cached values. If not specified, the parameter name will be used as sharing group. For example, `@Shared @Cached MyNode sharedNode` will get the sharing group `sharedNode` assigned. It is recommended to use the explicit sharing group still if it improves readability or if the parameter name cannot be changed.
+* GR-43492 `LanguageReference#get()` is now always supported inside of `InstrumentableNode#materializeInstrumentableNodes()`.
+* GR-43944 Added `HostCompilerDirectives.inInterpreterFastPath()` which allows to mark branches that should only be executed in the interpreter, but also optimized like fast-path code in the host compiler.
+* GR-25539 Added `InteropLibrary#fitsInBigInteger()` and `InteropLibrary#asBigInteger()` to access interop values that fit into `java.math.BigInteger` without loss of precision. A warning is produced for objects that export the `isNumber` interop message and don't export the new big integer messages.
+* GR-25539 Added `DebugValue#fitsInBigInteger()` and `DebugValue#asBigInteger()`.
+* GR-25539 Added `GenerateLibrary.Abstract#ifExportedAsWarning()` to specify a library message to be abstract only if another message is exported. A warning is produced that prompts the user to export the message.
+* GR-43903 Usages of `@Specialization(assumptions=...)` that reach a `@Fallback` specialization now produce a suppressable warning. In most situations, such specializations should be migrated to use a regular guard instead. For example, instead of using `@Specialization(assumptions = "assumption")` you might need to be using `@Specialization(guards = "assumption.isValid()")`.
+* GR-43903 Added `@Idempotent` and `@NonIdempotent` DSL annotations useful for DSL guard optimizations. Guards that only bind idempotent methods and no dynamic values can always be assumed `true` after they were `true` once on the slow-path. The generated code leverages this information and asserts instead of executes the guard on the fast-path. The DSL now emits warnings with for all guards where specifying the annotations may be beneficial. Note that all guards that do not bind dynamic values are assumed idempotent by default for compatibility reasons.
+* GR-43663 Added RootNode#computeSize as a way for languages to specify an approximate size of a RootNode when number of AST nodes cannot be used (e.g. for bytecode interpreters).
+* GR-42539 (change of behavior) Unclosed polyglot engines are no longer closed automatically on VM shutdown. They just die with the VM. As a result, `TruffleInstrument#onDispose` is not called for active instruments on unclosed engines in the event of VM shutdown. In case an instrument is supposed to do some specific action before its disposal, e.g. print some kind of summary, it should be done in `TruffleInstrument#onFinalize`.
+* GR-42961 Added `TruffleString.ByteIndexOfCodePointSetNode`, which allows fast searching for a given set of codepoints.
+* GR-42961 Added `TruffleString.GetCodeRangeImpreciseNode`, which allows querying the currently known code range without triggering a string scan.
+* GR-42961 `TruffleString.FromJavaStringNode` no longer eagerly scans strings for their code range. To still get eager scanning of constant strings, use `fromConstant(String)`.
+* GR-30473 Added support for sandbox policies. By default, languages and instruments support just the `TRUSTED` sandbox policy.
+  * If a language wants to target a more restrictive sandbox policy, it must:
+    1. Specify the most strict sandbox policy it satisfies using `TruffleLanguage.Registration#sandbox()`.
+    2. For each option, the language must specify the most restrictive sandbox policy in which the option can be used via `Option#sandbox()`. By default, options have a `TRUSTED` sandbox policy.
+    3.  If a language needs additional validation, it can use `TruffleLanguage.Env#getSandboxPolicy()` to obtain the current context sandbox policy.
+  * If an instrument wants to target a more restrictive sandbox policy, it must:
+    1. Specify the most strict sandbox policy it satisfies using `TruffleInstrument.Registration#sandbox()`.
+    2. For each option, the instrument must specify the most restrictive sandbox policy in which the option can be used via `Option#sandbox()`. By default, options have a `TRUSTED` sandbox policy.
+    3.  If an instrument needs additional validation, it can use `TruffleInstrument.Env#getSandboxPolicy()` to obtain the engine's sandbox policy.
+  * Added `TruffleOptionDescriptors` extending `OptionDescriptors` by the ability to provide the option's `SandboxPolicy`.
+* GR-43818 Library messages annotated with `@Deprecated` now emit a warning when they are exported. It is now possible to overload a message method by adding, removing a parameter or making the parameter type more generic. Also added `Message.isDeprecated()` to find out whether a message was deprecated at runtime.
+* GR-44053 (change of behavior) The default implementation of `InteropLibrary.getExceptionStackTrace()` will now include host stack trace elements if [public host access is allowed](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowPublicAccess-boolean-).
+* GR-44053 (change of behavior) Truffle stack trace information is now attached to host and internal exceptions via suppressed exceptions. The cause of an exception is never modified anymore.
+* GR-44053 (change of behavior) A `StackOverflowError` or `OutOfMemoryError` crossing a Truffle call boundary will not be injected guest stack trace information anymore.
+* GR-44723 `Truffle.getRuntime().getName()` and consequently `Engine.getImplementationName()` have been adjusted to return "Oracle GraalVM" instead of "GraalVM EE".
+* GR-44211 Added `TruffleLanguage.Env#newTruffleThreadBuilder(Runnable)` to create a builder for threads that have access to the appropriate `TruffleContext`. All existing `TruffleLanguage.Env#createThread` methods have been deprecated. On top of what the deprecated methods provide, the builder allows specifying `beforeEnter` and `afterLeave` callbacks for the created threads. 
+* GR-44211 Added `TruffleLanguage.Env#newTruffleThreadBuilder(Runnable)` to create a builder for threads that have access to the appropriate `TruffleContext`. All existing `TruffleLanguage.Env#createThread` methods have been deprecated. On top of what the deprecated methods provided, the builder now allows to specify `beforeEnter` and `afterLeave` callbacks for the created threads. 
 
 ## Version 22.3.0
 
@@ -139,7 +203,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added [TruffleContext.Builder#onClosed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.Builder.html#onClosed-java.lang.Runnable-) that allows throwing a custom guest exception when the new context is closed.
 * GR-35093 Deprecated `UnionAssumption`, use arrays of assumptions instead. Deprecated `NeverValidAssumption` and `AlwaysValidAssumption`, use `Assumption.NEVER_VALID` and `Assumption.ALWAYS_VALID` instead. Language implementations should avoid custom `Assumption` subclasses, they lead to performance degradation in the interpreter.
 * GR-35093 Added `create()` constructor methods to profiles in `com.oracle.truffle.api.profiles` where appropriate to simplify use with Truffle DSL.
-
 
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.

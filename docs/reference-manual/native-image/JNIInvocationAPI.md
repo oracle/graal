@@ -37,7 +37,7 @@ The second parameter is a reference to the `jclass` value for the class declarin
 The third parameter is a portable (e.g., `long`) identifier of the [Native Image isolatethread](C-API.md).
 The rest of the parameters are the actual parameters of the Java `Native.add` method described in the next section. Compile the code with the `--shared` option:
 ```shell
-$GRAALVM/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
+$JAVA_HOME/bin/native-image --shared -H:Name=libnativeimpl -cp nativeimpl
 ```
 The `libnativeimpl.so` is generated. We are ready to use it from standard Java code.
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,6 +79,8 @@ public class NFITest {
     static final boolean IS_WINDOWS = System.getProperty("os.name").startsWith("Windows");
 
     static final boolean IS_AMD64 = System.getProperty("os.arch").equals("amd64");
+
+    static final boolean IS_AARCH64 = System.getProperty("os.arch").equals("aarch64");
 
     protected static String getLibPath(String lib) {
         String filename;

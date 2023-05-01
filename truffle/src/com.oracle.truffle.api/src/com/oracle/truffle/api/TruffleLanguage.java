@@ -86,6 +86,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
@@ -220,8 +221,8 @@ import com.oracle.truffle.api.source.Source;
  *
  * There are two kinds of threads that access contexts of Truffle guest languages:
  * <ul>
- * <li>Internal threads are {@link Env#createThread(Runnable) created} and managed by a language for
- * a context. All internally created threads need to be stopped when the context is
+ * <li>Internal threads are {@link Env#newTruffleThreadBuilder(Runnable)} created} and managed by a
+ * language for a context. All internally created threads need to be stopped when the context is
  * {@link #disposeContext(Object) disposed}.
  * <li>External threads are created and managed by the host application / language launcher. The
  * host application is allowed to use language contexts from changing threads, sequentially or at
@@ -235,8 +236,14 @@ import com.oracle.truffle.api.source.Source;
  * multi-threaded accesses. Initialization actions for multi-threaded access can be performed by
  * overriding {@link #initializeMultiThreading(Object)}. Threads are
  * {@link #initializeThread(Object, Thread) initialized} and {@link #disposeContext(Object)
- * disposed} before and after use with a context. Languages may {@link Env#createThread(Runnable)
- * create} new threads if the environment {@link Env#isCreateThreadAllowed() allows} it.
+ * disposed} before and after use with a context. Languages may
+ * {@link Env#newTruffleThreadBuilder(Runnable)} create} new threads if the environment
+ * {@link Env#isCreateThreadAllowed() allows} it.
+ * <p>
+ * In addition to the two kinds of threads described above, there are
+ * {@link Env#createSystemThread(Runnable, ThreadGroup) system threads} designed to process language
+ * internal tasks in the background. They do not require the {@link Env#isCreateThreadAllowed()
+ * creation permit}, but they must not enter any language context.
  *
  * @param <C> internal state of the language associated with every thread that is executing program
  *            {@link #parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest) parsed} by the
@@ -501,6 +508,18 @@ public abstract class TruffleLanguage<C> {
          * @return URL for language website.
          */
         String website() default "";
+
+        /**
+         * Specifies the most strict sandbox policy in which the language can be used. The language
+         * can be used in a context with the specified sandbox policy or a weaker one. For example,
+         * if a language specifies {@code ISOLATED} policy, it can be used in a context configured
+         * with sandbox policy {@code TRUSTED}, {@code CONSTRAINED} or {@code ISOLATED}. But it
+         * cannot be used in a context configured with the {@code UNTRUSTED} sandbox policy.
+         *
+         * @see SandboxPolicy
+         * @since 23.0
+         */
+        SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
     }
 
     /**
@@ -656,9 +675,9 @@ public abstract class TruffleLanguage<C> {
      * case, the finalization order may be non-deterministic and/or not respect the order specified
      * by language dependencies.
      * <p>
-     * All threads {@link Env#createThread(Runnable) created} by the language must be stopped and
-     * joined during finalizeContext. The languages are responsible for fulfilling that contract,
-     * otherwise, an {@link AssertionError} is thrown. It's not safe to use the
+     * All threads {@link Env#newTruffleThreadBuilder(Runnable)} created} by the language must be
+     * stopped and joined during finalizeContext. The languages are responsible for fulfilling that
+     * contract, otherwise, an {@link AssertionError} is thrown. It's not safe to use the
      * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
      * Thread termination as the polyglot thread may be cancelled before executing the executor
      * worker.
@@ -1129,9 +1148,10 @@ public abstract class TruffleLanguage<C> {
      * language to perform cleanup actions for each thread and context. Threads might be disposed
      * before after or while a context is disposed. The {@link Thread#currentThread() current
      * thread} may differ from the disposed thread. Disposal of threads is only guaranteed for
-     * threads that were created by guest languages, so called {@link Env#createThread(Runnable)
-     * polyglot threads}. Other threads, created by the embedder, may be collected by the garbage
-     * collector before they can be disposed and may therefore not be disposed.
+     * threads that were created by guest languages, so called
+     * {@link Env#newTruffleThreadBuilder(Runnable)} polyglot threads}. Other threads, created by
+     * the embedder, may be collected by the garbage collector before they can be disposed and may
+     * therefore not be disposed.
      *
      * @see #initializeThread(Object, Thread) For usage details.
      * @since 0.28
@@ -1713,7 +1733,7 @@ public abstract class TruffleLanguage<C> {
          * Returns <code>true</code> if the creation of new threads is allowed in the current
          * environment.
          *
-         * @see #createThread(Runnable)
+         * @see #newTruffleThreadBuilder(Runnable)
          * @since 0.28
          */
         public boolean isCreateThreadAllowed() {
@@ -1731,8 +1751,10 @@ public abstract class TruffleLanguage<C> {
          * set to 0.
          *
          * @since 0.28
+         * @deprecated Use {@link #newTruffleThreadBuilder(Runnable)} instead.
          */
         @TruffleBoundary
+        @Deprecated
         public Thread createThread(Runnable runnable) {
             return createThread(runnable, null);
         }
@@ -1746,8 +1768,10 @@ public abstract class TruffleLanguage<C> {
          * @see #getContext()
          * @see #newInnerContextBuilder(String...)
          * @since 0.28
+         * @deprecated Use {@link #newTruffleThreadBuilder(Runnable)} instead.
          */
         @TruffleBoundary
+        @Deprecated
         public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context) {
             return createThread(runnable, context, null, 0);
         }
@@ -1760,8 +1784,10 @@ public abstract class TruffleLanguage<C> {
          * @see #getContext()
          * @see #newInnerContextBuilder(String...)
          * @since 0.28
+         * @deprecated Use {@link #newTruffleThreadBuilder(Runnable)} instead.
          */
         @TruffleBoundary
+        @Deprecated
         public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context, ThreadGroup group) {
             return createThread(runnable, context, group, 0);
         }
@@ -1802,14 +1828,24 @@ public abstract class TruffleLanguage<C> {
          * @see #getContext()
          * @see #newInnerContextBuilder(String...)
          * @since 0.28
+         * @deprecated Use {@link #newTruffleThreadBuilder(Runnable)} instead.
          */
         @TruffleBoundary
+        @Deprecated
         public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context, ThreadGroup group, long stackSize) {
-            try {
-                return LanguageAccessor.engineAccess().createThread(polyglotLanguageContext, runnable, context != null ? context.polyglotContext : null, group, stackSize);
-            } catch (Throwable t) {
-                throw engineToLanguageException(t);
-            }
+            return new TruffleThreadBuilder(polyglotLanguageContext, runnable).context(context).threadGroup(group).stackSize(stackSize).build();
+        }
+
+        /**
+         * Creates a builder for threads that have access to the given context.
+         * 
+         * @param runnable the runnable to run on the threads created by the builder.
+         * @return the builder for threads that have access to the given context.
+         *
+         * @since 23.0
+         */
+        public TruffleThreadBuilder newTruffleThreadBuilder(Runnable runnable) {
+            return new TruffleThreadBuilder(polyglotLanguageContext, runnable);
         }
 
         /**
@@ -1831,8 +1867,9 @@ public abstract class TruffleLanguage<C> {
          * thrown. Creating or terminating a system thread does not notify
          * {@link TruffleLanguage#initializeThread(Object, Thread) languages} or instruments'
          * thread-listeners. Creating a system thread does not cause a transition to multi-threaded
-         * access. The caller must be entered in a context to create a system thread, if not an
-         * {@link IllegalStateException} is thrown.
+         * access. The {@link Env#isCreateThreadAllowed() creation permit} is not required to create
+         * a system thread, but the caller must be entered in a context to create a system thread,
+         * if not an {@link IllegalStateException} is thrown.
          * <p>
          * It is recommended to set an
          * {@link Thread#setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)
@@ -2740,7 +2777,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -2763,7 +2800,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -2800,7 +2837,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -2825,7 +2862,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -2942,7 +2979,7 @@ public abstract class TruffleLanguage<C> {
                 } catch (UnsupportedOperationException e) {
                     throw e;
                 } catch (Throwable t) {
-                    throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                    throw TruffleFile.wrapHostException(t, fileSystemContext);
                 }
             }
 
@@ -2995,7 +3032,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fileSystemContext);
             }
         }
 
@@ -3012,7 +3049,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return fs.fileSystem.getSeparator();
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -3030,7 +3067,7 @@ public abstract class TruffleLanguage<C> {
             try {
                 return fs.fileSystem.getPathSeparator();
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -3149,7 +3186,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -3185,7 +3222,7 @@ public abstract class TruffleLanguage<C> {
             } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fs.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs);
             }
         }
 
@@ -3465,7 +3502,7 @@ public abstract class TruffleLanguage<C> {
          * <p>
          * If the thread local action future needs to be waited on and this might be prone to
          * deadlocks the
-         * {@link TruffleSafepoint#setBlockedWithException(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
+         * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
          * {@link Interruptible}. If the underlying polyglot context is already closed, the method
@@ -3500,6 +3537,20 @@ public abstract class TruffleLanguage<C> {
          */
         public void registerOnDispose(Closeable closeable) {
             LanguageAccessor.engineAccess().registerOnDispose(polyglotLanguageContext, closeable);
+        }
+
+        /**
+         * Returns the context's {@link SandboxPolicy}. A language can use the returned sandbox
+         * policy to make language-specific verifications that the sandbox requirements are met.
+         * These verifications should be made as early as possible in the
+         * {@link TruffleLanguage#createContext(Env)} method.
+         *
+         * @see SandboxPolicy
+         * @see TruffleLanguage#createContext(Env)
+         * @since 23.0
+         */
+        public SandboxPolicy getSandboxPolicy() {
+            return LanguageAccessor.engineAccess().getContextSandboxPolicy(this.polyglotLanguageContext);
         }
 
         /*
@@ -4134,12 +4185,12 @@ class TruffleLanguageSnippets {
             // create and start a Thread for the asynchronous task
             // remeber the Thread reference to stop and join it in
             // the finalizeContext
-            Thread t = context.env.createThread(new Runnable() {
+            Thread t = context.env.newTruffleThreadBuilder(new Runnable() {
                 @Override
                 public void run() {
                     // asynchronous task
                 }
-            });
+            }).build();
             context.startedThreads.add(t);
             t.start();
         }

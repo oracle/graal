@@ -66,7 +66,7 @@ public class TRegexOptions {
      * searches. This threshold is only checked in interpreter mode, so it should be sufficiently
      * smaller than the Graal compilation threshold!
      */
-    public static final int TRegexGenerateDFAThresholdCalls = 100;
+    public static final int TRegexGenerateDFAThresholdCalls = 10;
 
     /**
      * If a regex could have processed more than this number of characters without generating a

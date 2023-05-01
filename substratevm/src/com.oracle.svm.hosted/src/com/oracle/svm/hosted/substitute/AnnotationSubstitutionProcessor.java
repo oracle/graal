@@ -72,9 +72,9 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.code.IncompatibleClassChangeFallbackMethod;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -120,6 +120,15 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     public void registerFieldValueTransformer(Field reflectionField, FieldValueTransformer transformer) {
         ResolvedJavaField field = metaAccess.lookupJavaField(reflectionField);
+        if (!SubstrateOptions.parseOnce() && classInitializationSupport.shouldInitializeAtRuntime(reflectionField.getDeclaringClass())) {
+            String parseOnce = SubstrateOptions.ParseOnce.getName();
+            String reason = "It was detected that " + parseOnce + " is disabled. " +
+                            "Registering a field value transformer for a field whose declaring class is marked for run time initialization is not supported in this configuration. " +
+                            "(This can happen for example when trying to include a Truffle Language implementation in a Spring Boot application. " +
+                            "Since the Truffle framework doesn't currently support " + parseOnce + " it automatically disables this feature. " +
+                            "For more information see https://github.com/oracle/graal/issues/4473.)";
+            throw UserError.abort("Cannot register a field value transformer for field %s: %s", field, reason);
+        }
         boolean isFinal = field.isFinal();
         ComputedValueField computedValueField = new ComputedValueField(field, field, Kind.Custom, reflectionField.getType(), transformer, null, null, isFinal, false);
         ResolvedJavaField existingSubstitution = fieldSubstitutions.put(field, computedValueField);
@@ -184,8 +193,6 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaType resolve(ResolvedJavaType type) {
         if (type instanceof SubstitutionType) {
             return ((SubstitutionType) type).getAnnotated();
-        } else if (type instanceof AnnotationSubstitutionType) {
-            return ((AnnotationSubstitutionType) type).getOriginal();
         } else if (type instanceof InjectedFieldsType) {
             return ((InjectedFieldsType) type).getOriginal();
         }
@@ -299,14 +306,20 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     @Override
     public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
-        if (method instanceof SubstitutionMethod) {
-            return ((SubstitutionMethod) method).getOriginal();
-        } else if (method instanceof CustomSubstitutionMethod) {
-            return ((CustomSubstitutionMethod) method).getOriginal();
-        } else if (method instanceof AnnotatedMethod) {
-            return ((AnnotatedMethod) method).getOriginal();
+        ResolvedJavaMethod cur = method;
+        while (true) {
+            if (cur instanceof SubstitutionMethod) {
+                cur = ((SubstitutionMethod) cur).getOriginal();
+            } else if (cur instanceof CustomSubstitutionMethod) {
+                cur = ((CustomSubstitutionMethod) cur).getOriginal();
+            } else if (cur instanceof AnnotatedMethod) {
+                cur = ((AnnotatedMethod) cur).getOriginal();
+            } else if (cur instanceof IncompatibleClassChangeFallbackMethod) {
+                cur = ((IncompatibleClassChangeFallbackMethod) cur).getOriginal();
+            } else {
+                return cur;
+            }
         }
-        return method;
     }
 
     /**

@@ -712,17 +712,18 @@ public final class DebuggerTester implements AutoCloseable {
         }
         com.oracle.truffle.api.source.Source tsource = DebuggerTester.getSourceImpl(source);
         final List<Breakpoint> breakpoints = new ArrayList<>();
-        final Set<Breakpoint> breakpointsResolved = new HashSet<>();
+        final Map<Breakpoint, SourceSection> breakpointsResolved = new HashMap<>();
         final List<Breakpoint> breakpointsHit = new ArrayList<>();
         Breakpoint.ResolveListener resolveListener = new Breakpoint.ResolveListener() {
             @Override
             public void breakpointResolved(Breakpoint breakpoint, SourceSection section) {
-                Assert.assertFalse(breakpointsResolved.contains(breakpoint));
-                breakpointsResolved.add(breakpoint);
+                Assert.assertTrue("Resolved at " + section + ", have " + breakpointsResolved.get(breakpoint),
+                                !breakpointsResolved.containsKey(breakpoint) || !section.equals(breakpointsResolved.get(breakpoint)));
+                breakpointsResolved.put(breakpoint, section);
             }
         };
         // Test all line breakpoints
-        for (int l = 1; l < (numLines + 5); l++) {
+        for (int l = 1; l <= numLines; l++) {
             if (positionPredicate == null || positionPredicate.testLine(l)) {
                 Breakpoint breakpoint = Breakpoint.newBuilder(tsource).lineIs(l).oneShot().resolveListener(resolveListener).build();
                 breakpoints.add(breakpoint);
@@ -735,8 +736,9 @@ public final class DebuggerTester implements AutoCloseable {
         breakpointsHit.clear();
 
         // Test all line/column breakpoints
-        for (int l = 1; l < (numLines + 5); l++) {
-            for (int c = 1; c < (numColumns + 5); c++) {
+        for (int l = 1; l <= numLines; l++) {
+            int endColumn = (l == numLines) ? source.getLineLength(l) : numColumns + 5;
+            for (int c = 1; c < endColumn; c++) {
                 if (positionPredicate == null || positionPredicate.testLineColumn(l, c)) {
                     Breakpoint breakpoint = Breakpoint.newBuilder(tsource).lineIs(l).columnIs(c).oneShot().resolveListener(resolveListener).build();
                     breakpoints.add(breakpoint);
@@ -746,7 +748,7 @@ public final class DebuggerTester implements AutoCloseable {
         assertBreakpoints(source, breakpoints, breakpointsResolved, breakpointsHit);
     }
 
-    private void assertBreakpoints(Source source, List<Breakpoint> breakpoints, Set<Breakpoint> breakpointsResolved, List<Breakpoint> breakpointsHit) {
+    private void assertBreakpoints(Source source, List<Breakpoint> breakpoints, Map<Breakpoint, SourceSection> breakpointsResolved, List<Breakpoint> breakpointsHit) {
         try (DebuggerSession session = startSession(new SourceElement[0])) {
             for (Breakpoint breakpoint : breakpoints) {
                 session.install(breakpoint);

@@ -84,11 +84,12 @@ public interface CommittedMemoryProvider {
      * Returns the granularity of committed memory management, which is typically the same as that
      * of {@linkplain VirtualMemoryProvider#getGranularity() virtual memory management}.
      */
-    @Uninterruptible(reason = "Still being initialized.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     default UnsignedWord getGranularity() {
         return VirtualMemoryProvider.get().getGranularity();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment);
 
     Pointer allocateUnalignedChunk(UnsignedWord nbytes);

@@ -32,6 +32,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
 
@@ -45,6 +46,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -57,6 +59,7 @@ import com.oracle.svm.core.util.VMError;
  */
 public final class Resources {
 
+    private static final int INVALID_TIMESTAMP = -1;
     public static final char RESOURCES_INTERNAL_PATH_SEPARATOR = '/';
 
     public static Resources singleton() {
@@ -70,11 +73,34 @@ public final class Resources {
      */
     private final EconomicMap<Pair<String, String>, ResourceStorageEntry> resources = ImageHeapMap.create();
 
+    /**
+     * Embedding a resource into an image is counted as a modification. Since all resources are
+     * baked into the image during image generation, we save this value so that it can be fetched
+     * later by calling {@link ResourceURLConnection#getLastModified()}.
+     */
+    private long lastModifiedTime = INVALID_TIMESTAMP;
+
     Resources() {
     }
 
-    public EconomicMap<Pair<String, String>, ResourceStorageEntry> resources() {
+    public EconomicMap<Pair<String, String>, ResourceStorageEntry> getResourceStorage() {
         return resources;
+    }
+
+    public Iterable<ResourceStorageEntry> resources() {
+        return resources.getValues();
+    }
+
+    public int count() {
+        return resources.size();
+    }
+
+    public long getLastModifiedTime() {
+        return lastModifiedTime;
+    }
+
+    public static String moduleName(Module module) {
+        return module == null ? null : module.getName();
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {
@@ -85,12 +111,16 @@ public final class Resources {
         }
     }
 
-    private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
+    private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
+        String moduleName = moduleName(module);
         var resources = singleton().resources;
         synchronized (resources) {
             Pair<String, String> key = Pair.create(moduleName, resourceName);
             ResourceStorageEntry entry = resources.get(key);
             if (entry == null) {
+                if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
+                    singleton().lastModifiedTime = new Date().getTime();
+                }
                 entry = new ResourceStorageEntry(isDirectory, fromJar);
                 resources.put(key, entry);
             }
@@ -109,18 +139,18 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String moduleName, String resourceName, InputStream is) {
-        registerResource(moduleName, resourceName, is, true);
+    public static void registerResource(Module module, String resourceName, InputStream is) {
+        registerResource(module, resourceName, is, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String moduleName, String resourceName, byte[] resourceContent) {
-        addEntry(moduleName, resourceName, false, resourceContent, true);
+    public static void registerResource(Module module, String resourceName, byte[] resourceContent) {
+        addEntry(module, resourceName, false, resourceContent, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String moduleName, String resourceName, InputStream is, boolean fromJar) {
-        addEntry(moduleName, resourceName, false, inputStreamToByteArray(is), fromJar);
+    public static void registerResource(Module module, String resourceName, InputStream is, boolean fromJar) {
+        addEntry(module, resourceName, false, inputStreamToByteArray(is), fromJar);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -134,18 +164,18 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String moduleName, String resourceDirName, String content) {
-        registerDirectoryResource(moduleName, resourceDirName, content, true);
+    public static void registerDirectoryResource(Module module, String resourceDirName, String content) {
+        registerDirectoryResource(module, resourceDirName, content, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String moduleName, String resourceDirName, String content, boolean fromJar) {
+    public static void registerDirectoryResource(Module module, String resourceDirName, String content, boolean fromJar) {
         /*
          * A directory content represents the names of all files and subdirectories located in the
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        addEntry(moduleName, resourceDirName, true, content.getBytes(), fromJar);
+        addEntry(module, resourceDirName, true, content.getBytes(), fromJar);
     }
 
     /**
@@ -173,8 +203,9 @@ public final class Resources {
         return get(null, name);
     }
 
-    public static ResourceStorageEntry get(String moduleName, String resourceName) {
+    public static ResourceStorageEntry get(Module module, String resourceName) {
         String canonicalResourceName = toCanonicalForm(resourceName);
+        String moduleName = moduleName(module);
         ResourceStorageEntry entry = singleton().resources.get(Pair.create(moduleName, canonicalResourceName));
         if (entry == null) {
             return null;
@@ -197,9 +228,10 @@ public final class Resources {
     }
 
     @SuppressWarnings("deprecation")
-    private static URL createURL(String moduleName, String resourceName, int index) {
+    private static URL createURL(Module module, String resourceName, int index) {
         try {
             String refPart = index != 0 ? '#' + Integer.toString(index) : "";
+            String moduleName = moduleName(module);
             return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
@@ -210,12 +242,12 @@ public final class Resources {
         return createURL(null, resourceName);
     }
 
-    public static URL createURL(String moduleName, String resourceName) {
+    public static URL createURL(Module module, String resourceName) {
         if (resourceName == null) {
             return null;
         }
 
-        Enumeration<URL> urls = createURLs(moduleName, resourceName);
+        Enumeration<URL> urls = createURLs(module, resourceName);
         return urls.hasMoreElements() ? urls.nextElement() : null;
     }
 
@@ -224,19 +256,19 @@ public final class Resources {
     }
 
     /* Avoid pulling in the URL class when only an InputStream is needed. */
-    public static InputStream createInputStream(String moduleName, String resourceName) {
+    public static InputStream createInputStream(Module module, String resourceName) {
         if (resourceName == null) {
             return null;
         }
 
-        ResourceStorageEntry entry = Resources.get(moduleName, resourceName);
-        if (moduleName == null && entry == null) {
+        ResourceStorageEntry entry = Resources.get(module, resourceName);
+        if (moduleName(module) == null && entry == null) {
             /*
-             * If no moduleName is specified and entry was not found as classpath-resource we have
-             * to search for the resource in all modules in the image.
+             * If module is not specified or is an unnamed module and entry was not found as
+             * classpath-resource we have to search for the resource in all modules in the image.
              */
-            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
-                entry = Resources.get(module.getName(), resourceName);
+            for (Module m : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                entry = Resources.get(m, resourceName);
                 if (entry != null) {
                     break;
                 }
@@ -254,7 +286,7 @@ public final class Resources {
         return createURLs(null, resourceName);
     }
 
-    public static Enumeration<URL> createURLs(String moduleName, String resourceName) {
+    public static Enumeration<URL> createURLs(Module module, String resourceName) {
         if (resourceName == null) {
             return null;
         }
@@ -262,15 +294,15 @@ public final class Resources {
         List<URL> resourcesURLs = new ArrayList<>();
         String canonicalResourceName = toCanonicalForm(resourceName);
         boolean shouldAppendTrailingSlash = hasTrailingSlash(resourceName);
-        /* If moduleName was unspecified we have to consider all modules in the image */
-        if (moduleName == null) {
-            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
-                ResourceStorageEntry entry = Resources.get(module.getName(), resourceName);
-                addURLEntries(resourcesURLs, entry, module.getName(), shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+        /* If module was unspecified or unnamed, we have to consider all modules in the image */
+        if (moduleName(module) == null) {
+            for (Module m : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                ResourceStorageEntry entry = Resources.get(m, resourceName);
+                addURLEntries(resourcesURLs, entry, m, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
             }
         }
-        ResourceStorageEntry explicitEntry = Resources.get(moduleName, resourceName);
-        addURLEntries(resourcesURLs, explicitEntry, moduleName, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
+        ResourceStorageEntry explicitEntry = Resources.get(module, resourceName);
+        addURLEntries(resourcesURLs, explicitEntry, module, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
 
         if (resourcesURLs.isEmpty()) {
             return Collections.emptyEnumeration();
@@ -278,13 +310,13 @@ public final class Resources {
         return Collections.enumeration(resourcesURLs);
     }
 
-    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String canonicalResourceName) {
+    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, Module module, String canonicalResourceName) {
         if (entry == null) {
             return;
         }
         int numberOfResources = entry.getData().size();
         for (int index = 0; index < numberOfResources; index++) {
-            resourcesURLs.add(createURL(moduleName, canonicalResourceName, index));
+            resourcesURLs.add(createURL(module, canonicalResourceName, index));
         }
     }
 }
@@ -304,7 +336,7 @@ final class ResourcesFeature implements InternalFeature {
          * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
          * read-only.
          */
-        for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
+        for (ResourceStorageEntry resourceList : Resources.singleton().resources()) {
             for (byte[] resource : resourceList.getData()) {
                 access.registerAsImmutable(resource);
             }

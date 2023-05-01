@@ -24,18 +24,29 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import java.util.Objects;
+
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface OriginalClassProvider {
 
-    static Class<?> getJavaClass(SnippetReflectionProvider reflectionProvider, ResolvedJavaType javaType) {
+    static Class<?> getJavaClass(ResolvedJavaType javaType) {
+        Class<?> result;
         if (javaType instanceof OriginalClassProvider) {
-            return ((OriginalClassProvider) javaType).getJavaClass();
+            result = ((OriginalClassProvider) javaType).getJavaClass();
         } else {
-            return reflectionProvider.originalClass(javaType);
+            result = GraalAccess.getOriginalSnippetReflection().originalClass(javaType);
         }
+
+        /*
+         * Currently, we do not support types at run time that have no matching java.lang.Class in
+         * the image generator. So while there is no 1:1 mapping between JVMCI types and classes,
+         * there needs to be some java.lang.Class for every JVMCI type. This class is also stored in
+         * DynamicHub.hostedJavaClass.
+         */
+        return Objects.requireNonNull(result);
     }
 
     Class<?> getJavaClass();

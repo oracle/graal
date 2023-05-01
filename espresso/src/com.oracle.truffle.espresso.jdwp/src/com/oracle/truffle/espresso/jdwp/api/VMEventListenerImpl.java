@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -279,7 +279,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                         if (holdEvents) {
                             heldEvents.add(stream);
                         } else {
-                            JDWP.LOGGER.fine(() -> "SENDING CLASS PREPARE EVENT FOR KLASS: " + klass.getNameAsString() + " WITH THREAD " + context.getThreadName(prepareThread));
+                            debuggerController.fine(() -> "SENDING CLASS PREPARE EVENT FOR KLASS: " + klass.getNameAsString() + " WITH THREAD " + context.getThreadName(prepareThread));
                             connection.queuePacket(stream);
                         }
                         return null;
@@ -320,7 +320,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(frame.getClassId());
         stream.writeLong(frame.getMethodId());
         stream.writeLong(frame.getCodeIndex());
-        JDWP.LOGGER.fine(() -> "Sending breakpoint hit event in thread: " + context.getThreadName(currentThread) + " with suspension policy: " + info.getSuspendPolicy());
+        debuggerController.fine(() -> "Sending breakpoint hit event in thread: " + context.getThreadName(currentThread) + " with suspension policy: " + info.getSuspendPolicy());
         if (holdEvents) {
             heldEvents.add(stream);
         } else {
@@ -492,7 +492,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (info.isPopFrames()) {
             // send reply packet when "step" is completed
             PacketStream reply = new PacketStream().replyPacket().id(info.getRequestId());
-            JDWP.LOGGER.fine(() -> "Sending pop frames reply packet");
+            debuggerController.fine(() -> "Sending pop frames reply packet");
             if (holdEvents) {
                 heldEvents.add(reply);
             } else {
@@ -515,7 +515,7 @@ public final class VMEventListenerImpl implements VMEventListener {
             stream.writeLong(currentFrame.getMethodId());
             long codeIndex = info.getStepOutBCI() != -1 ? info.getStepOutBCI() : currentFrame.getCodeIndex();
             stream.writeLong(codeIndex);
-            JDWP.LOGGER.fine(() -> "Sending step completed event");
+            debuggerController.fine(() -> "Sending step completed event");
 
             if (holdEvents) {
                 heldEvents.add(stream);
@@ -548,7 +548,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getMethodId());
         long codeIndex = currentFrame.getCodeIndex();
         stream.writeLong(codeIndex);
-        JDWP.LOGGER.fine(() -> "Sending monitor contended event");
+        debuggerController.fine(() -> "Sending monitor contended event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -590,7 +590,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getMethodId());
         long codeIndex = currentFrame.getCodeIndex();
         stream.writeLong(codeIndex);
-        JDWP.LOGGER.fine(() -> "Sending monitor contended entered event");
+        debuggerController.fine(() -> "Sending monitor contended entered event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -634,7 +634,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // timeout
         stream.writeLong(timeout);
-        JDWP.LOGGER.fine(() -> "Sending monitor wait event");
+        debuggerController.fine(() -> "Sending monitor wait event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -711,7 +711,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // timeout
         stream.writeBoolean(timedOut);
-        JDWP.LOGGER.fine(() -> "Sending monitor wait event");
+        debuggerController.fine(() -> "Sending monitor wait event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -852,7 +852,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.THREAD_START);
         stream.writeInt(threadStartedRequestId);
         stream.writeLong(ids.getIdAsLong(thread));
-        JDWP.LOGGER.fine(() -> "sending thread started event for thread: " + context.getThreadName(thread));
+        debuggerController.fine(() -> "sending thread started event for thread: " + context.getThreadName(thread));
         if (holdEvents) {
             heldEvents.add(stream);
         } else {
@@ -909,26 +909,26 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.VM_DEATH);
         stream.writeInt(0);
         // don't queue this packet, send immediately
-        connection.sendVMDied(stream);
+        connection.sendVMDied(stream, debuggerController);
         return vmDeathSuspendPolicy != SuspendStrategy.NONE;
     }
 
     @Override
     public void addClassUnloadRequestId(int id) {
         // not implemented yet
-        JDWP.LOGGER.fine(() -> "class unload events not yet implemented!");
+        debuggerController.fine(() -> "class unload events not yet implemented!");
     }
 
     @Override
     public void addThreadStartedRequestId(int id, byte suspendPolicy) {
-        JDWP.LOGGER.fine(() -> "Adding thread start listener");
+        debuggerController.fine(() -> "Adding thread start listener");
         this.threadStartedRequestId = id;
         this.threadStartSuspendPolicy = suspendPolicy;
     }
 
     @Override
     public void addThreadDiedRequestId(int id, byte suspendPolicy) {
-        JDWP.LOGGER.fine(() -> "Adding thread death listener");
+        debuggerController.fine(() -> "Adding thread death listener");
         this.threadDeathRequestId = id;
         this.threadDeathSuspendPolicy = suspendPolicy;
     }

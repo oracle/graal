@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,21 @@
  */
 package com.oracle.truffle.tools.dap.test;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.io.PrintWriter;
+import java.net.URI;
+import java.util.List;
+import java.util.concurrent.Executors;
 
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.dap.server.DebugProtocolServerImpl;
 
 import com.oracle.truffle.tools.dap.server.ExecutionContext;
 import com.oracle.truffle.tools.dap.types.DebugProtocolServer;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.util.concurrent.Executors;
 
 @TruffleInstrument.Registration(id = DAPTestInstrument.ID, services = DAPSessionHandlerProvider.class)
 public class DAPTestInstrument extends TruffleInstrument {
@@ -47,7 +49,8 @@ public class DAPTestInstrument extends TruffleInstrument {
     protected void onCreate(final Env env) {
         env.registerService(new DAPSessionHandlerProvider() {
             @Override
-            public DAPSessionHandler getSessionHandler(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, Runnable prolog) throws IOException {
+            public DAPSessionHandler getSessionHandler(final boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, Runnable prolog, List<URI> sourcePath)
+                            throws IOException {
                 return new DAPSessionHandler() {
 
                     private PipedOutputStream out;
@@ -59,7 +62,7 @@ public class DAPTestInstrument extends TruffleInstrument {
                         this.out = new PipedOutputStream();
                         PipedOutputStream pos = new PipedOutputStream();
                         in = new PipedInputStream(pos, 2048);
-                        DebugProtocolServerImpl dapServer = DebugProtocolServerImpl.create(context, suspend, inspectInternal, inspectInitialization);
+                        DebugProtocolServerImpl dapServer = DebugProtocolServerImpl.create(context, suspend, inspectInternal, inspectInitialization, sourcePath);
                         if (prolog != null) {
                             prolog.run();
                         }
@@ -85,7 +88,7 @@ public class DAPTestInstrument extends TruffleInstrument {
 }
 
 interface DAPSessionHandlerProvider {
-    DAPSessionHandler getSessionHandler(boolean suspend, boolean inspectInternal, boolean inspectInitialization, Runnable prolog) throws IOException;
+    DAPSessionHandler getSessionHandler(boolean suspend, boolean inspectInternal, boolean inspectInitialization, Runnable prolog, List<URI> sourcePath) throws IOException;
 }
 
 interface DAPSessionHandler {

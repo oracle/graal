@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public class InterfaceClassEntry extends ClassEntry {
-    private List<ClassEntry> implementors;
+    private final List<ClassEntry> implementors;
 
     public InterfaceClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, fileEntry, size);
@@ -56,7 +56,7 @@ public class InterfaceClassEntry extends ClassEntry {
 
     public void addImplementor(ClassEntry classEntry, DebugContext debugContext) {
         implementors.add(classEntry);
-        debugContext.log("typename %s add implementor %s\n", typeName, classEntry.getTypeName());
+        debugContext.log("typename %s add implementor %s%n", typeName, classEntry.getTypeName());
     }
 
     public Stream<ClassEntry> implementors() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -211,6 +211,7 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
+    @SuppressWarnings("this-escape")
     protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap,
                     Transition transition, Allocator allocator, int flags) {
         this(layout, parent, objectType, sharedData, propertyMap, transition, ((BaseAllocator) allocator).objectArraySize, ((BaseAllocator) allocator).objectFieldSize,
@@ -223,6 +224,7 @@ public abstract class ShapeImpl extends Shape {
                     Transition transition, Allocator allocator, int id);
 
     /** @since 0.17 or earlier */
+    @SuppressWarnings("this-escape")
     protected ShapeImpl(com.oracle.truffle.api.object.Layout layout, Object dynamicType, Object sharedData, int flags, Assumption constantObjectAssumption) {
         this(layout, null, dynamicType, sharedData, PropertyMap.empty(), null, 0, 0, 0, 0, flags, constantObjectAssumption);
     }
@@ -348,21 +350,34 @@ public abstract class ShapeImpl extends Shape {
         return propertyMap;
     }
 
-    /** @since 0.17 or earlier */
-    public final void addDirectTransition(Transition transition, ShapeImpl next) {
-        assert next.getParent() == this && transition.isDirect();
-        addTransitionInternal(transition, next);
+    public final ShapeImpl addDirectTransition(Transition transition, ShapeImpl next) {
+        return addTransitionIfAbsentOrGet(transition, next);
     }
 
-    /** @since 0.17 or earlier */
-    public final void addIndirectTransition(Transition transition, ShapeImpl next) {
-        assert !isShared();
-        assert next.getParent() != this && !transition.isDirect();
-        addTransitionInternal(transition, next);
+    public final ShapeImpl addIndirectTransition(Transition transition, ShapeImpl next) {
+        return addTransitionIfAbsentOrGet(transition, next);
     }
 
-    private void addTransitionInternal(Transition transition, ShapeImpl successor) {
+    public final ShapeImpl addTransitionIfAbsentOrGet(Transition transition, ShapeImpl successor) {
+        ShapeImpl existing = addTransitionIfAbsentOrNull(transition, successor);
+        if (existing != null) {
+            return existing;
+        } else {
+            return successor;
+        }
+    }
+
+    /**
+     * Adds a new shape transition if not the transition is not already in the cache.
+     *
+     * @return {@code null} or an existing cached shape for this transition.
+     */
+    public final ShapeImpl addTransitionIfAbsentOrNull(Transition transition, ShapeImpl successor) {
         CompilerAsserts.neverPartOfCompilation();
+        assert transition.isDirect() == (successor.getParent() == this);
+        assert !isShared() || transition.isDirect();
+
+        // Type is either single entry or transition map.
         Object prev;
         Object next;
         do {
@@ -372,20 +387,31 @@ public abstract class ShapeImpl extends Shape {
                 next = newSingleEntry(transition, successor);
             } else if (isSingleEntry(prev)) {
                 StrongKeyWeakValueEntry<Object, ShapeImpl> entry = asSingleEntry(prev);
-                Transition exTra;
-                ShapeImpl exSucc = entry.getValue();
-                if (exSucc != null && (exTra = unwrapKey(entry.getKey())) != null) {
-                    next = newTransitionMap(exTra, exSucc, transition, successor);
+                Transition existingTransition;
+                ShapeImpl existingSuccessor = entry.getValue();
+                if (existingSuccessor != null && (existingTransition = unwrapKey(entry.getKey())) != null) {
+                    if (existingTransition.equals(transition)) {
+                        return existingSuccessor;
+                    } else {
+                        next = newTransitionMap(existingTransition, existingSuccessor, transition, successor);
+                    }
                 } else {
                     next = newSingleEntry(transition, successor);
                 }
             } else {
-                next = addToTransitionMap(transition, successor, asTransitionMap(prev));
+                ShapeImpl existingSuccessor = addToTransitionMap(transition, successor, asTransitionMap(prev));
+                if (existingSuccessor != null) {
+                    return existingSuccessor;
+                } else {
+                    next = prev;
+                }
             }
             if (prev == next) {
-                break;
+                return null;
             }
         } while (!TRANSITION_MAP_UPDATER.compareAndSet(this, prev, next));
+
+        return null;
     }
 
     private static Object newTransitionMap(Transition firstTransition, ShapeImpl firstShape, Transition secondTransition, ShapeImpl secondShape) {
@@ -395,13 +421,12 @@ public abstract class ShapeImpl extends Shape {
         return map;
     }
 
-    private static Object addToTransitionMap(Transition transition, ShapeImpl successor, TransitionMap<Transition, ShapeImpl> map) {
+    private static ShapeImpl addToTransitionMap(Transition transition, ShapeImpl successor, TransitionMap<Transition, ShapeImpl> map) {
         if (transition.hasConstantLocation()) {
-            map.putWeakKey(transition, successor);
+            return map.putWeakKeyIfAbsent(transition, successor);
         } else {
-            map.put(transition, successor);
+            return map.putIfAbsent(transition, successor);
         }
-        return map;
     }
 
     private static TransitionMap<Transition, ShapeImpl> newTransitionMap() {
@@ -591,8 +616,7 @@ public abstract class ShapeImpl extends Shape {
 
         shapeCloneCount.inc();
 
-        newParent.addDirectTransition(from.transitionFromParent, newShape);
-        return newShape;
+        return newParent.addDirectTransition(from.transitionFromParent, newShape);
     }
 
     /** @since 0.17 or earlier */
@@ -789,8 +813,14 @@ public abstract class ShapeImpl extends Shape {
         }
 
         sb.append("{");
+        boolean first = true;
         for (Iterator<Property> iterator = propertyMap.reverseOrderedValueIterator(); iterator.hasNext();) {
             Property p = iterator.next();
+            if (first) {
+                first = false;
+            } else {
+                sb.append("\n");
+            }
             sb.append(p);
             if (iterator.hasNext()) {
                 sb.append(",");
@@ -799,7 +829,6 @@ public abstract class ShapeImpl extends Shape {
                 sb.append("...");
                 break;
             }
-            sb.append("\n");
         }
         sb.append("}");
 
@@ -827,8 +856,6 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final ShapeImpl removeProperty(Property prop) {
-        onPropertyTransition(prop);
-
         return getLayoutStrategy().removeProperty(this, prop);
     }
 
@@ -847,8 +874,6 @@ public abstract class ShapeImpl extends Shape {
     @Override
     public ShapeImpl replaceProperty(Property oldProperty, Property newProperty) {
         assert oldProperty.getKey().equals(newProperty.getKey());
-        onPropertyTransition(oldProperty);
-
         return getLayoutStrategy().replaceProperty(this, oldProperty, newProperty);
     }
 
@@ -930,8 +955,7 @@ public abstract class ShapeImpl extends Shape {
         }
 
         ShapeImpl newShape = createShape(layout, sharedData, this, newObjectType, propertyMap, transition, allocator(), flags);
-        addDirectTransition(transition, newShape);
-        return newShape;
+        return addDirectTransition(transition, newShape);
     }
 
     /** @since 0.17 or earlier */
@@ -1044,8 +1068,7 @@ public abstract class ShapeImpl extends Shape {
 
         int newFlags = newShapeFlags | (flags & ~OBJECT_FLAGS_MASK);
         ShapeImpl newShape = createShape(layout, sharedData, this, objectType, propertyMap, transition, allocator(), newFlags);
-        addDirectTransition(transition, newShape);
-        return newShape;
+        return addDirectTransition(transition, newShape);
     }
 
     /** @since 0.17 or earlier */
@@ -1099,8 +1122,7 @@ public abstract class ShapeImpl extends Shape {
         }
 
         ShapeImpl newShape = createShape(layout, sharedData, this, objectType, propertyMap, transition, allocator(), flags | FLAG_SHARED_SHAPE);
-        addDirectTransition(transition, newShape);
-        return newShape;
+        return addDirectTransition(transition, newShape);
     }
 
     /** Bits available to API users. */

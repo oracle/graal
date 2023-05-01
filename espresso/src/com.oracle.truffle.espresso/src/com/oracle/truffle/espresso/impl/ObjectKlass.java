@@ -78,7 +78,6 @@ import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
@@ -168,10 +167,6 @@ public final class ObjectKlass extends Klass {
 
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
-    }
-
-    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
-        this(context, linkedKlass, superKlass, superInterfaces, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
@@ -361,10 +356,15 @@ public final class ObjectKlass extends Klass {
     }
 
     boolean isInitializingOrInitializedImpl() {
-        return (initState == INITIALIZED) ||
-                        /* Initializing thread */
-                        (initState == INITIALIZING && getInitLock().isHeldByCurrentThread()) ||
-                        (initState == ERRONEOUS);
+        /*
+         * This has currently 2 uses: 1) In actualInit where it is used under the init lock. 2) In
+         * assertions in the root node.
+         *
+         * In the first case, we know that the current thread holds the init lock. In the second
+         * case, if the state is INITIALIZING we cannot really check the lock because an object
+         * might have been leaked to another thread by the clinit.
+         */
+        return initState >= ERRONEOUS;
     }
 
     boolean isInitializedImpl() {
@@ -900,7 +900,7 @@ public final class ObjectKlass extends Klass {
         return permittedSubclasses != null && permittedSubclasses.getClasses().length > 0;
     }
 
-    public boolean permittedSubclassCheck(ObjectKlass k) {
+    public boolean permittedSubclassCheck(ObjectKlass subKlass) {
         CompilerAsserts.neverPartOfCompilation();
         if (!getContext().getJavaVersion().java17OrLater()) {
             return true;
@@ -909,15 +909,15 @@ public final class ObjectKlass extends Klass {
         if (permittedSubclasses == null) {
             return true;
         }
-        if (module() != k.module()) {
+        if (module() != subKlass.module()) {
             return false;
         }
-        if (!isPublic() && !sameRuntimePackage(k)) {
+        if (!subKlass.isPublic() && !sameRuntimePackage(subKlass)) {
             return false;
         }
         RuntimeConstantPool pool = getConstantPool();
         for (int index : permittedSubclasses.getClasses()) {
-            if (k.getName().equals(pool.classAt(index).getName(pool))) {
+            if (subKlass.getName().equals(pool.classAt(index).getName(pool))) {
                 // There should be no need to resolve: the previous checks guarantees it would
                 // resolve to k, but resolving here would cause circularity errors.
                 return true;
@@ -1016,14 +1016,14 @@ public final class ObjectKlass extends Klass {
         return getVTable()[vtableIndex].getMethod();
     }
 
-    public Method itableLookup(Klass interfKlass, int index) {
-        assert (index >= 0) : "Undeclared interface method";
-        try {
-            return getItable()[fastLookup(interfKlass, getiKlassTable())][index].getMethod();
-        } catch (IndexOutOfBoundsException e) {
+    public Method itableLookup(Klass interfKlass, int methodIndex) {
+        assert methodIndex >= 0 : "Undeclared interface method";
+        int itableIndex = fastLookup(interfKlass, getiKlassTable());
+        if (itableIndex < 0) {
             Meta meta = getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", getName(), interfKlass.getName());
         }
+        return getItable()[itableIndex][methodIndex].getMethod();
     }
 
     int findVirtualMethodIndex(Symbol<Name> methodName, Symbol<Signature> signature, Klass subClass) {
@@ -1144,7 +1144,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode) {
+    public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
         KLASS_LOOKUP_METHOD_COUNT.inc();
         Method method = lookupDeclaredMethod(methodName, signature, lookupMode);
         if (method == null) {
@@ -1157,7 +1157,7 @@ public final class ObjectKlass extends Klass {
             method = lookupPolysigMethod(methodName, signature, lookupMode);
         }
         if (method == null && getSuperKlass() != null) {
-            method = getSuperKlass().lookupMethod(methodName, signature, accessingKlass, lookupMode);
+            method = getSuperKlass().lookupMethod(methodName, signature, lookupMode);
         }
         return method;
     }
@@ -1284,6 +1284,11 @@ public final class ObjectKlass extends Klass {
     @Override
     public int getClassModifiers() {
         return getKlassVersion().getClassModifiers();
+    }
+
+    @Override
+    public int getRedefinitionAwareModifiers() {
+        return getKlassVersion().getModifiers();
     }
 
     @Override
@@ -1705,7 +1710,8 @@ public final class ObjectKlass extends Klass {
                 ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
                 checkSuperMethods(superKlass, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
                 removedMethod.getMethod().removedByRedefinition();
-                JDWP.LOGGER.fine(() -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
+                getContext().getClassRedefinition().getController().fine(
+                                () -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
             }
 
             for (ParserMethod addedMethod : addedMethods) {
@@ -1714,7 +1720,7 @@ public final class ObjectKlass extends Klass {
                 newDeclaredMethods.addLast(added);
                 virtualMethodsModified |= isVirtual(addedMethod);
                 checkSuperMethods(superKlass, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature(), invalidatedClasses);
-                JDWP.LOGGER.fine(() -> "Added method " + added.getMethod().getDeclaringKlass().getName() + "." + added.getName());
+                getContext().getClassRedefinition().getController().fine(() -> "Added method " + added.getMethod().getDeclaringKlass().getName() + "." + added.getName());
             }
 
             if (virtualMethodsModified) {
@@ -1731,7 +1737,7 @@ public final class ObjectKlass extends Klass {
                 if (changedMethodBodies.containsKey(declMethod)) {
                     ParserMethod newMethod = changedMethodBodies.get(declMethod);
                     Method.SharedRedefinitionContent redefineContent = declMethod.redefine(this, newMethod, packet.parserKlass, ids);
-                    JDWP.LOGGER.fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
+                    getContext().getClassRedefinition().getController().fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
                     methods[i] = redefineContent.getMethodVersion();
 
                     int flags = newMethod.getFlags();
@@ -1888,6 +1894,7 @@ public final class ObjectKlass extends Klass {
             if (flags == -1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 computedModifiers = flags = computeModifiers();
+                assert flags != -1;
             }
             // Remember to strip ACC_SUPER bit
             return flags & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
@@ -1944,6 +1951,11 @@ public final class ObjectKlass extends Klass {
                 source = getContext().findOrCreateSource(ObjectKlass.this);
             }
             return source;
+        }
+
+        @Override
+        public String toString() {
+            return "KlassVersion<" + getType() + ">";
         }
     }
 }

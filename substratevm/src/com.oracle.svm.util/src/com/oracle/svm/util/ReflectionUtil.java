@@ -109,6 +109,14 @@ public final class ReflectionUtil {
         }
     }
 
+    public static <T> T newInstance(Constructor<T> constructor, Object... initArgs) {
+        try {
+            return constructor.newInstance(initArgs);
+        } catch (ReflectiveOperationException ex) {
+            throw new ReflectionUtilError(ex);
+        }
+    }
+
     public static Field lookupField(Class<?> declaringClass, String fieldName) {
         return lookupField(false, declaringClass, fieldName);
     }
@@ -153,5 +161,17 @@ public final class ReflectionUtil {
 
     public static <T> T readStaticField(Class<?> declaringClass, String fieldName) {
         return readField(declaringClass, fieldName, null);
+    }
+
+    public static void writeField(Class<?> declaringClass, String fieldName, Object receiver, Object value) {
+        try {
+            lookupField(declaringClass, fieldName).set(receiver, value);
+        } catch (ReflectiveOperationException ex) {
+            throw new ReflectionUtilError(ex);
+        }
+    }
+
+    public static void writeStaticField(Class<?> declaringClass, String fieldName, Object value) {
+        writeField(declaringClass, fieldName, null, value);
     }
 }

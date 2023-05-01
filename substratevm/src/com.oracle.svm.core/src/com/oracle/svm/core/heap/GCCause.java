@@ -54,6 +54,7 @@ public class GCCause {
     private final String name;
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     protected GCCause(String name, int id) {
         this.id = id;
         this.name = name;
@@ -66,7 +67,7 @@ public class GCCause {
             while (HostedGCCauseList.size() <= id) {
                 HostedGCCauseList.add(null);
             }
-            VMError.guarantee(HostedGCCauseList.get(id) == null, name + " and another GCCause have the same id.");
+            VMError.guarantee(HostedGCCauseList.get(id) == null, "%s and another GCCause have the same id.", name);
             HostedGCCauseList.set(id, this);
         }
     }

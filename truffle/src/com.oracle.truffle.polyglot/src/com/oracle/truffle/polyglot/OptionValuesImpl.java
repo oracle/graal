@@ -43,31 +43,37 @@ package com.oracle.truffle.polyglot;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
+
+import com.oracle.truffle.api.TruffleOptionDescriptors;
 
 final class OptionValuesImpl implements OptionValues {
 
     private static final float FUZZY_MATCH_THRESHOLD = 0.7F;
 
-    // prefix used for -D java system properties
-    static final String SYSTEM_PROPERTY_PREFIX = "polyglot.";
-
     private final OptionDescriptors descriptors;
+    private final SandboxPolicy sandboxPolicy;
     private final Map<OptionKey<?>, Object> values;
     private final Map<OptionKey<?>, String> unparsedValues;
+    private volatile Set<OptionKey<?>> validAssertKeys;
 
-    OptionValuesImpl(OptionDescriptors descriptors, boolean preserveUnparsedValues) {
+    OptionValuesImpl(OptionDescriptors descriptors, SandboxPolicy sandboxPolicy, boolean preserveUnparsedValues) {
         Objects.requireNonNull(descriptors);
+        Objects.requireNonNull(sandboxPolicy);
         this.descriptors = descriptors;
+        this.sandboxPolicy = sandboxPolicy;
         this.values = new HashMap<>();
         this.unparsedValues = preserveUnparsedValues ? new HashMap<>() : null;
     }
@@ -132,6 +138,14 @@ final class OptionValuesImpl implements OptionValues {
 
     public void put(PolyglotEngineImpl engine, String key, String value, boolean allowExperimentalOptions) {
         OptionDescriptor descriptor = findDescriptor(engine, key, allowExperimentalOptions);
+        if (sandboxPolicy != SandboxPolicy.TRUSTED) {
+            SandboxPolicy optionSandboxPolicy = descriptors instanceof TruffleOptionDescriptors ? ((TruffleOptionDescriptors) descriptors).getSandboxPolicy(key) : SandboxPolicy.TRUSTED;
+            if (sandboxPolicy.isStricterThan(optionSandboxPolicy)) {
+                throw PolyglotEngineException.illegalArgument(PolyglotImpl.sandboxPolicyException(sandboxPolicy,
+                                String.format("The option %s can only be used up to the %s sandbox policy.", descriptor.getName(), optionSandboxPolicy),
+                                String.format("do not set the %s option by removing Builder.option(\"%s\", \"%s\")", descriptor.getName(), descriptor.getName(), value)));
+            }
+        }
         OptionKey<?> optionKey = descriptor.getKey();
         Object previousValue;
         if (values.containsKey(optionKey)) {
@@ -163,16 +177,31 @@ final class OptionValuesImpl implements OptionValues {
     private OptionValuesImpl(OptionValuesImpl copy) {
         this.values = new HashMap<>(copy.values);
         this.descriptors = copy.descriptors;
+        this.sandboxPolicy = copy.sandboxPolicy;
         this.unparsedValues = copy.unparsedValues;
     }
 
     private <T> boolean contains(OptionKey<T> optionKey) {
-        for (OptionDescriptor descriptor : descriptors) {
-            if (descriptor.getKey() == optionKey) {
-                return true;
-            }
+        /*
+         * Iterating the keys is too slow so we use a cached set to speed up the check.
+         */
+        Set<OptionKey<?>> keys = this.validAssertKeys;
+        if (keys == null) {
+            keys = initializeValidAssertKeys();
         }
-        return false;
+        return keys.contains(optionKey);
+    }
+
+    private synchronized Set<OptionKey<?>> initializeValidAssertKeys() {
+        Set<OptionKey<?>> keys = validAssertKeys;
+        if (keys == null) {
+            keys = new HashSet<>();
+            for (OptionDescriptor descriptor : descriptors) {
+                keys.add(descriptor.getKey());
+            }
+            validAssertKeys = keys;
+        }
+        return keys;
     }
 
     @Override
@@ -188,6 +217,9 @@ final class OptionValuesImpl implements OptionValues {
     void copyInto(OptionValuesImpl target) {
         if (!target.values.isEmpty()) {
             throw new IllegalStateException("Values must be empty.");
+        }
+        if (sandboxPolicy != target.sandboxPolicy) {
+            throw new AssertionError("Source and target must have the same SandboxPolicy.");
         }
         target.values.putAll(values);
     }

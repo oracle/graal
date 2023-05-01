@@ -32,6 +32,7 @@ public class SubstratePlatformConfigurationProvider implements PlatformConfigura
     private final BarrierSet barrierSet;
 
     public SubstratePlatformConfigurationProvider(BarrierSet barrierSet) {
+        assert barrierSet != null;
         this.barrierSet = barrierSet;
     }
 

@@ -35,10 +35,8 @@ import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
 import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.vm.ci.hotspot.HotSpotConstantPool;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
@@ -51,9 +49,9 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     protected final Universe universe;
     protected final ConstantPool wrapped;
-    private final WrappedJavaType defaultAccessingClass;
+    private final ResolvedJavaType defaultAccessingClass;
 
-    public WrappedConstantPool(Universe universe, ConstantPool wrapped, WrappedJavaType defaultAccessingClass) {
+    public WrappedConstantPool(Universe universe, ConstantPool wrapped, ResolvedJavaType defaultAccessingClass) {
         this.universe = universe;
         this.wrapped = wrapped;
         this.defaultAccessingClass = defaultAccessingClass;
@@ -87,18 +85,11 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     private static final Method bsmGetType = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getType");
     private static final Method bsmGetStaticArguments = bsmClass == null ? null : ReflectionUtil.lookupMethod(bsmClass, "getStaticArguments");
 
-    public static void loadReferencedType(ConstantPool cp, int cpi, int opcode, boolean initialize) {
-        ConstantPool root = cp;
-        while (root instanceof WrappedConstantPool) {
-            root = ((WrappedConstantPool) root).wrapped;
-        }
-
+    @Override
+    public void loadReferencedType(int cpi, int opcode, boolean initialize) {
+        GraalError.guarantee(!initialize, "Must not initialize classes");
         try {
-            /*
-             * GR-41975: loadReferencedType without triggering class initialization is available in
-             * HotSpotConstantPool, but not yet in ConstantPool.
-             */
-            ((HotSpotConstantPool) root).loadReferencedType(cpi, opcode, initialize);
+            wrapped.loadReferencedType(cpi, opcode, initialize);
         } catch (Throwable ex) {
             Throwable cause = ex;
             if (cause instanceof BootstrapMethodError && cause.getCause() != null) {
@@ -112,7 +103,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public void loadReferencedType(int cpi, int opcode) {
-        loadReferencedType(wrapped, cpi, opcode, false);
+        loadReferencedType(cpi, opcode, false);
     }
 
     @Override
@@ -153,12 +144,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaType lookupType(int cpi, int opcode) {
-        try {
-            return universe.lookupAllowUnresolved(wrapped.lookupType(cpi, opcode));
-        } catch (TypeNotFoundError e) {
-            /* If the universe was sealed there are no new types created. */
-            return null;
-        }
+        return universe.lookupAllowUnresolved(wrapped.lookupType(cpi, opcode));
     }
 
     @Override
@@ -195,14 +181,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaType lookupReferencedType(int index, int opcode) {
-        try {
-            JavaType type = wrapped.lookupReferencedType(index, opcode);
-            if (type != null) {
-                return universe.lookupAllowUnresolved(type);
-            }
-        } catch (TypeNotFoundError e) {
-        }
-        return null;
+        return universe.lookupAllowUnresolved(wrapped.lookupReferencedType(index, opcode));
     }
 
     public BootstrapMethodIntrospection lookupBootstrapMethodIntrospection(int cpi, int opcode) {
@@ -230,10 +209,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 try {
                     return universe.lookup((ResolvedJavaMethod) bsmGetMethod.invoke(wrapped));
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -242,10 +221,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 try {
                     return (boolean) bsmIsInvokeDynamic.invoke(wrapped);
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -254,10 +233,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 try {
                     return (String) bsmGetName.invoke(wrapped);
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -266,10 +245,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 try {
                     return universe.lookup((JavaConstant) bsmGetType.invoke(wrapped));
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -279,10 +258,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                     List<?> original = (List<?>) bsmGetStaticArguments.invoke(wrapped);
                     return original.stream().map(e -> universe.lookup((JavaConstant) e)).collect(Collectors.toList());
                 } catch (Throwable t) {
-                    throw GraalError.shouldNotReachHere(t);
+                    throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
             }
-            throw GraalError.shouldNotReachHere();
+            throw GraalError.shouldNotReachHere("unexpected null"); // ExcludeFromJacocoGeneratedReport
         }
     }
 }

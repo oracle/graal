@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,9 @@ import org.graalvm.compiler.core.common.NumUtil;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 public class LLVMStackMapInfo {
     public static final long DEFAULT_PATCHPOINT_ID = 0xABCDEF00L;
@@ -99,7 +102,8 @@ public class LLVMStackMapInfo {
      * Stack map format specification available at
      * https://llvm.org/docs/StackMaps.html#stack-map-format
      */
-    LLVMStackMapInfo(ByteBuffer buffer) {
+    LLVMStackMapInfo(ByteBuffer buffer, LLVMSectionIteratorRef relocationsSectionIteratorRef) {
+        LLVMRelocationIteratorRef relocationIteratorRef = LLVM.LLVMGetRelocations(relocationsSectionIteratorRef);
         StackMap stackMap = new StackMap();
 
         int offset = 0;
@@ -158,7 +162,7 @@ public class LLVMStackMapInfo {
             record.patchpointID = buffer.getLong(offset);
             offset += Long.BYTES;
 
-            record.instructionOffset = buffer.getInt(offset);
+            record.instructionOffset = LLVMTargetSpecific.get().getInstructionOffset(buffer, offset, relocationsSectionIteratorRef, relocationIteratorRef);
             offset += Integer.BYTES;
 
             record.flags = buffer.getShort(offset);
@@ -218,6 +222,8 @@ public class LLVMStackMapInfo {
             patchpointToFunction.put(record.patchpointID, function);
             patchpointsByID.computeIfAbsent(record.patchpointID, v -> new HashSet<>()).add(record);
         }
+
+        LLVM.LLVMDisposeRelocationIterator(relocationIteratorRef);
     }
 
     private Map<Long, Function> patchpointToFunction = new HashMap<>();
@@ -250,7 +256,7 @@ public class LLVMStackMapInfo {
 
     void forEachStatepointOffset(long patchpointID, int instructionOffset, StatepointOffsetCallback callback) {
         Location[] locations = patchpointsByID.get(patchpointID).stream().filter(r -> r.instructionOffset == instructionOffset)
-                        .findFirst().orElseThrow(VMError::shouldNotReachHere).locations;
+                        .findFirst().orElseThrow(VMError::shouldNotReachHereAtRuntime).locations;
         assert locations.length >= STATEPOINT_HEADER_LOCATION_COUNT;
 
         Location deoptCountLocation = locations[STATEPOINT_DEOPT_COUNT_LOCATION_INDEX];
@@ -311,20 +317,6 @@ public class LLVMStackMapInfo {
         }
 
         assert seenOffsets.containsAll(seenBases);
-    }
-
-    public int getAllocaOffset(long startPatchPointId) {
-        Set<Record> startRecords = patchpointsByID.get(startPatchPointId);
-        assert startRecords.size() == 1;
-        Record startRecord = startRecords.stream().findAny().orElseThrow(VMError::shouldNotReachHere);
-
-        assert startRecord.locations.length == 1;
-        Location alloca = startRecord.locations[0];
-        assert alloca.type == Location.Type.Direct;
-
-        int[] offsets = getStackOffsets(startPatchPointId, alloca);
-        assert offsets.length == 1;
-        return offsets[0];
     }
 
     private int[] getStackOffsets(long patchpointID, Location location) {

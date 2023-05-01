@@ -26,110 +26,149 @@ package com.oracle.svm.core.jfr;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.UnmanagedMemory;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.thread.VMOperation;
 
 /**
- * Manages the global JFR memory. A lot of the methods must be uninterruptible to ensure that we can
- * iterate and process the global JFR memory at a safepoint without having to worry about partial
- * modifications that were interrupted by the safepoint.
+ * Manages the global JFR buffers (see {@link JfrBufferType#GLOBAL_MEMORY}). The memory has a very
+ * long lifetime, as it is allocated during JFR startup and released during JFR teardown.
+ *
+ * A lot of the methods must be uninterruptible to ensure that we can iterate and process the global
+ * JFR memory at a safepoint without having to worry about partial modifications that were
+ * interrupted by the safepoint.
  */
 public class JfrGlobalMemory {
     private static final int PROMOTION_RETRY_COUNT = 100;
 
-    private long bufferCount;
+    private final JfrBufferList buffers;
     private long bufferSize;
-    private JfrBuffers buffers;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrGlobalMemory() {
+        this.buffers = new JfrBufferList();
     }
 
     public void initialize(long globalBufferSize, long globalBufferCount) {
-        this.bufferCount = globalBufferCount;
         this.bufferSize = globalBufferSize;
 
-        // Allocate all buffers eagerly.
-        buffers = UnmanagedMemory.calloc(SizeOf.unsigned(JfrBuffers.class).multiply(WordFactory.unsigned(bufferCount)));
-        for (int i = 0; i < bufferCount; i++) {
+        /* Allocate all buffers eagerly. */
+        for (int i = 0; i < globalBufferCount; i++) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(bufferSize), JfrBufferType.GLOBAL_MEMORY);
-            buffers.addressOf(i).write(buffer);
+            if (buffer.isNull()) {
+                throw new OutOfMemoryError("Could not allocate JFR buffer.");
+            }
+
+            JfrBufferNode node = buffers.addNode(buffer);
+            if (node.isNull()) {
+                throw new OutOfMemoryError("Could not allocate JFR buffer node.");
+            }
+        }
+    }
+
+    public void clear() {
+        assert VMOperation.isInProgressAtSafepoint();
+
+        JfrBufferNode node = buffers.getHead();
+        while (node.isNonNull()) {
+            JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
+            JfrBufferAccess.reinitialize(buffer);
+            node = node.getNext();
         }
     }
 
     public void teardown() {
-        if (buffers.isNonNull()) {
-            for (int i = 0; i < bufferCount; i++) {
-                JfrBuffer buffer = buffers.addressOf(i).read();
+        freeBuffers();
+
+        /* Free the nodes. */
+        buffers.teardown();
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private void freeBuffers() {
+        /* Free the buffers. */
+        JfrBufferNode node = buffers.getHead();
+        while (node.isNonNull()) {
+            JfrBufferNodeAccess.lockNoTransition(node);
+            try {
+                JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                 JfrBufferAccess.free(buffer);
+                node.setBuffer(WordFactory.nullPointer());
+            } finally {
+                JfrBufferNodeAccess.unlock(node);
             }
-            UnmanagedMemory.free(buffers);
-            buffers = WordFactory.nullPointer();
+            node = node.getNext();
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public JfrBuffers getBuffers() {
-        assert buffers.isNonNull();
+    public JfrBufferList getBuffers() {
         return buffers;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getBufferCount() {
-        return bufferCount;
+    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    public boolean write(JfrBuffer buffer, boolean flushpoint) {
+        UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
+        return write(buffer, unflushedSize, flushpoint);
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    public boolean write(JfrBuffer threadLocalBuffer, UnsignedWord unflushedSize) {
-        JfrBuffer promotionBuffer = acquireBufferWithRetry(unflushedSize, PROMOTION_RETRY_COUNT);
-        if (promotionBuffer.isNull()) {
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    public boolean write(JfrBuffer buffer, UnsignedWord unflushedSize, boolean flushpoint) {
+        if (unflushedSize.equal(0)) {
+            return true;
+        }
+
+        JfrBufferNode promotionNode = tryAcquirePromotionBuffer(unflushedSize);
+        if (promotionNode.isNull()) {
             return false;
         }
+
         boolean shouldSignal;
-        JfrRecorderThread recorderThread = SubstrateJVM.getRecorderThread();
         try {
-            // Copy all committed but not yet flushed memory to the promotion buffer.
+            /* Copy all committed but not yet flushed memory to the promotion buffer. */
+            JfrBuffer promotionBuffer = JfrBufferNodeAccess.getBuffer(promotionNode);
             assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
-            UnmanagedMemoryUtil.copy(threadLocalBuffer.getTop(), promotionBuffer.getPos(), unflushedSize);
-            JfrBufferAccess.increasePos(promotionBuffer, unflushedSize);
-            shouldSignal = recorderThread.shouldSignal(promotionBuffer);
+            UnmanagedMemoryUtil.copy(JfrBufferAccess.getFlushedPos(buffer), promotionBuffer.getCommittedPos(), unflushedSize);
+            JfrBufferAccess.increaseCommittedPos(promotionBuffer, unflushedSize);
+            shouldSignal = SubstrateJVM.getRecorderThread().shouldSignal(promotionBuffer);
         } finally {
-            releasePromotionBuffer(promotionBuffer);
+            JfrBufferNodeAccess.unlock(promotionNode);
         }
-        JfrBufferAccess.increaseTop(threadLocalBuffer, unflushedSize);
-        // Notify the thread that writes the global memory to disk.
-        if (shouldSignal) {
-            recorderThread.signal();
+
+        JfrBufferAccess.increaseFlushedPos(buffer, unflushedSize);
+
+        /*
+         * Notify the thread that writes the global memory to disk. If we're flushing, the global
+         * buffers are about to get persisted anyway.
+         */
+        if (shouldSignal && !flushpoint) {
+            SubstrateJVM.getRecorderThread().signal();
         }
         return true;
     }
 
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private JfrBuffer acquireBufferWithRetry(UnsignedWord size, int retryCount) {
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private JfrBufferNode tryAcquirePromotionBuffer(UnsignedWord size) {
         assert size.belowOrEqual(WordFactory.unsigned(bufferSize));
-        for (int retry = 0; retry < retryCount; retry++) {
-            for (int i = 0; i < bufferCount; i++) {
-                JfrBuffer buffer = buffers.addressOf(i).read();
-                if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size) && JfrBufferAccess.acquire(buffer)) {
-                    // Recheck the available size after acquiring the buffer.
+        for (int retry = 0; retry < PROMOTION_RETRY_COUNT; retry++) {
+            JfrBufferNode node = buffers.getHead();
+            while (node.isNonNull()) {
+                if (JfrBufferNodeAccess.tryLock(node)) {
+                    JfrBuffer buffer = JfrBufferNodeAccess.getBuffer(node);
                     if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
-                        return buffer;
+                        /* Recheck the available size after acquiring the buffer. */
+                        if (JfrBufferAccess.getAvailableSize(buffer).aboveOrEqual(size)) {
+                            return node;
+                        }
                     }
-                    JfrBufferAccess.release(buffer);
+                    JfrBufferNodeAccess.unlock(node);
                 }
+                node = node.getNext();
             }
         }
         return WordFactory.nullPointer();
-    }
-
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static void releasePromotionBuffer(JfrBuffer buffer) {
-        assert JfrBufferAccess.isAcquired(buffer);
-        JfrBufferAccess.release(buffer);
     }
 }

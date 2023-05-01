@@ -58,7 +58,7 @@ public abstract class ReferenceArrayStore extends EspressoNode {
     public abstract void execute(StaticObject receiver, int index, StaticObject value);
 
     @Specialization
-    void executeWithNullCheck(StaticObject array, int index, StaticObject value,
+    void doWithNullCheck(StaticObject array, int index, StaticObject value,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck objectArrayStore) {
         objectArrayStore.execute(nullCheck.execute(array), index, value);

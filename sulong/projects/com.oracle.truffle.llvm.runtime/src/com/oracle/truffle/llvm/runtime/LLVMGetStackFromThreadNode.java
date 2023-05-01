@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -59,7 +59,7 @@ public abstract class LLVMGetStackFromThreadNode extends LLVMNode {
      * @param currentThread
      * @see #executeWithTarget(LLVMThreadingStack, Thread)
      */
-    @Specialization(limit = "3", guards = "currentThread == cachedThread", assumptions = "singleContextAssumption()")
+    @Specialization(limit = "3", guards = {"currentThread == cachedThread", "isSingleContext($node)"})
     protected LLVMStack cached(LLVMThreadingStack stack, Thread currentThread,
                     @Cached("currentThread") @SuppressWarnings("unused") Thread cachedThread,
                     @Cached("getStack(stack, cachedThread)") LLVMStack cachedStack) {

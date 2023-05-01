@@ -68,7 +68,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
      * requested time intervals. The timer uses an exponentially weighted moving average (EWMA) to
      * adapt to a changing frequency of safepoint checks in the code that the thread executes.
      */
-    private static class RecurringCallbackTimer {
+    public static class RecurringCallbackTimer {
         private static final RecurringCallbackAccess CALLBACK_ACCESS = new RecurringCallbackAccess() {
             @Override
             public void throwException(Throwable t) {
@@ -108,7 +108,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
 
         @Uninterruptible(reason = "Must not contain safepoint checks.")
-        public void evaluate() {
+        void evaluate() {
             updateStatistics();
             try {
                 executeCallback();
@@ -118,7 +118,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
 
         @Uninterruptible(reason = "Must be uninterruptible to avoid races with the safepoint code.")
-        public void updateStatistics() {
+        void updateStatistics() {
             long now = System.nanoTime();
             long elapsedNanos = now - lastCapture;
 
@@ -142,7 +142,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             return rawValue >= 0 ? rawValue : -rawValue;
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Must not contain safepoint checks.")
         private void executeCallback() {
             if (isCallbackDisabled()) {
                 return;
@@ -177,7 +177,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Must not contain safepoint checks.")
         private void updateSafepointRequested() {
             long nextDeadline = lastCallbackExecution + targetIntervalNanos;
             long remainingNanos = nextDeadline - System.nanoTime();
@@ -196,13 +196,13 @@ public class ThreadingSupportImpl implements ThreadingSupport {
             }
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
-        public void setSafepointRequested(int value) {
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        void setSafepointRequested(int value) {
             requestedChecks = value;
             Safepoint.setSafepointRequested(value);
         }
 
-        @Uninterruptible(reason = "Called by uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         private boolean isCallbackDisabled() {
             return isExecuting || isRecurringCallbackPaused();
         }
@@ -234,23 +234,69 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
     private static final String enableSupportOption = SubstrateOptionsParser.commandArgument(SupportRecurringCallback, "+");
 
+    /**
+     * Registers or removes a recurring callback for the current thread. Only one recurring callback
+     * can be registered at a time. If there is already another recurring callback registered, it
+     * will be overwritten.
+     */
     @Override
     public void registerRecurringCallback(long interval, TimeUnit unit, RecurringCallback callback) {
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
         if (callback != null) {
             if (!SupportRecurringCallback.getValue()) {
                 VMError.shouldNotReachHere("Recurring callbacks must be enabled during image build with option " + enableSupportOption);
             }
             VMError.guarantee(MultiThreaded.getValue(), "Recurring callbacks are only supported in multi-threaded mode.");
+
             long intervalNanos = unit.toNanos(interval);
             if (intervalNanos < 1) {
                 throw new IllegalArgumentException("intervalNanos");
             }
-            RecurringCallbackTimer timer = new RecurringCallbackTimer(intervalNanos, callback);
-            activeTimer.set(timer);
-            Safepoint.setSafepointRequested(timer.requestedChecks);
+
+            RecurringCallbackTimer timer = createRecurringCallbackTimer(intervalNanos, callback);
+            registerRecurringCallback0(thread, timer);
         } else {
-            activeTimer.set(null);
+            removeRecurringCallback(thread);
         }
+    }
+
+    public static RecurringCallbackTimer createRecurringCallbackTimer(long intervalNanos, RecurringCallback callback) {
+        assert callback != null;
+        return new RecurringCallbackTimer(intervalNanos, callback);
+    }
+
+    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
+    private static void registerRecurringCallback0(IsolateThread thread, RecurringCallbackTimer timer) {
+        removeRecurringCallback(thread);
+        setRecurringCallback(thread, timer);
+    }
+
+    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.")
+    public static void setRecurringCallback(IsolateThread thread, RecurringCallbackTimer timer) {
+        assert SupportRecurringCallback.getValue() && MultiThreaded.getValue();
+        assert timer.targetIntervalNanos > 0;
+        assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
+
+        activeTimer.set(thread, timer);
+        Safepoint.setSafepointRequested(thread, timer.requestedChecks);
+    }
+
+    @Uninterruptible(reason = "Prevent VM operations that modify the recurring callbacks.", callerMustBe = true)
+    public static RecurringCallback getRecurringCallback(IsolateThread thread) {
+        assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
+
+        RecurringCallbackTimer value = activeTimer.get(thread);
+        if (value != null) {
+            return value.callback;
+        }
+        return null;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void removeRecurringCallback(IsolateThread thread) {
+        assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
+
+        activeTimer.set(thread, null);
     }
 
     /**
@@ -273,12 +319,12 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean isRecurringCallbackRegistered(IsolateThread thread) {
         return isRecurringCallbackSupported() && activeTimer.get(thread) != null;
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static boolean needsNativeToJavaSlowpath() {
         return ActionOnTransitionToJavaSupport.isActionPending() ||
                         (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() &&
@@ -360,7 +406,6 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         return SupportRecurringCallback.getValue() && MultiThreaded.getValue();
     }
 
-    @Uninterruptible(reason = "Called by uninterruptible code.")
     @SuppressWarnings("unchecked")
     private static <T extends Throwable> void throwUnchecked(Throwable exception) throws T {
         throw (T) exception; // T is inferred as RuntimeException, but doesn't have to be

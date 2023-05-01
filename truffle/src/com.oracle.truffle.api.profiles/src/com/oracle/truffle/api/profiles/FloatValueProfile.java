@@ -42,6 +42,8 @@ package com.oracle.truffle.api.profiles;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
+import com.oracle.truffle.api.dsl.NeverDefault;
 
 /**
  * <p>
@@ -77,7 +79,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @since 0.10
  */
 public final class FloatValueProfile extends Profile {
-
     private static final FloatValueProfile DISABLED;
     static {
         FloatValueProfile profile = new FloatValueProfile();
@@ -85,15 +86,15 @@ public final class FloatValueProfile extends Profile {
         DISABLED = profile;
     }
 
-    private static final byte UNINITIALIZED = 0;
-    private static final byte SPECIALIZED = 1;
-    private static final byte GENERIC = 2;
+    private static final int UNINITIALIZED = 0;
+    private static final int SPECIALIZED = 1;
+    private static final int GENERIC = 2;
 
     @CompilationFinal private float cachedValue;
     @CompilationFinal private int cachedRawValue;
     @CompilationFinal private byte state = UNINITIALIZED;
 
-    FloatValueProfile() {
+    private FloatValueProfile() {
     }
 
     /** @since 0.10 */
@@ -157,7 +158,7 @@ public final class FloatValueProfile extends Profile {
     @Override
     public String toString() {
         if (this == DISABLED) {
-            return toStringDisabled(FloatValueProfile.class);
+            return toStringDisabled();
         } else {
             return toString(FloatValueProfile.class, state == UNINITIALIZED, state == GENERIC, //
                             String.format("value == (float)%s (raw %h)", cachedValue, cachedRawValue));
@@ -171,6 +172,7 @@ public final class FloatValueProfile extends Profile {
      * @see IntValueProfile
      * @since 0.10
      */
+    @NeverDefault
     public static FloatValueProfile createRawIdentityProfile() {
         return create();
     }
@@ -182,8 +184,9 @@ public final class FloatValueProfile extends Profile {
      * @see IntValueProfile
      * @since 22.1
      */
+    @NeverDefault
     public static FloatValueProfile create() {
-        if (Profile.isProfilingEnabled()) {
+        if (isProfilingEnabled()) {
             return new FloatValueProfile();
         } else {
             return DISABLED;
@@ -197,6 +200,16 @@ public final class FloatValueProfile extends Profile {
      */
     public static FloatValueProfile getUncached() {
         return DISABLED;
+    }
+
+    /**
+     * Returns an inlined version of the profile. This version is automatically used by Truffle DSL
+     * node inlining.
+     *
+     * @since 23.0
+     */
+    public static InlinedFloatValueProfile inline(InlineTarget target) {
+        return InlinedFloatValueProfile.inline(target);
     }
 
 }

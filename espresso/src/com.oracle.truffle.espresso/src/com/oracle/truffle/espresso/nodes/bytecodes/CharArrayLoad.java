@@ -57,7 +57,7 @@ public abstract class CharArrayLoad extends EspressoNode {
     public abstract char execute(StaticObject receiver, int index);
 
     @Specialization
-    char executeWithNullCheck(StaticObject array, int index,
+    char doWithNullCheck(StaticObject array, int index,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck charArrayLoad) {
         return charArrayLoad.execute(nullCheck.execute(array), index);

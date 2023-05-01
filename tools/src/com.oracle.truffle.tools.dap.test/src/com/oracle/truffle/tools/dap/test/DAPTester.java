@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,9 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -39,8 +41,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -73,6 +73,10 @@ public final class DAPTester {
     }
 
     public static DAPTester start(boolean suspend, Consumer<Context> prolog) throws IOException {
+        return start(suspend, prolog, Collections.emptyList());
+    }
+
+    public static DAPTester start(boolean suspend, Consumer<Context> prolog, List<URI> sourcePath) throws IOException {
         final ProxyOutputStream err = new ProxyOutputStream(System.err);
         Engine engine = Engine.newBuilder().err(err).build();
         Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
@@ -84,7 +88,7 @@ public final class DAPTester {
         }
         Instrument testInstrument = engine.getInstruments().get(DAPTestInstrument.ID);
         DAPSessionHandlerProvider sessionHandlerProvider = testInstrument.lookup(DAPSessionHandlerProvider.class);
-        DAPSessionHandler sessionHandler = sessionHandlerProvider.getSessionHandler(suspend, false, false, runProlog);
+        DAPSessionHandler sessionHandler = sessionHandlerProvider.getSessionHandler(suspend, false, false, runProlog, sourcePath);
         return new DAPTester(sessionHandler, context);
     }
 
@@ -95,13 +99,11 @@ public final class DAPTester {
     public void finish() throws IOException {
         if (!lastValue.isDone()) {
             try {
-                lastValue.get(1, TimeUnit.SECONDS);
-            } catch (TimeoutException ex) {
-                if (handler.getInputStream().available() > 0) {
-                    Assert.fail("Additional message available: " + getMessage());
-                }
-                Assert.fail("Last eval(...) has not finished yet");
-            } catch (InterruptedException | ExecutionException ex) {
+                lastValue.get();
+            } catch (InterruptedException ex) {
+                throw new AssertionError("Last eval(...) has not finished yet", ex);
+            } catch (ExecutionException ex) {
+                // Guest language execution failed
             }
         }
         if (handler.getInputStream().available() > 0) {

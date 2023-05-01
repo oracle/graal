@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,20 +25,16 @@
 
 package com.oracle.svm.hosted;
 
-import java.io.File;
-import java.io.PrintWriter;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
-import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 
-class ProgressReporterJsonHelper {
+public class ProgressReporterJsonHelper {
     protected static final long UNAVAILABLE_METRIC = -1;
     private static final String ANALYSIS_RESULTS_KEY = "analysis_results";
     private static final String GENERAL_INFO_KEY = "general_info";
@@ -46,10 +42,9 @@ class ProgressReporterJsonHelper {
     private static final String RESOURCE_USAGE_KEY = "resource_usage";
 
     private final Map<String, Object> statsHolder = new HashMap<>();
-    private final String jsonOutputFile;
 
-    ProgressReporterJsonHelper(String outFile) {
-        this.jsonOutputFile = outFile;
+    ProgressReporterJsonHelper() {
+        recordSystemFixedValues();
     }
 
     private void recordSystemFixedValues() {
@@ -71,9 +66,14 @@ class ProgressReporterJsonHelper {
     }
 
     @SuppressWarnings("unchecked")
-    public void putGeneralInfo(GeneralInfo info, String value) {
+    public void putGeneralInfo(GeneralInfo info, Object value) {
         Map<String, Object> generalInfoMap = (Map<String, Object>) statsHolder.computeIfAbsent(GENERAL_INFO_KEY, gi -> new HashMap<>());
-        generalInfoMap.put(info.jsonKey(), value);
+        if (info.bucket != null) {
+            Map<String, Object> subMap = (Map<String, Object>) generalInfoMap.computeIfAbsent(info.bucket, k -> new HashMap<>());
+            subMap.put(info.jsonKey(), value);
+        } else {
+            generalInfoMap.put(info.jsonKey(), value);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -104,55 +104,8 @@ class ProgressReporterJsonHelper {
         }
     }
 
-    public Path printToFile() {
-        recordSystemFixedValues();
-        final File file = new File(jsonOutputFile);
-        String description = "image statistics in json";
-        return ReportUtils.report(description, file.getAbsoluteFile().toPath(), getReporter(), false);
-    }
-
-    private Consumer<PrintWriter> getReporter() {
-        return out -> {
-            out.println(toJson());
-        };
-    }
-
-    private String toJson() {
-        return mapToJson(statsHolder);
-    }
-
-    private String mapToJson(Map<String, Object> map) {
-        // base case
-        if (map.isEmpty()) {
-            return "{}";
-        }
-        StringBuilder builder = new StringBuilder();
-        builder.append("{");
-        Iterator<String> keySetIter = map.keySet().iterator();
-        while (keySetIter.hasNext()) {
-            String key = keySetIter.next();
-            Object value = map.get(key);
-            builder.append("\"" + key + "\":");
-            if (value == null) {
-                builder.append("null"); // null string
-            } else if (value instanceof Map) {
-                // Always a <String, Object> map
-                @SuppressWarnings("unchecked")
-                Map<String, Object> subMap = (Map<String, Object>) value;
-                builder.append(mapToJson(subMap));
-            } else if (value instanceof String) {
-                builder.append("\"" + value + "\"");
-            } else {
-                assert value instanceof Number;
-                // Numeric value
-                builder.append(value);
-            }
-            if (keySetIter.hasNext()) {
-                builder.append(",");
-            }
-        }
-        builder.append("}");
-        return builder.toString();
+    public void print(JsonWriter writer) throws IOException {
+        writer.print(statsHolder);
     }
 
     interface JsonMetric {
@@ -210,7 +163,7 @@ class ProgressReporterJsonHelper {
         }
     }
 
-    enum AnalysisResults implements JsonMetric {
+    public enum AnalysisResults implements JsonMetric {
         TYPES_TOTAL("types", "total"),
         TYPES_REACHABLE("types", "reachable"),
         TYPES_JNI("types", "jni"),
@@ -248,27 +201,33 @@ class ProgressReporterJsonHelper {
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
-            if (value instanceof Integer) {
-                helper.putAnalysisResults(this, (Integer) value);
-            } else if (value instanceof Long) {
-                helper.putAnalysisResults(this, (Long) value);
+            if (value instanceof Integer v) {
+                helper.putAnalysisResults(this, v);
+            } else if (value instanceof Long v) {
+                helper.putAnalysisResults(this, v);
             } else {
                 VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());
             }
         }
     }
 
-    enum GeneralInfo implements JsonMetric {
-        IMAGE_NAME("name"),
-        JAVA_VERSION("java_version"),
-        GRAALVM_VERSION("graalvm_version"),
-        GC("garbage_collector"),
-        CC("c_compiler");
+    public enum GeneralInfo implements JsonMetric {
+        IMAGE_NAME("name", null),
+        JAVA_VERSION("java_version", null),
+        VENDOR_VERSION("vendor_version", null),
+        GRAALVM_VERSION("graalvm_version", null),
+        GRAAL_COMPILER_OPTIMIZATION_LEVEL("optimization_level", "graal_compiler"),
+        GRAAL_COMPILER_MARCH("march", "graal_compiler"),
+        GRAAL_COMPILER_PGO("pgo", "graal_compiler"),
+        GC("garbage_collector", null),
+        CC("c_compiler", null);
 
         private String key;
+        private String bucket;
 
-        GeneralInfo(String key) {
+        GeneralInfo(String key, String bucket) {
             this.key = key;
+            this.bucket = bucket;
         }
 
         public String jsonKey() {
@@ -277,7 +236,11 @@ class ProgressReporterJsonHelper {
 
         @Override
         public void record(ProgressReporterJsonHelper helper, Object value) {
-            helper.putGeneralInfo(this, (String) value);
+            if (value instanceof String || value instanceof Boolean) {
+                helper.putGeneralInfo(this, value);
+            } else {
+                VMError.shouldNotReachHere("Imcompatible type of 'value': " + value.getClass());
+            }
         }
     }
 }

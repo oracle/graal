@@ -43,6 +43,8 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import org.graalvm.wasm.constants.BytecodeBitEncoding;
+import org.graalvm.wasm.memory.NativeDataInstanceUtil;
 import org.graalvm.wasm.memory.WasmMemory;
 
 /**
@@ -97,14 +99,18 @@ public class RuntimeState {
      * be dropped after using them. They can be set to null even in compiled code, therefore they
      * cannot be compilation final.
      */
-    @CompilationFinal(dimensions = 0) private Object[][] elemInstances;
+    @CompilationFinal(dimensions = 0) private Object[][] elementInstances;
 
     /**
      * The passive data instances that can be used to lazily initialize memory. They can potentially
-     * be dropped after using them. They can be set to null even in compiled code, therefore they
-     * cannot be compilation final.
+     * be dropped after using them, even in compiled code.
      */
-    @CompilationFinal(dimensions = 0) private byte[][] dataInstances;
+    @CompilationFinal(dimensions = 0) private int[] dataInstances;
+
+    /**
+     * Offset representing an already dropped data instance.
+     */
+    private final int droppedDataInstanceOffset;
 
     @CompilationFinal private Linker.LinkState linkState;
 
@@ -124,7 +130,7 @@ public class RuntimeState {
         }
     }
 
-    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions) {
+    public RuntimeState(WasmContext context, WasmModule module, int numberOfFunctions, int droppedDataInstanceOffset) {
         this.context = context;
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
@@ -132,8 +138,9 @@ public class RuntimeState {
         this.targets = new CallTarget[numberOfFunctions];
         this.functionInstances = new WasmFunctionInstance[numberOfFunctions];
         this.linkState = Linker.LinkState.nonLinked;
-        this.elemInstances = null;
         this.dataInstances = null;
+        this.elementInstances = null;
+        this.droppedDataInstanceOffset = droppedDataInstanceOffset;
     }
 
     private void checkNotLinked() {
@@ -186,10 +193,6 @@ public class RuntimeState {
 
     public SymbolTable symbolTable() {
         return module.symbolTable();
-    }
-
-    public byte[] data() {
-        return module.data();
     }
 
     public WasmModule module() {
@@ -256,52 +259,20 @@ public class RuntimeState {
         functionInstances[index] = functionInstance;
     }
 
-    private void ensureElemInstanceCapacity(int index) {
-        if (elemInstances == null) {
-            elemInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
-        } else if (index >= elemInstances.length) {
-            final Object[][] nElementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elemInstances.length)][];
-            System.arraycopy(elemInstances, 0, nElementInstances, 0, elemInstances.length);
-            elemInstances = nElementInstances;
-        }
-    }
-
-    void setElemInstance(int index, Object[] elemInstance) {
-        assert elemInstance != null;
-        ensureElemInstanceCapacity(index);
-        elemInstances[index] = elemInstance;
-    }
-
-    public void dropElemInstance(int index) {
-        if (elemInstances == null) {
-            return;
-        }
-        assert index < elemInstances.length;
-        elemInstances[index] = null;
-    }
-
-    public Object[] elemInstance(int index) {
-        if (elemInstances == null) {
-            return null;
-        }
-        assert index < elemInstances.length;
-        return elemInstances[index];
-    }
-
     private void ensureDataInstanceCapacity(int index) {
         if (dataInstances == null) {
-            dataInstances = new byte[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+            dataInstances = new int[Math.max(Integer.highestOneBit(index) << 1, 2)];
         } else if (index >= dataInstances.length) {
-            final byte[][] nDataInstances = new byte[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)][];
+            final int[] nDataInstances = new int[Math.max(Integer.highestOneBit(index) << 1, 2 * dataInstances.length)];
             System.arraycopy(dataInstances, 0, nDataInstances, 0, dataInstances.length);
             dataInstances = nDataInstances;
         }
     }
 
-    void setDataInstance(int index, byte[] dataInstance) {
-        assert dataInstance != null;
+    public void setDataInstance(int index, int bytecodeOffset) {
+        assert bytecodeOffset != -1;
         ensureDataInstanceCapacity(index);
-        dataInstances[index] = dataInstance;
+        dataInstances[index] = bytecodeOffset;
     }
 
     public void dropDataInstance(int index) {
@@ -309,14 +280,109 @@ public class RuntimeState {
             return;
         }
         assert index < dataInstances.length;
-        dataInstances[index] = null;
+        dataInstances[index] = droppedDataInstanceOffset;
     }
 
-    public byte[] dataInstance(int index) {
-        if (dataInstances == null) {
+    public void dropUnsafeDataInstance(int index) {
+        final long address = dataInstanceAddress(index);
+        if (address != 0) {
+            NativeDataInstanceUtil.freeNativeInstance(address);
+        }
+        dataInstances[index] = droppedDataInstanceOffset;
+    }
+
+    public int dataInstanceOffset(int index) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
+            return 0;
+        }
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        return bytecodeOffset + (bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) + 1;
+    }
+
+    public int dataInstanceLength(int index) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
+            return 0;
+        }
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        final int encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
+        final int length;
+        switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
+                length = encoding;
+                break;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8:
+                length = BinaryStreamParser.rawPeekU8(bytecode, bytecodeOffset + 1);
+                break;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16:
+                length = BinaryStreamParser.rawPeekU16(bytecode, bytecodeOffset + 1);
+                break;
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32:
+                length = BinaryStreamParser.rawPeekI32(bytecode, bytecodeOffset + 1);
+                break;
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+        return length;
+    }
+
+    public long dataInstanceAddress(int index) {
+        if (dataInstances == null || dataInstances[index] == droppedDataInstanceOffset) {
+            return 0;
+        }
+        final int bytecodeOffset = dataInstances[index];
+        final byte[] bytecode = module().bytecode();
+        final byte encoding = bytecode[bytecodeOffset];
+        final int lengthEncoding = encoding & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
+        switch (lengthEncoding) {
+            case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 1);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U8:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 2);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_U16:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 3);
+            case BytecodeBitEncoding.CODE_ENTRY_FUNCTION_INDEX_I32:
+                return BinaryStreamParser.rawPeekI64(bytecode, bytecodeOffset + 5);
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    public int droppedDataInstanceOffset() {
+        return droppedDataInstanceOffset;
+    }
+
+    private void ensureElemInstanceCapacity(int index) {
+        if (elementInstances == null) {
+            elementInstances = new Object[Math.max(Integer.highestOneBit(index) << 1, 2)][];
+        } else if (index >= elementInstances.length) {
+            final Object[][] nElementInstanceData = new Object[Math.max(Integer.highestOneBit(index) << 1, 2 * elementInstances.length)][];
+            System.arraycopy(elementInstances, 0, nElementInstanceData, 0, elementInstances.length);
+            elementInstances = nElementInstanceData;
+        }
+    }
+
+    void setElemInstance(int index, Object[] data) {
+        assert data != null;
+        ensureElemInstanceCapacity(index);
+        elementInstances[index] = data;
+    }
+
+    public void dropElemInstance(int index) {
+        if (elementInstances == null) {
+            return;
+        }
+        assert index < elementInstances.length;
+        elementInstances[index] = null;
+    }
+
+    public Object[] elemInstance(int index) {
+        if (elementInstances == null) {
             return null;
         }
-        assert index < dataInstances.length;
-        return dataInstances[index];
+        assert index < elementInstances.length;
+        return elementInstances[index];
     }
 }

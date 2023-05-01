@@ -32,10 +32,8 @@ include_guard(GLOBAL)
 include(SulongCommon)
 
 macro(setupCompiler)
-    requireVariable(TOOLCHAIN_CLANG)
-    requireVariable(TOOLCHAIN_CLANGXX)
-    setCompilerConfig(CMAKE_C_COMPILER ${TOOLCHAIN_CLANG})
-    setCompilerConfig(CMAKE_CXX_COMPILER ${TOOLCHAIN_CLANGXX})
+    overrideCompilerConfig(CMAKE_C_COMPILER TOOLCHAIN_CLANG)
+    overrideCompilerConfig(CMAKE_CXX_COMPILER TOOLCHAIN_CLANGXX)
     noFortranSupport()
 endmacro()
 

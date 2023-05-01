@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
+import static com.oracle.truffle.tools.chromeinspector.types.RemoteObject.getMetaObject;
+
 import java.io.PrintWriter;
 
 import com.oracle.truffle.api.debug.DebugException;
@@ -31,8 +33,6 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.chromeinspector.LanguageChecks;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject.TypeMark;
-
-import static com.oracle.truffle.tools.chromeinspector.types.RemoteObject.getMetaObject;
 
 /**
  * Collects value type information.
@@ -214,6 +214,9 @@ public final class TypeInfo {
         }
         if (value.fitsInDouble()) {
             return value.asDouble();
+        }
+        if (value.fitsInBigInteger()) {
+            return value.asBigInteger();
         }
         throw new IllegalArgumentException("Not a number: " + value.toDisplayString(false));
     }

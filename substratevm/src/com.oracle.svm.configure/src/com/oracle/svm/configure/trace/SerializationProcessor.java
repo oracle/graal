@@ -58,7 +58,7 @@ public class SerializationProcessor extends AbstractProcessor {
         if ("ObjectStreamClass.<init>".equals(function)) {
             expectSize(args, 2);
 
-            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null))) {
+            if (advisor.shouldIgnore(LazyValueUtils.lazyValue((String) args.get(0)), LazyValueUtils.lazyValue(null), false)) {
                 return;
             }
 

@@ -24,13 +24,17 @@
  */
 package com.oracle.svm.core.hub;
 
+import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton
 public final class ClassForNameSupport {
@@ -40,7 +44,9 @@ public final class ClassForNameSupport {
     }
 
     /** The map used to collect registered classes. */
-    private final EconomicMap<String, Class<?>> knownClasses = ImageHeapMap.create();
+    private final EconomicMap<String, Object> knownClasses = ImageHeapMap.create();
+
+    private static final Object NEGATIVE_QUERY = new Object();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
@@ -48,18 +54,79 @@ public final class ClassForNameSupport {
         if (PredefinedClassesSupport.isPredefined(clazz)) {
             return; // must be defined at runtime before it can be looked up
         }
-        singleton().knownClasses.put(clazz.getName(), clazz);
+        String name = clazz.getName();
+        if (!singleton().knownClasses.containsKey(name) || !(singleton().knownClasses.get(name) instanceof Throwable)) {
+            /*
+             * If the class has already been seen as throwing an error, we don't overwrite this
+             * error
+             */
+            VMError.guarantee(!singleton().knownClasses.containsKey(name) || singleton().knownClasses.get(name) == clazz);
+            singleton().knownClasses.put(name, clazz);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerExceptionForClass(String className, Throwable t) {
+        singleton().knownClasses.put(className, t);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerNegativeQuery(String className) {
+        singleton().knownClasses.put(className, NEGATIVE_QUERY);
     }
 
     public static Class<?> forNameOrNull(String className, ClassLoader classLoader) {
+        try {
+            return forName(className, classLoader, true);
+        } catch (ClassNotFoundException e) {
+            throw VMError.shouldNotReachHere("ClassForNameSupport.forNameOrNull should not throw", e);
+        }
+    }
+
+    public static Class<?> forName(String className, ClassLoader classLoader) throws ClassNotFoundException {
+        return forName(className, classLoader, false);
+    }
+
+    private static Class<?> forName(String className, ClassLoader classLoader, boolean returnNullOnException) throws ClassNotFoundException {
         if (className == null) {
             return null;
         }
-        Class<?> result = singleton().knownClasses.get(className);
+        Object result = singleton().knownClasses.get(className);
+        if (result == NEGATIVE_QUERY) {
+            result = new ClassNotFoundException(className);
+        }
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
         }
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
-        return result;
+        // TODO rewrite stack traces (GR-42813)
+        if (result instanceof Class<?>) {
+            return (Class<?>) result;
+        } else if (result instanceof Throwable) {
+            if (returnNullOnException) {
+                return null;
+            }
+
+            if (result instanceof Error) {
+                throw (Error) result;
+            } else if (result instanceof ClassNotFoundException) {
+                throw (ClassNotFoundException) result;
+            }
+        } else if (result == null) {
+            if (throwMissingRegistrationErrors()) {
+                MissingReflectionRegistrationUtils.forClass(className);
+            }
+
+            if (returnNullOnException) {
+                return null;
+            } else {
+                throw new ClassNotFoundException(className);
+            }
+        }
+        throw VMError.shouldNotReachHere("Class.forName result should be Class, ClassNotFoundException or Error: " + result);
+    }
+
+    public static int count() {
+        return singleton().knownClasses.size();
     }
 }

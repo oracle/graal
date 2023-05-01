@@ -32,21 +32,22 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Support for registering and querying {@link JfrConstantPool}s that serialize data.
+ * Support for registering and querying {@link JfrSerializer}s. Serializers are only written upon a
+ * new chunk.
  */
 public class JfrSerializerSupport {
-    private JfrConstantPool[] serializers;
+    private JfrSerializer[] serializers;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrSerializerSupport() {
-        serializers = new JfrConstantPool[0];
+        serializers = new JfrSerializer[0];
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public synchronized void register(JfrConstantPool serializer) {
+    public synchronized void register(JfrSerializer serializer) {
         assert serializer != null;
         int oldLength = serializers.length;
-        // We expect a very small number of serializers, so only increase the size by 1.
+        /* We expect a very small number of serializers, so only increase the size by 1. */
         serializers = Arrays.copyOf(serializers, oldLength + 1);
         serializers[oldLength] = serializer;
     }
@@ -56,7 +57,7 @@ public class JfrSerializerSupport {
         return ImageSingletons.lookup(JfrSerializerSupport.class);
     }
 
-    public JfrConstantPool[] getSerializers() {
+    public JfrSerializer[] getSerializers() {
         return serializers;
     }
 }

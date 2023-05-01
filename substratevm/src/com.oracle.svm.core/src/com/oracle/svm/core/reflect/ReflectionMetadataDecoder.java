@@ -35,15 +35,23 @@ import com.oracle.svm.core.hub.DynamicHub;
 public interface ReflectionMetadataDecoder {
     int NO_DATA = -1;
 
-    Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
+    Field[] parseFields(DynamicHub declaringType, int index, boolean publicOnly);
 
-    Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
+    FieldDescriptor[] parseReachableFields(DynamicHub declaringType, int index);
 
-    Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly, boolean reflectOnly);
+    Method[] parseMethods(DynamicHub declaringType, int index, boolean publicOnly);
+
+    MethodDescriptor[] parseReachableMethods(DynamicHub declaringType, int index);
+
+    Constructor<?>[] parseConstructors(DynamicHub declaringType, int index, boolean publicOnly);
+
+    ConstructorDescriptor[] parseReachableConstructors(DynamicHub declaringType, int index);
 
     Class<?>[] parseClasses(int index);
 
     Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, int index);
+
+    Object[] parseObjects(int index);
 
     Parameter[] parseReflectParameters(Executable executable, byte[] encoding);
 
@@ -53,5 +61,93 @@ public interface ReflectionMetadataDecoder {
 
     boolean isHiding(int modifiers);
 
+    boolean isNegative(int modifiers);
+
     long getMetadataByteLength();
+
+    class ElementDescriptor {
+        private final Class<?> declaringClass;
+
+        public ElementDescriptor(Class<?> declaringClass) {
+            this.declaringClass = declaringClass;
+        }
+
+        public Class<?> getDeclaringClass() {
+            return declaringClass;
+        }
+
+        protected static String[] getParameterTypeNames(Class<?>[] parameterTypes) {
+            String[] parameterTypeNames = new String[parameterTypes.length];
+            for (int i = 0; i < parameterTypes.length; ++i) {
+                parameterTypeNames[i] = parameterTypes[i].getTypeName();
+            }
+            return parameterTypeNames;
+        }
+    }
+
+    class FieldDescriptor extends ElementDescriptor {
+        public final String name;
+
+        public FieldDescriptor(Class<?> declaringClass, String name) {
+            super(declaringClass);
+            this.name = name;
+        }
+
+        public FieldDescriptor(Field field) {
+            this(field.getDeclaringClass(), field.getName());
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
+    class MethodDescriptor extends ElementDescriptor {
+        public final String name;
+        public final String[] parameterTypeNames;
+
+        public MethodDescriptor(Class<?> declaringClass, String name, String[] parameterTypeNames) {
+            super(declaringClass);
+            this.name = name;
+            this.parameterTypeNames = parameterTypeNames;
+        }
+
+        public MethodDescriptor(Method method) {
+            this(method.getDeclaringClass(), method.getName(), getParameterTypeNames(method.getParameterTypes()));
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String[] getParameterTypeNames() {
+            return parameterTypeNames;
+        }
+    }
+
+    class ConstructorDescriptor extends ElementDescriptor {
+        public final String[] parameterTypeNames;
+
+        public ConstructorDescriptor(Class<?> declaringClass, String[] parameterTypeNames) {
+            super(declaringClass);
+            this.parameterTypeNames = parameterTypeNames;
+        }
+
+        public ConstructorDescriptor(Constructor<?> constructor) {
+            this(constructor.getDeclaringClass(), getParameterTypeNames(constructor.getParameterTypes()));
+        }
+
+        public String[] getParameterTypeNames() {
+            return parameterTypeNames;
+        }
+    }
+
+    interface MetadataAccessor {
+
+        <T> T getObject(int index);
+
+        Class<?> getClass(int index);
+
+        String getString(int index);
+    }
 }

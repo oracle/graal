@@ -31,8 +31,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
@@ -73,6 +73,7 @@ public final class OldGeneration extends Generation {
 
     /** Promote an Object to ToSpace if it is not already in ToSpace. */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
@@ -80,6 +81,7 @@ public final class OldGeneration extends Generation {
     }
 
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
@@ -88,6 +90,7 @@ public final class OldGeneration extends Generation {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
         assert originalSpace.isFromSpace();
         if (isAligned) {
@@ -102,10 +105,12 @@ public final class OldGeneration extends Generation {
         getFromSpace().releaseChunks(chunkReleaser);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void prepareForPromotion() {
         toGreyObjectsWalker.setScanStart(getToSpace());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean scanGreyObjects() {
         if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
@@ -139,6 +144,7 @@ public final class OldGeneration extends Generation {
     }
 
     /* Extract all the HeapChunks from FromSpace and append them to ToSpace. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void emptyFromSpaceIntoToSpace() {
         getToSpace().absorb(getFromSpace());
     }
@@ -158,13 +164,13 @@ public final class OldGeneration extends Generation {
         return fromBytes.add(toBytes);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressWarnings("static-method")
     AlignedHeapChunk.AlignedHeader requestAlignedChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
         AlignedHeapChunk.AlignedHeader chunk = HeapImpl.getChunkProvider().produceAlignedChunk();
         if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, chunk.isNull())) {
-            Log.log().string("[! OldGeneration.requestAlignedChunk: failure to allocate aligned chunk!]");
-            throw VMError.shouldNotReachHere("Promotion failure");
+            throw VMError.shouldNotReachHere("OldGeneration.requestAlignedChunk: failure to allocate aligned chunk");
         }
         RememberedSet.get().enableRememberedSetForChunk(chunk);
         return chunk;

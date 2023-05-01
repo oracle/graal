@@ -28,6 +28,7 @@
 package com.oracle.svm.core;
 
 import com.oracle.svm.core.heap.ReferenceInternals;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -297,6 +298,7 @@ public class WeakIdentityHashMap<K,V>
      * @throws  NullPointerException if the specified map is null
      * @since   1.3
      */
+    @SuppressWarnings("this-escape")
     public WeakIdentityHashMap(Map<? extends K, ? extends V> m) {
         this(Math.max((int) (m.size() / DEFAULT_LOAD_FACTOR) + 1,
                 DEFAULT_INITIAL_CAPACITY),
@@ -359,6 +361,7 @@ public class WeakIdentityHashMap<K,V>
     /**
      * Expunges stale entries from the table.
      */
+    @SuppressFBWarnings(value = "SA_FIELD_SELF_ASSIGNMENT", justification = "inherited from upstream")
     private void expungeStaleEntries() {
         for (Object x; (x = queue.poll()) != null; ) {
             synchronized (queue) {
@@ -824,6 +827,7 @@ public class WeakIdentityHashMap<K,V>
             index = isEmpty() ? 0 : table.length;
         }
 
+        @SuppressFBWarnings(value = "SA_FIELD_SELF_ASSIGNMENT", justification = "inherited from upstream")
         public boolean hasNext() {
             Entry<K,V>[] t = table;
 

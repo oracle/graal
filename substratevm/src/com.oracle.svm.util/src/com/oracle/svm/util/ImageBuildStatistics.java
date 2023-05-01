@@ -31,6 +31,7 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -41,17 +42,26 @@ public class ImageBuildStatistics {
     public static class Options {
         @Option(help = "Collect information during image build about devirtualized invokes and bytecode exceptions.")//
         public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<>(false);
-        @Option(help = "File for printing image build statistics")//
-        public static final OptionKey<String> ImageBuildStatisticsFile = new OptionKey<>(null);
     }
 
     public enum CheckCountLocation {
+        BEFORE_STRENGTHEN_GRAPHS,
+        AFTER_STRENGTHEN_GRAPHS,
         AFTER_PARSE_CANONICALIZATION,
         BEFORE_HIGH_TIER,
         AFTER_HIGH_TIER
     }
 
     final TreeMap<String, AtomicLong> counters;
+
+    public AtomicLong insert(String key) {
+        AtomicLong result = new AtomicLong();
+        var existing = counters.put(key, result);
+        if (existing != null) {
+            throw GraalError.shouldNotReachHere("Key already used: " + key);
+        }
+        return result;
+    }
 
     public void incDevirtualizedInvokeCounter() {
         counters.get(devirtualizedInvokes()).incrementAndGet();

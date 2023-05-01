@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostLanguage.HostLanguageException;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
@@ -118,20 +119,15 @@ public class HostLanguageService extends AbstractHostLanguageService {
         return HostObject.forStaticClass(found, context);
     }
 
-    @Override
-    public Object createToHostTypeNode() {
-        return HostToTypeNodeGen.create();
-    }
-
     @SuppressWarnings("unchecked")
     @Override
-    public <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
+    public <T> T toHostType(Object hostNode, Object targetNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
         HostContext context = (HostContext) hostContext;
         HostToTypeNode node = (HostToTypeNode) hostNode;
         if (node == null) {
             node = HostToTypeNodeGen.getUncached();
         }
-        return (T) node.execute(context, value, targetType, genericType, true);
+        return (T) node.execute((Node) targetNode, context, value, targetType, genericType, true);
     }
 
     @Override
@@ -258,7 +254,7 @@ public class HostLanguageService extends AbstractHostLanguageService {
     @Override
     public RuntimeException toHostException(Object context, Throwable exception) {
         HostContext hostContext = (HostContext) context;
-        return new HostException(exception, hostContext);
+        return HostException.wrap(exception, hostContext);
     }
 
     @Override
@@ -318,6 +314,11 @@ public class HostLanguageService extends AbstractHostLanguageService {
     @Override
     public void hostExit(int exitCode) {
         System.exit(exitCode);
+    }
+
+    @Override
+    public boolean allowsPublicAccess() {
+        return api.allowsPublicAccess(language.hostClassCache.hostAccess);
     }
 
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {

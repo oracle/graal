@@ -1,8 +1,24 @@
+# Version 23.1.0
+
+Changes:
+
+* Updated LLVM toolchain to version 16.0.1.
+
+# Version 23.0.0
+
+New Features:
+
+* Added support for `long double` (128 bit floating point) on Linux/AArch64.
+
+Changes:
+
+* Updated LLVM toolchain to version 15.0.6.
+
 # Version 22.3.0
 
 New Features:
 
-* Add experimental Windows support.
+* Added experimental Windows support.
 
 Changes:
 

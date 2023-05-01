@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.api.interop;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -74,8 +78,18 @@ final class DefaultDoubleExports {
     @ExportMessage
     static boolean fitsInLong(Double receiver) {
         double d = receiver;
-        long l = (long) d;
-        return NumberUtils.inSafeIntegerRange(d) && !NumberUtils.isNegativeZero(d) && l == d;
+        if (!NumberUtils.isNegativeZero(d)) {
+            long l = (long) d;
+            if (l != Long.MAX_VALUE && l == d) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @ExportMessage
+    static boolean fitsInBigInteger(Double receiver) {
+        return receiver % 1 == 0 && !NumberUtils.isNegativeZero(receiver);
     }
 
     @ExportMessage
@@ -118,13 +132,30 @@ final class DefaultDoubleExports {
     @ExportMessage
     static long asLong(Double receiver) throws UnsupportedMessageException {
         double d = receiver;
-        if (NumberUtils.inSafeIntegerRange(d) && !NumberUtils.isNegativeZero(d)) {
+        if (!NumberUtils.isNegativeZero(d)) {
             long l = (long) d;
-            if (l == d) {
+            if (l != Long.MAX_VALUE && l == d) {
                 return l;
             }
         }
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static BigInteger asBigInteger(Double receiver) throws UnsupportedMessageException {
+        if (!fitsInBigInteger(receiver)) {
+            throw UnsupportedMessageException.create();
+        }
+        return toBigInteger(receiver);
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(double receiver) {
+        try {
+            return new BigDecimal(receiver).toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     @ExportMessage

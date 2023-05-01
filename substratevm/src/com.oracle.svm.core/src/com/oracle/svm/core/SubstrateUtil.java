@@ -27,9 +27,7 @@ package com.oracle.svm.core;
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,7 +35,6 @@ import java.util.regex.Pattern;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -51,7 +48,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
@@ -102,6 +98,10 @@ public class SubstrateUtil {
      */
     public static boolean isInLibgraal() {
         return Services.IS_IN_NATIVE_IMAGE;
+    }
+
+    public static boolean isRunningInCI() {
+        return System.console() == null || System.getenv("CI") != null;
     }
 
     /**
@@ -208,6 +208,7 @@ public class SubstrateUtil {
      * are actually the same class.
      */
     @SuppressWarnings({"unused", "unchecked"})
+    @AlwaysInline("Some callers rely on this never becoming an actual method call.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T cast(Object obj, Class<T> toType) {
         return (T) obj;
@@ -276,7 +277,7 @@ public class SubstrateUtil {
      * Convenience method that unwraps the method details and delegates to the currently registered
      * UniqueShortNameProvider image singleton with the significant exception that it always passes
      * null for the class loader.
-     * 
+     *
      * @param m a method whose unique short name is required
      * @return a unique short name for the method
      */
@@ -287,7 +288,7 @@ public class SubstrateUtil {
     /**
      * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
      * image singleton.
-     * 
+     *
      * @param loader the class loader for the method's owning class
      * @param declaringClass the method's declaring class
      * @param methodName the method's name
@@ -302,7 +303,7 @@ public class SubstrateUtil {
     /**
      * Delegate to the corresponding method of the currently registered UniqueShortNameProvider
      * image singleton.
-     * 
+     *
      * @param m a member whose unique short name is required
      * @return a unique short name for the member
      */
@@ -388,27 +389,6 @@ public class SubstrateUtil {
          * happen to match ^[0-9a-f]{2}, but hey....
          */
         return mangled;
-    }
-
-    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 17 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
-
-    public static boolean isHiddenClass(Class<?> javaClass) {
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            try {
-                return (boolean) isHiddenMethod.invoke(javaClass);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
-        return false;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isHiddenClass(DynamicHub hub) {
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            return hub.isHidden();
-        }
-        return false;
     }
 
     public static int arrayTypeDimension(Class<?> clazz) {

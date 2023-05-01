@@ -35,8 +35,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -50,6 +50,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 
@@ -88,19 +89,22 @@ final class Target_java_util_TimeZone {
     private static String getSystemTimeZoneID(String javaHome) {
         CCharPointer tzMappingsPtr = WordFactory.nullPointer();
         int contentLen = 0;
-        PinnedObject pinnedContent = null;
+        PrimitiveArrayView refContent = null;
         try {
             if (ImageSingletons.contains(TimeZoneSupport.class)) {
                 byte[] content = ImageSingletons.lookup(TimeZoneSupport.class).getTzMappingsContent();
                 contentLen = content.length;
-                pinnedContent = PinnedObject.create(content);
-                tzMappingsPtr = pinnedContent.addressOfArrayElement(0);
+                refContent = PrimitiveArrayView.createForReading(content);
+                tzMappingsPtr = refContent.addressOfArrayElement(0);
             }
             CCharPointer tzId = LibCHelper.SVM_FindJavaTZmd(tzMappingsPtr, contentLen);
-            return CTypeConversion.toJavaString(tzId);
+            String result = CTypeConversion.toJavaString(tzId);
+            // SVM_FindJavaTZmd returns a newly allocated string
+            UnmanagedMemory.free(tzId);
+            return result;
         } finally {
-            if (pinnedContent != null) {
-                pinnedContent.close();
+            if (refContent != null) {
+                refContent.close();
             }
         }
     }

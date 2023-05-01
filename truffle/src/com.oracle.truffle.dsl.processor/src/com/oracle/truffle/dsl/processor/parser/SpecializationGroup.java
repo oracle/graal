@@ -52,6 +52,7 @@ import com.oracle.truffle.dsl.processor.model.GuardExpression;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod.TypeSignature;
+import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
 /**
  * Class creates groups of specializations to optimize the layout of generated executeAndSpecialize
@@ -76,7 +77,7 @@ public final class SpecializationGroup {
 
         TypeSignature sig = data.getTypeSignature();
         for (int i = 1; i < sig.size(); i++) {
-            typeGuards.add(new TypeGuard(sig.get(i), i - 1));
+            typeGuards.add(new TypeGuard(node.getTypeSystem(), sig.get(i), i - 1));
         }
         this.guards.addAll(data.getGuards());
     }
@@ -300,12 +301,18 @@ public final class SpecializationGroup {
 
     public static final class TypeGuard {
 
+        private final TypeSystemData typeSystem;
         private final int signatureIndex;
         private final TypeMirror type;
 
-        public TypeGuard(TypeMirror type, int signatureIndex) {
+        public TypeGuard(TypeSystemData typeSystem, TypeMirror type, int signatureIndex) {
+            this.typeSystem = typeSystem;
             this.type = type;
             this.signatureIndex = signatureIndex;
+        }
+
+        public TypeSystemData getTypeSystem() {
+            return typeSystem;
         }
 
         @Override

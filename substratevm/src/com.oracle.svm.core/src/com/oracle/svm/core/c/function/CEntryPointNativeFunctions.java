@@ -135,7 +135,7 @@ public final class CEntryPointNativeFunctions {
         return getIsolateOf(thread);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Isolate getIsolateOf(IsolateThread thread) {
         Isolate isolate = WordFactory.nullPointer();
         if (thread.isNull()) {

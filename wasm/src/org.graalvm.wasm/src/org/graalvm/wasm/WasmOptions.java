@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ public class WasmOptions {
     @Option(help = "The stack size in kilobytes to use during async parsing, or zero to use defaults.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[0, inf)")//
     public static final OptionKey<Integer> AsyncParsingStackSize = new OptionKey<>(0);
 
-    @Option(help = "A comma-separated list of pre-opened Wasi directories.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[<virtualDir>:]<hostDir>,[<virtualDir>:]<hostDir>,...")//
+    @Option(help = "A comma-separated list of pre-opened Wasi directories.", category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = "[<virtualDir>::]<hostDir>,[<virtualDir>::]<hostDir>,...")//
     public static final OptionKey<String> WasiMapDirs = new OptionKey<>("");
 
     public enum ConstantsStorePolicy {
@@ -81,15 +81,22 @@ public class WasmOptions {
     @Option(help = "Use sign-extension operators", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> SignExtensionOps = new OptionKey<>(true);
 
-    @Option(help = "Prevents the removal of data sections from wasm binaries. This option should only be used for testing.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> KeepDataSections = new OptionKey<>(false);
-
     @Option(help = "Enable multi-value support", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> MultiValue = new OptionKey<>(true);
 
     @Option(help = "Enable bulk-memory operations and support for reference types", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "true|false") //
     public static final OptionKey<Boolean> BulkMemoryAndRefTypes = new OptionKey<>(true);
 
+    @Option(help = "Enable support for 64-bit memory addresses (More details at https://github.com/WebAssembly/memory64/blob/main/proposals/memory64/Overview.md)", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> Memory64 = new OptionKey<>(false);
+
     @Option(help = "In this mode memories and tables are not initialized.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> MemoryOverheadMode = new OptionKey<>(false);
+
+    @Option(help = "Make WASI random_get always return the same random numbers. For testing purpose only.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> WasiConstantRandomGet = new OptionKey<>(false);
+
+    @Option(help = "Test dir used for testing the debugger.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "<dir>") //
+    public static final OptionKey<String> DebugCompDirectory = new OptionKey<>("");
 }

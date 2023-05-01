@@ -29,7 +29,6 @@ import java.security.ProtectionDomain;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -41,8 +40,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -73,7 +70,6 @@ public final class Target_sun_misc_Unsafe {
 
     /** The value of {@code addressSize()}. */
     public static final int ADDRESS_SIZE;
-    private static final long PARK_BLOCKER_OFFSET;
 
     private static final int SAFETY_FIELD_OFFSET = 123456789;
     private static final int SAFETY_STATIC_FIELD_OFFSET = 3456789;
@@ -84,11 +80,6 @@ public final class Target_sun_misc_Unsafe {
 
     static {
         Unsafe unsafe = UnsafeAccess.get();
-        try {
-            PARK_BLOCKER_OFFSET = unsafe.objectFieldOffset(Thread.class.getDeclaredField("parkBlocker"));
-        } catch (NoSuchFieldException e) {
-            throw EspressoError.shouldNotReachHere(e);
-        }
         ADDRESS_SIZE = unsafe.addressSize();
     }
 
@@ -570,20 +561,10 @@ public final class Target_sun_misc_Unsafe {
         if (parkReturnCondition(thread, meta)) {
             return;
         }
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Thread hostThread = Thread.currentThread();
-        Object blocker = LockSupport.getBlocker(hostThread);
         State state = time > 0 ? State.TIMED_WAITING : State.WAITING;
         try (Transition transition = Transition.transition(context, state)) {
-            Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
-            StaticObject guestBlocker = parkBlocker.getObject(thread);
-            // LockSupport.park(/* guest blocker */);
-            if (!StaticObject.isNull(guestBlocker)) {
-                unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, guestBlocker);
-            }
             parkImpl(isAbsolute, time, thread, meta);
         }
-        unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, blocker);
     }
 
     private static void parkImpl(boolean isAbsolute, long time, StaticObject thread, Meta meta) {
@@ -787,16 +768,16 @@ public final class Target_sun_misc_Unsafe {
         abstract Field execute(StaticObject holder, long slot);
 
         @Specialization(guards = {"slot == cachedSlot", "holder.isStaticStorage() == cachedIsStaticStorage", "holder.getKlass() == cachedKlass"}, limit = "LIMIT")
-        protected Field executeCached(@SuppressWarnings("unused") StaticObject holder, @SuppressWarnings("unused") long slot,
+        protected Field doCached(@SuppressWarnings("unused") StaticObject holder, @SuppressWarnings("unused") long slot,
                         @SuppressWarnings("unused") @Cached("slot") long cachedSlot,
                         @SuppressWarnings("unused") @Cached("holder.getKlass()") Klass cachedKlass,
                         @SuppressWarnings("unused") @Cached("holder.isStaticStorage()") boolean cachedIsStaticStorage,
-                        @Cached("executeGeneric(holder, slot)") Field cachedField) {
+                        @Cached("doGeneric(holder, slot)") Field cachedField) {
             return cachedField;
         }
 
-        @Specialization(replaces = "executeCached")
-        protected Field executeGeneric(StaticObject holder, long slot) {
+        @Specialization(replaces = "doCached")
+        protected Field doGeneric(StaticObject holder, long slot) {
             return resolveUnsafeAccessField(holder, slot, getMeta());
         }
 
@@ -921,12 +902,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
             UnsafeAccess.getIfAllowed(getMeta()).putByte(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -943,13 +924,13 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value) {
             UnsafeAccess.getIfAllowed(getMeta()).putObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -965,12 +946,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
             UnsafeAccess.getIfAllowed(getMeta()).putBoolean(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -986,12 +967,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
             UnsafeAccess.getIfAllowed(getMeta()).putChar(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1007,12 +988,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
             UnsafeAccess.getIfAllowed(getMeta()).putShort(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1028,12 +1009,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
             UnsafeAccess.getIfAllowed(getMeta()).putInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1049,12 +1030,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
             UnsafeAccess.getIfAllowed(getMeta()).putFloat(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1070,12 +1051,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
             UnsafeAccess.getIfAllowed(getMeta()).putDouble(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1091,12 +1072,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
             UnsafeAccess.getIfAllowed(getMeta()).putLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1118,12 +1099,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
             UnsafeAccess.getIfAllowed(getMeta()).putOrderedInt(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1139,12 +1120,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
             UnsafeAccess.getIfAllowed(getMeta()).putOrderedLong(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1161,13 +1142,13 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value) {
             UnsafeAccess.getIfAllowed(getMeta()).putOrderedObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -1194,12 +1175,12 @@ public final class Target_sun_misc_Unsafe {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected byte executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected byte doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getByte(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected byte executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1218,13 +1199,13 @@ public final class Target_sun_misc_Unsafe {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected @JavaType(Object.class) StaticObject executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        protected @JavaType(Object.class) StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset) {
             return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObject(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected @JavaType(Object.class) StaticObject executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected @JavaType(Object.class) StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1243,12 +1224,12 @@ public final class Target_sun_misc_Unsafe {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected boolean executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getBoolean(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected boolean executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1267,12 +1248,12 @@ public final class Target_sun_misc_Unsafe {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected char executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected char doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getChar(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected char executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected char doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1291,12 +1272,12 @@ public final class Target_sun_misc_Unsafe {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected short executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected short doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getShort(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected short executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1315,12 +1296,12 @@ public final class Target_sun_misc_Unsafe {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected int executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getInt(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected int executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1339,12 +1320,12 @@ public final class Target_sun_misc_Unsafe {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected float executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected float doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getFloat(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected float executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected float doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1363,12 +1344,12 @@ public final class Target_sun_misc_Unsafe {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected double executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected double doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getDouble(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected double executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected double doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1387,12 +1368,12 @@ public final class Target_sun_misc_Unsafe {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected long executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected long doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getLong(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected long executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1415,12 +1396,12 @@ public final class Target_sun_misc_Unsafe {
         abstract byte execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected byte executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected byte doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getByteVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected byte executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1439,13 +1420,13 @@ public final class Target_sun_misc_Unsafe {
         abstract @JavaType(Object.class) StaticObject execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected @JavaType(Object.class) StaticObject executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        protected @JavaType(Object.class) StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset) {
             return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getObjectVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected @JavaType(Object.class) StaticObject executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected @JavaType(Object.class) StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1464,12 +1445,12 @@ public final class Target_sun_misc_Unsafe {
         abstract boolean execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected boolean executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getBooleanVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected boolean executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1488,12 +1469,12 @@ public final class Target_sun_misc_Unsafe {
         abstract char execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected char executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected char doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getCharVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected char executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected char doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1512,12 +1493,12 @@ public final class Target_sun_misc_Unsafe {
         abstract short execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected short executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected short doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getShortVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected short executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1536,12 +1517,12 @@ public final class Target_sun_misc_Unsafe {
         abstract int execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected int executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getIntVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected int executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1560,12 +1541,12 @@ public final class Target_sun_misc_Unsafe {
         abstract float execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected float executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected float doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getFloatVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected float executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected float doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1584,12 +1565,12 @@ public final class Target_sun_misc_Unsafe {
         abstract double execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected double executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected double doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getDoubleVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected double executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected double doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1608,12 +1589,12 @@ public final class Target_sun_misc_Unsafe {
         abstract long execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected long executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
+        protected long doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset) {
             return UnsafeAccess.getIfAllowed(getMeta()).getLongVolatile(unwrapNullOrArray(getLanguage(), holder), offset);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected long executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1718,12 +1699,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value) {
             UnsafeAccess.getIfAllowed(getMeta()).putByteVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, byte value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1740,13 +1721,13 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value) {
             UnsafeAccess.getIfAllowed(getMeta()).putObjectVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1762,12 +1743,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value) {
             UnsafeAccess.getIfAllowed(getMeta()).putBooleanVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, boolean value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1783,12 +1764,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value) {
             UnsafeAccess.getIfAllowed(getMeta()).putCharVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, char value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1804,12 +1785,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value) {
             UnsafeAccess.getIfAllowed(getMeta()).putShortVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, short value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1825,12 +1806,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value) {
             UnsafeAccess.getIfAllowed(getMeta()).putIntVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, int value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1846,12 +1827,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value) {
             UnsafeAccess.getIfAllowed(getMeta()).putFloatVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, float value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1867,12 +1848,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value) {
             UnsafeAccess.getIfAllowed(getMeta()).putDoubleVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, double value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1888,12 +1869,12 @@ public final class Target_sun_misc_Unsafe {
         abstract void execute(@JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected void executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
+        protected void doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value) {
             UnsafeAccess.getIfAllowed(getMeta()).putLongVolatile(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected void executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
+        protected void doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset, long value,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -1914,13 +1895,13 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected boolean executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
             return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapObject(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected boolean executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -1938,13 +1919,13 @@ public final class Target_sun_misc_Unsafe {
                         int before, int after);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected boolean executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after) {
             return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapInt(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected boolean executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -1970,13 +1951,13 @@ public final class Target_sun_misc_Unsafe {
                         long before, long after);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected boolean executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after) {
             return UnsafeAccess.getIfAllowed(getMeta()).compareAndSwapLong(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected boolean executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -2017,7 +1998,7 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected @JavaType(Object.class) StaticObject executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        protected @JavaType(Object.class) StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after) {
             UnsafeAccess.checkAllowed(getMeta());
@@ -2025,7 +2006,7 @@ public final class Target_sun_misc_Unsafe {
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected @JavaType(Object.class) StaticObject executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected @JavaType(Object.class) StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -2047,14 +2028,14 @@ public final class Target_sun_misc_Unsafe {
                         int before, int after);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected int executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected int doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after) {
             UnsafeAccess.checkAllowed(getMeta());
             return UnsafeSupport.compareAndExchangeInt(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected int executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected int doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -2079,14 +2060,14 @@ public final class Target_sun_misc_Unsafe {
                         byte before, byte after);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected byte executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected byte doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         byte before, byte after) {
             UnsafeAccess.checkAllowed(getMeta());
             return UnsafeSupport.compareAndExchangeByte(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected byte executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected byte doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         byte before, byte after,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -2111,14 +2092,14 @@ public final class Target_sun_misc_Unsafe {
                         short before, short after);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected short executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected short doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         short before, short after) {
             UnsafeAccess.checkAllowed(getMeta());
             return UnsafeSupport.compareAndExchangeShort(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected short executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected short doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         short before, short after,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -2143,14 +2124,14 @@ public final class Target_sun_misc_Unsafe {
                         long before, long after);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected long executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected long doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after) {
             UnsafeAccess.checkAllowed(getMeta());
             return UnsafeSupport.compareAndExchangeLong(unwrapNullOrArray(getLanguage(), holder), offset, before, after);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected long executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected long doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after,
                         @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
@@ -2180,14 +2161,14 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject value);
 
         @Specialization(guards = "isNullOrArray(holder)")
-        protected @JavaType(Unsafe.class) StaticObject executeNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+        protected @JavaType(Unsafe.class) StaticObject doNullOrArray(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
                         long offset,
                         @JavaType(Object.class) StaticObject value) {
             return (StaticObject) UnsafeAccess.getIfAllowed(getMeta()).getAndSetObject(unwrapNullOrArray(getLanguage(), holder), offset, value);
         }
 
         @Specialization(guards = "!isNullOrArray(holder)")
-        protected @JavaType(Unsafe.class) StaticObject executeGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected @JavaType(Unsafe.class) StaticObject doGeneric(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject value, @Cached GetFieldFromIndexNode getField) {
             Field f = getField.execute(holder, offset);
             if (f == null) {
@@ -2204,7 +2185,7 @@ public final class Target_sun_misc_Unsafe {
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after);
 
         @Specialization
-        protected boolean executeCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         @JavaType(Object.class) StaticObject before, @JavaType(Object.class) StaticObject after,
                         @Cached CompareAndSwapObject cas) {
             return cas.execute(self, holder, offset, before, after);
@@ -2218,7 +2199,7 @@ public final class Target_sun_misc_Unsafe {
                         int before, int after);
 
         @Specialization
-        protected boolean executeCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         int before, int after,
                         @Cached CompareAndSwapInt cas) {
             return cas.execute(self, holder, offset, before, after);
@@ -2232,7 +2213,7 @@ public final class Target_sun_misc_Unsafe {
                         long before, long after);
 
         @Specialization
-        protected boolean executeCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+        protected boolean doCached(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
                         long before, long after,
                         @Cached CompareAndSwapLong cas) {
             return cas.execute(self, holder, offset, before, after);

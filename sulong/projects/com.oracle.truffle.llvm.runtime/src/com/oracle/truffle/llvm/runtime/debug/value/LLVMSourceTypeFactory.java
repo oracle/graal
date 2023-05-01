@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -155,10 +155,14 @@ public final class LLVMSourceTypeFactory {
                 final LLVMSourcePointerType resolvedType = new LLVMSourcePointerType(getBitSize(type), getAlignment(type), 0L, false, false, null);
                 resolved.put(type, resolvedType);
 
-                final Type baseType = type.getPointeeType();
-                final LLVMSourceType resolvedBaseType = baseType != null ? resolveType(baseType) : LLVMSourceType.VOID;
-                resolvedType.setBaseType(resolvedBaseType);
-                resolvedType.setName(() -> String.format("%s*", resolvedBaseType.getName()));
+                if (type.isOpaque()) {
+                    resolvedType.setName(() -> "ptr");
+                } else {
+                    final Type baseType = type.getPointeeType();
+                    final LLVMSourceType resolvedBaseType = baseType != null ? resolveType(baseType) : LLVMSourceType.VOID;
+                    resolvedType.setBaseType(resolvedBaseType);
+                    resolvedType.setName(() -> String.format("%s*", resolvedBaseType.getName()));
+                }
             } catch (TypeOverflowException e) {
                 throw new AssertionError(e);
             }

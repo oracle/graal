@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.BuildPhaseProvider;
@@ -89,7 +88,7 @@ public class MethodHandleFeature implements InternalFeature {
     private Method memberNameIsMethod;
     private Method memberNameIsConstructor;
     private Method memberNameIsField;
-    private Method memberNameGetParameterTypes;
+    private Method memberNameGetMethodType;
     private Field methodHandleInternalForm;
     private Field lambdaFormNames;
     private Field lambdaFormArity;
@@ -121,7 +120,7 @@ public class MethodHandleFeature implements InternalFeature {
         memberNameIsMethod = ReflectionUtil.lookupMethod(memberNameClass, "isMethod");
         memberNameIsConstructor = ReflectionUtil.lookupMethod(memberNameClass, "isConstructor");
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
-        memberNameGetParameterTypes = ReflectionUtil.lookupMethod(memberNameClass, "getParameterTypes");
+        memberNameGetMethodType = ReflectionUtil.lookupMethod(memberNameClass, "getMethodType");
 
         lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
         lambdaFormNames = ReflectionUtil.lookupField(lambdaFormClass, "names");
@@ -201,12 +200,6 @@ public class MethodHandleFeature implements InternalFeature {
 
     private static void registerMHImplConstantHandlesForReflection(DuringAnalysisAccess access) {
         Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "copyAsPrimitiveArray", access.findClassByName("sun.invoke.util.Wrapper"), Object[].class));
-            RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "identity", Object[].class));
-            RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "fillNewArray", Integer.class, Object[].class));
-            RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "fillNewTypedArray", Object[].class, Integer.class, Object[].class));
-        }
         RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "selectAlternative", boolean.class, MethodHandle.class, MethodHandle.class));
         RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "countedLoopPredicate", int.class, int.class));
         RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "countedLoopStep", int.class, int.class));
@@ -230,9 +223,7 @@ public class MethodHandleFeature implements InternalFeature {
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
         RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkVarHandleExactType", access.findClassByName("java.lang.invoke.VarHandle"),
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "directVarHandleTarget", access.findClassByName("java.lang.invoke.VarHandle")));
-        }
+        RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "directVarHandleTarget", access.findClassByName("java.lang.invoke.VarHandle")));
     }
 
     private static void registerValueConversionBoxFunctionsForReflection(DuringAnalysisAccess access) {
@@ -361,7 +352,11 @@ public class MethodHandleFeature implements InternalFeature {
             boolean isConstructor = (boolean) memberNameIsConstructor.invoke(memberName);
             boolean isField = (boolean) memberNameIsField.invoke(memberName);
             String name = (isMethod || isField) ? (String) memberNameGetName.invoke(memberName) : null;
-            Class<?>[] paramTypes = (isMethod || isConstructor) ? (Class<?>[]) memberNameGetParameterTypes.invoke(memberName) : null;
+            Class<?>[] paramTypes = null;
+            if (isMethod || isConstructor) {
+                MethodType methodType = (MethodType) memberNameGetMethodType.invoke(memberName);
+                paramTypes = methodType.parameterArray();
+            }
             if (isMethod) {
                 RuntimeReflection.register(declaringClass.getDeclaredMethod(name, paramTypes));
             } else if (isConstructor) {

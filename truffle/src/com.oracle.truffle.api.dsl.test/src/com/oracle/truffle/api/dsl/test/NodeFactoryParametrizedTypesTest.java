@@ -70,7 +70,7 @@ public class NodeFactoryParametrizedTypesTest {
         abstract Object executeBinary(Object left, Object right);
 
         @Specialization
-        Object executeForeign(@SuppressWarnings("unused") TruffleObject left, @SuppressWarnings("unused") TruffleObject right) {
+        Object doForeign(@SuppressWarnings("unused") TruffleObject left, @SuppressWarnings("unused") TruffleObject right) {
             throw new UnsupportedOperationException("Unsupported");
         }
     }

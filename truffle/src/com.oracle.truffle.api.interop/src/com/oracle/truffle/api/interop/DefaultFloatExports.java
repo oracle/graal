@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.api.interop;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -63,18 +67,6 @@ final class DefaultFloatExports {
     }
 
     @ExportMessage
-    static boolean fitsInInt(Float receiver) {
-        float f = receiver;
-        if (NumberUtils.inSafeIntegerRange(f) && !NumberUtils.isNegativeZero(f)) {
-            int i = (int) f;
-            if (i == f) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @ExportMessage
     static boolean fitsInShort(Float receiver) {
         float f = receiver;
         short s = (short) f;
@@ -85,15 +77,32 @@ final class DefaultFloatExports {
     }
 
     @ExportMessage
-    static boolean fitsInLong(Float receiver) {
+    static boolean fitsInInt(Float receiver) {
         float f = receiver;
-        if (NumberUtils.inSafeIntegerRange(f) && !NumberUtils.isNegativeZero(f)) {
-            long l = (long) f;
-            if (l == f) {
+        if (!NumberUtils.isNegativeZero(f)) {
+            int i = (int) f;
+            if (i != Integer.MAX_VALUE && i == f) {
                 return true;
             }
         }
         return false;
+    }
+
+    @ExportMessage
+    static boolean fitsInLong(Float receiver) {
+        float f = receiver;
+        if (!NumberUtils.isNegativeZero(f)) {
+            long l = (long) f;
+            if (l != Long.MAX_VALUE && l == f) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @ExportMessage
+    static boolean fitsInBigInteger(Float receiver) {
+        return receiver % 1 == 0 && !NumberUtils.isNegativeZero(receiver);
     }
 
     @ExportMessage
@@ -120,9 +129,9 @@ final class DefaultFloatExports {
     static int asInt(Float receiver) throws UnsupportedMessageException {
 
         float f = receiver;
-        if (NumberUtils.inSafeIntegerRange(f) && !NumberUtils.isNegativeZero(f)) {
+        if (!NumberUtils.isNegativeZero(f)) {
             int i = (int) f;
-            if (i == f) {
+            if (i != Integer.MAX_VALUE && i == f) {
                 return i;
             }
         }
@@ -132,13 +141,30 @@ final class DefaultFloatExports {
     @ExportMessage
     static long asLong(Float receiver) throws UnsupportedMessageException {
         float f = receiver;
-        if (NumberUtils.inSafeIntegerRange(f) && !NumberUtils.isNegativeZero(f)) {
+        if (!NumberUtils.isNegativeZero(f)) {
             long l = (long) f;
-            if (l == f) {
+            if (l != Long.MAX_VALUE && l == f) {
                 return l;
             }
         }
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static BigInteger asBigInteger(Float receiver) throws UnsupportedMessageException {
+        if (!fitsInBigInteger(receiver)) {
+            throw UnsupportedMessageException.create();
+        }
+        return toBigInteger(receiver);
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(float receiver) {
+        try {
+            return new BigDecimal(receiver).toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     // fast methods

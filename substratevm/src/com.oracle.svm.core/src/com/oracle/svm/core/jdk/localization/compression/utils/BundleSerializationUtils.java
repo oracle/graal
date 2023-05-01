@@ -86,7 +86,7 @@ public class BundleSerializationUtils {
                     indices.add(((String) o).length());
                 }
             } else {
-                GraalError.shouldNotReachHere("Bundle content can't be serialized.");
+                GraalError.shouldNotReachHere("Bundle content can't be serialized."); // ExcludeFromJacocoGeneratedReport
             }
         }
         int[] res = new int[indices.size()];

@@ -25,39 +25,88 @@
 
 package com.oracle.svm.core.sampler;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
+import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.util.VMError;
 
 /**
- * The pool that maintains the desirable number of buffers in the system by allocating/releasing
- * extra buffers.
+ * Keeps track of {@link #availableBuffers available} and {@link #fullBuffers full} buffers. If
+ * sampling is enabled, this pool maintains the desirable number of buffers in the system.
  */
-class SamplerBufferPool {
+public class SamplerBufferPool {
+    private final VMMutex mutex;
+    private final SamplerBufferStack availableBuffers;
+    private final SamplerBufferStack fullBuffers;
 
-    private static final VMMutex mutex = new VMMutex("SamplerBufferPool");
-    private static long bufferCount;
+    private int bufferCount;
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
-    public static void releaseBufferAndAdjustCount(SamplerBuffer threadLocalBuffer) {
-        adjustBufferCount0(threadLocalBuffer);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public SamplerBufferPool() {
+        mutex = new VMMutex("SamplerBufferPool");
+        availableBuffers = new SamplerBufferStack();
+        fullBuffers = new SamplerBufferStack();
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
-    public static void adjustBufferCount() {
-        adjustBufferCount0(WordFactory.nullPointer());
+    public void teardown() {
+        clear(availableBuffers);
+        clear(fullBuffers);
+        assert bufferCount == 0;
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
-    private static void adjustBufferCount0(SamplerBuffer threadLocalBuffer) {
+    private void clear(SamplerBufferStack stack) {
+        while (true) {
+            SamplerBuffer buffer = stack.popBuffer();
+            if (buffer.isNull()) {
+                break;
+            }
+            free(buffer);
+        }
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isLockedByCurrentThread() {
+        return availableBuffers.isLockedByCurrentThread() || fullBuffers.isLockedByCurrentThread();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public SamplerBuffer acquireBuffer(boolean allowAllocation) {
+        SamplerBuffer buffer = availableBuffers.popBuffer();
+        if (buffer.isNull() && allowAllocation) {
+            buffer = SubstrateJVM.getSamplerBufferPool().tryAllocateBuffer();
+        }
+        return buffer;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void releaseBuffer(SamplerBuffer buffer) {
+        SamplerBufferAccess.reinitialize(buffer);
+        availableBuffers.pushBuffer(buffer);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void pushFullBuffer(SamplerBuffer buffer) {
+        fullBuffers.pushBuffer(buffer);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public SamplerBuffer popFullBuffer() {
+        return fullBuffers.popBuffer();
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    public void adjustBufferCount() {
         mutex.lockNoTransition();
         try {
-            releaseThreadLocalBuffer(threadLocalBuffer);
-            long diff = diff();
+            int diff = diff();
             if (diff > 0) {
                 for (int i = 0; i < diff; i++) {
                     if (!allocateAndPush()) {
@@ -65,7 +114,7 @@ class SamplerBufferPool {
                     }
                 }
             } else {
-                for (long i = diff; i < 0; i++) {
+                for (int i = diff; i < 0; i++) {
                     if (!popAndFree()) {
                         break;
                     }
@@ -76,56 +125,75 @@ class SamplerBufferPool {
         }
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
-    private static void releaseThreadLocalBuffer(SamplerBuffer buffer) {
+    public int getBufferCount() {
         /*
-         * buffer is null if the thread is not running yet, or we did not perform the stack walk for
-         * this thread during the run.
+         * Buffer count can change at any time when a thread starts/exits, so querying the count is
+         * racy.
          */
-        if (buffer.isNonNull()) {
-            if (SamplerBufferAccess.isEmpty(buffer)) {
-                /* We can free it right away. */
-                SamplerBufferAccess.free(buffer);
-            } else {
-                /* Put it in the stack with other unprocessed buffers. */
-                buffer.setFreeable(true);
-                SubstrateSigprofHandler.singleton().fullBuffers().pushBuffer(buffer);
-            }
-            VMError.guarantee(bufferCount > 0);
-            bufferCount--;
+        return bufferCount;
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
+    private SamplerBuffer tryAllocateBuffer() {
+        mutex.lockNoTransition();
+        try {
+            return tryAllocateBuffer0();
+        } finally {
+            mutex.unlock();
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean allocateAndPush() {
-        VMError.guarantee(bufferCount >= 0);
-        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
-        SamplerBuffer buffer = SamplerBufferAccess.allocate(WordFactory.unsigned(jfrThreadLocal.getThreadLocalBufferSize()));
+    private boolean allocateAndPush() {
+        assert bufferCount >= 0;
+        SamplerBuffer buffer = tryAllocateBuffer0();
         if (buffer.isNonNull()) {
-            SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
+            availableBuffers.pushBuffer(buffer);
+            return true;
+        }
+        return false;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private SamplerBuffer tryAllocateBuffer0() {
+        UnsignedWord headerSize = SamplerBufferAccess.getHeaderSize();
+        UnsignedWord dataSize = WordFactory.unsigned(SubstrateJVM.getThreadLocal().getThreadLocalBufferSize());
+
+        SamplerBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
+        if (result.isNonNull()) {
             bufferCount++;
-            return true;
-        } else {
-            return false;
+            result.setSize(dataSize);
+            result.setNext(WordFactory.nullPointer());
+            SamplerBufferAccess.reinitialize(result);
         }
+        return result;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static boolean popAndFree() {
-        VMError.guarantee(bufferCount > 0);
-        SamplerBuffer buffer = SubstrateSigprofHandler.singleton().availableBuffers().popBuffer();
+    private boolean popAndFree() {
+        assert bufferCount > 0;
+        SamplerBuffer buffer = availableBuffers.popBuffer();
         if (buffer.isNonNull()) {
-            SamplerBufferAccess.free(buffer);
-            bufferCount--;
+            free(buffer);
             return true;
-        } else {
-            return false;
         }
+        return false;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static long diff() {
-        double diffD = SubstrateSigprofHandler.singleton().substrateThreadMXBean().getThreadCount() * 1.5 - bufferCount;
-        return (long) (diffD + 0.5);
+    private void free(SamplerBuffer buffer) {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(buffer);
+        bufferCount--;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private int diff() {
+        if (JfrExecutionSampler.singleton().isSampling()) {
+            /* Cache buffers for the sampler. */
+            double buffersToCache = ImageSingletons.lookup(SubstrateThreadMXBean.class).getThreadCount() * 1.5 + 0.5;
+            return ((int) buffersToCache) - bufferCount;
+        }
+        /* Don't cache any buffers. */
+        return -bufferCount;
     }
 }

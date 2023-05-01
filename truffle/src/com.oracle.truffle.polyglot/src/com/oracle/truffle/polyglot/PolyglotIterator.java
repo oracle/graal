@@ -40,8 +40,15 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Type;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -49,16 +56,11 @@ import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.polyglot.PolyglotIteratorFactory.CacheFactory.HasNextNodeGen;
 import com.oracle.truffle.polyglot.PolyglotIteratorFactory.CacheFactory.NextNodeGen;
-
-import java.lang.reflect.Type;
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Objects;
 
 class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
 
@@ -257,14 +259,15 @@ class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
             }
 
             @Specialization(limit = "LIMIT")
-            @SuppressWarnings("unused")
+            @SuppressWarnings({"unused", "truffle-static-method"})
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @Bind("this") Node node,
                             @CachedLibrary("receiver") InteropLibrary iterators,
-                            @Cached BranchProfile error) {
+                            @Cached InlinedBranchProfile error) {
                 try {
                     return iterators.hasIteratorNextElement(receiver);
                 } catch (UnsupportedMessageException e) {
-                    error.enter();
+                    error.enter(node);
                     throw PolyglotInteropErrors.iteratorUnsupported(languageContext, receiver, cache.valueType, "hasNext");
                 }
             }
@@ -282,29 +285,30 @@ class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
             }
 
             @Specialization(limit = "LIMIT")
-            @SuppressWarnings("unused")
+            @SuppressWarnings({"unused", "truffle-static-method"})
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
+                            @Bind("this") Node node,
                             @CachedLibrary("receiver") InteropLibrary iterators,
                             @Cached PolyglotToHostNode toHost,
-                            @Cached BranchProfile error,
-                            @Cached BranchProfile stop) {
+                            @Cached InlinedBranchProfile error,
+                            @Cached InlinedBranchProfile stop) {
                 TriState lastHasNext = (TriState) args[ARGUMENT_OFFSET];
                 try {
                     Object next = iterators.getIteratorNextElement(receiver);
                     if (lastHasNext == TriState.FALSE) {
-                        error.enter();
+                        error.enter(node);
                         throw PolyglotInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     }
-                    return toHost.execute(languageContext, next, cache.valueClass, cache.valueType);
+                    return toHost.execute(node, languageContext, next, cache.valueClass, cache.valueType);
                 } catch (StopIterationException e) {
-                    stop.enter();
+                    stop.enter(node);
                     if (lastHasNext == TriState.TRUE) {
                         throw PolyglotInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     } else {
                         throw PolyglotInteropErrors.stopIteration(languageContext, receiver, cache.valueType);
                     }
                 } catch (UnsupportedMessageException e) {
-                    error.enter();
+                    error.enter(node);
                     throw PolyglotInteropErrors.iteratorElementUnreadable(languageContext, receiver, cache.valueType);
                 }
             }

@@ -110,17 +110,6 @@ public class CodeInfoTable {
         return result;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static CodeInfoQueryResult lookupCodeInfoQueryResultUninterruptible(CodeInfo info, CodePointer absoluteIP, CodeInfoQueryResult result) {
-        counters().lookupCodeInfoCount.inc();
-        if (info.isNull()) {
-            return null;
-        }
-        result.ip = absoluteIP;
-        CodeInfoAccess.lookupCodeInfoUninterruptible(info, CodeInfoAccess.relativeIP(info, absoluteIP), result);
-        return result;
-    }
-
     public static CodeInfoQueryResult lookupDeoptimizationEntrypoint(int deoptOffsetInImage, long encodedBci) {
         counters().lookupDeoptimizationEntrypointCount.inc();
         /* Deoptimization entry points are always in the image, i.e., never compiled at run time. */
@@ -163,6 +152,7 @@ public class CodeInfoTable {
         return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
     }
 
+    @Uninterruptible(reason = "Not really uninterruptible, but we are about to fail.", calleeMustBe = false)
     public static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {
         Log.log().string("ip: ").hex(ip).string("  sp: ").hex(sp).string("  info:");
         CodeInfoAccess.log(info, Log.log()).newline();
@@ -232,10 +222,6 @@ public class CodeInfoTable {
 
     @Uninterruptible(reason = "Wrap the now safe call to interruptibly retrieve InstalledCode.", calleeMustBe = false)
     private static void invalidateCodeAtSafepoint0(CodeInfo info) {
-        invalidateCodeAtSafepoint(info);
-    }
-
-    private static void invalidateCodeAtSafepoint(CodeInfo info) {
         VMOperation.guaranteeInProgressAtSafepoint("Must be at a safepoint");
         RuntimeCodeCache codeCache = getRuntimeCodeCache();
         codeCache.invalidateMethod(info);

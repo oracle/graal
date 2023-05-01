@@ -76,7 +76,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         Handler.bind("test://graalvm.io/download/truffleruby.zip",
                         clu);
 
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         FileDownloader dn = new FileDownloader("test",
                         u, this);
         dn.download();
@@ -95,7 +95,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         Handler.bind("test://graalvm.io/download/truffleruby.zip",
                         clu);
 
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         FileDownloader dn = new FileDownloader("test",
                         u, this);
         dn.setShaDigest(new byte[0]);
@@ -183,7 +183,7 @@ public class FileDownloaderTest extends NetworkTestBase {
         Handler.bind("test://graalvm.io/download/truffleruby.zip",
                         clu);
 
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
         Check check = new Check();
         delegateFeedback(check);
         FileDownloader dn = new FileDownloader("test",
@@ -205,7 +205,7 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadSlowProxy() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
 
         ChunkedConnection proxyConnect = new ChunkedConnection(
                         u,
@@ -250,7 +250,7 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadFailedProxy() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
 
         ChunkedConnection directConnect = new ChunkedConnection(
                         u,
@@ -299,7 +299,7 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadProxy500() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
 
         ChunkedConnection directConnect = new ChunkedConnection(
                         u,
@@ -352,7 +352,7 @@ public class FileDownloaderTest extends NetworkTestBase {
     @Test
     public void testDownloadFailure() throws Exception {
         URL clu = getClass().getResource("data/truffleruby2.jar");
-        URL u = new URL("test://graalvm.io/download/truffleruby.zip");
+        URL u = SystemUtils.toURL("test://graalvm.io/download/truffleruby.zip");
 
         ChunkedConnection conn = new ChunkedConnection(
                         u,
@@ -389,7 +389,7 @@ public class FileDownloaderTest extends NetworkTestBase {
 
         t.start();
 
-        assertTrue(conn.reachedSem.tryAcquire(1, TimeUnit.SECONDS));
+        assertTrue(conn.reachedSem.tryAcquire(2, TimeUnit.SECONDS));
         // conn.reachedSem.acquire();
         conn.readException = new SocketException();
         conn.nextSem.release();

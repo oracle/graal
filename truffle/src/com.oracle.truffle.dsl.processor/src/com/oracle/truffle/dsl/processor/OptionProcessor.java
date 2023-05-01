@@ -49,6 +49,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -104,8 +106,7 @@ public class OptionProcessor extends AbstractProcessor {
         if (roundEnv.processingOver()) {
             return true;
         }
-        ProcessorContext context = ProcessorContext.enter(processingEnv);
-        try {
+        try (ProcessorContext context = ProcessorContext.enter(processingEnv)) {
             TruffleTypes types = context.getTypes();
             Map<Element, OptionsInfo> map = new HashMap<>();
             for (Element element : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(types.Option))) {
@@ -148,7 +149,7 @@ public class OptionProcessor extends AbstractProcessor {
                 while (listIterator.hasNext()) {
                     OptionInfo info = listIterator.next();
                     if (info.valid) {
-                        ExpectError.assertNoErrorExpected(processingEnv, info.field);
+                        ExpectError.assertNoErrorExpected(info.field);
                     } else {
                         listIterator.remove();
                     }
@@ -167,8 +168,6 @@ public class OptionProcessor extends AbstractProcessor {
                     handleThrowable(t, info.type);
                 }
             }
-        } finally {
-            ProcessorContext.leave();
         }
 
         return true;
@@ -309,6 +308,12 @@ public class OptionProcessor extends AbstractProcessor {
             }
         }
 
+        VariableElement sandboxElement = ElementUtils.getAnnotationValue(VariableElement.class, annotation, "sandbox");
+        String sandbox = sandboxElement != null ? sandboxElement.getSimpleName().toString() : null;
+        if (sandbox == null) {
+            sandbox = "TRUSTED";
+        }
+
         for (String group : groupPrefixStrings) {
             String name;
             if (group.isEmpty() && optionName.isEmpty()) {
@@ -323,7 +328,7 @@ public class OptionProcessor extends AbstractProcessor {
                     name = group + "." + optionName;
                 }
             }
-            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap, deprecationMessage, usageSyntax));
+            info.options.add(new OptionInfo(name, help, field, elementAnnotation, deprecated, category, stability, optionMap, deprecationMessage, usageSyntax, sandbox));
         }
         return true;
     }
@@ -331,7 +336,7 @@ public class OptionProcessor extends AbstractProcessor {
     private static void error(Element element, AnnotationMirror annotation, String message, Object... args) {
         ProcessingEnvironment processingEnv = ProcessorContext.getInstance().getEnvironment();
         String formattedMessage = String.format(message, args);
-        if (ExpectError.isExpectedError(processingEnv, element, formattedMessage)) {
+        if (ExpectError.isExpectedError(element, formattedMessage)) {
             return;
         }
         processingEnv.getMessager().printMessage(Kind.ERROR, formattedMessage, element, annotation);
@@ -344,7 +349,7 @@ public class OptionProcessor extends AbstractProcessor {
         CodeTypeElement unit = generateDescriptors(context, element, info);
         DeclaredType overrideType = (DeclaredType) context.getType(Override.class);
         unit.accept(new GenerateOverrideVisitor(overrideType), null);
-        unit.accept(new FixWarningsVisitor(element, overrideType), null);
+        unit.accept(new FixWarningsVisitor(overrideType), null);
         try {
             unit.accept(new CodeWriter(context.getEnvironment(), element), null);
         } catch (RuntimeException e) {
@@ -370,11 +375,10 @@ public class OptionProcessor extends AbstractProcessor {
         PackageElement pack = context.getEnvironment().getElementUtils().getPackageOf(sourceType);
         Set<Modifier> typeModifiers = ElementUtils.modifiers(Modifier.FINAL);
         CodeTypeElement descriptors = new CodeTypeElement(typeModifiers, ElementKind.CLASS, pack, optionsClassName);
-        DeclaredType optionDescriptorsType = types.OptionDescriptors;
-        descriptors.getImplements().add(optionDescriptorsType);
+        descriptors.getImplements().add(types.TruffleOptionDescriptors);
         GeneratorUtils.addGeneratedBy(context, descriptors, (TypeElement) element);
 
-        ExecutableElement get = ElementUtils.findExecutableElement(optionDescriptorsType, "get");
+        ExecutableElement get = ElementUtils.findExecutableElement(types.OptionDescriptors, "get");
         CodeExecutableElement getMethod = CodeExecutableElement.clone(get);
         getMethod.getModifiers().remove(ABSTRACT);
         CodeTreeBuilder builder = getMethod.createBuilder();
@@ -418,7 +422,82 @@ public class OptionProcessor extends AbstractProcessor {
         builder.returnNull();
         descriptors.add(getMethod);
 
-        CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(optionDescriptorsType, "iterator"));
+        CodeExecutableElement sandboxPolicyMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.TruffleOptionDescriptors, "getSandboxPolicy", 1));
+        sandboxPolicyMethod.getModifiers().remove(ABSTRACT);
+        sandboxPolicyMethod.renameArguments("optionName");
+
+        Map<String, List<OptionInfo>> groupedOptions = new LinkedHashMap<>();
+        for (OptionInfo info : model.options) {
+            groupedOptions.computeIfAbsent(info.sandboxPolicy, (s) -> new LinkedList<>()).add(info);
+        }
+
+        builder = sandboxPolicyMethod.createBuilder();
+        builder.startAssert().string("get(optionName) != null : ").doubleQuote("Unknown option ").string(" + optionName").end();
+
+        String defaultSandboxPolicy = null;
+        String maxEntry = null;
+        if (groupedOptions.size() == 0) {
+            defaultSandboxPolicy = "TRUSTED";
+        } else if (groupedOptions.size() == 1) {
+            defaultSandboxPolicy = groupedOptions.keySet().iterator().next();
+        } else {
+            int maxSize = -1;
+            for (var entry : groupedOptions.entrySet()) {
+                if (entry.getValue().size() > maxSize) {
+                    maxSize = entry.getValue().size();
+                    maxEntry = entry.getKey();
+                }
+            }
+        }
+        assert (defaultSandboxPolicy != null) != (maxEntry != null);
+        groupedOptions.remove(defaultSandboxPolicy);
+        groupedOptions.remove(maxEntry);
+        elseIf = false;
+        for (var groupIt = groupedOptions.entrySet().iterator(); groupIt.hasNext();) {
+            var entry = groupIt.next();
+            var options = entry.getValue();
+            for (var optionsIt = options.iterator(); optionsIt.hasNext();) {
+                OptionInfo optionInfo = optionsIt.next();
+                if (optionInfo.optionMap) {
+                    elseIf = builder.startIf(elseIf);
+                    builder.startCall("optionName", "startsWith").doubleQuote(optionInfo.name + ".").end();
+                    builder.string(" || ");
+                    builder.startCall("optionName", "equals").doubleQuote(optionInfo.name).end();
+                    builder.end().startBlock();
+                    builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
+                    builder.end();
+                    optionsIt.remove();
+                }
+            }
+            if (options.isEmpty()) {
+                groupIt.remove();
+            }
+        }
+        if (defaultSandboxPolicy != null) {
+            builder.startReturn().type(types.SandboxPolicy).string(".", defaultSandboxPolicy).end();
+        } else if (groupedOptions.isEmpty()) {
+            builder.startReturn().type(types.SandboxPolicy).string(".", maxEntry).end();
+        } else {
+            builder.startSwitch().string("optionName").end().startBlock();
+            for (var entry : groupedOptions.entrySet()) {
+                for (OptionInfo optionInfo : entry.getValue()) {
+                    assert !optionInfo.optionMap;
+                    builder.startCase().doubleQuote(optionInfo.name).end().startCaseBlock();
+                    builder.startReturn().type(types.SandboxPolicy).string(".", entry.getKey()).end();
+                    builder.end();
+                }
+            }
+
+            // it makes sense to use the default block for the policy with the most entries.
+            builder.caseDefault().startCaseBlock();
+            builder.startReturn().type(types.SandboxPolicy).string(".", maxEntry).end();
+            builder.end();
+            builder.end();
+        }
+
+        descriptors.add(sandboxPolicyMethod);
+
+        CodeExecutableElement iteratorMethod = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.OptionDescriptors, "iterator"));
         iteratorMethod.getModifiers().remove(ABSTRACT);
         builder = iteratorMethod.createBuilder();
 
@@ -489,10 +568,11 @@ public class OptionProcessor extends AbstractProcessor {
         final String category;
         final String stability;
         final String deprecationMessage;
+        final String sandboxPolicy;
         private String usageSyntax;
 
         OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, String category, String stability, boolean optionMap, String deprecationMessage,
-                        String usageSyntax) {
+                        String usageSyntax, String sandboxPolicy) {
             this.name = name;
             this.help = help;
             this.field = field;
@@ -503,6 +583,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.optionMap = optionMap;
             this.deprecationMessage = deprecationMessage;
             this.usageSyntax = usageSyntax;
+            this.sandboxPolicy = sandboxPolicy;
         }
 
         @Override

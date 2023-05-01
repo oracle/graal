@@ -30,7 +30,6 @@ import java.util.HashSet;
 
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.option.OptionUtils.InvalidMacroException;
-import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.driver.MacroOption.AddedTwiceException;
 import com.oracle.svm.driver.MacroOption.VerboseInvalidMacroException;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
@@ -94,12 +93,12 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             config.modulePathBuild = modulePathBuild;
         }
 
-        enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
-
-        boolean explicitImageModulePath = enabledOption.forEachPropertyValue(
-                        config, "ImageModulePath", entry -> nativeImage.addImageModulePath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
-        boolean explicitImageClasspath = enabledOption.forEachPropertyValue(
-                        config, "ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        enabledOption.forEachPropertyValue(config,
+                        "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(Path.of(entry)), PATH_SEPARATOR_REGEX);
+        boolean explicitImageModulePath = enabledOption.forEachPropertyValue(config,
+                        "ImageModulePath", entry -> nativeImage.addImageModulePath(Path.of((entry))), PATH_SEPARATOR_REGEX);
+        boolean explicitImageClasspath = enabledOption.forEachPropertyValue(config,
+                        "ImageClasspath", entry -> NativeImage.expandAsteriskClassPathElement(entry).forEach(nativeImage::addImageClasspath), PATH_SEPARATOR_REGEX);
         if (!explicitImageModulePath && !explicitImageClasspath) {
             NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
         }

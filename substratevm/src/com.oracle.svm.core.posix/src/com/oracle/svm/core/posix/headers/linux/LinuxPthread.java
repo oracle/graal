@@ -29,10 +29,11 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
+import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 
 // Checkstyle: stop
 
@@ -45,4 +46,7 @@ public class LinuxPthread {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_getcpuclockid(pthread_t pthread, CIntPointer clock_id);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_condattr_setclock(Pthread.pthread_condattr_t attr, int clock_id);
 }

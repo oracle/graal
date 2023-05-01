@@ -780,7 +780,7 @@ public class TruffleSafepointTest {
     private static void lockCooperativelySafepoint(Semaphore semaphore, Node node, TruffleSafepoint safepoint) {
         boolean prevEffects = safepoint.setAllowSideEffects(false);
         try {
-            TruffleSafepoint.getCurrent().setBlockedWithException(node, Interrupter.THREAD_INTERRUPT,
+            TruffleSafepoint.getCurrent().setBlocked(node, Interrupter.THREAD_INTERRUPT,
                             (s) -> {
                                 // we want to get woken up by side-effecting actions
                                 boolean prevInner = safepoint.setAllowSideEffects(true);
@@ -828,7 +828,7 @@ public class TruffleSafepointTest {
                 lockBoundary(lock);
                 try {
                     while (!done.get()) {
-                        safepoint.setBlockedWithException(node, Interrupter.THREAD_INTERRUPT,
+                        safepoint.setBlocked(node, Interrupter.THREAD_INTERRUPT,
                                         (c) -> {
                                             // When await() is interrupted, it still needs to
                                             // reacquire the lock before the InterruptedException
@@ -1551,24 +1551,24 @@ public class TruffleSafepointTest {
                         List<Thread> polyglotThreads = new ArrayList<>();
                         try {
                             for (int i = 0; i < threads; i++) {
-                                Thread t = node.setup.env.createThread(() -> {
+                                Thread t = node.setup.env.newTruffleThreadBuilder(() -> {
                                     do {
                                         TruffleContext context = node.setup.env.getContext();
                                         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
                                         boolean prevSideEffects = safepoint.setAllowSideEffects(false);
                                         try {
-                                            context.leaveAndEnter(null, () -> {
-                                                // nothing to do. the important bit is that enter
-                                                // sets
-                                                // the
-                                                // cached thread local
+                                            context.leaveAndEnter(null, TruffleSafepoint.Interrupter.THREAD_INTERRUPT, (x) -> {
+                                                /*
+                                                 * nothing to do. the important bit is that enter
+                                                 * sets the cached thread local.
+                                                 */
                                                 return null;
-                                            });
+                                            }, null);
                                         } finally {
                                             safepoint.setAllowSideEffects(prevSideEffects);
                                         }
                                     } while (!threadsStopped.get());
-                                });
+                                }).build();
                                 t.setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
                                     public void uncaughtException(@SuppressWarnings("hiding") Thread t, Throwable e) {
                                         threadsStopped.set(true);

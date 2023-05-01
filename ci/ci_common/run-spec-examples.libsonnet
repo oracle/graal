@@ -81,6 +81,9 @@ local r      = import "run-spec.libsonnet";
               "name": "task",
               "target": "gate",
             }),
+            "jdk21": r.task_spec({
+              "target": "gate",
+            }),
           },
         },
       };
@@ -102,6 +105,7 @@ local r      = import "run-spec.libsonnet";
             "jdk17": {},
             "jdk19": {},
             "jdk20": {},
+            "jdk21": {},
           },
         },
       };

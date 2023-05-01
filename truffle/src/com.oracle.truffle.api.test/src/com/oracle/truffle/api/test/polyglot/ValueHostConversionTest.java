@@ -76,7 +76,6 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -524,6 +523,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("int", hierarchy.execute((double) Integer.MAX_VALUE).asString());
         assertEquals("int", hierarchy.execute((float) -(Math.pow(2, 24) - 1)).asString());
         assertEquals("int", hierarchy.execute((float) +(Math.pow(2, 24) - 1)).asString());
+        assertEquals("int", hierarchy.execute((float) Integer.MIN_VALUE).asString());
 
         assertEquals("byte", hierarchy.execute(Byte.MIN_VALUE).asString());
         assertEquals("byte", hierarchy.execute(Byte.MAX_VALUE).asString());
@@ -536,7 +536,6 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("number", hierarchy.execute(Long.MAX_VALUE).asString());
         assertEquals("number", hierarchy.execute(Float.MIN_VALUE).asString());
         assertEquals("number", hierarchy.execute(Float.MAX_VALUE).asString());
-        assertEquals("number", hierarchy.execute((float) Integer.MIN_VALUE).asString());
         assertEquals("number", hierarchy.execute((float) Integer.MAX_VALUE).asString());
         assertEquals("number", hierarchy.execute(Double.MIN_VALUE).asString());
         assertEquals("number", hierarchy.execute(Double.MAX_VALUE).asString());
@@ -555,6 +554,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
                         (long) Integer.MIN_VALUE, (long) Integer.MAX_VALUE,
                         0d, (double) Integer.MIN_VALUE, (double) Integer.MAX_VALUE,
                         0f, (float) -(Math.pow(2, 24) - 1), (float) +(Math.pow(2, 24) - 1),
+                        (float) -Math.pow(2, 24), (float) +Math.pow(2, 24),
         };
         for (Number number : canConvert) {
             Value value = context.asValue(number);
@@ -565,7 +565,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         Number[] cannotConvert = {
                         Integer.MIN_VALUE - 1L, Integer.MAX_VALUE + 1L,
                         -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, (double) (Integer.MIN_VALUE - 1L), (double) (Integer.MAX_VALUE + 1L),
-                        -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, (float) -Math.pow(2, 24), (float) +Math.pow(2, 24),
+                        -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY
         };
         for (Number number : cannotConvert) {
             assertFails(() -> context.asValue(number).asInt(), ClassCastException.class);
@@ -605,30 +605,33 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     public void testLongHierarchy() {
         Value hierarchy = context.asValue(new LongHierarchy()).getMember("hierarchy");
 
+        assertEquals("byte", hierarchy.execute(1.0f).asString());
+
         assertEquals("long", hierarchy.execute(Long.MIN_VALUE).asString());
         assertEquals("long", hierarchy.execute(Long.MAX_VALUE).asString());
 
         // double
         assertEquals("long", hierarchy.execute((double) (Integer.MIN_VALUE - 1L)).asString());
         assertEquals("long", hierarchy.execute((double) (Integer.MAX_VALUE + 1L)).asString());
-        double maxSafeInteger = Math.pow(2, 53) - 1;
-        assertEquals("long", hierarchy.execute(-maxSafeInteger).asString());
-        assertEquals("long", hierarchy.execute(+maxSafeInteger).asString());
+        assertEquals("long", hierarchy.execute(Math.pow(2, 53) - 1).asString());
+        assertEquals("long", hierarchy.execute(-Math.pow(2, 53) + 1).asString());
+        assertEquals("long", hierarchy.execute(-Math.pow(2, 53)).asString());
+        assertEquals("long", hierarchy.execute(Math.pow(2, 53)).asString());
+        assertEquals("long", hierarchy.execute((double) Long.MIN_VALUE).asString());
+        assertEquals("long", hierarchy.execute((float) Long.MIN_VALUE).asString());
 
-        // large double values cannot be safely converted to integer due to lack of precision
-        assertEquals("number", hierarchy.execute(-maxSafeInteger - 1).asString());
-        assertEquals("number", hierarchy.execute(+maxSafeInteger + 1).asString());
-        assertEquals("number", hierarchy.execute((double) Long.MIN_VALUE).asString());
+        // double cannot precisely store Long.MAX_VALUE.
         assertEquals("number", hierarchy.execute((double) Long.MAX_VALUE).asString());
 
         // float
         assertEquals("int", hierarchy.execute((float) -(Math.pow(2, 24) - 1)).asString());
         assertEquals("int", hierarchy.execute((float) +(Math.pow(2, 24) - 1)).asString());
+        assertEquals("int", hierarchy.execute((float) Integer.MIN_VALUE).asString());
+        // float cannot precisely store Integer.MAX_VALUE, but the converison to float yields a
+        // number that can fit into long, namely Integer.MAX_VALUE + 1 = 2147483648.
+        assertEquals("long", hierarchy.execute((float) Integer.MAX_VALUE).asString());
 
-        // large float values cannot be safely converted to integer due to lack of precision
-        assertEquals("number", hierarchy.execute((float) Integer.MIN_VALUE).asString());
-        assertEquals("number", hierarchy.execute((float) Integer.MAX_VALUE).asString());
-        assertEquals("number", hierarchy.execute((float) Long.MIN_VALUE).asString());
+        // float cannot precisely store Long.MAX_VALUE.
         assertEquals("number", hierarchy.execute((float) Long.MAX_VALUE).asString());
 
         assertEquals("byte", hierarchy.execute(Byte.MIN_VALUE).asString());
@@ -654,8 +657,8 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
                         Short.MIN_VALUE, Short.MAX_VALUE,
                         Integer.MIN_VALUE, Integer.MAX_VALUE,
                         (long) Integer.MIN_VALUE, (long) Integer.MAX_VALUE,
-                        0d, -(Math.pow(2, 53) - 1), +(Math.pow(2, 53) - 1),
-                        0f, (float) -(Math.pow(2, 24) - 1), (float) +(Math.pow(2, 24) - 1),
+                        0d, -Math.pow(2, 53), +Math.pow(2, 53), -(Math.pow(2, 53) - 1), +(Math.pow(2, 53) - 1),
+                        0f, (float) -Math.pow(2, 24), (float) +Math.pow(2, 24), (float) -(Math.pow(2, 24) - 1), (float) +(Math.pow(2, 24) - 1),
         };
         for (Number number : canConvert) {
             Value value = context.asValue(number);
@@ -664,12 +667,83 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         }
 
         Number[] cannotConvert = {
-                        -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -Math.pow(2, 53), +Math.pow(2, 53), Double.MIN_VALUE, Double.MAX_VALUE,
-                        -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, (float) -Math.pow(2, 24), (float) +Math.pow(2, 24), Float.MIN_VALUE, Float.MAX_VALUE,
+                        -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, Double.MIN_VALUE, Double.MAX_VALUE,
+                        -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY, Float.MIN_VALUE, Float.MAX_VALUE,
         };
         for (Number number : cannotConvert) {
             assertFails(() -> context.asValue(number).asLong(), ClassCastException.class);
         }
+    }
+
+    @SuppressWarnings("unused")
+    public static class BigIntegerHierarchy {
+
+        public String hierarchy(Number a) {
+            return "number";
+        }
+
+        public String hierarchy(BigInteger a) {
+            return "bigint";
+        }
+
+        public String hierarchy(float a) {
+            return "float";
+        }
+
+        public String hierarchy(double a) {
+            return "double";
+        }
+
+        public String hierarchy(int a) {
+            return "int";
+        }
+    }
+
+    @Test
+    public void testBigIntegerHierarchy() {
+        Value hierarchy = context.asValue(new BigIntegerHierarchy()).getMember("hierarchy");
+
+        assertEquals("int", hierarchy.execute(BigInteger.valueOf(10)).asString());
+        assertEquals("float", hierarchy.execute(Float.MAX_VALUE).asString());
+        assertEquals("float", hierarchy.execute(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE)).asString());
+        assertEquals("double", hierarchy.execute(Double.MAX_VALUE).asString());
+        assertEquals("bigint", hierarchy.execute(BigInteger.valueOf(Long.MAX_VALUE)).asString());
+        assertEquals("bigint", hierarchy.execute(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.TWO)).asString());
+        assertEquals("number", hierarchy.execute(BigDecimal.ONE).asString());
+    }
+
+    @Test
+    public void testBigIntegerHierarchyCompatibilityMode() {
+        try (Context ctx = Context.newBuilder().allowHostAccess(HostAccess.newBuilder().allowPublicAccess(true).allowBigIntegerNumberAccess(false).build()).build()) {
+            Value hierarchy = ctx.asValue(new BigIntegerHierarchy()).getMember("hierarchy");
+
+            assertEquals("bigint", hierarchy.execute(BigInteger.valueOf(10)).asString());
+            assertEquals("float", hierarchy.execute(Float.MAX_VALUE).asString());
+            assertEquals("bigint", hierarchy.execute(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE)).asString());
+            assertEquals("double", hierarchy.execute(Double.MAX_VALUE).asString());
+            assertEquals("bigint", hierarchy.execute(BigInteger.valueOf(Long.MAX_VALUE)).asString());
+            assertEquals("bigint", hierarchy.execute(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.TWO)).asString());
+            assertEquals("number", hierarchy.execute(BigDecimal.ONE).asString());
+        }
+    }
+
+    public static class BigIntegerCallback {
+
+        public String callback(BigInteger a) {
+            return a.toString();
+        }
+    }
+
+    @Test
+    public void testNumbersConvertToBigInteger() {
+        Value callback = context.asValue(new BigIntegerCallback()).getMember("callback");
+
+        assertEquals(String.valueOf(10), callback.execute(10).asString());
+        assertEquals(String.valueOf(Long.MAX_VALUE), callback.execute(Long.MAX_VALUE).asString());
+        assertEquals(String.valueOf(Long.MIN_VALUE), callback.execute((double) Long.MIN_VALUE).asString());
+        assertEquals(String.valueOf(10), callback.execute(BigInteger.valueOf(10)).asString());
+        assertEquals(String.valueOf(Long.MAX_VALUE), callback.execute(BigInteger.valueOf(Long.MAX_VALUE)).asString());
+        assertEquals(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE).toString(), callback.execute(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE)).asString());
     }
 
     @SuppressWarnings("unused")
@@ -723,6 +797,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertEquals("float", hierarchy.execute(Double.NEGATIVE_INFINITY).asString());
         assertEquals("float", hierarchy.execute(Double.POSITIVE_INFINITY).asString());
         assertEquals("float", hierarchy.execute(-0.0d).asString());
+        assertEquals("int", hierarchy.execute((float) Integer.MIN_VALUE).asString());
 
         assertEquals("byte", hierarchy.execute(Byte.MIN_VALUE).asString());
         assertEquals("byte", hierarchy.execute(Byte.MAX_VALUE).asString());
@@ -746,12 +821,11 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
                         Byte.MIN_VALUE, Byte.MAX_VALUE,
                         Short.MIN_VALUE, Short.MAX_VALUE,
                         -(1 << 24) + 1, (1 << 24) - 1,
-                        // lucky rounding, float doesn't have enough precision to hold these values
                         -(1 << 24), 1 << 24,
-                        Integer.MIN_VALUE, Integer.MAX_VALUE,
+                        Integer.MIN_VALUE,
                         -(1L << 24), 1L << 24,
                         -(1L << 24) + 1, (1L << 24) - 1,
-                        Long.MIN_VALUE, Long.MAX_VALUE,
+                        Long.MIN_VALUE,
                         (double) (-(1L << 24) + 1), (double) ((1L << 24) - 1),
                         0.5d, -0.5d,
                         0d, -0d, Double.NaN, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, -(Math.pow(2, 24) - 1), +(Math.pow(2, 24) - 1),
@@ -765,7 +839,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         Number[] cannotConvert = {
                         0.1d, -0.1d,
                         0.2d, -0.2d,
-                        -(1L << 24) - 1, (1L << 24) + 1,
+                        -(1L << 24) - 1, (1L << 24) + 1, Integer.MAX_VALUE, Long.MAX_VALUE,
                         Double.MIN_VALUE, Double.MAX_VALUE,
                         (double) (-(1L << 24) - 1), (double) ((1L << 24) + 1),
         };
@@ -1244,7 +1318,6 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     // Methods annotated with @CallerSensitive use reflection, even on JVM, so we test that case.
     @Test
     public void testExceptionFramesCallerSensitive() throws NoSuchFieldException {
-        Assume.assumeTrue("GR-40767", Runtime.version().feature() < 19);
         // We cannot easily mark a method as @CallerSensitive (the annotation moved between JDK 8
         // and 9), so we use an existing method marked as @CallerSensitive, Field#get().
         Field field = TestExceptionFramesCallerSensitive.class.getField("testField");
@@ -1264,6 +1337,11 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
             assertTrue(frame.isHostFrame());
             assertEquals("get", frame.toHostFrame().getMethodName());
             frame = frameIterator.next();
+            if (Runtime.version().feature() >= 19 && frame.toHostFrame().getMethodName().startsWith("invoke")) {
+                // Skip DirectMethodHandleAccessor.invoke used by Method.invoke on JDK 19+
+                frame = frameIterator.next();
+                assertTrue(frame.isHostFrame());
+            }
             assertTrue(frame.isHostFrame());
             assertEquals("execute", frame.toHostFrame().getMethodName());
             frame = frameIterator.next();

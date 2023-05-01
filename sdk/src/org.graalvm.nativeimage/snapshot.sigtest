@@ -9,6 +9,14 @@ meth public abstract void close() throws java.lang.Exception
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
 meth public abstract int compareTo({java.lang.Comparable%0})
 
+CLSS public abstract interface !annotation java.lang.Deprecated
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean forRemoval()
+meth public abstract !hasdefault java.lang.String since()
+
 CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
 cons protected init(java.lang.String,int)
 innr public final static EnumDesc
@@ -28,6 +36,15 @@ meth public java.lang.String toString()
 meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
 supr java.lang.Object
 hfds name,ordinal
+
+CLSS public java.lang.Error
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Throwable
+hfds serialVersionUID
 
 CLSS public java.lang.Exception
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
@@ -214,6 +231,15 @@ meth public abstract void fatalError()
 meth public abstract void flush()
 meth public abstract void log(org.graalvm.nativeimage.c.type.CCharPointer,org.graalvm.word.UnsignedWord)
 
+CLSS public final org.graalvm.nativeimage.MissingReflectionRegistrationError
+cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
+meth public java.lang.Class<?> getElementType()
+meth public java.lang.Class<?> getDeclaringClass()
+meth public java.lang.String getElementName()
+meth public java.lang.Class<?>[] getParameterTypes()
+supr java.lang.Error
+hfds serialVersionUID
+
 CLSS public abstract interface org.graalvm.nativeimage.ObjectHandle
 intf org.graalvm.word.ComparableWord
 
@@ -245,12 +271,14 @@ innr public abstract interface static LINUX
 innr public abstract interface static LINUX_AARCH64_BASE
 innr public abstract interface static LINUX_AMD64_BASE
 innr public abstract interface static MACOS
+innr public abstract interface static RISCV64
 innr public abstract interface static WINDOWS
 innr public final static ANDROID_AARCH64
 innr public final static HOSTED_ONLY
 innr public final static IOS_AARCH64
 innr public final static IOS_AMD64
 innr public final static LINUX_AARCH64
+innr public final static LINUX_RISCV64
 innr public final static MACOS_AARCH64
 innr public final static MACOS_AMD64
 innr public final static WINDOWS_AARCH64
@@ -353,6 +381,13 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$LINUX_AMD
 intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$LINUX
 
+CLSS public final static org.graalvm.nativeimage.Platform$LINUX_RISCV64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$LINUX
+intf org.graalvm.nativeimage.Platform$RISCV64
+supr java.lang.Object
+
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$MACOS
  outer org.graalvm.nativeimage.Platform
 intf org.graalvm.nativeimage.Platform$DARWIN
@@ -371,6 +406,11 @@ cons public init()
 intf org.graalvm.nativeimage.Platform$DARWIN_AMD64
 intf org.graalvm.nativeimage.Platform$MACOS
 supr java.lang.Object
+
+CLSS public abstract interface static org.graalvm.nativeimage.Platform$RISCV64
+ outer org.graalvm.nativeimage.Platform
+intf org.graalvm.nativeimage.Platform
+meth public java.lang.String getArchitecture()
 
 CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
  outer org.graalvm.nativeimage.Platform
@@ -420,12 +460,15 @@ CLSS public final org.graalvm.nativeimage.RuntimeOptions
 innr public final static !enum OptionClass
 meth public static <%0 extends java.lang.Object> {%%0} get(java.lang.String)
 meth public static org.graalvm.options.OptionDescriptors getOptions()
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
 meth public static org.graalvm.options.OptionDescriptors getOptions(java.util.EnumSet<org.graalvm.nativeimage.RuntimeOptions$OptionClass>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
 meth public static void set(java.lang.String,java.lang.Object)
 supr java.lang.Object
 
 CLSS public final static !enum org.graalvm.nativeimage.RuntimeOptions$OptionClass
  outer org.graalvm.nativeimage.RuntimeOptions
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
 fld public final static org.graalvm.nativeimage.RuntimeOptions$OptionClass Compiler
 fld public final static org.graalvm.nativeimage.RuntimeOptions$OptionClass VM
 meth public static org.graalvm.nativeimage.RuntimeOptions$OptionClass valueOf(java.lang.String)
@@ -846,7 +889,7 @@ meth public abstract void write(short)
 
 CLSS public final org.graalvm.nativeimage.c.type.CTypeConversion
 innr public abstract interface static CCharPointerHolder
-innr public final static CCharPointerPointerHolder
+innr public abstract static CCharPointerPointerHolder
 meth public static boolean toBoolean(int)
 meth public static boolean toBoolean(org.graalvm.word.PointerBase)
 meth public static byte toCBoolean(boolean)
@@ -868,13 +911,13 @@ intf java.lang.AutoCloseable
 meth public abstract org.graalvm.nativeimage.c.type.CCharPointer get()
 meth public abstract void close()
 
-CLSS public final static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerPointerHolder
+CLSS public abstract static org.graalvm.nativeimage.c.type.CTypeConversion$CCharPointerPointerHolder
  outer org.graalvm.nativeimage.c.type.CTypeConversion
+cons public init()
 intf java.lang.AutoCloseable
-meth public org.graalvm.nativeimage.c.type.CCharPointerPointer get()
-meth public void close()
+meth public abstract org.graalvm.nativeimage.c.type.CCharPointerPointer get()
+meth public abstract void close()
 supr java.lang.Object
-hfds ccpHolderArray,pinnedCCPArray
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.type.CTypedef
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
@@ -1050,10 +1093,26 @@ meth public !varargs static void register(boolean,boolean,java.lang.reflect.Fiel
 meth public !varargs static void register(boolean,java.lang.reflect.Field[])
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.1")
 meth public !varargs static void register(java.lang.Class<?>[])
+meth public static void registerClassLookup(java.lang.String)
 meth public !varargs static void register(java.lang.reflect.Executable[])
+meth public !varargs static void registerMethodLookup(java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
+meth public !varargs static void registerConstructorLookup(java.lang.Class<?>,java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Field[])
+meth public static void registerFieldLookup(java.lang.Class<?>,java.lang.String)
 meth public !varargs static void registerAsQueried(java.lang.reflect.Executable[])
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
+meth public static void registerAllClasses(java.lang.Class<?>)
+meth public static void registerAllDeclaredClasses(java.lang.Class<?>)
+meth public static void registerAllConstructors(java.lang.Class<?>)
+meth public static void registerAllDeclaredConstructors(java.lang.Class<?>)
+meth public static void registerAllFields(java.lang.Class<?>)
+meth public static void registerAllDeclaredFields(java.lang.Class<?>)
+meth public static void registerAllMethods(java.lang.Class<?>)
+meth public static void registerAllDeclaredMethods(java.lang.Class<?>)
+meth public static void registerAllNestMembers(java.lang.Class<?>)
+meth public static void registerAllPermittedSubclasses(java.lang.Class<?>)
+meth public static void registerAllRecordComponents(java.lang.Class<?>)
+meth public static void registerAllSigners(java.lang.Class<?>)
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeResourceAccess

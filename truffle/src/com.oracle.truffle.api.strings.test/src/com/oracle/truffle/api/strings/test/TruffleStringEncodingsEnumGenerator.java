@@ -78,29 +78,29 @@ public class TruffleStringEncodingsEnumGenerator {
         int utf16Unsupported = (int) (lastID + 1);
         System.out.println("/* directly supported encodings */");
         System.out.printf("/**\n" +
-                        "         * UTF_32LE. Directly supported if the current system is little-endian.\n" +
+                        "         * UTF-32LE. Directly supported if the current system is little-endian.\n" +
                         "         *\n" +
-                        "         * @since 22.0\n" +
+                        "         * @since 22.1\n" +
                         "         */\n" +
-                        "        UTF_32LE(littleEndian() ? %d : %d, \"UTF_32LE\", littleEndian() ? 2 : 0),\n" +
+                        "        UTF_32LE(littleEndian() ? %d : %d, \"UTF_32LE\", littleEndian() ? 2 : 0, littleEndian()),\n" +
                         "        /**\n" +
-                        "         * UTF_32BE. Directly supported if the current system is big-endian.\n" +
+                        "         * UTF-32BE. Directly supported if the current system is big-endian.\n" +
                         "         *\n" +
-                        "         * @since 22.0\n" +
+                        "         * @since 22.1\n" +
                         "         */\n" +
-                        "        UTF_32BE(littleEndian() ? %d : %d, \"UTF_32BE\", littleEndian() ? 0 : 2),\n" +
+                        "        UTF_32BE(littleEndian() ? %d : %d, \"UTF_32BE\", littleEndian() ? 0 : 2, bigEndian()),\n" +
                         "        /**\n" +
-                        "         * UTF_16LE. Directly supported if the current system is little-endian.\n" +
+                        "         * UTF-16LE. Directly supported if the current system is little-endian.\n" +
                         "         *\n" +
-                        "         * @since 22.0\n" +
+                        "         * @since 22.1\n" +
                         "         */\n" +
-                        "        UTF_16LE(littleEndian() ? %d : %d, \"UTF_16LE\", littleEndian() ? 1 : 0),\n" +
+                        "        UTF_16LE(littleEndian() ? %d : %d, \"UTF_16LE\", littleEndian() ? 1 : 0, false),\n" +
                         "        /**\n" +
-                        "         * UTF_16BE. Directly supported if the current system is big-endian.\n" +
+                        "         * UTF-16BE. Directly supported if the current system is big-endian.\n" +
                         "         *\n" +
-                        "         * @since 22.0\n" +
+                        "         * @since 22.1\n" +
                         "         */\n" +
-                        "        UTF_16BE(littleEndian() ? %d : %d, \"UTF_16BE\", littleEndian() ? 0 : 1),\n",
+                        "        UTF_16BE(littleEndian() ? %d : %d, \"UTF_16BE\", littleEndian() ? 0 : 1, false),\n",
                         utf32, utf32Unsupported, utf32Unsupported, utf32,
                         utf16, utf16Unsupported, utf16Unsupported, utf16);
         System.out.println("/**\n * ISO_8859_1, also known as LATIN-1, which is equivalent to the ASCII + LATIN-1 Supplement\n * Unicode block.\n *\n * @since 22.0\n */");
@@ -146,7 +146,7 @@ public class TruffleStringEncodingsEnumGenerator {
         int i = iParam;
         for (Encoding e : filtered) {
             // Checkstyle: stop
-            System.out.printf("/**\n * %s.\n *\n * @since 22.0\n */\n", toEnumName(e.toString()));
+            System.out.printf("/**\n * %s.\n *\n * @since 22.1\n */\n", toEnumName(e.toString()).replace('_', '-'));
             // Checkstyle: resume
             printInitializer(e, i++);
         }

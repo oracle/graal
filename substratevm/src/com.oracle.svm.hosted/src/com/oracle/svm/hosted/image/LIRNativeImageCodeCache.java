@@ -72,6 +72,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     private final TargetDescription target;
 
+    @SuppressWarnings("this-escape")
     public LIRNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap) {
         super(compilations, imageHeap);
         target = ConfigurationValues.getTarget();
@@ -218,7 +219,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
             assert verifyMethodLayout();
 
-            buildRuntimeMetadata(new MethodPointer(getFirstCompilation().getLeft()), WordFactory.unsigned(totalSize));
+            buildRuntimeMetadata(new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.unsigned(totalSize));
         }
     }
 

@@ -66,12 +66,14 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jni.JNIJavaVMList;
+import com.oracle.svm.core.jni.functions.JNIFunctionTables;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.sampler.ProfilingSampler;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.VMError;
 
 @InternalVMMethod
@@ -140,18 +142,6 @@ public class JavaMainWrapper {
      */
     private static int runCore0() {
         try {
-            if (SubstrateOptions.DumpHeapAndExit.getValue()) {
-                if (VMInspectionOptions.hasHeapDumpSupport()) {
-                    String absoluteHeapDumpPath = SubstrateOptions.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
-                    VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
-                    System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
-                    return 0;
-                } else {
-                    System.err.println("Unable to dump heap. Heap dumping is only supported for native executables built with `" + VMInspectionOptions.getHeapdumpsCommandArgument() + "`.");
-                    return 1;
-                }
-            }
-
             if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
                 /*
                  * When options are not parsed yet, it is also too early to run the startup hooks
@@ -161,9 +151,23 @@ public class JavaMainWrapper {
                 VMRuntime.initialize();
             }
 
-            if (ImageSingletons.contains(ProfilingSampler.class)) {
-                ImageSingletons.lookup(ProfilingSampler.class).registerSampler();
+            if (SubstrateOptions.DumpHeapAndExit.getValue()) {
+                if (VMInspectionOptions.hasHeapDumpSupport()) {
+                    String absoluteHeapDumpPath = SubstrateOptions.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
+                    VMRuntime.dumpHeap(absoluteHeapDumpPath, true);
+                    System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
+                    return 0;
+                } else {
+                    System.err.println("Unable to dump heap. Heap dumping is only supported on Linux and MacOS for native executables built with `" +
+                                    VMInspectionOptions.getHeapdumpsCommandArgument() + "`.");
+                    return 1;
+                }
             }
+
+            ThreadListenerSupport.get().beforeThreadRun();
+
+            // Ensure that native code using JNI_GetCreatedJavaVMs finds this isolate.
+            JNIJavaVMList.addJavaVM(JNIFunctionTables.singleton().getGlobalJavaVM());
 
             /*
              * Invoke the application's main method. Invoking the main method via a method handle
@@ -182,8 +186,6 @@ public class JavaMainWrapper {
              * HotSpot VM.
              */
             return 1;
-        } finally {
-            PlatformThreads.exit(Thread.currentThread());
         }
     }
 
@@ -204,7 +206,7 @@ public class JavaMainWrapper {
          */
         RuntimeSupport.getRuntimeSupport().shutdown();
 
-        Counter.logValues(Log.log());
+        CounterSupport.singleton().logValues(Log.log());
     }
 
     @Uninterruptible(reason = "Thread state not set up yet.")

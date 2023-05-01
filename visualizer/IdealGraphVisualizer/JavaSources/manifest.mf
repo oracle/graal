@@ -1,0 +1,6 @@
+Manifest-Version: 1.0
+AutoUpdate-Show-In-Client: false
+OpenIDE-Module: org.graalvm.visualizer.source.java
+OpenIDE-Module-Layer: org/graalvm/visualizer/source/java/resources/layer.xml
+OpenIDE-Module-Localizing-Bundle: org/graalvm/visualizer/source/java/impl/Bundle.properties
+OpenIDE-Module-Recommends: cnb.org.netbeans.modules.java.j2seproject

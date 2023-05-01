@@ -35,8 +35,8 @@ import com.oracle.truffle.espresso.vm.ModulesHelperVM;
 public final class Target_java_lang_Module {
 
     /*
-     * As of JDK 15+, The native signature for these VM methods changed. These substitutions
-     * bypasses the native linking of these methods to their 'JVM_*' counterparts.
+     * As of JDK 15+, The native signature for these VM methods changed. These substitutions bypass
+     * the native linking of these methods to their 'JVM_*' counterparts.
      */
 
     @Substitution

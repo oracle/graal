@@ -134,7 +134,7 @@ final class Util_java_lang_invoke_MethodHandle {
          * we perform the resolution again.
          */
         if (memberName.reflectAccess == null && memberName.intrinsic == null) {
-            Target_java_lang_invoke_MethodHandleNatives.resolve(memberName, null, false);
+            Util_java_lang_invoke_MethodHandleNatives.resolve(memberName, null, false);
         }
 
         if (memberName.intrinsic != null) { /* Intrinsic call */

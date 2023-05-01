@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.BitSet;
 import java.util.TreeMap;
@@ -171,6 +171,10 @@ public class CodeInfoEncoder {
         this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization, encoders);
     }
 
+    public Encoders getEncoders() {
+        return encoders;
+    }
+
     public static int getEntryOffset(Infopoint infopoint) {
         if (infopoint instanceof Call || infopoint instanceof DeoptEntryInfopoint) {
             int offset = infopoint.pcOffset;
@@ -221,9 +225,8 @@ public class CodeInfoEncoder {
                         long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
                         added = deoptEntryBcis.add(encodedBci);
                         if (!added) {
-                            String errorMessage = String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)\nmethod: %s", encodedBci, FrameInfoDecoder.readableBci(encodedBci),
-                                            method);
-                            throw VMError.shouldNotReachHere(errorMessage);
+                            throw VMError.shouldNotReachHere(String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)%nmethod: %s",
+                                            encodedBci, FrameInfoDecoder.readableBci(encodedBci), method));
                         }
                     }
                 }
@@ -543,7 +546,7 @@ class CodeInfoVerifier {
             assert lock.isEliminated() == actualValue.isEliminatedMonitor();
             expectedValue = lock.getOwner();
         } else {
-            assert actualValue.isEliminatedMonitor() == false;
+            assert !actualValue.isEliminatedMonitor();
         }
 
         if (ValueUtil.isIllegalJavaValue(expectedValue)) {
@@ -583,7 +586,7 @@ class CodeInfoVerifier {
             verifyVirtualObject(compilation, ValueUtil.asVirtualObject(expectedValue), actualFrame.getVirtualObjects()[expectedId], actualFrame, visitedVirtualObjects);
 
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(expectedValue); // ExcludeFromJacocoGeneratedReport
         }
     }
 

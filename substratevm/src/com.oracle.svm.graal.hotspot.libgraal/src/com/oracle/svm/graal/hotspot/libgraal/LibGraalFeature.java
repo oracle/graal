@@ -63,6 +63,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.EncodedSnippets;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotCodeCacheListener;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
@@ -88,12 +89,12 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
@@ -109,7 +110,6 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -120,10 +120,7 @@ import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -154,7 +151,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CompilationRequest;
 import jdk.vm.ci.code.CompilationRequestResult;
-import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -453,10 +449,12 @@ public class LibGraalFeature implements InternalFeature {
         GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(DisassemblerProvider.class);
         GraalServices.load(HotSpotInvocationPluginProvider.class);
+        GraalServices.load(TruffleHostEnvironment.Lookup.class);
 
+        List<HotSpotBackend> truffleBackends;
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
             // Instantiate the truffle compiler to ensure the backends it uses are initialized.
-            GraalTruffleRuntime.getRuntime().newTruffleCompiler();
+            truffleBackends = HotSpotTruffleCompilerImpl.ensureBackendsInitialized(RuntimeOptionValues.singleton());
         } catch (Throwable t) {
             throw debug.handle(t);
         }
@@ -486,19 +484,11 @@ public class LibGraalFeature implements InternalFeature {
 
         // Force construction of all stubs so their types are known.
         HotSpotProviders providers = getReplacements().getProviders();
-        HotSpotHostForeignCallsProvider foreignCalls = providers.getForeignCalls();
-        foreignCalls.forEachForeignCall((sig, linkage) -> {
-            if (linkage == null || linkage.isCompiledStub()) {
-                boolean nonConstant = true;
-                String symbol = null;
-                CGlobalData<Pointer> data = CGlobalDataFactory.createWord((Pointer) WordFactory.zero(), symbol, nonConstant);
-                LibGraalEntryPoints.STUBS.put(sig, data);
-                if (linkage != null) {
-                    // Force stub construction
-                    foreignCalls.lookupForeignCall(sig);
-                }
-            }
-        });
+        registerForeignCalls(providers);
+
+        for (Backend backend : truffleBackends) {
+            registerForeignCalls((HotSpotProviders) backend.getProviders());
+        }
 
         hotSpotSubstrateReplacements.encode(bb.getOptions());
         if (!RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SnippetParameterInfo.class)) {
@@ -512,11 +502,35 @@ public class LibGraalFeature implements InternalFeature {
         }
     }
 
+    private static void registerForeignCalls(HotSpotProviders providers) {
+        HotSpotHostForeignCallsProvider foreignCalls = providers.getForeignCalls();
+        foreignCalls.forEachForeignCall((sig, linkage) -> {
+            if (linkage == null || linkage.isCompiledStub()) {
+                boolean nonConstant = true;
+                String symbol = null;
+
+                /*
+                 * We process all foreign calls of all backends including Truffle backends. Some
+                 * stubs may be encountered multiple times with multiple backends. It is enough to
+                 * do this once per stub signature.
+                 */
+                if (!LibGraalEntryPoints.STUBS.containsKey(sig)) {
+                    CGlobalData<Pointer> data = CGlobalDataFactory.createWord((Pointer) WordFactory.zero(), symbol, nonConstant);
+                    LibGraalEntryPoints.STUBS.put(sig, data);
+                    if (linkage != null) {
+                        // Force stub construction
+                        foreignCalls.lookupForeignCall(sig);
+                    }
+                }
+            }
+        });
+    }
+
     private static void filterArchitectureServices(String archPackage, Map<Class<?>, List<?>> services) {
         for (List<?> list : services.values()) {
             list.removeIf(o -> {
                 String name = o.getClass().getName();
-                if (name.contains(".aarch64.") || name.contains(".amd64.")) {
+                if (name.contains(".aarch64.") || name.contains(".amd64.") || name.contains(".riscv64.")) {
                     return !name.contains(archPackage);
                 }
                 return false;
@@ -738,26 +752,8 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     }
 }
 
-@TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotTTYStreamProvider", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider {
-
-    @Substitute
-    private static Pointer getBarrierPointer() {
-        return LibGraalEntryPoints.LOG_FILE_BARRIER.get();
-    }
-}
-
 @TargetClass(className = "org.graalvm.compiler.serviceprovider.GraalServices", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
-
-    @Substitute
-    public static long getGlobalTimeStamp() {
-        Pointer timestamp = LibGraalEntryPoints.GLOBAL_TIMESTAMP.get();
-        if (timestamp.readLong(0) == 0) {
-            timestamp.compareAndSwapLong(0, 0, System.currentTimeMillis(), LocationIdentity.ANY_LOCATION);
-        }
-        return timestamp.readLong(0);
-    }
 
     @Substitute
     private static void notifyLowMemoryPoint(boolean fullGC) {
@@ -820,18 +816,6 @@ final class HotSpotGraalOptionValuesUtil {
         assert value.startsWith(prefix);
         return value.substring(prefix.length());
     }
-}
-
-/**
- * This field resetting must be done via substitutions instead of {@link NativeImageReinitialize} as
- * the fields must only be reset in a libgraal image.
- */
-@TargetClass(className = "org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeInstance {
-    // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
-    // Checkstyle: resume
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
 }
 
 @TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)

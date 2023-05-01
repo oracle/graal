@@ -68,19 +68,16 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static String javaIoTmpDir() {
         return SystemPropertiesSupport.singleton().javaIoTmpDir();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static String javaLibraryPath() {
         return SystemPropertiesSupport.singleton().javaLibraryPath();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static String sunBootLibraryPath() {
         String value = SystemPropertiesSupport.singleton().savedProperties.get("sun.boot.library.path");
         return value == null ? "" : value;
@@ -123,7 +120,6 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     public static String nativeEncoding() {
         return SystemPropertiesSupport.singleton().savedProperties.get("native.encoding");
     }
@@ -147,7 +143,7 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK20OrEarlier.class})
     public static Charset jnuCharset() {
         String jnuEncoding = SystemPropertiesSupport.singleton().savedProperties.get("sun.jnu.encoding");
         return Target_java_nio_charset_Charset.forName(jnuEncoding, Charset.defaultCharset());

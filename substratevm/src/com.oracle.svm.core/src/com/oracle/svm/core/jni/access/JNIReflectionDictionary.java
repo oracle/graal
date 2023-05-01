@@ -247,18 +247,13 @@ public final class JNIReflectionDictionary {
         return (JNIMethodId) value;
     }
 
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
-        return (JNIAccessibleMethod) getObjectFromMethodID(method);
-    }
-
-    @Uninterruptible(reason = "Allow inlining from entry points, which are uninterruptible.", mayBeInlined = true)
-    public static Object getObjectFromMethodID(JNIMethodId method) {
         Pointer p = (Pointer) method;
         if (SubstrateOptions.SpawnIsolates.getValue()) {
             p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
         }
-        return p.toObject();
+        return p.toObject(JNIAccessibleMethod.class, false);
     }
 
     private JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {

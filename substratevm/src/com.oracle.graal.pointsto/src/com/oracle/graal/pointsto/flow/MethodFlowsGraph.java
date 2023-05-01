@@ -41,8 +41,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -113,29 +111,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return original;
     }
 
-    public void init(final PointsToAnalysis bb) {
-        for (TypeFlow<?> flow : flows()) {
-            if (flow instanceof AbstractUnsafeLoadTypeFlow) {
-                bb.registerUnsafeLoad((AbstractUnsafeLoadTypeFlow) flow);
-            }
-            if (flow instanceof AbstractUnsafeStoreTypeFlow) {
-                bb.registerUnsafeStore((AbstractUnsafeStoreTypeFlow) flow);
-            }
-
-            /*
-             * Run initialization code for corner case type flows. This can be used to add link from
-             * 'outside' into the graph.
-             */
-            flow.initFlow(bb);
-
-            /* Trigger the update for static invokes, there is no receiver to trigger it. */
-            if (flow instanceof AbstractStaticInvokeTypeFlow) {
-                bb.postFlow(flow);
-            }
-        }
-    }
-
-    protected static boolean nonCloneableFlow(TypeFlow<?> flow) {
+    public static boolean nonCloneableFlow(TypeFlow<?> flow) {
         /*
          * References to field flows and to array elements flows are not part of the method itself;
          * field and indexed load and store flows will instead be cloned, and used to access the
@@ -144,7 +120,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return flow instanceof FieldTypeFlow || flow instanceof ArrayElementsTypeFlow;
     }
 
-    protected static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
+    public static boolean crossMethodUse(TypeFlow<?> flow, TypeFlow<?> use) {
         /*
          * Formal returns and unwinds are method exit points. Formal parameters are entry points
          * into callees.
@@ -152,7 +128,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
         return flow instanceof FormalReturnTypeFlow || use instanceof FormalParamTypeFlow;
     }
 
-    private static boolean nonMethodFlow(TypeFlow<?> flow) {
+    public static boolean nonMethodFlow(TypeFlow<?> flow) {
         /*
          * All-instantiated flow doesn't belong to any method, but it can be reachable from a use.
          */
@@ -181,8 +157,8 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
             for (TypeFlow<?> flow : flows()) {
                 int slotNum = flow.getSlot();
                 if (slotNum != -1) {
-                    assert flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
-                    AnalysisError.guarantee(isRedo && flow.getSlot() == resultFlows.size(), "Flow already discovered: " + flow);
+                    assert flow.isClone() || flow instanceof FormalParamTypeFlow || flow instanceof FormalReturnTypeFlow : "Unexpected flow " + flow;
+                    AnalysisError.guarantee((isRedo || flow.isClone()) && flow.getSlot() == resultFlows.size(), "Flow already discovered: %s", flow);
                 } else {
                     flow.setSlot(resultFlows.size());
                 }
@@ -194,7 +170,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     /**
-     * creates an iterator containing all flows which are internal to this method. This does not
+     * Creates an iterator containing all flows which are internal to this method. This does not
      * include the following types of flows:
      * <ul>
      * <li>A cloned flow</li>
@@ -203,10 +179,10 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
      * </ul>
      */
     public final Iterable<TypeFlow<?>> flows() {
-        return () -> flowsIterator(false);
+        return this::flowsIterator;
     }
 
-    private Iterator<TypeFlow<?>> flowsIterator(boolean iterateClones) {
+    private Iterator<TypeFlow<?>> flowsIterator() {
         return new Iterator<>() {
             final Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
             final Set<TypeFlow<?>> seen = new HashSet<>();
@@ -231,7 +207,12 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                     }
                 }
                 if (miscEntryFlows != null) {
-                    worklist.addAll(miscEntryFlows);
+                    for (var value : miscEntryFlows) {
+                        /* Skip embedded AllInstantiatedTypeFlows. */
+                        if (!nonMethodFlow(value)) {
+                            worklist.add(value);
+                        }
+                    }
                 }
                 if (instanceOfFlows != null) {
                     for (var value : instanceOfFlows.getValues()) {
@@ -276,7 +257,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
             private void expand(TypeFlow<?> flow) {
                 for (TypeFlow<?> use : flow.getUses()) {
-                    if ((!iterateClones && use.isClone()) || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
+                    if (use.isClone() || crossMethodUse(flow, use) || nonCloneableFlow(use) || nonMethodFlow(use)) {
                         continue;
                     }
                     worklist.add(use);

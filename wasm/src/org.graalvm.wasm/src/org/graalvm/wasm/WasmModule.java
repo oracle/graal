@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,21 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.source.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.wasm.parser.ir.CodeEntry;
+import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiConsumer;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.wasm.debugging.data.DebugFunction;
+import org.graalvm.wasm.debugging.parser.DebugTranslator;
+import org.graalvm.wasm.parser.ir.CodeEntry;
+
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.source.Source;
 
 /**
  * Represents a parsed and validated WebAssembly module, which has not yet been instantiated.
@@ -58,48 +62,39 @@ import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 @SuppressWarnings("static-method")
 public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
-    private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
+    private ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     private final ModuleLimits limits;
+
     private Source source;
-
+    @CompilationFinal(dimensions = 1) private byte[] bytecode;
+    @CompilationFinal(dimensions = 1) private byte[] customData;
+    @CompilationFinal(dimensions = 1) private byte[] codeSection;
     @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
-
-    @CompilationFinal private boolean hasCodeSection;
-    @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal private boolean isParsed;
 
-    private WasmModule(String name, byte[] data, ModuleLimits limits) {
+    @CompilationFinal private int debugInfoOffset;
+    @CompilationFinal private EconomicMap<Integer, DebugFunction> debugFunctions;
+
+    private WasmModule(String name, ModuleLimits limits) {
         super();
         this.name = name;
         this.limits = limits == null ? ModuleLimits.DEFAULTS : limits;
         this.linkActions = new ArrayList<>();
-        this.data = data;
         this.isParsed = false;
+        this.debugInfoOffset = -1;
     }
 
-    public static WasmModule create(String name, byte[] data, ModuleLimits limits) {
-        return new WasmModule(name, data, limits);
+    public static WasmModule create(String name, ModuleLimits limits) {
+        return new WasmModule(name, limits);
     }
 
     public static WasmModule createBuiltin(String name) {
-        return new WasmModule(name, null, null);
-    }
-
-    public ModuleLimits limits() {
-        return limits;
+        return new WasmModule(name, null);
     }
 
     @Override
     protected WasmModule module() {
         return this;
-    }
-
-    public void setParsed() {
-        isParsed = true;
-    }
-
-    public boolean isParsed() {
-        return isParsed;
     }
 
     public SymbolTable symbolTable() {
@@ -110,16 +105,28 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return name;
     }
 
-    public byte[] data() {
-        return data;
+    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
+        return Collections.unmodifiableList(linkActions);
     }
 
-    public void setData(byte[] data) {
-        this.data = data;
+    public void createLinkActions() {
+        linkActions = new ArrayList<>();
     }
 
-    public boolean isBuiltin() {
-        return data == null;
+    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
+        linkActions.add(action);
+    }
+
+    public void removeLinkActions() {
+        this.linkActions = null;
+    }
+
+    public boolean hasLinkActions() {
+        return this.linkActions != null;
+    }
+
+    public ModuleLimits limits() {
+        return limits;
     }
 
     public Source source() {
@@ -127,18 +134,104 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
             if (isBuiltin()) {
                 source = Source.newBuilder(WasmLanguage.ID, "", name).internal(true).build();
             } else {
-                source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), name).build();
+                source = Source.newBuilder(WasmLanguage.ID, "", name).build();
             }
         }
         return source;
     }
 
-    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
-        return Collections.unmodifiableList(linkActions);
+    public byte[] bytecode() {
+        return bytecode;
     }
 
-    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
-        linkActions.add(action);
+    public int bytecodeLength() {
+        return bytecode != null ? bytecode.length : 0;
+    }
+
+    public void setBytecode(byte[] bytecode) {
+        this.bytecode = bytecode;
+    }
+
+    public CodeEntry[] codeEntries() {
+        return codeEntries;
+    }
+
+    public void setCodeEntries(CodeEntry[] codeEntries) {
+        this.codeEntries = codeEntries;
+    }
+
+    public boolean hasCodeEntries() {
+        return codeEntries != null;
+    }
+
+    public void setParsed() {
+        isParsed = true;
+    }
+
+    public boolean isParsed() {
+        return isParsed;
+    }
+
+    public boolean isBuiltin() {
+        return bytecode == null;
+    }
+
+    public byte[] customData() {
+        return customData;
+    }
+
+    public void setCustomData(byte[] customData) {
+        this.customData = customData;
+    }
+
+    public byte[] codeSection() {
+        return codeSection;
+    }
+
+    public void setCodeSection(byte[] codeSection) {
+        this.codeSection = codeSection;
+    }
+
+    public boolean hasDebugInfo() {
+        return debugInfoOffset != -1;
+    }
+
+    public void setDebugInfoOffset(int offset) {
+        this.debugInfoOffset = offset;
+    }
+
+    public int debugInfoOffset() {
+        return debugInfoOffset;
+    }
+
+    @TruffleBoundary
+    public int functionSourceCodeStartOffset(int functionIndex) {
+        if (codeSection == null) {
+            return -1;
+        }
+        final int codeEntryIndex = functionIndex - numImportedFunctions();
+        final int startOffset = BinaryStreamParser.rawPeekI32(codeSection, codeSection.length - 4);
+        return BinaryStreamParser.rawPeekI32(codeSection, startOffset + 12 * codeEntryIndex);
+    }
+
+    @TruffleBoundary
+    public int functionSourceCodeInstructionOffset(int functionIndex) {
+        if (codeSection == null) {
+            return -1;
+        }
+        final int codeEntryIndex = functionIndex - numImportedFunctions();
+        final int startOffset = BinaryStreamParser.rawPeekI32(codeSection, codeSection.length - 4);
+        return BinaryStreamParser.rawPeekI32(codeSection, startOffset + 4 + 12 * codeEntryIndex);
+    }
+
+    @TruffleBoundary
+    public int functionSourceCodeEndOffset(int functionIndex) {
+        if (codeSection == null) {
+            return -1;
+        }
+        final int codeEntryIndex = functionIndex - numImportedFunctions();
+        final int startOffset = BinaryStreamParser.rawPeekI32(codeSection, codeSection.length - 4);
+        return BinaryStreamParser.rawPeekI32(codeSection, startOffset + 8 + 12 * codeEntryIndex);
     }
 
     @Override
@@ -146,24 +239,13 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return "wasm-module(" + name + ")";
     }
 
-    public void setCodeEntries(CodeEntry[] codeEntries) {
-        this.codeEntries = codeEntries;
-        this.hasCodeSection = true;
-    }
-
-    public CodeEntry[] getCodeEntries() {
-        return codeEntries;
-    }
-
-    public void removeCodeEntries() {
-        codeEntries = null;
-    }
-
-    public boolean hasCodeEntries() {
-        return codeEntries != null;
-    }
-
-    public boolean hasCodeSection() {
-        return hasCodeSection;
+    @TruffleBoundary
+    public EconomicMap<Integer, DebugFunction> debugFunctions(WasmContext context) {
+        // lazily load debug information if needed.
+        if (debugFunctions == null && hasDebugInfo()) {
+            DebugTranslator translator = new DebugTranslator(customData, context.getContextOptions().debugCompDirectory());
+            debugFunctions = translator.readCompilationUnits(customData, debugInfoOffset);
+        }
+        return debugFunctions;
     }
 }

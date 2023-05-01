@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,25 +27,54 @@ package com.oracle.svm.core;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.VMError;
-
 public final class VM {
 
+    public final String info;
     public final String version;
     public final String vendor;
     public final String vendorUrl;
-    public final String runtimeName;
+    public final String vendorVersion;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public VM(String config) {
-        String versionStr = System.getProperty("org.graalvm.version");
-        VMError.guarantee(versionStr != null);
-        versionStr = "GraalVM " + versionStr;
-        versionStr += " Java " + Runtime.version().toString();
-        versionStr += " " + config;
-        version = versionStr;
-        vendor = System.getProperty("org.graalvm.vendor", "Oracle Corporation");
-        vendorUrl = System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
-        runtimeName = System.getProperty("java.runtime.name", "Unknown Runtime Environment");
+    public VM(String vmInfo) {
+        info = vmInfo;
+        version = getVersion();
+        vendor = getVendor();
+        vendorUrl = getVendorUrl();
+        vendorVersion = getVendorVersion();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getSupportUrl() {
+        return System.getProperty("org.graalvm.supporturl", "https://graalvm.org/native-image/error-report/");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVendor() {
+        return System.getProperty("org.graalvm.vendor", "GraalVM Community");
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVendorUrl() {
+        return System.getProperty("org.graalvm.vendorurl", "https://www.graalvm.org/");
+    }
+
+    public static String getVendorVersion() {
+        return System.getProperty("org.graalvm.vendorversion", System.getProperty("java.vendor.version", ""));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String getVersion() {
+        return stripJVMCISuffix(System.getProperty("java.runtime.version"));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String stripJVMCISuffix(String javaRuntimeVersion) {
+        int jvmciIndex = javaRuntimeVersion.indexOf("-jvmci");
+        if (jvmciIndex >= 0) {
+            return javaRuntimeVersion.substring(0, jvmciIndex);
+        } else {
+            return javaRuntimeVersion;
+        }
     }
 }

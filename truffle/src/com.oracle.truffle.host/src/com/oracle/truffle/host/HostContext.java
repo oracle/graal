@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -94,7 +96,7 @@ final class HostContext {
     final TruffleLanguage.Env env;
     final AbstractHostAccess access;
 
-    @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
+    @SuppressWarnings("serial") final HostException stackoverflowError = HostException.wrap(new StackOverflowError() {
         @SuppressWarnings("sync-override")
         @Override
         public Throwable fillInStackTrace() {
@@ -143,6 +145,7 @@ final class HostContext {
         return language.hostClassCache;
     }
 
+    @NeverDefault
     GuestToHostCodeCache getGuestToHostCache() {
         GuestToHostCodeCache cache = (GuestToHostCodeCache) HostAccessor.ENGINE.getGuestToHostCodeCache(internalContext);
         if (cache == null) {
@@ -296,7 +299,7 @@ final class HostContext {
      * is why this coercion should only be used in the catch block at the outermost API call.
      */
     @TruffleBoundary
-    <T extends Throwable> RuntimeException hostToGuestException(T e) {
+    <T extends Throwable> RuntimeException hostToGuestException(T e, Node location) {
         assert !(e instanceof HostException) : "host exceptions not expected here";
 
         if (e instanceof ThreadDeath) {
@@ -308,13 +311,18 @@ final class HostContext {
             // fall-through and treat it as any other host exception
         }
         try {
-            return new HostException(e, this);
+            return HostException.wrap(e, this, location);
         } catch (StackOverflowError stack) {
             /*
              * Cannot create a new host exception. Use a readily prepared instance.
              */
             return stackoverflowError;
         }
+    }
+
+    @TruffleBoundary
+    <T extends Throwable> RuntimeException hostToGuestException(T e) {
+        return hostToGuestException(e, null);
     }
 
     Value asValue(Node node, Object value) {
@@ -350,9 +358,10 @@ final class HostContext {
     }
 
     @GenerateUncached
+    @GenerateInline
     abstract static class ToGuestValueNode extends Node {
 
-        abstract Object execute(HostContext context, Object receiver);
+        abstract Object execute(Node node, HostContext context, Object receiver);
 
         @Specialization(guards = "receiver == null")
         Object doNull(HostContext context, @SuppressWarnings("unused") Object receiver) {
@@ -423,7 +432,7 @@ final class HostContext {
             Object[] newArgs = needsCopy ? new Object[nodes.length] : args;
             for (int i = 0; i < nodes.length; i++) {
                 Object arg = args[i];
-                Object newArg = nodes[i].execute(context, arg);
+                Object newArg = nodes[i].execute(this, context, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {
@@ -446,7 +455,7 @@ final class HostContext {
             Object[] newArgs = needsCopy ? new Object[args.length] : args;
             for (int i = 0; i < args.length; i++) {
                 Object arg = args[i];
-                Object newArg = node.execute(context, arg);
+                Object newArg = node.execute(this, context, arg);
                 if (needsCopy) {
                     newArgs[i] = newArg;
                 } else if (arg != newArg) {

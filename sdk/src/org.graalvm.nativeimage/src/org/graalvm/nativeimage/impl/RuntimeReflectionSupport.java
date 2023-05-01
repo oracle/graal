@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,4 +42,37 @@ package org.graalvm.nativeimage.impl;
 
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
     // needed as reflection-specific ImageSingletons key
+    void registerAllMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+
+    void registerAllDeclaredMethodsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+
+    void registerAllFieldsQuery(ConfigurationCondition condition, Class<?> clazz);
+
+    void registerAllDeclaredFieldsQuery(ConfigurationCondition condition, Class<?> clazz);
+
+    void registerAllConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+
+    void registerAllDeclaredConstructorsQuery(ConfigurationCondition condition, boolean queriedOnly, Class<?> clazz);
+
+    void registerAllClassesQuery(ConfigurationCondition condition, Class<?> clazz);
+
+    void registerAllDeclaredClassesQuery(ConfigurationCondition condition, Class<?> clazz);
+
+    void registerAllRecordComponentsQuery(ConfigurationCondition condition, Class<?> clazz);
+
+    void registerAllPermittedSubclassesQuery(ConfigurationCondition condition, Class<?> clazz);
+
+    void registerAllNestMembersQuery(ConfigurationCondition condition, Class<?> clazz);
+
+    void registerAllSignersQuery(ConfigurationCondition condition, Class<?> clazz);
+
+    void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t);
+
+    void registerClassLookup(ConfigurationCondition condition, String typeName);
+
+    void registerFieldLookup(ConfigurationCondition condition, Class<?> declaringClass, String fieldName);
+
+    void registerMethodLookup(ConfigurationCondition condition, Class<?> declaringClass, String methodName, Class<?>... parameterTypes);
+
+    void registerConstructorLookup(ConfigurationCondition condition, Class<?> declaringClass, Class<?>... parameterTypes);
 }

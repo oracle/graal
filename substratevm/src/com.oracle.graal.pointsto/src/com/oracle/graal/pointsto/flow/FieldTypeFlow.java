@@ -61,7 +61,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     private volatile FieldFilterTypeFlow filterFlow;
 
     public FieldTypeFlow(AnalysisField field, AnalysisType type) {
-        super(field, type, initialFieldState(field));
+        super(field, filterUncheckedInterface(type), initialFieldState(field));
     }
 
     public FieldTypeFlow(AnalysisField field, AnalysisType type, AnalysisObject object) {
@@ -113,7 +113,7 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
 
     @Override
     public String toString() {
-        return "FieldFlow<" + source.format("%h.%n") + "\n" + getState() + ">";
+        return "FieldFlow<" + source.format("%h.%n") + System.lineSeparator() + getState() + ">";
     }
 
 }

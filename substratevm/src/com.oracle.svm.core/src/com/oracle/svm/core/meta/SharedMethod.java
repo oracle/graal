@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.meta;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -35,22 +35,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public interface SharedMethod extends ResolvedJavaMethod {
 
+    boolean isUninterruptible();
+
+    boolean needSafepointCheck();
+
     /**
      * Returns true if this method is a native entry point, i.e., called from C code. The method
      * must not be called from Java code then.
      */
     boolean isEntryPoint();
 
-    default SubstrateCallingConventionKind getCallingConventionKind() {
-        ExplicitCallingConvention explicitCallingConvention = getAnnotation(ExplicitCallingConvention.class);
-        if (explicitCallingConvention != null) {
-            return explicitCallingConvention.value();
-        } else if (isEntryPoint()) {
-            return SubstrateCallingConventionKind.Native;
-        } else {
-            return SubstrateCallingConventionKind.Java;
-        }
-    }
+    boolean isSnippet();
+
+    boolean isForeignCallTarget();
+
+    SubstrateCallingConventionKind getCallingConventionKind();
 
     boolean hasCalleeSavedRegisters();
 
@@ -72,6 +71,7 @@ public interface SharedMethod extends ResolvedJavaMethod {
 
     int getCodeOffsetInImage();
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getDeoptOffsetInImage();
 
 }

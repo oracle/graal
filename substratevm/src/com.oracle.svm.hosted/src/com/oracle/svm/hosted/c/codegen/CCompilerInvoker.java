@@ -40,6 +40,7 @@ import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -60,10 +61,12 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
 public abstract class CCompilerInvoker {
+    public static final String VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION = "Visual Studio 2022 version 17.1.0";
 
     public final Path tempDirectory;
     public final CompilerInfo compilerInfo;
 
+    @SuppressWarnings("this-escape")
     protected CCompilerInvoker(Path tempDirectory) {
         this.tempDirectory = tempDirectory;
         try {
@@ -179,11 +182,13 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected void verify() {
-            // See details on _MSC_VER at https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
-            // The constraint of `_MSC_VER >= 1912` reflects the version used for building OpenJDK8.
-            if (compilerInfo.versionMajor < 19 || compilerInfo.versionMinor0 < 12) {
-                UserError.abort("Java %d native-image building on Windows requires Visual Studio 2017 version 15.5 or later (C/C++ Optimizing Compiler Version 19.12 or later).%nCompiler info detected: %s",
-                                JavaVersionUtil.JAVA_SPEC, compilerInfo);
+            // See details on _MSC_VER at
+            // https://learn.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=msvc-170
+            int minimumMajorVersion = 19;
+            int minimumMinorVersion = 31;
+            if (compilerInfo.versionMajor < minimumMajorVersion || compilerInfo.versionMinor0 < minimumMinorVersion) {
+                UserError.abort("On Windows, GraalVM Native Image for JDK %s requires %s or later (C/C++ Optimizing Compiler Version %s.%s or later).%nCompiler info detected: %s",
+                                JavaVersionUtil.JAVA_SPEC, VISUAL_STUDIO_MINIMUM_REQUIRED_VERSION, minimumMajorVersion, minimumMinorVersion, compilerInfo.getShortDescription());
             }
             if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
                 String targetPrefix = compilerInfo.targetArch.matches("(.*x|i\\d)86$") ? "32-bit architecture " : "";
@@ -438,6 +443,8 @@ public abstract class CCompilerInvoker {
             case "aarch64":
             case "arm64": /* Darwin notation */
                 return AArch64.class;
+            case "riscv64":
+                return (Class<? extends Architecture>) RISCV64ReflectionUtil.getArch(false);
             case "i686":
             case "80x86": /* Windows notation */
             case "x86":

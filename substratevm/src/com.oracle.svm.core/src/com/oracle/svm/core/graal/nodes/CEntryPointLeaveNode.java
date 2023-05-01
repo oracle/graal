@@ -146,9 +146,9 @@ public class CEntryPointLeaveNode extends DeoptimizingFixedWithNextNode implemen
 
         int nodesAnchored = anchorNodes(this);
         if (leaveAction == LeaveAction.ExceptionAbort) {
-            VMError.guarantee(nodesAnchored == 0, "Unexpected values were anchored in method " + graph().method().format("%H.%n(%p)") + " as ExceptionAbort must not have any return value.");
+            VMError.guarantee(nodesAnchored == 0, "Unexpected values were anchored in method %s as ExceptionAbort must not have any return value.", graph().method());
         } else {
-            VMError.guarantee(nodesAnchored == 1, "An unexpected number of values was anchored in method " + graph().method().format("%H.%n(%p)"));
+            VMError.guarantee(nodesAnchored == 1, "An unexpected number of values was anchored in method %s", graph().method());
         }
     }
 

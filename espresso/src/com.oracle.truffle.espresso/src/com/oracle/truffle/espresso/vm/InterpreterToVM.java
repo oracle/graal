@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
-import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
+import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.NATIVE_BCI;
+import static com.oracle.truffle.espresso.vm.VM.EspressoStackElement.UNKNOWN_BCI;
 
 import java.util.List;
 
@@ -36,6 +36,7 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -48,9 +49,9 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -400,7 +401,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
         }
     }
 
-    @TruffleBoundary /*- Throwable.addSuppressed blacklisted by SVM (from try-with-resources) */
+    @TruffleBoundary /*- Throwable.addSuppressed blocklisted by SVM (from try-with-resources) */
     @SuppressWarnings("try")
     private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
         StaticObject thread = context.getCurrentThread();
@@ -544,6 +545,25 @@ public final class InterpreterToVM extends ContextAccessImpl {
         return arr.length(language);
     }
 
+    public static boolean referenceIdentityEqual(StaticObject o1, StaticObject o2, EspressoLanguage language) {
+        if (o1 == o2) {
+            return true;
+        }
+        // Espresso null == foreign null
+        if (StaticObject.isNull(o1) && StaticObject.isNull(o2)) {
+            return true;
+        }
+        // an Espresso object can never be identical to a foreign object
+        if (o1.isForeignObject() && o2.isForeignObject()) {
+            Object foreignOp1 = o1.rawForeignObject(language);
+            Object foreignOp2 = o2.rawForeignObject(language);
+            InteropLibrary operand1Lib = InteropLibrary.getUncached(foreignOp1);
+            InteropLibrary operand2Lib = InteropLibrary.getUncached(foreignOp2);
+            return operand1Lib.isIdentical(foreignOp1, foreignOp2, operand2Lib);
+        }
+        return false;
+    }
+
     public @JavaType(String.class) StaticObject intern(@JavaType(String.class) StaticObject guestString) {
         assert getMeta().java_lang_String == guestString.getKlass();
         return getStrings().intern(guestString);
@@ -553,8 +573,7 @@ public final class InterpreterToVM extends ContextAccessImpl {
      * Preemptively added method to benefit from truffle lazy stack traces when they will be
      * reworked.
      */
-    @SuppressWarnings("unused")
-    public static StaticObject fillInStackTrace(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
+    public static StaticObject fillInStackTraceLazy(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
         // Inlined calls to help StackOverflows.
         VM.StackTrace frames = (VM.StackTrace) meta.HIDDEN_FRAMES.getHiddenObject(throwable);
         if (frames != null) {
@@ -568,14 +587,14 @@ public final class InterpreterToVM extends ContextAccessImpl {
             return throwable;
         }
         int bci = -1;
-        Method m = null;
+        Method m;
         frames = new VM.StackTrace();
-        FrameCounter c = new FrameCounter();
+        FrameFilter filter = new FillInStackTraceFramesFilter();
         for (TruffleStackTraceElement element : trace) {
             Node location = element.getLocation();
             while (location != null) {
-                if (location instanceof QuickNode) {
-                    bci = ((QuickNode) location).getBci(element.getFrame());
+                if (location instanceof BciProvider) {
+                    bci = ((BciProvider) location).getBci(element.getFrame());
                     break;
                 }
                 location = location.getParent();
@@ -585,14 +604,14 @@ public final class InterpreterToVM extends ContextAccessImpl {
                 RootNode rootNode = target.getRootNode();
                 if (rootNode instanceof EspressoRootNode) {
                     m = ((EspressoRootNode) rootNode).getMethod();
-                    if (c.checkFillIn(m) || c.checkThrowableInit(m)) {
+                    if (!filter.include(m)) {
                         bci = UNKNOWN_BCI;
                         continue;
                     }
                     if (m.isNative()) {
                         bci = NATIVE_BCI;
                     }
-                    frames.add(new VM.StackElement(m, bci));
+                    frames.add(new VM.EspressoStackElement(m, bci));
                     bci = UNKNOWN_BCI;
                 }
             }
@@ -603,44 +622,8 @@ public final class InterpreterToVM extends ContextAccessImpl {
     }
 
     // Recursion depth = 4
-    public static StaticObject fillInStackTrace(@JavaType(Throwable.class) StaticObject throwable, boolean skipFirst, Meta meta) {
-        FrameCounter c = new FrameCounter();
-        int size = EspressoContext.DEFAULT_STACK_SIZE;
-        VM.StackTrace frames = new VM.StackTrace();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
-            boolean first = skipFirst;
-
-            @Override
-            public Object visitFrame(FrameInstance frameInstance) {
-                if (first) {
-                    first = false;
-                    return null;
-                }
-                if (c.value < size) {
-                    CallTarget callTarget = frameInstance.getCallTarget();
-                    if (callTarget instanceof RootCallTarget) {
-                        RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
-                        if (rootNode instanceof EspressoRootNode) {
-                            EspressoRootNode espressoNode = (EspressoRootNode) rootNode;
-                            Method method = espressoNode.getMethod();
-
-                            // Methods annotated with java.lang.invoke.LambdaForm.Hidden are
-                            // ignored.
-                            if (!method.isHidden()) {
-                                if (!c.checkFillIn(method)) {
-                                    if (!c.checkThrowableInit(method)) {
-                                        int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
-                                        frames.add(new VM.StackElement(method, bci));
-                                        c.inc();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                return null;
-            }
-        });
+    public static StaticObject fillInStackTrace(@JavaType(Throwable.class) StaticObject throwable, Meta meta) {
+        VM.StackTrace frames = getStackTrace(new FillInStackTraceFramesFilter());
         meta.HIDDEN_FRAMES.setHiddenObject(throwable, frames);
         meta.java_lang_Throwable_backtrace.setObject(throwable, throwable);
         if (meta.getJavaVersion().java9OrLater()) {
@@ -649,33 +632,77 @@ public final class InterpreterToVM extends ContextAccessImpl {
         return throwable;
     }
 
-    private static class FrameCounter {
-        public int value = 0;
-        private boolean skipFillInStackTrace = true;
-        private boolean skipThrowableInit = true;
+    public static VM.StackTrace getStackTrace(FrameFilter filter) {
+        // MaxJavaStackTraceDepth is 1024 by default
+        int size = EspressoContext.DEFAULT_STACK_SIZE;
+        VM.StackTrace frames = new VM.StackTrace();
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
+            int count;
 
-        public int inc() {
-            return value++;
+            @Override
+            public Object visitFrame(FrameInstance frameInstance) {
+                if (count >= size) {
+                    return this; // stop iteration
+                }
+                CallTarget callTarget = frameInstance.getCallTarget();
+                if (callTarget instanceof RootCallTarget) {
+                    RootNode rootNode = ((RootCallTarget) callTarget).getRootNode();
+                    if (rootNode instanceof EspressoRootNode) {
+                        EspressoRootNode espressoNode = (EspressoRootNode) rootNode;
+                        Method method = espressoNode.getMethod();
+
+                        if (filter.include(method)) {
+                            int bci = espressoNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY));
+                            frames.add(new VM.EspressoStackElement(method, bci));
+                            count++;
+                        }
+                    }
+                }
+                return null;
+            }
+        });
+        return frames;
+    }
+
+    public static class DefaultHiddenFramesFilter implements FrameFilter {
+        public static final DefaultHiddenFramesFilter INSTANCE = new DefaultHiddenFramesFilter();
+
+        @Override
+        public boolean include(Method m) {
+            // Methods annotated with java.lang.invoke.LambdaForm.Hidden are ignored.
+            return !m.isHidden();
         }
+    }
 
-        boolean checkFillIn(Method m) {
-            if (!skipFillInStackTrace) {
+    private static final class FillInStackTraceFramesFilter extends DefaultHiddenFramesFilter {
+        private boolean afterFillInStackTrace;
+        private boolean afterThrowableInit;
+
+        @Override
+        public boolean include(Method m) {
+            if (!super.include(m)) {
                 return false;
             }
-            if (!((Name.fillInStackTrace.equals(m.getName())) || (Name.fillInStackTrace0.equals(m.getName())))) {
-                skipFillInStackTrace = false;
+            if (!afterFillInStackTrace) {
+                if (Name.fillInStackTrace.equals(m.getName()) || Name.fillInStackTrace0.equals(m.getName())) {
+                    return false;
+                } else {
+                    afterFillInStackTrace = true;
+                }
             }
-            return skipFillInStackTrace;
+            if (!afterThrowableInit) {
+                assert afterFillInStackTrace;
+                if (Name._init_.equals(m.getName()) && m.getMeta().java_lang_Throwable.isAssignableFrom(m.getDeclaringKlass())) {
+                    return false;
+                } else {
+                    afterThrowableInit = true;
+                }
+            }
+            return true;
         }
+    }
 
-        boolean checkThrowableInit(Method m) {
-            if (!skipThrowableInit) {
-                return false;
-            }
-            if (!(Name._init_.equals(m.getName())) || !m.getMeta().java_lang_Throwable.isAssignableFrom(m.getDeclaringKlass())) {
-                skipThrowableInit = false;
-            }
-            return skipThrowableInit;
-        }
+    public interface FrameFilter {
+        boolean include(Method m);
     }
 }

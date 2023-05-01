@@ -79,7 +79,7 @@ final class EnumSwitchPlugin implements NodePlugin {
             return false;
         }
 
-        if (reason == ParsingReason.PointsToAnalysis) {
+        if (reason.duringAnalysis()) {
             if (!method.getDeclaringClass().isInitialized()) {
                 /*
                  * Declaring class is initialized at run time. Even if the enum itself is
@@ -113,7 +113,7 @@ final class EnumSwitchPlugin implements NodePlugin {
                     ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).add(b.getMethod(), b.bci(), switchTable);
                 }
             } catch (ReflectiveOperationException ex) {
-                throw GraalError.shouldNotReachHere(ex);
+                throw GraalError.shouldNotReachHere(ex); // ExcludeFromJacocoGeneratedReport
             }
         }
 

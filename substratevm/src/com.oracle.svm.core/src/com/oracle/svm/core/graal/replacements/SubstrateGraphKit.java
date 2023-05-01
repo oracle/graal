@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.replacements;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -75,7 +76,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
@@ -96,6 +96,7 @@ public class SubstrateGraphKit extends GraphKit {
     private final FrameStateBuilder frameState;
     private int nextBCI;
 
+    @SuppressWarnings("this-escape")
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
                     GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
         super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, forceTrackNodeSourcePosition || SubstrateOptions.parseOnce(), false);
@@ -268,7 +269,8 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ConstantNode createObject(Object value) {
-        return ConstantNode.forConstant(SubstrateObjectConstant.forObject(value), getMetaAccess(), graph);
+        SnippetReflectionProvider snippetReflection = getProviders().getSnippetReflection();
+        return ConstantNode.forConstant(snippetReflection.forObject(value), getMetaAccess(), graph);
     }
 
     public ValueNode createBoxing(ValueNode value, JavaKind kind, ResolvedJavaType targetType) {

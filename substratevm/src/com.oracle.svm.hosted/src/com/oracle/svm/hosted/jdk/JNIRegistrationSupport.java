@@ -31,10 +31,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -42,6 +39,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
@@ -52,6 +50,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
@@ -59,11 +58,12 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
@@ -73,12 +73,18 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
+import jdk.internal.loader.BootLoader;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Registration of native JDK libraries. */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticallyRegisteredFeature
 public final class JNIRegistrationSupport extends JNIRegistrationUtil implements InternalFeature {
+
+    public static class Options {
+        @Option(help = "Create a `jvm` shim for native libraries that link against that library.")//
+        public static final HostedOptionKey<Boolean> CreateJvmShim = new HostedOptionKey<>(false);
+    }
 
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries = null;
@@ -102,10 +108,11 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
-        registerLoadLibraryPlugin(plugins, System.class);
+        registerLoadLibraryPlugin(providers, plugins, System.class);
+        registerLoadLibraryPlugin(providers, plugins, BootLoader.class);
     }
 
-    public void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
+    public void registerLoadLibraryPlugin(Providers providers, Plugins plugins, Class<?> clazz) {
         Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
         r.register(new RequiredInvocationPlugin("loadLibrary", String.class) {
             @Override
@@ -116,7 +123,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                  * String arguments.
                  */
                 if (libnameNode.isConstant()) {
-                    registerLibrary((String) SubstrateObjectConstant.asObject(libnameNode.asConstant()));
+                    registerLibrary(providers.getSnippetReflection().asObject(String.class, libnameNode.asJavaConstant()));
                 }
                 /* We never want to do any actual intrinsification, process the original invoke. */
                 return false;
@@ -136,7 +143,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    boolean isRegisteredLibrary(String libname) {
+    public boolean isRegisteredLibrary(String libname) {
         return registeredLibraries.containsKey(libname);
     }
 
@@ -154,22 +161,44 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     private void addShimExports(String shimName, String... exports) {
         assert exports != null && exports.length > 0;
-        shimExports.computeIfAbsent(shimName, s -> new TreeSet<>()).addAll(Arrays.asList(exports));
+        shimExports.computeIfAbsent(shimName, s -> new TreeSet<>()).addAll(List.of(exports));
     }
+
+    /** Returns symbols that are re-exported by shim libraries. */
+    public static Stream<String> getShimLibrarySymbols() {
+        if (ImageSingletons.contains(JNIRegistrationSupport.class)) {
+            return singleton().getShimExports();
+        }
+        return Stream.empty();
+    }
+
+    private String imageName;
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
-        if (isWindows()) {
-            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
-                /* Make sure the native image exports all the symbols necessary for shim DLLs. */
-                shimExports.values().stream()
-                                .flatMap(Collection::stream)
-                                .distinct()
-                                .map("/export:"::concat)
-                                .forEach(linkerInvocation::addNativeLinkerOption);
-                return linkerInvocation;
-            });
+        if (SubstrateOptions.StaticExecutable.getValue() || isDarwin()) {
+            return; /* Not supported. */
         }
+
+        if (shimExports.containsKey("jvm") || Options.CreateJvmShim.getValue()) {
+            /* When making a `jvm` shim, also re-export the JNI functions that VM exports. */
+            addJvmShimExports("JNI_CreateJavaVM", "JNI_GetCreatedJavaVMs", "JNI_GetDefaultJavaVMInitArgs");
+        }
+
+        ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+            /* Make sure the native image contains all symbols necessary for shim libraries. */
+            getShimExports().map(isWindows() ? "/export:"::concat : "-Wl,-u,"::concat)
+                            .forEach(linkerInvocation::addNativeLinkerOption);
+            return linkerInvocation;
+        });
+
+        imageName = ((BeforeImageWriteAccessImpl) access).getImageName();
+    }
+
+    private Stream<String> getShimExports() {
+        return shimExports.values().stream()
+                        .flatMap(Collection::stream)
+                        .distinct();
     }
 
     private AfterImageWriteAccessImpl accessImpl;
@@ -177,20 +206,21 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     @Override
     @SuppressWarnings("try")
     public void afterImageWrite(AfterImageWriteAccess access) {
+        if (SubstrateOptions.StaticExecutable.getValue() || isDarwin()) {
+            return; /* Not supported. */
+        }
+
         accessImpl = (AfterImageWriteAccessImpl) access;
         try (Scope s = accessImpl.getDebugContext().scope("JDKLibs")) {
-            if (isWindows()) {
-                /* On Windows, JDK libraries are in `<java.home>\bin` directory. */
-                Path jdkLibDir = Paths.get(System.getProperty("java.home"), "bin");
-                /* Copy JDK libraries needed to run the native image. */
-                copyJDKLibraries(jdkLibDir);
-                /*
-                 * JDK libraries can depend on `jvm.dll` and `java.dll`, so to satisfy their
-                 * dependencies, we create shim DLLs that re-export the actual functions from the
-                 * native image itself.
-                 */
-                makeShimDLLs();
-            }
+            /* On Windows, JDK libraries are in `<java.home>\bin` directory. */
+            Path jdkLibDir = Path.of(System.getProperty("java.home"), isWindows() ? "bin" : "lib");
+            /* Copy JDK libraries needed to run the native image. */
+            copyJDKLibraries(jdkLibDir);
+            /*
+             * JDK libraries can depend on `libjvm` and `libjava`, so to satisfy their dependencies
+             * we use shim libraries to re-export the actual functions from the native image itself.
+             */
+            makeShimLibraries();
         } finally {
             accessImpl = null;
         }
@@ -235,45 +265,61 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         }
     }
 
-    /** Makes shim DLLs to satisfy dependencies of JDK libraries. */
+    /** Makes shim libraries that are necessary to satisfy dependencies of JDK libraries. */
     @SuppressWarnings("try")
-    private void makeShimDLLs() {
+    private void makeShimLibraries() {
         for (String shimName : shimExports.keySet()) {
             DebugContext debug = accessImpl.getDebugContext();
-            try (Scope s = debug.scope(shimName + "ShimDLL")) {
+            try (Scope s = debug.scope(shimName + "Shim")) {
                 if (debug.isLogEnabled(DebugContext.INFO_LEVEL)) {
                     debug.log("exports: %s", String.join(", ", shimExports.get(shimName)));
                 }
-                makeShimDLL(shimName);
+                makeShimLibrary(shimName);
             }
         }
     }
 
-    /** Makes a shim DLL by re-exporting the actual functions from the native image itself. */
+    /** Makes a shim library that re-exports functions from the native image. */
     @SuppressWarnings("try")
-    private void makeShimDLL(String shimName) {
-        Path shimDLL = accessImpl.getImagePath().resolveSibling(shimName + ".dll");
-        /* Dependencies are the native image (so we can re-export from it) and C Runtime. */
-        Path[] shimDLLDependencies = {getImageImportLib(), Paths.get("msvcrt.lib")};
-
+    private void makeShimLibrary(String shimName) {
         assert ImageSingletons.contains(CCompilerInvoker.class);
-        List<String> linkerCommand = ImageSingletons.lookup(CCompilerInvoker.class)
-                        .createCompilerCommand(Collections.emptyList(), shimDLL, shimDLLDependencies);
-        /* First add linker options ... */
-        linkerCommand.addAll(Arrays.asList("/link", "/dll", "/implib:" + shimName + ".lib"));
-        /* ... and then the exports that were added for re-export. */
-        for (String export : shimExports.get(shimName)) {
-            linkerCommand.add("/export:" + export);
+
+        List<String> linkerCommand;
+        Path image = accessImpl.getImagePath();
+        Path shimLibrary = image.resolveSibling(System.mapLibraryName(shimName));
+        if (isWindows()) {
+            /* Dependencies are the native image (so we can re-export from it) and C Runtime. */
+            linkerCommand = ImageSingletons.lookup(CCompilerInvoker.class)
+                            .createCompilerCommand(List.of(), shimLibrary, getImageImportLib(), Path.of("msvcrt.lib"));
+            /* First add linker options ... */
+            linkerCommand.addAll(List.of("/link", "/dll", "/implib:" + shimName + ".lib"));
+            /* ... and then the exports that were added for re-export. */
+            for (String export : shimExports.get(shimName)) {
+                linkerCommand.add("/export:" + export);
+            }
+        } else {
+            /*
+             * To satisfy the dynamic loader and enable re-export it is enough to have a library
+             * with the expected name. So we just create an empty one ...
+             */
+            linkerCommand = ImageSingletons.lookup(CCompilerInvoker.class)
+                            .createCompilerCommand(List.of("-shared", "-x", "c"), shimLibrary, Path.of("/dev/null"));
+            /* ... and add an explicit dependency on the native image if it is a shared library. */
+            if (!accessImpl.getImageKind().isExecutable) {
+                linkerCommand.addAll(List.of("-Wl,-no-as-needed", "-L" + image.getParent(), "-l:" + image.getFileName(),
+                                "-Wl,--enable-new-dtags", "-Wl,-rpath,$ORIGIN"));
+            }
         }
 
         DebugContext debug = accessImpl.getDebugContext();
         try (Scope s = debug.scope("link");
                         Activation a = debug.activate()) {
-            if (FileUtils.executeCommand(linkerCommand) != 0) {
-                VMError.shouldNotReachHere();
+            int cmdResult = FileUtils.executeCommand(linkerCommand);
+            if (cmdResult != 0) {
+                VMError.shouldNotReachHereUnexpectedInput(cmdResult); // ExcludeFromJacocoGeneratedReport
             }
-            BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY_SHIM, shimDLL);
-            debug.log("%s.dll: OK", shimName);
+            BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY_SHIM, shimLibrary);
+            debug.log("%s: OK", shimLibrary.getFileName());
         } catch (InterruptedException e) {
             throw new InterruptImageBuilding();
         } catch (IOException e) {
@@ -283,12 +329,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     /** Returns the import library of the native image. */
     private Path getImageImportLib() {
-        Path image = accessImpl.getImagePath();
-        String imageName = String.valueOf(image.getFileName());
-        String importLibName = imageName.substring(0, imageName.lastIndexOf('.')) + ".lib";
-        Path importLib = accessImpl.getImageKind().isExecutable
-                        ? accessImpl.getTempDirectory().resolve(importLibName)
-                        : image.resolveSibling(importLibName);
+        assert isWindows();
+        Path importLib = accessImpl.getTempDirectory().resolve(imageName + ".lib");
         assert Files.exists(importLib);
         return importLib;
     }

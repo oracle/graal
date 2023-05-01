@@ -36,7 +36,7 @@ import java.util.List;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;
 import com.oracle.svm.core.jdk.Resources;
 
-public class ResourceURLConnection extends URLConnection {
+public final class ResourceURLConnection extends URLConnection {
 
     private byte[] data;
 
@@ -58,14 +58,16 @@ public class ResourceURLConnection extends URLConnection {
             throw new IllegalArgumentException("Empty URL path not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
         }
         String resourceName = urlPath.substring(1);
-        ResourceStorageEntry entry = Resources.get(hostNameOrNull, resourceName);
+
+        Module module = hostNameOrNull != null ? ModuleLayer.boot().findModule(hostNameOrNull).orElse(null) : null;
+        ResourceStorageEntry entry = Resources.get(module, resourceName);
         if (entry != null) {
             List<byte[]> bytes = entry.getData();
             String urlRef = url.getRef();
             int index = 0;
             if (urlRef != null) {
                 try {
-                    index = Integer.valueOf(urlRef);
+                    index = Integer.parseInt(urlRef);
                 } catch (NumberFormatException e) {
                     throw new IllegalArgumentException("URL anchor '#" + urlRef + "' not allowed in " + JavaNetSubstitutions.RESOURCE_PROTOCOL + " URL");
                 }
@@ -84,8 +86,10 @@ public class ResourceURLConnection extends URLConnection {
 
     @Override
     public InputStream getInputStream() throws IOException {
-        // Operations that depend on being connected will implicitly perform the connection, if
-        // necessary.
+        /*
+         * Operations that depend on being connected will implicitly perform the connection, if
+         * necessary.
+         */
         connect();
         if (data == null) {
             throw new FileNotFoundException(url.toString());
@@ -95,9 +99,21 @@ public class ResourceURLConnection extends URLConnection {
 
     @Override
     public long getContentLengthLong() {
-        // Operations that depend on being connected will implicitly perform the connection, if
-        // necessary.
+        /*
+         * Operations that depend on being connected will implicitly perform the connection, if
+         * necessary.
+         */
         connect();
         return data != null ? data.length : -1L;
+    }
+
+    @Override
+    public long getLastModified() {
+        /*
+         * Operations that depend on being connected will implicitly perform the connection, if
+         * necessary.
+         */
+        connect();
+        return Resources.singleton().getLastModifiedTime();
     }
 }

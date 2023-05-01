@@ -23,13 +23,12 @@ GraalVM includes a version of the HotSpot JVM that supports JVMCI.
 ## Compiler Advantages
 
 The Graal compiler provides optimized performance for programs running on the JVM through unique approaches to code analysis and optimization.
-It includes multiple optimization algorithms (called “Phases”), like aggressive inlining, polymorphic inlining, and others.
-For example, the compiler in GraalVM Enterprise includes 62 optimization phases, of which 27 are patented.
+It includes multiple optimization algorithms (called “Phases”), like aggressive inlining, polymorphic inlining, and others. 
+Find some of the platform-independent compiler optimizations in GraalVM Community Edition [here](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.core/src/org/graalvm/compiler/core/phases/CEOptimization.java).
 
-The Graal compiler assures performance advantages for highly-abstracted programs due to its ability to remove costly object allocations.
-Code using more abstraction and modern Java features like Streams or Lambdas will see greater speedups.
-Low-level code or code that converges to things like I/O, memory allocation, or garbage collection will see less improvement.
-Consequently, an application running on GraalVM needs to spend less time doing memory management and garbage collection.
+The Graal compiler can bring performance advantages for highly-abstracted programs. For example, it includes a [partial-escape-analysis optimization](https://www.javadoc.io/static/org.graalvm.compiler/compiler/22.3.1/org/graalvm/compiler/core/phases/CEOptimization.html#PartialEscapeAnalysis) that can remove costly allocations of certain objects. 
+This optimization determines when a new object is accessible outside a compilation unit and only allocates it on paths that "escape" the compilation unit (e.g. the object is passed as a parameter, stored in a field, or returned from a method). This can greatly improve performance of an application by reducing the number of heap allocations. 
+Code using more modern Java features like Streams or Lambdas will see greater speedups as this type of code involves a significant number of such non- or partially-escaping objects. Code that is bound by things like I/O or memory allocations that cannot be removed by the compiler will see less improvement. 
 For more information on performance tuning, refer to [Compiler Configuration on JVM](Options.md).
 
 ## Graph Compilation
@@ -53,7 +52,7 @@ The pipeline for such compilation is:
 
 Besides the Truffle framework, GraalVM incorporates its optimizing compiler into an advanced ahead-of-time (AOT) compilation technology -- [Native Image](../native-image/README.md) -- which translates Java and JVM-based code into a native platform executable.
 These native executables start nearly instantaneously, are smaller, and consume less resources of the same Java application, making them ideal for cloud deployments and microservices.
-For more information about AOT compilation, go to [Native Image](../native-image/README.md).
+For more information about the AOT compilation, go to [Native Image](../native-image/README.md).
 
 ## Compiler Operating Modes
 
@@ -82,8 +81,11 @@ This will produce diagnostic data for every method compiled by the compiler.
 To refine the set of methods for which diagnostic data is produced, use the `-Dgraal.MethodFilter=<class>.<method>` option.
 For example, `-Dgraal.MethodFilter=java.lang.String.*,HashMap.get` will produce diagnostic data only for methods in the `java.lang.String` class as well as methods named `get` in a class whose non-qualified name is `HashMap`.
 
-Instead of being written to a file, diagnostic data can also be sent over the network to the [Ideal Graph Visualizer](../../tools/ideal-graph-visualizer.md).
+Instead of being written to a file, diagnostic data can also be sent over the network to the [Ideal Graph Visualizer](https://www.graalvm.org/latest/tools/igv/).
 This requires the `-Dgraal.PrintGraph=Network` option, upon which the compiler will try to send diagnostic data to _127.0.0.1:4445_.
 This network endpoint can be configured with the `-Dgraal.PrintGraphHost` and `-Dgraal.PrintGraphPort` options.
 
-Note: the Ideal Graph Visualizer is available with Oracle GraalVM Enterprise Edition.
+### Related Documentation
+
+- [JVM Operations Manual](Operations.md)
+- [Compiler Configuration on JVM](Options.md)

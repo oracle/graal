@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,11 +89,35 @@ final class TransitionMap<K, V> {
         }
     }
 
+    private V putAnyKeyIfAbsent(Object key, V value) {
+        synchronized (queue) {
+            expungeStaleEntries();
+            /*
+             * Note: We need to also consider stale weak entries as absent, so we cannot use the
+             * map's own putIfAbsent here. The reference may have not been enqueued yet either.
+             */
+            var prevValue = getValue(map.get(key));
+            if (prevValue != null) {
+                return prevValue;
+            } else {
+                map.put(key, new StrongKeyWeakValueEntry<>(key, value, queue));
+                return null;
+            }
+        }
+    }
+
     /**
      * Insert with strongly referenced key.
      */
     public V put(K key, V value) {
         return putAnyKey(key, value);
+    }
+
+    /**
+     * Insert with strongly referenced key, if absent.
+     */
+    public V putIfAbsent(K key, V value) {
+        return putAnyKeyIfAbsent(key, value);
     }
 
     /**
@@ -103,6 +127,15 @@ final class TransitionMap<K, V> {
         ShapeImpl.shapeCacheWeakKeys.inc();
         WeakKey<K> weakKey = new WeakKey<>(key);
         return putAnyKey(weakKey, value);
+    }
+
+    /**
+     * Insert with weakly referenced key, if absent.
+     */
+    public V putWeakKeyIfAbsent(K key, V value) {
+        ShapeImpl.shapeCacheWeakKeys.inc();
+        WeakKey<K> weakKey = new WeakKey<>(key);
+        return putAnyKeyIfAbsent(weakKey, value);
     }
 
     public V remove(Object key) {

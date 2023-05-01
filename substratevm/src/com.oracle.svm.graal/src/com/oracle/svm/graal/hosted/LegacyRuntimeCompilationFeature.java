@@ -28,13 +28,19 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -78,6 +84,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
 
@@ -91,63 +98,53 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * supplanted by {@link ParseOnceRuntimeCompilationFeature}.
  */
 public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature implements Feature {
+    protected Map<AnalysisMethod, CallTreeNode> runtimeCompiledMethodMap;
+    protected Set<RuntimeCompilationCandidate> runtimeCompilationCandidates;
 
-    private static final class CallTreeNode implements AbstractCallTreeNode {
-        final AnalysisMethod implementationMethod;
-        final AnalysisMethod targetMethod;
-
-        final CallTreeNode parent;
-        final List<AbstractCallTreeNode> children;
-        final int level;
+    private static final class CallTreeNode extends AbstractCallTreeNode implements RuntimeCompiledMethod, RuntimeCompilationCandidate {
         final String sourceReference;
 
         StructuredGraph graph;
         final Set<Invoke> unreachableInvokes;
 
-        CallTreeNode(ResolvedJavaMethod implementationMethod, ResolvedJavaMethod targetMethod, CallTreeNode parent, int level, String sourceReference) {
-            this.implementationMethod = (AnalysisMethod) implementationMethod;
-            this.targetMethod = (AnalysisMethod) targetMethod;
-            this.parent = parent;
-            this.level = level;
+        CallTreeNode(AnalysisMethod implementationMethod, AnalysisMethod targetMethod, CallTreeNode parent, String sourceReference) {
+            super(parent, targetMethod, implementationMethod);
             this.sourceReference = sourceReference;
-            this.children = new ArrayList<>();
             this.unreachableInvokes = new HashSet<>();
         }
 
         @Override
-        public AnalysisMethod getImplementationMethod() {
-            return implementationMethod;
-        }
-
-        @Override
-        public AnalysisMethod getTargetMethod() {
-            return targetMethod;
-        }
-
-        @Override
-        public CallTreeNode getParent() {
-            return parent;
-        }
-
-        @Override
-        public List<AbstractCallTreeNode> getChildren() {
-            return children;
-        }
-
-        @Override
-        public int getLevel() {
-            return level;
-        }
-
-        @Override
-        public String getSourceReference() {
+        public String getPosition() {
             return sourceReference;
         }
 
         @Override
-        public StructuredGraph getGraph() {
+        public int getNodeCount() {
+            return graph == null ? -1 : graph.getNodeCount();
+        }
+
+        private StructuredGraph getGraph() {
             return graph;
         }
+
+        @Override
+        public AnalysisMethod getMethod() {
+            return getImplementationMethod();
+        }
+
+        @Override
+        public Collection<ResolvedJavaMethod> getInlinedMethods() {
+            return graph == null ? List.of() : graph.getMethods();
+        }
+
+        @Override
+        public Collection<ResolvedJavaMethod> getInvokeTargets() {
+            if (graph != null) {
+                return graph.getNodes(MethodCallTargetNode.TYPE).stream().map(CallTargetNode::targetMethod).collect(Collectors.toUnmodifiableList());
+            }
+            return List.of();
+        }
+
     }
 
     public static class RuntimeGraphBuilderPhase extends SubstrateGraphBuilderPhase {
@@ -200,22 +197,25 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess c) {
         super.beforeAnalysisHelper(c);
+
+        runtimeCompiledMethodMap = new LinkedHashMap<>();
+        runtimeCompilationCandidates = new HashSet<>();
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess c) {
         FeatureImpl.DuringAnalysisAccessImpl config = (FeatureImpl.DuringAnalysisAccessImpl) c;
 
-        Deque<AbstractCallTreeNode> worklist = new ArrayDeque<>();
+        Deque<CallTreeNode> worklist = new ArrayDeque<>();
         worklist.addAll(runtimeCompiledMethodMap.values());
 
         while (!worklist.isEmpty()) {
-            processMethod((CallTreeNode) worklist.removeFirst(), worklist, config.getBigBang());
+            processMethod(worklist.removeFirst(), worklist, config.getBigBang());
         }
 
         SubstrateMethod[] methodsToCompileArr = new SubstrateMethod[runtimeCompiledMethodMap.size()];
         int idx = 0;
-        for (AbstractCallTreeNode node : runtimeCompiledMethodMap.values()) {
+        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
             methodsToCompileArr[idx++] = objectReplacer.createMethod(node.getImplementationMethod());
         }
         if (GraalSupport.setMethodsToCompile(config, methodsToCompileArr)) {
@@ -238,8 +238,8 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     }
 
     @SuppressWarnings("try")
-    private void processMethod(CallTreeNode node, Deque<AbstractCallTreeNode> worklist, BigBang bb) {
-        AnalysisMethod method = node.implementationMethod;
+    private void processMethod(CallTreeNode node, Deque<CallTreeNode> worklist, BigBang bb) {
+        AnalysisMethod method = node.getImplementationMethod();
         assert method.isImplementationInvoked();
 
         if (node.graph == null) {
@@ -333,27 +333,31 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                 node.unreachableInvokes.remove(targetNode.invoke());
             }
 
-            List<AnalysisMethod> implementationMethods = new ArrayList<>();
-            for (AnalysisMethod implementationMethod : allImplementationMethods) {
-                /* Filter out all the implementation methods that have already been processed. */
-                if (!runtimeCompiledMethodMap.containsKey(implementationMethod)) {
-                    implementationMethods.add(implementationMethod);
-                }
-            }
-
-            if (implementationMethods.size() > 0) {
+            if (allImplementationMethods.size() > 0) {
                 /* Sort to make printing order and method discovery order deterministic. */
+                List<AnalysisMethod> implementationMethods = new ArrayList<>(allImplementationMethods);
                 implementationMethods.sort(Comparator.comparing(AnalysisMethod::getQualifiedName));
 
                 String sourceReference = buildSourceReference(targetNode.invoke().stateAfter());
                 for (AnalysisMethod implementationMethod : implementationMethods) {
-                    CallTreeNode calleeNode = new CallTreeNode(implementationMethod, targetMethod, node, node.level + 1, sourceReference);
-                    runtimeCompilationCandidates.add(calleeNode);
+                    CallTreeNode calleeNode = new CallTreeNode(implementationMethod, targetMethod, node, sourceReference);
+                    boolean added = runtimeCompilationCandidates.add(calleeNode);
+                    if (added) {
+                        calleeNode.linkAsChild();
+                    }
+                    /*
+                     * Filter out all the implementation methods that have already been processed.
+                     *
+                     * We don't filter out earlier so that different <implementation-target>
+                     * combinations are recorded for blocklist checking.
+                     */
+                    if (runtimeCompiledMethodMap.containsKey(implementationMethod)) {
+                        continue;
+                    }
                     if (runtimeCompilationCandidatePredicate.allowRuntimeCompilation(implementationMethod)) {
                         assert !runtimeCompiledMethodMap.containsKey(implementationMethod);
                         runtimeCompiledMethodMap.put(implementationMethod, calleeNode);
                         worklist.add(calleeNode);
-                        node.children.add(calleeNode);
                         objectReplacer.createMethod(implementationMethod);
                     }
 
@@ -366,6 +370,41 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                 }
             }
         }
+    }
+
+    @Override
+    protected AbstractCallTreeNode getCallTreeNode(RuntimeCompilationCandidate candidate) {
+        assert candidate != null;
+        return (CallTreeNode) candidate;
+    }
+
+    @Override
+    protected CallTreeNode getCallTreeNode(RuntimeCompiledMethod method) {
+        assert method != null;
+        return (CallTreeNode) method;
+    }
+
+    @Override
+    protected AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method) {
+        AnalysisMethod aMethod;
+        if (method instanceof HostedMethod) {
+            aMethod = ((HostedMethod) method).getWrapped();
+        } else {
+            aMethod = (AnalysisMethod) method;
+        }
+        var result = runtimeCompiledMethodMap.get(aMethod);
+        assert result != null;
+        return result;
+    }
+
+    @Override
+    public Collection<RuntimeCompiledMethod> getRuntimeCompiledMethods() {
+        return Collections.unmodifiableCollection(runtimeCompiledMethodMap.values());
+    }
+
+    @Override
+    public Collection<RuntimeCompilationCandidate> getAllRuntimeCompilationCandidates() {
+        return runtimeCompilationCandidates;
     }
 
     private static String buildSourceReference(FrameState startState) {
@@ -402,12 +441,12 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
         IterativeConditionalEliminationPhase conditionalElimination = new IterativeConditionalEliminationPhase(canonicalizer, true);
         ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuard = new ConvertDeoptimizeToGuardPhase(canonicalizer);
 
-        for (AbstractCallTreeNode node : runtimeCompiledMethodMap.values()) {
+        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
             StructuredGraph graph = node.getGraph();
             if (graph != null) {
                 DebugContext debug = graph.getDebug();
                 try (DebugContext.Scope scope = debug.scope("RuntimeOptimize", graph)) {
-                    removeUnreachableInvokes((CallTreeNode) node);
+                    removeUnreachableInvokes(node);
                     strengthenStamps.apply(graph);
                     canonicalizer.apply(graph, hostedProviders);
 
@@ -428,13 +467,13 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
         graphEncoder.finishPrepare();
 
-        for (AbstractCallTreeNode node : runtimeCompiledMethodMap.values()) {
-            CallTreeNode callTreeNode = (CallTreeNode) node;
+        for (CallTreeNode node : runtimeCompiledMethodMap.values()) {
+            CallTreeNode callTreeNode = node;
             if (callTreeNode.graph != null) {
                 DeoptimizationUtils.registerDeoptEntries(callTreeNode.graph, callTreeNode.getLevel() == 0, m -> m);
 
                 long startOffset = graphEncoder.encode(callTreeNode.graph);
-                objectReplacer.createMethod(callTreeNode.implementationMethod).setEncodedGraphStartOffset(startOffset);
+                objectReplacer.createMethod(callTreeNode.getImplementationMethod()).setEncodedGraphStartOffset(startOffset);
                 /* We do not need the graph anymore, let the GC do it's work. */
                 callTreeNode.graph = null;
             }
@@ -479,7 +518,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
         if (!runtimeCompiledMethodMap.containsKey(aMethod)) {
-            runtimeCompiledMethodMap.put(aMethod, new CallTreeNode(aMethod, aMethod, null, 0, ""));
+            runtimeCompiledMethodMap.put(aMethod, new CallTreeNode(aMethod, aMethod, null, ""));
             config.registerAsRoot(aMethod, true);
         }
 
@@ -490,4 +529,12 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod) {
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod, aMethod);
     }
+
+    @Override
+    public void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator) {
+        /*
+         * No action is needed for the legacy implementation.
+         */
+    }
+
 }

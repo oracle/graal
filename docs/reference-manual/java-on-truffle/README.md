@@ -1,5 +1,5 @@
 ---
-layout: docs-experimental
+layout: docs
 toc_group: espresso
 link_title: Java on Truffle
 permalink: /reference-manual/java-on-truffle/
@@ -24,27 +24,17 @@ Besides complete language interoperability, with Java on Truffle you can:
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
 - run in the context of a native executable while still allowing dynamically-loaded bytecodes.
 
-Java on Truffle is an experimental technology in GraalVM, but already passes the Java Compatibility Kit (JCK or TCK for Java SE).
+Java on Truffle passes the Java Compatibility Kit (JCK or TCK for Java SE).
 
 ## Install Java on Truffle
 
-To run Java on Truffle, you need to have [GraalVM installed](../../getting-started/graalvm-community/get-started-graalvm-community.md).
 The Java on Truffle runtime is not available by default, but can be easily added to GraalVM using the [GraalVM Updater tool](../graalvm-updater.md).
-
-For GraalVM Community Edition users, run the following command to install Java on Truffle from the GitHub catalog:
 ```shell
 gu install espresso
 ```
 
 The installable's name, `espresso`, is the project code-name, it is used to avoid ambiguity with the other ways Java code can run on GraalVM.
-
-For GraalVM Enterprise Edition users, download  Java on Truffle from [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
-Having downloaded the appropriate JAR file in consideration of the operating system and underlying Java SE version, install it with:
-```shell
-gu install -L espresso.jar
-```
-
-It installs the `jvm` runtime library under the `GRAALVM_HOME/lib/truffle/` location.
+It installs the `jvm` runtime library under the `$JAVA_HOME/lib/truffle/` location.
 
 ## Run Java on Truffle
 
@@ -73,8 +63,6 @@ java -truffle --java.JavaHome=/path/to/java/home -version
 ```
 
 ## Performance Considerations
-
-Java on Trufle is an experimental technology in GraalVM, and peak performance is currently 2-3x slower than HotSpot.
 
 The startup time will not match the speed offered by the regular GraalVM just-in-time (JIT) execution yet, but having created a fully working Java on Truffle runtime, the development team is now focusing on performance.
 You can still influence the performance by passing the following options to `java -truffle`:

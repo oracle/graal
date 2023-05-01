@@ -57,7 +57,7 @@ public abstract class ShortArrayLoad extends EspressoNode {
     public abstract short execute(StaticObject receiver, int index);
 
     @Specialization
-    short executeWithNullCheck(StaticObject array, int index,
+    short doWithNullCheck(StaticObject array, int index,
                     @Cached NullCheck nullCheck,
                     @Cached WithoutNullCheck shortArrayLoad) {
         return shortArrayLoad.execute(nullCheck.execute(array), index);

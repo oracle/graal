@@ -32,17 +32,19 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -50,8 +52,10 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Core class of the Reachability Analysis. Contains the crucial part: resolving virtual methods.
@@ -72,10 +76,12 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     private final ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler;
 
-    public ReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
+    @SuppressWarnings("this-escape")
+    public ReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection,
                     ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
-        super(options, universe, providers, hostVM, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, heartbeatCallback, unsupportedFeatures, timerCollection);
         this.executor.init(getTiming());
         this.reachabilityTimer = timerCollection.createTimer("(reachability)");
 
@@ -107,7 +113,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisType addRootClass(AnalysisType type, boolean addFields, boolean addArrayClass) {
         type.registerAsReachable("root class");
-        for (AnalysisField field : type.getInstanceFields(false)) {
+        for (ResolvedJavaField javaField : type.getInstanceFields(false)) {
+            AnalysisField field = (AnalysisField) javaField;
             if (addFields) {
                 field.registerAsAccessed("field of root class");
             }
@@ -126,7 +133,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     @Override
     public AnalysisType addRootField(Class<?> clazz, String fieldName) {
         AnalysisType type = addRootClass(clazz, false, false);
-        for (AnalysisField field : type.getInstanceFields(true)) {
+        for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
+            AnalysisField field = (AnalysisField) javaField;
             if (field.getName().equals(fieldName)) {
                 field.registerAsAccessed("root field");
                 return field.getType();
@@ -175,6 +183,14 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
             reachabilityMethodProcessingHandler.onMethodReachable(this, method);
         } catch (Throwable ex) {
             getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
+        }
+    }
+
+    public void markMethodSpecialInvoked(ReachabilityAnalysisMethod targetMethod, Object reason) {
+        ReachabilityAnalysisType declaringClass = targetMethod.getDeclaringClass();
+        declaringClass.addSpecialInvokedMethod(targetMethod);
+        if (!declaringClass.getInstantiatedSubtypes().isEmpty()) {
+            markMethodImplementationInvoked(targetMethod, reason);
         }
     }
 
@@ -258,6 +274,10 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
                 if (method != null) {
                     markMethodImplementationInvoked(method, reason);
                 }
+            }
+
+            for (ReachabilityAnalysisMethod method : ((ReachabilityAnalysisType) current).getInvokedSpecialMethods()) {
+                markMethodImplementationInvoked(method, reason);
             }
         });
     }

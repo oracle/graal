@@ -41,6 +41,7 @@ import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
+import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.ElementFilter;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -152,13 +153,14 @@ abstract class AbstractBridgeParser {
         } else {
             constructorSelector = ConstructorSelector.withParameters(this, annotatedElement, handledAnnotation, annotatedElement, types, myConfiguration.getSubClassReferenceConstructorTypes(), false);
         }
+        Map<String, DeclaredType> alwaysByReference = findAlwaysByReference(element);
         List<? extends VariableElement> constructorParams = findConstructorParams(annotatedType, constructorSelector);
         Collection<MethodData> toGenerate = createMethodData(annotatedType, serviceType, methods, customDispatch,
-                        processor.getAnnotation(annotatedElement, typeCache.idempotent) != null);
+                        processor.getAnnotation(annotatedElement, typeCache.idempotent) != null, alwaysByReference);
         if (hasErrors) {
             return null;
         } else {
-            MarshallerData throwableMarshaller = MarshallerData.marshalled(typeCache.throwable, Collections.emptyList());
+            MarshallerData throwableMarshaller = MarshallerData.marshalled(typeCache.throwable, null, null, Collections.emptyList());
             DefinitionData definitionData = createDefinitionData(annotatedType, handledAnnotation, serviceType, toGenerate, constructorParams, customDispatchAccessor,
                             customReceiverAccessor, endPointHandle, jniConfig, throwableMarshaller, ignoreAnnotations, marshallerAnnotations);
             assertNoExpectedErrors(definitionData);
@@ -442,7 +444,7 @@ abstract class AbstractBridgeParser {
     }
 
     private Collection<MethodData> createMethodData(DeclaredType annotatedType, DeclaredType serviceType, List<ExecutableElement> methods,
-                    boolean customDispatch, boolean enforceIdempotent) {
+                    boolean customDispatch, boolean enforceIdempotent, Map<String, DeclaredType> alwaysByReference) {
         Collection<ExecutableElement> methodsToGenerate = methodsToGenerate(annotatedType, methods);
         for (ExecutableElement methodToGenerate : methodsToGenerate) {
             if (methodToGenerate.getEnclosingElement().equals(annotatedType.asElement()) && !methodToGenerate.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -463,7 +465,7 @@ abstract class AbstractBridgeParser {
         Set<String> usedCacheFields = new HashSet<>();
         for (ExecutableElement methodToGenerate : methodsToGenerate) {
             ExecutableType methodToGenerateType = (ExecutableType) types.asMemberOf(annotatedType, methodToGenerate);
-            MarshallerData retMarshaller = lookupMarshaller(methodToGenerate, methodToGenerateType.getReturnType(), methodToGenerate.getAnnotationMirrors(), customDispatch);
+            MarshallerData retMarshaller = lookupMarshaller(methodToGenerate, methodToGenerateType.getReturnType(), methodToGenerate.getAnnotationMirrors(), customDispatch, alwaysByReference);
             List<? extends VariableElement> parameters = methodToGenerate.getParameters();
             List<? extends TypeMirror> parameterTypes = methodToGenerateType.getParameterTypes();
             List<MarshallerData> paramsMarshallers = new ArrayList<>();
@@ -479,15 +481,22 @@ abstract class AbstractBridgeParser {
                     parameterTypes = parameterTypes.subList(1, parameterTypes.size());
                 }
             }
-            paramsMarshallers.addAll(lookupMarshallers(methodToGenerate, parameters, parameterTypes, customDispatch));
+            paramsMarshallers.addAll(lookupMarshallers(methodToGenerate, parameters, parameterTypes, customDispatch, alwaysByReference));
             CacheData cacheData;
             AnnotationMirror idempotentMirror = processor.getAnnotation(methodToGenerate, typeCache.idempotent);
             boolean noReturnType = methodToGenerateType.getReturnType().getKind() == TypeKind.VOID;
+            boolean referenceReturnType = retMarshaller.kind == MarshallerData.Kind.RAW_REFERENCE || retMarshaller.kind == MarshallerData.Kind.REFERENCE;
+            boolean hasOutParameter = paramsMarshallers.stream().anyMatch((md) -> md.out != null);
+            boolean hasCustomOutParameter = paramsMarshallers.stream().anyMatch((md) -> md.kind == MarshallerData.Kind.CUSTOM && md.out != null);
             if (idempotentMirror != null && noReturnType) {
                 emitError(methodToGenerate, idempotentMirror, "A method with a cached return value must have a non-void return type.%n" +
                                 "To fix this remove the `%s` annotation or change the return type.", Utilities.getTypeName(typeCache.idempotent));
                 cacheData = null;
-            } else if (idempotentMirror != null || (enforceIdempotent && !noReturnType)) {
+            } else if (idempotentMirror != null && hasOutParameter) {
+                emitError(methodToGenerate, idempotentMirror, "A method with a cached return value cannot have an `Out` parameter.%n" +
+                                "To fix this, remove the `%s` annotation.", Utilities.getTypeName(typeCache.idempotent));
+                cacheData = null;
+            } else if (idempotentMirror != null || (enforceIdempotent && !noReturnType && !hasOutParameter)) {
                 String cacheFieldName = methodToGenerate.getSimpleName() + "Cache";
                 if (usedCacheFields.contains(cacheFieldName)) {
                     int index = 2;
@@ -506,9 +515,15 @@ abstract class AbstractBridgeParser {
                 cacheData = null;
             }
             CharSequence receiverMethod = findReceiverMethod(methodToGenerate, methodToGenerateType, serviceType);
-            MethodData methodData = new MethodData(methodToGenerate, methodToGenerateType, overloadIds.get(methodToGenerate),
-                            receiverMethod, retMarshaller, paramsMarshallers, cacheData);
-            toGenerate.add(methodData);
+            if (referenceReturnType && hasCustomOutParameter) {
+                emitError(methodToGenerate, idempotentMirror, "A method with a reference return type cannot have a marshalled Out parameter.%n" +
+                                "To fix this, split the method into two methods, one having the reference return type, the other with marshalled Out parameter(s).",
+                                Utilities.getTypeName(typeCache.idempotent));
+            } else {
+                MethodData methodData = new MethodData(methodToGenerate, methodToGenerateType, overloadIds.get(methodToGenerate),
+                                receiverMethod, retMarshaller, paramsMarshallers, cacheData);
+                toGenerate.add(methodData);
+            }
         }
         return toGenerate;
     }
@@ -542,28 +557,31 @@ abstract class AbstractBridgeParser {
     }
 
     private List<MarshallerData> lookupMarshallers(ExecutableElement method, List<? extends VariableElement> parameters, List<? extends TypeMirror> parameterTypes,
-                    boolean customDispatch) {
+                    boolean customDispatch, Map<String, DeclaredType> alwaysByReference) {
         List<MarshallerData> res = new ArrayList<>(parameterTypes.size());
         for (int i = 0; i < parameters.size(); i++) {
-            res.add(lookupMarshaller(method, parameterTypes.get(i), parameters.get(i).getAnnotationMirrors(), customDispatch));
+            res.add(lookupMarshaller(method, parameterTypes.get(i), parameters.get(i).getAnnotationMirrors(), customDispatch, alwaysByReference));
         }
         return res;
     }
 
-    private MarshallerData lookupMarshaller(ExecutableElement method, TypeMirror type, List<? extends AnnotationMirror> annotationMirrors, boolean customDispatch) {
+    private MarshallerData lookupMarshaller(ExecutableElement method, TypeMirror type, List<? extends AnnotationMirror> annotationMirrors, boolean customDispatch,
+                    Map<String, DeclaredType> alwaysByReference) {
         MarshallerData res;
         if (type.getKind().isPrimitive() || type.getKind() == TypeKind.VOID) {
             res = MarshallerData.NO_MARSHALLER;
         } else if (types.isSameType(typeCache.string, type)) {
             res = MarshallerData.NO_MARSHALLER;
         } else if (isPrimitiveArray(type)) {
-            res = MarshallerData.annotatedPrimitiveArray(findDirectionModifiers(annotationMirrors));
+            res = MarshallerData.annotatedPrimitiveArray(findDirectionModifier(annotationMirrors, typeCache.in), findDirectionModifier(annotationMirrors, typeCache.out));
         } else {
             AnnotationMirror annotationMirror;
-            if ((annotationMirror = findByReference(annotationMirrors)) != null) {
-                DeclaredType referenceType = (DeclaredType) getAnnotationValue(annotationMirror, "value");
+            DeclaredType endPointClass = null;
+            if ((annotationMirror = findByReference(annotationMirrors)) != null ||
+                            (type.getKind() == TypeKind.DECLARED && (endPointClass = alwaysByReference.get(Utilities.getQualifiedName(type))) != null)) {
+                DeclaredType referenceType = annotationMirror != null ? (DeclaredType) getAnnotationValue(annotationMirror, "value") : endPointClass;
                 TypeElement referenceElement = (TypeElement) referenceType.asElement();
-                boolean useCustomReceiverAccessor = (boolean) getAnnotationValueWithDefaults(annotationMirror, "useCustomReceiverAccessor");
+                boolean useCustomReceiverAccessor = annotationMirror != null && (boolean) getAnnotationValueWithDefaults(annotationMirror, "useCustomReceiverAccessor");
                 if (useCustomReceiverAccessor && !customDispatch) {
                     emitError(method, annotationMirror, "`UseCustomReceiverAccessor` can be used only for types with a custom dispatch.");
                 }
@@ -620,8 +638,8 @@ abstract class AbstractBridgeParser {
                 AnnotationMirror annotation = processor.getAnnotation(referenceElement,
                                 sameDirection ? myConfiguration.getHandledAnnotationType() : otherConfiguration.getHandledAnnotationType());
                 if (type.getKind() == TypeKind.ARRAY) {
-                    res = MarshallerData.referenceArray(referenceType, annotation, findDirectionModifiers(annotationMirrors), useCustomReceiverAccessor,
-                                    sameDirection, nonDefaultReceiver, customDispatchFactory);
+                    res = MarshallerData.referenceArray(referenceType, annotation, findDirectionModifier(annotationMirrors, typeCache.in), findDirectionModifier(annotationMirrors, typeCache.out),
+                                    useCustomReceiverAccessor, sameDirection, nonDefaultReceiver, customDispatchFactory);
                 } else {
                     res = MarshallerData.reference(referenceType, annotation, useCustomReceiverAccessor, sameDirection, nonDefaultReceiver, customDispatchFactory);
                 }
@@ -633,7 +651,7 @@ abstract class AbstractBridgeParser {
             } else {
                 List<? extends AnnotationMirror> annotations = filterMarshallerAnnotations(annotationMirrors, ignoreAnnotations);
                 annotations.stream().map(AnnotationMirror::getAnnotationType).forEach(marshallerAnnotations::add);
-                res = MarshallerData.marshalled(type, annotations);
+                res = MarshallerData.marshalled(type, findDirectionModifier(annotationMirrors, typeCache.in), findDirectionModifier(annotationMirrors, typeCache.out), annotations);
             }
         }
         return res;
@@ -731,7 +749,18 @@ abstract class AbstractBridgeParser {
                 builder.append("Array");
                 break;
             case WILDCARD:
-                builder.append("Object");
+                WildcardType wildcardType = (WildcardType) type;
+                TypeMirror upperBound = wildcardType.getExtendsBound();
+                TypeMirror lowerBound = wildcardType.getSuperBound();
+                if (upperBound != null) {
+                    builder.append("Extends");
+                    buildMarshallerNameFromType(builder, upperBound);
+                } else if (lowerBound != null) {
+                    builder.append("Super");
+                    buildMarshallerNameFromType(builder, lowerBound);
+                } else {
+                    builder.append("Object");
+                }
                 break;
             case TYPEVAR:
                 buildMarshallerNameFromType(builder, ((TypeVariable) type).getUpperBound());
@@ -771,27 +800,21 @@ abstract class AbstractBridgeParser {
         return null;
     }
 
-    private List<? extends AnnotationMirror> findDirectionModifiers(List<? extends AnnotationMirror> annotationMirrors) {
-        List<AnnotationMirror> res = null;
+    private DirectionData findDirectionModifier(List<? extends AnnotationMirror> annotationMirrors, TypeMirror directionAnnotationType) {
         for (AnnotationMirror mirror : annotationMirrors) {
             DeclaredType type = mirror.getAnnotationType();
-            if (types.isSameType(typeCache.in, type) || types.isSameType(typeCache.out, type)) {
-                if (res == null) {
-                    res = new ArrayList<>(2);
+            if (types.isSameType(directionAnnotationType, type)) {
+                String offset = (String) getAnnotationValue(mirror, "arrayOffsetParameter");
+                String length = (String) getAnnotationValue(mirror, "arrayLengthParameter");
+                boolean trim = false;
+                if (resolveElement(mirror, "trimToResult") != null) {
+                    Boolean value = (Boolean) getAnnotationValue(mirror, "trimToResult");
+                    trim = value != null && value;
                 }
-                res.add(mirror);
+                return new DirectionData(offset, length, trim);
             }
         }
-        if (res != null && res.size() == 1 && isDefaultIn(res.get(0))) {
-            res = null;
-        }
-        return res != null ? res : Collections.emptyList();
-    }
-
-    private boolean isDefaultIn(AnnotationMirror mirror) {
-        return types.isSameType(typeCache.in, mirror.getAnnotationType()) &&
-                        getAnnotationValue(mirror, "arrayOffsetParameter") == null &&
-                        getAnnotationValue(mirror, "arrayLengthParameter") == null;
+        return null;
     }
 
     private CharSequence findReceiverMethod(ExecutableElement executable, ExecutableType executableType, DeclaredType serviceType) {
@@ -819,6 +842,34 @@ abstract class AbstractBridgeParser {
             emitError(executable, receiverMethodMirror, "The receiver method `%s` must be a non-private instance method.", receiverMethodName);
         }
         return receiverMethodName;
+    }
+
+    private Map<String, DeclaredType> findAlwaysByReference(Element annotatedElement) {
+        AnnotationMirror alwaysByReference = processor.getAnnotation(annotatedElement, typeCache.alwaysByReference);
+        AnnotationMirror alwaysByReferenceRepeated = processor.getAnnotation(annotatedElement, typeCache.alwaysByReferenceRepeated);
+        if (alwaysByReference != null) {
+            return loadAlwaysByReference(alwaysByReference);
+        } else if (alwaysByReferenceRepeated != null) {
+            List<? extends AnnotationValue> alwaysByReferenceMirrors = asAnnotationValuesList(getAnnotationValue(alwaysByReferenceRepeated, "value"));
+            Map<String, DeclaredType> result = new HashMap<>(alwaysByReferenceMirrors.size());
+            for (AnnotationValue value : alwaysByReferenceMirrors) {
+                result.putAll(loadAlwaysByReference((AnnotationMirror) value.getValue()));
+            }
+            return result;
+        } else {
+            return Collections.emptyMap();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<? extends AnnotationValue> asAnnotationValuesList(Object value) {
+        return (List<? extends AnnotationValue>) value;
+    }
+
+    private static Map<String, DeclaredType> loadAlwaysByReference(AnnotationMirror loadByReferenceMirror) {
+        DeclaredType type = (DeclaredType) getAnnotationValue(loadByReferenceMirror, "type");
+        DeclaredType startPointClass = (DeclaredType) getAnnotationValue(loadByReferenceMirror, "startPointClass");
+        return Collections.singletonMap(Utilities.getQualifiedName(type), startPointClass);
     }
 
     private boolean compatibleSignature(ExecutableType receiverMethod, ExecutableType implMethod) {
@@ -988,6 +1039,42 @@ abstract class AbstractBridgeParser {
         }
     }
 
+    static final class DirectionData {
+        final String offsetParameter;
+        final String lengthParameter;
+        final boolean trimToResult;
+
+        DirectionData(String offsetParameter, String lengthParameter, boolean trimToResult) {
+            this.offsetParameter = offsetParameter;
+            this.lengthParameter = lengthParameter;
+            this.trimToResult = trimToResult;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(offsetParameter, lengthParameter, trimToResult);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == this) {
+                return true;
+            }
+            if (obj == null || obj.getClass() != DirectionData.class) {
+                return false;
+            }
+            DirectionData other = (DirectionData) obj;
+            return Objects.equals(offsetParameter, other.offsetParameter) &&
+                            Objects.equals(lengthParameter, other.lengthParameter) &&
+                            trimToResult == other.trimToResult;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("DirectionData[offsetParameter=%s, lengthParameter=%s, trimToResult=%b", offsetParameter, lengthParameter, trimToResult);
+        }
+    }
+
     static final class MarshallerData {
 
         enum Kind {
@@ -997,12 +1084,14 @@ abstract class AbstractBridgeParser {
             CUSTOM,
         }
 
-        static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, false, true, null, null, null);
-        static final MarshallerData RAW_REFERENCE = new MarshallerData(Kind.RAW_REFERENCE, null, null, false, false, true, null, null, null);
+        static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, false, true, null, null, null, null, null);
+        static final MarshallerData RAW_REFERENCE = new MarshallerData(Kind.RAW_REFERENCE, null, null, false, false, true, null, null, null, null, null);
 
         final Kind kind;
         final TypeMirror forType;
-        final List<? extends AnnotationMirror> annotations;
+        final DirectionData in;
+        final DirectionData out;
+        final List<? extends AnnotationMirror> annotations; // only for CUSTOM
         final String name;                              // only for CUSTOM
         final boolean hasGeneratedFactory;              // only for REFERENCE
         final boolean useCustomReceiverAccessor;        // only for REFERENCE
@@ -1011,7 +1100,7 @@ abstract class AbstractBridgeParser {
         final ExecutableElement customDispatchFactory;  // only for REFERENCE
 
         private MarshallerData(Kind kind, TypeMirror forType, String name,
-                        boolean hasGeneratedFactory, boolean useCustomReceiverAccessor, boolean sameDirection,
+                        boolean hasGeneratedFactory, boolean useCustomReceiverAccessor, boolean sameDirection, DirectionData in, DirectionData out,
                         List<? extends AnnotationMirror> annotations, VariableElement nonDefaultReceiver, ExecutableElement customDispatchFactory) {
             this.kind = kind;
             this.forType = forType;
@@ -1019,6 +1108,8 @@ abstract class AbstractBridgeParser {
             this.hasGeneratedFactory = hasGeneratedFactory;
             this.useCustomReceiverAccessor = useCustomReceiverAccessor;
             this.sameDirection = sameDirection;
+            this.in = in;
+            this.out = out;
             this.annotations = annotations;
             this.nonDefaultReceiver = nonDefaultReceiver;
             this.customDispatchFactory = customDispatchFactory;
@@ -1041,10 +1132,7 @@ abstract class AbstractBridgeParser {
                 return false;
             }
             MarshallerData that = (MarshallerData) o;
-            return kind == that.kind && Objects.equals(forType, that.forType) && Objects.equals(name, that.name) &&
-                            hasGeneratedFactory == that.hasGeneratedFactory && useCustomReceiverAccessor == that.useCustomReceiverAccessor &&
-                            sameDirection == that.sameDirection && Objects.equals(annotations, that.annotations) &&
-                            Objects.equals(nonDefaultReceiver, that.nonDefaultReceiver) && Objects.equals(customDispatchFactory, that.customDispatchFactory);
+            return kind == that.kind && Objects.equals(forType, that.forType) && Objects.equals(name, that.name) && Objects.equals(annotations, that.annotations);
         }
 
         @Override
@@ -1052,26 +1140,29 @@ abstract class AbstractBridgeParser {
             return Objects.hash(forType, name);
         }
 
-        static MarshallerData annotatedPrimitiveArray(List<? extends AnnotationMirror> annotations) {
-            return annotations == null ? NO_MARSHALLER : new MarshallerData(Kind.VALUE, null, null, false, false, true, annotations, null, null);
+        static MarshallerData annotatedPrimitiveArray(DirectionData in, DirectionData out) {
+            return in == null && out == null ? NO_MARSHALLER : new MarshallerData(Kind.VALUE, null, null, false, false, true, in, out, Collections.emptyList(), null, null);
         }
 
-        static MarshallerData marshalled(TypeMirror forType, List<? extends AnnotationMirror> annotations) {
-            String name = marshallerName(forType, annotations);
-            return new MarshallerData(Kind.CUSTOM, forType, name, false, false, true, annotations, null, null);
+        static MarshallerData marshalled(TypeMirror forType, DirectionData in, DirectionData out, List<? extends AnnotationMirror> annotations) {
+            TypeMirror useType = forType;
+            while (useType.getKind() == TypeKind.ARRAY) {
+                useType = ((ArrayType) useType).getComponentType();
+            }
+            String name = marshallerName(useType, annotations);
+            return new MarshallerData(Kind.CUSTOM, useType, name, false, false, true, in, out, annotations, null, null);
         }
 
         static MarshallerData reference(DeclaredType startPointType, AnnotationMirror referenceRegistrationAnnotation, boolean useCustomReceiverAccessor,
                         boolean sameDirection, VariableElement nonDefaultReceiver, ExecutableElement customDispatchFactory) {
             return new MarshallerData(Kind.REFERENCE, startPointType, null, referenceRegistrationAnnotation != null, useCustomReceiverAccessor,
-                            sameDirection, Collections.emptyList(), nonDefaultReceiver, customDispatchFactory);
+                            sameDirection, null, null, Collections.emptyList(), nonDefaultReceiver, customDispatchFactory);
         }
 
-        static MarshallerData referenceArray(DeclaredType startPointType, AnnotationMirror referenceRegistrationAnnotation, List<? extends AnnotationMirror> directionAnnotations,
+        static MarshallerData referenceArray(DeclaredType startPointType, AnnotationMirror referenceRegistrationAnnotation, DirectionData in, DirectionData out,
                         boolean useCustomReceiverAccessor, boolean sameDirection, VariableElement nonDefaultReceiver, ExecutableElement customDispatchFactory) {
-            List<? extends AnnotationMirror> annotations = directionAnnotations == null ? Collections.emptyList() : directionAnnotations;
             return new MarshallerData(Kind.REFERENCE, startPointType, null, referenceRegistrationAnnotation != null, useCustomReceiverAccessor,
-                            sameDirection, annotations, nonDefaultReceiver, customDispatchFactory);
+                            sameDirection, in, out, Collections.emptyList(), nonDefaultReceiver, customDispatchFactory);
         }
     }
 
@@ -1189,7 +1280,8 @@ abstract class AbstractBridgeParser {
     }
 
     abstract static class AbstractTypeCache {
-
+        final DeclaredType alwaysByReference;
+        final DeclaredType alwaysByReferenceRepeated;
         final DeclaredType assertionError;
         final DeclaredType binaryMarshaller;
         final DeclaredType binaryInput;
@@ -1252,6 +1344,8 @@ abstract class AbstractBridgeParser {
         final DeclaredType wordFactory;
 
         AbstractTypeCache(NativeBridgeProcessor processor) {
+            this.alwaysByReference = (DeclaredType) processor.getType("org.graalvm.nativebridge.AlwaysByReference");
+            this.alwaysByReferenceRepeated = (DeclaredType) processor.getType("org.graalvm.nativebridge.AlwaysByReferenceRepeated");
             this.assertionError = (DeclaredType) processor.getType("java.lang.AssertionError");
             this.binaryMarshaller = (DeclaredType) processor.getType("org.graalvm.nativebridge.BinaryMarshaller");
             this.binaryInput = (DeclaredType) processor.getType("org.graalvm.nativebridge.BinaryInput");

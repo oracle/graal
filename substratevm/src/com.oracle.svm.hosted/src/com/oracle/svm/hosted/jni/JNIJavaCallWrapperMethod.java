@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -47,12 +46,10 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -61,7 +58,7 @@ import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.jni.JNIJavaCallWrapperHolder;
 import com.oracle.svm.core.jni.access.JNIAccessibleMethod;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
-import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
+import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.util.ReflectionUtil;
@@ -85,8 +82,7 @@ import jdk.vm.ci.meta.Signature;
  * @see <a href="https://docs.oracle.com/en/java/javase/11/docs/specs/jni/functions.html">Java 11
  *      JNI functions documentation</a>
  */
-public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
-    private static final Constructor<ClassCastException> CLASS_CAST_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(ClassCastException.class);
+public class JNIJavaCallWrapperMethod extends NonBytecodeMethod {
     private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
 
     public static class Factory {
@@ -101,9 +97,14 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     }
 
     public static SimpleSignature getGeneralizedSignatureForTarget(ResolvedJavaMethod targetMethod, MetaAccessProvider originalMetaAccess) {
+        ResolvedJavaType objectType = originalMetaAccess.lookupJavaType(Object.class);
         JavaType[] paramTypes = targetMethod.getSignature().toParameterTypes(null);
-        // Note: our parameters do not include the receiver, but we can do a type check based on the
-        // JNIAccessibleMethod object we get from the method id.
+        // Note: does not include the receiver.
+        for (int i = 0; i < paramTypes.length; i++) {
+            if (paramTypes[i].getJavaKind().isObject()) {
+                paramTypes[i] = objectType;
+            }
+        }
         JavaKind returnKind = targetMethod.getSignature().getReturnKind();
         if (targetMethod.isConstructor()) {
             returnKind = JavaKind.Object; // return new (or previously allocated) object
@@ -112,16 +113,14 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
             // wrappers. This is fine with our supported 64-bit calling conventions.
             returnKind = JavaKind.Long;
         }
-        // Note: no need to distinguish between object return types for us, the return value must
-        // match in Java code and we return it as handle anyway.
-        JavaType returnType = originalMetaAccess.lookupJavaType(returnKind.isObject() ? Object.class : returnKind.toJavaClass());
+        JavaType returnType = returnKind.isObject() ? objectType : originalMetaAccess.lookupJavaType(returnKind.toJavaClass());
         return new SimpleSignature(paramTypes, returnType);
     }
 
     private final Signature targetSignature;
 
     protected JNIJavaCallWrapperMethod(SimpleSignature targetSignature, MetaAccessProvider metaAccess, WordTypes wordTypes) {
-        super("invoke_" + targetSignature.getIdentifier(), metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class),
+        super("invoke_" + targetSignature.getIdentifier(), true, metaAccess.lookupJavaType(JNIJavaCallWrapperHolder.class),
                         createSignature(targetSignature, metaAccess, wordTypes), JNIJavaCallWrapperHolder.getConstantPool(metaAccess));
         this.targetSignature = targetSignature;
     }
@@ -163,13 +162,13 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
-        JNIGraphKit kit = new JNIGraphKit(debug, providers, method);
+        JNIGraphKit kit = new JNIGraphKit(debug, providers, method, purpose);
 
         AnalysisMetaAccess aMetaAccess = (AnalysisMetaAccess) ((metaAccess instanceof AnalysisMetaAccess) ? metaAccess : metaAccess.getWrapped());
-        Signature invokeSignature = aMetaAccess.getUniverse().lookup(targetSignature, aMetaAccess.getUniverse().lookup(getDeclaringClass()));
+        Signature invokeSignature = aMetaAccess.getUniverse().lookup(targetSignature, getDeclaringClass());
         if (metaAccess instanceof HostedMetaAccess) {
             // signature might not exist in the hosted universe because it does not match any method
-            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, (WrappedJavaType) method.getDeclaringClass());
+            invokeSignature = new WrappedSignature(metaAccess.getUniverse(), invokeSignature, getDeclaringClass());
         }
 
         JavaKind wordKind = providers.getWordTypes().getWordKind();
@@ -196,13 +195,13 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     private ValueNode createCall(JNIGraphKit kit, Signature invokeSignature, ValueNode methodId, ValueNode receiverOrClass, ValueNode nonVirtual, ValueNode[] args) {
         ValueNode declaringClass = kit.getDeclaringClassForMethod(methodId);
         if (!invokeSignature.getReturnKind().isObject()) {
-            return createRegularMethodCall(kit, invokeSignature, methodId, declaringClass, receiverOrClass, nonVirtual, args);
+            return createRegularMethodCall(kit, invokeSignature, methodId, receiverOrClass, nonVirtual, args);
         }
 
         ValueNode newObjectAddress = kit.getNewObjectAddress(methodId);
         kit.startIf(IntegerEqualsNode.create(newObjectAddress, kit.createWord(0), NodeView.DEFAULT), BranchProbabilityData.unknown());
         kit.thenPart();
-        ValueNode methodReturnValue = createRegularMethodCall(kit, invokeSignature, methodId, declaringClass, receiverOrClass, nonVirtual, args);
+        ValueNode methodReturnValue = createRegularMethodCall(kit, invokeSignature, methodId, receiverOrClass, nonVirtual, args);
         kit.elsePart();
         ValueNode receiverOrCreatedObject = createNewObjectOrConstructorCall(kit, invokeSignature, methodId, declaringClass, newObjectAddress, receiverOrClass, args);
         AbstractMergeNode merge = kit.endIf();
@@ -210,12 +209,12 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
     }
 
     private static ValueNode createRegularMethodCall(JNIGraphKit kit, Signature invokeSignature, ValueNode methodId,
-                    ValueNode declaringClass, ValueNode receiverOrClass, ValueNode nonVirtual, ValueNode[] args) {
+                    ValueNode receiverOrClass, ValueNode nonVirtual, ValueNode[] args) {
         ValueNode methodAddress = kit.getJavaCallAddress(methodId, receiverOrClass, nonVirtual);
         ValueNode isStatic = kit.isStaticMethod(methodId);
         kit.startIf(IntegerEqualsNode.create(isStatic, kit.createInt(0), NodeView.DEFAULT), BranchProbabilityData.unknown());
         kit.thenPart();
-        ValueNode nonstaticResult = createMethodCallWithReceiver(kit, invokeSignature, declaringClass, methodAddress, receiverOrClass, args);
+        ValueNode nonstaticResult = createMethodCallWithReceiver(kit, invokeSignature, methodAddress, receiverOrClass, args);
         kit.elsePart();
         ValueNode staticResult = createMethodCall(kit, invokeSignature.getReturnType(null), invokeSignature.toParameterTypes(null), methodAddress, args);
         AbstractMergeNode merge = kit.endIf();
@@ -244,34 +243,18 @@ public class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
         return mergeValues(kit, merge, kit.bci(), createdObject, receiverOrClass);
     }
 
-    protected ValueNode createConstructorCall(JNIGraphKit kit, Signature invokeSignature, ValueNode methodId, ValueNode declaringClass, ValueNode receiverOrClass, ValueNode[] args) {
+    protected ValueNode createConstructorCall(JNIGraphKit kit, Signature invokeSignature, ValueNode methodId,
+                    @SuppressWarnings("unused") ValueNode declaringClass, ValueNode receiverOrClass, ValueNode[] args) {
         ValueNode methodAddress = kit.getJavaCallAddress(methodId, receiverOrClass, kit.createInt(1));
-        return createMethodCallWithReceiver(kit, invokeSignature, declaringClass, methodAddress, receiverOrClass, args);
+        return createMethodCallWithReceiver(kit, invokeSignature, methodAddress, receiverOrClass, args);
     }
 
-    private static ValueNode createMethodCallWithReceiver(JNIGraphKit kit, Signature invokeSignature, ValueNode declaringClass, ValueNode methodAddress, ValueNode receiver, ValueNode[] args) {
-        dynamicTypeCheckReceiver(kit, declaringClass, receiver);
-
+    private static ValueNode createMethodCallWithReceiver(JNIGraphKit kit, Signature invokeSignature, ValueNode methodAddress, ValueNode receiver, ValueNode[] args) {
         ValueNode[] argsWithReceiver = new ValueNode[1 + args.length];
-        argsWithReceiver[0] = receiver;
+        argsWithReceiver[0] = kit.maybeCreateExplicitNullCheck(receiver);
         System.arraycopy(args, 0, argsWithReceiver, 1, args.length);
         JavaType[] paramTypes = invokeSignature.toParameterTypes(kit.getMetaAccess().lookupJavaType(Object.class));
         return createMethodCall(kit, invokeSignature.getReturnType(null), paramTypes, methodAddress, argsWithReceiver);
-    }
-
-    private static void dynamicTypeCheckReceiver(JNIGraphKit kit, ValueNode declaringClass, ValueNode receiver) {
-        ValueNode nonNullReceiver = kit.maybeCreateExplicitNullCheck(receiver);
-
-        LogicNode isInstance = kit.append(InstanceOfDynamicNode.create(kit.getAssumptions(), kit.getConstantReflection(), declaringClass, nonNullReceiver, false, false));
-        kit.startIf(isInstance, BranchProbabilityNode.FAST_PATH_PROFILE);
-        kit.elsePart();
-
-        ResolvedJavaMethod exceptionCtor = kit.getMetaAccess().lookupJavaMethod(CLASS_CAST_EXCEPTION_CONSTRUCTOR);
-        ResolvedJavaMethod throwMethod = FactoryMethodSupport.singleton().lookup((UniverseMetaAccess) kit.getMetaAccess(), exceptionCtor, true);
-        kit.createInvokeWithExceptionAndUnwind(throwMethod, CallTargetNode.InvokeKind.Static, kit.getFrameState(), kit.bci());
-        kit.append(new LoweredDeadEndNode());
-
-        kit.endIf();
     }
 
     private static ValueNode createNewObjectCall(JNIGraphKit kit, Signature invokeSignature, ValueNode newObjectAddress, ValueNode[] args) {

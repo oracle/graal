@@ -15,6 +15,7 @@ public class HeapQuery {
         }
         Heap heap = HeapFactory.createHeap(file);
         System.setProperty("polyglot.js.nashorn-compat", "true");
+        System.setProperty("polyglot.js.ecmascript-version", "6");
         final OQLEngine eng = new OQLEngine(heap);
         final String script;
         if (args[1].equals("-e")) {

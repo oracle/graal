@@ -76,8 +76,11 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
      * Use the summary to update the analysis state.
      */
     private static void processSummary(ReachabilityAnalysisEngine bb, ReachabilityAnalysisMethod method, MethodSummary summary) {
-        for (AnalysisMethod invokedMethod : summary.invokedMethods) {
+        for (AnalysisMethod invokedMethod : summary.virtualInvokedMethods) {
             bb.markMethodInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
+        }
+        for (AnalysisMethod invokedMethod : summary.specialInvokedMethods) {
+            bb.markMethodSpecialInvoked((ReachabilityAnalysisMethod) invokedMethod, method);
         }
         for (AnalysisMethod invokedMethod : summary.implementationInvokedMethods) {
             bb.markMethodImplementationInvoked((ReachabilityAnalysisMethod) invokedMethod, method);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,7 +49,7 @@ public abstract class DebugExprTernaryNode extends LLVMExpressionNode {
     public DebugExprTernaryNode(LLVMExpressionNode thenNode, LLVMExpressionNode elseNode) {
         this.thenNode = thenNode;
         this.elseNode = elseNode;
-        this.conditionProfile = ConditionProfile.createCountingProfile();
+        this.conditionProfile = ConditionProfile.create();
     }
 
     @Specialization

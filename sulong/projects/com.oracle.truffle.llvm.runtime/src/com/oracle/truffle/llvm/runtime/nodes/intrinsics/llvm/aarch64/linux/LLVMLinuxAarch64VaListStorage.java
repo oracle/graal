@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -77,9 +80,6 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 5)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 4)
@@ -559,7 +559,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
     }
 
     private void allocateNativeAreas(StackAllocationNode stackAllocationNode, Frame frame) {
-        this.overflowArgAreaBaseNativePtr = stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
+        this.overflowArgAreaBaseNativePtr = overflowArgArea == null ? null : stackAllocationNode.executeWithTarget(overflowArgArea.overflowAreaSize, frame);
         this.gpSaveAreaNativePtr = stackAllocationNode.executeWithTarget(Aarch64BitVarArgs.GP_LIMIT, frame);
         gpSaveAreaNativePtr = gpSaveAreaNativePtr.increment(Aarch64BitVarArgs.GP_LIMIT);
         this.fpSaveAreaNativePtr = stackAllocationNode.executeWithTarget(Aarch64BitVarArgs.FP_LIMIT, frame);
@@ -693,7 +693,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
             dest.gpSaveAreaPtr = source.gpSaveAreaPtr;
             dest.fpSaveArea = source.fpSaveArea;
             dest.fpSaveAreaPtr = source.fpSaveAreaPtr;
-            dest.overflowArgArea = source.overflowArgArea.clone();
+            dest.overflowArgArea = source.overflowArgArea == null ? null : source.overflowArgArea.clone();
 
             dest.allocateNativeAreas(stackAllocationNode, frame);
         }
@@ -701,6 +701,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
         @Specialization(guards = {"source.isNativized()", "source.overflowArgArea != null"})
         static void copyNativeToManaged(LLVMLinuxAarch64VaListStorage source, LLVMLinuxAarch64VaListStorage dest, Frame frame,
                         @CachedLibrary(limit = "1") LLVMManagedReadLibrary srcReadLib,
+                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLib,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
             // The destination va_list will be in the managed state, even if the source has been
             // nativized. We need to read some state from the native memory, though.
@@ -709,7 +710,19 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
             dest.fpOffset = srcReadLib.readI32(source, Aarch64BitVarArgs.FP_OFFSET);
             dest.gpOffset = srcReadLib.readI32(source, Aarch64BitVarArgs.GP_OFFSET);
-            dest.overflowArgArea.setOffset(getArgPtrFromNativePtr(source, srcReadLib));
+
+            LLVMPointer overflowArgArea = srcReadLib.readPointer(source, Aarch64BitVarArgs.OVERFLOW_ARG_AREA);
+            LLVMPointer regFpSaveArea = srcReadLib.readPointer(source, Aarch64BitVarArgs.FP_SAVE_AREA);
+            LLVMPointer regGpSaveArea = srcReadLib.readPointer(source, Aarch64BitVarArgs.GP_SAVE_AREA);
+            dest.nativized = true; // otherwise the following writes will fail:
+            writeLib.writeI32(dest, Aarch64BitVarArgs.FP_OFFSET, dest.fpOffset);
+            writeLib.writeI32(dest, Aarch64BitVarArgs.GP_OFFSET, dest.gpOffset);
+            writeLib.writePointer(dest, Aarch64BitVarArgs.OVERFLOW_ARG_AREA, overflowArgArea);
+            writeLib.writePointer(dest, Aarch64BitVarArgs.FP_SAVE_AREA, regFpSaveArea);
+            writeLib.writePointer(dest, Aarch64BitVarArgs.GP_SAVE_AREA, regGpSaveArea);
+            if (dest.overflowArgArea != null) {
+                dest.overflowArgArea.setOffset(getArgPtrFromNativePtr(source, srcReadLib));
+            }
         }
 
         @Specialization(guards = {"source.isNativized()", "source.overflowArgArea == null"})
@@ -765,7 +778,9 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                     @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLib,
                     @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLib,
                     @Cached BranchProfile regAreaProfile,
-                    @Cached("createBinaryProfile()") ConditionProfile isNativizedProfile) {
+                    @Cached LoadFromAreaNode loadFromArea,
+                    @Cached ConditionProfile isNativizedProfile) {
+        int regSaveAreaOffs = 0;
         int regSaveOffs = 0;
         int regSaveStep = 0;
         boolean lookIntoRegSaveArea = true;
@@ -774,12 +789,14 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
         RegSaveArea regSaveArea = null;
         switch (varArgArea) {
             case GP_AREA:
+                regSaveAreaOffs = Aarch64BitVarArgs.GP_SAVE_AREA;
                 regSaveOffs = Aarch64BitVarArgs.GP_OFFSET;
                 regSaveStep = Aarch64BitVarArgs.GP_STEP;
                 regSaveArea = gpSaveArea;
                 break;
 
             case FP_AREA:
+                regSaveAreaOffs = Aarch64BitVarArgs.FP_SAVE_AREA;
                 regSaveOffs = Aarch64BitVarArgs.FP_OFFSET;
                 regSaveStep = Aarch64BitVarArgs.FP_STEP;
                 regSaveArea = fpSaveArea;
@@ -798,28 +815,22 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                 // The va shift logic for GP/FP regsave areas is done by updating the gp/fp offset
                 // field in va_list
                 writeLib.writeI32(this, regSaveOffs, offs + regSaveStep);
-                assert regSaveArea != null;
-                long n = regSaveArea.offsetToIndex(offs);
-                if (n >= 0) {
-                    int i = (int) ((n << 32) >> 32);
-                    return regSaveArea.args[i];
+                if (regSaveArea != null) {
+                    long n = regSaveArea.offsetToIndex(offs);
+                    if (n >= 0) {
+                        int i = (int) ((n << 32) >> 32);
+                        return regSaveArea.args[i];
+                    }
+                } else {
+                    return loadFromArea.execute(this.vaListStackPtr, regSaveAreaOffs, offs, 0, type);
                 }
             }
         }
 
         // overflow area
         if (isNativizedProfile.profile(isNativized())) {
-            // Synchronize the managed current argument pointer from the native overflow area
-            this.overflowArgArea.setOffset(getArgPtrFromNativePtr(this, readLib));
-            Object currentArg = this.overflowArgArea.getCurrentArg();
-            // Shift the managed current argument pointer
-            this.overflowArgArea.shift(1);
-            // Update the new native current argument pointer from the managed one
-            long shiftOffs = this.overflowArgArea.getOffset();
-            LLVMPointer shiftedOverflowAreaPtr = overflowArgAreaBaseNativePtr.increment(shiftOffs);
-            writeLib.writePointer(this, Aarch64BitVarArgs.OVERFLOW_ARG_AREA, shiftedOverflowAreaPtr);
-
-            return currentArg;
+            assert regSaveStep == 8;
+            return loadFromArea.execute(vaListStackPtr, Aarch64BitVarArgs.OVERFLOW_ARG_AREA, 0, 8, type);
         } else {
             Object currentArg = this.overflowArgArea.getCurrentArg();
             this.overflowArgArea.shift(1);

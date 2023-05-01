@@ -252,55 +252,15 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
         return getRanges();
     }
 
-    public byte[] inverseToByteArray(Encoding encoding) {
-        byte[] array = new byte[inverseValueCount(encoding)];
+    public int[] valuesToArray() {
+        int[] array = new int[valueCount()];
         int index = 0;
-        int lastHi = -1;
         for (int i = 0; i < size(); i++) {
-            for (int j = lastHi + 1; j < getLo(i); j++) {
-                assert j <= 0xff;
-                array[index++] = (byte) j;
-            }
-            lastHi = getHi(i);
-        }
-        for (int j = lastHi + 1; j <= encoding.getMaxValue(); j++) {
-            assert j <= 0xff;
-            array[index++] = (byte) j;
-        }
-        return array;
-    }
-
-    public char[] inverseToCharArray(Encoding encoding) {
-        char[] array = new char[inverseValueCount(encoding)];
-        int index = 0;
-        int lastHi = -1;
-        for (int i = 0; i < size(); i++) {
-            for (int j = lastHi + 1; j < getLo(i); j++) {
-                assert j <= Character.MAX_VALUE;
-                array[index++] = (char) j;
-            }
-            lastHi = getHi(i);
-        }
-        for (int j = lastHi + 1; j <= encoding.getMaxValue(); j++) {
-            assert j <= Character.MAX_VALUE;
-            array[index++] = (char) j;
-        }
-        return array;
-    }
-
-    public int[] inverseToIntArray(Encoding encoding) {
-        int[] array = new int[inverseValueCount(encoding)];
-        int index = 0;
-        int lastHi = -1;
-        for (int i = 0; i < size(); i++) {
-            for (int j = lastHi + 1; j < getLo(i); j++) {
+            for (int j = getLo(i); j <= getHi(i); j++) {
                 array[index++] = j;
             }
-            lastHi = getHi(i);
         }
-        for (int j = lastHi + 1; j <= encoding.getMaxValue(); j++) {
-            array[index++] = j;
-        }
+        assert index == array.length;
         return array;
     }
 }

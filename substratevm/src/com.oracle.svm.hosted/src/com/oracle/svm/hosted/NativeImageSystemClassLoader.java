@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,10 +89,6 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
             disallowedClassLoaders.add(this.nativeImageClassLoader);
         }
         this.nativeImageClassLoader = nativeImageClassLoader;
-    }
-
-    public ClassLoader getNativeImageClassLoader() {
-        return nativeImageClassLoader;
     }
 
     private boolean isNativeImageClassLoader(ClassLoader current, ClassLoader c) {
@@ -285,7 +281,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
      *
      * @param classPathEntry the classpath entry that will be added to the class path
      */
-    @SuppressWarnings("unused")
+    @SuppressWarnings("unused") // no direct use from Java
     private void appendToClassPathForInstrumentation(String classPathEntry) {
         try {
             Method method = ReflectionUtil.lookupMethod(getParent().getClass(), "appendToClassPathForInstrumentation", String.class);
@@ -295,5 +291,4 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
             VMError.shouldNotReachHere(message, e);
         }
     }
-
 }

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState.NO_SUCCESSOR_INDEX_MARKER;
+import static com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoState.NO_SUCCESSOR_INDEX_MARKER;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -41,6 +41,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
@@ -663,6 +664,9 @@ public class FrameInfoEncoder {
         } else if (value instanceof JavaConstant) {
             JavaConstant constant = (JavaConstant) value;
             result.value = constant;
+            if (constant instanceof CompressibleConstant) {
+                result.isCompressedReference = ((CompressibleConstant) constant).isCompressed();
+            }
             if (constant.isDefaultForKind()) {
                 result.type = ValueType.DefaultConstant;
             } else {
@@ -683,7 +687,7 @@ public class FrameInfoEncoder {
             result.data = virtualObject.getId();
             makeVirtualObject(data, virtualObject, isDeoptEntry);
         } else {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(value); // ExcludeFromJacocoGeneratedReport
         }
         return result;
     }
@@ -853,7 +857,7 @@ public class FrameInfoEncoder {
                 }
                 return JavaKind.Long;
             default:
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(byteCount); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -921,7 +925,7 @@ public class FrameInfoEncoder {
                 if (cur.deoptMethod != null) {
                     deoptMethodIndex = -1 - encoders.objectConstants.getIndex(SubstrateObjectConstant.forObject(cur.deoptMethod));
                     assert deoptMethodIndex < 0;
-                    assert cur.deoptMethodOffset == cur.deoptMethod.getDeoptOffsetInImage();
+                    assert cur.getDeoptMethodOffset() == cur.deoptMethod.getDeoptOffsetInImage();
                 } else {
                     deoptMethodIndex = cur.deoptMethodOffset;
                     assert deoptMethodIndex >= 0;
@@ -1039,7 +1043,8 @@ public class FrameInfoEncoder {
 
     void verifyEncoding(CodeInfo info) {
         for (FrameData expectedData : allDebugInfos) {
-            FrameInfoQueryResult actualFrame = FrameInfoDecoder.HeapBasedFrameInfoQueryResultLoader.load(info, expectedData.frame.isDeoptEntry, expectedData.encodedFrameInfoIndex);
+            ReusableTypeReader reader = new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), expectedData.encodedFrameInfoIndex);
+            FrameInfoQueryResult actualFrame = FrameInfoDecoder.decodeFrameInfo(expectedData.frame.isDeoptEntry, reader, info);
             FrameInfoVerifier.verifyFrames(expectedData, expectedData.frame, actualFrame);
         }
     }
@@ -1051,26 +1056,27 @@ class FrameInfoVerifier {
         FrameInfoQueryResult actualFrame = actualTopFrame;
         while (expectedFrame != null) {
             assert actualFrame != null;
-            assert expectedFrame.isDeoptEntry == actualFrame.isDeoptEntry;
+            assert expectedFrame.isDeoptEntry() == actualFrame.isDeoptEntry();
             assert expectedFrame.hasLocalValueInfo() == actualFrame.hasLocalValueInfo();
             if (expectedFrame.hasLocalValueInfo()) {
-                assert expectedFrame.encodedBci == actualFrame.encodedBci;
-                assert expectedFrame.deoptMethod == null && actualFrame.deoptMethod == null ||
-                                ((expectedFrame.deoptMethod != null) && expectedFrame.deoptMethod.equals(actualFrame.deoptMethod));
-                assert expectedFrame.deoptMethodOffset == actualFrame.deoptMethodOffset;
-                assert expectedFrame.numLocals == actualFrame.numLocals;
-                assert expectedFrame.numStack == actualFrame.numStack;
-                assert expectedFrame.numLocks == actualFrame.numLocks;
+                assert expectedFrame.getEncodedBci() == actualFrame.getEncodedBci();
+                assert expectedFrame.getMethodId() == actualFrame.getMethodId();
+                assert expectedFrame.getDeoptMethod() == null && actualFrame.getDeoptMethod() == null ||
+                                (expectedFrame.getDeoptMethod() != null && expectedFrame.getDeoptMethod().equals(actualFrame.getDeoptMethod()));
+                assert expectedFrame.getDeoptMethodOffset() == actualFrame.getDeoptMethodOffset();
+                assert expectedFrame.getNumLocals() == actualFrame.getNumLocals();
+                assert expectedFrame.getNumStack() == actualFrame.getNumStack();
+                assert expectedFrame.getNumLocks() == actualFrame.getNumLocks();
 
-                verifyValues(expectedFrame.valueInfos, actualFrame.valueInfos);
-                assert expectedFrame.virtualObjects == expectedTopFrame.virtualObjects;
-                assert actualFrame.virtualObjects == actualTopFrame.virtualObjects;
+                verifyValues(expectedFrame.getValueInfos(), actualFrame.getValueInfos());
+                assert expectedFrame.getVirtualObjects() == expectedTopFrame.getVirtualObjects();
+                assert actualFrame.getVirtualObjects() == actualTopFrame.getVirtualObjects();
             }
 
-            assert Objects.equals(expectedFrame.sourceClass, actualFrame.sourceClass);
-            assert Objects.equals(expectedFrame.sourceMethodName, actualFrame.sourceMethodName);
-            assert expectedFrame.sourceLineNumber == actualFrame.sourceLineNumber;
-            assert expectedFrame.methodId == actualFrame.methodId;
+            assert Objects.equals(expectedFrame.getSourceClass(), actualFrame.getSourceClass());
+            assert Objects.equals(expectedFrame.getSourceMethodName(), actualFrame.getSourceMethodName());
+            assert expectedFrame.getSourceLineNumber() == actualFrame.getSourceLineNumber();
+            assert expectedFrame.getMethodId() == actualFrame.getMethodId();
 
             assert expectedFrame.sourceClassIndex == actualFrame.sourceClassIndex;
             assert expectedFrame.sourceMethodNameIndex == actualFrame.sourceMethodNameIndex;
@@ -1108,7 +1114,7 @@ class FrameInfoVerifier {
             /* During compilation, the kind of a smaller-than-int constant is often Int. */
             assert FrameInfoEncoder.encodePrimitiveConstant(expectedConstant) == FrameInfoEncoder.encodePrimitiveConstant(actualConstant);
         } else {
-            assert Objects.equals(expectedConstant, actualConstant);
+            assert Objects.equals(expectedConstant, actualConstant) : " Constants are not equal: expected=" + expectedConstant + " actual=" + actualConstant;
         }
     }
 }

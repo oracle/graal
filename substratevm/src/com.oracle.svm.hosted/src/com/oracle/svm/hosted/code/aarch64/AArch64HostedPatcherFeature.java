@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -178,7 +178,7 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             if (constant instanceof SubstrateMethodPointerConstant) {
                 MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
                 HostedMethod hMethod = (HostedMethod) pointer.getMethod();
-                VMError.guarantee(hMethod.isCompiled(), String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
+                VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
                 relocVal = pointer;
             }
         }
@@ -264,7 +264,7 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
     @Override
     public void patch(int compStart, int relative, byte[] code) {
         /* Patching a move sequence would hardcode an absolute value, not a pc-relative value. */
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHere("patching not allowed"); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

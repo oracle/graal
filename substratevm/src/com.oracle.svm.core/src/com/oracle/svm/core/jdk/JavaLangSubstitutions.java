@@ -31,11 +31,15 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readHub;
 import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
@@ -62,6 +66,7 @@ import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.KeepOriginal;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -72,16 +77,14 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.loader.ClassLoaderValue;
+import jdk.internal.module.ServicesCatalog;
 
 @TargetClass(java.lang.Object.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_Object {
-
-    @Substitute
-    @TargetElement(name = "registerNatives", onlyWith = JDK11OrEarlier.class)
-    private static void registerNativesSubst() {
-        /* We reimplemented all native methods, so nothing to do. */
-    }
 
     @Substitute
     @TargetElement(name = "getClass")
@@ -98,13 +101,6 @@ final class Target_java_lang_Object {
     @Substitute
     @TargetElement(name = "wait")
     private void waitSubst(long timeoutMillis) throws InterruptedException {
-        /*
-         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
-         * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned.
-         * Also, we get interrupted on the virtual thread instead of the carrier thread, which
-         * clears the carrier thread's interrupt status too, so we don't have to intercept an
-         * InterruptedException from the carrier thread to clear the virtual thread interrupt.
-         */
         MonitorSupport.singleton().wait(this, timeoutMillis);
     }
 
@@ -125,7 +121,7 @@ final class Target_java_lang_Object {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_loader_helper.class, className = "ClassLoaderHelper")
+@TargetClass(className = "jdk.internal.loader.ClassLoaderHelper")
 final class Target_jdk_internal_loader_ClassLoaderHelper {
     @Alias
     static native File mapAlternativeName(File lib);
@@ -186,11 +182,79 @@ final class Target_java_lang_String {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     native byte coder();
 
-    @Alias //
+    @Alias @RecomputeFieldValue(kind = Kind.None, isFinal = true) //
     byte[] value;
 
     @Alias //
     int hash;
+
+    /**
+     * This is a copy of String.split from the JDK, but with the fastpath loop factored out into a
+     * separate method. This allows inlining and constant folding of the condition for call sites
+     * where the regex is a constant (which is a common usage pattern).
+     *
+     * JDK-8262994 should make that refactoring in OpenJDK, after which this substitution can be
+     * removed.
+     */
+    @Substitute
+    public String[] split(String regex, int limit) {
+        /*
+         * fastpath if the regex is a (1) one-char String and this character is not one of the
+         * RegEx's meta characters ".$|()[{^?*+\\", or (2) two-char String and the first char is the
+         * backslash and the second is not the ascii digit or ascii letter.
+         */
+        char ch = 0;
+        if (((regex.length() == 1 &&
+                        ".$|()[{^?*+\\".indexOf(ch = regex.charAt(0)) == -1) ||
+                        (regex.length() == 2 &&
+                                        regex.charAt(0) == '\\' &&
+                                        (((ch = regex.charAt(1)) - '0') | ('9' - ch)) < 0 &&
+                                        ((ch - 'a') | ('z' - ch)) < 0 &&
+                                        ((ch - 'A') | ('Z' - ch)) < 0)) &&
+                        (ch < Character.MIN_HIGH_SURROGATE ||
+                                        ch > Character.MAX_LOW_SURROGATE)) {
+            return StringHelper.simpleSplit(SubstrateUtil.cast(this, String.class), limit, ch);
+        }
+        return Pattern.compile(regex).split(SubstrateUtil.cast(this, String.class), limit);
+    }
+}
+
+final class StringHelper {
+    static String[] simpleSplit(String that, int limit, char ch) {
+        int off = 0;
+        int next = 0;
+        boolean limited = limit > 0;
+        ArrayList<String> list = new ArrayList<>();
+        while ((next = that.indexOf(ch, off)) != -1) {
+            if (!limited || list.size() < limit - 1) {
+                list.add(that.substring(off, next));
+                off = next + 1;
+            } else {    // last one
+                // assert (list.size() == limit - 1);
+                int last = that.length();
+                list.add(that.substring(off, last));
+                off = last;
+                break;
+            }
+        }
+        // If no match was found, return this
+        if (off == 0) {
+            return new String[]{that};
+        }
+        // Add remaining segment
+        if (!limited || list.size() < limit) {
+            list.add(that.substring(off, that.length()));
+        }
+        // Construct result
+        int resultSize = list.size();
+        if (limit == 0) {
+            while (resultSize > 0 && list.get(resultSize - 1).isEmpty()) {
+                resultSize--;
+            }
+        }
+        String[] result = new String[resultSize];
+        return list.subList(0, resultSize).toArray(result);
+    }
 }
 
 @TargetClass(className = "java.lang.StringLatin1")
@@ -199,10 +263,6 @@ final class Target_java_lang_StringLatin1 {
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static native char getChar(byte[] val, int index);
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native int hashCode(byte[] value);
 }
 
 @TargetClass(className = "java.lang.StringUTF16")
@@ -211,10 +271,6 @@ final class Target_java_lang_StringUTF16 {
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static native char getChar(byte[] val, int index);
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static native int hashCode(byte[] value);
 }
 
 @TargetClass(java.lang.Throwable.class)
@@ -423,7 +479,7 @@ final class Target_java_lang_Math {
     }
 }
 
-@TargetClass(java.lang.StrictMath.class)
+@TargetClass(value = StrictMath.class, onlyWith = JDK20OrEarlier.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class Target_java_lang_StrictMath {
 
@@ -662,7 +718,6 @@ final class Target_java_lang_Compiler {
 final class Target_java_lang_NullPointerException {
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("static-method")
     private String getExtendedNPEMessage() {
         return null;
@@ -714,20 +769,52 @@ final class Target_jdk_internal_loader_BootLoader {
         return ClassForNameSupport.forNameOrNull(name, null);
     }
 
+    @SuppressWarnings("unused")
+    @Substitute
+    private static void loadLibrary(String name) {
+        System.loadLibrary(name);
+    }
+
     @Substitute
     private static boolean hasClassPath() {
         return true;
     }
 
     /**
-     * All ClassLoaderValue are reset at run time for now. See also
-     * {@link Target_java_lang_ClassLoader#classLoaderValueMap} for resetting of individual class
-     * loaders.
+     * Most {@link ClassLoaderValue}s are reset. For the list of preserved transformers see
+     * {@link ClassLoaderValueMapFieldValueTransformer}.
      */
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ClassLoaderValueMapFieldValueTransformer.class, isFinal = true)//
     static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
     // Checkstyle: resume
+}
+
+final class ClassLoaderValueMapFieldValueTransformer implements FieldValueTransformer {
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        if (originalValue == null) {
+            return null;
+        }
+
+        ConcurrentHashMap<?, ?> original = (ConcurrentHashMap<?, ?>) originalValue;
+        List<ClassLoaderValue<?>> clvs = Arrays.asList(
+                        ReflectionUtil.readField(ServicesCatalog.class, "CLV", null),
+                        ReflectionUtil.readField(ModuleLayer.class, "CLV", null));
+
+        var res = new ConcurrentHashMap<>();
+        for (ClassLoaderValue<?> clv : clvs) {
+            if (clv == null) {
+                throw VMError.shouldNotReachHere("Field must not be null. Please check what changed in the JDK.");
+            }
+            var catalog = original.get(clv);
+            if (catalog != null) {
+                res.put(clv, catalog);
+            }
+        }
+
+        return res;
+    }
 }
 
 /** Dummy class to have a class with the file's name. */
@@ -750,26 +837,6 @@ public final class JavaLangSubstitutions {
 
         public static byte coder(String string) {
             return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static int hashCode(java.lang.String string) {
-            return string != null ? hashCode0(string) : 0;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        private static int hashCode0(java.lang.String string) {
-            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
-            byte[] value = str.value;
-            if (str.hash == 0 && value.length > 0) {
-                boolean isLatin1 = str.isLatin1();
-                if (isLatin1) {
-                    str.hash = Target_java_lang_StringLatin1.hashCode(value);
-                } else {
-                    str.hash = Target_java_lang_StringUTF16.hashCode(value);
-                }
-            }
-            return str.hash;
         }
     }
 

@@ -138,8 +138,7 @@ public class HeapSnapshotVerifier {
             if (field.isStatic()) {
                 TypeData typeData = field.getDeclaringClass().getOrComputeData();
                 Object fieldValueTask = typeData.getFieldValue(field);
-                if (fieldValueTask instanceof JavaConstant) {
-                    JavaConstant fieldSnapshot = (JavaConstant) fieldValueTask;
+                if (fieldValueTask instanceof JavaConstant fieldSnapshot) {
                     verifyStaticFieldValue(typeData, field, maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant), fieldValue, reason);
                 } else if (fieldValueTask instanceof AnalysisFuture<?>) {
                     AnalysisFuture<JavaConstant> future = (AnalysisFuture<JavaConstant>) fieldValueTask;
@@ -149,12 +148,13 @@ public class HeapSnapshotVerifier {
                     } else {
                         onStaticFieldNotComputed(field, fieldValue, reason);
                     }
+                } else {
+                    throw AnalysisError.shouldNotReachHere("Unexpected field value " + fieldValueTask + ".");
                 }
             } else {
                 ImageHeapInstance receiverObject = (ImageHeapInstance) getReceiverObject(receiver, reason);
                 Object fieldValueTask = receiverObject.getFieldValue(field);
-                if (fieldValueTask instanceof JavaConstant) {
-                    JavaConstant fieldSnapshot = (JavaConstant) fieldValueTask;
+                if (fieldValueTask instanceof JavaConstant fieldSnapshot) {
                     verifyInstanceFieldValue(field, receiverObject, maybeUnwrapSnapshot(fieldSnapshot, fieldValue instanceof ImageHeapConstant), fieldValue, reason);
                 } else if (fieldValueTask instanceof AnalysisFuture<?>) {
                     AnalysisFuture<JavaConstant> future = (AnalysisFuture<JavaConstant>) fieldValueTask;
@@ -172,6 +172,8 @@ public class HeapSnapshotVerifier {
                         scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
                         heapPatched = true;
                     }
+                } else {
+                    throw AnalysisError.shouldNotReachHere("Unexpected field value " + fieldValueTask + ".");
                 }
             }
             return false;
@@ -204,19 +206,41 @@ public class HeapSnapshotVerifier {
 
         @Override
         public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, AnalysisType elementType, int index, ScanReason reason) {
-            ImageHeapArray arrayObject = (ImageHeapArray) getReceiverObject(array, reason);
-            JavaConstant elementSnapshot = arrayObject.getElement(index);
-            if (!Objects.equals(maybeUnwrapSnapshot(elementSnapshot, elementValue instanceof ImageHeapConstant), elementValue)) {
-                Consumer<ScanReason> onAnalysisModified = (deepReason) -> onArrayElementMismatch(elementSnapshot, elementValue, deepReason);
-                arrayObject.setElement(index, scanner.onArrayElementReachable(arrayObject, arrayType, elementValue, index, reason, onAnalysisModified));
-                heapPatched = true;
+            ImageHeapObjectArray arrayObject = (ImageHeapObjectArray) getReceiverObject(array, reason);
+            Object elementValueTask = arrayObject.getElement(index);
+            if (elementValueTask instanceof JavaConstant elementSnapshot) {
+                verifyArrayElementValue(elementValue, index, reason, arrayObject, elementSnapshot);
+            } else if (elementValueTask instanceof AnalysisFuture<?> future) {
+                if (future.isDone()) {
+                    JavaConstant elementSnapshot = (JavaConstant) future.guardedGet();
+                    verifyArrayElementValue(elementValue, index, reason, arrayObject, elementSnapshot);
+                } else {
+                    /* There may be some array elements not yet computed. */
+                    Consumer<ScanReason> onAnalysisModified = (deepReason) -> onArrayElementNotComputed(arrayObject, index, elementValue, deepReason);
+                    scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
+                    heapPatched = true;
+                }
+            } else {
+                throw AnalysisError.shouldNotReachHere("Unexpected element value " + elementValueTask + ".");
             }
             return false;
         }
 
+        private void verifyArrayElementValue(JavaConstant elementValue, int index, ScanReason reason, ImageHeapObjectArray arrayObject, JavaConstant elementSnapshot) {
+            if (!Objects.equals(maybeUnwrapSnapshot(elementSnapshot, elementValue instanceof ImageHeapConstant), elementValue)) {
+                Consumer<ScanReason> onAnalysisModified = (deepReason) -> onArrayElementMismatch(elementSnapshot, elementValue, deepReason);
+                scanner.patchArrayElement(arrayObject, index, elementValue, reason, onAnalysisModified).ensureDone();
+                heapPatched = true;
+            }
+        }
+
         @SuppressWarnings({"unchecked", "rawtypes"})
         private ImageHeapConstant getReceiverObject(JavaConstant constant, ScanReason reason) {
-            Object task = imageHeap.getTask(constant);
+            if (constant instanceof ImageHeapConstant) {
+                /* This is a simulated constant. */
+                return (ImageHeapConstant) constant;
+            }
+            Object task = imageHeap.getSnapshot(constant);
             if (task == null) {
                 throw error(reason, "Task is null for constant %s.", constant);
             } else if (task instanceof ImageHeapConstant) {
@@ -235,11 +259,10 @@ public class HeapSnapshotVerifier {
         @Override
         @SuppressWarnings({"unchecked", "rawtypes"})
         public void forEmbeddedRoot(JavaConstant root, ScanReason reason) {
-            Object rootTask = imageHeap.getTask(root);
+            Object rootTask = imageHeap.getSnapshot(root);
             if (rootTask == null) {
                 throw error(reason, "No snapshot task found for embedded root %s %n", root);
-            } else if (rootTask instanceof ImageHeapConstant) {
-                ImageHeapConstant snapshot = (ImageHeapConstant) rootTask;
+            } else if (rootTask instanceof ImageHeapConstant snapshot) {
                 verifyEmbeddedRoot(maybeUnwrapSnapshot(snapshot, root instanceof ImageHeapConstant), root, reason);
             } else {
                 AnalysisFuture<ImageHeapConstant> future = (AnalysisFuture<ImageHeapConstant>) rootTask;
@@ -256,10 +279,6 @@ public class HeapSnapshotVerifier {
          * Since embedded constants or constants reachable when scanning from roots can also be
          * ImageHeapObject that are not backed by a hosted object, we need to make sure that we
          * compare it with the correct representation of the snapshot, i.e., without unwrapping it.
-         * Moreover, since embedded ImageHeapObject can reference JavaConstant values directly (see
-         * the comment in
-         * {@link ImageHeapScanner#scanImageHeapObject(ImageHeapConstant, ScanReason, Consumer)} for
-         * details why that happens), then the 'snapshot' itself can be a JavaConstant.
          */
         private JavaConstant maybeUnwrapSnapshot(JavaConstant snapshot, boolean asImageHeapObject) {
             if (snapshot instanceof ImageHeapConstant) {
@@ -298,12 +317,12 @@ public class HeapSnapshotVerifier {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         private void ensureTypeScanned(JavaConstant value, JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
-            AnalysisError.guarantee(type.isReachable(), "The heap snapshot verifier discovered a type not marked as reachable " + type.toJavaName());
-            Object task = imageHeap.getTask(typeConstant);
+            AnalysisError.guarantee(type.isReachable(), "The heap snapshot verifier discovered a type not marked as reachable: %s", type);
+            Object task = imageHeap.getSnapshot(typeConstant);
             /* Make sure the DynamicHub value is scanned. */
             if (task == null) {
                 onNoTaskForClassConstant(type, reason);
-                scanner.toImageHeapObject(typeConstant, reason, null);
+                scanner.toImageHeapObject(typeConstant, reason);
                 heapPatched = true;
             } else if (task instanceof ImageHeapConstant) {
                 JavaConstant snapshot = ((ImageHeapConstant) task).getHostedObject();
@@ -378,6 +397,13 @@ public class HeapSnapshotVerifier {
         if (printWarning()) {
             analysisWarning(reason, "Snapshot not yet computed for instance field %s of %s %n new value: %s %n",
                             field, receiver, fieldValue);
+        }
+    }
+
+    private void onArrayElementNotComputed(ImageHeapArray array, int index, JavaConstant elementValue, ScanReason reason) {
+        analysisModified = true;
+        if (printWarning()) {
+            analysisWarning(reason, "Snapshot not yet computed for array %s, index %s, %n new value: %s %n", array, index, elementValue);
         }
     }
 

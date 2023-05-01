@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -338,7 +338,7 @@ def _get_toolchain(toolchain_name):
 
 
 def _get_toolchain_tool(name_tool):
-    name, tool = name_tool.split(",", 2)
+    name, tool = name_tool.split(",", 1)
     return _get_toolchain(name).get_toolchain_tool(tool)
 
 
@@ -490,15 +490,17 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name='LLVM Runtime Core',
     short_name='llrc',
     dir_name='llvm',
-    license_files=['sulong:SULONG_GRAALVM_DOCS/LICENSE_SULONG.txt'],
-    third_party_license_files=['sulong:SULONG_GRAALVM_DOCS/THIRD_PARTY_LICENSE_SULONG.txt'],
+    license_files=['sulong:SULONG_GRAALVM_LICENSES/LICENSE_SULONG.txt'],
+    third_party_license_files=['sulong:SULONG_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_SULONG.txt'],
     dependencies=['Truffle', 'Truffle NFI'],
     truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
     support_distributions=[
         'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
+        'sulong:SULONG_GRAALVM_LICENSES',
     ],
     installable=True,
+    standalone=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=0,  # this is the main component of the llvm installable
 ))
@@ -518,6 +520,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),
     installable=True,
+    standalone=False,
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
 
@@ -545,5 +548,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         ),
     ],
     installable=True,
+    standalone=False,
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))

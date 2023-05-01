@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,7 +60,6 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
     /** Input dependency, i.e., builders that have this builder as an observer. */
     private final Set<TypeFlowBuilder<?>> observerDependencies;
     private boolean buildingAnActualParameter;
-    private boolean buildingAnActualReceiver;
     private boolean isMaterialized;
 
     private TypeFlowBuilder(Object source, Class<T> flowClass, LazyValue<T> creator) {
@@ -70,7 +69,6 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
         this.useDependencies = new HashSet<>();
         this.observerDependencies = new HashSet<>();
         this.buildingAnActualParameter = false;
-        this.buildingAnActualReceiver = false;
         this.isMaterialized = false;
     }
 
@@ -80,14 +78,6 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
 
     public boolean isBuildingAnActualParameter() {
         return buildingAnActualParameter;
-    }
-
-    public void markAsBuildingAnActualReceiver() {
-        this.buildingAnActualReceiver = true;
-    }
-
-    public boolean isBuildingAnActualReceiver() {
-        return buildingAnActualReceiver;
     }
 
     public boolean isMaterialized() {
@@ -121,8 +111,6 @@ public final class TypeFlowBuilder<T extends TypeFlow<?>> {
     public T get() {
         T value = lazyTypeFlowCreator.get();
         isMaterialized = true;
-        value.setUsedAsAParameter(buildingAnActualParameter);
-        value.setUsedAsAReceiver(buildingAnActualReceiver);
         return value;
     }
 

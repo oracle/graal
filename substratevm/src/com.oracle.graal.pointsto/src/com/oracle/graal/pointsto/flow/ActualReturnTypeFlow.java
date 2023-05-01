@@ -33,11 +33,11 @@ public class ActualReturnTypeFlow extends TypeFlow<BytecodePosition> {
     private InvokeTypeFlow invokeFlow;
 
     public ActualReturnTypeFlow(AnalysisType declaredType) {
-        super(null, declaredType);
+        this(null, declaredType);
     }
 
     public ActualReturnTypeFlow(BytecodePosition source, AnalysisType declaredType) {
-        super(source, declaredType);
+        super(source, filterUncheckedInterface(declaredType));
     }
 
     public ActualReturnTypeFlow(ActualReturnTypeFlow original, MethodFlowsGraph methodFlows) {

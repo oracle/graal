@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,15 +38,51 @@ public enum ELFMachine/* implements Integral */ {
         Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
             return ELFX86_64Relocation.class;
         }
+
+        @Override
+        int flags() {
+            /*
+             * e_flags are always 0 for X86
+             */
+            return NO_FLAGS;
+        }
     },
     AArch64 {
         @Override
         Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
             return ELFAArch64Relocation.class;
         }
+
+        @Override
+        int flags() {
+            /*
+             * e_flags are always 0 for AArch64
+             */
+            return NO_FLAGS;
+        }
+    },
+    RISCV64 {
+        @Override
+        Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
+            return ELFRISCV64Relocation.class;
+        }
+
+        @Override
+        int flags() {
+            /*
+             * Since we use the most powerful rv64gc model variant, we need to set e_flags to 5,
+             * which are RVC and double-float ABI.
+             */
+            return RVC_DOUBLE_FLOAT_ABI;
+        }
     };
 
+    private static final int NO_FLAGS = 0;
+    private static final int RVC_DOUBLE_FLOAT_ABI = 5;
+
     abstract Class<? extends Enum<? extends RelocationMethod>> relocationTypes();
+
+    abstract int flags();
 
     public static ELFMachine from(String s) {
         switch (s.toLowerCase()) {
@@ -56,6 +92,8 @@ public enum ELFMachine/* implements Integral */ {
             case "arm64":
             case "aarch64":
                 return AArch64;
+            case "riscv64":
+                return RISCV64;
         }
         throw new IllegalStateException("unknown CPU type: " + s);
     }
@@ -129,6 +167,14 @@ public enum ELFMachine/* implements Integral */ {
                         throw new IllegalArgumentException("cannot map unknown relocation kind to an ELF aarch64 relocation type: " + k);
 
                 }
+            case RISCV64:
+                switch (k) {
+                    case DIRECT_8:
+                        return ELFRISCV64Relocation.R_RISCV_64;
+                    default:
+                    case UNKNOWN:
+                        throw new IllegalArgumentException("cannot map unknown relocation kind to an ELF riscv64 relocation type: " + k);
+                }
             default:
                 throw new IllegalStateException("unknown ELF machine type");
         }
@@ -141,6 +187,8 @@ public enum ELFMachine/* implements Integral */ {
                 return X86_64;
             case 0xB7:
                 return AArch64;
+            case 0xF3:
+                return RISCV64;
             default:
                 throw new IllegalStateException("unknown ELF machine type");
         }
@@ -151,17 +199,21 @@ public enum ELFMachine/* implements Integral */ {
             return 0xB7;
         } else if (this == X86_64) {
             return 0x3E;
+        } else if (this == RISCV64) {
+            return 0xF3;
         } else {
             throw new IllegalStateException("should not reach here");
         }
     }
 
     public static ELFMachine getSystemNativeValue() {
-        if (System.getProperty("os.arch").equals("aarch64")) {
-            return AArch64;
-        } else {
-            return X86_64;
-        }
+        String arch = System.getProperty("os.arch");
+        return switch (arch) {
+            case "aarch64", "arm64" -> AArch64;
+            case "amd64", "x86_64" -> X86_64;
+            case "riscv64" -> RISCV64;
+            default -> throw new IllegalArgumentException("Unsupported ELF machine type: " + arch);
+        };
     }
 }
 
@@ -352,6 +404,78 @@ enum ELFAArch64Relocation implements ELFRelocationMethod {
     private final long code;
 
     ELFAArch64Relocation(long code) {
+        this.code = code;
+    }
+
+    @Override
+    public long toLong() {
+        return code;
+    }
+}
+
+/**
+ * Reference: https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-elf.adoc.
+ */
+enum ELFRISCV64Relocation implements ELFRelocationMethod {
+    R_RISCV_NONE(0),
+    R_RISCV_32(1),
+    R_RISCV_64(2),
+    R_RISCV_RELATIVE(3),
+    R_RISCV_COPY(4),
+    R_RISCV_JUMP_SLOT(5),
+    R_RISCV_TLS_DTPMOD32(6),
+    R_RISCV_TLS_DTPMOD64(7),
+    R_RISCV_TLS_DTPREL32(8),
+    R_RISCV_TLS_DTPREL64(9),
+    R_RISCV_TLS_TPREL32(10),
+    R_RISCV_TLS_TPREL64(11),
+    R_RISCV_BRANCH(16),
+    R_RISCV_JAL(17),
+    R_RISCV_CALL(18),
+    R_RISCV_CALL_PLT(19),
+    R_RISCV_GOT_HI20(20),
+    R_RISCV_TLS_GOT_HI20(21),
+    R_RISCV_TLS_GD_HI20(22),
+    R_RISCV_PCREL_HI20(23),
+    R_RISCV_PCREL_LO12_I(24),
+    R_RISCV_PCREL_LO12_S(25),
+    R_RISCV_HI20(26),
+    R_RISCV_LO12_I(27),
+    R_RISCV_LO12_S(28),
+    R_RISCV_TPREL_HI20(29),
+    R_RISCV_TPREL_LO12_I(30),
+    R_RISCV_TPREL_LO12_S(31),
+    R_RISCV_TPREL_ADD(32),
+    R_RISCV_ADD8(33),
+    R_RISCV_ADD16(34),
+    R_RISCV_ADD32(35),
+    R_RISCV_ADD64(36),
+    R_RISCV_SUB8(37),
+    R_RISCV_SUB16(38),
+    R_RISCV_SUB32(39),
+    R_RISCV_SUB64(40),
+    R_RISCV_GNU_VTINHERIT(41),
+    R_RISCV_GNU_VTENTRY(42),
+    R_RISCV_ALIGN(43),
+    R_RISCV_RVC_BRANCH(44),
+    R_RISCV_RVC_JUMP(45),
+    R_RISCV_RVC_LUI(46),
+    R_RISCV_GPREL_I(47),
+    R_RISCV_GPREL_S(48),
+    R_RISCV_TPREL_I(49),
+    R_RISCV_TPREL_S(50),
+    R_RISCV_RELAX(51),
+    R_RISCV_SUB6(52),
+    R_RISCV_SET6(53),
+    R_RISCV_SET8(54),
+    R_RISCV_SET16(55),
+    R_RISCV_SET32(56),
+    R_RISCV_32_PCREL(57),
+    R_RISCV_IRELATIVE(58);
+
+    private final long code;
+
+    ELFRISCV64Relocation(long code) {
         this.code = code;
     }
 

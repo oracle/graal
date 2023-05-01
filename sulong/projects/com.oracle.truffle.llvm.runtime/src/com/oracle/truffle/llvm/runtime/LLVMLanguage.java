@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
@@ -115,7 +116,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    public final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Only a single context is active");
+
+    @CompilationFinal public boolean singleContext = true;
 
     @CompilationFinal private Configuration activeConfiguration = null;
 
@@ -157,7 +159,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
 
     static final class LibraryCacheEntry extends WeakReference<CallTarget> {
-
         final String path;
         final WeakReference<BitcodeID> id;
 
@@ -810,10 +811,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @Override
     protected void initializeMultipleContexts() {
         super.initializeMultipleContexts();
-        singleContextAssumption.invalidate();
+        singleContext = false;
     }
 
     public RootCallTarget createCachedCallTarget(Class<?> key, Function<LLVMLanguage, RootNode> create) {
         return cachedCallTargets.computeIfAbsent(key, k -> create.apply(LLVMLanguage.this).getCallTarget());
     }
+
+    @Idempotent
+    public static boolean isSingleContext(Node node) {
+        return LLVMLanguage.get(node).singleContext;
+    }
+
 }

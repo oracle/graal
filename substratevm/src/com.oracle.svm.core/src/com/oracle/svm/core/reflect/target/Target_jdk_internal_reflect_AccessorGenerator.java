@@ -28,6 +28,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK19OrEarlier;
+import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.reflect.serialize.SerializationRegistry;
 
 @TargetClass(className = "jdk.internal.reflect.AccessorGenerator")
@@ -37,8 +40,18 @@ public final class Target_jdk_internal_reflect_AccessorGenerator {
 @TargetClass(className = "jdk.internal.reflect.MethodAccessorGenerator")
 final class Target_jdk_internal_reflect_MethodAccessorGenerator {
 
+    @Substitute
+    @TargetElement(onlyWith = JDK20OrLater.class)
+    public Target_jdk_internal_reflect_SerializationConstructorAccessorImpl generateSerializationConstructor(Class<?> declaringClass,
+                    @SuppressWarnings("unused") Class<?>[] parameterTypes,
+                    @SuppressWarnings("unused") int modifiers,
+                    Class<?> targetConstructorClass) {
+        return generateSerializationConstructor(declaringClass, parameterTypes, null, modifiers, targetConstructorClass);
+    }
+
     @SuppressWarnings("static-method")
     @Substitute
+    @TargetElement(onlyWith = JDK19OrEarlier.class)
     public Target_jdk_internal_reflect_SerializationConstructorAccessorImpl generateSerializationConstructor(Class<?> declaringClass,
                     @SuppressWarnings("unused") Class<?>[] parameterTypes,
                     @SuppressWarnings("unused") Class<?>[] checkedExceptions,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,13 @@
  */
 package com.oracle.svm.core.deopt;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.lang.ref.WeakReference;
 
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
@@ -60,28 +54,8 @@ import jdk.vm.ci.meta.JavaConstant;
  * The handle to a deoptimized frame. It contains all stack entries which are written to the frame
  * of the deopt target method(s). For details see {@link Deoptimizer}.
  * <p>
- * In addition to the instance fields, the {@link DeoptimizedFrame} also has same reserved space for
- * the return value registers. This is used by {@link Deoptimizer#deoptStub} for restoring the
- * original return values.
  */
-@DeoptimizedFrame.ReserveDeoptScratchSpace
 public final class DeoptimizedFrame {
-
-    /**
-     * Used to let the universe builder reserve some space in the instance layout for storing return
-     * value registers.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.TYPE)
-    public @interface ReserveDeoptScratchSpace {
-    }
-
-    /**
-     * Returns the offset of the {@linkplain ReserveDeoptScratchSpace scratch space} in the object.
-     */
-    public static int getScratchSpaceOffset() {
-        return NumUtil.roundUp(ConfigurationValues.getObjectLayout().getFirstFieldOffset(), FrameAccess.wordSize());
-    }
 
     /**
      * Heap-based representation of a future baseline-compiled stack frame, i.e., the intermediate
@@ -148,7 +122,7 @@ public final class DeoptimizedFrame {
             this.offset = offset;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected abstract void write(Deoptimizer.TargetContent targetContent);
     }
 
@@ -252,7 +226,7 @@ public final class DeoptimizedFrame {
         }
 
         @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void write(Deoptimizer.TargetContent targetContent) {
             targetContent.writeLong(offset, returnAddress);
         }
@@ -270,7 +244,7 @@ public final class DeoptimizedFrame {
             this.valueRelativeToNewSp = valueRelativeToNewSp;
         }
 
-        @Uninterruptible(reason = "Called from uninterruptible code.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         protected void write(Deoptimizer.TargetContent targetContent, Pointer newSp) {
             targetContent.writeWord(offset, newSp.add(WordFactory.unsigned(valueRelativeToNewSp)));
         }
@@ -325,12 +299,12 @@ public final class DeoptimizedFrame {
      * The frame size of the deoptimized method. This is the size of the physical stack frame that
      * is still present on the stack until the actual stack frame rewriting happens.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getSourceEncodedFrameSize() {
         return sourceEncodedFrameSize;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getSourceTotalFrameSize() {
         return CodeInfoQueryResult.getTotalFrameSize(sourceEncodedFrameSize);
     }
@@ -357,7 +331,7 @@ public final class DeoptimizedFrame {
      * The new stack content for the target methods. In the second step of deoptimization this
      * content is built from the entries of {@link VirtualFrame}s.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected Deoptimizer.TargetContent getTargetContent() {
         return targetContent;
     }
@@ -366,7 +340,7 @@ public final class DeoptimizedFrame {
      * Returns the {@link PinnedObject} that ensures that this {@link DeoptimizedFrame} is not moved
      * by the GC. The {@link DeoptimizedFrame} is accessed during GC when walking the stack.
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PinnedObject getPin() {
         return pin;
     }

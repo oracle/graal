@@ -53,6 +53,7 @@ class ArtifactParser {
     private static final String JSON_NAME = "displayName";
     private static final String JSON_LICENSE = "licenseId";
     private static final String JSON_LICENSE_LABEL = "licenseName";
+    private static final String JSON_LICENSE_IMPLICITLY_ACCEPTED = "isLicenseImplicitlyAccepted";
     private static final String JSON_HASH = "checksum";
 
     private static final String META_VERSION = "version";
@@ -139,6 +140,14 @@ class ArtifactParser {
         return json.getString(JSON_LICENSE_LABEL);
     }
 
+    private boolean getIsImplicitlyAccepted() {
+        boolean out = false;
+        if (json.has(JSON_LICENSE_IMPLICITLY_ACCEPTED)) {
+            out = json.getBoolean(JSON_LICENSE_IMPLICITLY_ACCEPTED);
+        }
+        return out;
+    }
+
     private String getStability() {
         return getMetadata(META_STABILITY_LEVEL, () -> getMetadata(META_STABILITY));
     }
@@ -181,6 +190,7 @@ class ArtifactParser {
         info.setOrigin(connector.makeArtifactsURL(getJava()));
         info.setRemoteURL(connector.makeArtifactDownloadURL(getId()));
         info.setShaDigest(SystemUtils.toHashBytes(getChecksum()));
+        info.setImplicitlyAccepted(getIsImplicitlyAccepted());
         return info;
     }
 

@@ -1,8 +1,7 @@
 # File is formatted with
 # `jsonnetfmt --indent 2 --max-blank-lines 2 --sort-imports --string-style d --comment-style h -i ci.jsonnet`
 local common = import "../../../ci/ci_common/common.jsonnet";
-local composable = (import "../../../ci/ci_common/common-utils.libsonnet").composable;
-local sulong_deps = composable((import "../../../common.json").sulong.deps);
+local sulong_deps = common.deps.sulong;
 
 {
   local linux_amd64 = common.linux_amd64,
@@ -77,12 +76,12 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
     [b for b in result if !std.objectHasAll(b, "skipPlatform") || !b.skipPlatform]
   ,
 
-  linux_amd64:: linux_amd64 + sulong_deps.linux,
-  linux_aarch64:: linux_aarch64 + sulong_deps.linux,
+  linux_amd64:: linux_amd64 + sulong_deps,
+  linux_aarch64:: linux_aarch64 + sulong_deps,
   # Avoid darwin_sierra builders in our CI. This is missing a declaration (fmemopen) that some of our tests need.
-  darwin_amd64:: darwin_amd64 + sulong_deps.darwin_amd64 + { capabilities+: ["!darwin_sierra"] },
-  darwin_aarch64:: darwin_aarch64 + sulong_deps.darwin_aarch64,
-  windows_amd64:: windows_amd64 + sulong_deps.windows + {
+  darwin_amd64:: darwin_amd64 + sulong_deps + { capabilities+: ["!darwin_sierra"] },
+  darwin_aarch64:: darwin_aarch64 + sulong_deps,
+  windows_amd64:: windows_amd64 + sulong_deps + {
     packages+: common.devkits["windows-" + self.jdk].packages
   },
 
@@ -155,7 +154,7 @@ local sulong_deps = composable((import "../../../common.json").sulong.deps);
     gateTags:: std.split(tags, ","),
   },
 
-  style:: common.eclipse + common.jdt + $.gateTags("style,fullbuild") + {
+  style:: common.deps.eclipse + common.deps.jdt + $.gateTags("style,fullbuild") + {
     extra_gate_args+:: ["--strict-mode"],
   },
 

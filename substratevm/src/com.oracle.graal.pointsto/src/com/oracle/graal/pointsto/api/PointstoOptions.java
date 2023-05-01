@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.api;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import static org.graalvm.compiler.options.OptionType.Expert;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
@@ -82,7 +83,7 @@ public class PointstoOptions {
     public static final OptionKey<Boolean> PrintSynchronizedAnalysis = new OptionKey<>(false);
 
     @Option(help = "Analysis: Detect methods that return one of their parameters and hardwire the parameter straight to the return.")//
-    public static final OptionKey<Boolean> DivertParameterReturningMethod = new OptionKey<>(true);
+    public static final OptionKey<Boolean> OptimizeReturnedParameter = new OptionKey<>(true);
 
     @Option(help = "Enable extended asserts which slow down analysis.")//
     public static final OptionKey<Boolean> ExtendedAsserts = new OptionKey<>(false);
@@ -141,6 +142,12 @@ public class PointstoOptions {
 
     @Option(help = "Scan all objects reachable from roots for analysis. By default false.")//
     public static final OptionKey<Boolean> ExhaustiveHeapScan = new OptionKey<>(false);
+
+    @Option(help = "Run partial escape analysis on compiler graphs before static analysis.", type = Expert)//
+    public static final OptionKey<Boolean> EscapeAnalysisBeforeAnalysis = new OptionKey<>(true);
+
+    @Option(help = "Run conditional elimination before static analysis.", type = Expert)//
+    public static final OptionKey<Boolean> ConditionalEliminationBeforeAnalysis = new OptionKey<>(true);
 
     /**
      * Controls the static analysis context sensitivity. Available values:

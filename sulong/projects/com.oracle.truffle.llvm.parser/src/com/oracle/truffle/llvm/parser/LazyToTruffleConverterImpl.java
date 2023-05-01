@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +41,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis.LLVMLivenessAnalysisResult;
@@ -53,6 +51,7 @@ import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.Kind;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
+import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownTypedAttribute;
 import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
@@ -64,9 +63,6 @@ import com.oracle.truffle.llvm.parser.nodes.LLVMBitcodeInstructionVisitor;
 import com.oracle.truffle.llvm.parser.nodes.LLVMFunctionModifier;
 import com.oracle.truffle.llvm.parser.nodes.LLVMRuntimeDebugInformation;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
-import com.oracle.truffle.llvm.parser.util.LLVMControlFlowGraph;
-import com.oracle.truffle.llvm.parser.util.LLVMControlFlowGraph.CFGBlock;
-import com.oracle.truffle.llvm.parser.util.LLVMControlFlowGraph.CFGLoop;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -80,7 +76,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.UniquesRegion;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
@@ -88,6 +83,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMUnpackVarargsNodeGen;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -225,23 +221,12 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
         info.setBlocks(blockNodes);
 
-        int loopSuccessorSlot = -1;
-        if (nodeFactory.isCfgOsrEnabled() && !options.get(SulongEngineOption.AOTCacheStore)) {
-            LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
-            cfg.build();
-
-            if (cfg.isReducible() && cfg.getCFGLoops().size() > 0) {
-                loopSuccessorSlot = builder.addSlot(FrameSlotKind.Int, null, null);
-                resolveLoops(blockNodes, cfg, loopSuccessorSlot, exceptionSlot, info);
-            }
-        }
-
         LLVMSourceLocation location = method.getLexicalScope();
         rootFunction.setSourceLocation(LLVMSourceLocation.orDefault(location));
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(symbols).toArray(LLVMStatementNode.NO_STATEMENTS);
 
         FrameDescriptor frame = builder.build();
-        RootNode rootNode = nodeFactory.createFunction(exceptionSlot, blockNodes, uniquesRegion, copyArgumentsToFrameArray, frame, loopSuccessorSlot, info, method.getName(), method.getSourceName(),
+        RootNode rootNode = nodeFactory.createFunction(exceptionSlot, blockNodes, uniquesRegion, copyArgumentsToFrameArray, frame, info, method.getName(), method.getSourceName(),
                         method.getParameters().size(), source, location, rootFunction);
         method.onAfterParse();
 
@@ -271,40 +256,6 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
         }
         return neededForDebug;
-    }
-
-    private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info) {
-        // The original array is needed to access the frame nuller information for outgoing control
-        // flow egdes
-        LLVMBasicBlockNode[] originalBodyNodes = nodes.clone();
-        info.setBlocks(originalBodyNodes);
-        for (CFGLoop loop : cfg.getCFGLoops()) {
-            int headerId = loop.getHeader().id;
-            int[] indexMapping = new int[nodes.length];
-            Arrays.fill(indexMapping, -1);
-            List<LLVMStatementNode> bodyNodes = new ArrayList<>();
-            // add header to body nodes
-            LLVMBasicBlockNode header = nodes[headerId];
-            bodyNodes.add(header);
-            indexMapping[headerId] = 0;
-            // add body nodes
-            int i = 1;
-            for (CFGBlock block : loop.getBody()) {
-                bodyNodes.add(nodes[block.id]);
-                indexMapping[block.id] = i++;
-            }
-            int[] loopSuccessors = loop.getSuccessorIDs();
-            RepeatingNode loopBody = runtime.getNodeFactory().createLoopDispatchNode(exceptionSlot, Collections.unmodifiableList(bodyNodes), originalBodyNodes, headerId, indexMapping, loopSuccessors,
-                            loopSuccessorSlot);
-            LLVMControlFlowNode loopNode = runtime.getNodeFactory().createLoop(loopBody, loopSuccessors);
-            // replace header block with loop node
-            nodes[headerId] = LLVMBasicBlockNode.createBasicBlockNode(new LLVMStatementNode[0], loopNode, headerId, "loopAt" + headerId);
-            nodes[headerId].setNullableFrameSlots(header.nullableBefore, header.nullableAfter);
-            // remove inner loops to reduce number of nodes
-            for (CFGLoop innerLoop : loop.getInnerLoops()) {
-                nodes[innerLoop.getHeader().id] = null;
-            }
-        }
     }
 
     @Override
@@ -337,21 +288,33 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     }
 
     /**
-     * True when the function parameter has an LLVM byval attribute attached to it. This usually is
-     * the case for value parameters (e.g. struct Point p) which the compiler decides to pass
+     * Check whether the function parameter has an LLVM byval attribute attached to it. This usually
+     * is the case for value parameters (e.g. struct Point p) which the compiler decides to pass
      * through a pointer instead (by creating a copy sometime between the caller and the callee and
      * passing a pointer to that copy). In bitcode the copy's pointer is then tagged with a byval
      * attribute.
+     *
+     * @return the type of the by-value parameter, or null if the parameter is not by-value
      */
-    private static boolean functionParameterHasByValueAttribute(FunctionParameter parameter) {
+    private static Type functionParameterFindByValueAttribute(FunctionParameter parameter) {
         if (parameter.getParameterAttribute() != null) {
             for (Attribute a : parameter.getParameterAttribute().getAttributes()) {
                 if (a instanceof KnownAttribute && ((KnownAttribute) a).getAttr() == Kind.BYVAL) {
-                    return true;
+                    if (a instanceof KnownTypedAttribute) {
+                        return ((KnownTypedAttribute) a).getType();
+                    } else {
+                        /*
+                         * For dragonegg compatibility: GCC emits an untyped attribute. But on the
+                         * other hand, it won't emit opaque pointers.
+                         */
+                        PointerType parameterType = (PointerType) parameter.getType();
+                        assert parameterType.getPointeeType() != MetaType.UNKNOWN;
+                        return parameterType.getPointeeType();
+                    }
                 }
             }
         }
-        return false;
+        return null;
     }
 
     /**
@@ -381,24 +344,24 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
      * @param currentType Current member (for structs) or element (for arrays) type.
      * @param indices List of indices to reach this member or element from the toplevel object.
      */
-    private void copyStructArgumentsToFrame(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, int slot, int argIndex, PointerType topLevelPointerType, Type currentType,
+    private void copyStructArgumentsToFrame(List<LLVMStatementNode> initializers, NodeFactory nodeFactory, int slot, int argIndex, Type topLevelType, Type currentType,
                     ArrayDeque<Long> indices) {
         if (currentType instanceof StructureType || currentType instanceof ArrayType) {
             AggregateType t = (AggregateType) currentType;
 
             for (long i = 0; i < t.getNumberOfElements(); i++) {
                 indices.push(i);
-                copyStructArgumentsToFrame(initializers, nodeFactory, slot, argIndex, topLevelPointerType, t.getElementType(i), indices);
+                copyStructArgumentsToFrame(initializers, nodeFactory, slot, argIndex, topLevelType, t.getElementType(i), indices);
                 indices.pop();
             }
         } else {
-            LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(topLevelPointerType, slot), topLevelPointerType.getPointeeType(), indices);
+            LLVMExpressionNode targetAddress = getTargetAddress(CommonNodeFactory.createFrameRead(PointerType.PTR, slot), topLevelType, indices);
             /*
              * In case the source is a varargs list (va_list), we need to create a node that would
              * unpack it if it is, and do nothing if it isn't.
              */
-            LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, topLevelPointerType));
-            LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelPointerType.getPointeeType(), indices);
+            LLVMExpressionNode argMaybeUnpack = LLVMUnpackVarargsNodeGen.create(nodeFactory.createFunctionArgNode(argIndex, PointerType.PTR));
+            LLVMExpressionNode sourceAddress = getTargetAddress(argMaybeUnpack, topLevelType, indices);
             LLVMExpressionNode sourceLoadNode = nodeFactory.createLoad(currentType, sourceAddress);
             LLVMStatementNode storeNode = nodeFactory.createStore(targetAddress, sourceLoadNode, currentType);
             initializers.add(storeNode);
@@ -416,25 +379,25 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         // There's a struct return type.
         int argIndex = 1;
-        if (method.getType().getReturnType() instanceof StructureType) {
+        Type retType = method.getType().getReturnType();
+        if (retType instanceof StructureType || retType instanceof ArrayType) {
             argIndex++;
         }
 
         for (FunctionParameter parameter : parameters) {
             int slot = symbols.findOrAddFrameSlot(parameter);
 
-            if (parameter.getType() instanceof PointerType && functionParameterHasByValueAttribute(parameter)) {
+            Type byValType = functionParameterFindByValueAttribute(parameter);
+            if (parameter.getType() instanceof PointerType && byValType != null) {
                 // It's a struct passed as a pointer but originally passed by value (because LLVM
                 // and/or ABI), treat it as such.
-                PointerType pointerType = (PointerType) parameter.getType();
-                Type pointeeType = pointerType.getPointeeType();
                 GetStackSpaceFactory allocaFactory = GetStackSpaceFactory.createAllocaFactory();
-                LLVMExpressionNode allocation = allocaFactory.createGetStackSpace(nodeFactory, pointeeType);
+                LLVMExpressionNode allocation = allocaFactory.createGetStackSpace(nodeFactory, byValType);
 
-                formalParamInits.add(CommonNodeFactory.createFrameWrite(pointerType, allocation, slot));
+                formalParamInits.add(CommonNodeFactory.createFrameWrite(PointerType.PTR, allocation, slot));
 
                 ArrayDeque<Long> indices = new ArrayDeque<>();
-                copyStructArgumentsToFrame(formalParamInits, nodeFactory, slot, argIndex++, pointerType, pointeeType, indices);
+                copyStructArgumentsToFrame(formalParamInits, nodeFactory, slot, argIndex++, byValType, byValType, indices);
             } else {
                 LLVMExpressionNode parameterNode = nodeFactory.createFunctionArgNode(argIndex++, parameter.getType());
                 formalParamInits.add(CommonNodeFactory.createFrameWrite(parameter.getType(), parameterNode, slot));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,10 +43,10 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -101,7 +101,7 @@ public class NativeImageGeneratorRunner {
         int watchPID = extractWatchPID(arguments);
         TimerTask timerTask = null;
         if (watchPID >= 0) {
-            VMError.guarantee(OS.getCurrent().hasProcFS, SubstrateOptions.WATCHPID_PREFIX + " <pid> requires system with /proc");
+            UserError.guarantee(OS.getCurrent().hasProcFS, "%s <pid> requires system with /proc", SubstrateOptions.WATCHPID_PREFIX);
             timerTask = new TimerTask() {
                 int cmdlineHashCode = 0;
 
@@ -258,7 +258,7 @@ public class NativeImageGeneratorRunner {
 
     private static boolean isValidArchitecture() {
         final Architecture originalTargetArch = GraalAccess.getOriginalTarget().arch;
-        return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64;
+        return originalTargetArch instanceof AMD64 || originalTargetArch instanceof AArch64 || ShadowedRISCV64.instanceOf(originalTargetArch);
     }
 
     private static boolean isValidOperatingSystem() {
@@ -287,6 +287,7 @@ public class NativeImageGeneratorRunner {
         ForkJoinPool compilationExecutor = null;
 
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
+        Throwable vmError = null;
         boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = timerCollection.get(TimerCollection.Registry.CLASSLIST);
@@ -338,7 +339,7 @@ public class NativeImageGeneratorRunner {
                         }
                         if (className.isEmpty()) {
                             className = classLoader.getMainClassFromModule(mainModule)
-                                            .orElseThrow(() -> UserError.abort("module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
+                                            .orElseThrow(() -> UserError.abort("Module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
                         }
                         mainClass = classLoader.forName(className, mainModule);
                         if (mainClass == null) {
@@ -346,6 +347,12 @@ public class NativeImageGeneratorRunner {
                         }
                     } catch (ClassNotFoundException ex) {
                         throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
+                    } catch (UnsupportedClassVersionError ex) {
+                        throw UserError.abort("Unable to load '%s' due to a Java version mismatch.%n" +
+                                        "Please take one of the following actions:%n" +
+                                        " 1) Recompile the source files for your application using Java %s, then try running native-image again%n" +
+                                        " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n",
+                                        className, Runtime.version().feature());
                     }
                     String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
                     if (mainEntryPointName.isEmpty()) {
@@ -452,20 +459,18 @@ public class NativeImageGeneratorRunner {
             }
             return ExitStatus.BUILDER_ERROR.getValue();
         } catch (Throwable e) {
-            NativeImageGeneratorRunner.reportFatalError(e);
+            vmError = e;
             return ExitStatus.BUILDER_ERROR.getValue();
         } finally {
-            if (imageName != null && generator != null) {
-                reportEpilog(imageName, reporter, wasSuccessfulBuild, parsedHostedOptions);
-            }
+            reportEpilog(imageName, reporter, classLoader, vmError, parsedHostedOptions);
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }
         return ExitStatus.OK.getValue();
     }
 
-    protected void reportEpilog(String imageName, ProgressReporter reporter, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
-        reporter.printEpilog(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
+    protected void reportEpilog(String imageName, ProgressReporter reporter, ImageClassLoader classLoader, Throwable vmError, OptionValues parsedHostedOptions) {
+        reporter.printEpilog(Optional.ofNullable(imageName), Optional.ofNullable(generator), classLoader, Optional.ofNullable(vmError), parsedHostedOptions);
     }
 
     protected NativeImageGenerator createImageGenerator(ImageClassLoader classLoader, HostedOptionParser optionParser, Pair<Method, CEntryPointData> mainEntryPointData, ProgressReporter reporter) {
@@ -499,7 +504,7 @@ public class NativeImageGeneratorRunner {
 
     public static boolean verifyValidJavaVersionAndPlatform() {
         if (!isValidArchitecture()) {
-            reportToolUserError("runs on AMD64 and AArch64 only. Detected architecture: " + ClassUtil.getUnqualifiedName(GraalAccess.getOriginalTarget().arch.getClass()));
+            reportToolUserError("runs on AMD64, AArch64 and RISCV64 only. Detected architecture: " + ClassUtil.getUnqualifiedName(GraalAccess.getOriginalTarget().arch.getClass()));
         }
         if (!isValidOperatingSystem()) {
             reportToolUserError("runs on Linux, Mac OS X and Windows only. Detected OS: " + System.getProperty("os.name"));
@@ -515,20 +520,16 @@ public class NativeImageGeneratorRunner {
         if (NativeImageGenerator.includedIn(platform, Platform.AMD64.class)) {
             message.append("All AMD64 CPUFeatures: ").append(Arrays.toString(AMD64.CPUFeature.values()));
             if (arch instanceof AMD64) {
-                message.append("\nHost machine AMD64 CPUFeatures: ").append(((AMD64) arch).getFeatures().toString());
+                message.append(System.lineSeparator()).append("Host machine AMD64 CPUFeatures: ").append(((AMD64) arch).getFeatures().toString());
             }
         } else {
             assert NativeImageGenerator.includedIn(platform, Platform.AARCH64.class);
             message.append("All AArch64 CPUFeatures: ").append(Arrays.toString(AArch64.CPUFeature.values()));
             if (arch instanceof AArch64) {
-                message.append("\nHost machine AArch64 CPUFeatures: ").append(((AArch64) arch).getFeatures().toString());
+                message.append(System.lineSeparator()).append("Host machine AArch64 CPUFeatures: ").append(((AArch64) arch).getFeatures().toString());
             }
         }
         System.out.println(message);
-    }
-
-    public static String getJavaVersion() {
-        return System.getProperty("java.version");
     }
 
     /**
@@ -632,16 +633,12 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "jdk.internal.vm.compiler.management");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.graal.graal_enterprise");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
-            }
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.org.objectweb.asm");
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
-                ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
-                ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
-            }
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
         }
     }
 }

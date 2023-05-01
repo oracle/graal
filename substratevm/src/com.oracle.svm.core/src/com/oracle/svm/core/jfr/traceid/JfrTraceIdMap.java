@@ -65,7 +65,15 @@ public class JfrTraceIdMap {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void setId(int index, long id) {
+        assert traceIDs[index] == -1;
         traceIDs[index] = id;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    void tag(int index, long value) {
+        long id = traceIDs[index];
+        assert id != -1;
+        traceIDs[index] = id | value;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

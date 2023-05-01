@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ public class LLVM80BitMixedTests extends LLVM80BitTest {
 
     @Test
     public void testMinusOneLongToDouble() {
-        double oneLong = LLVM80BitFloat.fromLong(-1).getDoubleValue();
+        double oneLong = LLVM80BitFloat.fromLong(-1).toDoubleValue();
         assertBitEquals(-1.0, oneLong);
     }
 }

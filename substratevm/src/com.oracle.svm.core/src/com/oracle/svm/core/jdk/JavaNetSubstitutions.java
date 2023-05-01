@@ -141,7 +141,7 @@ class JavaNetFeature implements InternalFeature {
         JavaNetSubstitutions.defaultProtocols.forEach(protocol -> {
             if (!disabledURLProtocols.contains(protocol)) {
                 boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
-                VMError.guarantee(registered, "The URL protocol " + protocol + " is not available.");
+                VMError.guarantee(registered, "The URL protocol %s is not available.", protocol);
             }
         });
 
@@ -155,7 +155,7 @@ class JavaNetFeature implements InternalFeature {
                                 "The option " + JavaNetSubstitutions.enableProtocolsOption + protocol + " is not needed.");
             } else if (JavaNetSubstitutions.onDemandProtocols.contains(protocol)) {
                 boolean registered = JavaNetSubstitutions.addURLStreamHandler(protocol);
-                VMError.guarantee(registered, "The URL protocol " + protocol + " is not available.");
+                VMError.guarantee(registered, "The URL protocol %s is not available.", protocol);
             } else {
                 printWarning("The URL protocol " + protocol + " is not tested and might not work as expected." +
                                 System.lineSeparator() + JavaNetSubstitutions.supportedProtocols());
@@ -224,11 +224,11 @@ public final class JavaNetSubstitutions {
         URLStreamHandler result = URLProtocolsSupport.get(protocol);
         if (result == null) {
             if (onDemandProtocols.contains(protocol)) {
-                unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
+                unsupported("Accessing a URL protocol that was not enabled. The URL protocol " + protocol +
                                 " is supported but not enabled by default. It must be enabled by adding the " + enableProtocolsOption + protocol +
                                 " option to the native-image command.");
             } else {
-                unsupported("Accessing an URL protocol that was not enabled. The URL protocol " + protocol +
+                unsupported("Accessing a URL protocol that was not enabled. The URL protocol " + protocol +
                                 " is not tested and might not work as expected. It can be enabled by adding the " + enableProtocolsOption + protocol +
                                 " option to the native-image command.");
             }

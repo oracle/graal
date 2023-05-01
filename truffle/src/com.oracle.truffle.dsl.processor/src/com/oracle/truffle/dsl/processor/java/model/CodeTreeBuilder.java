@@ -99,22 +99,37 @@ public class CodeTreeBuilder {
     public CodeTreeBuilder javadocLink(Element element, String title) {
         string("{@link ");
         if (element.getKind().isClass() || element.getKind().isInterface()) {
-            type(element.asType());
+            push(element.asType(), true);
         } else if (element.getKind() == ElementKind.METHOD) {
             ExecutableElement e = (ExecutableElement) element;
-            type(e.getEnclosingElement().asType());
+            TypeElement enclosingType = (TypeElement) e.getEnclosingElement();
+            if (enclosingType != null) {
+                push(enclosingType.asType(), true);
+            }
+            string("#");
+            String name = element.getSimpleName().toString();
+            string(name);
+
+            if (enclosingType == null || ElementUtils.hasOverloads(enclosingType, e)) {
+                string("(");
+                String sep = "";
+                for (VariableElement var : e.getParameters()) {
+                    string(sep);
+                    push(var.asType(), true);
+                    sep = ", ";
+                }
+                string(")");
+            }
+        } else if (element.getKind() == ElementKind.FIELD || element.getKind() == ElementKind.PARAMETER) {
+            VariableElement e = (VariableElement) element;
+            Element enclosing = e.getEnclosingElement();
+            if (enclosing != null) {
+                push(enclosing.asType(), true);
+            }
             string("#");
             string(e.getSimpleName().toString());
-            string("(");
-            String sep = "";
-            for (VariableElement var : e.getParameters()) {
-                string(sep);
-                type(var.asType());
-                sep = ", ";
-            }
-            string(")");
         } else {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException(element.getKind().toString());
         }
         if (title != null && !title.isEmpty()) {
             string(" ", title);
@@ -130,6 +145,15 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder statement(String statement) {
         return startStatement().string(statement).end();
+    }
+
+    public CodeTreeBuilder statement(String statement, String... strings) {
+        startStatement();
+        string(statement);
+        for (String string : strings) {
+            string(string);
+        }
+        return end();
     }
 
     public CodeTreeBuilder statement(CodeTree statement) {
@@ -371,6 +395,10 @@ public class CodeTreeBuilder {
 
     public CodeTreeBuilder doubleQuote(String s) {
         return startGroup().string("\"" + s + "\"").end();
+    }
+
+    public CodeTreeBuilder string(int chunk1) {
+        return push(String.valueOf(chunk1));
     }
 
     public CodeTreeBuilder string(String chunk1) {
@@ -692,7 +720,7 @@ public class CodeTreeBuilder {
     }
 
     public CodeTreeBuilder typeLiteral(TypeMirror type) {
-        return startGroup().push(type, true).end();
+        return startGroup().push(type, true).string(".class").end();
     }
 
     private void assertRoot() {

@@ -220,7 +220,7 @@ class NativeImageBenchmarkMixin(object):
         """
         return []
 
-    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+    def extra_profile_run_arg(self, benchmark, args, image_run_args, should_strip_run_args):
         """Returns all arguments passed to the profiling run.
 
         This includes those passed globally on the `mx benchmark` command line after the last `--`.
@@ -246,13 +246,6 @@ class NativeImageBenchmarkMixin(object):
             return parsed_args[0]
         else:
             return None
-
-    def image_build_stats_file(self, bm_config, args):
-        parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.image-build-stats-file=', args, 'Image build stats file should be specified once')
-        if parsed_arg:
-            return parsed_arg
-        else:
-            return os.path.join(bm_config.output_dir, bm_config.executable_name + '-image-build-stats.json')
 
     def pgo_iteration_num(self, _, args):
         parsed_args = parse_prefixed_args('-Dnative-image.benchmark.pgo-iteration-num=', args)

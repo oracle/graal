@@ -418,6 +418,8 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
   {
     features->fAVX = 1;
     features->fVZEROUPPER = 1;
+    if (_cpuid_info->std_cpuid1_ecx.bits.f16c != 0)
+      features->fF16C = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx2 != 0)
       features->fAVX2 = 1;
     if (_cpuid_info->sef_cpuid7_ebx.bits.avx512f != 0 &&
@@ -430,6 +432,8 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
         features->fAVX512CD = 1;
       if (_cpuid_info->sef_cpuid7_ebx.bits.avx512dq != 0)
         features->fAVX512DQ = 1;
+      if (_cpuid_info->sef_cpuid7_ebx.bits.avx512ifma != 0)
+        features->fAVX512_IFMA = 1;
       if (_cpuid_info->sef_cpuid7_ebx.bits.avx512pf != 0)
         features->fAVX512PF = 1;
       if (_cpuid_info->sef_cpuid7_ebx.bits.avx512er != 0)
@@ -594,6 +598,7 @@ void determineCPUFeatures(CPUFeatures *features)
       features->fFLUSHOPT = 0;
       features->fGFNI = 0;
       features->fAVX512_BITALG = 0;
+      features->fAVX512_IFMA = 0;
     }
   }
 }
@@ -601,7 +606,7 @@ void determineCPUFeatures(CPUFeatures *features)
 #elif defined(__aarch64__)
 
 /*
- * The corresponding HotSpot code can be found in vm_version_bsd_aarch64.
+ * The corresponding HotSpot code can be found in vm_version_bsd_aarch64.cpp (218223e4a31d485935655cb3f186a752defd8fa8).
  */
 #if defined(__APPLE__)
 
@@ -618,29 +623,31 @@ static uint32_t cpu_has(const char* optional) {
 }
 
 void determineCPUFeatures(CPUFeatures* features) {
-  /*
-   * Note that Apple HW detection code is not accurate on older processors.
-   * All Apple devices have FP and ASIMD.
-   */
+  // All Apple devices have FP and ASIMD.
   features->fFP = 1;
   features->fASIMD = 1;
-  features->fEVTSTRM = 0;
-  features->fAES = 0;
-  features->fPMULL = 0;
-  features->fSHA1 = 0;
-  features->fSHA2 = 0;
-  features->fCRC32 = !!(cpu_has("hw.optional.armv8_crc32"));
-  features->fLSE = !!(cpu_has("hw.optional.armv8_1_atomics"));
+  // All Apple-darwin Arm processors have AES, PMULL, SHA1, and SHA2.
+  // For backward compatibility, do not check these CPU features as the
+  // corresponding string names are not available before xnu-8019.
+  features->fAES = 1;
+  features->fPMULL = 1;
+  features->fSHA1 = 1;
+  features->fSHA2 = 1;
+  // Checked in the Hotspot code.
+  features->fCRC32 =  !!(cpu_has("hw.optional.armv8_crc32"));
+  features->fLSE =    !!(cpu_has("hw.optional.arm.FEAT_LSE"))    | !!(cpu_has("hw.optional.armv8_1_atomics"));
+  features->fSHA512 = !!(cpu_has("hw.optional.arm.FEAT_SHA512")) | !!(cpu_has("hw.optional.armv8_2_sha512"));
+  features->fSHA3 =   !!(cpu_has("hw.optional.arm.FEAT_SHA3"))   | !!(cpu_has("hw.optional.armv8_2_sha3"));
+  // Not (yet) checked in the Hotspot code.
   features->fDCPOP = 0;
-  features->fSHA3 = 0;
-  features->fSHA512 = 0;
   features->fSVE = 0;
+  features->fSVEBITPERM = 0;
   features->fSVE2 = 0;
+  features->fEVTSTRM = 0;
   features->fSTXR_PREFETCH = 0;
   features->fA53MAC = 0;
   features->fDMB_ATOMICS = 0;
   features->fPACA = 0;
-  features->fSVEBITPERM = 0;
 }
 
 /*
@@ -776,9 +783,62 @@ void determineCPUFeatures(CPUFeatures* features) {
 }
 #endif
 
+#elif defined(__riscv)
+/*
+ * The corresponding HotSpot code can be found in vm_version_riscv and
+ * vm_version_linux_riscv.
+ */
+
+#include <sys/auxv.h>
+#include <asm/hwcap.h>
+#include "riscv64cpufeatures.h"
+
+#ifndef HWCAP_ISA_I
+#define HWCAP_ISA_I  (1 << ('I' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_M
+#define HWCAP_ISA_M  (1 << ('M' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_A
+#define HWCAP_ISA_A  (1 << ('A' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_F
+#define HWCAP_ISA_F  (1 << ('F' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_D
+#define HWCAP_ISA_D  (1 << ('D' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_C
+#define HWCAP_ISA_C  (1 << ('C' - 'A'))
+#endif
+
+#ifndef HWCAP_ISA_V
+#define HWCAP_ISA_V  (1 << ('V' - 'A'))
+#endif
+
+/*
+ * Extracts the CPU features by reading the hwcaps
+ */
+void determineCPUFeatures(CPUFeatures* features) {
+
+  unsigned long auxv = getauxval(AT_HWCAP);
+  features->fI = !!(auxv & HWCAP_ISA_I);
+  features->fM = !!(auxv & HWCAP_ISA_M);
+  features->fA = !!(auxv & HWCAP_ISA_A);
+  features->fF = !!(auxv & HWCAP_ISA_F);
+  features->fD = !!(auxv & HWCAP_ISA_D);
+  features->fC = !!(auxv & HWCAP_ISA_C);
+  features->fV = !!(auxv & HWCAP_ISA_V);
+}
+
 #else
 /*
- * Dummy for non AMD64 and non AArch64
+ * Dummy for non AMD64, non AArch64 and non RISCV64
  */
 void determineCPUFeatures(void* features) {
 }

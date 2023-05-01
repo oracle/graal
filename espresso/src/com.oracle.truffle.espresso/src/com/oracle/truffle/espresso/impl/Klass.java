@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -74,9 +76,11 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
+import com.oracle.truffle.espresso.nodes.interop.CandidateMethodWithArgs;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
+import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.OverLoadedMethodSelectorNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
@@ -219,25 +223,43 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     Object[] arguments,
                     @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
                     @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
-                    @Exclusive @Cached InvokeEspressoNode invoke)
+                    @Exclusive @Cached InvokeEspressoNode invoke,
+                    @Exclusive @Cached ToEspressoNode toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(this, member, true, true, arguments.length);
-        if (candidates != null) {
-            if (candidates.length == 1) {
-                Method method = candidates[0];
-                assert method.isStatic() && method.isPublic();
-                assert member.startsWith(method.getNameAsString());
-                assert method.getParameterCount() == arguments.length;
-
-                return invoke.execute(method, null, arguments);
-            } else {
-                OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = overloadSelector.execute(candidates, arguments);
-                if (typeMatched != null && typeMatched.length == 1) {
-                    return invoke.execute(typeMatched[0].getMethod(), null, typeMatched[0].getConvertedArgs(), true);
+        try {
+            if (candidates != null) {
+                if (candidates.length == 1) {
+                    Method method = candidates[0];
+                    assert method.isStatic() && method.isPublic();
+                    assert member.startsWith(method.getNameAsString());
+                    if (!method.isVarargs()) {
+                        assert method.getParameterCount() == arguments.length;
+                        return invoke.execute(method, null, arguments);
+                    } else {
+                        CandidateMethodWithArgs matched = MethodArgsUtils.matchCandidate(method, arguments, method.resolveParameterKlasses(), toEspressoNode);
+                        if (matched != null) {
+                            matched = MethodArgsUtils.ensureVarArgsArrayCreated(matched, toEspressoNode);
+                            if (matched != null) {
+                                return invoke.execute(matched.getMethod(), null, matched.getConvertedArgs(), true);
+                            }
+                        }
+                    }
+                } else {
+                    CandidateMethodWithArgs typeMatched = overloadSelector.execute(candidates, arguments);
+                    if (typeMatched != null) {
+                        return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
+                    }
                 }
             }
+            throw UnknownIdentifierException.create(member);
+        } catch (EspressoException e) {
+            if (e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
+                // rethrow the original foreign exception when leaving espresso interop
+                throw (AbstractTruffleException) getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(getLanguage());
+            }
+            throw e;
         }
-        throw UnknownIdentifierException.create(member);
     }
 
     @SuppressWarnings("static-method")
@@ -273,7 +295,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         }
 
-        return new KeysArray(members.toArray(new String[members.size()]));
+        return new KeysArray<>(members.toArray(new String[members.size()]));
     }
 
     protected static boolean isObjectKlass(Klass receiver) {
@@ -407,9 +429,9 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                     invoke.execute(initMethod, newObject, arguments);
                     return newObject;
                 } else {
-                    OverLoadedMethodSelectorNode.OverloadedMethodWithArgs[] typeMatched = overloadSelector.execute(initCandidates, arguments);
-                    if (typeMatched != null && typeMatched.length == 1) {
-                        return invoke.execute(typeMatched[0].getMethod(), null, typeMatched[0].getConvertedArgs(), true);
+                    CandidateMethodWithArgs typeMatched = overloadSelector.execute(initCandidates, arguments);
+                    if (typeMatched != null) {
+                        return invoke.execute(typeMatched.getMethod(), null, typeMatched.getConvertedArgs(), true);
                     }
                 }
             }
@@ -441,6 +463,44 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     @ExportMessage
     boolean isMetaInstance(Object instance) {
         return instance instanceof StaticObject && instanceOf((StaticObject) instance, this);
+    }
+
+    @ExportMessage
+    boolean hasMetaParents() {
+        if (isPrimitive()) {
+            return false;
+        }
+        if (isInterface()) {
+            return getSuperInterfaces().length > 0;
+        }
+        return this != getMeta().java_lang_Object;
+    }
+
+    @ExportMessage
+    Object getMetaParents() throws UnsupportedMessageException {
+        if (hasMetaParents()) {
+            Klass[] result;
+            if (isInterface()) {
+                ObjectKlass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length];
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i] = superInterfaces[i];
+                }
+            } else {
+                Klass superKlass = getSuperKlass();
+                Klass[] superInterfaces = getSuperInterfaces();
+                result = new Klass[superInterfaces.length + 1];
+                // put the super class first in array
+                result[0] = superKlass;
+
+                for (int i = 0; i < superInterfaces.length; i++) {
+                    result[i + 1] = superInterfaces[i];
+                }
+            }
+            return new KeysArray<>(result);
+        }
+        throw UnsupportedMessageException.create();
     }
 
     // endregion ### Meta-objects
@@ -576,7 +636,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * <li>C is not public, and C and D are members of the same run-time package.
      * </ul>
      */
-    public static boolean checkAccess(Klass klass, Klass accessingKlass) {
+    public static boolean checkAccess(Klass klass, Klass accessingKlass, boolean ignoreMagicAccessor) {
         if (accessingKlass == null) {
             return true;
         }
@@ -601,8 +661,23 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return true;
             }
         }
-        return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
 
+        if (ignoreMagicAccessor) {
+            /*
+             * Prevents any class inheriting from MagicAccessorImpl to have access to
+             * MagicAccessorImpl just because it implements MagicAccessorImpl.
+             * 
+             * Only generated accessors in the {sun|jdk.internal}.reflect package, defined by
+             * {sun|jdk.internal}.reflect.DelegatingClassLoader(s) have access to MagicAccessorImpl.
+             */
+            ObjectKlass magicAccessorImpl = context.getMeta().sun_reflect_MagicAccessorImpl;
+            return !StaticObject.isNull(accessingKlass.getDefiningClassLoader()) &&
+                            context.getMeta().sun_reflect_DelegatingClassLoader.equals(accessingKlass.getDefiningClassLoader().getKlass()) &&
+                            magicAccessorImpl.getRuntimePackage().equals(accessingKlass.getRuntimePackage()) &&
+                            magicAccessorImpl.isAssignableFrom(accessingKlass);
+        }
+
+        return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
     }
 
     public static boolean doModuleAccessChecks(Klass klass, Klass accessingKlass, EspressoContext context) {
@@ -685,6 +760,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     }
 
     @Override
+    @Idempotent
     public final boolean isInterface() {
         // conflict between ModifiersProvider and KlassRef interfaces,
         // so chose the default implementation in ModifiersProvider.
@@ -752,7 +828,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
 
     /**
      * Gets the array class type representing an array with elements of this type.
-     * 
+     *
      * This method is equivalent to {@link Klass#getArrayClass()}.
      */
     public final ArrayKlass array() {
@@ -905,7 +981,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (this.isPrimitive() || other.isPrimitive()) {
             // Reference equality is enough within the same context.
             assert this.getContext() == other.getContext();
-            return this == other;
+            assert this != other;
+            return false;
         }
         if (this.isArray()) {
             if (other.isArray()) {
@@ -913,7 +990,8 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
         } else {
             if (this.isFinalFlagSet()) {
-                return this == other;
+                assert this != other;
+                return false;
             }
         }
         if (Modifier.isInterface(getModifiers())) {
@@ -1359,18 +1437,10 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
      * Give the accessing klass if there is a chance the method to be resolved is a method handle
      * intrinsics.
      */
-    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode);
+    public abstract Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode);
 
     public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        return lookupMethod(methodName, signature, null, LookupMode.ALL);
-    }
-
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, LookupMode lookupMode) {
-        return lookupMethod(methodName, signature, null, lookupMode);
-    }
-
-    public final Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass) {
-        return lookupMethod(methodName, signature, accessingKlass, LookupMode.ALL);
+        return lookupMethod(methodName, signature, LookupMode.ALL);
     }
 
     public final Method vtableLookup(int vtableIndex) {
@@ -1428,10 +1498,14 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         if (this instanceof ObjectKlass && context.advancedRedefinitionEnabled()) {
             // getKlassVersion().getModifiers() introduces a ~10%
             // perf hit on some benchmarks, so put behind a check
-            return this.getClassModifiers();
+            return getRedefinitionAwareModifiers();
         } else {
             return modifiers;
         }
+    }
+
+    public int getRedefinitionAwareModifiers() {
+        return getModifiers();
     }
 
     /**

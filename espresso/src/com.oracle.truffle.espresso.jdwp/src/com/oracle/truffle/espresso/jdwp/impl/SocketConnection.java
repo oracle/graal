@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public final class SocketConnection implements Runnable {
         socketOutput = socket.getOutputStream();
     }
 
-    public void close() throws IOException {
+    public void close(DebuggerController controller) throws IOException {
         // send outstanding packets before closing
         while (!queue.isEmpty()) {
             for (PacketStream packetStream : queue) {
@@ -55,7 +55,7 @@ public final class SocketConnection implements Runnable {
                 try {
                     writePacket(shipment);
                 } catch (ConnectionClosedException e) {
-                    JDWP.LOGGER.finest("connection was closed when trying to flush queue");
+                    controller.finest(() -> "connection was closed when trying to flush queue");
                 }
             }
         }
@@ -63,7 +63,7 @@ public final class SocketConnection implements Runnable {
         if (!isOpen.tryAcquire()) {
             return;
         }
-        JDWP.LOGGER.fine("closing socket now");
+        controller.fine(() -> "closing socket now");
         socketOutput.close();
         socketInput.close();
         socket.close();
@@ -222,13 +222,13 @@ public final class SocketConnection implements Runnable {
         }
     }
 
-    public void sendVMDied(PacketStream stream) {
+    public void sendVMDied(PacketStream stream, DebuggerController controller) {
         byte[] shipment = stream.prepareForShipment();
         try {
             writePacket(shipment);
             socketOutput.flush();
         } catch (Exception e) {
-            JDWP.LOGGER.fine("sending VM_DEATH packet to client failed");
+            controller.fine(() -> "sending VM_DEATH packet to client failed");
         }
     }
 }

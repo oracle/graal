@@ -77,6 +77,9 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("java.util.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.util.concurrent.atomic.*", ConfigurationFilter.Inclusion.Include); // Atomic*FieldUpdater
         internalCallerFilter.addOrGetChildren("java.util.Collections", ConfigurationFilter.Inclusion.Include); // java.util.Collections.zeroLengthArray
+        internalCallerFilter.addOrGetChildren("java.util.random.*", ConfigurationFilter.Inclusion.Include); // RandomGeneratorFactory$$Lambda
+        // Exception constructors
+        internalCallerFilter.addOrGetChildren("java.util.concurrent.ForkJoinTask", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("javax.crypto.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.lang.model.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.net.**", ConfigurationFilter.Inclusion.Exclude);
@@ -92,6 +95,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("sun.launcher.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.misc.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.net.**", ConfigurationFilter.Inclusion.Exclude);
+        // Uses constructor reflection on exceptions
+        internalCallerFilter.addOrGetChildren("sun.net.www.protocol.http.*", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.nio.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.reflect.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.text.**", ConfigurationFilter.Inclusion.Exclude);
@@ -156,7 +161,7 @@ public final class AccessAdvisor {
         isInLivePhase = live;
     }
 
-    public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
+    public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass, boolean useLambdaHeuristics) {
         if (heuristicsEnabled && !isInLivePhase) {
             return true;
         }
@@ -173,12 +178,14 @@ public final class AccessAdvisor {
             return true;
         }
         if (heuristicsEnabled && queriedClass.get() != null) {
-            if (queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) ||
-                            PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches()) {
-                return true;
-            }
+            return (useLambdaHeuristics && queriedClass.get().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) ||
+                            PROXY_CLASS_NAME_PATTERN.matcher(queriedClass.get()).matches();
         }
         return false;
+    }
+
+    public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
+        return shouldIgnore(queriedClass, callerClass, true);
     }
 
     public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {

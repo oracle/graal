@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  * Copyright (c) 2020, Arm Limited.
  *
  * All rights reserved.
@@ -80,5 +80,10 @@ final class LinuxAArch64PlatformCapability extends BasicAarch64PlatformCapabilit
     @Override
     public OS getOS() {
         return OS.Linux;
+    }
+
+    @Override
+    public int getDoubleLongSize() {
+        return 128;
     }
 }

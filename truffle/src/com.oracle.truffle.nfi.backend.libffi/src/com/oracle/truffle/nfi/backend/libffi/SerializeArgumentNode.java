@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -57,7 +59,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.api.SerializableLibrary;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.ArrayType;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.BasicType;
@@ -285,7 +287,7 @@ abstract class SerializeArgumentNode extends Node {
     @ExportLibrary(InteropLibrary.class)
     static final class BufferSlice implements TruffleObject {
 
-        private final NativeArgumentBuffer buffer;
+        final NativeArgumentBuffer buffer;
         private final int startOffset;
         private final int limit;
 
@@ -303,11 +305,13 @@ abstract class SerializeArgumentNode extends Node {
             }
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasBufferElements() {
             return true;
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean isBufferWritable() {
             return true;
@@ -319,51 +323,64 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @ExportMessage
-        void writeBufferByte(long offset, byte value) throws InvalidBufferOffsetException {
-            setPosition(offset, Byte.BYTES);
-            buffer.putInt8(value);
+        boolean accepts(@Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) {
+            return buffer.getClass() == bufferType;
         }
 
         @ExportMessage
-        void writeBufferShort(ByteOrder order, long offset, short value) throws InvalidBufferOffsetException {
+        void writeBufferByte(long offset, byte value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
+            setPosition(offset, Byte.BYTES);
+            CompilerDirectives.castExact(buffer, bufferType).putInt8(value);
+        }
+
+        @ExportMessage
+        void writeBufferShort(ByteOrder order, long offset, short value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Short.BYTES);
-            buffer.putInt16(value);
+            CompilerDirectives.castExact(buffer, bufferType).putInt16(value);
         }
 
         @ExportMessage
-        void writeBufferInt(ByteOrder order, long offset, int value) throws InvalidBufferOffsetException {
+        void writeBufferInt(ByteOrder order, long offset, int value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Integer.BYTES);
-            buffer.putInt32(value);
+            CompilerDirectives.castExact(buffer, bufferType).putInt32(value);
         }
 
         @ExportMessage
-        void writeBufferLong(ByteOrder order, long offset, long value) throws InvalidBufferOffsetException {
+        void writeBufferLong(ByteOrder order, long offset, long value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Long.BYTES);
-            buffer.putInt64(value);
+            CompilerDirectives.castExact(buffer, bufferType).putInt64(value);
         }
 
         @ExportMessage
-        void writeBufferFloat(ByteOrder order, long offset, float value) throws InvalidBufferOffsetException {
+        void writeBufferFloat(ByteOrder order, long offset, float value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Float.BYTES);
-            buffer.putFloat(value);
+            CompilerDirectives.castExact(buffer, bufferType).putFloat(value);
         }
 
         @ExportMessage
-        void writeBufferDouble(ByteOrder order, long offset, double value) throws InvalidBufferOffsetException {
+        void writeBufferDouble(ByteOrder order, long offset, double value,
+                        @Shared @Cached("this.buffer.getClass()") Class<? extends NativeArgumentBuffer> bufferType) throws InvalidBufferOffsetException {
             assert order == ByteOrder.nativeOrder();
             setPosition(offset, Double.BYTES);
-            buffer.putDouble(value);
+            CompilerDirectives.castExact(buffer, bufferType).putDouble(value);
         }
 
+        @SuppressWarnings({"static-method", "unused"})
         @ExportMessage
         byte readBufferByte(long offset) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
+        @SuppressWarnings({"static-method", "unused"})
         @ExportMessage(name = "readBufferShort")
         @ExportMessage(name = "readBufferInt")
         @ExportMessage(name = "readBufferLong")
@@ -412,28 +429,30 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(limit = "3", replaces = {"putPointer", "putNull"})
-        void putGeneric(Object arg, NativeArgumentBuffer buffer,
+        static void putGeneric(Object arg, NativeArgumentBuffer buffer,
                         @CachedLibrary("arg") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Bind("type.size") int size,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (!interop.isPointer(arg)) {
                     interop.toNative(arg);
                 }
                 if (interop.isPointer(arg)) {
-                    buffer.putPointerKeepalive(arg, interop.asPointer(arg), type.size);
+                    buffer.putPointerKeepalive(arg, interop.asPointer(arg), size);
                     return;
                 }
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             if (interop.isNull(arg)) {
-                buffer.putPointer(0, type.size);
+                buffer.putPointer(0, size);
                 return;
             } else {
                 try {
                     if (interop.isNumber(arg)) {
-                        buffer.putPointer(interop.asLong(arg), type.size);
+                        buffer.putPointer(interop.asLong(arg), size);
                         return;
                     }
                 } catch (UnsupportedMessageException ex2) {
@@ -442,7 +461,7 @@ abstract class SerializeArgumentNode extends Node {
                 try {
                     // workaround: some objects do not yet adhere to the contract of
                     // toNative/isPointer/asPointer, ask for pointer one more time
-                    buffer.putPointerKeepalive(arg, interop.asPointer(arg), type.size);
+                    buffer.putPointerKeepalive(arg, interop.asPointer(arg), size);
                     return;
                 } catch (UnsupportedMessageException e) {
                     // fallthrough
@@ -477,12 +496,14 @@ abstract class SerializeArgumentNode extends Node {
         }
 
         @Specialization(limit = "3", replaces = {"putPointer", "putString", "putNull"})
-        void putGeneric(Object value, NativeArgumentBuffer buffer,
+        static void putGeneric(Object value, NativeArgumentBuffer buffer,
                         @CachedLibrary("value") InteropLibrary interop,
-                        @Cached BranchProfile exception) throws UnsupportedTypeException {
+                        @Bind("$node") Node node,
+                        @Bind("type.size") int size,
+                        @Cached InlinedBranchProfile exception) throws UnsupportedTypeException {
             try {
                 if (interop.isPointer(value)) {
-                    buffer.putPointerKeepalive(value, interop.asPointer(value), type.size);
+                    buffer.putPointerKeepalive(value, interop.asPointer(value), size);
                     return;
                 }
             } catch (UnsupportedMessageException ex) {
@@ -490,15 +511,15 @@ abstract class SerializeArgumentNode extends Node {
             }
             try {
                 if (interop.isString(value)) {
-                    buffer.putObject(TypeTag.STRING, interop.asString(value), type.size);
+                    buffer.putObject(TypeTag.STRING, interop.asString(value), size);
                     return;
                 }
             } catch (UnsupportedMessageException ex) {
                 // fallthrough
             }
-            exception.enter();
+            exception.enter(node);
             if (interop.isNull(value)) {
-                buffer.putPointer(0, type.size);
+                buffer.putPointer(0, size);
             } else {
                 throw UnsupportedTypeException.create(new Object[]{value});
             }
@@ -629,6 +650,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetByteArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -644,6 +666,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetShortArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -659,6 +682,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetIntArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -668,6 +692,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetLongArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -677,6 +702,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetFloatArrayTagNode extends GetTypeTagNode {
 
         @Specialization
@@ -686,6 +712,7 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
+    @GenerateInline(false)
     abstract static class GetDoubleArrayTagNode extends GetTypeTagNode {
 
         @Specialization

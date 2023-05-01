@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -44,7 +45,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
@@ -63,9 +63,9 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     private final HostedProviders analysisProviders;
 
     public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders,
-                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
+                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
                     SubstratePlatformConfigurationProvider platformConfig) {
-        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, nativeLibraries, classInitializationSupport, originalLoopsDataProvider, platformConfig);
+        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, originalLoopsDataProvider, platformConfig);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
     }
@@ -73,40 +73,39 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     @Override
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
-                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
+                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, WordTypes wordTypes, LoopsDataProvider loopsDataProvider) {
         return new HostedProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection,
                         wordTypes, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider);
     }
 
     @Override
-    protected LoweringProvider createLoweringProvider(Providers p) {
-        return SubstrateLoweringProvider.createForHosted(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
+    protected ConstantReflectionProvider createConstantReflectionProvider() {
+        return new HostedConstantReflectionProvider(hostVM, universe, new HostedMemoryAccessProvider((HostedMetaAccess) metaAccess));
     }
 
     @Override
-    protected ConstantReflectionProvider createConstantReflectionProvider(Providers p) {
-        return new HostedConstantReflectionProvider(hostVM, universe, metaAccess, new HostedMemoryAccessProvider((HostedMetaAccess) p.getMetaAccess()));
+    protected ConstantFieldProvider createConstantFieldProvider() {
+        return new HostedConstantFieldProvider(metaAccess, universe.hostVM());
     }
 
     @Override
-    protected SnippetReflectionProvider createSnippetReflectionProvider() {
-        return new HostedSnippetReflectionProvider(getWordTypes());
+    protected LoweringProvider createLoweringProvider(ForeignCallsProvider foreignCalls, MetaAccessExtensionProvider metaAccessExtensionProvider) {
+        return SubstrateLoweringProvider.createForHosted(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider);
+    }
+
+    @Override
+    protected SnippetReflectionProvider createSnippetReflectionProvider(WordTypes wordTypes) {
+        return new HostedSnippetReflectionProvider(wordTypes);
     }
 
     @Override
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider, getWordTypes());
+        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider, p.getWordTypes());
     }
 
     @Override
     protected CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
         return new HostedCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
-
-    @Override
-    protected ConstantFieldProvider createConstantFieldProvider(Providers p) {
-        return new HostedConstantFieldProvider(p.getMetaAccess(), classInitializationSupport, universe.hostVM());
-    }
-
 }

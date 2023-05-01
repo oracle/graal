@@ -28,7 +28,6 @@ import java.util.Collection;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -69,6 +68,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
      */
     protected volatile boolean allOriginalCallees = true;
 
+    @SuppressWarnings("this-escape")
     protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
         super(invokeLocation, null);
@@ -178,10 +178,16 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
             if (formalReceiverFlow != null) {
                 formalReceiverFlow.addReceiverState(bb, receiverTypeState);
             }
+        }
 
-            if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
+        if (bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
+            if (bb.optimizeReturnedParameter()) {
                 int paramIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
                 if (actualReturn != null && paramIndex == 0) {
+                    /*
+                     * The callee returns `this`. Propagate the receiver state to the actual-return.
+                     * See also InvokeTypeFlow#linkReturn() for more details.
+                     */
                     actualReturn.addState(bb, receiverTypeState);
                 }
             }
@@ -233,16 +239,27 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraphInfo calleeFlows) {
         if (bb.getHostVM().getMultiMethodAnalysisPolicy().performReturnLinking(callerMultiMethodKey, calleeFlows.getMethod().getMultiMethodKey())) {
             if (actualReturn != null) {
-                if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
+                if (bb.optimizeReturnedParameter()) {
                     int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
                     if (paramNodeIndex != -1) {
                         if (isStatic || paramNodeIndex != 0) {
                             TypeFlow<?> actualParam = actualParameters[paramNodeIndex];
                             actualParam.addUse(bb, actualReturn);
+                        } else {
+                            /*
+                             * The callee returns `this`. The formal-receiver state is updated in
+                             * InvokeTypeFlow#updateReceiver() for each linked callee and every time
+                             * the formal-receiver is updated then the same update state is
+                             * propagated to the actual-return. One may think that we could simply
+                             * add a direct use link from the formal-receiver in the callee to the
+                             * actual-return in the caller to get the state propagation
+                             * automatically. But that would be wrong because then the actual-return
+                             * would get the state from *all* the other places that callee may be
+                             * called from, and that would defeat the purpose of this optimization:
+                             * we want just the receiver state from the caller of current invoke to
+                             * reach the actual-return.
+                             */
                         }
-                        // else {
-                        // receiver object state is transferred in updateReceiver()
-                        // }
                     } else {
                         /*
                          * The callee may have a return type, hence the actualReturn is non-null,

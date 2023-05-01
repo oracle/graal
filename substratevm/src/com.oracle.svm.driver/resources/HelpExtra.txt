@@ -16,5 +16,29 @@ Non-standard options help:
     --diagnostics-mode    Enables logging of image-build information to a diagnostics folder.
     --dry-run             output the command line that would be used for building
 
+    --bundle-create[=new-bundle.nib]
+                          in addition to image building, create a Native Image bundle file (*.nib
+                          file) that allows rebuilding of that image again at a later point. If a
+                          bundle-file gets passed, the bundle will be created with the given
+                          name. Otherwise, the bundle-file name is derived from the image name.
+                          Note both bundle options can be combined with --dry-run to only perform
+                          the bundle operations without any actual image building.
+    --bundle-apply=some-bundle.nib
+                          an image will be built from the given bundle file with the exact same
+                          arguments and files that have been passed to native-image originally
+                          to create the bundle. Note that if an extra --bundle-create gets passed
+                          after --bundle-apply, a new bundle will be written based on the given
+                          bundle args plus any additional arguments that haven been passed
+                          afterwards. For example:
+                          > native-image --bundle-apply=app.nib --bundle-create=app_dbg.nib -g
+                          creates a new bundle app_dbg.nib based on the given app.nib bundle.
+                          Both bundles are the same except the new one also uses the -g option.
+
+    -E<env-var-key>[=<env-var-value>]
+                          allow native-image to access the given environment variable during
+                          image build. If the optional <env-var-value> is not given, the value
+                          of the environment variable will be taken from the environment
+                          native-image was invoked from.
+
     -V<key>=<value>       provide values for placeholders in native-image.properties files
 

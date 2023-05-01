@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.graal.llvm.util;
 
+import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.FALSE;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,8 +38,12 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMRelocationIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
 /**
  * LLVM target-specific inline assembly snippets and information.
@@ -44,6 +52,16 @@ public interface LLVMTargetSpecific {
     static LLVMTargetSpecific get() {
         return ImageSingletons.lookup(LLVMTargetSpecific.class);
     }
+
+    /**
+     * Snippet that gets the value of an arbitrary register.
+     */
+    String getRegisterInlineAsm(String register);
+
+    /**
+     * Snippet that sets the value of an arbitrary register.
+     */
+    String setRegisterInlineAsm(String register);
 
     /**
      * Snippet that jumps to a runtime-computed address.
@@ -88,6 +106,11 @@ public interface LLVMTargetSpecific {
     int getFramePointerDwarfRegNum();
 
     /**
+     * Offset between the stack pointer of the caller and the frame pointer of the callee.
+     */
+    long getCallerSPOffset();
+
+    /**
      * Additional target-specific options to be passed to the LLVM compiler.
      */
     default List<String> getLLCAdditionalOptions() {
@@ -106,6 +129,34 @@ public interface LLVMTargetSpecific {
      * A scratch register of the architecture.
      */
     String getScratchRegister();
+
+    /**
+     * Condition for adding section in sections info to avoid duplicates.
+     */
+    default boolean isSymbolValid(@SuppressWarnings("unused") String symbol) {
+        return true;
+    }
+
+    /**
+     * Extracts the instruction offset from the Stack Map section.
+     */
+    default int getInstructionOffset(ByteBuffer buffer, int offset, @SuppressWarnings("unused") LLVMSectionIteratorRef relocationsSectionIteratorRef,
+                    @SuppressWarnings("unused") LLVMRelocationIteratorRef relocationIteratorRef) {
+        return buffer.getInt(offset);
+    }
+
+    /**
+     * String representing the target for compilation.
+     */
+    default String getTargetTriple() {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            return "-unknown-darwin";
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
+            return "-unknown-linux-gnu";
+        } else {
+            throw shouldNotReachHere("Unexpected target for LLVM backend: " + ImageSingletons.lookup(Platform.class).toString());
+        }
+    }
 }
 
 @AutomaticallyRegisteredFeature
@@ -122,6 +173,15 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMTargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "movq %" + register + ", $0";
+            }
+
+            @Override
+            public String setRegisterInlineAsm(String register) {
+                return "movq $0, %" + register;
+            }
 
             @Override
             public String getJumpInlineAsm() {
@@ -135,7 +195,7 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
 
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
-                return "addq $0, %" + inputRegister;
+                return "addq %" + inputRegister + ", %" + outputRegister;
             }
 
             @Override
@@ -163,6 +223,11 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
             }
 
             @Override
+            public long getCallerSPOffset() {
+                return 2L * FrameAccess.wordSize();
+            }
+
+            @Override
             public int getStackPointerDwarfRegNum() {
                 return AMD64_RSP_IDX;
             }
@@ -186,6 +251,11 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
             public String getScratchRegister() {
                 return "rax";
             }
+
+            @Override
+            public String getTargetTriple() {
+                return "x86_64" + LLVMTargetSpecific.super.getTargetTriple();
+            }
         });
     }
 }
@@ -204,6 +274,15 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMTargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "MOV $0, " + getLLVMRegisterName(register);
+            }
+
+            @Override
+            public String setRegisterInlineAsm(String register) {
+                return "MOV " + getLLVMRegisterName(register) + ", $0";
+            }
 
             @Override
             public String getJumpInlineAsm() {
@@ -217,7 +296,7 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
 
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
-                return "ADD $0, " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+                return "ADD " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
             }
 
             @Override
@@ -240,6 +319,11 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
             @Override
             public int getFramePointerOffset() {
                 return -2 * FrameAccess.wordSize();
+            }
+
+            @Override
+            public long getCallerSPOffset() {
+                return 2L * FrameAccess.wordSize();
             }
 
             @Override
@@ -271,6 +355,137 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getScratchRegister() {
                 return "x16";
+            }
+
+            @Override
+            public String getTargetTriple() {
+                return "arm64" + LLVMTargetSpecific.super.getTargetTriple();
+            }
+        });
+    }
+}
+
+@AutomaticallyRegisteredFeature
+@Platforms(Platform.RISCV64.class)
+class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
+    private static final int RISCV64_FP_IDX = 8;
+    private static final int RISCV64_SP_IDX = 2;
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.useLLVMBackend();
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(LLVMTargetSpecific.class, new LLVMTargetSpecific() {
+            @Override
+            public String getRegisterInlineAsm(String register) {
+                return "mv $0, " + getLLVMRegisterName(register);
+            }
+
+            @Override
+            public String setRegisterInlineAsm(String register) {
+                return "mv " + getLLVMRegisterName(register) + ", $0";
+            }
+
+            @Override
+            public String getJumpInlineAsm() {
+                return "jr $0";
+            }
+
+            @Override
+            public String getLoadInlineAsm(String inputRegister, int offset) {
+                return "ld $0, " + offset + "(" + getLLVMRegisterName(inputRegister) + ")";
+            }
+
+            @Override
+            public String getAddInlineAssembly(String outputRegister, String inputRegister) {
+                return "add " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+            }
+
+            @Override
+            public String getLLVMArchName() {
+                return "riscv64";
+            }
+
+            /*
+             * All data push on the stack is in the call frame
+             */
+            @Override
+            public int getCallFrameSeparation() {
+                return 0;
+            }
+
+            /*
+             * The frame pointer is stored below the saved value for the return register.
+             */
+            @Override
+            public int getFramePointerOffset() {
+                return 0;
+            }
+
+            @Override
+            public long getCallerSPOffset() {
+                return 0;
+            }
+
+            @Override
+            public int getStackPointerDwarfRegNum() {
+                return RISCV64_SP_IDX;
+            }
+
+            @Override
+            public int getFramePointerDwarfRegNum() {
+                return RISCV64_FP_IDX;
+            }
+
+            @Override
+            public List<String> getLLCAdditionalOptions() {
+                List<String> list = new ArrayList<>();
+                list.add("--frame-pointer=all");
+                list.add("-mattr=+c,+d");
+                list.add("-target-abi=lp64d");
+                return list;
+            }
+
+            @Override
+            public String getScratchRegister() {
+                return "x5";
+            }
+
+            /*
+             * When compiling for RISC-V, llc produces labels in the intermediate files, which we
+             * must remove when we parse the code at the linking step.
+             */
+            @Override
+            public boolean isSymbolValid(String section) {
+                return !section.isEmpty() && !section.startsWith(".LBB");
+            }
+
+            /*
+             * We have the use the relocations to parse the instruction offset in RISC-V, as the
+             * offset is 0 otherwise, due to RISC-V specific relocations.
+             */
+            @Override
+            public int getInstructionOffset(ByteBuffer buffer, int offset, LLVMSectionIteratorRef relocationsSectionIteratorRef, LLVMRelocationIteratorRef relocationIteratorRef) {
+                while (LLVM.LLVMIsRelocationIteratorAtEnd(relocationsSectionIteratorRef, relocationIteratorRef) == FALSE && offset != LLVM.LLVMGetRelocationOffset(relocationIteratorRef)) {
+                    LLVM.LLVMMoveToNextRelocation(relocationIteratorRef);
+                }
+                if (offset == LLVM.LLVMGetRelocationOffset(relocationIteratorRef)) {
+                    LLVMSymbolIteratorRef firstSymbol = LLVM.LLVMGetRelocationSymbol(relocationIteratorRef);
+                    LLVM.LLVMMoveToNextRelocation(relocationIteratorRef);
+                    assert offset == LLVM.LLVMGetRelocationOffset(relocationIteratorRef);
+                    LLVMSymbolIteratorRef secondSymbol = LLVM.LLVMGetRelocationSymbol(relocationIteratorRef);
+                    return (int) (LLVM.LLVMGetSymbolAddress(firstSymbol) - LLVM.LLVMGetSymbolAddress(secondSymbol));
+                } else {
+                    throw shouldNotReachHere("Stack map has no relocation for offset " + offset);
+                }
+            }
+
+            @Override
+            public String getTargetTriple() {
+                return "riscv64" + LLVMTargetSpecific.super.getTargetTriple();
             }
         });
     }

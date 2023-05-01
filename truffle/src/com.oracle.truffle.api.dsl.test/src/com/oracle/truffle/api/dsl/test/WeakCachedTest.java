@@ -69,7 +69,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"truffle-inlining", "truffle-neverdefault", "truffle-sharing", "unused"})
 public class WeakCachedTest extends AbstractPolyglotTest {
 
     @Test

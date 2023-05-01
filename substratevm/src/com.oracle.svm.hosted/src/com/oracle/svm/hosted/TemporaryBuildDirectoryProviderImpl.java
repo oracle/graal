@@ -83,7 +83,10 @@ public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirect
                 }
             });
         } catch (IOException ex) {
-            throw VMError.shouldNotReachHere(ex);
+            throw VMError.shouldNotReachHere(
+                            String.format("Unable to remove the temporary build directory at '%s'. If you are using the '%s' option, you may want to delete the temporary directory manually.",
+                                            path, NativeImageOptions.TempDirectory.getName()),
+                            ex);
         }
     }
 }

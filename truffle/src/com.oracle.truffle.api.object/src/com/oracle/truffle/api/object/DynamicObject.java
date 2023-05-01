@@ -49,6 +49,7 @@ import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.TruffleObject;
 
 import sun.misc.Unsafe;
@@ -169,6 +170,7 @@ public abstract class DynamicObject implements TruffleObject {
      * @since 0.8 or earlier
      * @see Shape
      */
+    @NeverDefault
     public final Shape getShape() {
         return getShapeHelper(shape);
     }

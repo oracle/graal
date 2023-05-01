@@ -160,7 +160,7 @@ public class MarkLookBehindEntriesVisitor extends NFATraversalRegexASTVisitor {
     }
 
     @Override
-    protected boolean canTraverseLookArounds() {
+    protected boolean isBuildingDFA() {
         return true;
     }
 }

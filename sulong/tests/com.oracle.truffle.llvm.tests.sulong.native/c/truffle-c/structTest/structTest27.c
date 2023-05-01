@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,7 @@
 struct node {
     int data;
     struct node *next;
-} * head;
+} *head;
 
 int count() {
     struct node *n;
@@ -106,7 +106,7 @@ void insert(int num) {
     }
 }
 
-int delete (int num) {
+int delete(int num) {
     struct node *temp, *prev;
     temp = head;
     while (temp != NULL) {

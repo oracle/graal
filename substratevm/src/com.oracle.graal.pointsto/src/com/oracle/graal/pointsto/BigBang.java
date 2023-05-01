@@ -31,8 +31,8 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -43,6 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -69,7 +70,11 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
 
     OptionValues getOptions();
 
-    HostedProviders getProviders();
+    default HostedProviders getProviders(AnalysisMethod method) {
+        return getProviders(method.getMultiMethodKey());
+    }
+
+    HostedProviders getProviders(MultiMethod.MultiMethodKey key);
 
     List<DebugHandlersFactory> getDebugHandlerFactories();
 
@@ -82,6 +87,8 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
 
     SnippetReflectionProvider getSnippetReflectionProvider();
 
+    WordTypes getWordTypes();
+
     DebugContext getDebug();
 
     Runnable getHeartbeatCallback();
@@ -91,8 +98,6 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
     boolean strengthenGraalGraphs();
-
-    Replacements getReplacements();
 
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")
@@ -113,7 +118,7 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     }
 
     @SuppressWarnings("unused")
-    default void onTypeInitialized(AnalysisType type) {
+    default void onTypeReachable(AnalysisType type) {
     }
 
     void postTask(CompletionExecutor.DebugContextRunnable task);
@@ -128,5 +133,10 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
      */
     default void afterAnalysis() {
 
+    }
+
+    @SuppressWarnings("unused")
+    default AnalysisMethod fallbackResolveConcreteMethod(AnalysisType resolvingType, AnalysisMethod method) {
+        return null;
     }
 }

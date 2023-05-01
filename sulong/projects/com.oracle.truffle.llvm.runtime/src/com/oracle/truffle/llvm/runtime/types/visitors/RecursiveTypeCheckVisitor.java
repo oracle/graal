@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -105,11 +105,13 @@ public final class RecursiveTypeCheckVisitor implements TypeVisitor {
     @Override
     public void visit(PointerType type) {
         // do nothing - pointer are allowed to create cycles
-        Type pointeeType = type.getPointeeType();
-        if (isNamedStruct(pointeeType)) {
-            return;
+        if (!type.isOpaque()) {
+            Type pointeeType = type.getPointeeType();
+            if (isNamedStruct(pointeeType)) {
+                return;
+            }
+            check(pointeeType);
         }
-        check(pointeeType);
     }
 
     @Override

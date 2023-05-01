@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -53,7 +54,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertFromNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertToNativeNode;
 import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
@@ -83,7 +85,7 @@ final class NFIClosure implements TruffleObject {
             return ret;
         }
 
-        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"})
+        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"}, limit = "3")
         static Object doOptimizedDirect(NFIClosure receiver, Object[] args,
                         @Cached("receiver.signature.cachedState") SignatureCachedState cachedState,
                         @Cached("cachedState.createOptimizedClosureCall()") CallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
@@ -99,13 +101,14 @@ final class NFIClosure implements TruffleObject {
 
         @Specialization(guards = "receiver.signature.cachedState == null")
         static Object doSlowPath(NFIClosure receiver, Object[] args,
-                        @Cached BranchProfile exception,
+                        @Bind("$node") Node node,
+                        @Cached InlinedBranchProfile exception,
                         @Cached ConvertFromNativeNode convertArg,
                         @Cached ConvertToNativeNode convertRet,
                         @CachedLibrary("receiver.executable") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             NFISignature signature = receiver.signature;
             if (args.length != signature.nativeArgCount) {
-                exception.enter();
+                exception.enter(node);
                 throw ArityException.create(signature.nativeArgCount, signature.nativeArgCount, args.length);
             }
 
@@ -113,12 +116,12 @@ final class NFIClosure implements TruffleObject {
             int argIdx = 0;
             for (int i = 0; i < signature.nativeArgCount; i++) {
                 if (signature.argTypes[i].cachedState.managedArgCount == 1) {
-                    preparedArgs[argIdx++] = convertArg.execute(signature.argTypes[i], args[i]);
+                    preparedArgs[argIdx++] = convertArg.executeInlined(node, signature.argTypes[i], args[i]);
                 }
             }
 
             Object ret = interop.execute(receiver.executable, preparedArgs);
-            return convertRet.execute(signature.retType, ret);
+            return convertRet.executeInlined(node, signature.retType, ret);
         }
     }
 }

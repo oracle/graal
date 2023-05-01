@@ -106,10 +106,7 @@ final class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvoke
                  * Type states can be conservative, i.e., we can have receiver types that do not
                  * implement the method. Just ignore such types.
                  */
-                while (toi.hasNextObject(type)) {
-                    // skip the rest of the objects of the same type
-                    toi.nextObject(type);
-                }
+                toi.skipObjects(type);
                 continue;
             }
 

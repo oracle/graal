@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -146,6 +146,23 @@ public interface Platform {
         }
     }
 
+    /**
+     * Supported architecture: RISC-V 64-bit.
+     *
+     * @since 22.2
+     */
+    interface RISCV64 extends Platform {
+
+        /**
+         * Returns string representing RISCV64 architecture.
+         *
+         * @since 22.2
+         */
+        default String getArchitecture() {
+            return "riscv64";
+        }
+    }
+
     /*
      * The standard operating systems that are supported.
      */
@@ -162,7 +179,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return LINUX.class.getSimpleName().toLowerCase();
+            return "linux";
         }
     }
 
@@ -179,7 +196,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return ANDROID.class.getSimpleName().toLowerCase();
+            return "android";
         }
     }
 
@@ -204,7 +221,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return IOS.class.getSimpleName().toLowerCase();
+            return "ios";
         }
     }
 
@@ -238,7 +255,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return WINDOWS.class.getSimpleName().toLowerCase();
+            return "windows";
         }
     }
 
@@ -307,6 +324,23 @@ public interface Platform {
          * @since 19.0
          */
         public LINUX_AARCH64() {
+        }
+
+    }
+
+    /**
+     * Supported leaf platform: Linux on RISC-V 64-bit.
+     *
+     * @since 22.2
+     */
+    final class LINUX_RISCV64 implements LINUX, RISCV64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 22.2
+         */
+        public LINUX_RISCV64() {
         }
 
     }

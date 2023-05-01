@@ -129,6 +129,7 @@ public abstract class NativeImage extends AbstractImage {
     private final ObjectFile objectFile;
     private final int wordSize;
     private final Set<HostedMethod> uniqueEntryPoints = new HashSet<>();
+    private final MethodPointerRelocationProvider relocationProvider;
 
     private long imageHeapSize = -1;
 
@@ -143,18 +144,13 @@ public abstract class NativeImage extends AbstractImage {
         super(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageClassLoader);
 
         uniqueEntryPoints.addAll(entryPoints);
+        relocationProvider = MethodPointerRelocationProvider.singleton();
 
         int pageSize = SubstrateOptions.getPageSize();
         objectFile = ObjectFile.getNativeObjectFile(pageSize);
         objectFile.setByteOrder(ConfigurationValues.getTarget().arch.getByteOrder());
         wordSize = FrameAccess.wordSize();
         assert objectFile.getWordSizeInBytes() == wordSize;
-    }
-
-    @Override
-    public Section getTextSection() {
-        assert textSection != null;
-        return textSection;
     }
 
     @Override
@@ -184,7 +180,7 @@ public abstract class NativeImage extends AbstractImage {
         }
         if (NativeImageOptions.PrintImageElementSizes.getValue()) {
             for (Element e : objectFile.getElements()) {
-                System.out.printf("PrintImageElementSizes:  size: %15d  name: %s\n", e.getMemSize(objectFile.getDecisionsByElement()), e.getElementName());
+                System.out.printf("PrintImageElementSizes:  size: %15d  name: %s%n", e.getMemSize(objectFile.getDecisionsByElement()), e.getElementName());
             }
         }
     }
@@ -529,7 +525,7 @@ public abstract class NativeImage extends AbstractImage {
         return deduplicated.size() != heap.getObjectCount();
     }
 
-    private void markRelocationSitesFromBuffer(RelocatableBuffer buffer, ProgbitsSectionImpl sectionImpl) {
+    public void markRelocationSitesFromBuffer(RelocatableBuffer buffer, ProgbitsSectionImpl sectionImpl) {
         for (Map.Entry<Integer, RelocatableBuffer.Info> entry : buffer.getSortedRelocations()) {
             final int offset = entry.getKey();
             final RelocatableBuffer.Info info = entry.getValue();
@@ -584,7 +580,7 @@ public abstract class NativeImage extends AbstractImage {
         // A reference to a method. Mark the relocation site using the symbol name.
         Architecture arch = ConfigurationValues.getTarget().arch;
         assert (arch instanceof AArch64) || RelocationKind.getDirect(arch.getWordSize()) == info.getRelocationKind();
-        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), localSymbolNameForMethod(target), 0L);
+        relocationProvider.markMethodPointerRelocation(sectionImpl, offset, info.getRelocationKind(), target, methodPointer.isAbsolute());
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {

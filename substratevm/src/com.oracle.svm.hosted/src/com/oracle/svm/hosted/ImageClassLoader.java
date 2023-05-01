@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
@@ -41,7 +40,6 @@ import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.debug.GraalError;
@@ -163,7 +161,7 @@ public final class ImageClassLoader {
         try {
             initialAnnotationData = classAnnotationData.get(clazz);
         } catch (IllegalAccessException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
 
         boolean inPlatform = true;
@@ -220,7 +218,7 @@ public final class ImageClassLoader {
              */
             assert classAnnotationData.get(clazz) == initialAnnotationData;
         } catch (IllegalAccessException e) {
-            throw GraalError.shouldNotReachHere(e);
+            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -237,10 +235,6 @@ public final class ImageClassLoader {
 
     public Enumeration<URL> findResourcesByName(String resource) throws IOException {
         return classLoaderSupport.getClassLoader().getResources(resource);
-    }
-
-    public InputStream findResourceAsStreamByName(String resource) {
-        return classLoaderSupport.getClassLoader().getResourceAsStream(resource);
     }
 
     /**
@@ -413,32 +407,6 @@ public final class ImageClassLoader {
             if (classLoaderSupport.annotationExtractor.hasAnnotation(field, annotationClass)) {
                 result.add(field);
             }
-        }
-        return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    public List<Class<? extends Annotation>> allAnnotations() {
-        return StreamSupport.stream(applicationClasses.spliterator(), false)
-                        .filter(Class::isAnnotation)
-                        .map(clazz -> (Class<? extends Annotation>) clazz)
-                        .collect(Collectors.toList());
-    }
-
-    /**
-     * Returns all annotations on classes, methods, and fields (enabled or disabled based on the
-     * parameters) of the given annotation class.
-     */
-    public <T extends Annotation> List<T> findAnnotations(Class<T> annotationClass) {
-        List<T> result = new ArrayList<>();
-        for (Class<?> clazz : findAnnotatedClasses(annotationClass, false)) {
-            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(clazz, annotationClass, false));
-        }
-        for (Method method : findAnnotatedMethods(annotationClass)) {
-            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(method, annotationClass, false));
-        }
-        for (Field field : findAnnotatedFields(annotationClass)) {
-            result.add(classLoaderSupport.annotationExtractor.extractAnnotation(field, annotationClass, false));
         }
         return result;
     }

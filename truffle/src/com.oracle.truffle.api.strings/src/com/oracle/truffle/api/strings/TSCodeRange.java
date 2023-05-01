@@ -51,6 +51,11 @@ import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 final class TSCodeRange {
 
+    private static final int FLAG_MULTIBYTE = 1 << 3;
+    private static final int FLAG_IMPRECISE = 1 << 4;
+    private static final int MASK_ORDINAL = 0x7;
+    private static final int MASK_ORDINAL_MULTIBYTE = MASK_ORDINAL | FLAG_MULTIBYTE;
+
     /**
      * All codepoints are ASCII (0x00 - 0x7f).
      */
@@ -64,32 +69,51 @@ final class TSCodeRange {
      */
     private static final int CR_16BIT = 2;
     /**
-     * The string is encoded correctly in the given fixed-width encoding.
+     * The string is encoded correctly.
      */
-    private static final int CR_VALID_FIXED_WIDTH = 3;
+    private static final int CR_VALID = 3;
     /**
-     * The string is not encoded correctly in the given fixed-width encoding.
+     * The string is not encoded correctly.
      */
-    private static final int CR_BROKEN_FIXED_WIDTH = 4;
-    /**
-     * The string is encoded correctly in the given multi-byte/variable-width encoding.
-     */
-    private static final int CR_VALID_MULTIBYTE = 5;
-    /**
-     * The string is not encoded correctly in the given multi-byte/variable-width encoding.
-     */
-    private static final int CR_BROKEN_MULTIBYTE = 6;
-    /**
-     * No information about the string is known.
-     */
-    private static final int CR_UNKNOWN = 7;
+    private static final int CR_BROKEN = 4;
+    private static final int CR_VALID_MULTIBYTE = CR_VALID | FLAG_MULTIBYTE;
+    private static final int CR_BROKEN_MULTIBYTE = CR_BROKEN | FLAG_MULTIBYTE;
+
+    static int ordinal(int codeRange) {
+        return codeRange & MASK_ORDINAL;
+    }
+
+    static int ordinalAndMultibyteFlag(int codeRange) {
+        return codeRange & MASK_ORDINAL_MULTIBYTE;
+    }
 
     private static int maxCodePoint(int codeRange) {
-        return codeRange == CR_7BIT ? 0x7f : codeRange == CR_8BIT ? 0xff : codeRange == CR_16BIT ? 0xffff : 0x10ffff;
+        int ordinal = ordinal(codeRange);
+        return ordinal == CR_7BIT ? 0x7f : ordinal == CR_8BIT ? 0xff : ordinal == CR_16BIT ? 0xffff : 0x10ffff;
     }
 
     static boolean isCodeRange(int codeRange) {
-        return CR_7BIT <= codeRange && codeRange <= CR_UNKNOWN;
+        return CR_7BIT <= ordinal(codeRange) && ordinal(codeRange) <= CR_BROKEN && (codeRange >>> 6) == 0;
+    }
+
+    static int markImprecise(int codeRange) {
+        return codeRange | FLAG_IMPRECISE;
+    }
+
+    static boolean isFixedWidth(int codeRange) {
+        return (codeRange & FLAG_MULTIBYTE) == 0;
+    }
+
+    static boolean isFixedWidth(int codeRangeA, int codeRangeB) {
+        return ((codeRangeA | codeRangeB) & FLAG_MULTIBYTE) == 0;
+    }
+
+    static boolean isPrecise(int codeRange) {
+        return (codeRange & FLAG_IMPRECISE) == 0;
+    }
+
+    static boolean isPrecise(int codeRangeA, int codeRangeB) {
+        return ((codeRangeA | codeRangeB) & FLAG_IMPRECISE) == 0;
     }
 
     static int get7Bit() {
@@ -104,12 +128,20 @@ final class TSCodeRange {
         return CR_16BIT;
     }
 
+    static int getValid(boolean fixedWidth) {
+        return fixedWidth ? getValidFixedWidth() : getValidMultiByte();
+    }
+
+    static int getBroken(boolean fixedWidth) {
+        return fixedWidth ? getBrokenFixedWidth() : getBrokenMultiByte();
+    }
+
     static int getValidFixedWidth() {
-        return CR_VALID_FIXED_WIDTH;
+        return CR_VALID;
     }
 
     static int getBrokenFixedWidth() {
-        return CR_BROKEN_FIXED_WIDTH;
+        return CR_BROKEN;
     }
 
     static int getValidMultiByte() {
@@ -120,91 +152,75 @@ final class TSCodeRange {
         return CR_BROKEN_MULTIBYTE;
     }
 
-    static int getUnknown() {
-        return CR_UNKNOWN;
-    }
-
-    static boolean isUnknown(int codeRange) {
-        return codeRange == CR_UNKNOWN;
-    }
-
     static boolean is7Bit(int codeRange) {
-        return codeRange == CR_7BIT;
+        return ordinal(codeRange) == CR_7BIT;
     }
 
     static boolean is7Or8Bit(int codeRange) {
-        return codeRange <= CR_8BIT;
+        return ordinal(codeRange) <= CR_8BIT;
     }
 
     static boolean isUpTo16Bit(int codeRange) {
-        return codeRange <= CR_16BIT;
+        return ordinal(codeRange) <= CR_16BIT;
     }
 
     static boolean is8Bit(int codeRange) {
-        return codeRange == CR_8BIT;
+        return ordinal(codeRange) == CR_8BIT;
     }
 
     static boolean is16Bit(int codeRange) {
-        return codeRange == CR_16BIT;
+        return ordinal(codeRange) == CR_16BIT;
+    }
+
+    static boolean isValid(int codeRange) {
+        return ordinal(codeRange) == CR_VALID;
+    }
+
+    static boolean isBroken(int codeRange) {
+        return ordinal(codeRange) == CR_BROKEN;
     }
 
     static boolean isValidFixedWidth(int codeRange) {
-        return codeRange == CR_VALID_FIXED_WIDTH;
+        return ordinalAndMultibyteFlag(codeRange) == getValidFixedWidth();
     }
 
     static boolean isBrokenFixedWidth(int codeRange) {
-        return codeRange == CR_BROKEN_FIXED_WIDTH;
+        return ordinalAndMultibyteFlag(codeRange) == getBrokenFixedWidth();
     }
 
     static boolean isValidMultiByte(int codeRange) {
-        return codeRange == CR_VALID_MULTIBYTE;
+        return ordinalAndMultibyteFlag(codeRange) == getValidMultiByte();
     }
 
     static boolean isBrokenMultiByte(int codeRange) {
-        return codeRange == CR_BROKEN_MULTIBYTE;
+        return ordinalAndMultibyteFlag(codeRange) == getBrokenMultiByte();
     }
 
-    static boolean isBrokenMultiByteOrUnknown(int codeRange) {
-        return isBrokenMultiByte(codeRange) || isUnknown(codeRange);
-    }
-
-    static boolean isValidBrokenOrUnknownMultiByte(int codeRange) {
-        return codeRange >= CR_VALID_MULTIBYTE && codeRange <= CR_UNKNOWN;
-    }
-
-    static boolean isKnown(int codeRange) {
-        return !isUnknown(codeRange);
-    }
-
-    static boolean isKnown(int aCodeRange, int bCodeRange) {
-        return isKnown(aCodeRange) && isKnown(bCodeRange);
+    static boolean isValidOrBrokenMultiByte(int codeRange) {
+        return isValidMultiByte(codeRange) || isBrokenMultiByte(codeRange);
     }
 
     /**
      * Returns the more general code range of both parameters {@code a} and {@code b}.
      */
     static int commonCodeRange(int a, int b) {
-        return Math.max(a, b);
+        return isMoreGeneralThan(a, b) ? a : b;
     }
 
     static boolean isMoreRestrictiveThan(int a, int b) {
-        return a < b;
+        return ordinal(a) < ordinal(b);
     }
 
     static boolean isMoreRestrictiveOrEqual(int a, int b) {
-        return a <= b;
+        return ordinal(a) <= ordinal(b);
     }
 
     static boolean isMoreGeneralThan(int a, int b) {
-        return a > b;
+        return ordinal(a) > ordinal(b);
     }
 
     static boolean isUpToValidFixedWidth(int codeRange) {
-        return codeRange <= CR_VALID_FIXED_WIDTH;
-    }
-
-    static boolean isFixedWidth(int codeRange) {
-        return codeRange <= CR_BROKEN_FIXED_WIDTH;
+        return ordinal(codeRange) <= CR_VALID && isFixedWidth(codeRange);
     }
 
     static boolean isInCodeRange(int codepoint, int codeRange) {
@@ -212,14 +228,25 @@ final class TSCodeRange {
     }
 
     static int toStrideUTF16(int codeRange) {
-        return codeRange <= TSCodeRange.get8Bit() ? 0 : 1;
+        assert is7Or8Bit(codeRange) || isPrecise(codeRange);
+        return toStrideUTF16AllowImprecise(codeRange);
+    }
+
+    static int toStrideUTF16AllowImprecise(int codeRange) {
+        return is7Or8Bit(codeRange) ? 0 : 1;
     }
 
     static int toStrideUTF32(int codeRange) {
+        assert is7Or8Bit(codeRange) || isPrecise(codeRange);
+        return toStrideUTF32AllowImprecise(codeRange);
+    }
+
+    static int toStrideUTF32AllowImprecise(int codeRange) {
         assert isFixedWidth(codeRange);
-        if (codeRange > CR_16BIT) {
+        int ordinal = ordinal(codeRange);
+        if (ordinal > CR_16BIT) {
             return 2;
-        } else if (codeRange == CR_16BIT) {
+        } else if (ordinal == CR_16BIT) {
             return 1;
         }
         return 0;
@@ -230,10 +257,9 @@ final class TSCodeRange {
             return TSCodeRange.getBrokenFixedWidth();
         } else if (isLatin1(encoding)) {
             return TSCodeRange.get8Bit();
-        } else if (isBytes(encoding)) {
-            return TSCodeRange.getValidFixedWidth();
         } else {
-            return TSCodeRange.getUnknown();
+            assert isBytes(encoding);
+            return TSCodeRange.getValidFixedWidth();
         }
     }
 
@@ -245,7 +271,7 @@ final class TSCodeRange {
         } else if (isBytes(encoding)) {
             return TSCodeRange.getValidFixedWidth();
         } else {
-            return TSCodeRange.getUnknown();
+            return getUnknownCodeRangeForEncoding(encoding.id);
         }
     }
 
@@ -259,6 +285,16 @@ final class TSCodeRange {
         }
     }
 
+    static byte getUnknownCodeRangeForEncoding(int encoding) {
+        if (isLatin1(encoding)) {
+            return (byte) markImprecise(get8Bit());
+        }
+        if (isBytes(encoding)) {
+            return (byte) markImprecise(getValidFixedWidth());
+        }
+        return (byte) markImprecise(getBroken(Encoding.isFixedWidth(encoding)));
+    }
+
     static {
         staticAssertions();
     }
@@ -266,41 +302,62 @@ final class TSCodeRange {
     @SuppressWarnings("all")
     private static void staticAssertions() {
         assert toStrideUTF32(CR_7BIT) == 0;
+        assert toStrideUTF32(get7Bit()) == 0;
         assert toStrideUTF32(CR_8BIT) == 0;
+        assert toStrideUTF32(get8Bit()) == 0;
         assert toStrideUTF32(CR_16BIT) == 1;
-        assert toStrideUTF32(CR_VALID_FIXED_WIDTH) == 2;
-        assert toStrideUTF32(CR_BROKEN_FIXED_WIDTH) == 2;
+        assert toStrideUTF32(get16Bit()) == 1;
+        assert toStrideUTF32(CR_VALID) == 2;
+        assert toStrideUTF32(CR_BROKEN) == 2;
         assert maxCodePoint(CR_7BIT) == 0x7f;
+        assert maxCodePoint(get7Bit()) == 0x7f;
         assert maxCodePoint(CR_8BIT) == 0xff;
+        assert maxCodePoint(get8Bit()) == 0xff;
         assert maxCodePoint(CR_16BIT) == 0xffff;
-        assert maxCodePoint(CR_VALID_FIXED_WIDTH) == 0x10ffff;
-        assert maxCodePoint(CR_BROKEN_FIXED_WIDTH) == 0x10ffff;
-        assert maxCodePoint(CR_VALID_MULTIBYTE) == 0x10ffff;
-        assert maxCodePoint(CR_BROKEN_MULTIBYTE) == 0x10ffff;
-        assert maxCodePoint(CR_UNKNOWN) == 0x10ffff;
+        assert maxCodePoint(get16Bit()) == 0xffff;
+        assert maxCodePoint(CR_VALID) == 0x10ffff;
+        assert maxCodePoint(getValidFixedWidth()) == 0x10ffff;
+        assert maxCodePoint(getValidMultiByte()) == 0x10ffff;
+        assert maxCodePoint(CR_BROKEN) == 0x10ffff;
+        assert maxCodePoint(getBrokenFixedWidth()) == 0x10ffff;
+        assert maxCodePoint(getBrokenMultiByte()) == 0x10ffff;
     }
 
     @TruffleBoundary
     static String toString(int codeRange) {
-        switch (codeRange) {
+        switch (ordinal(codeRange)) {
             case CR_7BIT:
-                return "7Bit";
+                return "7Bit" + preciseFlagToString(codeRange);
             case CR_8BIT:
-                return "8Bit";
+                return "8Bit" + preciseFlagToString(codeRange);
             case CR_16BIT:
-                return "16Bit";
-            case CR_VALID_FIXED_WIDTH:
-                return "ValidFixedWidth";
-            case CR_BROKEN_FIXED_WIDTH:
-                return "BrokenFixedWidth";
-            case CR_VALID_MULTIBYTE:
-                return "ValidMultiByte";
-            case CR_BROKEN_MULTIBYTE:
-                return "BrokenMultiByte";
-            case CR_UNKNOWN:
-                return "Unknown";
+                return "16Bit" + preciseFlagToString(codeRange);
+            case CR_VALID:
+                return "Valid" + flagsToString(codeRange);
+            case CR_BROKEN:
+                return "Broken" + flagsToString(codeRange);
             default:
                 throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private static String preciseFlagToString(int codeRange) {
+        return isPrecise(codeRange) ? "" : "(imprecise)";
+    }
+
+    private static String flagsToString(int codeRange) {
+        if (isFixedWidth(codeRange)) {
+            if (isPrecise(codeRange)) {
+                return "(fixedWidth)";
+            } else {
+                return "(fixedWidth, imprecise)";
+            }
+        } else {
+            if (isPrecise(codeRange)) {
+                return "(multibyte)";
+            } else {
+                return "(multibyte, imprecise)";
+            }
         }
     }
 }

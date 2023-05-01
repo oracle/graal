@@ -35,11 +35,14 @@ local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 # VM
 local vm = import 'vm/ci/ci_includes/vm.jsonnet';
 
+# Visualizer
+local visualizer = import 'visualizer/ci/ci.jsonnet';
+
 local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
 
 {
-  # Ensure that entries in common.jsonnet can be resolved.
-  _checkCommon: (import 'ci/ci_common/common.jsonnet'),
+  # Ensure that non-hidden entries in ci/common.jsonnet and ci/ci_common/common.jsonnet can be resolved.
+  assert std.length(std.toString(import 'ci/ci_common/common.jsonnet')) > 0,
   ci_resources:: (import 'ci/ci_common/ci-resources.libsonnet'),
   overlay: graal_common.ci.overlay,
   specVersion: "3",
@@ -54,7 +57,8 @@ local verify_ci = (import 'ci/ci_common/ci-check.libsonnet').verify_ci;
     tools.builds +
     truffle.builds +
     javadoc.builds +
-    vm.builds
+    vm.builds +
+    visualizer.builds
   )],
   assert verify_ci(self.builds),
   // verify that the run-spec demo works

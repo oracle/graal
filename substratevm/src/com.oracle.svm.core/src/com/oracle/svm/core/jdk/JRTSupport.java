@@ -29,7 +29,9 @@ import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
@@ -42,6 +44,8 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.JRTSupport.JRTDisabled;
 import com.oracle.svm.core.jdk.JRTSupport.JRTEnabled;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -74,6 +78,21 @@ public final class JRTSupport {
         public boolean getAsBoolean() {
             return !Options.AllowJRTFileSystem.getValue();
         }
+    }
+}
+
+@AutomaticallyRegisteredFeature
+class JRTDisableFeature implements InternalFeature {
+
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !JRTSupport.Options.AllowJRTFileSystem.getValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        ServiceCatalogSupport.singleton().removeServicesFromServicesCatalog("java.nio.file.spi.FileSystemProvider", new HashSet<>(Arrays.asList("jdk.internal.jrtfs.JrtFileSystemProvider")));
     }
 }
 

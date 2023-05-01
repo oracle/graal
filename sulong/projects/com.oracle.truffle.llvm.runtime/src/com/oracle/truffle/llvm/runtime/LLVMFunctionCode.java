@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -366,11 +367,13 @@ public final class LLVMFunctionCode {
         }
     }
 
+    @Idempotent
     public boolean isLLVMIRFunction() {
         final LLVMFunctionCode.Function currentFunction = getFunction();
         return currentFunction instanceof LLVMFunctionCode.LLVMIRFunction || currentFunction instanceof LLVMFunctionCode.LazyLLVMIRFunction;
     }
 
+    @Idempotent
     public boolean isIntrinsicFunctionSlowPath() {
         CompilerAsserts.neverPartOfCompilation();
         return isIntrinsicFunction(ResolveFunctionNodeGen.getUncached());
@@ -380,6 +383,7 @@ public final class LLVMFunctionCode {
         return resolve.execute(getFunction(), this) instanceof LLVMFunctionCode.IntrinsicFunction;
     }
 
+    @Idempotent
     public boolean isNativeFunctionSlowPath() {
         CompilerAsserts.neverPartOfCompilation();
         return isNativeFunction(ResolveFunctionNodeGen.getUncached());

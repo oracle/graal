@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,7 +64,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -85,9 +84,8 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.access.SharedSecrets;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -136,7 +134,7 @@ public class LocalizationFeature implements InternalFeature {
 
     protected final boolean trace = Options.TraceLocalizationFeature.getValue();
 
-    private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? new ForkJoinPool(NativeImageOptions.NumberOfThreads.getValue()) : null;
+    private final ForkJoinPool compressionPool = Options.LocalizationCompressInParallel.getValue() ? ForkJoinPool.commonPool() : null;
 
     /**
      * The Locale that the native image is built for.
@@ -160,7 +158,7 @@ public class LocalizationFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResourceBundles = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Make all hosted charsets available at run time")//
         public static final HostedOptionKey<Boolean> AddAllCharsets = new HostedOptionKey<>(false);
@@ -173,7 +171,7 @@ public class LocalizationFeature implements InternalFeature {
         public static final HostedOptionKey<String> DefaultCharset = new HostedOptionKey<>(Charset.defaultCharset().name());
 
         @Option(help = "Comma separated list of locales to be included into the image. The default locale is included in the list automatically if not present.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeLocales = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeLocales = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Make all hosted locales available at run time.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
@@ -185,7 +183,7 @@ public class LocalizationFeature implements InternalFeature {
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
 
         @Option(help = "Regular expressions matching which bundles should be compressed.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LocalizationCompressBundles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LocalizationCompressBundles = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Compress the bundles in parallel.", type = OptionType.Expert)//
         public static final HostedOptionKey<Boolean> LocalizationCompressInParallel = new HostedOptionKey<>(true);
@@ -240,7 +238,7 @@ public class LocalizationFeature implements InternalFeature {
                     return field;
                 }
             }
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereUnexpectedInput(name); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -252,12 +250,12 @@ public class LocalizationFeature implements InternalFeature {
             defaultLocale = LocalizationSupport.parseLocaleFromTag(Options.DefaultLocale.getValue());
             UserError.guarantee(defaultLocale != null, "Invalid default locale %s", Options.DefaultLocale.getValue());
         }
+        String defaultCharsetOptionValue = Options.DefaultCharset.getValue();
         try {
-            defaultCharset = Charset.forName(Options.DefaultCharset.getValue());
-            VMError.guarantee(defaultCharset.name().equals(Options.DefaultCharset.getValue()),
-                            "Failed to locate charset " + Options.DefaultCharset.getValue() + ", instead " + defaultCharset.name() + " was provided");
+            defaultCharset = Charset.forName(defaultCharsetOptionValue);
+            VMError.guarantee(defaultCharset.name().equals(defaultCharsetOptionValue), "Failed to locate charset %s, instead %s was provided", defaultCharsetOptionValue, defaultCharset.name());
         } catch (IllegalCharsetNameException | UnsupportedCharsetException ex) {
-            throw UserError.abort(ex, "Invalid default charset %s", Options.DefaultCharset.getValue());
+            throw UserError.abort(ex, "Invalid default charset %s", defaultCharsetOptionValue);
         }
         allLocales.add(defaultLocale);
         support = selectLocalizationSupport();
@@ -278,17 +276,10 @@ public class LocalizationFeature implements InternalFeature {
         if (optimizedMode) {
             access.registerObjectReplacer(this::eagerlyInitializeBundles);
         }
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
-            parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
-        }
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
-            localeCacheField = access.findField("java.util.Locale$Cache", "LOCALECACHE");
-        } else {
-            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale", "CACHE");
-            localeCacheField = access.findField("java.util.Locale", "LOCALECACHE");
-        }
+        langAliasesCacheField = access.findField(CLDRLocaleProviderAdapter.class, "langAliasesCache");
+        parentLocalesMapField = access.findField(CLDRLocaleProviderAdapter.class, "parentLocalesMap");
+        baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
+        localeCacheField = access.findField("java.util.Locale$Cache", "LOCALECACHE");
         candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
         localeObjectCacheMapField = access.findField(LocaleObjectCache.class, "map");
 
@@ -346,10 +337,8 @@ public class LocalizationFeature implements InternalFeature {
         scanLocaleCache(access, baseLocaleCacheField);
         scanLocaleCache(access, localeCacheField);
         scanLocaleCache(access, candidatesCacheField);
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            access.rescanRoot(langAliasesCacheField);
-            access.rescanRoot(parentLocalesMapField);
-        }
+        access.rescanRoot(langAliasesCacheField);
+        access.rescanRoot(parentLocalesMapField);
     }
 
     private void scanLocaleCache(DuringAnalysisAccessImpl access, Field cacheFieldField) {
@@ -363,13 +352,6 @@ public class LocalizationFeature implements InternalFeature {
         }
         if (localeCache != null) {
             access.rescanField(localeCache, localeObjectCacheMapField);
-        }
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        if (compressionPool != null) {
-            compressionPool.shutdown();
         }
     }
 
@@ -591,7 +573,7 @@ public class LocalizationFeature implements InternalFeature {
          * Ensure that the bundle contents are loaded. We need to walk the whole bundle parent chain
          * down to the root.
          */
-        for (ResourceBundle cur = bundle; cur != null; cur = getParent(cur)) {
+        for (ResourceBundle cur = bundle; cur != null; cur = SharedSecrets.getJavaUtilResourceBundleAccess().getParent(cur)) {
             /* Register all bundles with their corresponding locales */
             support.prepareBundle(bundleName, cur, cur.getLocale());
         }
@@ -601,22 +583,6 @@ public class LocalizationFeature implements InternalFeature {
          * specific than the actual bundle locale
          */
         support.prepareBundle(bundleName, bundle, locale);
-    }
-
-    /*
-     * The field ResourceBundle.parent is not public. There is a backdoor to access it via
-     * SharedSecrets, but the package of SharedSecrets changed from JDK 8 to JDK 11 so it is
-     * inconvenient to use it. Reflective access is easier.
-     */
-    private static final Field PARENT_FIELD = ReflectionUtil.lookupField(ResourceBundle.class, "parent");
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static ResourceBundle getParent(ResourceBundle bundle) {
-        try {
-            return (ResourceBundle) PARENT_FIELD.get(bundle);
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal.code;
 
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 
@@ -59,14 +58,14 @@ public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtension
 
         // check if the method itself indicates it will not have a safepoint.
         SharedMethod sharedMethod = (SharedMethod) method;
-        if (Uninterruptible.Utils.isUninterruptible(sharedMethod)) {
+        if (sharedMethod.isUninterruptible()) {
             return false;
         }
 
         // for indirect calls, confirming all implementations also have safepoints.
         if (!isDirect) {
             for (SharedMethod implementation : sharedMethod.getImplementations()) {
-                if (Uninterruptible.Utils.isUninterruptible(implementation)) {
+                if (implementation.isUninterruptible()) {
                     return false;
                 }
             }

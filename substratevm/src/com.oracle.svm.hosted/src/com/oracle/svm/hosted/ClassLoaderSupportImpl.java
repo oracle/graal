@@ -59,6 +59,7 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.internal.module.Modules;
 
@@ -99,18 +100,31 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         return false;
     }
 
+    private record ResourceLookupInfo(ResolvedModule resolvedModule, Module module) {
+    }
+
+    private static Stream<ResourceLookupInfo> extractModuleLookupData(ModuleLayer layer) {
+        List<ResourceLookupInfo> data = new ArrayList<>(layer.configuration().modules().size());
+        for (ResolvedModule m : layer.configuration().modules()) {
+            Module module = layer.findModule(m.name()).orElse(null);
+            ResourceLookupInfo info = new ResourceLookupInfo(m, module);
+            data.add(info);
+        }
+        return data.stream();
+    }
+
     @Override
     public void collectResources(ResourceCollector resourceCollector) {
         /* Collect resources from modules */
         NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
-                        .flatMap(moduleLayer -> moduleLayer.configuration().modules().stream())
-                        .forEach(resolvedModule -> collectResourceFromModule(resourceCollector, resolvedModule));
+                        .flatMap(ClassLoaderSupportImpl::extractModuleLookupData)
+                        .forEach(lookup -> collectResourceFromModule(resourceCollector, lookup));
 
         /* Collect remaining resources from classpath */
         for (Path classpathFile : classLoaderSupport.classpath()) {
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector, classLoaderSupport);
+                    scanDirectory(classpathFile, resourceCollector);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
                     scanJar(classpathFile, resourceCollector);
                 }
@@ -120,12 +134,11 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void collectResourceFromModule(ResourceCollector resourceCollector, ResolvedModule resolvedModule) {
-        ModuleReference moduleReference = resolvedModule.reference();
+    private static void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
+        ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
-            String moduleName = resolvedModule.name();
             List<String> foundResources = moduleReader.list()
-                            .filter(resourceName -> resourceCollector.isIncluded(moduleName, resourceName, moduleReference.location().orElse(null)))
+                            .filter(resourceName -> resourceCollector.isIncluded(info.module, resourceName, moduleReference.location().orElse(null)))
                             .collect(Collectors.toList());
 
             for (String resName : foundResources) {
@@ -134,7 +147,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     continue;
                 }
                 try (InputStream is = content.get()) {
-                    resourceCollector.addResource(moduleName, resName, is, false);
+                    resourceCollector.addResource(info.module, resName, is, false);
                 }
             }
         } catch (IOException e) {
@@ -142,7 +155,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, NativeImageClassLoaderSupport support) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector) throws IOException {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -166,8 +179,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 }
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
-                    if (support.excludeDirectoriesRoot.equals(entry)) {
-                        filtered = filtered.filter(Predicate.not(support.excludeDirectories::contains));
+                    if (ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.equals(entry)) {
+                        filtered = filtered.filter(Predicate.not(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES::contains));
                     }
                     filtered.forEach(queue::push);
                 }

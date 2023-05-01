@@ -24,17 +24,16 @@
  */
 package com.oracle.svm.core.reflect;
 
-import static com.oracle.svm.core.util.VMError.unimplemented;
+import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.code.CodeInfoAccess;
-import com.oracle.svm.core.code.CodeInfoTable;
 
 /**
  * This class provides a "fake" constant pool to be used while parsing encoded annotation values in
@@ -55,84 +54,84 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitute
     public Class<?> getClassAt(int index) {
-        return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(CodeInfoTable.getImageCodeInfo()), index);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.MetadataAccessor.class).getClass(index);
     }
 
     @Substitute
     public Class<?> getClassAtIfLoaded(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     // Returns a class reference index for a method or a field.
     @Substitute
     public int getClassRefIndexAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     // Returns either a Method or Constructor.
     // Static initializers are returned as Method objects.
     @Substitute
     public Member getMethodAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public Member getMethodAtIfLoaded(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public Field getFieldAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public Field getFieldAtIfLoaded(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     // Fetches the class name, member (field, method or interface
     // method) name, and type descriptor as an array of three Strings
     @Substitute
     public String[] getMemberRefInfoAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     // Returns a name and type reference index for a method, a field or an invokedynamic.
     @Substitute
     public int getNameAndTypeRefIndexAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     // Fetches the name and type from name_and_type index as an array of two Strings
     @Substitute
     public String[] getNameAndTypeRefInfoAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public int getIntAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public long getLongAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public float getFloatAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public double getDoubleAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     public String getStringAt(int index) {
-        return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(CodeInfoTable.getImageCodeInfo()), index);
+        return ImageSingletons.lookup(ReflectionMetadataDecoder.MetadataAccessor.class).getString(index);
     }
 
     @Substitute
@@ -142,7 +141,7 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     @Substitute
     public Target_jdk_internal_reflect_ConstantPool_Tag getTagAt(int index) {
-        throw unimplemented();
+        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Delete private Object constantPoolOop;

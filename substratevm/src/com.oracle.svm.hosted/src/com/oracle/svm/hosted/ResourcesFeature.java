@@ -28,11 +28,17 @@ package com.oracle.svm.hosted;
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.nio.file.FileSystem;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,15 +49,24 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -67,9 +82,13 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * <p>
@@ -106,10 +125,10 @@ public final class ResourcesFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Regexp to match names of resources to be included in the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
         @Option(help = "Regexp to match names of resources to be excluded from the image.", type = OptionType.User)//
-        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ExcludeResources = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
     }
 
     private boolean sealed = false;
@@ -118,7 +137,7 @@ public final class ResourcesFeature implements InternalFeature {
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
 
-    public final Set<String> includedResourcesModules = new HashSet<>();
+    public final Set<Module> includedResourcesModules = new HashSet<>();
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
@@ -140,8 +159,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
-            var moduleName = module.isNamed() ? module.getName() : null;
-            Resources.registerResource(moduleName, resourcePath, resourceContent);
+            Resources.registerResource(module, resourcePath, resourceContent);
         }
 
         @Override
@@ -210,7 +228,7 @@ public final class ResourcesFeature implements InternalFeature {
         private final DebugContext debugContext;
         private final ResourcePattern[] includePatterns;
         private final ResourcePattern[] excludePatterns;
-        private final Set<String> includedResourcesModules;
+        private final Set<Module> includedResourcesModules;
 
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
@@ -221,7 +239,7 @@ public final class ResourcesFeature implements InternalFeature {
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<String> includedResourcesModules,
+        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Set<Module> includedResourcesModules,
                         Runnable heartbeatCallback) {
             this.debugContext = debugContext;
             this.includePatterns = includePatterns;
@@ -255,7 +273,7 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public boolean isIncluded(String moduleName, String resourceName, URI resource) {
+        public boolean isIncluded(Module module, String resourceName, URI resource) {
             this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
 
             this.reachedResourceEntries.increment();
@@ -264,6 +282,7 @@ public final class ResourcesFeature implements InternalFeature {
             }
 
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
+            String moduleName = module == null ? null : module.getName();
 
             for (ResourcePattern rp : excludePatterns) {
                 if (!rp.moduleNameMatches(moduleName)) {
@@ -287,20 +306,20 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         @Override
-        public void addResource(String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
-            collectModuleName(moduleName);
-            registerResource(debugContext, moduleName, resourceName, resourceStream, fromJar);
+        public void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
+            collectModule(module);
+            registerResource(debugContext, module, resourceName, resourceStream, fromJar);
         }
 
         @Override
-        public void addDirectoryResource(String moduleName, String dir, String content, boolean fromJar) {
-            collectModuleName(moduleName);
-            registerDirectoryResource(debugContext, moduleName, dir, content, fromJar);
+        public void addDirectoryResource(Module module, String dir, String content, boolean fromJar) {
+            collectModule(module);
+            registerDirectoryResource(debugContext, module, dir, content, fromJar);
         }
 
-        private void collectModuleName(String moduleName) {
-            if (moduleName != null) {
-                includedResourcesModules.add(moduleName);
+        private void collectModule(Module module) {
+            if (module != null && module.isNamed()) {
+                includedResourcesModules.add(module);
             }
         }
     }
@@ -390,20 +409,63 @@ public final class ResourcesFeature implements InternalFeature {
     }
 
     @SuppressWarnings("try")
-    private static void registerResource(DebugContext debugContext, String moduleName, String resourceName, InputStream resourceStream, boolean fromJar) {
+    private static void registerResource(DebugContext debugContext, Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
+            String moduleNamePrefix = module == null ? "" : module.getName() + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
-            Resources.registerResource(moduleName, resourceName, resourceStream, fromJar);
+            Resources.registerResource(module, resourceName, resourceStream, fromJar);
         }
     }
 
     @SuppressWarnings("try")
-    private static void registerDirectoryResource(DebugContext debugContext, String moduleName, String dir, String content, boolean fromJar) {
+    private static void registerDirectoryResource(DebugContext debugContext, Module module, String dir, String content, boolean fromJar) {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            String moduleNamePrefix = moduleName == null ? "" : moduleName + ":";
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, moduleName, dir);
-            Resources.registerDirectoryResource(moduleName, dir, content, fromJar);
+            String moduleNamePrefix = module == null ? "" : module.getName() + ":";
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, dir);
+            Resources.registerDirectoryResource(module, dir, content, fromJar);
         }
+    }
+
+    @Override
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        Method[] resourceMethods = {
+                        ReflectionUtil.lookupMethod(Class.class, "getResource", String.class),
+                        ReflectionUtil.lookupMethod(Class.class, "getResourceAsStream", String.class)
+        };
+        Method resolveResourceName = ReflectionUtil.lookupMethod(Class.class, "resolveName", String.class);
+
+        for (Method method : resourceMethods) {
+            registerResourceRegistrationPlugin(plugins.getInvocationPlugins(), method, snippetReflection, resolveResourceName);
+        }
+    }
+
+    private void registerResourceRegistrationPlugin(InvocationPlugins plugins, Method method, SnippetReflectionProvider snippetReflectionProvider, Method resolveResourceName) {
+        List<Class<?>> parameterTypes = new ArrayList<>();
+        assert !Modifier.isStatic(method.getModifiers());
+        parameterTypes.add(InvocationPlugin.Receiver.class);
+        parameterTypes.addAll(Arrays.asList(method.getParameterTypes()));
+
+        plugins.register(method.getDeclaringClass(), new InvocationPlugin.RequiredInvocationPlugin(method.getName(), parameterTypes.toArray(new Class<?>[0])) {
+            @Override
+            public boolean isDecorator() {
+                return true;
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                try {
+                    if (!sealed && receiver.isConstant() && arg.isJavaConstant() && !arg.isNullConstant()) {
+                        Class<?> clazz = snippetReflectionProvider.asObject(Class.class, receiver.get().asJavaConstant());
+                        String resource = snippetReflectionProvider.asObject(String.class, arg.asJavaConstant());
+                        String resourceName = (String) resolveResourceName.invoke(clazz, resource);
+                        b.add(new ReachabilityRegistrationNode(() -> RuntimeResourceAccess.addResource(clazz.getModule(), resourceName)));
+                        return true;
+                    }
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw VMError.shouldNotReachHere(e);
+                }
+                return false;
+            }
+        });
     }
 }

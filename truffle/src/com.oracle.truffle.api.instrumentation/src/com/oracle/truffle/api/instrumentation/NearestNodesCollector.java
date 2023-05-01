@@ -362,8 +362,20 @@ final class NearestNodesCollector {
 
     static boolean isCloser(NodeSection newNearest, SourceSection rootSourceSection, Node oldNearestNode, SourceSection oldNearestSourceSection, NearestSectionFilter filter,
                     Set<Class<? extends Tag>> allTags) {
+        SourceSection oldRootSection = oldNearestNode.getRootNode().getSourceSection();
+        if (oldRootSection != null && rootSourceSection != null && !oldRootSection.equals(rootSourceSection)) {
+            // We are in different roots
+            if (isEnclosing(oldRootSection, rootSourceSection) && filter.getPosition().isIn(oldRootSection)) {
+                // the old one is within the new one, we prefer the old one
+                return false;
+            }
+            if (isEnclosing(rootSourceSection, oldRootSection) && filter.getPosition().isIn(rootSourceSection)) {
+                // the new one is within the old one, we prefer the new one
+                return true;
+            }
+        }
         NearestNodesCollector collector = new NearestNodesCollector(filter);
-        collector.loadedSection(oldNearestNode, oldNearestSourceSection, oldNearestNode.getRootNode().getSourceSection());
+        collector.loadedSection(oldNearestNode, oldNearestSourceSection, oldRootSection);
         collector.loadedSection(newNearest.node, newNearest.section, rootSourceSection);
         NodeSection nearest = collector.getNearest(allTags);
         // Return true when the new is the nearest one.
@@ -540,14 +552,15 @@ final class NearestNodesCollector {
             }
             if (line > 0 && section.hasLines()) {
                 if (section.getStartLine() <= line && line <= section.getEndLine()) {
-                    if (column > 0 && section.hasColumns()) {
+                    if (section.hasColumns()) {
+                        int theColumn = column > 0 ? column : 1; // The column, or the start of line
                         if (section.getStartLine() == line) {
-                            if (column < section.getStartColumn()) {
+                            if (theColumn < section.getStartColumn()) {
                                 return false;
                             }
                         }
                         if (section.getEndLine() == line) {
-                            if (section.getEndColumn() < column) {
+                            if (section.getEndColumn() < theColumn) {
                                 return false;
                             }
                         }

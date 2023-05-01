@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static java.nio.charset.StandardCharsets.UTF_16;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
@@ -52,7 +53,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
@@ -89,6 +89,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -104,7 +105,16 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.api.test.TestAPIAccessor;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
+import com.oracle.truffle.api.test.common.TestUtils;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
@@ -112,42 +122,33 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.OSUtils;
-import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
-import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-public class TruffleFileTest extends AbstractPolyglotTest {
+public class TruffleFileTest {
 
     private static Path languageHome;
     private static Path languageHomeFile;
-    private static Path stdLib;
     private static Path stdLibFile;
     private static Path nonLanguageHomeFile;
-
-    @BeforeClass
-    public static void runWithWeakEncapsulationOnly() {
-        TruffleTestAssumptions.assumeWeakEncapsulation();
-    }
 
     @BeforeClass
     public static void setUpClass() throws Exception {
         languageHome = Files.createTempDirectory(TruffleFileTest.class.getSimpleName());
         languageHomeFile = languageHome.resolve("homeFile");
         Files.write(languageHomeFile, Collections.singleton(languageHomeFile.getFileName().toString()));
-        stdLib = Files.createDirectory(languageHome.resolve("stdlib"));
+        Path stdLib = Files.createDirectory(languageHome.resolve("stdlib"));
         stdLibFile = stdLib.resolve("stdLibFile");
         Files.write(stdLibFile, Collections.singleton(stdLibFile.getFileName().toString()));
-        System.setProperty("org.graalvm.language.InternalTruffleFileTestLanguage.home", languageHome.toAbsolutePath().toString());
         nonLanguageHomeFile = Files.createTempFile(TruffleFileTest.class.getSimpleName(), "");
         Files.write(nonLanguageHomeFile, Collections.singleton(nonLanguageHomeFile.getFileName().toString()));
     }
@@ -155,8 +156,6 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     @AfterClass
     public static void tearDownClass() throws Exception {
         if (languageHome != null) {
-            System.getProperties().remove("org.graalvm.language.InternalTruffleFileTestLanguage.home");
-            resetLanguageHomes();
             delete(languageHome);
             delete(nonLanguageHomeFile);
         }
@@ -168,19 +167,8 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     private static final Predicate<TruffleFile> ALL_FILES_RECOGNIZER = (tf) -> true;
 
-    public TruffleFileTest() {
-        needsLanguageEnv = true;
-    }
-
-    @Before
-    public void setUp() throws Exception {
-        setupEnv();
-        resetLanguageHomes();
-    }
-
     @After
     public void tearDown() throws Exception {
-        resetLanguageHomes();
         for (Class<? extends BaseDetector> clz : Arrays.asList(Language1Detector.class, Language2Detector.class)) {
             BaseDetector instance = BaseDetector.getInstance(clz);
             if (instance != null) {
@@ -191,195 +179,267 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testToAbsolutePath() {
-        TruffleFile file = languageEnv.getPublicTruffleFile(OSUtils.isUnix() ? "/a/b" : "C:/a/b");
-        Assert.assertTrue(file.isAbsolute());
-        Assert.assertEquals(file, file.getAbsoluteFile());
-        testToAbsolutePathImpl("");
-        testToAbsolutePathImpl("a");
-        testToAbsolutePathImpl("a/b");
-        testToAbsolutePathImpl(".");
-        testToAbsolutePathImpl("./");
-        testToAbsolutePathImpl("..");
-        testToAbsolutePathImpl("a/../");
-        testToAbsolutePathImpl("./a/b");
-        testToAbsolutePathImpl("a/../b");
-        testToAbsolutePathImpl("a/../../");
-
-        languageEnv.setCurrentWorkingDirectory(languageEnv.getPublicTruffleFile(OSUtils.isUnix() ? "/" : "C:/"));
-        testToAbsolutePathImpl("");
-        testToAbsolutePathImpl("a");
-        testToAbsolutePathImpl("a/b");
-        testToAbsolutePathImpl(".");
-        testToAbsolutePathImpl("./");
-        testToAbsolutePathImpl("..");
-        testToAbsolutePathImpl("a/../");
-        testToAbsolutePathImpl("./a/b");
-        testToAbsolutePathImpl("a/../b");
-        testToAbsolutePathImpl("a/../../");
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestToAbsolutePathLanguage.class, "");
+        }
     }
 
-    private void testToAbsolutePathImpl(String path) {
-        TruffleFile relativeFile = languageEnv.getPublicTruffleFile(path);
-        Assert.assertFalse(relativeFile.isAbsolute());
-        TruffleFile absoluteFile = relativeFile.getAbsoluteFile();
-        TruffleFile cwd = languageEnv.getCurrentWorkingDirectory();
-        TruffleFile expectedFile = cwd.resolve(relativeFile.getPath());
-        Assert.assertEquals(expectedFile, absoluteFile);
-        Assert.assertEquals(expectedFile.normalize(), absoluteFile.normalize());
+    @Registration
+    static final class TestToAbsolutePathLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile file = env.getPublicTruffleFile(OSUtils.isUnix() ? "/a/b" : "C:/a/b");
+            Assert.assertTrue(file.isAbsolute());
+            Assert.assertEquals(file, file.getAbsoluteFile());
+            testToAbsolutePathImpl(env, "");
+            testToAbsolutePathImpl(env, "a");
+            testToAbsolutePathImpl(env, "a/b");
+            testToAbsolutePathImpl(env, ".");
+            testToAbsolutePathImpl(env, "./");
+            testToAbsolutePathImpl(env, "..");
+            testToAbsolutePathImpl(env, "a/../");
+            testToAbsolutePathImpl(env, "./a/b");
+            testToAbsolutePathImpl(env, "a/../b");
+            testToAbsolutePathImpl(env, "a/../../");
+
+            env.setCurrentWorkingDirectory(env.getPublicTruffleFile(OSUtils.isUnix() ? "/" : "C:/"));
+            testToAbsolutePathImpl(env, "");
+            testToAbsolutePathImpl(env, "a");
+            testToAbsolutePathImpl(env, "a/b");
+            testToAbsolutePathImpl(env, ".");
+            testToAbsolutePathImpl(env, "./");
+            testToAbsolutePathImpl(env, "..");
+            testToAbsolutePathImpl(env, "a/../");
+            testToAbsolutePathImpl(env, "./a/b");
+            testToAbsolutePathImpl(env, "a/../b");
+            testToAbsolutePathImpl(env, "a/../../");
+            return null;
+        }
+
+        private static void testToAbsolutePathImpl(Env env, String path) {
+            TruffleFile relativeFile = env.getPublicTruffleFile(path);
+            Assert.assertFalse(relativeFile.isAbsolute());
+            TruffleFile absoluteFile = relativeFile.getAbsoluteFile();
+            TruffleFile cwd = env.getCurrentWorkingDirectory();
+            TruffleFile expectedFile = cwd.resolve(relativeFile.getPath());
+            Assert.assertEquals(expectedFile, absoluteFile);
+            Assert.assertEquals(expectedFile.normalize(), absoluteFile.normalize());
+        }
     }
 
     @Test
     public void testGetName() {
-        TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename");
-        Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getPublicTruffleFile("/filename");
-        Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getPublicTruffleFile("folder/filename");
-        Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getPublicTruffleFile("filename");
-        Assert.assertEquals("filename", file.getName());
-        file = languageEnv.getPublicTruffleFile("");
-        Assert.assertEquals("", file.getName());
-        file = languageEnv.getPublicTruffleFile("/");
-        Assert.assertNull(file.getName());
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetNameLanguage.class, "");
+        }
+    }
+
+    @Registration
+    static final class TestGetNameLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile file = env.getPublicTruffleFile("/folder/filename");
+            Assert.assertEquals("filename", file.getName());
+            file = env.getPublicTruffleFile("/filename");
+            Assert.assertEquals("filename", file.getName());
+            file = env.getPublicTruffleFile("folder/filename");
+            Assert.assertEquals("filename", file.getName());
+            file = env.getPublicTruffleFile("filename");
+            Assert.assertEquals("filename", file.getName());
+            file = env.getPublicTruffleFile("");
+            Assert.assertEquals("", file.getName());
+            file = env.getPublicTruffleFile("/");
+            Assert.assertNull(file.getName());
+            return null;
+        }
     }
 
     @Test
     public void testDetectMimeType() {
-        TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename.duplicate");
-        String result = file.detectMimeType();
-        assertNull(result);
-        Language1Detector detector1 = Language1Detector.getInstance();
-        Language2Detector detector2 = Language2Detector.getInstance();
-        assertEquals(1, detector1.resetFindMimeTypeCalled());
-        assertEquals(1, detector2.resetFindMimeTypeCalled());
-        detector1.mimeType(null);
-        detector2.mimeType("text/x-duplicate-mime");
-        result = file.detectMimeType();
-        assertEquals("text/x-duplicate-mime", result);
-        detector1.mimeType("text/x-duplicate-mime");
-        detector2.mimeType(null);
-        result = file.detectMimeType();
-        assertEquals("text/x-duplicate-mime", result);
-        detector1.mimeType("text/x-duplicate-mime");
-        detector2.mimeType("text/x-duplicate-mime");
-        result = file.detectMimeType();
-        assertEquals("text/x-duplicate-mime", result);
-        detector1.mimeType("text/x-duplicate-mime-1");
-        detector2.mimeType("text/x-duplicate-mime-2");
-        result = file.detectMimeType();
-        // Order is not deterministic can be either 'text/x-duplicate-mime-1' or
-        // 'text/x-duplicate-mime-2'
-        assertTrue("text/x-duplicate-mime-1".equals(result) || "text/x-duplicate-mime-2".equals(result));
-        detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(FAILING_RECOGNIZER);
-        detector2.reset().mimeType("text/x-duplicate-mime-2");
-        result = file.detectMimeType();
-        assertEquals("text/x-duplicate-mime-2", result);
-        detector1.reset().mimeType("text/x-duplicate-mime-1");
-        detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(FAILING_RECOGNIZER);
-        result = file.detectMimeType();
-        assertEquals("text/x-duplicate-mime-1", result);
-        detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(FAILING_RECOGNIZER);
-        detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(FAILING_RECOGNIZER);
-        result = file.detectMimeType();
-        assertNull(result);
-        detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(ALL_FILES_RECOGNIZER);
-        detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(ALL_FILES_RECOGNIZER);
-        result = languageEnv.getInternalTruffleFile("").detectMimeType();
-        assertNull(result);
-        assertEquals(0, detector1.resetFindMimeTypeCalled());
-        assertEquals(0, detector2.resetFindMimeTypeCalled());
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestDetectMimeTypeLanguage.class, "");
+        }
+    }
+
+    @Registration
+    static final class TestDetectMimeTypeLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile file = env.getPublicTruffleFile("/folder/filename.duplicate");
+            String result = file.detectMimeType();
+            assertNull(result);
+            Language1Detector detector1 = Language1Detector.getInstance();
+            Language2Detector detector2 = Language2Detector.getInstance();
+            assertEquals(1, detector1.resetFindMimeTypeCalled());
+            assertEquals(1, detector2.resetFindMimeTypeCalled());
+            detector1.mimeType(null);
+            detector2.mimeType("text/x-duplicate-mime");
+            result = file.detectMimeType();
+            assertEquals("text/x-duplicate-mime", result);
+            detector1.mimeType("text/x-duplicate-mime");
+            detector2.mimeType(null);
+            result = file.detectMimeType();
+            assertEquals("text/x-duplicate-mime", result);
+            detector1.mimeType("text/x-duplicate-mime");
+            detector2.mimeType("text/x-duplicate-mime");
+            result = file.detectMimeType();
+            assertEquals("text/x-duplicate-mime", result);
+            detector1.mimeType("text/x-duplicate-mime-1");
+            detector2.mimeType("text/x-duplicate-mime-2");
+            result = file.detectMimeType();
+            // Order is not deterministic can be either 'text/x-duplicate-mime-1' or
+            // 'text/x-duplicate-mime-2'
+            assertTrue("text/x-duplicate-mime-1".equals(result) || "text/x-duplicate-mime-2".equals(result));
+            detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(FAILING_RECOGNIZER);
+            detector2.reset().mimeType("text/x-duplicate-mime-2");
+            result = file.detectMimeType();
+            assertEquals("text/x-duplicate-mime-2", result);
+            detector1.reset().mimeType("text/x-duplicate-mime-1");
+            detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(FAILING_RECOGNIZER);
+            result = file.detectMimeType();
+            assertEquals("text/x-duplicate-mime-1", result);
+            detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(FAILING_RECOGNIZER);
+            detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(FAILING_RECOGNIZER);
+            result = file.detectMimeType();
+            assertNull(result);
+            detector1.reset().mimeType("text/x-duplicate-mime-1").recognizer(ALL_FILES_RECOGNIZER);
+            detector2.reset().mimeType("text/x-duplicate-mime-2").recognizer(ALL_FILES_RECOGNIZER);
+            result = env.getInternalTruffleFile("").detectMimeType();
+            assertNull(result);
+            assertEquals(0, detector1.resetFindMimeTypeCalled());
+            assertEquals(0, detector2.resetFindMimeTypeCalled());
+            return null;
+        }
     }
 
     @Test
     public void testDetectEncoding() {
-        TruffleFile file = languageEnv.getPublicTruffleFile("/folder/filename.duplicate");
-        assertFails(() -> TestAPIAccessor.languageAccess().detectEncoding(file, null), IllegalArgumentException.class);
-        String mimeType = "text/x-duplicate-mime";
-        Charset encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
-        assertNull(encoding);
-        Language1Detector detector1 = Language1Detector.getInstance();
-        Language2Detector detector2 = Language2Detector.getInstance();
-        detector1.reset();
-        detector2.reset().mimeType(mimeType);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
-        assertNull(encoding);
-        detector1.reset().mimeType(mimeType);
-        detector2.reset().mimeType(mimeType).encoding(UTF_16);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
-        assertEquals(UTF_16, encoding);
-        detector1.reset().mimeType(mimeType).encoding(UTF_8);
-        detector2.reset().mimeType(mimeType);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
-        assertEquals(UTF_8, encoding);
-        detector1.reset().mimeType(mimeType).encoding(UTF_8);
-        detector2.reset().mimeType(mimeType).encoding(UTF_16);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
-        // Order is not deterministic can be either 'UTF-8' or 'UTF-16'
-        assertTrue(UTF_8.equals(encoding) || UTF_16.equals(encoding));
-        detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(FAILING_RECOGNIZER);
-        detector2.reset().mimeType(mimeType).encoding(UTF_16);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
-        assertEquals(UTF_16, encoding);
-        detector1.reset().mimeType(mimeType).encoding(UTF_8);
-        detector2.reset().mimeType(mimeType).encoding(UTF_16).recognizer(FAILING_RECOGNIZER);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
-        assertEquals(UTF_8, encoding);
-        detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(FAILING_RECOGNIZER);
-        detector2.reset().mimeType(mimeType).encoding(UTF_16).recognizer(FAILING_RECOGNIZER);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
-        assertNull(encoding);
-        detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(ALL_FILES_RECOGNIZER);
-        detector2.reset().mimeType(mimeType).encoding(UTF_8).recognizer(ALL_FILES_RECOGNIZER);
-        encoding = TestAPIAccessor.languageAccess().detectEncoding(languageEnv.getInternalTruffleFile(""), mimeType);
-        assertNull(encoding);
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestDetectEncodingLanguage.class, "");
+        }
     }
 
-    @Test
-    public void testCreateTempFileInvalidNames() throws IOException {
-        String separator = languageEnv.getFileNameSeparator();
-        try {
-            languageEnv.createTempFile(null, "a" + separator + "b", ".tmp");
-            Assert.fail("IllegalArgumentException expected.");
-        } catch (IllegalArgumentException e) {
-            // expected
-        }
-        try {
-            languageEnv.createTempFile(null, "ab", ".tmp" + separator + "2");
-            Assert.fail("IllegalArgumentException expected.");
-        } catch (IllegalArgumentException e) {
-            // expected
-        }
-        try {
-            languageEnv.createTempDirectory(null, "a" + separator + "b");
-            Assert.fail("IllegalArgumentException expected.");
-        } catch (IllegalArgumentException e) {
-            // expected
+    @Registration
+    static final class TestDetectEncodingLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile file = env.getPublicTruffleFile("/folder/filename.duplicate");
+            assertFails(() -> TestAPIAccessor.languageAccess().detectEncoding(file, null), IllegalArgumentException.class);
+            String mimeType = "text/x-duplicate-mime";
+            Charset encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+            assertNull(encoding);
+            Language1Detector detector1 = Language1Detector.getInstance();
+            Language2Detector detector2 = Language2Detector.getInstance();
+            detector1.reset();
+            detector2.reset().mimeType(mimeType);
+            encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+            assertNull(encoding);
+            detector1.reset().mimeType(mimeType);
+            detector2.reset().mimeType(mimeType).encoding(UTF_16);
+            encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+            assertEquals(UTF_16, encoding);
+            detector1.reset().mimeType(mimeType).encoding(UTF_8);
+            detector2.reset().mimeType(mimeType);
+            encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+            assertEquals(UTF_8, encoding);
+            detector1.reset().mimeType(mimeType).encoding(UTF_8);
+            detector2.reset().mimeType(mimeType).encoding(UTF_16);
+            encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+            // Order is not deterministic can be either 'UTF-8' or 'UTF-16'
+            assertTrue(UTF_8.equals(encoding) || UTF_16.equals(encoding));
+            detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(FAILING_RECOGNIZER);
+            detector2.reset().mimeType(mimeType).encoding(UTF_16);
+            encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+            assertEquals(UTF_16, encoding);
+            detector1.reset().mimeType(mimeType).encoding(UTF_8);
+            detector2.reset().mimeType(mimeType).encoding(UTF_16).recognizer(FAILING_RECOGNIZER);
+            encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+            assertEquals(UTF_8, encoding);
+            detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(FAILING_RECOGNIZER);
+            detector2.reset().mimeType(mimeType).encoding(UTF_16).recognizer(FAILING_RECOGNIZER);
+            encoding = TestAPIAccessor.languageAccess().detectEncoding(file, mimeType);
+            assertNull(encoding);
+            detector1.reset().mimeType(mimeType).encoding(UTF_8).recognizer(ALL_FILES_RECOGNIZER);
+            detector2.reset().mimeType(mimeType).encoding(UTF_8).recognizer(ALL_FILES_RECOGNIZER);
+            encoding = TestAPIAccessor.languageAccess().detectEncoding(env.getInternalTruffleFile(""), mimeType);
+            assertNull(encoding);
+            return null;
         }
     }
 
     @Test
-    public void testExistsToCanonicalFileInconsistence() throws IOException {
-        TruffleFile tmp = languageEnv.createTempDirectory(null, "testExistsToCanonicalFileInconsistence");
-        TruffleFile existing = tmp.resolve("existing");
-        existing.createDirectory();
-        Assert.assertTrue(existing.exists());
-        Assert.assertTrue(existing.isDirectory());
-        TruffleFile existingCanonical = existing.getCanonicalFile();
+    public void testCreateTempFileInvalidNames() {
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestCreateTempFileInvalidNamesLanguage.class, "");
+        }
+    }
 
-        TruffleFile nonNormalizedExisting = tmp.resolve("non-existing/../existing");
-        Assert.assertTrue(nonNormalizedExisting.exists());
-        Assert.assertTrue(nonNormalizedExisting.isDirectory());
-        TruffleFile existingCanonical2 = nonNormalizedExisting.getCanonicalFile();
-        Assert.assertEquals(existingCanonical, existingCanonical2);
+    @Registration
+    static final class TestCreateTempFileInvalidNamesLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String separator = env.getFileNameSeparator();
+            try {
+                env.createTempFile(null, "a" + separator + "b", ".tmp");
+                Assert.fail("IllegalArgumentException expected.");
+            } catch (IllegalArgumentException e) {
+                // expected
+            }
+            try {
+                env.createTempFile(null, "ab", ".tmp" + separator + "2");
+                Assert.fail("IllegalArgumentException expected.");
+            } catch (IllegalArgumentException e) {
+                // expected
+            }
+            try {
+                env.createTempDirectory(null, "a" + separator + "b");
+                Assert.fail("IllegalArgumentException expected.");
+            } catch (IllegalArgumentException e) {
+                // expected
+            }
+            return null;
+        }
+    }
 
-        TruffleFile nonExisting = tmp.resolve("non-existing");
-        Assert.assertFalse(nonExisting.exists());
-        try {
-            nonExisting.getCanonicalFile();
-            Assert.fail("Expected IOException");
-        } catch (IOException ioe) {
-            // expected
+    @Test
+    public void testExistsToCanonicalFileInconsistence() {
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestExistsToCanonicalFileInconsistenceLanguage.class, "");
+        }
+    }
+
+    @Registration
+    static final class TestExistsToCanonicalFileInconsistenceLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile tmp = env.createTempDirectory(null, "testExistsToCanonicalFileInconsistence");
+            TruffleFile existing = tmp.resolve("existing");
+            existing.createDirectory();
+            Assert.assertTrue(existing.exists());
+            Assert.assertTrue(existing.isDirectory());
+            TruffleFile existingCanonical = existing.getCanonicalFile();
+
+            TruffleFile nonNormalizedExisting = tmp.resolve("non-existing/../existing");
+            Assert.assertTrue(nonNormalizedExisting.exists());
+            Assert.assertTrue(nonNormalizedExisting.isDirectory());
+            TruffleFile existingCanonical2 = nonNormalizedExisting.getCanonicalFile();
+            Assert.assertEquals(existingCanonical, existingCanonical2);
+
+            TruffleFile nonExisting = tmp.resolve("non-existing");
+            Assert.assertFalse(nonExisting.exists());
+            try {
+                nonExisting.getCanonicalFile();
+                Assert.fail("Expected IOException");
+            } catch (IOException ioe) {
+                // expected
+            }
+            return null;
         }
     }
 
@@ -387,44 +447,81 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     public void testSetCurrentWorkingDirectory() throws IOException {
         Path newCwd = Files.createTempDirectory("testSetCWD");
         Path absoluteFolder = Files.createTempDirectory("testSetCWDAbs");
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).currentWorkingDirectory(newCwd).build()) {
-            setupEnv(ctx);
-            TruffleFile relative = languageEnv.getPublicTruffleFile("test");
-            TruffleFile absolute = relative.getAbsoluteFile();
-            Assert.assertEquals(newCwd.resolve("test"), Paths.get(absolute.getPath()));
-            absolute = languageEnv.getPublicTruffleFile(absoluteFolder.toString());
-            Assert.assertEquals(absoluteFolder, Paths.get(absolute.getPath()));
-            relative = languageEnv.getInternalTruffleFile("test");
-            absolute = relative.getAbsoluteFile();
-            Assert.assertEquals(newCwd.resolve("test"), Paths.get(absolute.getPath()));
-            absolute = languageEnv.getInternalTruffleFile(absoluteFolder.toString());
-            Assert.assertEquals(absoluteFolder, Paths.get(absolute.getPath()));
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).currentWorkingDirectory(newCwd).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestSetCurrentWorkingDirectoryLanguage.class, "", newCwd.toString(), absoluteFolder.toString());
         } finally {
             Files.delete(newCwd);
+            Files.delete(absoluteFolder);
+        }
+    }
+
+    @Registration
+    static final class TestSetCurrentWorkingDirectoryLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Path newCwd = Paths.get((String) contextArguments[0]);
+            Path absoluteFolder = Paths.get((String) contextArguments[1]);
+            TruffleFile relative = env.getPublicTruffleFile("test");
+            TruffleFile absolute = relative.getAbsoluteFile();
+            Assert.assertEquals(newCwd.resolve("test"), Paths.get(absolute.getPath()));
+            absolute = env.getPublicTruffleFile(absoluteFolder.toString());
+            Assert.assertEquals(absoluteFolder, Paths.get(absolute.getPath()));
+            relative = env.getInternalTruffleFile("test");
+            absolute = relative.getAbsoluteFile();
+            Assert.assertEquals(newCwd.resolve("test"), Paths.get(absolute.getPath()));
+            absolute = env.getInternalTruffleFile(absoluteFolder.toString());
+            Assert.assertEquals(absoluteFolder, Paths.get(absolute.getPath()));
+            return null;
         }
     }
 
     @Test
     public void testRelativePathToLanguageHome() throws IOException {
-        setupEnv(Context.create());
         Path cwdPath = new File("").toPath().toRealPath();
         Assume.assumeTrue(cwdPath.getNameCount() > 1);
-        Path langHomePath = cwdPath.getParent().resolve("home");
-        System.setProperty(String.format("org.graalvm.language.%s.home", ProxyLanguage.ID), langHomePath.toString());
-        TruffleFile file = languageEnv.getInternalTruffleFile("../home");
-        file.exists();  // Language home should be accessible
-        file.resolve("file").exists();  // File in language home should be accessible
+        String langHomePath = cwdPath.getParent().resolve("home").toString();
+        try (Context ctx = Context.create()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestRelativePathToLanguageHomeLanguage.class, "", langHomePath);
+        }
+    }
+
+    @Registration
+    static final class TestRelativePathToLanguageHomeLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String langHomePath = (String) contextArguments[0];
+            System.setProperty(String.format("org.graalvm.language.%s.home", TestUtils.getDefaultLanguageId(getClass())), langHomePath);
+            resetLanguageHomes();
+            TruffleFile file = env.getInternalTruffleFile("../home");
+            file.exists();  // Language home should be accessible
+            file.resolve("file").exists();  // File in language home should be accessible
+            return null;
+        }
     }
 
     @Test
     public void testNormalizeEmptyPath() {
-        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
-        TruffleFile file = languageEnv.getInternalTruffleFile("");
-        assertEquals("", file.normalize().getPath());
-        file = languageEnv.getInternalTruffleFile(".");
-        assertEquals(".", file.normalize().getPath());
-        file = languageEnv.getInternalTruffleFile("a/..");
-        assertEquals(".", file.normalize().getPath());
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestNormalizeEmptyPathLanguage.class, "");
+        }
+
+    }
+
+    @Registration
+    static final class TestNormalizeEmptyPathLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile file = env.getInternalTruffleFile("");
+            assertEquals("", file.normalize().getPath());
+            file = env.getInternalTruffleFile(".");
+            assertEquals(".", file.normalize().getPath());
+            file = env.getInternalTruffleFile("a/..");
+            assertEquals(".", file.normalize().getPath());
+            return null;
+        }
     }
 
     /**
@@ -432,119 +529,150 @@ public class TruffleFileTest extends AbstractPolyglotTest {
      * an empty path.
      */
     @Test
-    public void testEmptyPath() throws Exception {
+    public void testEmptyPath() {
         IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new EmptyPathTestFs()).build();
-        setupEnv(Context.newBuilder().allowIO(ioAccess).build());
-        TruffleFile file = languageEnv.getInternalTruffleFile("");
-        TruffleFile otherFile = languageEnv.getInternalTruffleFile("other");
-
-        Map<Type, Object> defaultParameterValues = new HashMap<>();
-        defaultParameterValues.put(int.class, 0);
-        defaultParameterValues.put(String.class, "");
-        defaultParameterValues.put(TruffleFile.class, otherFile);
-        defaultParameterValues.put(Object.class, otherFile);
-        defaultParameterValues.put(Set.class, Collections.emptySet());
-        defaultParameterValues.put(Charset.class, UTF_8);
-        defaultParameterValues.put(OpenOption[].class, new OpenOption[0]);
-        defaultParameterValues.put(LinkOption[].class, new LinkOption[0]);
-        defaultParameterValues.put(CopyOption[].class, new CopyOption[0]);
-        defaultParameterValues.put(FileVisitOption[].class, new FileVisitOption[0]);
-        defaultParameterValues.put(FileAttribute[].class, new FileAttribute<?>[0]);
-        defaultParameterValues.put(FileTime.class, FileTime.fromMillis(System.currentTimeMillis()));
-        defaultParameterValues.put(TruffleFile.AttributeDescriptor.class, TruffleFile.SIZE);
-        defaultParameterValues.put(TruffleFile.class.getMethod("getAttributes", Collection.class, LinkOption[].class).getGenericParameterTypes()[0], Collections.singleton(TruffleFile.SIZE));
-        defaultParameterValues.put(FileVisitor.class, new FileVisitor<TruffleFile>() {
-            @Override
-            public FileVisitResult preVisitDirectory(TruffleFile t, BasicFileAttributes bfa) throws IOException {
-                return FileVisitResult.TERMINATE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(TruffleFile t, BasicFileAttributes bfa) throws IOException {
-                return FileVisitResult.TERMINATE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(TruffleFile t, IOException ioe) throws IOException {
-                return FileVisitResult.TERMINATE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(TruffleFile t, IOException ioe) throws IOException {
-                return FileVisitResult.TERMINATE;
-            }
-        });
-
-        Set<Method> untestedMethods = new HashSet<>();
-        for (Method m : EmptyPathTestFs.class.getMethods()) {
-            if (m.isDefault()) {
-                System.out.println(m.getName());
-            }
+        try (Context ctx = Context.newBuilder().allowIO(ioAccess).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestEmptyPathLanguage.class, "");
         }
-        nextMethod: for (Method m : TruffleFile.class.getDeclaredMethods()) {
-            if ((m.getModifiers() & Modifier.PUBLIC) == Modifier.PUBLIC) {
-                Type[] paramTypes = m.getGenericParameterTypes();
-                Object[] params = new Object[paramTypes.length];
-                for (int i = 0; i < paramTypes.length; i++) {
-                    Type paramType = paramTypes[i];
-                    Object param = defaultParameterValues.get(paramType);
-                    if (param == null) {
-                        param = defaultParameterValues.get(erase(paramType));
-                    }
-                    if (param == null) {
-                        untestedMethods.add(m);
-                        continue nextMethod;
-                    }
-                    params[i] = param;
+    }
+
+    @Registration
+    static final class TestEmptyPathLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            TruffleFile file = env.getInternalTruffleFile("");
+            TruffleFile otherFile = env.getInternalTruffleFile("other");
+
+            Map<Type, Object> defaultParameterValues = new HashMap<>();
+            defaultParameterValues.put(int.class, 0);
+            defaultParameterValues.put(String.class, "");
+            defaultParameterValues.put(TruffleFile.class, otherFile);
+            defaultParameterValues.put(Object.class, otherFile);
+            defaultParameterValues.put(Set.class, Collections.emptySet());
+            defaultParameterValues.put(Charset.class, UTF_8);
+            defaultParameterValues.put(OpenOption[].class, new OpenOption[0]);
+            defaultParameterValues.put(LinkOption[].class, new LinkOption[0]);
+            defaultParameterValues.put(CopyOption[].class, new CopyOption[0]);
+            defaultParameterValues.put(FileVisitOption[].class, new FileVisitOption[0]);
+            defaultParameterValues.put(FileAttribute[].class, new FileAttribute<?>[0]);
+            defaultParameterValues.put(FileTime.class, FileTime.fromMillis(System.currentTimeMillis()));
+            defaultParameterValues.put(TruffleFile.AttributeDescriptor.class, TruffleFile.SIZE);
+            defaultParameterValues.put(TruffleFile.class.getMethod("getAttributes", Collection.class, LinkOption[].class).getGenericParameterTypes()[0], Collections.singleton(TruffleFile.SIZE));
+            defaultParameterValues.put(FileVisitor.class, new FileVisitor<TruffleFile>() {
+                @Override
+                public FileVisitResult preVisitDirectory(TruffleFile t, BasicFileAttributes bfa) {
+                    return FileVisitResult.TERMINATE;
                 }
-                try {
-                    m.invoke(file, params);
-                } catch (InvocationTargetException e) {
-                    if (!(e.getCause() instanceof NoSuchFileException)) {
+
+                @Override
+                public FileVisitResult visitFile(TruffleFile t, BasicFileAttributes bfa) {
+                    return FileVisitResult.TERMINATE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(TruffleFile t, IOException ioe) {
+                    return FileVisitResult.TERMINATE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(TruffleFile t, IOException ioe) {
+                    return FileVisitResult.TERMINATE;
+                }
+            });
+
+            Set<Method> untestedMethods = new HashSet<>();
+            for (Method m : EmptyPathTestFs.class.getMethods()) {
+                assertFalse("Method " + m + " is not implemented by the EmptyPathTestFs.", m.isDefault());
+            }
+            nextMethod: for (Method m : TruffleFile.class.getDeclaredMethods()) {
+                if ((m.getModifiers() & Modifier.PUBLIC) == Modifier.PUBLIC) {
+                    Type[] paramTypes = m.getGenericParameterTypes();
+                    Object[] params = new Object[paramTypes.length];
+                    for (int i = 0; i < paramTypes.length; i++) {
+                        Type paramType = paramTypes[i];
+                        Object param = defaultParameterValues.get(paramType);
+                        if (param == null) {
+                            param = defaultParameterValues.get(erase(paramType));
+                        }
+                        if (param == null) {
+                            untestedMethods.add(m);
+                            continue nextMethod;
+                        }
+                        params[i] = param;
+                    }
+                    try {
+                        m.invoke(file, params);
+                    } catch (InvocationTargetException e) {
+                        if (!(e.getCause() instanceof NoSuchFileException)) {
+                            throw new AssertionError("Unexpected exception.", e);
+                        }
+                    } catch (ReflectiveOperationException e) {
                         throw new AssertionError("Unexpected exception.", e);
                     }
-                } catch (ReflectiveOperationException e) {
-                    throw new AssertionError("Unexpected exception.", e);
                 }
             }
+            assertTrue("Failed to check methods: " + untestedMethods.stream().map(Method::getName).collect(Collectors.joining(", ")), untestedMethods.isEmpty());
+            return null;
         }
-        assertTrue("Failed to check methods: " + untestedMethods.stream().map(Method::getName).collect(Collectors.joining(", ")), untestedMethods.isEmpty());
     }
 
     @Test
-    public void testIsSameFile() throws IOException {
+    public void testIsSameFile() {
         String path = Paths.get(".").toAbsolutePath().toString();
-        setupEnv(Context.create());
-        TruffleFile publicFile = languageEnv.getPublicTruffleFile(path);
-        TruffleFile internalFile = languageEnv.getInternalTruffleFile(path);
-        assertTrue(publicFile.isSameFile(publicFile));
-        assertTrue(internalFile.isSameFile(internalFile));
-        assertFalse(publicFile.isSameFile(internalFile));
-        assertFalse(internalFile.isSameFile(publicFile));
-        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
-        context.initialize("DuplicateMimeTypeLanguage1");
-        publicFile = languageEnv.getPublicTruffleFile(path);
-        internalFile = languageEnv.getInternalTruffleFile(path);
-        assertTrue(publicFile.isSameFile(publicFile));
-        assertTrue(internalFile.isSameFile(internalFile));
-        assertTrue(publicFile.isSameFile(internalFile));
-        assertTrue(internalFile.isSameFile(publicFile));
-        TruffleLanguage.Env otherLanguageEnv = DuplicateMimeTypeLanguage1.getContext().getEnv();
-        TruffleFile otherLanguagePublicFile = otherLanguageEnv.getPublicTruffleFile(path);
-        TruffleFile otherLanguageInternalFile = otherLanguageEnv.getInternalTruffleFile(path);
-        assertTrue(publicFile.isSameFile(otherLanguagePublicFile));
-        assertTrue(publicFile.isSameFile(otherLanguageInternalFile));
-        assertTrue(internalFile.isSameFile(otherLanguagePublicFile));
-        assertTrue(internalFile.isSameFile(otherLanguageInternalFile));
-        assertTrue(otherLanguagePublicFile.isSameFile(publicFile));
-        assertTrue(otherLanguagePublicFile.isSameFile(internalFile));
-        assertTrue(otherLanguageInternalFile.isSameFile(publicFile));
-        assertTrue(otherLanguageInternalFile.isSameFile(internalFile));
-        TruffleFile finalPublicFile = publicFile;
-        TruffleFile finalInternalFile = internalFile;
-        assertFails(() -> finalPublicFile.isSameFile(null), NullPointerException.class);
-        assertFails(() -> finalPublicFile.isSameFile(finalInternalFile, (LinkOption[]) null), NullPointerException.class);
-        assertFails(() -> finalPublicFile.isSameFile(finalInternalFile, (LinkOption) null), NullPointerException.class);
+        try (Context ctx = Context.create()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestIsSameFileBasicLanguage.class, "", path);
+        }
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            ctx.initialize("DuplicateMimeTypeLanguage1");
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestIsSameFileLanguage.class, "", path);
+        }
+    }
+
+    @Registration
+    static final class TestIsSameFileBasicLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String path = (String) contextArguments[0];
+            TruffleFile publicFile = env.getPublicTruffleFile(path);
+            TruffleFile internalFile = env.getInternalTruffleFile(path);
+            assertTrue(publicFile.isSameFile(publicFile));
+            assertTrue(internalFile.isSameFile(internalFile));
+            assertFalse(publicFile.isSameFile(internalFile));
+            assertFalse(internalFile.isSameFile(publicFile));
+            return null;
+        }
+    }
+
+    @Registration
+    static final class TestIsSameFileLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String path = (String) contextArguments[0];
+            TruffleFile publicFile = env.getPublicTruffleFile(path);
+            TruffleFile internalFile = env.getInternalTruffleFile(path);
+            assertTrue(publicFile.isSameFile(publicFile));
+            assertTrue(internalFile.isSameFile(internalFile));
+            assertTrue(publicFile.isSameFile(internalFile));
+            assertTrue(internalFile.isSameFile(publicFile));
+            TruffleLanguage.Env otherLanguageEnv = DuplicateMimeTypeLanguage1.getContext().getEnv();
+            TruffleFile otherLanguagePublicFile = otherLanguageEnv.getPublicTruffleFile(path);
+            TruffleFile otherLanguageInternalFile = otherLanguageEnv.getInternalTruffleFile(path);
+            assertTrue(publicFile.isSameFile(otherLanguagePublicFile));
+            assertTrue(publicFile.isSameFile(otherLanguageInternalFile));
+            assertTrue(internalFile.isSameFile(otherLanguagePublicFile));
+            assertTrue(internalFile.isSameFile(otherLanguageInternalFile));
+            assertTrue(otherLanguagePublicFile.isSameFile(publicFile));
+            assertTrue(otherLanguagePublicFile.isSameFile(internalFile));
+            assertTrue(otherLanguageInternalFile.isSameFile(publicFile));
+            assertTrue(otherLanguageInternalFile.isSameFile(internalFile));
+            assertFails(() -> publicFile.isSameFile(null), NullPointerException.class);
+            assertFails(() -> publicFile.isSameFile(internalFile, (LinkOption[]) null), NullPointerException.class);
+            assertFails(() -> publicFile.isSameFile(internalFile, (LinkOption) null), NullPointerException.class);
+            return null;
+        }
     }
 
     @Test
@@ -552,109 +680,156 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
         Path workDir = Files.createTempDirectory(TruffleFileTest.class.getSimpleName());
         Path targetPath = workDir.relativize(Files.createFile(Files.createDirectory(workDir.resolve("folder")).resolve("target")));
-        try {
-            setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build());
-            languageEnv.setCurrentWorkingDirectory(languageEnv.getPublicTruffleFile(workDir.toString()));
-            TruffleFile symLink = languageEnv.getPublicTruffleFile("link");
-            TruffleFile targetRelativePath = languageEnv.getPublicTruffleFile(targetPath.toString());
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestRelativeSymLinkWithCustomUserDirLanguage.class, "",
+                            workDir.toString(), targetPath.toString(), targetPath.getFileName().toString());
+        } finally {
+            delete(workDir);
+        }
+    }
+
+    @Registration
+    static final class TestRelativeSymLinkWithCustomUserDirLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String workDir = (String) contextArguments[0];
+            String targetPath = (String) contextArguments[1];
+            String targetFileName = (String) contextArguments[2];
+            env.setCurrentWorkingDirectory(env.getPublicTruffleFile(workDir));
+            TruffleFile symLink = env.getPublicTruffleFile("link");
+            TruffleFile targetRelativePath = env.getPublicTruffleFile(targetPath);
             assertFalse(targetRelativePath.isAbsolute());
             symLink.createSymbolicLink(targetRelativePath);
             TruffleFile readLink = symLink.readSymbolicLink();
             assertFalse(readLink.isAbsolute());
             assertEquals(targetRelativePath, readLink);
             assertEquals(targetRelativePath.getCanonicalFile(), symLink.getCanonicalFile());
-            symLink = languageEnv.getPublicTruffleFile("folder/link");
-            TruffleFile target = languageEnv.getPublicTruffleFile(targetPath.getFileName().toString());
+            symLink = env.getPublicTruffleFile("folder/link");
+            TruffleFile target = env.getPublicTruffleFile(targetFileName);
             assertFalse(target.isAbsolute());
             symLink.createSymbolicLink(target);
             readLink = symLink.readSymbolicLink();
             assertFalse(readLink.isAbsolute());
             assertEquals(target, readLink);
             assertEquals(targetRelativePath.getCanonicalFile(), symLink.getCanonicalFile());
-        } finally {
-            delete(workDir);
+            return null;
         }
     }
 
     @Test
-    public void testGetTruffleFileInternalAllowedIO() throws IOException {
-        setupEnv(Context.newBuilder().allowIO(IOAccess.ALL).build(), new InternalTruffleFileTestLanguage());
-        StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
-        TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(languageHomeFile.toString(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(stdLibFile.toString(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toUri(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(languageHomeFile.toUri(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(stdLibFile.toUri(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+    public void testGetTruffleFileInternalAllowedIO() {
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
+                            languageHome.toAbsolutePath().toString(), languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
+                            stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
+                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
+        }
     }
 
     @Test
-    public void testGetTruffleFileInternalCustomFileSystem() throws IOException {
+    public void testGetTruffleFileInternalCustomFileSystem() {
         IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build();
-        setupEnv(Context.newBuilder().allowIO(ioAccess).build(),
-                        new InternalTruffleFileTestLanguage());
-        StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
-        TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(languageHomeFile.toString(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(stdLibFile.toString(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toUri(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(languageHomeFile.toUri(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        res = languageEnv.getTruffleFileInternal(stdLibFile.toUri(), predicate);
-        assertFalse(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+        try (Context ctx = Context.newBuilder().allowIO(ioAccess).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
+                            languageHome.toAbsolutePath().toString(), languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
+                            stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
+                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
+        }
+    }
+
+    @Registration
+    static final class TestGetTruffleFileInternalAllowedIOLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String languageHomePath = (String) contextArguments[0];
+            String languageHomeFilePath = (String) contextArguments[1];
+            URI languageHomeFileURI = URI.create((String) contextArguments[2]);
+            String stdLibPath = (String) contextArguments[3];
+            String stdLibFilePath = (String) contextArguments[4];
+            URI stdLibFileURI = URI.create((String) contextArguments[5]);
+            String nonLanguageHomeFilePath = (String) contextArguments[6];
+            URI nonLanguageHomeFileURI = URI.create((String) contextArguments[7]);
+            System.setProperty(String.format("org.graalvm.language.%s.home", TestUtils.getDefaultLanguageId(getClass())), languageHomePath);
+            resetLanguageHomes();
+            StdLibPredicate predicate = new StdLibPredicate(env.getInternalTruffleFile(stdLibPath));
+            TruffleFile res = env.getTruffleFileInternal(nonLanguageHomeFilePath, predicate);
+            assertFalse(predicate.called);
+            assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+            res = env.getTruffleFileInternal(languageHomeFilePath, predicate);
+            assertFalse(predicate.called);
+            assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+            res = env.getTruffleFileInternal(stdLibFilePath, predicate);
+            assertFalse(predicate.called);
+            assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+            res = env.getTruffleFileInternal(nonLanguageHomeFileURI, predicate);
+            assertFalse(predicate.called);
+            assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+            res = env.getTruffleFileInternal(languageHomeFileURI, predicate);
+            assertFalse(predicate.called);
+            assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+            res = env.getTruffleFileInternal(stdLibFileURI, predicate);
+            assertFalse(predicate.called);
+            assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+            return null;
+        }
     }
 
     @Test
-    public void testGetTruffleFileInternalDeniedIO() throws IOException {
-        setupEnv(Context.create(), new InternalTruffleFileTestLanguage());
-        StdLibPredicate predicate = new StdLibPredicate(languageEnv.getInternalTruffleFile(stdLib.toString()));
-        TruffleFile res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toString(), predicate);
-        assertFalse(predicate.called);
-        TruffleFile finRes = res;
-        assertFails(() -> finRes.readAllBytes(), SecurityException.class);
-        res = languageEnv.getTruffleFileInternal(languageHomeFile.toString(), predicate);
-        assertTrue(predicate.called);
-        TruffleFile finRes2 = res;
-        assertFails(() -> finRes2.readAllBytes(), SecurityException.class);
-        predicate.called = false;
-        res = languageEnv.getTruffleFileInternal(stdLibFile.toString(), predicate);
-        assertTrue(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
-        predicate.called = false;
-        res = languageEnv.getTruffleFileInternal(nonLanguageHomeFile.toUri(), predicate);
-        assertFalse(predicate.called);
-        TruffleFile finRes3 = res;
-        assertFails(() -> finRes3.readAllBytes(), SecurityException.class);
-        res = languageEnv.getTruffleFileInternal(languageHomeFile.toUri(), predicate);
-        assertTrue(predicate.called);
-        TruffleFile finRes4 = res;
-        assertFails(() -> finRes4.readAllBytes(), SecurityException.class);
-        predicate.called = false;
-        res = languageEnv.getTruffleFileInternal(stdLibFile.toString(), predicate);
-        assertTrue(predicate.called);
-        assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+    public void testGetTruffleFileInternalDeniedIO() {
+        try (Context ctx = Context.create()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalDeniedIOLanguage.class, "",
+                            languageHome.toAbsolutePath().toString(), languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
+                            stdLibFile.toAbsolutePath().toString(), stdLibFile.toAbsolutePath().toString(), stdLibFile.toUri().toString(),
+                            nonLanguageHomeFile.toAbsolutePath().toString(), nonLanguageHomeFile.toUri().toString());
+        }
+
+    }
+
+    @Registration
+    static final class TestGetTruffleFileInternalDeniedIOLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String languageHomePath = (String) contextArguments[0];
+            String languageHomeFilePath = (String) contextArguments[1];
+            URI languageHomeFileURI = URI.create((String) contextArguments[2]);
+            String stdLibPath = (String) contextArguments[3];
+            String stdLibFilePath = (String) contextArguments[4];
+            URI stdLibFileURI = URI.create((String) contextArguments[5]);
+            String nonLanguageHomeFilePath = (String) contextArguments[6];
+            URI nonLanguageHomeFileURI = URI.create((String) contextArguments[7]);
+            System.setProperty(String.format("org.graalvm.language.%s.home", TestUtils.getDefaultLanguageId(getClass())), languageHomePath);
+            resetLanguageHomes();
+            StdLibPredicate predicate = new StdLibPredicate(env.getInternalTruffleFile(stdLibPath));
+            TruffleFile res = env.getTruffleFileInternal(nonLanguageHomeFilePath, predicate);
+            assertFalse(predicate.called);
+            TruffleFile finRes = res;
+            assertFails(finRes::readAllBytes, SecurityException.class);
+            res = env.getTruffleFileInternal(languageHomeFilePath, predicate);
+            assertTrue(predicate.called);
+            TruffleFile finRes2 = res;
+            assertFails(finRes2::readAllBytes, SecurityException.class);
+            predicate.called = false;
+            res = env.getTruffleFileInternal(stdLibFilePath, predicate);
+            assertTrue(predicate.called);
+            assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+            predicate.called = false;
+            res = env.getTruffleFileInternal(nonLanguageHomeFileURI, predicate);
+            assertFalse(predicate.called);
+            TruffleFile finRes3 = res;
+            assertFails(finRes3::readAllBytes, SecurityException.class);
+            res = env.getTruffleFileInternal(languageHomeFileURI, predicate);
+            assertTrue(predicate.called);
+            TruffleFile finRes4 = res;
+            assertFails(finRes4::readAllBytes, SecurityException.class);
+            predicate.called = false;
+            res = env.getTruffleFileInternal(stdLibFileURI, predicate);
+            assertTrue(predicate.called);
+            assertEquals(res.getName(), new String(res.readAllBytes()).trim());
+            return null;
+        }
     }
 
     @Test
@@ -671,49 +846,122 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path write4 = Files.createFile(p.resolve("write4"));
         try {
             CheckCloseFileSystem fs = new CheckCloseFileSystem();
+            TestRegisterOnDisposeHostSupport support = new TestRegisterOnDisposeHostSupport(fs);
             IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
-            setupEnv(Context.newBuilder().allowIO(ioAccess).build());
-            assertEquals(0, fs.openFileCount);
-            SeekableByteChannel readByteChannel1 = languageEnv.getPublicTruffleFile(read1.toString()).newByteChannel(EnumSet.of(StandardOpenOption.READ));
-            assertEquals(1, fs.openFileCount);
-            SeekableByteChannel readByteChannel2 = languageEnv.getPublicTruffleFile(read2.toString()).newByteChannel(EnumSet.of(StandardOpenOption.READ));
-            languageEnv.registerOnDispose(readByteChannel2);
-            assertEquals(2, fs.openFileCount);
-            InputStream inputStream1 = languageEnv.getPublicTruffleFile(read3.toString()).newInputStream();
-            assertEquals(3, fs.openFileCount);
-            InputStream inputStream2 = languageEnv.getPublicTruffleFile(read4.toString()).newInputStream();
-            languageEnv.registerOnDispose(inputStream2);
-            assertEquals(4, fs.openFileCount);
-            SeekableByteChannel writeByteChannel1 = languageEnv.getPublicTruffleFile(write1.toString()).newByteChannel(EnumSet.of(StandardOpenOption.WRITE));
-            assertEquals(5, fs.openFileCount);
-            SeekableByteChannel writeByteChannel2 = languageEnv.getPublicTruffleFile(write2.toString()).newByteChannel(EnumSet.of(StandardOpenOption.WRITE));
-            languageEnv.registerOnDispose(writeByteChannel2);
-            assertEquals(6, fs.openFileCount);
-            OutputStream outputStream1 = languageEnv.getPublicTruffleFile(write3.toString()).newOutputStream();
-            assertEquals(7, fs.openFileCount);
-            OutputStream outputStream2 = languageEnv.getPublicTruffleFile(write4.toString()).newOutputStream();
-            languageEnv.registerOnDispose(outputStream2);
-            assertEquals(8, fs.openFileCount);
-            readByteChannel1.close();
-            assertEquals(7, fs.openFileCount);
-            inputStream1.close();
-            assertEquals(6, fs.openFileCount);
-            writeByteChannel1.close();
-            assertEquals(5, fs.openFileCount);
-            outputStream1.close();
-            assertEquals(4, fs.openFileCount);
-            context.close();
-            assertEquals(0, fs.openFileCount);
-            // The compiler can release channel and stream references before the Context#close is
-            // called because these references are no longer in use. In this case, objects
-            // referenced by these references can be gc-ed because registered closeables are weakly
-            // referenced. We need reachability fences to keep these references alive.
-            Reference.reachabilityFence(readByteChannel2);
-            Reference.reachabilityFence(inputStream2);
-            Reference.reachabilityFence(writeByteChannel2);
-            Reference.reachabilityFence(outputStream2);
+            try (Context ctx = Context.newBuilder().allowIO(ioAccess).allowHostAccess(HostAccess.ALL).build()) {
+                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestChannelCloseLanguage.class, "", support,
+                                read1.toString(), read2.toString(), read3.toString(), read4.toString(),
+                                write1.toString(), write2.toString(), write3.toString(), write4.toString());
+            }
+            assertEquals(0, support.getOpenFileCount());
         } finally {
             delete(p);
+        }
+    }
+
+    @Registration
+    static final class TestChannelCloseLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object support = contextArguments[0];
+            String read1 = (String) contextArguments[1];
+            String read2 = (String) contextArguments[2];
+            String read3 = (String) contextArguments[3];
+            String read4 = (String) contextArguments[4];
+            String write1 = (String) contextArguments[5];
+            String write2 = (String) contextArguments[6];
+            String write3 = (String) contextArguments[7];
+            String write4 = (String) contextArguments[8];
+            assertEquals(0, getOpenFileCount(support));
+            SeekableByteChannel readByteChannel1 = env.getPublicTruffleFile(read1).newByteChannel(EnumSet.of(StandardOpenOption.READ));
+            assertEquals(1, getOpenFileCount(support));
+            SeekableByteChannel readByteChannel2 = env.getPublicTruffleFile(read2).newByteChannel(EnumSet.of(StandardOpenOption.READ));
+            env.registerOnDispose(readByteChannel2);
+            assertEquals(2, getOpenFileCount(support));
+            InputStream inputStream1 = env.getPublicTruffleFile(read3).newInputStream();
+            assertEquals(3, getOpenFileCount(support));
+            InputStream inputStream2 = env.getPublicTruffleFile(read4).newInputStream();
+            env.registerOnDispose(inputStream2);
+            assertEquals(4, getOpenFileCount(support));
+            SeekableByteChannel writeByteChannel1 = env.getPublicTruffleFile(write1).newByteChannel(EnumSet.of(StandardOpenOption.WRITE));
+            assertEquals(5, getOpenFileCount(support));
+            SeekableByteChannel writeByteChannel2 = env.getPublicTruffleFile(write2).newByteChannel(EnumSet.of(StandardOpenOption.WRITE));
+            env.registerOnDispose(writeByteChannel2);
+            assertEquals(6, getOpenFileCount(support));
+            OutputStream outputStream1 = env.getPublicTruffleFile(write3).newOutputStream();
+            assertEquals(7, getOpenFileCount(support));
+            OutputStream outputStream2 = env.getPublicTruffleFile(write4).newOutputStream();
+            env.registerOnDispose(outputStream2);
+            assertEquals(8, getOpenFileCount(support));
+            readByteChannel1.close();
+            assertEquals(7, getOpenFileCount(support));
+            inputStream1.close();
+            assertEquals(6, getOpenFileCount(support));
+            writeByteChannel1.close();
+            assertEquals(5, getOpenFileCount(support));
+            outputStream1.close();
+            assertEquals(4, getOpenFileCount(support));
+            // We need to prevent the GC from releasing closeables before the context is closed.
+            reachabilityFence(support, readByteChannel2);
+            reachabilityFence(support, inputStream2);
+            reachabilityFence(support, writeByteChannel2);
+            reachabilityFence(support, outputStream2);
+            return null;
+        }
+
+        private int getOpenFileCount(Object support) throws InteropException {
+            return interop.asInt(interop.invokeMember(support, "getOpenFileCount"));
+        }
+
+        /**
+         * We need to prevent the GC from releasing closeables before the context is closed. The
+         * only way how to do it in the strong isolation is to hold these closeables on the host
+         * side.
+         */
+        private void reachabilityFence(Object support, Object ref) throws InteropException {
+            interop.invokeMember(support, "reachabilityFence", new ObjectHolder(ref));
+        }
+    }
+
+    private static final class ObjectHolder implements TruffleObject {
+
+        @SuppressWarnings("unused") private final Object ref;
+
+        ObjectHolder(Object ref) {
+            this.ref = Objects.requireNonNull(ref);
+        }
+    }
+
+    public static final class TestRegisterOnDisposeHostSupport {
+
+        private final CheckCloseFileSystem fs;
+        private final Set<Object> objects = Collections.newSetFromMap(new IdentityHashMap<>());
+
+        TestRegisterOnDisposeHostSupport(CheckCloseFileSystem fs) {
+            this.fs = Objects.requireNonNull(fs);
+        }
+
+        TestRegisterOnDisposeHostSupport() {
+            this.fs = null;
+        }
+
+        public int getOpenFileCount() {
+            if (fs == null) {
+                throw new UnsupportedOperationException();
+            }
+            return fs.openFileCount;
+        }
+
+        public int getOpenDirCount() {
+            if (fs == null) {
+                throw new UnsupportedOperationException();
+            }
+            return fs.openDirCount;
+        }
+
+        public void reachabilityFence(Object ref) {
+            objects.add(ref);
         }
     }
 
@@ -725,79 +973,129 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         Path dir2 = Files.createDirectory(p.resolve("read2"));
         try {
             CheckCloseFileSystem fs = new CheckCloseFileSystem();
+            TestRegisterOnDisposeHostSupport support = new TestRegisterOnDisposeHostSupport(fs);
             IOAccess ioAccess = IOAccess.newBuilder().fileSystem(fs).build();
-            setupEnv(Context.newBuilder().allowIO(ioAccess).build());
-            assertEquals(0, fs.openDirCount);
-            DirectoryStream<TruffleFile> dirStream1 = languageEnv.getPublicTruffleFile(dir1.toString()).newDirectoryStream();
-            assertEquals(1, fs.openDirCount);
-            DirectoryStream<TruffleFile> dirStream2 = languageEnv.getPublicTruffleFile(dir2.toString()).newDirectoryStream();
-            languageEnv.registerOnDispose(dirStream2);
-            assertEquals(2, fs.openDirCount);
-            dirStream1.close();
-            assertEquals(1, fs.openDirCount);
-            context.close();
-            // The compiler can release the dirStream2 reference before the Context#close is called
-            // because the dirStream2 is no longer in use. In this case, object referenced by the
-            // dirStream2 can be gc-ed because registered closeables are weakly referenced. We need
-            // a reachability fence to keep the dirStream2 reference alive.
-            Reference.reachabilityFence(dirStream2);
-            assertEquals(0, fs.openDirCount);
+            try (Context ctx = Context.newBuilder().allowIO(ioAccess).allowHostAccess(HostAccess.ALL).build()) {
+                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestDirCloseLanguage.class, "", support,
+                                dir1.toString(), dir2.toString());
+            }
+            assertEquals(0, support.getOpenDirCount());
         } finally {
             delete(p);
+        }
+    }
+
+    @Registration
+    static final class TestDirCloseLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object support = contextArguments[0];
+            String dir1 = (String) contextArguments[1];
+            String dir2 = (String) contextArguments[2];
+            assertEquals(0, getOpenDirCount(support));
+            DirectoryStream<TruffleFile> dirStream1 = env.getPublicTruffleFile(dir1).newDirectoryStream();
+            assertEquals(1, getOpenDirCount(support));
+            DirectoryStream<TruffleFile> dirStream2 = env.getPublicTruffleFile(dir2).newDirectoryStream();
+            env.registerOnDispose(dirStream2);
+            assertEquals(2, getOpenDirCount(support));
+            dirStream1.close();
+            assertEquals(1, getOpenDirCount(support));
+            // We need to prevent the GC from releasing closeables before the context is closed.
+            reachabilityFence(support, dirStream2);
+            return null;
+        }
+
+        private int getOpenDirCount(Object support) throws InteropException {
+            return interop.asInt(interop.invokeMember(support, "getOpenDirCount"));
+        }
+
+        /**
+         * We need to prevent the GC from releasing closeables before the context is closed. The
+         * only way how to do it in the strong isolation is to hold these closeables on the host
+         * side.
+         */
+        private void reachabilityFence(Object support, Object ref) throws InteropException {
+            interop.invokeMember(support, "reachabilityFence", new ObjectHolder(ref));
         }
     }
 
     @Test
     public void testIOExceptionFromClose() {
         TestHandler handler = new TestHandler();
-        setupEnv(Context.newBuilder().allowAllAccess(true).logHandler(handler).build());
-        Closeable closeable = new Closeable() {
-            @Override
-            public void close() throws IOException {
-                throw new IOException();
-            }
-        };
-        languageEnv.registerOnDispose(closeable);
-        context.close();
-        // The compiler can release the closeable reference before the Context#close is called
-        // because the closeable is no longer in use. In this case, object referenced by the
-        // closeable can be gc-ed because registered closeables are weakly referenced. We need a
-        // reachability fence to keep the closeable reference alive.
-        Reference.reachabilityFence(closeable);
+        TestRegisterOnDisposeHostSupport support = new TestRegisterOnDisposeHostSupport();
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).allowHostAccess(HostAccess.ALL).logHandler(handler).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestIOExceptionFromCloseLanguage.class, "", support);
+        }
         Optional<LogRecord> record = handler.findRecordByMessage("Failed to close.*");
         assertTrue(record.isPresent());
         assertEquals(Level.WARNING, record.map(LogRecord::getLevel).get());
         assertEquals("engine", record.map(LogRecord::getLoggerName).get());
     }
 
+    @Registration
+    static final class TestIOExceptionFromCloseLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object support = contextArguments[0];
+            Closeable closeable = () -> {
+                throw new IOException();
+            };
+            env.registerOnDispose(closeable);
+            // We need to prevent the GC from releasing closeables before the context is closed.
+            reachabilityFence(support, closeable);
+            return null;
+        }
+
+        /**
+         * We need to prevent the GC from releasing closeables before the context is closed. The
+         * only way how to do it in the strong isolation is to hold these closeables on the host
+         * side.
+         */
+        private void reachabilityFence(Object support, Object ref) throws InteropException {
+            interop.invokeMember(support, "reachabilityFence", new ObjectHolder(ref));
+        }
+    }
+
     @Test
     public void testUncheckedExceptionFromClose() {
         TestHandler handler = new TestHandler();
-        setupEnv(Context.newBuilder().allowAllAccess(true).logHandler(handler).build());
-        Closeable closeable = new Closeable() {
-            @Override
-            public void close() throws IOException {
-                throw new RuntimeException();
-            }
-        };
-        languageEnv.registerOnDispose(closeable);
-        try {
-            assertFails(() -> context.close(), PolyglotException.class, (pe) -> {
-                assertTrue(pe.isInternalError());
-            });
-        } finally {
-            // The compiler can release the closeable reference before the Context#close is called
-            // because the closeable is no longer in use. In this case, object referenced by the
-            // closeable can be gc-ed because registered closeables are weakly referenced. We need a
-            // reachability fence to keep the closeable reference alive.
-            Reference.reachabilityFence(closeable);
-            context = null;
-        }
+        TestRegisterOnDisposeHostSupport support = new TestRegisterOnDisposeHostSupport();
+        Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).allowHostAccess(HostAccess.ALL).logHandler(handler).build();
+        AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestUncheckedExceptionFromCloseLanguage.class, "", support);
+        assertFails(() -> ctx.close(), PolyglotException.class, (pe) -> assertTrue(pe.isInternalError()));
         Optional<LogRecord> record = handler.findRecordByMessage("Failed to close.*");
         assertFalse(record.isPresent());
     }
 
+    @Registration
+    static final class TestUncheckedExceptionFromCloseLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            Object support = contextArguments[0];
+            Closeable closeable = () -> {
+                throw new RuntimeException();
+            };
+            env.registerOnDispose(closeable);
+            // We need to prevent the GC from releasing closeables before the context is closed.
+            reachabilityFence(support, closeable);
+            return null;
+        }
+
+        /**
+         * We need to prevent the GC from releasing closeables before the context is closed. The
+         * only way how to do it in the strong isolation is to hold these closeables on the host
+         * side.
+         */
+        private void reachabilityFence(Object support, Object ref) throws InteropException {
+            interop.invokeMember(support, "reachabilityFence", new ObjectHolder(ref));
+        }
+    }
+
     @Test
+    @SuppressWarnings("try")
     public void testInvalidURI() throws IOException {
         URI httpScheme = URI.create("http://127.0.0.1/foo.js");
         Path tmp = Files.createTempDirectory("invalidscheme");
@@ -811,43 +1109,69 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         URI jarSchemeExistingFile = URI.create("jar:" + existingJar.toUri() + "!/");
         URI jarSchemeNonExistingFile = URI.create("jar:" + nonExistingJar.toUri() + "!/");
         URI invalidUri = URI.create("file://localhost:8000/tmp");
-        java.nio.file.FileSystem nioJarFS = FileSystems.newFileSystem(jarSchemeExistingFile, Collections.emptyMap());
-        try {
+        try (java.nio.file.FileSystem nioJarFS = FileSystems.newFileSystem(jarSchemeExistingFile, Collections.emptyMap())) {
             // Context with enabled IO
-            testInvalidSchemeImpl(httpScheme);
-            testInvalidSchemeImpl(jarSchemeExistingFile);
-            testInvalidSchemeImpl(jarSchemeNonExistingFile);
-            testWrongURIPreconditionsImpl(invalidUri);
+            try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestInvalidURILanguage.class, "",
+                                httpScheme.toString(), jarSchemeExistingFile.toString(), jarSchemeNonExistingFile.toString(), invalidUri.toString());
+            }
             // Context with disabled IO
-            setupEnv(Context.newBuilder().build());
-            testInvalidSchemeImpl(httpScheme);
-            testInvalidSchemeImpl(jarSchemeExistingFile);
-            testInvalidSchemeImpl(jarSchemeNonExistingFile);
-            testWrongURIPreconditionsImpl(invalidUri);
+            try (Context ctx = Context.create()) {
+                AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestInvalidURILanguage.class, "",
+                                httpScheme.toString(), jarSchemeExistingFile.toString(), jarSchemeNonExistingFile.toString(), invalidUri.toString());
+            }
         } finally {
-            nioJarFS.close();
             delete(tmp);
         }
     }
 
-    private void testInvalidSchemeImpl(URI uri) {
-        assertFails(() -> languageEnv.getPublicTruffleFile(uri), UnsupportedOperationException.class);
-        assertFails(() -> languageEnv.getInternalTruffleFile(uri), UnsupportedOperationException.class);
-        assertFails(() -> languageEnv.getTruffleFileInternal(uri, (f) -> false), UnsupportedOperationException.class);
-    }
+    @Registration
+    static final class TestInvalidURILanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            URI httpScheme = URI.create((String) contextArguments[0]);
+            URI jarSchemeExistingFile = URI.create((String) contextArguments[1]);
+            URI jarSchemeNonExistingFile = URI.create((String) contextArguments[2]);
+            URI invalidUri = URI.create((String) contextArguments[3]);
+            testInvalidSchemeImpl(env, httpScheme);
+            testInvalidSchemeImpl(env, jarSchemeExistingFile);
+            testInvalidSchemeImpl(env, jarSchemeNonExistingFile);
+            testWrongURIPreconditionsImpl(env, invalidUri);
+            return null;
+        }
 
-    private void testWrongURIPreconditionsImpl(URI uri) {
-        assertFails(() -> languageEnv.getPublicTruffleFile(uri), IllegalArgumentException.class);
-        assertFails(() -> languageEnv.getInternalTruffleFile(uri), IllegalArgumentException.class);
-        assertFails(() -> languageEnv.getTruffleFileInternal(uri, (f) -> false), IllegalArgumentException.class);
+        private static void testInvalidSchemeImpl(Env env, URI uri) {
+            assertFails(() -> env.getPublicTruffleFile(uri), UnsupportedOperationException.class);
+            assertFails(() -> env.getInternalTruffleFile(uri), UnsupportedOperationException.class);
+            assertFails(() -> env.getTruffleFileInternal(uri, (f) -> false), UnsupportedOperationException.class);
+        }
+
+        private static void testWrongURIPreconditionsImpl(Env env, URI uri) {
+            assertFails(() -> env.getPublicTruffleFile(uri), IllegalArgumentException.class);
+            assertFails(() -> env.getInternalTruffleFile(uri), IllegalArgumentException.class);
+            assertFails(() -> env.getTruffleFileInternal(uri, (f) -> false), IllegalArgumentException.class);
+        }
     }
 
     @Test
     public void testInvalidPath() {
-        String invalidPath = "\0";
-        assertFails(() -> languageEnv.getPublicTruffleFile(invalidPath), IllegalArgumentException.class);
-        assertFails(() -> languageEnv.getInternalTruffleFile(invalidPath), IllegalArgumentException.class);
-        assertFails(() -> languageEnv.getTruffleFileInternal(invalidPath, (f) -> false), IllegalArgumentException.class);
+        try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestInvalidPathLanguage.class, "");
+        }
+    }
+
+    @Registration
+    static final class TestInvalidPathLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        @TruffleBoundary
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            String invalidPath = "\0";
+            assertFails(() -> env.getPublicTruffleFile(invalidPath), IllegalArgumentException.class);
+            assertFails(() -> env.getInternalTruffleFile(invalidPath), IllegalArgumentException.class);
+            assertFails(() -> env.getTruffleFileInternal(invalidPath, (f) -> false), IllegalArgumentException.class);
+            return null;
+        }
     }
 
     private static void delete(Path path) throws IOException {
@@ -878,7 +1202,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     private static void resetLanguageHomes() throws ReflectiveOperationException {
         Class<?> languageCache = Class.forName("com.oracle.truffle.polyglot.LanguageCache");
         Method reset = languageCache.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
-        reset.setAccessible(true);
+        ReflectionUtils.setAccessible(reset, true);
         reset.invoke(null);
     }
 
@@ -889,13 +1213,14 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     public static class BaseDetector implements TruffleFile.FileTypeDetector {
 
-        private static Map<Class<? extends BaseDetector>, BaseDetector> INSTANCES = new HashMap<>();
+        private static final Map<Class<? extends BaseDetector>, BaseDetector> INSTANCES = new HashMap<>();
 
         private int findMimeTypeCalled;
         private String mimeType;
         private Charset encoding;
         private Predicate<? super TruffleFile> recognizer;
 
+        @SuppressWarnings("this-escape")
         protected BaseDetector() {
             INSTANCES.put(getClass(), this);
         }
@@ -930,7 +1255,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public String findMimeType(TruffleFile file) throws IOException {
+        public String findMimeType(TruffleFile file) {
             if (getRecognizer().test(file)) {
                 findMimeTypeCalled++;
                 return mimeType;
@@ -940,7 +1265,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public Charset findEncoding(TruffleFile file) throws IOException {
+        public Charset findEncoding(TruffleFile file) {
             if (getRecognizer().test(file)) {
                 return encoding;
             } else {
@@ -1001,27 +1326,6 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = "InternalTruffleFileTestLanguage", name = "InternalTruffleFileTestLanguage", characterMimeTypes = "text/x-internal-file-test")
-    public static final class InternalTruffleFileTestLanguage extends ProxyLanguage {
-
-        public InternalTruffleFileTestLanguage() {
-            /*
-             * Whenever the language is not used as a standalone language, e.g. it is used in
-             * AbstractPolyglotTest#setupEnv, or the delegation is set directly by
-             * ProxyLanguage#setDelegate, we cannot set wrapper to false for all instances, because
-             * the instance created by Truffle framework must delegate to the instance set by
-             * ProxyLanguage#setDelegate.
-             */
-            if (ProxyLanguage.getDelegate().getClass() == ProxyLanguage.class) {
-                wrapper = false;
-            }
-        }
-
-        public String getHome() {
-            return getLanguageHome();
-        }
-    }
-
     static final class EmptyPathTestFs implements FileSystem {
 
         @Override
@@ -1059,12 +1363,12 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) {
             throw fail();
         }
 
         @Override
-        public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+        public void createDirectory(Path dir, FileAttribute<?>... attrs) {
             throw fail();
         }
 
@@ -1074,32 +1378,32 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) {
             throw fail();
         }
 
         @Override
-        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) {
             throw fail();
         }
 
         @Override
-        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) {
             throw fail();
         }
 
         @Override
-        public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+        public void setAttribute(Path path, String attribute, Object value, LinkOption... options) {
             throw fail();
         }
 
         @Override
-        public void move(Path source, Path target, CopyOption... options) throws IOException {
+        public void move(Path source, Path target, CopyOption... options) {
             throw fail();
         }
 
         @Override
-        public Path readSymbolicLink(Path link) throws IOException {
+        public Path readSymbolicLink(Path link) {
             throw fail();
         }
 
@@ -1124,12 +1428,12 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public void createLink(Path link, Path existing) throws IOException {
+        public void createLink(Path link, Path existing) {
             fail();
         }
 
         @Override
-        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) {
             fail();
         }
 
@@ -1139,7 +1443,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) {
             throw fail();
         }
 
@@ -1186,7 +1490,7 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
         private final class CheckCloseChannel implements SeekableByteChannel {
 
-            private SeekableByteChannel delegate;
+            private final SeekableByteChannel delegate;
 
             CheckCloseChannel(SeekableByteChannel delegate) {
                 this.delegate = Objects.requireNonNull(delegate);

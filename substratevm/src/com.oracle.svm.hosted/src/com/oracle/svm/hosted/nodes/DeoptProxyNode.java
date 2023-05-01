@@ -124,6 +124,10 @@ public final class DeoptProxyNode extends FloatingNode implements LimitedValuePr
         return proxyPoint != null;
     }
 
+    public ValueNode getProxyPoint() {
+        return proxyPoint;
+    }
+
     @Override
     public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
         ValueNode length = GraphUtil.arrayLength(value, mode, constantReflection);

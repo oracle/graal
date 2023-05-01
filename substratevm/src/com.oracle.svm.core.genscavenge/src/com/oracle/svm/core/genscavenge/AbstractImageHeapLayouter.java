@@ -81,6 +81,7 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
         return getPartitions()[PARTITION_COUNT - 1];
     }
 
+    @SuppressWarnings("this-escape")
     public AbstractImageHeapLayouter() {
         this.partitions = createPartitionsArray(PARTITION_COUNT);
         this.partitions[READ_ONLY_PRIMITIVE] = createPartition("readOnlyPrimitive", false, false, false);

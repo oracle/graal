@@ -32,6 +32,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -49,7 +50,7 @@ final class BasicCollectionPolicies {
     private BasicCollectionPolicies() {
     }
 
-    abstract static class BasicPolicy implements CollectionPolicy {
+    public abstract static class BasicPolicy implements CollectionPolicy {
         protected static UnsignedWord m(long bytes) {
             assert 0 <= bytes;
             return WordFactory.unsigned(bytes).multiply(1024).multiply(1024);
@@ -85,6 +86,16 @@ final class BasicCollectionPolicies {
                 PhysicalMemory.tryInitialize();
             }
             // Size parameters are recomputed from current values whenever they are queried
+        }
+
+        @Override
+        public UnsignedWord getInitialEdenSize() {
+            return UNDEFINED;
+        }
+
+        @Override
+        public UnsignedWord getMaximumEdenSize() {
+            return getMaximumYoungGenerationSize();
         }
 
         @Override
@@ -147,6 +158,17 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public UnsignedWord getInitialSurvivorSize() {
+            return UNDEFINED;
+        }
+
+        @Override
+        public UnsignedWord getMaximumSurvivorSize() {
+            return WordFactory.zero();
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public UnsignedWord getSurvivorSpacesCapacity() {
             return WordFactory.zero();
         }
@@ -154,6 +176,11 @@ final class BasicCollectionPolicies {
         @Override
         public UnsignedWord getYoungGenerationCapacity() {
             return getMaximumYoungGenerationSize();
+        }
+
+        @Override
+        public UnsignedWord getInitialOldSize() {
+            return UNDEFINED;
         }
 
         @Override
@@ -167,11 +194,17 @@ final class BasicCollectionPolicies {
         }
 
         @Override
+        public UnsignedWord getMaximumOldSize() {
+            return getOldGenerationCapacity();
+        }
+
+        @Override
         public final UnsignedWord getMaximumFreeAlignedChunksSize() {
             return getMaximumYoungGenerationSize();
         }
 
         @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public int getTenuringAge() {
             return 1;
         }

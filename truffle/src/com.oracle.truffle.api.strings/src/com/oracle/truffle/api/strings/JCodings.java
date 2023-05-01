@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.api.strings;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 
 interface JCodings {
 
@@ -102,7 +101,7 @@ interface JCodings {
     int getCodePointLength(Encoding jCoding, byte[] array, int index, int arrayLength);
 
     @TruffleBoundary
-    int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd);
+    int readCodePoint(Encoding jCoding, byte[] array, int index, int arrayEnd, TruffleString.ErrorHandling errorHandling);
 
     @TruffleBoundary
     int writeCodePoint(Encoding jCoding, int codepoint, byte[] array, int index);
@@ -112,11 +111,11 @@ interface JCodings {
 
     int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding, TruffleString.ErrorHandling errorHandling);
 
-    long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, ConditionProfile validCharacterProfile,
-                    ConditionProfile fixedWidthProfile);
+    long calcStringAttributes(Node location, Object array, int offset, int length, TruffleString.Encoding encoding, int fromIndex, InlinedConditionProfile validCharacterProfile,
+                    InlinedConditionProfile fixedWidthProfile);
 
     TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, TruffleString.Encoding targetEncoding,
-                    BranchProfile outOfMemoryProfile,
-                    ConditionProfile nativeProfile,
+                    InlinedBranchProfile outOfMemoryProfile,
+                    InlinedConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode);
 }

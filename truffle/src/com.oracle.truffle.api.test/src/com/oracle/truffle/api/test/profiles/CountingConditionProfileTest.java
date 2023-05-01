@@ -40,89 +40,197 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.invoke;
-import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
-import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
-import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.dsl.InlineSupport.InlinableField;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
-@RunWith(Theories.class)
-public class CountingConditionProfileTest {
+public class CountingConditionProfileTest extends AbstractProfileTest {
 
-    @DataPoints public static boolean[] data = new boolean[]{true, false};
+    private static boolean[] VALUES = new boolean[]{true, false};
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
-    private ConditionProfile profile;
-
-    @Before
-    public void create() {
-        profile = (ConditionProfile) invokeStatic(loadRelative(CountingConditionProfileTest.class, "ConditionProfile$Counting"), "createLazyLoadClass");
+    @Override
+    protected InlinableField[] getInlinedFields() {
+        return createInlinedFields(0, 0, 2, 0, 0);
     }
 
-    private static int getTrueCount(ConditionProfile profile) {
-        return (int) invoke(profile, "getTrueCount");
+    private int getTrueCount(Object profile) {
+        return (int) invokeProfileMethod(profile, "getTrueCount");
     }
 
-    private static int getFalseCount(ConditionProfile profile) {
-        return (int) invoke(profile, "getFalseCount");
+    private int getFalseCount(Object profile) {
+        return (int) invokeProfileMethod(profile, "getFalseCount");
+    }
+
+    @Test
+    public void testNotCrashing() {
+        CountingConditionProfile profile = createEnabled(CountingConditionProfile.class);
+        profile.disable();
+        profile.reset();
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
     }
 
     @Test
     public void testInitial() {
+        CountingConditionProfile profile = createEnabled(CountingConditionProfile.class);
         assertThat(getTrueCount(profile), is(0));
         assertThat(getFalseCount(profile), is(0));
         profile.toString();
     }
 
-    @Theory
-    public void testProfileOne(boolean value) {
-        boolean result = profile.profile(value);
+    @Test
+    public void testProfileOne() {
+        for (boolean value : VALUES) {
+            CountingConditionProfile profile = createEnabled(CountingConditionProfile.class);
+            boolean result = profile.profile(value);
 
-        assertThat(result, is(value));
-        assertThat(getTrueCount(profile), is(value ? 1 : 0));
-        assertThat(getFalseCount(profile), is(!value ? 1 : 0));
+            assertThat(result, is(value));
+            assertThat(getTrueCount(profile), is(value ? 1 : 0));
+            assertThat(getFalseCount(profile), is(!value ? 1 : 0));
+            profile.toString();
+        }
+    }
+
+    @Test
+    public void testProfileTwo() {
+        for (boolean value0 : VALUES) {
+            for (boolean value1 : VALUES) {
+                CountingConditionProfile profile = createEnabled(CountingConditionProfile.class);
+                boolean result0 = profile.profile(value0);
+                boolean result1 = profile.profile(value1);
+
+                assertThat(result0, is(value0));
+                assertThat(result1, is(value1));
+                assertThat(getTrueCount(profile), is((value0 ? 1 : 0) + (value1 ? 1 : 0)));
+                assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
+                profile.toString();
+            }
+        }
+    }
+
+    @Test
+    public void testProfileThree() {
+        for (boolean value0 : VALUES) {
+            for (boolean value1 : VALUES) {
+                for (boolean value2 : VALUES) {
+                    CountingConditionProfile profile = createEnabled(CountingConditionProfile.class);
+                    boolean result0 = profile.profile(value0);
+                    boolean result1 = profile.profile(value1);
+                    boolean result2 = profile.profile(value2);
+
+                    assertThat(result0, is(value0));
+                    assertThat(result1, is(value1));
+                    assertThat(result2, is(value2));
+                    assertThat(getTrueCount(profile), is((value0 ? 1 : 0) + (value1 ? 1 : 0) + (value2 ? 1 : 0)));
+                    assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
+                    profile.toString();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testNotCrashingInlined() {
+        InlinedCountingConditionProfile profile = createEnabled(InlinedCountingConditionProfile.class);
+        profile.disable(state);
+        profile.reset(state);
+        assertEquals(profile, profile);
+        assertEquals(profile.hashCode(), profile.hashCode());
+        assertNotNull(profile.toString());
+    }
+
+    @Test
+    public void testInitialInlined() {
+        InlinedCountingConditionProfile profile = createEnabled(InlinedCountingConditionProfile.class);
+        assertThat(getTrueCount(profile), is(0));
+        assertThat(getFalseCount(profile), is(0));
         profile.toString();
     }
 
-    @Theory
-    public void testProfileTwo(boolean value0, boolean value1) {
-        boolean result0 = profile.profile(value0);
-        boolean result1 = profile.profile(value1);
+    @Test
+    public void testProfileOneInlined() {
+        for (boolean value : VALUES) {
+            InlinedCountingConditionProfile profile = createEnabled(InlinedCountingConditionProfile.class);
+            boolean result = profile.profile(state, value);
 
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-        assertThat(getTrueCount(profile), is((value0 ? 1 : 0) + (value1 ? 1 : 0)));
-        assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
-        profile.toString();
+            assertThat(result, is(value));
+            assertThat(getTrueCount(profile), is(value ? 1 : 0));
+            assertThat(getFalseCount(profile), is(!value ? 1 : 0));
+            profile.toString();
+        }
     }
 
-    @Theory
-    public void testProfileThree(boolean value0, boolean value1, boolean value2) {
-        boolean result0 = profile.profile(value0);
-        boolean result1 = profile.profile(value1);
-        boolean result2 = profile.profile(value2);
+    @Test
+    public void testProfileTwoInlined() {
+        for (boolean value0 : VALUES) {
+            for (boolean value1 : VALUES) {
+                InlinedCountingConditionProfile profile = createEnabled(InlinedCountingConditionProfile.class);
+                boolean result0 = profile.profile(state, value0);
+                boolean result1 = profile.profile(state, value1);
 
-        assertThat(result0, is(value0));
-        assertThat(result1, is(value1));
-        assertThat(result2, is(value2));
-        assertThat(getTrueCount(profile), is((value0 ? 1 : 0) + (value1 ? 1 : 0) + (value2 ? 1 : 0)));
-        assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
-        profile.toString();
+                assertThat(result0, is(value0));
+                assertThat(result1, is(value1));
+                assertThat(getTrueCount(profile), is((value0 ? 1 : 0) + (value1 ? 1 : 0)));
+                assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0)));
+                profile.toString();
+            }
+        }
+    }
+
+    @Test
+    public void testProfileThreeInlined() {
+        for (boolean value0 : VALUES) {
+            for (boolean value1 : VALUES) {
+                for (boolean value2 : VALUES) {
+                    InlinedCountingConditionProfile profile = createEnabled(InlinedCountingConditionProfile.class);
+                    boolean result0 = profile.profile(state, value0);
+                    boolean result1 = profile.profile(state, value1);
+                    boolean result2 = profile.profile(state, value2);
+
+                    assertThat(result0, is(value0));
+                    assertThat(result1, is(value1));
+                    assertThat(result2, is(value2));
+                    assertThat(getTrueCount(profile), is((value0 ? 1 : 0) + (value1 ? 1 : 0) + (value2 ? 1 : 0)));
+                    assertThat(getFalseCount(profile), is((!value0 ? 1 : 0) + (!value1 ? 1 : 0) + (!value2 ? 1 : 0)));
+                    profile.toString();
+                }
+            }
+        }
+    }
+
+    @Test
+    public void testDisabled() {
+        ConditionProfile p = ConditionProfile.getUncached();
+        for (boolean value : VALUES) {
+            assertThat(p.profile(value), is(value));
+        }
+        p.toString(); // test that it is not crashing
+    }
+
+    @Test
+    public void testDisabledInlined() {
+        InlinedConditionProfile p = InlinedConditionProfile.getUncached();
+        for (boolean value : VALUES) {
+            assertThat(p.profile(state, value), is(value));
+        }
+        p.toString(); // test that it is not crashing
     }
 
 }

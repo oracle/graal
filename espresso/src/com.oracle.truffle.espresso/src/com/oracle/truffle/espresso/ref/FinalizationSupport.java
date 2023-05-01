@@ -35,8 +35,8 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.HostJavaVersionUtil;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
@@ -69,7 +69,7 @@ public final class FinalizationSupport {
                 NEW_ESPRESSO_FINAL_REFERENCE = MethodHandles.privateLookupIn(espressoFinalReference, MethodHandles.lookup()).findConstructor(espressoFinalReference,
                                 MethodType.methodType(void.class, StaticObject.class, StaticObject.class, ReferenceQueue.class));
             } catch (Throwable t) {
-                throw EspressoError.shouldNotReachHere("Error injecting while injecting classes to support finalization in the host (version " + HostJavaVersionUtil.JAVA_SPEC + ")", t);
+                throw EspressoError.shouldNotReachHere("Error injecting while injecting classes to support finalization in the host (version " + JavaVersion.HOST_VERSION + ")", t);
             }
         } else {
             NEW_ESPRESSO_FINAL_REFERENCE = null;
@@ -92,6 +92,7 @@ public final class FinalizationSupport {
         return NEW_ESPRESSO_FINAL_REFERENCE != null;
     }
 
+    @SuppressWarnings("deprecation")
     private static void setAccessible(AccessibleObject target, boolean value) throws Throwable {
         if (EspressoOptions.UnsafeOverride) {
             /*
@@ -114,7 +115,7 @@ public final class FinalizationSupport {
     }
 
     private static Class<?> injectClassInBootClassLoader(byte[] classBytes) throws Throwable {
-        EspressoError.guarantee(HostJavaVersionUtil.JAVA_SPEC >= 11, "Injection mechanism only supports host Java 11+.");
+        EspressoError.guarantee(JavaVersion.HOST_VERSION.java11OrLater(), "Injection mechanism only supports host Java 11+.");
         // Inject class via j.l.ClassLoader#defineClass1 (private native method).
         Method defineClass1 = ClassLoader.class.getDeclaredMethod("defineClass1",
                         ClassLoader.class, String.class, byte[].class, int.class, int.class, ProtectionDomain.class, String.class);

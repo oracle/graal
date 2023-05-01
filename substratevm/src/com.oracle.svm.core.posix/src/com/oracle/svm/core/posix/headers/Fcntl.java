@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CConst;
 
 // Checkstyle: stop
 
@@ -42,6 +44,9 @@ public class Fcntl {
     public static native int O_RDONLY();
 
     @CConstant
+    public static native int O_NOFOLLOW();
+
+    @CConstant
     public static native int O_RDWR();
 
     @CConstant
@@ -50,8 +55,24 @@ public class Fcntl {
     @CConstant
     public static native int O_CREAT();
 
+    @CConstant
+    public static native int O_TRUNC();
+
+    @CConstant
+    public static native int O_EXCL();
+
     public static class NoTransitions {
-        @CFunction(transition = Transition.NO_TRANSITION)
+        @CFunction(value = "openSII", transition = NO_TRANSITION)
         public static native int open(CCharPointer pathname, int flags, int mode);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int openat(int dirfd, @CConst CCharPointer pathname, int flags, int mode);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int unlink(@CConst CCharPointer pathname);
+
+        @CFunction(transition = NO_TRANSITION)
+        public static native int unlinkat(int dirfd, CCharPointer pathname, int flags);
+
     }
 }

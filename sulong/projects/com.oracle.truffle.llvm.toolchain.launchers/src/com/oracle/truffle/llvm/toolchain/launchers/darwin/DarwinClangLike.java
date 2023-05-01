@@ -53,15 +53,6 @@ public class DarwinClangLike extends ClangLike {
     }
 
     @Override
-    protected void getDebugCompilerArgs(List<String> sulongArgs) {
-        // [GR-41537] Use -gdwarf-4 instead of -gdwarf-5, as the latter causes a problem in
-        // dsymutil:
-        // > https://github.com/llvm/llvm-project/commit/a17c90daf2e7c3b1817ec29ad6648ce89b927f9a
-        // This workaround can be removed when LLVM is upgraded to >= 15
-        sulongArgs.add("-gdwarf-4");
-    }
-
-    @Override
     public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verb, boolean hlp, boolean earlyexit) {
         DarwinLinker.runDriverWithSaveTemps(this, sulongArgs, userArgs, verb, hlp, earlyexit, "-Wl,", needLinkerFlags, outputFlagPos);
     }

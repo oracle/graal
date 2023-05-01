@@ -29,10 +29,13 @@ import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
+
+import java.net.MalformedURLException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.gds.GdsCommands;
-import java.net.MalformedURLException;
 import java.net.URL;
 
 /**
@@ -57,6 +60,12 @@ public class GDSChannelFactory implements SoftwareChannel.Factory {
         OPTIONS.put(GdsCommands.LONG_OPTION_GDS_CONFIG, GdsCommands.OPTION_GDS_CONFIG);
         OPTIONS.put(GdsCommands.OPTION_SHOW_TOKEN, "");
         OPTIONS.put(GdsCommands.LONG_OPTION_SHOW_TOKEN, GdsCommands.OPTION_SHOW_TOKEN);
+        OPTIONS.put(GdsCommands.OPTION_REVOKE_TOKEN, "s");
+        OPTIONS.put(GdsCommands.LONG_OPTION_REVOKE_TOKEN, GdsCommands.OPTION_REVOKE_TOKEN);
+        OPTIONS.put(GdsCommands.OPTION_REVOKE_ALL_TOKENS, "s");
+        OPTIONS.put(GdsCommands.LONG_OPTION_REVOKE_ALL_TOKENS, GdsCommands.OPTION_REVOKE_ALL_TOKENS);
+        OPTIONS.put(GdsCommands.OPTION_REVOKE_CURRENT_TOKEN, "");
+        OPTIONS.put(GdsCommands.LONG_OPTION_REVOKE_CURRENT_TOKEN, GdsCommands.OPTION_REVOKE_CURRENT_TOKEN);
     }
 
     @Override
@@ -70,9 +79,9 @@ public class GDSChannelFactory implements SoftwareChannel.Factory {
         URL u;
         try {
             if (rest.startsWith("http") || rest.startsWith("file:") || rest.startsWith("test:")) {
-                u = new URL(rest);
+                u = SystemUtils.toURL(rest);
             } else {
-                u = new URL(PROTOCOL_HTTTPS_PREFIX + rest);
+                u = SystemUtils.toURL(PROTOCOL_HTTTPS_PREFIX + rest);
             }
         } catch (MalformedURLException ex) {
             throw output.failure("YUM_InvalidLocation", ex, urlString, ex.getLocalizedMessage());

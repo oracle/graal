@@ -35,6 +35,7 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -53,6 +54,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.UnmanagedMemory;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.CHeader;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -191,6 +193,24 @@ public final class PolyglotNativeAPI {
         return poly_ok;
     }
 
+    @CEntryPoint(name = "poly_engine_builder_allow_experimental_options", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Allows or disallows experimental options for a <code>poly_engine_builder</code>.",
+                    "",
+                    "@param engine_builder that is modified.",
+                    "@param allow_experimental_options bool value that is passed to the builder.",
+                    "@return poly_ok if successful; otherwise an error occurred.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#allowExperimentalOptions-boolean-",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_engine_builder_allow_experimental_options(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, boolean allow_experimental_options) {
+        resetErrorState();
+        nullCheck(engine_builder, "engine_builder");
+        Engine.Builder engineBuilder = fetchHandle(engine_builder);
+        engineBuilder.allowExperimentalOptions(allow_experimental_options);
+        return poly_ok;
+    }
+
     @CEntryPoint(name = "poly_engine_builder_option", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Sets an option for an <code>poly_engine_builder</code> that will apply to constructed engines.",
                     "",
@@ -202,7 +222,7 @@ public final class PolyglotNativeAPI {
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#newBuilder--",
                     "@since 19.0",
     })
-    public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, @CConst CCharPointer key_utf8, @CConst CCharPointer value_utf8) {
+    public static PolyglotStatus poly_engine_builder_option(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, @CConst CCharPointer key_utf8, @CConst CCharPointer value_utf8) {
         resetErrorState();
         nullCheck(engine_builder, "engine_builder");
         nullCheck(key_utf8, "key_utf8");
@@ -391,8 +411,9 @@ public final class PolyglotNativeAPI {
                     "Sets output handlers for a <code>poly_context_builder</code>.",
                     "",
                     "@param context_builder that is modified.",
-                    "@param stdout_handler function used for context_builder output stream. Not used if NULL.",
-                    "@param stderr_handler function used for context_builder error stream. Not used if NULL.",
+                    "@param stdout_handler callback used for context_builder output stream. Not used if NULL.",
+                    "@param stderr_handler callback used for context_builder error stream. Not used if NULL.",
+                    "@param data user-defined data to be passed to stdout_handler and stderr_handler callbacks.",
                     "@return poly_ok if all works, poly_generic_error if there is a failure.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#out-java.io.OutputStream-",
@@ -400,20 +421,20 @@ public final class PolyglotNativeAPI {
                     "@since 23.0",
     })
     public static PolyglotStatus poly_context_builder_output(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, PolyglotOutputHandler stdout_handler,
-                    PolyglotOutputHandler stderr_handler) {
+                    PolyglotOutputHandler stderr_handler, VoidPointer data) {
         resetErrorState();
         nullCheck(context_builder, "context_builder");
         Context.Builder contextBuilder = fetchHandle(context_builder);
         if (stdout_handler.isNonNull()) {
-            contextBuilder.out(newOutputStreamFor(stdout_handler));
+            contextBuilder.out(newOutputStreamFor(stdout_handler, data));
         }
         if (stderr_handler.isNonNull()) {
-            contextBuilder.err(newOutputStreamFor(stderr_handler));
+            contextBuilder.err(newOutputStreamFor(stderr_handler, data));
         }
         return poly_ok;
     }
 
-    private static OutputStream newOutputStreamFor(PolyglotOutputHandler outputHandler) {
+    private static OutputStream newOutputStreamFor(PolyglotOutputHandler outputHandler, VoidPointer data) {
         return new OutputStream() {
             @Override
             public void write(int b) throws IOException {
@@ -427,7 +448,7 @@ public final class PolyglotNativeAPI {
                     return;
                 }
                 try (var bytes = CTypeConversion.toCBytes(b)) {
-                    outputHandler.invoke(bytes.get().addressOf(off), WordFactory.unsigned(len));
+                    outputHandler.invoke(bytes.get().addressOf(off), WordFactory.unsigned(len), data);
                 }
             }
         };
@@ -664,7 +685,6 @@ public final class PolyglotNativeAPI {
         nullCheck(language_id_utf8, "language_id_utf8");
         nullCheck(name_utf8, "name_utf8");
         nullCheck(source_utf8, "source_utf8");
-        nullCheck(result, "result");
         Context c = fetchHandle(context);
         String languageName = CTypeConversion.utf8ToJavaString(language_id_utf8);
         String jName = CTypeConversion.utf8ToJavaString(name_utf8);
@@ -2415,5 +2435,56 @@ public final class PolyglotNativeAPI {
         CallbackException(String message) {
             super(message);
         }
+    }
+
+    @CEntryPoint(name = "poly_context_builder_timezone", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets timezone for a <code>poly_context_builder</code>.",
+                    "",
+                    "@param context_builder that is modified.",
+                    "@param zone_utf8 id of a timezone to be set via ZoneId.of().",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#timeZone-java.time.ZoneId-",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_context_builder_timezone(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder, @CConst CCharPointer zone_utf8) {
+        resetErrorState();
+        nullCheck(context_builder, "context_builder");
+        nullCheck(zone_utf8, "zone_utf8");
+
+        String zoneString = CTypeConversion.utf8ToJavaString(zone_utf8);
+        Context.Builder contextBuilder = fetchHandle(context_builder);
+        contextBuilder.timeZone(ZoneId.of(zoneString));
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_vmruntime_initialize", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Initializes the VM: Runs all startup hooks that were registered during image building.",
+                    "",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/VMRuntime.html#initialize--",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_vmruntime_initialize(PolyglotIsolateThread thread) {
+        resetErrorState();
+
+        VMRuntime.initialize();
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_vmruntime_shutdown", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Shuts down the VM: Runs all shutdown hooks and waits for all finalization to complete.",
+                    "",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/VMRuntime.html#shutdown--",
+                    "@since 23.0",
+    })
+    public static PolyglotStatus poly_vmruntime_shutdown(PolyglotIsolateThread thread) {
+        resetErrorState();
+
+        VMRuntime.shutdown();
+        return poly_ok;
     }
 }

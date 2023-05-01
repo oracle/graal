@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,20 +44,27 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 
 public class WasmContextOptions {
     @CompilationFinal private boolean saturatingFloatToInt;
     @CompilationFinal private boolean signExtensionOps;
-    @CompilationFinal private boolean keepDataSections;
     @CompilationFinal private boolean multiValue;
     @CompilationFinal private boolean bulkMemoryAndRefTypes;
+    @CompilationFinal private boolean memory64;
+    @CompilationFinal private boolean unsafeMemory;
 
     @CompilationFinal private boolean memoryOverheadMode;
+    @CompilationFinal private boolean constantRandomGet;
+
+    @CompilationFinal private String debugCompDirectory;
     private final OptionValues optionValues;
 
     WasmContextOptions(OptionValues optionValues) {
         this.optionValues = optionValues;
         setOptionValues();
+        checkOptionDependencies();
     }
 
     public static WasmContextOptions fromOptionValues(OptionValues optionValues) {
@@ -67,14 +74,31 @@ public class WasmContextOptions {
     private void setOptionValues() {
         this.saturatingFloatToInt = readBooleanOption(WasmOptions.SaturatingFloatToInt);
         this.signExtensionOps = readBooleanOption(WasmOptions.SignExtensionOps);
-        this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
         this.multiValue = readBooleanOption(WasmOptions.MultiValue);
         this.bulkMemoryAndRefTypes = readBooleanOption(WasmOptions.BulkMemoryAndRefTypes);
+        this.memory64 = readBooleanOption(WasmOptions.Memory64);
+        this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
         this.memoryOverheadMode = readBooleanOption(WasmOptions.MemoryOverheadMode);
+        this.constantRandomGet = readBooleanOption(WasmOptions.WasiConstantRandomGet);
+        this.debugCompDirectory = readStringOption(WasmOptions.DebugCompDirectory);
+    }
+
+    private void checkOptionDependencies() {
+        if (memory64 && !unsafeMemory) {
+            failDependencyCheck("Memory64", "UseUnsafeMemory");
+        }
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
         return key.getValue(optionValues);
+    }
+
+    private String readStringOption(OptionKey<String> key) {
+        return key.getValue(optionValues);
+    }
+
+    private static void failDependencyCheck(String option, String dependency) {
+        throw WasmException.format(Failure.INCOMPATIBLE_OPTIONS, "Incompatible WebAssembly options: %s requires %s to be enabled.", option, dependency);
     }
 
     public boolean supportSaturatingFloatToInt() {
@@ -85,10 +109,6 @@ public class WasmContextOptions {
         return signExtensionOps;
     }
 
-    public boolean keepDataSections() {
-        return keepDataSections;
-    }
-
     public boolean supportMultiValue() {
         return multiValue;
     }
@@ -97,8 +117,24 @@ public class WasmContextOptions {
         return bulkMemoryAndRefTypes;
     }
 
+    public boolean supportMemory64() {
+        return memory64;
+    }
+
+    public boolean useUnsafeMemory() {
+        return unsafeMemory;
+    }
+
     public boolean memoryOverheadMode() {
         return memoryOverheadMode;
+    }
+
+    public boolean constantRandomGet() {
+        return constantRandomGet;
+    }
+
+    public String debugCompDirectory() {
+        return debugCompDirectory;
     }
 
     @Override
@@ -106,10 +142,13 @@ public class WasmContextOptions {
         int hash = 5;
         hash = 53 * hash + (this.saturatingFloatToInt ? 1 : 0);
         hash = 53 * hash + (this.signExtensionOps ? 1 : 0);
-        hash = 53 * hash + (this.keepDataSections ? 1 : 0);
         hash = 53 * hash + (this.multiValue ? 1 : 0);
         hash = 53 * hash + (this.bulkMemoryAndRefTypes ? 1 : 0);
+        hash = 53 * hash + (this.memory64 ? 1 : 0);
+        hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
+        hash = 53 * hash + (this.constantRandomGet ? 1 : 0);
+        hash = 53 * hash + (this.debugCompDirectory.hashCode());
         return hash;
     }
 
@@ -131,16 +170,25 @@ public class WasmContextOptions {
         if (this.signExtensionOps != other.signExtensionOps) {
             return false;
         }
-        if (this.keepDataSections != other.keepDataSections) {
-            return false;
-        }
         if (this.multiValue != other.multiValue) {
             return false;
         }
         if (this.bulkMemoryAndRefTypes != other.bulkMemoryAndRefTypes) {
             return false;
         }
+        if (this.memory64 != other.memory64) {
+            return false;
+        }
+        if (this.unsafeMemory != other.unsafeMemory) {
+            return false;
+        }
         if (this.memoryOverheadMode != other.memoryOverheadMode) {
+            return false;
+        }
+        if (this.constantRandomGet != other.constantRandomGet) {
+            return false;
+        }
+        if (!this.debugCompDirectory.equals(other.debugCompDirectory)) {
             return false;
         }
         return true;

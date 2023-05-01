@@ -23,10 +23,17 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import static com.oracle.truffle.espresso.threads.EspressoThreadRegistry.getThreadId;
+
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ThreadLocalAction;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -35,12 +42,15 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.VM;
 
 // @formatter:off
 /**
@@ -129,7 +139,7 @@ public final class Target_java_lang_Thread {
                 context.getLogger().fine(() -> {
                     String guestName = threadAccess.getThreadName(self);
                     long guestId = threadAccess.getThreadId(self);
-                    return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), hostThread.getId(), guestName, guestId);
+                    return String.format("Thread.start0: [HOST:%s, %d], [GUEST:%s, %d]", hostThread.getName(), getThreadId(hostThread), guestName, guestId);
                 });
                 hostThread.start();
             } else {
@@ -191,7 +201,7 @@ public final class Target_java_lang_Thread {
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/Thread$State;")
-        StaticObject execute(@JavaType(Thread.class) StaticObject self,
+        StaticObject doDefault(@JavaType(Thread.class) StaticObject self,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
             return (StaticObject) toThreadState.call(context.getThreadAccess().getState(self));
@@ -267,7 +277,7 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
-    public static void resume0(@JavaType(Object.class) StaticObject self,
+    public static void resume0(@JavaType(Thread.class) StaticObject self,
                     @Inject EspressoContext context) {
         context.getThreadAccess().resume(self);
     }
@@ -275,23 +285,89 @@ public final class Target_java_lang_Thread {
     @TruffleBoundary
     @SuppressWarnings({"unused"})
     @Substitution(hasReceiver = true)
-    public static void suspend0(@JavaType(Object.class) StaticObject toSuspend,
+    public static void suspend0(@JavaType(Thread.class) StaticObject self,
                     @Inject EspressoContext context) {
-        context.getThreadAccess().suspend(toSuspend);
+        context.getThreadAccess().suspend(self);
     }
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void stop0(@JavaType(Object.class) StaticObject self, @JavaType(Object.class) StaticObject throwable,
+    public static void stop0(@JavaType(Thread.class) StaticObject self, @JavaType(Object.class) StaticObject throwable,
                     @Inject EspressoContext context) {
         context.getThreadAccess().stop(self, throwable);
     }
 
     @TruffleBoundary
     @Substitution(hasReceiver = true)
-    public static void setNativeName(@JavaType(Object.class) StaticObject self, @JavaType(String.class) StaticObject name,
+    public static void setNativeName(@JavaType(Thread.class) StaticObject self, @JavaType(String.class) StaticObject name,
                     @Inject Meta meta) {
         Thread hostThread = meta.getThreadAccess().getHost(self);
+        if (hostThread == null) {
+            return;
+        }
         hostThread.setName(meta.toHostString(name));
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java19OrLater.class, hasReceiver = true)
+    abstract static class GetStackTrace0 extends SubstitutionNode {
+        abstract @JavaType(Object.class) StaticObject execute(@JavaType(Thread.class) StaticObject self);
+
+        @Specialization
+        public @JavaType(Object.class) StaticObject doGetStackTrace(@JavaType(Thread.class) StaticObject self) {
+            // JVM_GetStackTrace
+            EspressoContext context = EspressoContext.get(this);
+            Thread hostThread = context.getThreadAccess().getHost(self);
+            if (hostThread == null) {
+                return StaticObject.NULL;
+            }
+            VM.StackTrace stackTrace;
+            if (hostThread == Thread.currentThread()) {
+                stackTrace = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE);
+            } else {
+                stackTrace = asyncGetStackTrace(hostThread, context);
+                if (stackTrace == null) {
+                    return StaticObject.NULL;
+                }
+            }
+
+            return context.getMeta().java_lang_StackTraceElement.allocateReferenceArray(stackTrace.size, i -> {
+                StaticObject ste = context.getMeta().java_lang_StackTraceElement.allocateInstance(context);
+                VM.fillInElement(ste, stackTrace.trace[i], context.getMeta());
+                return ste;
+            });
+        }
+
+        @TruffleBoundary
+        private VM.StackTrace asyncGetStackTrace(Thread thread, EspressoContext context) {
+            CollectStackTraceAction action = new CollectStackTraceAction();
+            Future<Void> future = context.getEnv().submitThreadLocal(new Thread[]{thread}, action);
+            TruffleSafepoint.setBlockedThreadInterruptible(this, f -> {
+                try {
+                    future.get();
+                } catch (ExecutionException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }, future);
+            return action.result;
+        }
+    }
+
+    private static final class CollectStackTraceAction extends ThreadLocalAction {
+        VM.StackTrace result;
+
+        protected CollectStackTraceAction() {
+            super(false, false);
+        }
+
+        @Override
+        protected void perform(Access access) {
+            assert access.getThread() == Thread.currentThread();
+            result = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE);
+        }
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class, isTrivial = true)
+    public static void ensureMaterializedForStackWalk(@JavaType(Object.class) StaticObject obj) {
+        CompilerDirectives.blackhole(obj);
     }
 }

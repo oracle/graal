@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import java.util.Set;
+
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -59,14 +61,12 @@ public class Log {
 
     private final ProcessingEnvironment processingEnv;
     private final boolean emitWarnings;
+    private final Set<String> suppressWarnings;
 
-    public Log(ProcessingEnvironment env, boolean emitWarnings) {
+    public Log(ProcessingEnvironment env, boolean emitWarnings, String[] suppressWarnings) {
         this.processingEnv = env;
         this.emitWarnings = emitWarnings;
-    }
-
-    public void debug(String message, Object... args) {
-        message(Kind.ERROR, null, null, null, message, args);
+        this.suppressWarnings = suppressWarnings != null ? Set.of(suppressWarnings) : null;
     }
 
     public void message(Kind kind, Element element, AnnotationMirror mirror, AnnotationValue value, String format, Object... args) {
@@ -83,9 +83,38 @@ public class Log {
                 message = String.format("Element %s: %s", element, message);
             }
         }
+        if (isSuppressed(kind, null, usedElement)) {
+            return;
+        }
+
         if (kind != Kind.WARNING || emitWarnings) {
             processingEnv.getMessager().printMessage(kind, message, usedElement, usedMirror, usedValue);
         }
+    }
+
+    public boolean isSuppressed(Kind kind, String suppressionKey, Element usedElement, boolean useOptions) {
+        if (kind == Kind.WARNING) {
+            if (!emitWarnings && useOptions) {
+                return true;
+            }
+            if (suppressionKey != null) {
+                if (TruffleSuppressedWarnings.isSuppressed(usedElement, suppressionKey)) {
+                    return true;
+                }
+                if (suppressWarnings != null && useOptions && suppressWarnings.contains(suppressionKey)) {
+                    return true;
+                }
+            } else {
+                if (TruffleSuppressedWarnings.isSuppressed(usedElement)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean isSuppressed(Kind kind, String suppressionKey, Element usedElement) {
+        return isSuppressed(kind, suppressionKey, usedElement, true);
     }
 
 }

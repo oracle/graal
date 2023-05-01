@@ -44,6 +44,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.NotLoomJDK;
+import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
@@ -196,11 +197,7 @@ final class SubstrateVirtualThread extends Thread {
 
     private boolean yieldContinuation() {
         assert this == Thread.currentThread();
-        if (pins > 0) {
-            return false;
-        }
-        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        if (anchor.isNonNull() && cont.getBaseSP().aboveThan(anchor.getLastJavaSP())) {
+        if (isPinned()) {
             return false;
         }
 
@@ -450,13 +447,13 @@ final class SubstrateVirtualThread extends Thread {
             PlatformThreads.setCurrentThread(carrier, carrier);
             token = this;
         }
-        MonitorSupport.singleton().monitorEnter(interruptLock());
+        MonitorSupport.singleton().monitorEnter(interruptLock(), MonitorInflationCause.VM_INTERNAL);
         return token;
     }
 
     /** @see #acquireInterruptLockMaybeSwitch */
     private void releaseInterruptLockMaybeSwitchBack(Object token) {
-        MonitorSupport.singleton().monitorExit(interruptLock());
+        MonitorSupport.singleton().monitorExit(interruptLock(), MonitorInflationCause.VM_INTERNAL);
         if (token != null) {
             assert token == this && Thread.currentThread() == carrierThread;
             PlatformThreads.setCurrentThread(carrierThread, this);
@@ -672,6 +669,15 @@ final class SubstrateVirtualThread extends Thread {
             throw new IllegalStateException("Not pinned");
         }
         pins--;
+    }
+
+    boolean isPinned() {
+        assert currentThread() == this;
+        if (pins > 0) {
+            return true;
+        }
+        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
+        return anchor.isNonNull() && cont.getBaseSP().aboveThan(anchor.getLastJavaSP());
     }
 
     @Override

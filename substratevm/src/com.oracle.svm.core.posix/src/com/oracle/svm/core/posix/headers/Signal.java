@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.headers;
 
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -125,6 +127,10 @@ public class Signal {
         @CFieldAddress("uc_mcontext")
         @Platforms({Platform.LINUX_AARCH64_BASE.class})
         mcontext_linux_aarch64_t uc_mcontext_linux_aarch64();
+
+        @CFieldAddress("uc_mcontext")
+        @Platforms({Platform.LINUX_RISCV64.class})
+        mcontext_linux_riscv64_t uc_mcontext_linux_riscv64();
 
         @CField("uc_mcontext")
         @Platforms({Platform.DARWIN_AMD64.class})
@@ -341,6 +347,17 @@ public class Signal {
     }
 
     /**
+     * Information about Linux's RISCV64 struct sigcontext uc_mcontext can be found at
+     * https://github.com/torvalds/linux/blob/9e1ff307c779ce1f0f810c7ecce3d95bbae40896/arch/riscv/include/uapi/asm/sigcontext.h#L17
+     */
+    @CStruct(value = "mcontext_t")
+    @Platforms({Platform.LINUX_RISCV64.class})
+    public interface mcontext_linux_riscv64_t extends PointerBase {
+        @CFieldAddress(value = "__gregs")
+        GregsPointer gregs();
+    }
+
+    /**
      * Information about Darwin's AMD64 mcontext64 can be found at
      * https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/bsd/i386/_mcontext.h#L147
      *
@@ -431,4 +448,8 @@ public class Signal {
         long pc();
     }
 
+    public static class NoTransitions {
+        @CFunction(transition = NO_TRANSITION)
+        public static native int kill(int pid, int sig);
+    }
 }

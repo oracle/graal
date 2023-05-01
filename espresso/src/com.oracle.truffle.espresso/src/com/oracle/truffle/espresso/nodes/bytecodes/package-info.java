@@ -34,11 +34,15 @@
  * access checks, the caller is responsible for access checks and sanity checks required for
  * correct/legal execution.
  * </p>
- * 
+ *
  * <p>
  * Nodes in this package always offer un-cached versions e.g.
  * {@link com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf.Dynamic} that can be used anywhere,
  * at the expense of performance.
  * </p>
  */
+// TODO GR-43114 fix warnings
+@SuppressPackageWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
 package com.oracle.truffle.espresso.nodes.bytecodes;
+
+import com.oracle.truffle.api.dsl.SuppressPackageWarnings;

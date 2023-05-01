@@ -266,7 +266,7 @@ final class Target_java_lang_StackWalker {
             this.continuation = continuation;
         }
 
-        @Uninterruptible(reason = "Prevent GC while in this method.", calleeMustBe = false)
+        @Uninterruptible(reason = "Prevent GC while in this method.")
         private boolean initWalk() {
             assert stored == null;
             Continuation internal = (continuation != null) ? LoomSupport.getInternalContinuation(continuation) : null;

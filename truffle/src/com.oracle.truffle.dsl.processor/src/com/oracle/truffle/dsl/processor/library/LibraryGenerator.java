@@ -75,7 +75,6 @@ import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
@@ -97,7 +96,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
     class MessageObjects {
         final LibraryMessage model;
         final int messageIndex;
-        int cacheIndex;
         CodeVariableElement messageField;
 
         MessageObjects(LibraryMessage message, int messageIndex) {
@@ -127,7 +125,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         TypeMirror classLiteral = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Class.class),
                         Arrays.asList(libraryTypeMirror));
         CodeExecutableElement loadLibraryClass = genClass.add(new CodeExecutableElement(modifiers(PRIVATE, STATIC), classLiteral, "lazyLibraryClass"));
-        GeneratorUtils.mergeSupressWarnings(loadLibraryClass, "unchecked");
+        GeneratorUtils.mergeSuppressWarnings(loadLibraryClass, "unchecked");
         builder = loadLibraryClass.createBuilder();
         builder.startTryBlock();
         builder.startStatement().string("return ");
@@ -149,7 +147,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         List<MessageObjects> methods = new ArrayList<>();
         int messageIndex = 0;
-        for (LibraryMessage message : model.getMethods()) {
+        for (LibraryMessage message : model.getAllMethods()) {
             if (message.hasErrors()) {
                 continue;
             }
@@ -204,11 +202,12 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         CodeExecutableElement messageConstructor = new CodeExecutableElement(modifiers(), null, messageClass.getSimpleName().toString());
         messageConstructor.addParameter(new CodeVariableElement(context.getType(String.class), "name"));
         messageConstructor.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+        messageConstructor.addParameter(new CodeVariableElement(context.getType(boolean.class), "deprecated"));
         messageConstructor.addParameter(new CodeVariableElement(context.getType(Class.class), "returnType"));
         messageConstructor.addParameter(new CodeVariableElement(context.getType(Class[].class), "parameters"));
         messageConstructor.setVarArgs(true);
         builder = messageConstructor.createBuilder();
-        builder.startStatement().startSuperCall().staticReference(libraryClassLiteral).string("name").string("index").string("returnType").string("parameters").end().end();
+        builder.startStatement().startSuperCall().staticReference(libraryClassLiteral).string("name").string("index").string("deprecated").string("returnType").string("parameters").end().end();
         messageClass.add(messageConstructor);
         genClass.add(messageClass);
 
@@ -224,9 +223,15 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             if (message.model.getName().equals(ACCEPTS)) {
                 continue;
             }
-            message.messageField = genClass.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), types.Message, createConstantName(message.model.getName())));
+            String baseName = message.model.getName();
+
+            if (message.model.getDeprecatedReplacement() != null) {
+                baseName += "_deprecated_" + message.model.getDeprecatedReplacement().getDeprecatedOverloads().indexOf(message.model);
+            }
+
+            message.messageField = genClass.add(new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), types.Message, createConstantName(baseName)));
             builder = message.messageField.createInitBuilder();
-            builder.startNew(messageClass.asType()).doubleQuote(message.model.getName()).string(String.valueOf(message.messageIndex));
+            builder.startNew(messageClass.asType()).doubleQuote(message.model.getName()).string(String.valueOf(message.messageIndex)).string(String.valueOf(message.model.isDeprecated()));
             ExecutableElement method = message.model.getExecutable();
             builder.typeLiteral(method.getReturnType());
             for (int i = 0; i < method.getParameters().size(); i++) {
@@ -261,10 +266,16 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         genClass.add(createProxy);
 
         for (MessageObjects message : methods) {
+            if (message.messageField == null && !message.model.getName().equals(ACCEPTS)) {
+                continue;
+            }
             CodeExecutableElement executeImpl = proxyClass.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
             removeAbstractModifiers(executeImpl);
             if (executeImpl.getReturnType().getKind() == TypeKind.TYPEVAR) {
-                executeImpl.getAnnotationMirrors().add(createSuppressWarningsUnchecked(context));
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "unchecked");
+            }
+            if (message.model.isDeprecated()) {
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "deprecation");
             }
             executeImpl.renameArguments("receiver_");
             builder = executeImpl.createBuilder();
@@ -335,7 +346,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 }
             }
             if (uncheckedCast) {
-                GeneratorUtils.mergeSupressWarnings(executeImpl, "unchecked");
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "unchecked");
             }
         }
 
@@ -382,7 +393,10 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             CodeExecutableElement executeImpl = delegateClass.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
             removeAbstractModifiers(executeImpl);
             if (executeImpl.getReturnType().getKind() == TypeKind.TYPEVAR) {
-                executeImpl.getAnnotationMirrors().add(createSuppressWarningsUnchecked(context));
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "unchecked");
+            }
+            if (message.model.isDeprecated()) {
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "deprecation");
             }
             executeImpl.renameArguments("receiver_");
             builder = executeImpl.createBuilder();
@@ -439,7 +453,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.end(); // else block
             }
             if (uncheckedCast) {
-                GeneratorUtils.mergeSupressWarnings(executeImpl, "unchecked");
+                GeneratorUtils.mergeSuppressWarnings(executeImpl, "unchecked");
             }
         }
 
@@ -462,6 +476,9 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             CodeExecutableElement execute = cachedToUncached.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
             execute.renameArguments("receiver_");
             removeAbstractModifiers(execute);
+            if (message.model.isDeprecated()) {
+                GeneratorUtils.mergeSuppressWarnings(execute, "deprecation");
+            }
             builder = execute.createBuilder();
             if (message.model.getName().equals(ACCEPTS)) {
                 builder.returnTrue();
@@ -470,7 +487,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 boolean pushEncapsulating = model.isPushEncapsulatingNode();
 
                 if (pushEncapsulating) {
-                    GeneratorUtils.pushEncapsulatingNode(builder, "getParent()");
+                    GeneratorUtils.pushEncapsulatingNode(builder, CodeTreeBuilder.singleString("getParent()"));
                     builder.startTryBlock();
                 }
                 builder.startReturn().startCall("INSTANCE.getUncached(receiver_)", execute.getSimpleName().toString());
@@ -500,6 +517,9 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             CodeExecutableElement execute = uncachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
             execute.renameArguments("receiver_");
             removeAbstractModifiers(execute);
+            if (message.model.isDeprecated()) {
+                GeneratorUtils.mergeSuppressWarnings(execute, "deprecation");
+            }
             builder = execute.createBuilder();
             GeneratorUtils.addBoundaryOrTransferToInterpreter(execute, builder);
             if (message.model.getName().equals(ACCEPTS)) {
@@ -539,6 +559,9 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             CodeExecutableElement execute = cachedDispatch.add(CodeExecutableElement.cloneNoAnnotations(message.model.getExecutable()));
             execute.renameArguments("receiver_");
             removeAbstractModifiers(execute);
+            if (message.model.isDeprecated()) {
+                GeneratorUtils.mergeSuppressWarnings(execute, "deprecation");
+            }
             builder = execute.createBuilder();
             if (message.model.getName().equals(ACCEPTS)) {
                 builder.returnTrue();
@@ -761,9 +784,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.end(); // superCall
         builder.end(); // statement
 
-        genClass.addAll(constants.libraries.values());
-        genClass.addAll(constants.contextReferences.values());
-        genClass.addAll(constants.languageReferences.values());
+        constants.addElementsTo(genClass);
         return Arrays.asList(genClass);
     }
 
@@ -785,12 +806,6 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         genClass.add(resolvedExports);
 
         return new TypeMirror[]{defaultExportsLibrary.getTemplateType().asType(), resolvedExports.asType()};
-    }
-
-    static CodeAnnotationMirror createSuppressWarningsUnchecked(ProcessorContext context) {
-        CodeAnnotationMirror suppressWarnings = new CodeAnnotationMirror(context.getDeclaredType(SuppressWarnings.class));
-        suppressWarnings.setElementValue(suppressWarnings.findExecutableElement("value"), new CodeAnnotationValue(Arrays.asList(new CodeAnnotationValue("unchecked"))));
-        return suppressWarnings;
     }
 
     private CodeExecutableElement createGenericCastMethod(LibraryData library) {
@@ -889,6 +904,10 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             if (message.model.getName().equals(ACCEPTS)) {
                 continue;
             }
+            if (message.model.isDeprecated()) {
+                GeneratorUtils.mergeSuppressWarnings(reflectionGenericDispatch, "deprecation");
+            }
+
             builder.startCase();
             builder.string(String.valueOf(message.messageIndex)).end();
             builder.startIndention();
@@ -937,7 +956,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
         builder.startThrow().startNew(context.getType(AbstractMethodError.class)).string("message.toString()").end().end();
 
         if (uncheckedCast) {
-            GeneratorUtils.mergeSupressWarnings(reflectionGenericDispatch, "unchecked");
+            GeneratorUtils.mergeSuppressWarnings(reflectionGenericDispatch, "unchecked");
         }
 
         return reflectionGenericDispatch;

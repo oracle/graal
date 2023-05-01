@@ -28,7 +28,8 @@ package com.oracle.objectfile.pecoff.cv;
 
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
-import com.oracle.objectfile.debugentry.Range;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 
 import java.util.Iterator;
 
@@ -66,9 +67,9 @@ public class CVLineRecordBuilder {
         debug("CVLineRecord.computeContents: processing primary range %s", primaryRange);
 
         processRange(primaryRange);
-        Iterator<Range> iterator = compiledEntry.leafRangeIterator();
+        Iterator<SubRange> iterator = compiledEntry.leafRangeIterator();
         while (iterator.hasNext()) {
-            Range subRange = iterator.next();
+            SubRange subRange = iterator.next();
             debug("CVLineRecord.computeContents: processing range %s", subRange);
             processRange(subRange);
         }

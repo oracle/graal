@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,8 @@ import static com.oracle.truffle.api.interop.AssertUtils.validScope;
 import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteOrder;
 import java.time.Duration;
 import java.time.Instant;
@@ -408,17 +410,20 @@ public abstract class InteropLibrary extends Library {
      * @see #fitsInShort(Object)
      * @see #fitsInInt(Object)
      * @see #fitsInLong(Object)
+     * @see #fitsInBigInteger(Object)
      * @see #fitsInFloat(Object)
      * @see #fitsInDouble(Object)
      * @see #asByte(Object)
      * @see #asShort(Object)
      * @see #asInt(Object)
      * @see #asLong(Object)
+     * @see #asBigInteger(Object)
      * @see #asFloat(Object)
      * @see #asDouble(Object)
      * @since 19.0
      */
-    @Abstract(ifExported = {"fitsInByte", "fitsInShort", "fitsInInt", "fitsInLong", "fitsInFloat", "fitsInDouble", "asByte", "asShort", "asInt", "asLong", "asFloat", "asDouble"})
+    @Abstract(ifExported = {"fitsInByte", "fitsInShort", "fitsInInt", "fitsInLong", "fitsInBigInteger", "fitsInFloat", "fitsInDouble", "asByte", "asShort", "asInt", "asLong", "asBigInteger",
+                    "asFloat", "asDouble"})
     public boolean isNumber(Object receiver) {
         return false;
     }
@@ -481,6 +486,31 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
+     * in a Java BigInteger without loss of precision, else <code>false</code>. Invoking this
+     * message does not cause any observable side-effects.
+     *
+     * @see #isNumber(Object)
+     * @see #asBigInteger(Object)
+     * @since 23.0
+     */
+    @Abstract(ifExportedAsWarning = "isNumber")
+    public boolean fitsInBigInteger(Object receiver) {
+        try {
+            if (fitsInLong(receiver)) {
+                return true;
+            } else if (fitsInDouble(receiver)) {
+                double doubleValue = asDouble(receiver);
+                return doubleValue % 1 == 0 && !NumberUtils.isNegativeZero(doubleValue);
+            } else {
+                return false;
+            }
+        } catch (UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver represents a <code>number</code> and its value fits
      * in a Java float primitive without loss of precision, else <code>false</code>. Invoking this
      * message does not cause any observable side-effects.
      *
@@ -512,7 +542,7 @@ public abstract class InteropLibrary extends Library {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *             {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
      * @see #isNumber(Object)
      * @see #fitsInByte(Object)
      * @since 19.0
@@ -527,7 +557,7 @@ public abstract class InteropLibrary extends Library {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *             {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
      * @see #isNumber(Object)
      * @see #fitsInShort(Object)
      * @since 19.0
@@ -542,7 +572,7 @@ public abstract class InteropLibrary extends Library {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *             {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
      * @see #isNumber(Object)
      * @see #fitsInInt(Object)
      * @since 19.0
@@ -557,7 +587,7 @@ public abstract class InteropLibrary extends Library {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *             {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
      * @see #isNumber(Object)
      * @see #fitsInLong(Object)
      * @since 19.0
@@ -568,11 +598,49 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Returns the receiver value as Java BigInteger if the number fits without loss of precision.
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver is not a
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
+     * @see #isNumber(Object)
+     * @see #fitsInLong(Object)
+     * @since 19.0
+     */
+    @Abstract(ifExportedAsWarning = "isNumber")
+    public BigInteger asBigInteger(Object receiver) throws UnsupportedMessageException {
+        if (fitsInLong(receiver)) {
+            long longValue = asLong(receiver);
+            return toBigInteger(longValue);
+        } else if (fitsInDouble(receiver)) {
+            double doubleValue = asDouble(receiver);
+            if (doubleValue % 1 == 0 && !NumberUtils.isNegativeZero(doubleValue)) {
+                return toBigInteger(doubleValue);
+            }
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(long longValue) {
+        return BigInteger.valueOf(longValue);
+    }
+
+    @TruffleBoundary
+    private static BigInteger toBigInteger(double doubleValue) {
+        try {
+            return new BigDecimal(doubleValue).toBigIntegerExact();
+        } catch (ArithmeticException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+    }
+
+    /**
      * Returns the receiver value as Java float primitive if the number fits without loss of
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *             {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
      * @see #isNumber(Object)
      * @see #fitsInFloat(Object)
      * @since 19.0
@@ -587,7 +655,7 @@ public abstract class InteropLibrary extends Library {
      * precision. Invoking this message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver is not a
-     *             {@link #isNumber(Object)} or it does not fit without less of precision.
+     *             {@link #isNumber(Object)} or it does not fit without loss of precision.
      * @see #isNumber(Object)
      * @see #fitsInDouble(Object)
      * @since 19.0
@@ -2094,7 +2162,7 @@ public abstract class InteropLibrary extends Library {
     public Object getExceptionStackTrace(Object receiver) throws UnsupportedMessageException {
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
-            return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver);
+            return InteropAccessor.EXCEPTION.getExceptionStackTrace(receiver, null);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -2916,7 +2984,7 @@ public abstract class InteropLibrary extends Library {
     public static boolean isValidProtocolValue(Object value) {
         return isValidValue(value) || value instanceof ByteOrder || value instanceof Instant || value instanceof ZoneId || value instanceof LocalDate ||
                         value instanceof LocalTime || value instanceof Duration || value instanceof ExceptionType || value instanceof SourceSection || value instanceof Class<?> ||
-                        value instanceof TriState || value instanceof InteropLibrary || value instanceof Object[];
+                        value instanceof TriState || value instanceof InteropLibrary || value instanceof Object[] || value instanceof BigInteger;
     }
 
     static class Asserts extends InteropLibrary {
@@ -3236,6 +3304,28 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean fitsInBigInteger(Object receiver) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.fitsInBigInteger(receiver);
+            }
+            assert preCondition(receiver);
+
+            boolean fits = delegate.fitsInBigInteger(receiver);
+            assert !fits || delegate.isNumber(receiver) : violationInvariant(receiver);
+            if (fits) {
+                try {
+                    delegate.asBigInteger(receiver);
+                } catch (InteropException e) {
+                    assert false : violationInvariant(receiver);
+                } catch (Exception e) {
+                }
+            }
+            assert !fits || notOtherType(receiver, Type.NUMBER);
+            assert validProtocolReturn(receiver, fits);
+            return fits;
+        }
+
+        @Override
         public boolean fitsInFloat(Object receiver) {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.fitsInFloat(receiver);
@@ -3340,6 +3430,21 @@ public abstract class InteropLibrary extends Library {
                 long result = delegate.asLong(receiver);
                 assert delegate.isNumber(receiver) : violationInvariant(receiver);
                 assert delegate.fitsInLong(receiver) : violationInvariant(receiver);
+                assert validProtocolReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public BigInteger asBigInteger(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                BigInteger result = delegate.asBigInteger(receiver);
+                assert delegate.isNumber(receiver) : violationInvariant(receiver);
+                assert delegate.fitsInBigInteger(receiver) : violationInvariant(receiver);
                 assert validProtocolReturn(receiver, result);
                 return result;
             } catch (InteropException e) {

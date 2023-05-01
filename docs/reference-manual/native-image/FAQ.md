@@ -20,9 +20,8 @@ Everything that is included in a product (GraalVM Native Image) or produced by a
 
 ### Native Image doesn't work on my Windows 10?
 
-Make sure you execute the `native-image` command from the **x64 Native Tools Command Prompt**.
-This is the prerequisite for Windows: installing [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++ (MSVC) with the Windows 10 SDK.
-You can use Visual Studio 2017 version 15.9 or later.
+Please make sure [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++ (MSVC) with the Windows 10 SDK are installed on your system.
+You can use Visual Studio 2022 version 17.1.0 or later.
 
 Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for more information and step-by-step instructions.
 

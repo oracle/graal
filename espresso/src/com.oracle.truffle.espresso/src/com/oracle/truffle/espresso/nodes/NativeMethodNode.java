@@ -96,6 +96,11 @@ final class NativeMethodNode extends EspressoInstrumentableRootNodeImpl {
     }
 
     @Override
+    void beforeInstumentation(VirtualFrame frame) {
+        // no op
+    }
+
+    @Override
     public Object execute(VirtualFrame frame) {
         final JniEnv env = getContext().getJNI();
         int nativeFrame = env.getHandles().pushFrame();

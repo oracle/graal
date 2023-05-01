@@ -29,8 +29,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfo;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.ExecuteVMOperationEvent;
@@ -43,6 +43,10 @@ import com.oracle.svm.core.util.VMError;
  * {@linkplain VMOperationControl}). While executing a VM operation, it is guaranteed that the
  * yellow zone is enabled and that recurring callbacks are paused. This is necessary to avoid
  * unexpected exceptions while executing critical code.
+ *
+ * No Java synchronization is allowed within a VMOperation. See
+ * {@link VMOperationControl#guaranteeOkayToBlock} for examples of how using synchronization within
+ * a VMOperation can cause a deadlock.
  */
 public abstract class VMOperation {
     private final VMOperationInfo info;
@@ -107,7 +111,7 @@ public abstract class VMOperation {
             trace.string("[VMOperation.execute caught: ").string(t.getClass().getName()).string("]").newline();
             throw VMError.shouldNotReachHere(t);
         } finally {
-            ExecuteVMOperationEvent.emit(this, requestingThread, startTicks);
+            ExecuteVMOperationEvent.emit(this, getQueuingThreadId(data), startTicks);
             control.setInProgress(prevOperation, prevQueuingThread, prevExecutingThread, false);
         }
     }
@@ -178,15 +182,16 @@ public abstract class VMOperation {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected abstract void markAsQueued(NativeVMOperationData data);
+
+    protected abstract void markAsFinished(NativeVMOperationData data);
+
     protected abstract IsolateThread getQueuingThread(NativeVMOperationData data);
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void setQueuingThread(NativeVMOperationData data, IsolateThread value);
+    protected abstract long getQueuingThreadId(NativeVMOperationData data);
 
     protected abstract boolean isFinished(NativeVMOperationData data);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected abstract void setFinished(NativeVMOperationData data, boolean value);
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Whitelisted because some operations may allocate.")
     protected abstract void operate(NativeVMOperationData data);

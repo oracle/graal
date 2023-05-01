@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -518,7 +518,6 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
                 This mode supports appending a "-<post-opt>" specifier to the variant string,
                 to post-process the result using the `opt` tool from LLVM. The following post-opt specifiers are
                 supported:
-                    - MISC_OPTS: run a selection of common optimizations
                     - MEM2REG: run the -mem2reg optimization
                 See tests/com.oracle.truffle.llvm.tests.cmake/SulongTestSuiteVariantBitcode.cmake for more details.
             - "executable"
@@ -554,10 +553,10 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
 
         if bundledLLVMOnly and mx.get_env('CLANG_CC', None):
             self.ignore = "Environment variable 'CLANG_CC' is set but project specifies 'bundledLLVMOnly'"
-        if 'buildDependencies' not in args:
-            args['buildDependencies'] = []
+        args.setdefault('buildDependencies', [])
         if 'sdk:LLVM_TOOLCHAIN' not in args['buildDependencies']:
             args['buildDependencies'].append('sdk:LLVM_TOOLCHAIN')
+        args.setdefault('toolchain', 'sulong:SULONG_BOOTSTRAP_TOOLCHAIN')
         self.buildRef = buildRef
         self.buildSharedObject = buildSharedObject
         self.current_variant = None

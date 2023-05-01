@@ -44,6 +44,7 @@ import java.util.function.Supplier;
 /**
  * Implementation of feedback and input for commands.
  */
+@SuppressWarnings("this-escape")
 public class Environment implements Feedback, CommandInput, Config {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle");
@@ -61,6 +62,7 @@ public class Environment implements Feedback, CommandInput, Config {
     private boolean stacktraces;
     private ComponentIterable fileIterable;
     private final Map<URL, Path> fileMap = new HashMap<>();
+    private final Map<URL, Map<String, List<String>>> responseHeadersMap = new HashMap<>();
     private boolean allOutputToErr;
     private boolean autoYesEnabled;
     private boolean nonInteractive;
@@ -395,6 +397,16 @@ public class Environment implements Feedback, CommandInput, Config {
             public boolean setSilent(boolean silent) {
                 return Environment.this.setSilent(silent);
             }
+
+            @Override
+            public void addLocalResponseHeadersCache(URL location, Map<String, List<String>> local) {
+                Environment.this.addLocalResponseHeadersCache(location, local);
+            }
+
+            @Override
+            public Map<String, List<String>> getLocalResponseHeadersCache(URL location) {
+                return Environment.this.getLocalResponseHeadersCache(location);
+            }
         };
     }
 
@@ -547,6 +559,16 @@ public class Environment implements Feedback, CommandInput, Config {
     @Override
     public Path getLocalCache(URL location) {
         return fileMap.get(location);
+    }
+
+    @Override
+    public void addLocalResponseHeadersCache(URL location, Map<String, List<String>> local) {
+        responseHeadersMap.put(location, local);
+    }
+
+    @Override
+    public Map<String, List<String>> getLocalResponseHeadersCache(URL location) {
+        return responseHeadersMap.get(location);
     }
 
     @Override

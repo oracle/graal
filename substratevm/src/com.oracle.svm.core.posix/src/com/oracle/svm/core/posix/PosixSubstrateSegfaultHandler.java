@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,11 @@ import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -62,7 +64,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
         if (tryEnterIsolate(uContext)) {
             dump(sigInfo, uContext);
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime();
         }
     }
 
@@ -76,7 +78,10 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
             if (sigInfo.si_errno() != 0) {
                 log.string(", si_errno: ").signed(sigInfo.si_errno());
             }
-            log.string(", si_addr: ").zhex(sigInfo.si_addr());
+
+            VoidPointer addr = sigInfo.si_addr();
+            log.string(", si_addr: ");
+            printSegfaultAddressInfo(log, addr.rawValue());
             log.newline();
         }
     }
@@ -87,13 +92,20 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
     @Override
     protected void installInternal() {
+        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
         int structSigActionSize = SizeOf.get(sigaction.class);
         sigaction structSigAction = UnsafeStackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
         /* Register sa_sigaction signal handler */
         structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER());
         structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
-        Signal.sigaction(Signal.SignalEnum.SIGSEGV.getCValue(), structSigAction, WordFactory.nullPointer());
-        Signal.sigaction(Signal.SignalEnum.SIGBUS.getCValue(), structSigAction, WordFactory.nullPointer());
+        synchronized (Target_jdk_internal_misc_Signal.class) {
+            /*
+             * Don't want to race with logic within Util_jdk_internal_misc_Signal#handle0 which
+             * reads these signals.
+             */
+            Signal.sigaction(Signal.SignalEnum.SIGSEGV.getCValue(), structSigAction, WordFactory.nullPointer());
+            Signal.sigaction(Signal.SignalEnum.SIGBUS.getCValue(), structSigAction, WordFactory.nullPointer());
+        }
     }
 }

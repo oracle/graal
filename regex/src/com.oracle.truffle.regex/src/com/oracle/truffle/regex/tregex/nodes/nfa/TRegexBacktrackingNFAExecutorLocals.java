@@ -44,9 +44,11 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nfa.PureNFATransition;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.util.BitSets;
 
 /**
@@ -95,8 +97,13 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private int lastInnerLiteralIndex;
     private int lastInitialStateIndex;
 
-    public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthTermEnclosedCGLow,
-                    int[] zeroWidthQuantifierCGOffsets, boolean allocateStackFrameBuffer, int maxNTransitions, boolean trackLastGroup, boolean dontOverwriteLastGroup) {
+    public TRegexBacktrackingNFAExecutorLocals(TruffleString input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers,
+                    int[] zeroWidthTermEnclosedCGLow,
+                    int[] zeroWidthQuantifierCGOffsets,
+                    boolean allocateStackFrameBuffer,
+                    int maxNTransitions,
+                    boolean trackLastGroup,
+                    boolean dontOverwriteLastGroup) {
         this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
                         zeroWidthQuantifierCGOffsets,
                         allocateStackFrameBuffer ? new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets, trackLastGroup)] : null,
@@ -106,9 +113,15 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         clearCaptureGroups();
     }
 
-    private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthTermEnclosedCGLow,
-                    int[] zeroWidthQuantifierCGOffsets, int[] stackFrameBuffer, Stack stack, int stackBase,
-                    long[] transitionBitSet, boolean trackLastGroup, boolean dontOverwriteLastGroup) {
+    private TRegexBacktrackingNFAExecutorLocals(TruffleString input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers,
+                    int[] zeroWidthTermEnclosedCGLow,
+                    int[] zeroWidthQuantifierCGOffsets,
+                    int[] stackFrameBuffer,
+                    Stack stack,
+                    int stackBase,
+                    long[] transitionBitSet,
+                    boolean trackLastGroup,
+                    boolean dontOverwriteLastGroup) {
         super(input, fromIndex, maxIndex, index);
         this.stackFrameSize = getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets, trackLastGroup);
         this.nQuantifierCounts = nQuantifiers;
@@ -333,11 +346,11 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public int getCaptureGroupStart(int groupNumber) {
-        return getCaptureGroupBoundary(groupNumber * 2);
+        return getCaptureGroupBoundary(Group.groupNumberToBoundaryIndexStart(groupNumber));
     }
 
     public int getCaptureGroupEnd(int groupNumber) {
-        return getCaptureGroupBoundary(groupNumber * 2 + 1);
+        return getCaptureGroupBoundary(Group.groupNumberToBoundaryIndexEnd(groupNumber));
     }
 
     public void overwriteCaptureGroups(int[] captureGroups) {

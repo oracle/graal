@@ -26,44 +26,53 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
+import static org.junit.Assert.assertFalse;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.junit.Assert;
+
 import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
-import org.junit.Assert;
 
 public abstract class ConstantPoolParser {
-
-    /**
-     * Set of ids found during parsing of current constant pool.
-     */
+    private final JfrFileParser parser;
+    private final Set<Long> reservedIds = new HashSet<>();
     private final Set<Long> foundIds = new HashSet<>();
-
-    /**
-     * List of ids found during parsing of other constant pools that are referencing this one.
-     */
     private final Set<Long> expectedIds = new HashSet<>();
 
-    protected ConstantPoolParser() {
-        foundIds.add(0L);
+    protected ConstantPoolParser(JfrFileParser parser, long... reservedIds) {
+        this.parser = parser;
+        for (long reservedId : reservedIds) {
+            this.reservedIds.add(reservedId);
+        }
+    }
+
+    public boolean isEmpty() {
+        return foundIds.isEmpty();
     }
 
     protected final void addFoundId(long id) {
         foundIds.add(id);
+        assertFalse("ID " + id + " is reserved and must not be found in " + this + " constant pool.", reservedIds.contains(id));
     }
 
-    protected static void addExpectedId(JfrType typeId, long id) {
-        ConstantPoolParser poolParser = JfrFileParser.getSupportedConstantPools().get(typeId.getId());
+    protected void addExpectedId(JfrType typeId, long id) {
+        ConstantPoolParser poolParser = parser.getSupportedConstantPools().get(typeId.getId());
         poolParser.expectedIds.add(id);
     }
 
     public void compareFoundAndExpectedIds() {
-        Assert.assertTrue("Error during parsing " + this + " constant pool!" +
-                        " Expected IDs: " + expectedIds +
-                        ". Found IDs: " + foundIds, foundIds.size() == 0 || foundIds.containsAll(expectedIds));
+        HashSet<Long> missingIds = new HashSet<>(expectedIds);
+        missingIds.removeAll(reservedIds);
+        missingIds.removeAll(foundIds);
+
+        if (!missingIds.isEmpty()) {
+            Assert.fail("Error during parsing " + this + " constant pool! Missing IDs: " + missingIds + ". Expected IDs: " + expectedIds + ". Found IDs: " + foundIds);
+        }
     }
 
     public abstract void parse(RecordingInput input) throws IOException;

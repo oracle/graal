@@ -88,4 +88,28 @@ public interface VersionFilter {
             return version.java13OrEarlier();
         }
     }
+
+    final class Java19OrLater implements VersionFilter {
+        public static final Java19OrLater INSTANCE = new Java19OrLater();
+
+        private Java19OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java19OrLater();
+        }
+    }
+
+    final class Java20OrLater implements VersionFilter {
+        public static final Java20OrLater INSTANCE = new Java20OrLater();
+
+        private Java20OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java20OrLater();
+        }
+    }
 }

@@ -74,7 +74,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
 
         @Override
         public void validate(ConstantPool pool) {
-            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool);
+            pool.nameAndTypeAt(nameAndTypeIndex).validateMethod(pool, false);
         }
 
         @Override

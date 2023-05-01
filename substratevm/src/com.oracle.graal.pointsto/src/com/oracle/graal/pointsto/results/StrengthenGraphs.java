@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -63,6 +65,8 @@ import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
@@ -74,6 +78,8 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
@@ -120,8 +126,27 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
+    public static class Options {
+        @Option(help = "Perform constant folding in StrengthenGraphs")//
+        public static final OptionKey<Boolean> StrengthenGraphWithConstants = new OptionKey<>(true);
+    }
+
+    private final boolean strengthenGraphWithConstants;
+
+    private final StrengthenGraphsCounters beforeCounters;
+    private final StrengthenGraphsCounters afterCounters;
+
     public StrengthenGraphs(PointsToAnalysis bb, Universe converter) {
         super(bb, converter);
+        strengthenGraphWithConstants = Options.StrengthenGraphWithConstants.getValue(bb.getOptions());
+
+        if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(bb.getOptions())) {
+            beforeCounters = new StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation.BEFORE_STRENGTHEN_GRAPHS);
+            afterCounters = new StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation.AFTER_STRENGTHEN_GRAPHS);
+        } else {
+            beforeCounters = null;
+            afterCounters = null;
+        }
     }
 
     private PointsToAnalysis getAnalysis() {
@@ -139,17 +164,22 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         if (!methodTypeFlow.flowsGraphCreated()) {
             return StaticAnalysisResults.NO_RESULTS;
         }
-        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).build();
+        DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getSnippetReflectionProvider())).build();
         StructuredGraph graph = method.decodeAnalyzedGraph(debug, methodTypeFlow.getMethodFlowsGraph().getNodeFlows().getKeys());
         if (graph != null) {
             graph.resetDebug(debug);
+            if (beforeCounters != null) {
+                beforeCounters.collect(graph);
+            }
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
                             DebugContext.Activation a = debug.activate()) {
-                new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders());
+                new AnalysisStrengthenGraphsPhase(method, graph).apply(graph, bb.getProviders(method));
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
-
+            if (afterCounters != null) {
+                afterCounters.collect(graph);
+            }
             method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE));
         }
 
@@ -234,6 +264,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         private final TypeFlow<?>[] parameterFlows;
         private final NodeMap<TypeFlow<?>> nodeFlows;
 
+        private final boolean allowConstantFolding;
+
         StrengthenSimplifier(PointsToAnalysisMethod method, StructuredGraph graph) {
             this.graph = graph;
             this.methodFlow = method.getTypeFlow();
@@ -248,6 +280,12 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 assert nodeFlows.get(node) == null : "overwriting existing entry for " + node;
                 nodeFlows.put(node, cursor.getValue());
             }
+
+            /*
+             * Currently constant folding is only enabled for original methods. More work is needed
+             * to support it within deoptimization targets and runtime-compiled methods.
+             */
+            this.allowConstantFolding = method.isOriginalMethod() && strengthenGraphWithConstants;
         }
 
         private TypeFlow<?> getNodeFlow(Node node) {
@@ -458,7 +496,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 setInvokeProfiles(invoke, typeProfile, methodProfile);
             }
 
-            if (!methodFlow.getMethod().isDeoptTarget()) {
+            if (getAnalysis().optimizeReturnedParameter() && !methodFlow.getMethod().isDeoptTarget()) {
                 /*
                  * Optimizing the return parameter can make new values live across deoptimization
                  * entrypoints.
@@ -520,8 +558,8 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + invoke +
-                            ": empty list of callees for call to " + invoke.callTarget().targetMethod().format("%H.%n(%P)"));
+            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + invoke +
+                            ": empty list of callees for call to " + ((AnalysisMethod) invoke.callTarget().targetMethod()).getQualifiedName());
         }
 
         /**
@@ -629,7 +667,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             TypeState nodeTypeState = methodFlow.foldTypeFlow(pta, nodeFlow);
 
-            if (!nodeTypeState.canBeNull()) {
+            if (allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
                 if (constantValue instanceof ImageHeapConstant) {
                     /*
@@ -658,14 +696,15 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
             for (AnalysisType typeStateType : nodeTypeState.types(pta)) {
-                if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isAssignableFrom(typeStateType))) {
+                if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isJavaLangObject() || oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }
             }
 
             if (typeStateTypes.size() == 0) {
                 if (nonNull) {
-                    makeUnreachable(anchorPoint.next(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
+                    makeUnreachable(anchorPoint.next(), tool,
+                                    () -> "method " + ((AnalysisMethod) graph.method()).getQualifiedName() + ", node " + node + ": empty stamp when strengthening oldStamp " + oldStamp);
                     return null;
                 } else {
                     return StampFactory.alwaysNull();
@@ -689,6 +728,9 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 assert typeStateTypes.size() > 1;
                 AnalysisType baseType = typeStateTypes.get(0);
                 for (int i = 1; i < typeStateTypes.size(); i++) {
+                    if (baseType.isJavaLangObject()) {
+                        break;
+                    }
                     baseType = baseType.findLeastCommonAncestor(typeStateTypes.get(i));
                 }
 
@@ -804,5 +846,89 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             }
             return newStamp;
         }
+    }
+}
+
+/**
+ * Infrastructure for collecting detailed counters that capture the benefits of strengthening
+ * graphs. The counter dumping is handled by {@link ImageBuildStatistics}.
+ */
+final class StrengthenGraphsCounters {
+
+    enum Counter {
+        METHOD,
+        BLOCK,
+        IS_NULL,
+        INSTANCE_OF,
+        INVOKE_STATIC,
+        INVOKE_DIRECT,
+        INVOKE_INDIRECT,
+        LOAD_FIELD,
+        CONSTANT,
+    }
+
+    private final AtomicLong[] values;
+
+    StrengthenGraphsCounters(ImageBuildStatistics.CheckCountLocation location) {
+        values = new AtomicLong[Counter.values().length];
+
+        ImageBuildStatistics imageBuildStats = ImageBuildStatistics.counters();
+        for (Counter counter : Counter.values()) {
+            values[counter.ordinal()] = imageBuildStats.insert(location + "_" + counter.name());
+        }
+    }
+
+    void collect(StructuredGraph graph) {
+        int[] localValues = new int[Counter.values().length];
+
+        inc(localValues, Counter.METHOD);
+        for (Node n : graph.getNodes()) {
+            if (n instanceof AbstractBeginNode) {
+                inc(localValues, Counter.BLOCK);
+            } else if (n instanceof ConstantNode) {
+                inc(localValues, Counter.CONSTANT);
+            } else if (n instanceof LoadFieldNode) {
+                inc(localValues, Counter.LOAD_FIELD);
+            } else if (n instanceof IfNode node) {
+                collect(localValues, node.condition());
+            } else if (n instanceof ConditionalNode node) {
+                collect(localValues, node.condition());
+            } else if (n instanceof MethodCallTargetNode node) {
+                collect(localValues, node.invokeKind());
+            }
+        }
+
+        for (int i = 0; i < localValues.length; i++) {
+            values[i].addAndGet(localValues[i]);
+        }
+    }
+
+    private static void collect(int[] localValues, LogicNode condition) {
+        if (condition instanceof IsNullNode) {
+            inc(localValues, Counter.IS_NULL);
+        } else if (condition instanceof InstanceOfNode) {
+            inc(localValues, Counter.INSTANCE_OF);
+        }
+    }
+
+    private static void collect(int[] localValues, CallTargetNode.InvokeKind invokeKind) {
+        switch (invokeKind) {
+            case Static:
+                inc(localValues, Counter.INVOKE_STATIC);
+                break;
+            case Virtual:
+            case Interface:
+                inc(localValues, Counter.INVOKE_INDIRECT);
+                break;
+            case Special:
+                inc(localValues, Counter.INVOKE_DIRECT);
+                break;
+            default:
+                throw GraalError.shouldNotReachHereUnexpectedValue(invokeKind);
+        }
+    }
+
+    private static void inc(int[] localValues, Counter counter) {
+        localValues[counter.ordinal()]++;
     }
 }

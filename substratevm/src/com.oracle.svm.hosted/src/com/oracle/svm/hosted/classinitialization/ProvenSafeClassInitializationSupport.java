@@ -64,6 +64,7 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
     private final EarlyClassInitializerAnalysis earlyClassInitializerAnalysis;
     private final Set<Class<?>> provenSafeEarly = ConcurrentHashMap.newKeySet();
     private Set<Class<?>> provenSafeLate = ConcurrentHashMap.newKeySet();
+    final Set<Class<?>> mustNotBeProvenSafe = ConcurrentHashMap.newKeySet();
 
     ProvenSafeClassInitializationSupport(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         super(metaAccess, loader);
@@ -76,6 +77,9 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
     }
 
     boolean canBeProvenSafe(Class<?> clazz) {
+        if (mustNotBeProvenSafe.contains(clazz)) {
+            return false;
+        }
         InitKind initKind = specifiedInitKindFor(clazz);
         return initKind == null || (initKind.isRunTime() && !isStrictlyDefined(clazz));
     }

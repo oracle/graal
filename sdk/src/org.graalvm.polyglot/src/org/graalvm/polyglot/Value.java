@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,8 +76,9 @@ import org.graalvm.polyglot.proxy.Proxy;
  * languages might use a different name or use multiple values to represent <code>null</code> like
  * values.
  * <li>{@link #isNumber() Number}: This value represents a floating or fixed point number. The
- * number value may be accessed as {@link #asByte() byte}, {@link #asShort() short} {@link #asInt()
- * int} {@link #asLong() long}, {@link #asFloat() float} or {@link #asDouble() double} value.
+ * number value may be accessed as {@link #asByte() byte}, {@link #asShort() short}, {@link #asInt()
+ * int}, {@link #asLong() long}, {@link #asBigInteger()} BigInteger}, {@link #asFloat() float}, or
+ * {@link #asDouble() double} value.
  * <li>{@link #isBoolean() Boolean}. This value represents a boolean value. The boolean value can be
  * accessed using {@link #asBoolean()}.
  * <li>{@link #isString() String}: This value represents a string value. The string value can be
@@ -1090,6 +1091,33 @@ public final class Value extends AbstractValue {
      */
     public long asLong() {
         return dispatch.asLong(this.context, receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this value represents a {@link #isNumber() number} and the value
+     * fits in <code>BigInteger</code>, else <code>false</code>.
+     *
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws IllegalStateException if the underlying context was closed.
+     * @see #asBigInteger()
+     * @since 23.0
+     */
+    public boolean fitsInBigInteger() {
+        return dispatch.fitsInBigInteger(this.context, receiver);
+    }
+
+    /**
+     * Returns a <code>BigInteger</code> representation of this value if it is {@link #isNumber()
+     * number} and the value {@link #fitsInBigInteger() fits}.
+     *
+     * @throws NullPointerException if this value represents {@link #isNull() null}.
+     * @throws ClassCastException if this value could not be converted to BigInteger.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws IllegalStateException if the underlying context was closed.
+     * @since 23.0
+     */
+    public BigInteger asBigInteger() {
+        return dispatch.asBigInteger(this.context, receiver);
     }
 
     /**

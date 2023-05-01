@@ -36,7 +36,6 @@ import java.security.PermissionCollection;
 import java.security.Permissions;
 import java.security.Policy;
 import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.security.ProtectionDomain;
 import java.security.Provider;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -56,7 +54,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -66,7 +63,6 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.internal.reflect.Reflection;
 import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
 
@@ -78,35 +74,6 @@ import sun.security.util.SecurityConstants;
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 @SuppressWarnings({"unused"})
 final class Target_java_security_AccessController {
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public static <T> T doPrivileged(PrivilegedAction<T> action) throws Throwable {
-        return executePrivileged(action, null, Reflection.getCallerClass());
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public static <T> T doPrivileged(PrivilegedAction<T> action, AccessControlContext context) throws Throwable {
-        Class<?> caller = Reflection.getCallerClass();
-        AccessControlContext acc = checkContext(context, caller);
-        return executePrivileged(action, acc, caller);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    public static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Throwable {
-        Class<?> caller = Reflection.getCallerClass();
-        return executePrivileged(action, null, caller);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    static <T> T doPrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context) throws Throwable {
-        Class<?> caller = Reflection.getCallerClass();
-        AccessControlContext acc = checkContext(context, caller);
-        return executePrivileged(action, acc, caller);
-    }
 
     @Substitute
     @SuppressWarnings("deprecation")
@@ -129,13 +96,11 @@ final class Target_java_security_AccessController {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     private static ProtectionDomain getProtectionDomain(final Class<?> caller) {
         return caller.getProtectionDomain();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("deprecation") // deprecated starting JDK 17
     static <T> T executePrivileged(PrivilegedExceptionAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
         if (action == null) {
@@ -145,23 +110,14 @@ final class Target_java_security_AccessController {
         PrivilegedStack.push(context, caller);
         try {
             return action.run();
-        } catch (RuntimeException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            if (JavaVersionUtil.JAVA_SPEC > 11) {
-                throw ex;
-            } else {
-                throw new PrivilegedActionException(ex);
-            }
         } finally {
             PrivilegedStack.pop();
         }
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("deprecation") // deprecated starting JDK 17
-    static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) throws Throwable {
+    static <T> T executePrivileged(PrivilegedAction<T> action, AccessControlContext context, Class<?> caller) {
         if (action == null) {
             throw new NullPointerException("Null action");
         }
@@ -169,21 +125,12 @@ final class Target_java_security_AccessController {
         PrivilegedStack.push(context, caller);
         try {
             return action.run();
-        } catch (RuntimeException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            if (JavaVersionUtil.JAVA_SPEC > 11) {
-                throw ex;
-            } else {
-                throw new PrivilegedActionException(ex);
-            }
         } finally {
             PrivilegedStack.pop();
         }
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
     @SuppressWarnings("deprecation")
     static AccessControlContext checkContext(AccessControlContext context, Class<?> caller) {
 
@@ -322,17 +269,6 @@ final class Target_javax_crypto_ProviderVerifier {
 final class Target_javax_crypto_JceSecurity {
 
     /*
-     * Lazily recompute the RANDOM field at runtime. We cannot push the entire static initialization
-     * of JceSecurity to run time because we want the JceSecurity.verificationResults initialized at
-     * image build time.
-     *
-     * This is only used in {@link KeyAgreement}, it's safe to remove.
-     */
-    @Alias @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    @InjectAccessors(JceSecurityAccessor.class) //
-    static SecureRandom RANDOM;
-
-    /*
      * The JceSecurity.verificationResults cache is initialized by the SecurityServicesFeature at
      * build time, for all registered providers. The cache is used by JceSecurity.canUseProvider()
      * at runtime to check whether a provider is properly signed and can be used by JCE. It does
@@ -357,7 +293,9 @@ final class Target_javax_crypto_JceSecurity {
 
     @Substitute
     static void verifyProvider(URL codeBase, Provider p) {
-        throw JceSecurityUtil.shouldNotReach("javax.crypto.JceSecurity.verifyProviderJar(URL, Provider)");
+        throw VMError.shouldNotReachHere("javax.crypto.JceSecurity.verifyProviderJar(URL, Provider) is reached at runtime. " +
+                        "This should not happen. The contents of JceSecurity.verificationResults " +
+                        "are computed and cached at image build time.");
     }
 
     @Substitute
@@ -368,7 +306,8 @@ final class Target_javax_crypto_JceSecurity {
     @Substitute
     static Exception getVerificationResult(Provider p) {
         /* Start code block copied from original method. */
-        Object o = verificationResults.get(JceSecurityUtil.providerKey(p));
+        /* The verification results map key is an identity wrapper object. */
+        Object o = verificationResults.get(new Target_javax_crypto_JceSecurity_IdentityWrapper(p));
         if (o == PROVIDER_VERIFIED) {
             return null;
         } else if (o != null) {
@@ -393,7 +332,7 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK17OrLater.class)
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity_IdentityWrapper {
     @Alias //
@@ -430,24 +369,6 @@ class JceSecurityAccessor {
     }
 }
 
-final class JceSecurityUtil {
-
-    static Object providerKey(Provider p) {
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            return p;
-        }
-        /* Starting with JDK 17 the verification results map key is an identity wrapper object. */
-        return new Target_javax_crypto_JceSecurity_IdentityWrapper(p);
-    }
-
-    static RuntimeException shouldNotReach(String method) {
-        throw VMError.shouldNotReachHere(method + " is reached at runtime. " +
-                        "This should not happen. The contents of JceSecurity.verificationResults " +
-                        "are computed and cached at image build time.");
-    }
-
-}
-
 /**
  * JDK 8 has the class `javax.crypto.JarVerifier`, but in JDK 11 and later that class is only
  * available in Oracle builds, and not in OpenJDK builds.
@@ -459,13 +380,13 @@ final class Target_javax_crypto_JarVerifier {
     @Substitute
     @TargetElement(onlyWith = ContainsVerifyJars.class)
     private String verifySingleJar(URL var1) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Substitute
     @TargetElement(onlyWith = ContainsVerifyJars.class)
     private void verifyJars(URL var1, List<String> var2) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 }
 
@@ -632,22 +553,6 @@ final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true)//
     static Target_sun_security_jca_ProviderConfig_ProviderLoader INSTANCE;
-}
-
-/**
- * This only applies to JDK8 and JDK11. Experimental FIPS mode in the SunJSSE Provider was removed
- * in JDK-8217835. Going forward it is recommended to configure FIPS 140 compliant cryptography
- * providers by using the usual JCA providers configuration mechanism.
- */
-@SuppressWarnings("unused")
-@TargetClass(value = sun.security.ssl.SunJSSE.class, onlyWith = JDK11OrEarlier.class)
-final class Target_sun_security_ssl_SunJSSE {
-
-    @Substitute
-    private Target_sun_security_ssl_SunJSSE(java.security.Provider cryptoProvider, String providerName) {
-        throw VMError.unsupportedFeature("Experimental FIPS mode in the SunJSSE Provider is deprecated (JDK-8217835)." +
-                        " To register a FIPS provider use the supported java.security.Security.addProvider() API.");
-    }
 }
 
 @TargetClass(className = "sun.security.jca.Providers")

@@ -65,7 +65,7 @@ public class UserError {
     /**
      * Stop compilation immediately and report the message to the user.
      *
-     * @param format format string
+     * @param format format string (must not start with a lowercase letter)
      * @param args arguments for the format string that are {@link #formatArguments(Object...)
      *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */
@@ -77,7 +77,7 @@ public class UserError {
      * Stop compilation immediately and report the message to the user.
      *
      * @param cause the exception that caused the abort.
-     * @param format format string
+     * @param format format string (must not start with a lowercase letter)
      * @param args arguments for the format string that are {@link #formatArguments(Object...)
      *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */
@@ -88,7 +88,7 @@ public class UserError {
     /**
      * Concisely reports user errors.
      *
-     * @param format format string
+     * @param format format string (must not start with a lowercase letter)
      * @param args arguments for the format string that are {@link #formatArguments(Object...)
      *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */
@@ -113,21 +113,8 @@ public class UserError {
      * @param args arguments to process
      * @return a copy of {@code args} with certain values converted to strings as described above
      */
-    public static Object[] formatArguments(Object... args) {
-        Object[] newArgs = new Object[args.length];
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            if (arg instanceof ResolvedJavaType) {
-                newArgs[i] = ((ResolvedJavaType) arg).toJavaName(true);
-            } else if (arg instanceof ResolvedJavaMethod) {
-                newArgs[i] = ((ResolvedJavaMethod) arg).format("%H.%n(%p)");
-            } else if (arg instanceof ResolvedJavaField) {
-                newArgs[i] = ((ResolvedJavaField) arg).format("%H.%n");
-            } else {
-                newArgs[i] = arg;
-            }
-        }
-        return newArgs;
+    static Object[] formatArguments(Object... args) {
+        return VMError.formatArguments(args);
     }
 
     /**

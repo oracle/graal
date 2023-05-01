@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,10 +38,6 @@ public class SplitFieldTypeStore extends FieldTypeStore {
     private final FieldTypeFlow writeFlow;
     private final FieldTypeFlow readFlow;
 
-    public SplitFieldTypeStore(AnalysisField field, AnalysisObject object) {
-        this(field, object, new FieldTypeFlow(field, field.getType(), object), new FieldTypeFlow(field, field.getType(), object));
-    }
-
     public SplitFieldTypeStore(AnalysisField field, AnalysisObject object, FieldTypeFlow writeFlow, FieldTypeFlow readFlow) {
         super(field, object);
         this.writeFlow = writeFlow;
@@ -71,7 +67,7 @@ public class SplitFieldTypeStore extends FieldTypeStore {
     @Override
     public String toString() {
         StringBuilder str = new StringBuilder();
-        str.append("SplitFieldStore<").append(field.format("%h.%n")).append("\n").append(object).append(">");
+        str.append("SplitFieldStore<").append(field.format("%h.%n")).append(System.lineSeparator()).append(object).append(">");
         return str.toString();
     }
 

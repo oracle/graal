@@ -122,13 +122,7 @@ public @interface APIOption {
          * <code>-{H,R}:-&lt;OptionDescriptor#name&gt;</code>. For other options using
          * {@code Negated} is not allowed.
          */
-        Negated,
-        /**
-         * Denotes that the annotated {@code String} option represents one or more file system
-         * paths, separated by ','. Relative paths will be resolved against the current working
-         * directory in which the native image tool is executed.
-         */
-        Paths
+        Negated
     }
 
     class Utils {

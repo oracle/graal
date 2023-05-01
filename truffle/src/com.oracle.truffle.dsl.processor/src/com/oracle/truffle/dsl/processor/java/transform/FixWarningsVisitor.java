@@ -60,6 +60,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeElementScanner;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
@@ -67,14 +68,12 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
     private final DeclaredType overrideType;
 
-    private final Element generatedBy;
     private Set<String> suppressedWarnings = new HashSet<>();
     private boolean computeSymbols = false;
-    private boolean seenDeprecatedType = false;
+    private boolean seenDeprecatedElement = false;
 
-    public FixWarningsVisitor(Element generatedBy, DeclaredType overrideType) {
+    public FixWarningsVisitor(DeclaredType overrideType) {
         this.overrideType = overrideType;
-        this.generatedBy = generatedBy;
     }
 
     @Override
@@ -95,25 +94,34 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
             }
         }
 
+        if (e.getDocTree() != null) {
+            suppressedWarnings.add("javadoc");
+        }
+
         if (ElementUtils.isPackageDeprecated(e)) {
             suppressedWarnings.add("deprecation");
         }
         super.visitType(e, p);
 
-        if (seenDeprecatedType && rootType) {
-            AnnotationMirror suppressWarnings = ElementUtils.findAnnotationMirror(generatedBy, SuppressWarnings.class);
-            if (suppressWarnings != null) {
-                List<String> currentValues = ElementUtils.getAnnotationValueList(String.class, suppressWarnings, "value");
-                if (currentValues.contains("deprecation")) {
-                    suppressedWarnings.add("deprecation");
-                }
-            }
+        if (seenDeprecatedElement && rootType) {
+            suppressedWarnings.add("deprecation");
         }
 
         if (rootType && !suppressedWarnings.isEmpty()) {
-            GeneratorUtils.mergeSupressWarnings(e, suppressedWarnings.toArray(new String[0]));
+            GeneratorUtils.mergeSuppressWarnings(e, suppressedWarnings.toArray(new String[0]));
         }
         return null;
+    }
+
+    @Override
+    public Void visitVariable(VariableElement e, Void p) {
+        if (e instanceof CodeVariableElement) {
+            CodeVariableElement var = (CodeVariableElement) e;
+            if (var.getDocTree() != null) {
+                suppressedWarnings.add("javadoc");
+            }
+        }
+        return super.visitVariable(e, p);
     }
 
     @Override
@@ -125,6 +133,10 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
             checkIgnored = false;
         } else if (containsOverride(e)) {
             checkIgnored = false;
+        }
+
+        if (e.getDocTree() != null) {
+            suppressedWarnings.add("javadoc");
         }
 
         symbolsUsed.clear();
@@ -150,7 +162,7 @@ public class FixWarningsVisitor extends CodeElementScanner<Void, Void> {
 
     private void checkDeprecated(TypeMirror mirror) {
         if (ElementUtils.isDeprecated(mirror)) {
-            seenDeprecatedType = true;
+            seenDeprecatedElement = true;
         }
     }
 

@@ -117,7 +117,7 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
         if (resolutionSeed.isInlinableSetter()) {
             return InlinedFieldAccessNode.createSetter(resolutionSeed, top, opcode, curBCI, statementIndex);
         }
-        if (isUnconditionalInlineCandidate(resolutionSeed, opcode)) {
+        if (isUnconditionalInlineCandidate(opcode)) {
             // Try to inline trivial substitutions.
             JavaSubstitution.Factory factory = Substitutions.lookupSubstitution(resolutionSeed);
             if (factory != null && factory.inlineInBytecode()) {
@@ -200,27 +200,16 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
             return true;
         }
         if (opcode == Bytecodes.INVOKEVIRTUAL) {
-            // InvokeVirtual can be bytecode-level inlined if method is final, or there are no
-            // overrides yet.
-            if ((resolutionSeed.isFinalFlagSet() || resolutionSeed.isPrivate() || resolutionSeed.getDeclaringKlass().isFinalFlagSet()) ||
-                            resolutionSeed.getContext().getClassHierarchyOracle().isLeafMethod(resolutionSeed).isValid()) {
+            // InvokeVirtual can be bytecode-level inlined if there are no overrides yet.
+            // final methods are already translated to INVOKESPECIAL
+            if (resolutionSeed.getContext().getClassHierarchyOracle().isLeafMethod(resolutionSeed).isValid()) {
                 return true;
             }
         }
         return false;
     }
 
-    public static boolean isUnconditionalInlineCandidate(Method resolutionSeed, int opcode) {
-        if (opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL) {
-            return true;
-        }
-        if (opcode == Bytecodes.INVOKEVIRTUAL) {
-            // InvokeVirtual can be unconditionally bytecode-level inlined if method can never be
-            // overriden.
-            if (resolutionSeed.isFinalFlagSet() || resolutionSeed.isPrivate() || resolutionSeed.getDeclaringKlass().isFinalFlagSet()) {
-                return true;
-            }
-        }
-        return false;
+    public static boolean isUnconditionalInlineCandidate(int opcode) {
+        return opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKESPECIAL;
     }
 }

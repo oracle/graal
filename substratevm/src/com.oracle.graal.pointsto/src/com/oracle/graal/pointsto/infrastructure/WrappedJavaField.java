@@ -24,19 +24,10 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import java.lang.reflect.AnnotatedElement;
-
-import com.oracle.svm.util.AnnotationWrapper;
-
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-public interface WrappedJavaField extends WrappedElement, ResolvedJavaField, AnnotationWrapper {
+public interface WrappedJavaField extends ResolvedJavaField, WrappedElement {
 
     @Override
     ResolvedJavaField getWrapped();
-
-    @Override
-    default AnnotatedElement getAnnotationRoot() {
-        return getWrapped();
-    }
 }

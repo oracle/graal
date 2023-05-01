@@ -29,9 +29,19 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.Uninterruptible;
 
 public interface ThreadListener {
-    @Uninterruptible(reason = "Only uninterruptible code may be executed before Thread.run.")
-    void beforeThreadRun(IsolateThread isolateThread, Thread javaThread);
+    @Uninterruptible(reason = "Only uninterruptible code may be executed before the thread is fully started.")
+    @SuppressWarnings("unused")
+    default void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
+    }
+
+    default void beforeThreadRun() {
+    }
+
+    default void afterThreadRun() {
+    }
 
     @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
-    void afterThreadExit(IsolateThread isolateThread, Thread javaThread);
+    @SuppressWarnings("unused")
+    default void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
+    }
 }

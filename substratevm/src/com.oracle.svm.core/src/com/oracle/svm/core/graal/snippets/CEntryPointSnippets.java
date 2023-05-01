@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.Map;
 
@@ -62,6 +62,7 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -69,6 +70,7 @@ import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.IsolateListenerSupport;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
@@ -86,6 +88,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -94,6 +97,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.os.MemoryProtectionProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -103,6 +107,7 @@ import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -168,7 +173,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         return ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
-    @Uninterruptible(reason = "Called by an uninterruptible method.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setHeapBase(PointerBase heapBase) {
         if (hasHeapBase()) {
             writeCurrentVMHeapBase(heapBase);
@@ -205,6 +210,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (cpuFeatureAccess.verifyHostSupportsArchitectureEarly() != 0) {
             return CEntryPointErrors.CPU_FEATURE_CHECK_FAILED;
         }
+
+        UnsignedWord runtimePageSize = VirtualMemoryProvider.get().getGranularity();
+        UnsignedWord imagePageSize = WordFactory.unsigned(SubstrateOptions.getPageSize());
+        boolean validPageSize = runtimePageSize.equal(imagePageSize) ||
+                        (Heap.getHeap().allowPageSizeMismatch() && UnsignedUtils.isAMultiple(imagePageSize, runtimePageSize));
+        if (!validPageSize) {
+            return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
+        }
         CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getStructSize());
         IsolateArgumentParser.parse(parameters, parsedArgs);
 
@@ -217,6 +230,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             setHeapBase(Isolates.getHeapBase(isolate.read()));
         }
 
+        return createIsolate0(parsedArgs, isolate, vmThreadSize);
+    }
+
+    @Uninterruptible(reason = "Thread state not yet set up.")
+    @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
+    private static int createIsolate0(CLongPointer parsedArgs, WordPointer isolate, int vmThreadSize) {
         IsolateArgumentParser.singleton().persistOptions(parsedArgs);
         IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
 
@@ -226,7 +245,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
-        error = attachThread(isolate.read(), false, false, vmThreadSize, true);
+        int error = attachThread(isolate.read(), false, false, vmThreadSize, true);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
@@ -471,19 +490,28 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @Uninterruptible(reason = "All code executed after VMThreads#tearDown must be uninterruptible")
     private static int tearDownIsolate() {
         try {
-            RuntimeSupport.executeTearDownHooks();
-            if (!PlatformThreads.singleton().tearDown()) {
+            if (!initiateTearDownIsolateInterruptibly()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
 
             VMThreads.singleton().tearDown();
-            return Isolates.tearDownCurrent();
+            IsolateThread finalThread = CurrentIsolate.getCurrentThread();
+            int result = Isolates.tearDownCurrent();
+            // release the heap memory associated with final isolate thread
+            VMThreads.singleton().freeIsolateThread(finalThread);
+            return result;
         } catch (Throwable t) {
-            logException(t);
-            return CEntryPointErrors.UNCAUGHT_EXCEPTION;
+            return reportException(t);
         }
+    }
+
+    @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
+    private static boolean initiateTearDownIsolateInterruptibly() {
+        RuntimeSupport.executeTearDownHooks();
+        return PlatformThreads.singleton().tearDown();
     }
 
     @Snippet(allowMissingProbabilities = true)
@@ -598,10 +626,13 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
-        logException(exception);
-
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+        reportExceptionInterruptibly(exception);
         return CEntryPointErrors.UNSPECIFIED; // unreachable
+    }
+
+    private static void reportExceptionInterruptibly(Throwable exception) {
+        logException(exception);
+        ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
@@ -730,7 +761,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                     args.add("thread", node.getParameter());
                     break;
                 default:
-                    throw shouldNotReachHere();
+                    throw shouldNotReachHereUnexpectedInput(node.getEnterAction()); // ExcludeFromJacocoGeneratedReport
             }
             SnippetTemplate template = template(tool, node, args);
             template.setMayRemoveLocation(true);
@@ -760,7 +791,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                     args.add("exception", node.getException());
                     break;
                 default:
-                    throw shouldNotReachHere();
+                    throw shouldNotReachHereUnexpectedInput(node.getLeaveAction()); // ExcludeFromJacocoGeneratedReport
             }
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
@@ -785,7 +816,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                     args.add("message", node.getParameter1());
                     break;
                 default:
-                    throw shouldNotReachHere();
+                    throw shouldNotReachHereUnexpectedInput(node.getUtilityAction()); // ExcludeFromJacocoGeneratedReport
             }
             template(tool, node, args).instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }

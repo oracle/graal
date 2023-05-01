@@ -53,13 +53,11 @@ import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 
-import com.oracle.truffle.dsl.processor.ProcessorContext.ProcessCallback;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
@@ -75,7 +73,7 @@ import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
 /**
  * THIS IS NOT PUBLIC API.
  */
-public class TruffleProcessor extends AbstractProcessor implements ProcessCallback {
+public final class TruffleProcessor extends AbstractProcessor {
 
     private final Map<String, Map<String, Element>> serviceRegistrations = new LinkedHashMap<>();
 
@@ -84,10 +82,12 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
         return SourceVersion.latest();
     }
 
+    @SuppressWarnings({"unchecked", "try"})
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        try {
-            ProcessorContext.enter(processingEnv, this);
+        try (var context = ProcessorContext.enter(processingEnv);
+                        Timer timer = Timer.create("TruffleProcessor Round", this)) {
+
             if (roundEnv.processingOver()) {
                 for (Entry<String, Map<String, Element>> element : serviceRegistrations.entrySet()) {
                     AbstractRegistrationProcessor.generateServicesRegistration(element.getKey(), element.getValue());
@@ -96,17 +96,16 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
                 return true;
             }
             List<AnnotationProcessor<?>> processors = createGenerators();
-            currentProcessors.set(processors);
             for (AnnotationProcessor<?> generator : processors) {
                 AbstractParser<?> parser = generator.getParser();
                 if (parser.getAnnotationType() != null) {
                     for (Element e : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(parser.getAnnotationType()))) {
-                        processElement(generator, e, false);
+                        processElement(generator, e);
                     }
                     DeclaredType repeat = parser.getRepeatAnnotationType();
                     if (repeat != null) {
                         for (Element e : roundEnv.getElementsAnnotatedWith(ElementUtils.castTypeElement(repeat))) {
-                            processElement(generator, e, false);
+                            processElement(generator, e);
                         }
                     }
                 }
@@ -119,7 +118,7 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
                         } else {
                             processedType = ElementUtils.findParentEnclosingType(e);
                         }
-                        processElement(generator, processedType.orElseThrow(AssertionError::new), false);
+                        processElement(generator, processedType.orElseThrow(AssertionError::new));
                     }
                 }
 
@@ -144,18 +143,13 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
                     }
                 }
             }
-        } finally {
-            ProcessorContext.leave();
-            currentProcessors.set(null);
         }
         return false;
     }
 
-    private final ThreadLocal<List<AnnotationProcessor<?>>> currentProcessors = new ThreadLocal<>();
-
-    private static void processElement(AnnotationProcessor<?> generator, Element e, boolean callback) {
+    private static void processElement(AnnotationProcessor<?> generator, Element e) {
         try {
-            generator.process(e, callback);
+            generator.process(e);
         } catch (Throwable e1) {
             handleThrowable(generator, e1, e);
         }
@@ -169,19 +163,6 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     @Override
     public Set<String> getSupportedOptions() {
         return TruffleProcessorOptions.getSupportedOptions();
-    }
-
-    @Override
-    public void callback(TypeElement template) {
-        for (AnnotationProcessor<?> generator : currentProcessors.get()) {
-            DeclaredType annotationType = generator.getParser().getAnnotationType();
-            if (annotationType != null) {
-                AnnotationMirror annotation = ElementUtils.findAnnotationMirror(template, annotationType);
-                if (annotation != null) {
-                    processElement(generator, template, true);
-                }
-            }
-        }
     }
 
     @Override

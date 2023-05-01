@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -44,25 +45,43 @@ import com.oracle.svm.core.util.UserError;
 
 public final class VMInspectionOptions {
     private static final String ENABLE_MONITORING_OPTION = "enable-monitoring";
+    private static final String MONITORING_DEFAULT_NAME = "<deprecated-default>";
     private static final String MONITORING_ALL_NAME = "all";
     private static final String MONITORING_HEAPDUMP_NAME = "heapdump";
     private static final String MONITORING_JFR_NAME = "jfr";
     private static final String MONITORING_JVMSTAT_NAME = "jvmstat";
-    private static final String MONITORING_ALLOWED_VALUES = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', or '" + MONITORING_ALL_NAME +
-                    "' (defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
+    private static final String MONITORING_JMXCLIENT_NAME = "jmxclient";
+    private static final String MONITORING_JMXSERVER_NAME = "jmxserver";
+    private static final String MONITORING_ALLOWED_VALUES = "`" + MONITORING_HEAPDUMP_NAME + "`, `" + MONITORING_JFR_NAME + "`, `" + MONITORING_JVMSTAT_NAME + "`, `" + MONITORING_JMXSERVER_NAME +
+                    "` (experimental), `" + MONITORING_JMXCLIENT_NAME + "` (experimental), or `" + MONITORING_ALL_NAME +
+                    "` (deprecated behavior: defaults to `" + MONITORING_ALL_NAME + "` if no argument is provided)";
 
-    @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_ALL_NAME) //
+    @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME) //
     @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES + ". " +
-                    "For example: `--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JVMSTAT_NAME + "`.", type = OptionType.User) //
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.commaSeparated(),
+                    "For example: `--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "`.", type = OptionType.User) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
 
-    public static void validateEnableMonitoringFeatures(OptionKey<?> optionKey) {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void validateEnableMonitoringFeatures(@SuppressWarnings("unused") OptionKey<?> optionKey) {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
-        enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_ALL_NAME));
-        if (!enabledFeatures.isEmpty()) {
-            throw UserError.abort("The option %s contains invalid value(s): %s. It can only contain %s.", optionKey.getName(), String.join(", ", enabledFeatures), MONITORING_ALLOWED_VALUES);
+        if (enabledFeatures.contains(MONITORING_DEFAULT_NAME)) {
+            System.out.printf(
+                            "Warning: `%s` without an argument is deprecated. Please always explicitly specify the list of monitoring features to be enabled (for example, `%s`).%n",
+                            getDefaultMonitoringCommandArgument(),
+                            SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, String.join(",", List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME))));
         }
+        enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME, MONITORING_ALL_NAME,
+                        MONITORING_DEFAULT_NAME));
+        if (!enabledFeatures.isEmpty()) {
+            throw UserError.abort("The `%s` option contains invalid value(s): %s. It can only contain %s.", getDefaultMonitoringCommandArgument(), String.join(", ", enabledFeatures),
+                            MONITORING_ALLOWED_VALUES);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String getDefaultMonitoringCommandArgument() {
+        return SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_DEFAULT_NAME);
     }
 
     @Fold
@@ -70,13 +89,13 @@ public final class VMInspectionOptions {
         return SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_HEAPDUMP_NAME);
     }
 
-    public static Set<String> getEnabledMonitoringFeatures() {
+    private static Set<String> getEnabledMonitoringFeatures() {
         return new HashSet<>(EnableMonitoringFeatures.getValue().values());
     }
 
     private static boolean hasAllOrKeywordMonitoringSupport(String keyword) {
         Set<String> enabledFeatures = getEnabledMonitoringFeatures();
-        return enabledFeatures.contains(MONITORING_ALL_NAME) || enabledFeatures.contains(keyword);
+        return enabledFeatures.contains(MONITORING_ALL_NAME) || enabledFeatures.contains(MONITORING_DEFAULT_NAME) || enabledFeatures.contains(keyword);
     }
 
     @Fold
@@ -84,6 +103,11 @@ public final class VMInspectionOptions {
         return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
+    /**
+     * Use {@link com.oracle.svm.core.jfr.HasJfrSupport#get()} instead and don't call this method
+     * directly because the VM inspection options are only one of multiple ways to enable the JFR
+     * support.
+     */
     @Fold
     public static boolean hasJfrSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_JFR_NAME) && !Platform.includedIn(WINDOWS.class);
@@ -92,6 +116,16 @@ public final class VMInspectionOptions {
     @Fold
     public static boolean hasJvmstatSupport() {
         return hasAllOrKeywordMonitoringSupport(MONITORING_JVMSTAT_NAME) && !Platform.includedIn(WINDOWS.class);
+    }
+
+    @Fold
+    public static boolean hasJmxServerSupport() {
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXSERVER_NAME) && !Platform.includedIn(WINDOWS.class);
+    }
+
+    @Fold
+    public static boolean hasJmxClientSupport() {
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXCLIENT_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //

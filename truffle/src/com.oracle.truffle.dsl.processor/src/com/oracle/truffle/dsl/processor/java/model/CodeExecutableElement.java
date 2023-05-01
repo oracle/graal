@@ -58,6 +58,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
+@SuppressWarnings("this-escape")
 public class CodeExecutableElement extends CodeElement<Element> implements ExecutableElement {
 
     private final List<TypeMirror> throwables = new ArrayList<>();
@@ -71,7 +72,6 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
     private String body;
     private AnnotationValue defaultValue;
     private boolean varArgs;
-    private CodeTree docTree;
 
     public CodeExecutableElement(TypeMirror returnType, String name) {
         super(ElementUtils.modifiers());
@@ -154,13 +154,6 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         return createBuilder().tree(tree);
     }
 
-    public CodeTreeBuilder createDocBuilder() {
-        CodeTreeBuilder builder = new CodeTreeBuilder(null);
-        builder.setEnclosingElement(this);
-        this.docTree = builder.getTree();
-        return builder;
-    }
-
     public CodeTreeBuilder createBuilder() {
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
         builder.setEnclosingElement(this);
@@ -178,14 +171,6 @@ public class CodeExecutableElement extends CodeElement<Element> implements Execu
         this.bodyTree = builder.getTree();
         this.body = null;
         return builder;
-    }
-
-    public CodeTree getDocTree() {
-        return docTree;
-    }
-
-    public void setDocTree(CodeTree docTree) {
-        this.docTree = docTree;
     }
 
     public void setBodyTree(CodeTree body) {

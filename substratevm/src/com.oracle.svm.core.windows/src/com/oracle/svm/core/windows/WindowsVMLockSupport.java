@@ -103,20 +103,29 @@ final class WindowsVMLockFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
+        final int alignment = 8;
+
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int nextIndex = 0;
+        final int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
+
+        // Align the first element to word boundary.
+        int nextIndex = NumUtil.roundUp(baseOffset, alignment) - baseOffset;
 
         WindowsVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new WindowsVMMutex[0]);
-        int mutexSize = NumUtil.roundUp(SizeOf.get(Process.CRITICAL_SECTION.class), 8);
+        int mutexSize = NumUtil.roundUp(SizeOf.get(Process.CRITICAL_SECTION.class), alignment);
         for (WindowsVMMutex mutex : mutexes) {
-            mutex.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
+            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
+            assert offset % alignment == 0;
+            mutex.structOffset = WordFactory.unsigned(offset);
             nextIndex += mutexSize;
         }
 
         WindowsVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new WindowsVMCondition[0]);
-        int conditionSize = NumUtil.roundUp(SizeOf.get(Process.CONDITION_VARIABLE.class), 8);
+        int conditionSize = NumUtil.roundUp(SizeOf.get(Process.CONDITION_VARIABLE.class), alignment);
         for (WindowsVMCondition condition : conditions) {
-            condition.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
+            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
+            assert offset % alignment == 0;
+            condition.structOffset = WordFactory.unsigned(offset);
             nextIndex += conditionSize;
         }
 
@@ -173,21 +182,26 @@ public final class WindowsVMLockSupport extends VMLockSupport {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static void checkResult(int result, String functionName) {
         if (result == 0) {
-            /*
-             * Functions are called very early and late during our execution, so there is not much
-             * we can do when they fail.
-             */
-            SafepointBehavior.preventSafepoints();
-            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
-
-            int lastError = WinBase.GetLastError();
-            Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
-            ImageSingletons.lookup(LogHandler.class).fatalError();
+            fatalError(functionName);
         }
+    }
+
+    @Uninterruptible(reason = "Error handling is interruptible.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
+    private static void fatalError(String functionName) {
+        /*
+         * Functions are called very early and late during our execution, so there is not much we
+         * can do when they fail.
+         */
+        SafepointBehavior.preventSafepoints();
+        StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
+        int lastError = WinBase.GetLastError();
+        Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
+        ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
     @Override
@@ -215,51 +229,45 @@ final class WindowsVMMutex extends VMMutex {
         super(name);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Process.PCRITICAL_SECTION getStructPointer() {
         return (Process.PCRITICAL_SECTION) Word.objectToUntrackedPointer(WindowsVMLockSupport.singleton().syncStructs).add(structOffset);
     }
 
     @Override
     public VMMutex lock() {
-        assertNotOwner("Recursive locking is not supported");
+        assert !isOwner() : "Recursive locking is not supported";
         Process.EnterCriticalSection(getStructPointer());
         setOwnerToCurrentThread();
         return this;
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockNoTransition() {
-        assertNotOwner("Recursive locking is not supported");
+        assert !isOwner() : "Recursive locking is not supported";
         Process.NoTransitions.EnterCriticalSection(getStructPointer());
         setOwnerToCurrentThread();
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.", callerMustBe = true)
     public void lockNoTransitionUnspecifiedOwner() {
         Process.NoTransitions.EnterCriticalSection(getStructPointer());
         setOwnerToUnspecified();
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void unlock() {
         clearCurrentThreadOwner();
         Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Whole critical section needs to be uninterruptible.")
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
-        Process.NoTransitions.LeaveCriticalSection(getStructPointer());
-    }
-
-    @Override
-    public void unlockWithoutChecks() {
-        clearCurrentThreadOwner();
         Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 }
@@ -273,7 +281,7 @@ final class WindowsVMCondition extends VMCondition {
         super(mutex);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Process.PCONDITION_VARIABLE getStructPointer() {
         return (Process.PCONDITION_VARIABLE) Word.objectToUntrackedPointer(WindowsVMLockSupport.singleton().syncStructs).add(structOffset);
     }
@@ -286,7 +294,7 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     public void blockNoTransition() {
         mutex.clearCurrentThreadOwner();
         WindowsVMLockSupport.checkResult(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
@@ -295,7 +303,7 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     public void blockNoTransitionUnspecifiedOwner() {
         mutex.clearUnspecifiedOwner();
         WindowsVMLockSupport.checkResult(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
@@ -327,7 +335,7 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    @Uninterruptible(reason = "Should only be called if the thread did an explicit transition to native earlier.", callerMustBe = true)
     public long blockNoTransition(long waitNanos) {
         assert waitNanos >= 0;
         long startTimeInNanos = System.nanoTime();
@@ -351,12 +359,13 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
         Process.NoTransitions.WakeConditionVariable(getStructPointer());
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void broadcast() {
         Process.NoTransitions.WakeAllConditionVariable(getStructPointer());
     }

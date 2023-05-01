@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.core.cpufeature;
 
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
@@ -34,6 +35,8 @@ import java.util.Set;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
+import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.InjectedNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
@@ -55,10 +58,10 @@ import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -364,8 +367,12 @@ public final class RuntimeCPUFeatureCheckImpl {
             return ((AMD64) arch).getFeatures();
         } else if (arch instanceof AArch64) {
             return ((AArch64) arch).getFeatures();
+        } else if (ShadowedRISCV64.instanceOf(arch)) {
+            Method getFeatures = RISCV64ReflectionUtil.lookupMethod(ShadowedRISCV64.riscv64OrNull, "getFeatures");
+            getFeatures.setAccessible(true);
+            return (EnumSet<?>) RISCV64ReflectionUtil.invokeMethod(getFeatures, arch);
         } else {
-            throw GraalError.shouldNotReachHere("unsupported architecture");
+            throw GraalError.shouldNotReachHere("unsupported architecture"); // ExcludeFromJacocoGeneratedReport
         }
     }
 

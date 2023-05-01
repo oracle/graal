@@ -29,6 +29,7 @@ import java.io.IOException;
 
 import org.graalvm.nativeimage.ImageSingletons;
 
+/** Legacy implementation, only used by other legacy code (see GR-44538). */
 public abstract class HeapDumpWriter {
     /**
      * Writes heap in hprof format to ordinary file.

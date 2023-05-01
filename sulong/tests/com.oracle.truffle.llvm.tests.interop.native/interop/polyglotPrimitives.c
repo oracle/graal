@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdint.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 #define ACCESS_TYPE(ctype, jtype, val)                                                                                                               \
     void export_##jtype(const char *name) {                                                                                                          \

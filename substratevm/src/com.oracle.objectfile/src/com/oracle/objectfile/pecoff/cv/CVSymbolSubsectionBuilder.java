@@ -30,11 +30,10 @@ import com.oracle.objectfile.SectionName;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
+import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
-import com.oracle.objectfile.debugentry.Range;
-import com.oracle.objectfile.debugentry.TypeEntry;
-import org.graalvm.compiler.debug.GraalError;
+import com.oracle.objectfile.debugentry.range.Range;
 
 import java.lang.reflect.Modifier;
 
@@ -245,7 +244,7 @@ final class CVSymbolSubsectionBuilder {
                         register = javaGP8registers[gpRegisterIndex];
                     } else {
                         register = 0; /* Avoid warning. */
-                        GraalError.shouldNotReachHere("Unknown primitive (type" + paramType.getTypeName() + ") size:" + paramType.getSize());
+                        throw new RuntimeException("Unknown primitive (type" + paramType.getTypeName() + ") size:" + paramType.getSize());
                     }
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));

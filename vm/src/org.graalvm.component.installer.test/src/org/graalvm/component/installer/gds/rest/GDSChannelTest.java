@@ -22,7 +22,6 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-
 package org.graalvm.component.installer.gds.rest;
 
 import org.graalvm.component.installer.MemoryFeedback;
@@ -33,39 +32,49 @@ import java.util.List;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommandTestBase;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.CommonConstants;
 import static org.graalvm.component.installer.CommonConstants.CAP_JAVA_VERSION;
 import static org.graalvm.component.installer.CommonConstants.RELEASE_GDS_PRODUCT_ID_KEY;
-import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
 import static org.graalvm.component.installer.gds.rest.GDSChannelTest.TestGDSChannel.MockGDSCatalogStorage.ID;
 import org.graalvm.component.installer.MemoryFeedback.Case;
 import org.graalvm.component.installer.model.ComponentRegistry;
+import org.graalvm.component.installer.model.ComponentStorage;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.remote.ProxyConnectionFactory.HttpConnectionException;
+import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
+import static org.junit.Assert.assertFalse;
 
 /**
  *
  * @author odouda
  */
 public class GDSChannelTest extends CommandTestBase {
+    private static final String MOCK_TOKEN = "MOCK_TOKEN";
+    private static final String HEADER_DOWNLOAD_CONFIG = "x-download-token";
+    @Rule public TestName name = new TestName();
     @Rule public ProxyResource proxyResource = new ProxyResource();
 
     TestGDSChannel channel;
@@ -75,14 +84,31 @@ public class GDSChannelTest extends CommandTestBase {
     public void setUp() throws Exception {
         super.setUp();
         delegateFeedback(mf = new MemoryFeedback());
-        channel = new TestGDSChannel(this, this, this.getLocalRegistry());
 
         storage.graalInfo.put(CommonConstants.CAP_EDITION, "ee");
 
         storage.graalInfo.put(CommonConstants.CAP_OS_NAME, "linux");
-        storage.graalInfo.put(BundleConstants.GRAAL_VERSION, "19.3.6");
+        storage.graalInfo.put(CommonConstants.CAP_OS_ARCH, "amd64");
+        storage.graalInfo.put(BundleConstants.GRAAL_VERSION, "22.1.0");
         storage.graalInfo.put(CommonConstants.RELEASE_GDS_PRODUCT_ID_KEY, "mockProductId");
         storage.graalInfo.put(CAP_JAVA_VERSION, "11");
+
+        refreshChannel();
+    }
+
+    @After
+    public void tearDown() {
+        assertTrue(name.getMethodName() + ": " + mf.toString(), mf.isEmpty());
+    }
+
+    private void refreshChannel() {
+        this.localRegistry = null;
+        channel = new TestGDSChannel(this, this, this.getLocalRegistry());
+    }
+
+    private void refreshChannel(Path p) throws MalformedURLException {
+        refreshChannel();
+        channel.setIndexURL(p.toUri().toURL());
     }
 
     @Test
@@ -95,114 +121,209 @@ public class GDSChannelTest extends CommandTestBase {
         } catch (JSONException ex) {
             // expected
         }
-        assertTrue(mf.isEmpty());
     }
 
     @Test
     public void testNoUsableComponents() throws Exception {
         Path p = dataFile("data/gdsreleases.json");
-        channel.setIndexURL(p.toUri().toURL());
         storage.graalInfo.put(BundleConstants.GRAAL_VERSION, "22.0.0");
+        refreshChannel(p);
         List<ComponentInfo> infos = channel.loadArtifacts(p, Collections.emptyList());
         assertTrue(infos.isEmpty());
-        assertTrue(mf.isEmpty());
     }
 
-// @Test
-// public void testFilterUpdates() throws Exception {
-// Path p = dataFile("data/gdsreleases.json");
-// channel.setIndexURL(p.toUri().toURL());
-// List<ComponentInfo> infos = channel.loadArtifacts(p, Collections.emptyList());
-// assertEquals(infos.toString(), 5, infos.size());
-// channel.setAllowUpdates(true);
-// infos = channel.loadArtifacts(p, Collections.emptyList());
-// assertEquals(infos.toString(), 17, infos.size());
-// assertTrue(mf.mem.isEmpty());
-// }
-//
-// @Test
-// public void testFailOnNoURL() throws Exception {
-// Path p = dataFile("data/gdsreleases.json");
-// try {
-// channel.loadArtifacts(p, Collections.emptyList());
-// fail("Expected NPE from missing URL.");
-// } catch (NullPointerException ex) {
-// StackTraceElement stackTrace = ex.getStackTrace()[0];
-// assertEquals("org.graalvm.component.installer.gds.rest.GDSChannelTest$TestGDSChannel",
-// stackTrace.getClassName());
-// assertEquals("getConnector", stackTrace.getMethodName());
-// }
-// assertTrue(mf.mem.isEmpty());
-// }
-//
-// @Test
-// public void testLoadComponentStorage() throws Exception {
-// Path p = dataFile("data/gdsreleases.json");
-// channel.setIndexURL(p.toUri().toURL());
-// ComponentStorage store = channel.getStorage();
-// assertTrue(mf.mem.isEmpty());
-// Collection<String> cids = store.listComponentIDs();
-// mf.checkMem(0, Case.FRM, "OLDS_ReleaseFile");
-// mf.checkMem(1, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
-// assertEquals("Messages size.", 2, mf.mem.size());
-// List<ComponentInfo> infos = new ArrayList<>();
-// for (String id : cids) {
-// infos.addAll(store.loadComponentMetadata(id));
-// }
-// assertEquals(infos.toString(), 5, infos.size());
-// }
+    @Test
+    public void testFilterUpdates() throws Exception {
+        Path p = dataFile("data/gdsreleases.json");
+        channel.setIndexURL(p.toUri().toURL());
+        tstUpdates(p, 9, 18);
+        storage.graalInfo.put(CommonConstants.CAP_OS_NAME, "macos");
+        refreshChannel(p);
+        tstUpdates(p, 9, 18);
+        storage.graalInfo.put(CommonConstants.CAP_OS_NAME, "windows");
+        refreshChannel(p);
+        tstUpdates(p, 5, 10);
+        storage.graalInfo.put(CommonConstants.CAP_OS_ARCH, "aarch64");
+        storage.graalInfo.put(CommonConstants.CAP_OS_NAME, "linux");
+        refreshChannel(p);
+        tstUpdates(p, 7, 14);
+        storage.graalInfo.put(CommonConstants.CAP_OS_NAME, "macos");
+        refreshChannel(p);
+        tstUpdates(p, 0, 0);
+        storage.graalInfo.put(CommonConstants.CAP_OS_NAME, "windows");
+        refreshChannel(p);
+        tstUpdates(p, 0, 0);
+    }
+
+    private void tstUpdates(Path p, int noUpdates, int allowedUpdates) throws IOException {
+        channel.setAllowUpdates(false);
+        checkArtifactsCount(p, noUpdates);
+        channel.setAllowUpdates(true);
+        checkArtifactsCount(p, allowedUpdates);
+    }
+
+    private void checkArtifactsCount(Path p, int count) throws IOException {
+        List<ComponentInfo> infos = channel.loadArtifacts(p, Collections.emptyList());
+        assertEquals(infos.toString(), count, infos.size());
+    }
+
+    @Test
+    public void testFailOnNoURL() throws Exception {
+        Path p = dataFile("data/gdsreleases.json");
+        try {
+            channel.loadArtifacts(p, Collections.emptyList());
+            fail("Expected NPE from missing URL.");
+        } catch (NullPointerException ex) {
+            StackTraceElement stackTrace = ex.getStackTrace()[0];
+            assertEquals("org.graalvm.component.installer.gds.rest.GDSChannelTest$TestGDSChannel",
+                            stackTrace.getClassName());
+            assertEquals("getConnector", stackTrace.getMethodName());
+        }
+    }
+
+    @Test
+    public void testLoadComponentStorage() throws Exception {
+        Path p = dataFile("data/gdsreleases.json");
+        channel.setIndexURL(p.toUri().toURL());
+        ComponentStorage store = channel.getStorage();
+        assertTrue(mf.isEmpty());
+        Collection<String> cids = store.listComponentIDs();
+        mf.checkMem(Case.FRM, "OLDS_ReleaseFile");
+        mf.checkMem(Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
+        List<ComponentInfo> infos = new ArrayList<>();
+        for (String id : cids) {
+            infos.addAll(store.loadComponentMetadata(id));
+        }
+        assertEquals(infos.toString(), 9, infos.size());
+    }
 
     @Test
     public void testInterceptDownloadException() throws Exception {
         String mockUrlString = "http://some.mock.url/";
-        URL url = new URL(mockUrlString);
+        URL url = SystemUtils.toURL(mockUrlString);
         channel.setIndexURL(url);
         IOException ioExc = new IOException("some Exception.");
         FileDownloader fd = new FileDownloader("something", url, this);
-        IOException out = channel.interceptDownloadException(ioExc, fd);
-        assertSame(ioExc, out);
-        HttpConnectionException httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(url));
-        out = channel.interceptDownloadException(httpExc, fd);
-        assertSame(ioExc, out);
-        channel.mockStorage();
-        httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID + 2)));
-        out = channel.interceptDownloadException(httpExc, fd);
-        assertSame(ioExc, out);
-        httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID)));
-        out = channel.interceptDownloadException(httpExc, fd);
-        assertSame(ioExc, out);
-        channel.respErr = "{code:\"InvalidToken\"}";
-        httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID)));
         try {
-            out = channel.interceptDownloadException(httpExc, fd);
-            fail("Expected exception.");
-        } catch (FailedOperationException ex) {
-            // expected ATM
+            fd.download();
+        } catch (Throwable t) {
         }
-        mf.checkMem(0, Case.MSG, "ERR_WrongToken", new Object[]{null});
-        mf.checkMem(1, Case.MSG, "MSG_InputTokenEntry");
-        mf.checkMem(2, Case.MSG, "PROMPT_InputTokenEntry");
-        mf.checkMem(3, Case.INP, null);
+        mf.checkMem(Case.MSG, "MSG_Downloading", "something", url.getHost());
+        channel.mockStorage();
+
+        channel.respErr = "{code:\"UnverifiedToken\"}";
+        mf.nextInput("something");
+        HttpConnectionException httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID)));
+        IOException out = channel.interceptDownloadException(httpExc, fd);
+        assertSame(null, out);
+        mf.checkMem(Case.MSG, "ERR_InvalidToken", new Object[]{null});
+        mf.checkMem(Case.INP, "something");
+
+        channel.respErr = "{code:\"InvalidToken\"}";
+        channel.tokStore.setToken(MOCK_TOKEN);
+        mf.nextInput("token");
+        httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID)));
+        out = channel.interceptDownloadException(httpExc, fd);
+        assertSame(null, out);
+        assertEquals("token", channel.tokStore.getToken());
+        mf.checkMem(Case.MSG, "ERR_WrongToken", MOCK_TOKEN);
+        mf.checkMem(Case.MSG, "MSG_InputTokenEntry");
+        mf.checkMem(Case.MSG, "PROMPT_InputTokenEntry");
+        mf.checkMem(Case.INP, "token");
+        mf.checkMem(Case.MSG, "MSG_ObtainedToken", "token");
+
+        mf.nextInput(null);
+        mf.nextInput("email@dot.com");
+        out = channel.interceptDownloadException(httpExc, fd);
+        assertSame(null, out);
+        assertEquals(GDSFileConnector.MOCK_TOKEN_NEW, channel.tokStore.getToken());
+        mf.checkMem(Case.MSG, "ERR_WrongToken", "token");
+        mf.checkMem(Case.MSG, "MSG_InputTokenEntry");
+        mf.checkMem(Case.MSG, "PROMPT_InputTokenEntry");
+        mf.checkMem(Case.INP, null);
+        mf.checkMem(Case.MSG, "MSG_EmailAddressEntry");
+        mf.checkMem(Case.MSG, "PROMPT_EmailAddressEntry");
+        mf.checkMem(Case.INP, "email@dot.com");
+        mf.checkMem(Case.MSG, "MSG_ObtainedToken", GDSFileConnector.MOCK_TOKEN_NEW);
+        mf.checkMem(Case.MSG, "PROMPT_VerifyEmailAddressEntry", "email@dot.com");
+        mf.checkMem(Case.INP, null);
+
         channel.respErr = "{code:\"InvalidLicenseAcceptance\"}";
         httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID)));
         out = channel.interceptDownloadException(httpExc, fd);
         assertSame(null, out);
-        mf.checkMem(4, Case.MSG, "MSG_EmailAddressEntry");
-        mf.checkMem(5, Case.MSG, "PROMPT_EmailAddressEntry");
-        mf.checkMem(6, Case.INP, null);
-        mf.checkMem(7, Case.FRM, "MSG_YourEmail");
-        mf.checkMem(8, Case.MSG, "PROMPT_VerifyEmailAddressEntry", "MSG_YourEmail");
-        mf.checkMem(9, Case.INP, null);
-        assertEquals(mf.toString(), 10, mf.size());
+        mf.checkMem(Case.FRM, "MSG_YourEmail");
+        mf.checkMem(Case.MSG, "PROMPT_VerifyEmailAddressEntry", "MSG_YourEmail");
+        mf.checkMem(Case.INP, null);
+
+        channel.respErr = "invalid json";
+        httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID)));
+        out = channel.interceptDownloadException(httpExc, fd);
+        assertSame(ioExc, out);
+
+        httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID + 2)));
+        out = channel.interceptDownloadException(httpExc, fd);
+        assertSame(ioExc, out);
+
+        httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(url));
+        out = channel.interceptDownloadException(httpExc, fd);
+        assertSame(ioExc, out);
+
+        channel.respCode = 300;
+        httpExc = new HttpConnectionException("my msg", ioExc, false, channel.new MockHttpURLConnection(channel.getConnector().makeArtifactDownloadURL(ID)));
+        out = channel.interceptDownloadException(httpExc, fd);
+        assertSame(ioExc, out);
+
+        out = channel.interceptDownloadException(ioExc, fd);
+        assertSame(ioExc, out);
+    }
+
+    @Test
+    public void testConfigureDownloader() throws MalformedURLException {
+        String mockUrlString = "http://some.mock.url/";
+        URL url = SystemUtils.toURL(mockUrlString);
+        channel.setIndexURL(url);
+        channel.tokStore.setToken(MOCK_TOKEN);
+        FileDownloader fd = new FileDownloader("something", url, this);
+        ComponentInfo ci = new ComponentInfo("ID", "name", "1.0.0");
+        channel.configureDownloader(ci, fd);
+        Map<String, String> headers = fd.getRequestHeaders();
+        assertEquals(MOCK_TOKEN, headers.get(HEADER_DOWNLOAD_CONFIG));
+        assertEquals(3, headers.size());
+
+        fd = new FileDownloader("something", url, this);
+        ci.setImplicitlyAccepted(true);
+        channel.configureDownloader(ci, fd);
+        headers = fd.getRequestHeaders();
+        assertEquals(null, headers.get(HEADER_DOWNLOAD_CONFIG));
+        assertEquals(2, headers.size());
+    }
+
+    @Test
+    public void testNeedToken() {
+        ComponentInfo ci = new ComponentInfo("ID", "name", "1.0.0");
+        assertTrue(channel.needToken(ci));
+
+        ci.setImplicitlyAccepted(true);
+        assertFalse(channel.needToken(ci));
+
+        ci.setImplicitlyAccepted(false);
+        assertTrue(channel.needToken(ci));
     }
 
     final class TestGDSChannel extends GDSChannel {
         GDSRESTConnector conn = null;
         String respErr = "Mock error response.";
         int respCode = 401;
+        TestGDSTokenStorage tokStore;
 
         TestGDSChannel(CommandInput aInput, Feedback aFeedback, ComponentRegistry aRegistry) {
             super(aInput, aFeedback, aRegistry);
+            setTokenStorage(tokStore = new TestGDSTokenStorage(aFeedback, aInput) {
+                @Override
+                public void save() throws IOException {
+                }
+            });
         }
 
         @Override
