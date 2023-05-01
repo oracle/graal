@@ -4015,6 +4015,8 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             continuationRoot.add(createExecute());
 
+            continuationRoot.add(createToString());
+
             return continuationRoot;
         }
 
@@ -4042,6 +4044,14 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.statement("return root.continueAt(frame, parentFrame, (sp << 16) | (target & 0xffff))");
 
+            return ex;
+        }
+
+        private CodeExecutableElement createToString() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(String.class), "toString");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn().string("root.toString() + \"@\" + (target & 0xffff) ").end();
             return ex;
         }
     }

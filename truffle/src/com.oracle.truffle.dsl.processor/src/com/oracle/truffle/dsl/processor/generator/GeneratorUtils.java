@@ -85,6 +85,8 @@ import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.Template;
 import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
+import sun.misc.Unsafe;
+
 public class GeneratorUtils {
 
     public static void pushEncapsulatingNode(CodeTreeBuilder builder, CodeTree nodeRef) {
@@ -485,7 +487,7 @@ public class GeneratorUtils {
 
     public static List<Element> createUnsafeSingleton() {
         ProcessorContext context = ProcessorContext.getInstance();
-        TypeMirror unsafeType = context.getDeclaredType(sun.misc.Unsafe.class);
+        TypeMirror unsafeType = context.getDeclaredType(Unsafe.class);
 
         CodeVariableElement unsafeSingleton = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), unsafeType, "UNSAFE");
         unsafeSingleton.createInitBuilder().startCall("getUnsafe").end();

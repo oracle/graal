@@ -109,11 +109,14 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
         return (TestOperations) cloneUninitialized();
     }
 
-    private static class TestException extends AbstractOperationsTruffleException {
+    protected static class TestException extends AbstractOperationsTruffleException {
         private static final long serialVersionUID = -9143719084054578413L;
 
-        TestException(String string, Node node, int bci) {
+        public final long value;
+
+        TestException(String string, Node node, int bci, long value) {
             super(string, node, bci);
+            this.value = value;
         }
     }
 
@@ -154,8 +157,18 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     @GenerateAOT
     static final class ThrowOperation {
         @Specialization
-        public static Object perform(@Bind("$bci") int bci, @Bind("$root") Node node) {
-            throw new TestException("fail", node, bci);
+        public static Object perform(long value,
+                        @Bind("$bci") int bci,
+                        @Bind("$root") Node node) {
+            throw new TestException("fail", node, bci, value);
+        }
+    }
+
+    @Operation
+    static final class ReadExceptionOperation {
+        @Specialization
+        public static long perform(TestException ex) {
+            return ex.value;
         }
     }
 
