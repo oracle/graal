@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import org.graalvm.compiler.core.CompilationWatchDog;
 import org.graalvm.compiler.core.CompilationWatchDog.EventHandler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
@@ -139,7 +140,9 @@ public class CompilationWatchDogTest extends GraalCompilerTest {
         CompilationWatchDog watch = CompilationWatchDog.watch(compilation, options, false, longCompilationHandler);
         try (CompilationWatchDog watchScope = watch) {
             event("start compiling");
-            return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, options);
+            try (TTY.Filter f = new TTY.Filter()) {
+                return super.getCode(installedCodeOwner, graph, forceCompile, installAsDefault, options);
+            }
         } finally {
             check(!longCompilations.isEmpty());
             check(longCompilations.stream().allMatch(id -> id == compilation));

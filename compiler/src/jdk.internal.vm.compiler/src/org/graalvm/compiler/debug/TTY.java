@@ -25,7 +25,6 @@
 package org.graalvm.compiler.debug;
 
 import java.io.PrintStream;
-import java.util.regex.Pattern;
 
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
@@ -43,36 +42,6 @@ public class TTY {
 
         private LogStream previous;
         private final Thread thread = Thread.currentThread();
-
-        /**
-         * Creates an object that will suppress {@link TTY} for the current thread if the given
-         * filter does not match the given object. To revert the suppression state to how it was
-         * before this call, the {@link #remove()} method must be called on the suppression object.
-         *
-         * @param filter the pattern for matching. If {@code null}, then the match is successful. If
-         *            it starts with "~", then a regular expression
-         *            {@linkplain Pattern#matches(String, CharSequence) match} is performed where
-         *            the regular expression is specified by {@code filter} without the "~" prefix.
-         *            Otherwise, a simple {@linkplain String#contains(CharSequence) substring} match
-         *            is performed where {@code filter} is the substring used.
-         * @param object an object whose {@linkplain Object#toString() string} value is matched
-         *            against {@code filter}
-         */
-        public Filter(String filter, Object object) {
-            boolean suppressed = false;
-            if (filter != null) {
-                String input = object.toString();
-                if (filter.startsWith("~")) {
-                    suppressed = !Pattern.matches(filter.substring(1), input);
-                } else {
-                    suppressed = !input.contains(filter);
-                }
-                if (suppressed) {
-                    previous = out();
-                    log.set(LogStream.SINK);
-                }
-            }
-        }
 
         /**
          * Creates an object that will suppress {@link TTY} for the current thread. To revert the
