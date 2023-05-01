@@ -165,6 +165,13 @@ public abstract class ClassInitializationSupport implements RuntimeClassInitiali
      */
     InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
         try {
+            loader.watchdog.recordActivity();
+            /*
+             * This can run arbitrary user code, i.e., it can deadlock or get stuck in an endless
+             * loop when there is a bug in the user's code. Our deadlock watchdog detects and
+             * reports such cases. To make that as deterministic as possible, we record watchdog
+             * activity just before and after the initialization.
+             */
             Unsafe.getUnsafe().ensureClassInitialized(clazz);
             loader.watchdog.recordActivity();
             return InitKind.BUILD_TIME;
