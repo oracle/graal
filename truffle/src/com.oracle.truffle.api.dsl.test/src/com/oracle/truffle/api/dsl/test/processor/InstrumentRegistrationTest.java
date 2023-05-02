@@ -42,6 +42,8 @@ package com.oracle.truffle.api.dsl.test.processor;
 
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 
 public class InstrumentRegistrationTest {
@@ -65,158 +67,303 @@ public class InstrumentRegistrationTest {
 
     }
 
-    @ExpectError("Registered defaultExportProviders must be subclass of com.oracle.truffle.api.library.DefaultExportProvider. " +
-                    "To resolve this, implement DefaultExportProvider.")
-    @Registration(id = "tooldefaultexportprovider1", name = "tooldefaultexportprovider1", defaultExportProviders = DefaultExportProviderRegistration1.DefaultExportProviderImpl.class)
+    @ExpectError("The class registered in the defaultLibraryExports must be a library export. " +
+                    "To resolve this, add the @ExportLibrary to NoLibrary or remove the NoLibrary from the defaultLibraryExports.")
+    @Registration(id = "tooldefaultexportprovider1", name = "tooldefaultexportprovider1", defaultLibraryExports = DefaultExportProviderRegistration1.NoLibrary.class)
     public static class DefaultExportProviderRegistration1 extends ProxyInstrument {
-        public static class DefaultExportProviderImpl {
+        public static class NoLibrary {
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.DefaultExportProviderRegistration2.DefaultExportProviderImpl " +
-                    "must be a static inner-class or a top-level class. To resolve this, make the DefaultExportProviderImpl static or top-level class.")
-    @Registration(id = "tooldefaultexportprovider2", name = "tooldefaultexportprovider2", defaultExportProviders = DefaultExportProviderRegistration2.DefaultExportProviderImpl.class)
+    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
+                    "or remove the InvalidToolLibrary2 from the defaultLibraryExports.")
+    @Registration(id = "tooldefaultexportprovider2", name = "tooldefaultexportprovider2", defaultLibraryExports = DefaultExportProviderRegistration2.InvalidToolLibrary2.class)
     public static class DefaultExportProviderRegistration2 extends ProxyInstrument {
-        abstract class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
+
+        @ExportLibrary(value = LanguageRegistrationTest.NoDefaultExportLibrary1.class)
+        public static class InvalidToolLibrary2 {
+
+            @ExportMessage
+            void execute1() {
+            }
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.DefaultExportProviderRegistration3.DefaultExportProviderImpl " +
-                    "must have a no argument public constructor. To resolve this, add public DefaultExportProviderImpl() constructor.")
-    @Registration(id = "tooldefaultexportprovider3", name = "tooldefaultexportprovider3", defaultExportProviders = DefaultExportProviderRegistration3.DefaultExportProviderImpl.class)
+    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1, NoDefaultExportLibrary2 " +
+                    "or remove the InvalidToolLibrary3 from the defaultLibraryExports.")
+    @Registration(id = "tooldefaultexportprovider3", name = "tooldefaultexportprovider3", defaultLibraryExports = DefaultExportProviderRegistration3.InvalidToolLibrary3.class)
     public static class DefaultExportProviderRegistration3 extends ProxyInstrument {
-        abstract static class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
 
-            @SuppressWarnings("unused")
-            DefaultExportProviderImpl(String unused) {
+        @ExportLibrary(value = LanguageRegistrationTest.NoDefaultExportLibrary1.class)
+        @ExportLibrary(value = LanguageRegistrationTest.NoDefaultExportLibrary2.class)
+        public static class InvalidToolLibrary3 {
+
+            @ExportMessage
+            void execute1() {
             }
 
-            @SuppressWarnings("unused")
-            DefaultExportProviderImpl(long unused) {
-            }
-
-            @SuppressWarnings("unused")
-            private DefaultExportProviderImpl() {
+            @ExportMessage
+            void execute2() {
             }
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.DefaultExportProviderRegistration4.DefaultExportProviderImpl " +
-                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
-                    "To resolve this, make the DefaultExportProviderImpl public or move it to com.oracle.truffle.api.dsl.test.processor.")
-    @Registration(id = "tooldefaultexportprovider4", name = "tooldefaultexportprovider4", defaultExportProviders = DefaultExportProviderRegistration4.DefaultExportProviderImpl.class)
+    @ExpectError({"The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
+                    "or remove the InvalidToolLibrary4A from the defaultLibraryExports.",
+                    "The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary2 " +
+                                    "or remove the InvalidToolLibrary4B from the defaultLibraryExports."})
+    @Registration(id = "tooldefaultexportprovider4", name = "tooldefaultexportprovider4", defaultLibraryExports = {DefaultExportProviderRegistration4.InvalidToolLibrary4A.class,
+                    DefaultExportProviderRegistration4.InvalidToolLibrary4B.class})
     public static class DefaultExportProviderRegistration4 extends ProxyInstrument {
-        private static class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
-            @SuppressWarnings("unused")
-            DefaultExportProviderImpl() {
+
+        @ExportLibrary(value = LanguageRegistrationTest.NoDefaultExportLibrary1.class)
+        public static class InvalidToolLibrary4A {
+
+            @ExportMessage
+            void execute1() {
+            }
+        }
+
+        @ExportLibrary(value = LanguageRegistrationTest.NoDefaultExportLibrary2.class)
+        public static class InvalidToolLibrary4B {
+
+            @ExportMessage
+            void execute2() {
             }
         }
     }
 
-    @Registration(id = "tooldefaultexportprovider5", name = "tooldefaultexportprovider5", defaultExportProviders = DefaultExportProviderRegistration5.DefaultExportProviderImpl.class)
+    @Registration(id = "tooldefaultexportprovider5", name = "tooldefaultexportprovider5", defaultLibraryExports = DefaultExportProviderRegistration5.ValidToolLibrary1.class)
     public static class DefaultExportProviderRegistration5 extends ProxyInstrument {
-        static class DefaultExportProviderImpl extends LanguageRegistrationTest.ProxyDefaultExportProvider {
 
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidToolLibrary1 {
+
+            @ExportMessage
             @SuppressWarnings("unused")
-            DefaultExportProviderImpl(String unused) {
-            }
-
-            @SuppressWarnings("unused")
-            DefaultExportProviderImpl(long unused) {
-            }
-
-            DefaultExportProviderImpl() {
+            static void execute3(String receiver) {
             }
         }
     }
 
-    @Registration(id = "tooldefaultexportprovider6", name = "tooldefaultexportprovider6", defaultExportProviders = {
-                    DefaultExportProviderRegistration6.DefaultExportProviderImpl1.class,
-                    DefaultExportProviderRegistration6.DefaultExportProviderImpl2.class
-    })
+    @Registration(id = "tooldefaultexportprovider6", name = "tooldefaultexportprovider6", defaultLibraryExports = DefaultExportProviderRegistration6.ValidToolLibrary2.class)
     public static class DefaultExportProviderRegistration6 extends ProxyInstrument {
-        static class DefaultExportProviderImpl1 extends LanguageRegistrationTest.ProxyDefaultExportProvider {
-        }
 
-        static class DefaultExportProviderImpl2 extends LanguageRegistrationTest.ProxyDefaultExportProvider {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidToolLibrary2 {
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute3(String receiver) {
+            }
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute4(String receiver) {
+            }
         }
     }
 
-    @ExpectError("Registered eagerExportProviders must be subclass of com.oracle.truffle.api.library.EagerExportProvider. " +
-                    "To resolve this, implement EagerExportProvider.")
-    @Registration(id = "tooleagerexportprovider1", name = "tooleagerexportprovider1", eagerExportProviders = EagerExportProviderRegistration1.EagerExportProviderImpl.class)
+    @Registration(id = "tooldefaultexportprovider7", name = "tooldefaultexportprovider7", defaultLibraryExports = {DefaultExportProviderRegistration7.ValidToolLibrary3A.class,
+                    DefaultExportProviderRegistration7.ValidToolLibrary3B.class})
+    public static class DefaultExportProviderRegistration7 extends ProxyInstrument {
+
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidToolLibrary3A {
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute3(String receiver) {
+            }
+        }
+
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidToolLibrary3B {
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute4(String receiver) {
+            }
+        }
+    }
+
+    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
+                    "or remove the InvalidToolLibrary5 from the defaultLibraryExports.")
+    @Registration(id = "tooldefaultexportprovider8", name = "tooldefaultexportprovider8", defaultLibraryExports = {DefaultExportProviderRegistration8.ValidToolLibrary4.class,
+                    DefaultExportProviderRegistration8.InvalidToolLibrary5.class})
+    public static class DefaultExportProviderRegistration8 extends ProxyInstrument {
+
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidToolLibrary4 {
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute3(String receiver) {
+            }
+        }
+
+        @ExportLibrary(value = LanguageRegistrationTest.NoDefaultExportLibrary1.class)
+        public static class InvalidToolLibrary5 {
+
+            @ExportMessage
+            void execute1() {
+            }
+        }
+    }
+
+    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on NoLibrary " +
+                    "or remove the NoLibrary from aotLibraryExports.")
+    @Registration(id = "tooleagerexportprovider1", name = "tooleagerexportprovider1", aotLibraryExports = EagerExportProviderRegistration1.NoLibrary.class)
     public static class EagerExportProviderRegistration1 extends ProxyInstrument {
-        public static class EagerExportProviderImpl {
+        public static class NoLibrary {
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.EagerExportProviderRegistration2.EagerExportProviderImpl" +
-                    " must be a static inner-class or a top-level class. To resolve this, make the EagerExportProviderImpl static or top-level class.")
-    @Registration(id = "tooleagerexportprovider2", name = "tooleagerexportprovider2", eagerExportProviders = EagerExportProviderRegistration2.EagerExportProviderImpl.class)
+    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary6 " +
+                    "or remove the InvalidToolLibrary6 from aotLibraryExports.")
+    @Registration(id = "tooleagerexportprovider2", name = "tooleagerexportprovider2", aotLibraryExports = EagerExportProviderRegistration2.InvalidToolLibrary6.class)
     public static class EagerExportProviderRegistration2 extends ProxyInstrument {
-        abstract class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidToolLibrary6 {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.EagerExportProviderRegistration3.EagerExportProviderImpl " +
-                    "must have a no argument public constructor. To resolve this, add public EagerExportProviderImpl() constructor.")
-    @Registration(id = "tooleagerexportprovider3", name = "tooleagerexportprovider3", eagerExportProviders = EagerExportProviderRegistration3.EagerExportProviderImpl.class)
+    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary7 " +
+                    "or remove the InvalidToolLibrary7 from aotLibraryExports.")
+    @Registration(id = "tooleagerexportprovider3", name = "tooleagerexportprovider3", aotLibraryExports = EagerExportProviderRegistration3.InvalidToolLibrary7.class)
     public static class EagerExportProviderRegistration3 extends ProxyInstrument {
-        abstract static class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidToolLibrary7 {
 
             @SuppressWarnings("unused")
-            EagerExportProviderImpl(String unused) {
+            @ExportMessage
+            static void execute3(String receiver) {
             }
 
             @SuppressWarnings("unused")
-            EagerExportProviderImpl(long unused) {
-            }
-
-            @SuppressWarnings("unused")
-            private EagerExportProviderImpl() {
+            @ExportMessage
+            static void execute4(String receiver) {
             }
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.InstrumentRegistrationTest.EagerExportProviderRegistration4.EagerExportProviderImpl " +
-                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
-                    "To resolve this, make the EagerExportProviderImpl public or move it to com.oracle.truffle.api.dsl.test.processor.")
-    @Registration(id = "tooleagerexportprovider4", name = "tooleagerexportprovider4", eagerExportProviders = EagerExportProviderRegistration4.EagerExportProviderImpl.class)
+    @ExpectError({"The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary8A " +
+                    "or remove the InvalidToolLibrary8A from aotLibraryExports.",
+                    "The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary8B " +
+                                    "or remove the InvalidToolLibrary8B from aotLibraryExports."})
+    @Registration(id = "tooleagerexportprovider4", name = "tooleagerexportprovider4", aotLibraryExports = {EagerExportProviderRegistration4.InvalidToolLibrary8A.class,
+                    EagerExportProviderRegistration4.InvalidToolLibrary8B.class})
     public static class EagerExportProviderRegistration4 extends ProxyInstrument {
-        private static class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidToolLibrary8A {
 
             @SuppressWarnings("unused")
-            EagerExportProviderImpl() {
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
+        }
+
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidToolLibrary8B {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute4(String receiver) {
             }
         }
     }
 
-    @Registration(id = "tooleagerexportprovider5", name = "tooleagerexportprovider5", eagerExportProviders = EagerExportProviderRegistration5.EagerExportProviderImpl.class)
+    @Registration(id = "tooleagerexportprovider5", name = "tooleagerexportprovider5", aotLibraryExports = EagerExportProviderRegistration5.ValidToolLibrary5.class)
     public static class EagerExportProviderRegistration5 extends ProxyInstrument {
-        static class EagerExportProviderImpl extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidToolLibrary5 {
 
             @SuppressWarnings("unused")
-            EagerExportProviderImpl(String unused) {
-            }
-
-            @SuppressWarnings("unused")
-            EagerExportProviderImpl(long unused) {
-            }
-
-            EagerExportProviderImpl() {
+            @ExportMessage
+            static void execute3(String receiver) {
             }
         }
     }
 
-    @Registration(id = "tooleagerexportprovider6", name = "tooleagerexportprovider6", eagerExportProviders = {
-                    EagerExportProviderRegistration6.EagerExportProviderImpl1.class,
-                    EagerExportProviderRegistration6.EagerExportProviderImpl2.class
-    })
+    @Registration(id = "tooleagerexportprovider6", name = "tooleagerexportprovider6", aotLibraryExports = EagerExportProviderRegistration6.ValidToolLibrary6.class)
     public static class EagerExportProviderRegistration6 extends ProxyInstrument {
-        static class EagerExportProviderImpl1 extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidToolLibrary6 {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute4(String receiver) {
+            }
+        }
+    }
+
+    @Registration(id = "tooleagerexportprovider7", name = "tooleagerexportprovider7", aotLibraryExports = {EagerExportProviderRegistration7.ValidToolLibrary7A.class,
+                    EagerExportProviderRegistration7.ValidToolLibrary7B.class})
+    public static class EagerExportProviderRegistration7 extends ProxyInstrument {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidToolLibrary7A {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
         }
 
-        static class EagerExportProviderImpl2 extends LanguageRegistrationTest.ProxyEagerExportProvider {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidToolLibrary7B {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute4(String receiver) {
+            }
+        }
+    }
+
+    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidToolLibrary8 " +
+                    "or remove the InvalidToolLibrary8 from aotLibraryExports.")
+    @Registration(id = "tooleagerexportprovider8", name = "tooleagerexportprovider8", aotLibraryExports = {EagerExportProviderRegistration8.ValidToolLibrary8.class,
+                    EagerExportProviderRegistration8.InvalidToolLibrary8.class})
+    public static class EagerExportProviderRegistration8 extends ProxyInstrument {
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidToolLibrary8 {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
+        }
+
+        @ExportLibrary(value = LanguageRegistrationTest.DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidToolLibrary8 {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute4(String receiver) {
+            }
         }
     }
 

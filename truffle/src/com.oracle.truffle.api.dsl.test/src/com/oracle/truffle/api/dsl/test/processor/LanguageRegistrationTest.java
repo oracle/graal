@@ -48,9 +48,12 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.test.ExpectError;
-import com.oracle.truffle.api.library.DefaultExportProvider;
-import com.oracle.truffle.api.library.EagerExportProvider;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class LanguageRegistrationTest {
@@ -201,159 +204,303 @@ public class LanguageRegistrationTest {
         }
     }
 
-    @ExpectError("Registered defaultExportProviders must be subclass of com.oracle.truffle.api.library.DefaultExportProvider. " +
-                    "To resolve this, implement DefaultExportProvider.")
-    @Registration(id = "langdefaultexportprovider1", name = "langdefaultexportprovider1", defaultExportProviders = DefaultExportProviderRegistration1.DefaultExportProviderImpl.class)
+    @ExpectError("The class registered in the defaultLibraryExports must be a library export. " +
+                    "To resolve this, add the @ExportLibrary to NoLibrary or remove the NoLibrary from the defaultLibraryExports.")
+    @Registration(id = "langdefaultexportprovider1", name = "langdefaultexportprovider1", defaultLibraryExports = DefaultExportProviderRegistration1.NoLibrary.class)
     public static class DefaultExportProviderRegistration1 extends ProxyLanguage {
-        public static class DefaultExportProviderImpl {
+        public static class NoLibrary {
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.DefaultExportProviderRegistration2.DefaultExportProviderImpl " +
-                    "must be a static inner-class or a top-level class. To resolve this, make the DefaultExportProviderImpl static or top-level class.")
-    @Registration(id = "langdefaultexportprovider2", name = "langdefaultexportprovider2", defaultExportProviders = DefaultExportProviderRegistration2.DefaultExportProviderImpl.class)
+    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
+                    "or remove the InvalidLangLibrary2 from the defaultLibraryExports.")
+    @Registration(id = "langdefaultexportprovider2", name = "langdefaultexportprovider2", defaultLibraryExports = DefaultExportProviderRegistration2.InvalidLangLibrary2.class)
     public static class DefaultExportProviderRegistration2 extends ProxyLanguage {
-        abstract class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
+
+        @ExportLibrary(value = NoDefaultExportLibrary1.class)
+        public static class InvalidLangLibrary2 {
+
+            @ExportMessage
+            void execute1() {
+            }
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.DefaultExportProviderRegistration3.DefaultExportProviderImpl " +
-                    "must have a no argument public constructor. To resolve this, add public DefaultExportProviderImpl() constructor.")
-    @Registration(id = "langdefaultexportprovider3", name = "langdefaultexportprovider3", defaultExportProviders = DefaultExportProviderRegistration3.DefaultExportProviderImpl.class)
+    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1, NoDefaultExportLibrary2 " +
+                    "or remove the InvalidLangLibrary3 from the defaultLibraryExports.")
+    @Registration(id = "langdefaultexportprovider3", name = "langdefaultexportprovider3", defaultLibraryExports = DefaultExportProviderRegistration3.InvalidLangLibrary3.class)
     public static class DefaultExportProviderRegistration3 extends ProxyLanguage {
-        static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
 
-            @SuppressWarnings("unused")
-            DefaultExportProviderImpl(String unused) {
+        @ExportLibrary(value = NoDefaultExportLibrary1.class)
+        @ExportLibrary(value = NoDefaultExportLibrary2.class)
+        public static class InvalidLangLibrary3 {
+
+            @ExportMessage
+            void execute1() {
             }
 
-            @SuppressWarnings("unused")
-            DefaultExportProviderImpl(long unused) {
-            }
-
-            @SuppressWarnings("unused")
-            private DefaultExportProviderImpl() {
+            @ExportMessage
+            void execute2() {
             }
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.DefaultExportProviderRegistration4.DefaultExportProviderImpl " +
-                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
-                    "To resolve this, make the DefaultExportProviderImpl public or move it to com.oracle.truffle.api.dsl.test.processor.")
-    @Registration(id = "langdefaultexportprovider4", name = "langdefaultexportprovider4", defaultExportProviders = DefaultExportProviderRegistration4.DefaultExportProviderImpl.class)
+    @ExpectError({"The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
+                    "or remove the InvalidLangLibrary4A from the defaultLibraryExports.",
+                    "The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary2 " +
+                                    "or remove the InvalidLangLibrary4B from the defaultLibraryExports."})
+    @Registration(id = "langdefaultexportprovider4", name = "langdefaultexportprovider4", defaultLibraryExports = {DefaultExportProviderRegistration4.InvalidLangLibrary4A.class,
+                    DefaultExportProviderRegistration4.InvalidLangLibrary4B.class})
     public static class DefaultExportProviderRegistration4 extends ProxyLanguage {
-        private static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
 
-            @SuppressWarnings("unused")
-            DefaultExportProviderImpl() {
+        @ExportLibrary(value = NoDefaultExportLibrary1.class)
+        public static class InvalidLangLibrary4A {
+
+            @ExportMessage
+            void execute1() {
+            }
+        }
+
+        @ExportLibrary(value = NoDefaultExportLibrary2.class)
+        public static class InvalidLangLibrary4B {
+
+            @ExportMessage
+            void execute2() {
             }
         }
     }
 
-    @Registration(id = "langdefaultexportprovider5", name = "langdefaultexportprovider5", defaultExportProviders = DefaultExportProviderRegistration5.DefaultExportProviderImpl.class)
+    @Registration(id = "langdefaultexportprovider5", name = "langdefaultexportprovider5", defaultLibraryExports = DefaultExportProviderRegistration5.ValidLangLibrary1.class)
     public static class DefaultExportProviderRegistration5 extends ProxyLanguage {
-        static class DefaultExportProviderImpl extends ProxyDefaultExportProvider {
 
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidLangLibrary1 {
+
+            @ExportMessage
             @SuppressWarnings("unused")
-            DefaultExportProviderImpl(String unused) {
-            }
-
-            @SuppressWarnings("unused")
-            DefaultExportProviderImpl(long unused) {
-            }
-
-            DefaultExportProviderImpl() {
+            static void execute3(String receiver) {
             }
         }
     }
 
-    @Registration(id = "langdefaultexportprovider6", name = "langdefaultexportprovider6", defaultExportProviders = {
-                    DefaultExportProviderRegistration6.DefaultExportProviderImpl1.class,
-                    DefaultExportProviderRegistration6.DefaultExportProviderImpl2.class
-    })
+    @Registration(id = "langdefaultexportprovider6", name = "langdefaultexportprovider6", defaultLibraryExports = DefaultExportProviderRegistration6.ValidLangLibrary2.class)
     public static class DefaultExportProviderRegistration6 extends ProxyLanguage {
-        static class DefaultExportProviderImpl1 extends ProxyDefaultExportProvider {
-        }
 
-        static class DefaultExportProviderImpl2 extends ProxyDefaultExportProvider {
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        @ExportLibrary(value = DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidLangLibrary2 {
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute3(String receiver) {
+            }
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute4(String receiver) {
+            }
         }
     }
 
-    @ExpectError("Registered eagerExportProviders must be subclass of com.oracle.truffle.api.library.EagerExportProvider. " +
-                    "To resolve this, implement EagerExportProvider.")
-    @Registration(id = "langeagerexportprovider1", name = "langeagerexportprovider1", eagerExportProviders = EagerExportProviderRegistration1.EagerExportProviderImpl.class)
+    @Registration(id = "langdefaultexportprovider7", name = "langdefaultexportprovider7", defaultLibraryExports = {DefaultExportProviderRegistration7.ValidLangLibrary3A.class,
+                    DefaultExportProviderRegistration7.ValidLangLibrary3B.class})
+    public static class DefaultExportProviderRegistration7 extends ProxyLanguage {
+
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidLangLibrary3A {
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute3(String receiver) {
+            }
+        }
+
+        @ExportLibrary(value = DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidLangLibrary3B {
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute4(String receiver) {
+            }
+        }
+    }
+
+    @ExpectError("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on NoDefaultExportLibrary1 " +
+                    "or remove the InvalidLangLibrary5 from the defaultLibraryExports.")
+    @Registration(id = "langdefaultexportprovider8", name = "langdefaultexportprovider8", defaultLibraryExports = {DefaultExportProviderRegistration8.ValidLangLibrary4.class,
+                    DefaultExportProviderRegistration8.InvalidLangLibrary5.class})
+    public static class DefaultExportProviderRegistration8 extends ProxyLanguage {
+
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class ValidLangLibrary4 {
+
+            @ExportMessage
+            @SuppressWarnings("unused")
+            static void execute3(String receiver) {
+            }
+        }
+
+        @ExportLibrary(value = NoDefaultExportLibrary1.class)
+        public static class InvalidLangLibrary5 {
+
+            @ExportMessage
+            void execute1() {
+            }
+        }
+    }
+
+    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on NoLibrary " +
+                    "or remove the NoLibrary from aotLibraryExports.")
+    @Registration(id = "langeagerexportprovider1", name = "langeagerexportprovider1", aotLibraryExports = EagerExportProviderRegistration1.NoLibrary.class)
     public static class EagerExportProviderRegistration1 extends ProxyLanguage {
-        public static class EagerExportProviderImpl {
+        public static class NoLibrary {
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.EagerExportProviderRegistration2.EagerExportProviderImpl " +
-                    "must be a static inner-class or a top-level class. To resolve this, make the EagerExportProviderImpl static or top-level class.")
-    @Registration(id = "langeagerexportprovider2", name = "langeagerexportprovider2", eagerExportProviders = EagerExportProviderRegistration2.EagerExportProviderImpl.class)
+    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidLangLibrary6 " +
+                    "or remove the InvalidLangLibrary6 from aotLibraryExports.")
+    @Registration(id = "langeagerexportprovider2", name = "langeagerexportprovider2", aotLibraryExports = EagerExportProviderRegistration2.InvalidLangLibrary6.class)
     public static class EagerExportProviderRegistration2 extends ProxyLanguage {
-        abstract class EagerExportProviderImpl extends ProxyEagerExportProvider {
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidLangLibrary6 {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.EagerExportProviderRegistration3.EagerExportProviderImpl" +
-                    " must have a no argument public constructor. To resolve this, add public EagerExportProviderImpl() constructor.")
-    @Registration(id = "langeagerexportprovider3", name = "langeagerexportprovider3", eagerExportProviders = EagerExportProviderRegistration3.EagerExportProviderImpl.class)
+    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidLangLibrary7 " +
+                    "or remove the InvalidLangLibrary7 from aotLibraryExports.")
+    @Registration(id = "langeagerexportprovider3", name = "langeagerexportprovider3", aotLibraryExports = EagerExportProviderRegistration3.InvalidLangLibrary7.class)
     public static class EagerExportProviderRegistration3 extends ProxyLanguage {
-        static class EagerExportProviderImpl extends ProxyEagerExportProvider {
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        @ExportLibrary(value = DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidLangLibrary7 {
 
             @SuppressWarnings("unused")
-            EagerExportProviderImpl(String unused) {
+            @ExportMessage
+            static void execute3(String receiver) {
             }
 
             @SuppressWarnings("unused")
-            EagerExportProviderImpl(long unused) {
-            }
-
-            @SuppressWarnings("unused")
-            private EagerExportProviderImpl() {
+            @ExportMessage
+            static void execute4(String receiver) {
             }
         }
     }
 
-    @ExpectError("The com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.EagerExportProviderRegistration4.EagerExportProviderImpl " +
-                    "must be a public class or package protected class in com.oracle.truffle.api.dsl.test.processor package. " +
-                    "To resolve this, make the EagerExportProviderImpl public or move it to com.oracle.truffle.api.dsl.test.processor.")
-    @Registration(id = "langeagerexportprovider4", name = "langeagerexportprovider4", eagerExportProviders = EagerExportProviderRegistration4.EagerExportProviderImpl.class)
+    @ExpectError({"The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidLangLibrary8A " +
+                    "or remove the InvalidLangLibrary8A from aotLibraryExports.",
+                    "The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidLangLibrary8B " +
+                                    "or remove the InvalidLangLibrary8B from aotLibraryExports."})
+    @Registration(id = "langeagerexportprovider4", name = "langeagerexportprovider4", aotLibraryExports = {EagerExportProviderRegistration4.InvalidLangLibrary8A.class,
+                    EagerExportProviderRegistration4.InvalidLangLibrary8B.class})
     public static class EagerExportProviderRegistration4 extends ProxyLanguage {
-        private static class EagerExportProviderImpl extends ProxyEagerExportProvider {
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidLangLibrary8A {
 
             @SuppressWarnings("unused")
-            EagerExportProviderImpl() {
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
+        }
+
+        @ExportLibrary(value = DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidLangLibrary8B {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute4(String receiver) {
             }
         }
     }
 
-    @Registration(id = "langeagerexportprovider5", name = "langeagerexportprovider5", eagerExportProviders = EagerExportProviderRegistration5.EagerExportProviderImpl.class)
+    @Registration(id = "langeagerexportprovider5", name = "langeagerexportprovider5", aotLibraryExports = EagerExportProviderRegistration5.ValidLangLibrary5.class)
     public static class EagerExportProviderRegistration5 extends ProxyLanguage {
-        static class EagerExportProviderImpl extends ProxyEagerExportProvider {
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidLangLibrary5 {
 
             @SuppressWarnings("unused")
-            EagerExportProviderImpl(String unused) {
-            }
-
-            @SuppressWarnings("unused")
-            EagerExportProviderImpl(long unused) {
-            }
-
-            EagerExportProviderImpl() {
+            @ExportMessage
+            static void execute3(String receiver) {
             }
         }
     }
 
-    @Registration(id = "langeagerexportprovider6", name = "langeagerexportprovider6", eagerExportProviders = {
-                    EagerExportProviderRegistration6.EagerExportProviderImpl1.class,
-                    EagerExportProviderRegistration6.EagerExportProviderImpl2.class
-    })
+    @Registration(id = "langeagerexportprovider6", name = "langeagerexportprovider6", aotLibraryExports = EagerExportProviderRegistration6.ValidLangLibrary6.class)
     public static class EagerExportProviderRegistration6 extends ProxyLanguage {
-        static class EagerExportProviderImpl1 extends ProxyEagerExportProvider {
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        @ExportLibrary(value = DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidLangLibrary6 {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute4(String receiver) {
+            }
+        }
+    }
+
+    @Registration(id = "langeagerexportprovider7", name = "langeagerexportprovider7", aotLibraryExports = {EagerExportProviderRegistration7.ValidLangLibrary7A.class,
+                    EagerExportProviderRegistration7.ValidLangLibrary7B.class})
+    public static class EagerExportProviderRegistration7 extends ProxyLanguage {
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidLangLibrary7A {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
         }
 
-        static class EagerExportProviderImpl2 extends ProxyEagerExportProvider {
+        @ExportLibrary(value = DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidLangLibrary7B {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute4(String receiver) {
+            }
+        }
+    }
+
+    @ExpectError("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                    "To resolve this, set the @ExportLibrary.useForAOT to true on InvalidLangLibrary8 " +
+                    "or remove the InvalidLangLibrary8 from aotLibraryExports.")
+    @Registration(id = "langeagerexportprovider8", name = "langeagerexportprovider8", aotLibraryExports = {EagerExportProviderRegistration8.ValidLangLibrary8.class,
+                    EagerExportProviderRegistration8.InvalidLangLibrary8.class})
+    public static class EagerExportProviderRegistration8 extends ProxyLanguage {
+        @ExportLibrary(value = DefaultExportLibrary1.class, receiverType = String.class, priority = 10, useForAOT = true, useForAOTPriority = 10)
+        public static class ValidLangLibrary8 {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute3(String receiver) {
+            }
+        }
+
+        @ExportLibrary(value = DefaultExportLibrary2.class, receiverType = String.class, priority = 10, useForAOT = false)
+        public static class InvalidLangLibrary8 {
+
+            @SuppressWarnings("unused")
+            @ExportMessage
+            static void execute4(String receiver) {
+            }
         }
     }
 
@@ -372,39 +519,25 @@ public class LanguageRegistrationTest {
         }
     }
 
-    static class ProxyDefaultExportProvider implements DefaultExportProvider {
-
-        @Override
-        public String getLibraryClassName() {
-            return null;
-        }
-
-        @Override
-        public Class<?> getDefaultExport() {
-            return null;
-        }
-
-        @Override
-        public Class<?> getReceiverClass() {
-            return null;
-        }
-
-        @Override
-        public int getPriority() {
-            return 0;
-        }
+    @GenerateLibrary
+    abstract static class NoDefaultExportLibrary1 extends Library {
+        public abstract void execute1(Object receiver);
     }
 
-    static class ProxyEagerExportProvider implements EagerExportProvider {
+    @GenerateLibrary
+    abstract static class NoDefaultExportLibrary2 extends Library {
+        public abstract void execute2(Object receiver);
+    }
 
-        @Override
-        public void ensureRegistered() {
+    @GenerateLibrary(defaultExportLookupEnabled = true)
+    @GenerateAOT
+    abstract static class DefaultExportLibrary1 extends Library {
+        public abstract void execute3(Object receiver);
+    }
 
-        }
-
-        @Override
-        public String getLibraryClassName() {
-            return null;
-        }
+    @GenerateLibrary(defaultExportLookupEnabled = true)
+    @GenerateAOT
+    abstract static class DefaultExportLibrary2 extends Library {
+        public abstract void execute4(Object receiver);
     }
 }

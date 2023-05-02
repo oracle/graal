@@ -45,6 +45,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -53,6 +54,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.FilerException;
@@ -87,6 +89,11 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.transform.FixWarningsVisitor;
 import com.oracle.truffle.dsl.processor.java.transform.GenerateOverrideVisitor;
+import com.oracle.truffle.dsl.processor.library.ExportsData;
+import com.oracle.truffle.dsl.processor.library.ExportsGenerator;
+import com.oracle.truffle.dsl.processor.library.ExportsLibrary;
+import com.oracle.truffle.dsl.processor.library.ExportsParser;
+import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.model.Template;
 
 abstract class AbstractRegistrationProcessor extends AbstractProcessor {
@@ -250,29 +257,28 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         }
     }
 
-    static void generateLoadTruffleService(AnnotationMirror registration, CodeTreeBuilder builder, ProcessorContext context, Map<String, DeclaredType> registrationAttrToServiceType) {
-        Map<String, List<TypeMirror>> registrationAttrToImpls = new HashMap<>();
-        for (String registrationAttr : registrationAttrToServiceType.keySet()) {
-            List<TypeMirror> impls = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, registrationAttr);
-            if (!impls.isEmpty()) {
-                registrationAttrToImpls.put(registrationAttr, impls);
-            }
+    static void generateLoadTruffleService(CodeTreeBuilder builder, ProcessorContext context, List<DeclaredType> serviceTypes, List<Collection<? extends TypeMirror>> allImplementations) {
+        if (serviceTypes.size() != allImplementations.size()) {
+            throw new IllegalStateException(String.format("ServiceTypes length must be the same as allImplementations length, ServiceTypes: %s, Impls: %s", serviceTypes, allImplementations));
         }
         DeclaredType list = context.getDeclaredType(List.class);
-        if (registrationAttrToImpls.isEmpty()) {
+        if (allImplementations.stream().mapToLong(Collection::size).sum() == 0) {
             builder.startReturn().startStaticCall(list, "of").end(2);
         } else {
             String paramName = builder.findMethod().getParameters().get(0).getSimpleName().toString();
             boolean elseIf = false;
-            for (Map.Entry<String, List<TypeMirror>> entry : registrationAttrToImpls.entrySet()) {
-                elseIf = builder.startIf(elseIf);
-                builder.string(paramName).string(" == ").string(ElementUtils.getQualifiedName(registrationAttrToServiceType.get(entry.getKey()))).string(".class").end(1);
-                builder.startBlock();
-                builder.startReturn().startStaticCall(list, "of");
-                for (TypeMirror impl : entry.getValue()) {
-                    builder.startCall(paramName, "cast").startNew(impl).end(2);
+            for (int i = 0; i < serviceTypes.size(); i++) {
+                Collection<? extends TypeMirror> impls = allImplementations.get(i);
+                if (!impls.isEmpty()) {
+                    elseIf = builder.startIf(elseIf);
+                    builder.string(paramName).string(" == ").string(ElementUtils.getQualifiedName(serviceTypes.get(i))).string(".class").end(1);
+                    builder.startBlock();
+                    builder.startReturn().startStaticCall(list, "of");
+                    for (TypeMirror impl : impls) {
+                        builder.startCall(paramName, "cast").startNew(impl).end(2);
+                    }
+                    builder.end(3);
                 }
-                builder.end(3);
             }
             builder.startElseBlock();
             builder.startReturn().startStaticCall(list, "of").end(2);
@@ -332,59 +338,57 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
     }
 
     boolean validateDefaultExportProviders(Element annotatedElement, AnnotationMirror mirror, ProcessorContext context) {
-        return validateLookupRegistration(annotatedElement, mirror, "defaultExportProviders", context.getTypes().DefaultExportProvider, context);
+        boolean valid = true;
+        for (TypeMirror libraryExport : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "defaultLibraryExports")) {
+            if (findDefaultExports((DeclaredType) libraryExport, context).findAny().isEmpty()) {
+                valid = false;
+                String simpleName = ElementUtils.getSimpleName(libraryExport);
+                List<? extends CharSequence> exportedLibraryNames = findAllExports((DeclaredType) libraryExport, context).//
+                                map(ExportsLibrary::getLibrary).//
+                                map(LibraryData::getTemplateType).//
+                                map(Element::getSimpleName).toList();
+                if (exportedLibraryNames.isEmpty()) {
+                    emitError(String.format("The class registered in the defaultLibraryExports must be a library export. " +
+                                    "To resolve this, add the @ExportLibrary to %s or remove the %s from the defaultLibraryExports.", simpleName, simpleName),
+                                    annotatedElement, mirror, ElementUtils.getAnnotationValue(mirror, "defaultLibraryExports", false));
+                } else {
+                    emitError(String.format("The library registered in the defaultLibraryExports must have a default export lookup enabled. " +
+                                    "To resolve this, set the @GenerateLibrary.defaultExportLookupEnabled to true on %s or remove the %s from the defaultLibraryExports.",
+                                    String.join(", ", exportedLibraryNames), simpleName),
+                                    annotatedElement, mirror, ElementUtils.getAnnotationValue(mirror, "defaultLibraryExports", false));
+                }
+            }
+        }
+        return valid;
+    }
+
+    private static Stream<ExportsLibrary> findDefaultExports(DeclaredType libraryExport, ProcessorContext context) {
+        ExportsData exportsData = context.parseIfAbsent(ElementUtils.fromTypeMirror(libraryExport), ExportsParser.class, (e) -> new ExportsParser().parse(e));
+        return exportsData == null ? Stream.empty() : exportsData.getExportedLibraries().values().stream().filter((e) -> e.isExplicitReceiver() && e.getLibrary().isDefaultExportLookupEnabled());
+    }
+
+    private static Stream<ExportsLibrary> findAllExports(DeclaredType libraryExport, ProcessorContext context) {
+        ExportsData exportsData = context.parseIfAbsent(ElementUtils.fromTypeMirror(libraryExport), ExportsParser.class, (e) -> new ExportsParser().parse(e));
+        return exportsData == null ? Stream.empty() : exportsData.getExportedLibraries().values().stream();
     }
 
     boolean validateEagerExportProviders(Element annotatedElement, AnnotationMirror mirror, ProcessorContext context) {
-        return validateLookupRegistration(annotatedElement, mirror, "eagerExportProviders", context.getTypes().EagerExportProvider, context);
-    }
-
-    boolean validateLookupRegistration(Element annotatedElement, AnnotationMirror mirror, String attributeName,
-                    DeclaredType serviceType, ProcessorContext context) {
-        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, attributeName, true);
-        Types types = context.getEnvironment().getTypeUtils();
-        for (TypeMirror serviceImpl : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, attributeName)) {
-            if (!types.isSubtype(serviceImpl, serviceType)) {
-                TypeElement serviceTypeElement = ElementUtils.fromTypeMirror(serviceType);
-                emitError(String.format("Registered %s must be subclass of %s. To resolve this, implement %s.",
-                                attributeName, serviceTypeElement.getQualifiedName(), serviceTypeElement.getSimpleName()),
-                                annotatedElement, mirror, value);
-                return false;
-            }
-            TypeElement serviceImplElement = ElementUtils.fromTypeMirror(serviceImpl);
-            PackageElement targetPackage = ElementUtils.findPackageElement(annotatedElement);
-            boolean samePackage = targetPackage.equals(ElementUtils.findPackageElement(serviceImplElement));
-            Set<Modifier> modifiers = serviceImplElement.getModifiers();
-            if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
-                emitError(String.format("The %s must be a public class or package protected class in %s package. To resolve this, make the %s public or move it to %s.",
-                                serviceImplElement.getQualifiedName(), targetPackage.getQualifiedName(), serviceImplElement.getSimpleName(), targetPackage.getQualifiedName()),
-                                annotatedElement, mirror, value);
-                return false;
-            }
-            if (serviceImplElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
-                emitError(String.format("The %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
-                                serviceImplElement.getQualifiedName(), serviceImplElement.getSimpleName()), annotatedElement, mirror, value);
-                return false;
-            }
-            boolean foundConstructor = false;
-            for (ExecutableElement constructor : ElementFilter.constructorsIn(serviceImplElement.getEnclosedElements())) {
-                modifiers = constructor.getModifiers();
-                if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
-                    continue;
-                }
-                if (!constructor.getParameters().isEmpty()) {
-                    continue;
-                }
-                foundConstructor = true;
-                break;
-            }
-            if (!foundConstructor) {
-                emitError(String.format("The %s must have a no argument public constructor. To resolve this, add public %s() constructor.",
-                                serviceImplElement.getQualifiedName(), serviceImplElement.getSimpleName()), annotatedElement, mirror, value);
-                return false;
+        boolean valid = true;
+        for (TypeMirror libraryExport : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "aotLibraryExports")) {
+            if (findAOTExports((DeclaredType) libraryExport, context).findAny().isEmpty()) {
+                valid = false;
+                emitError(String.format("The library registered in the aotLibraryExports must be enabled for an ahead of time compilation. " +
+                                "To resolve this, set the @ExportLibrary.useForAOT to true on %s or remove the %s from aotLibraryExports.",
+                                ElementUtils.getSimpleName(libraryExport), ElementUtils.getSimpleName(libraryExport)),
+                                annotatedElement, mirror, ElementUtils.getAnnotationValue(mirror, "aotLibraryExports", false));
             }
         }
-        return true;
+        return valid;
+    }
+
+    private static Stream<ExportsLibrary> findAOTExports(DeclaredType libraryExport, ProcessorContext context) {
+        ExportsData exportsData = context.parseIfAbsent(ElementUtils.fromTypeMirror(libraryExport), ExportsParser.class, (e) -> new ExportsParser().parse(e));
+        return exportsData == null ? Stream.empty() : exportsData.getExportedLibraries().values().stream().filter(ExportsLibrary::isUseForAOT);
     }
 
     private static void handleIOError(IOException e, ProcessingEnvironment env, Element element) {
@@ -401,4 +405,22 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         return CompilerFactory.getCompiler(currentElement) instanceof JDTCompiler;
     }
 
+    static List<? extends DeclaredType> resolveDefaultExportProviders(AnnotationMirror registration, ProcessorContext context) {
+        List<TypeMirror> libraryExport = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "defaultLibraryExports");
+        return libraryExport.stream().flatMap((t) -> findDefaultExports((DeclaredType) t, context)).map((e) -> resolveProvider(e, ExportsGenerator.createDefaultExportProviderName(e))).toList();
+    }
+
+    static List<? extends DeclaredType> resolveEagerExportProviders(AnnotationMirror registration, ProcessorContext context) {
+        List<TypeMirror> libraryExport = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "aotLibraryExports");
+        return libraryExport.stream().flatMap((t) -> findAOTExports((DeclaredType) t, context)).map((e) -> resolveProvider(e, ExportsGenerator.createEagerExportProviderName(e))).toList();
+    }
+
+    private static DeclaredType resolveProvider(ExportsLibrary exportsLibrary, String providerSimpleName) {
+        String genClassSimpleName = ExportsGenerator.createGenClassName(exportsLibrary.getExports().getTemplateType());
+        PackageElement pkg = ElementUtils.findPackageElement(exportsLibrary.getExports().getTemplateType());
+        CodeTypeElement enclosingElement = new CodeTypeElement(Set.of(), ElementKind.CLASS, pkg, genClassSimpleName);
+        CodeTypeElement providerElement = new CodeTypeElement(Set.of(), ElementKind.CLASS, pkg, providerSimpleName);
+        providerElement.setEnclosingElement(enclosingElement);
+        return (DeclaredType) providerElement.asType();
+    }
 }

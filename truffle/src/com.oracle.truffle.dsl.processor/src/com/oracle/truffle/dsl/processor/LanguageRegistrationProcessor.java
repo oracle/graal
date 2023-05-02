@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -54,6 +53,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.DeclaredType;
@@ -198,7 +198,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             return false;
         }
 
-        if (!validateFileTypeDetectors(annotatedElement, registrationMirror, context)) {
+        if (!validateFileTypeDetectors(annotatedElement, registrationMirror)) {
             return false;
         }
 
@@ -269,9 +269,11 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             case "loadTruffleService": {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleLanguage_Registration);
-                generateLoadTruffleService(registration, builder, context, Map.of("defaultExportProviders", types.DefaultExportProvider, //
-                                "eagerExportProviders", types.EagerExportProvider, //
-                                "fileTypeDetectors", types.TruffleFile_FileTypeDetector));
+                List<? extends DeclaredType> defaultExportProviders = resolveDefaultExportProviders(registration, context);
+                List<? extends DeclaredType> eagerExportProviders = resolveEagerExportProviders(registration, context);
+                List<TypeMirror> fileTypeDetectors = ElementUtils.getAnnotationValueList(TypeMirror.class, registration, "fileTypeDetectors");
+                generateLoadTruffleService(builder, context, List.of(types.DefaultExportProvider, types.EagerExportProvider, types.TruffleFile_FileTypeDetector),
+                                List.of(defaultExportProviders, eagerExportProviders, fileTypeDetectors));
                 break;
             }
             default:
@@ -307,7 +309,42 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
         return true;
     }
 
-    private boolean validateFileTypeDetectors(Element annotatedElement, AnnotationMirror mirror, ProcessorContext context) {
-        return validateLookupRegistration(annotatedElement, mirror, "fileTypeDetectors", context.getTypes().TruffleFile_FileTypeDetector, context);
+    private boolean validateFileTypeDetectors(Element annotatedElement, AnnotationMirror mirror) {
+        AnnotationValue value = ElementUtils.getAnnotationValue(mirror, "fileTypeDetectors", true);
+        for (TypeMirror fileTypeDetectorImpl : ElementUtils.getAnnotationValueList(TypeMirror.class, mirror, "fileTypeDetectors")) {
+            TypeElement fileTypeDetectorImplElement = ElementUtils.fromTypeMirror(fileTypeDetectorImpl);
+            PackageElement targetPackage = ElementUtils.findPackageElement(annotatedElement);
+            boolean samePackage = targetPackage.equals(ElementUtils.findPackageElement(fileTypeDetectorImplElement));
+            Set<Modifier> modifiers = fileTypeDetectorImplElement.getModifiers();
+            if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
+                emitError(String.format("The %s must be a public class or package protected class in %s package. To resolve this, make the %s public or move it to %s.",
+                                fileTypeDetectorImplElement.getQualifiedName(), targetPackage.getQualifiedName(), fileTypeDetectorImplElement.getSimpleName(), targetPackage.getQualifiedName()),
+                                annotatedElement, mirror, value);
+                return false;
+            }
+            if (fileTypeDetectorImplElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !modifiers.contains(Modifier.STATIC)) {
+                emitError(String.format("The %s must be a static inner-class or a top-level class. To resolve this, make the %s static or top-level class.",
+                                fileTypeDetectorImplElement.getQualifiedName(), fileTypeDetectorImplElement.getSimpleName()), annotatedElement, mirror, value);
+                return false;
+            }
+            boolean foundConstructor = false;
+            for (ExecutableElement constructor : ElementFilter.constructorsIn(fileTypeDetectorImplElement.getEnclosedElements())) {
+                modifiers = constructor.getModifiers();
+                if (samePackage ? modifiers.contains(Modifier.PRIVATE) : !modifiers.contains(Modifier.PUBLIC)) {
+                    continue;
+                }
+                if (!constructor.getParameters().isEmpty()) {
+                    continue;
+                }
+                foundConstructor = true;
+                break;
+            }
+            if (!foundConstructor) {
+                emitError(String.format("The %s must have a no argument public constructor. To resolve this, add public %s() constructor.",
+                                fileTypeDetectorImplElement.getQualifiedName(), fileTypeDetectorImplElement.getSimpleName()), annotatedElement, mirror, value);
+                return false;
+            }
+        }
+        return true;
     }
 }

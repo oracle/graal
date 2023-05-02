@@ -523,18 +523,18 @@ public abstract class TruffleLanguage<C> {
         SandboxPolicy sandbox() default SandboxPolicy.TRUSTED;
 
         /**
-         * Declarative list of {@code DefaultExportProvider} provided by this language.
+         * Declarative list of exported libraries with dynamic dispatch provided by this language.
          *
          * @since 23.1
          */
-        Class<?>[] defaultExportProviders() default {};
+        Class<?>[] defaultLibraryExports() default {};
 
         /**
-         * Declarative list of {@code EagerExportProvider} provided by this language.
+         * Declarative list of exported libraries with AOT compilation provided by this language.
          *
          * @since 23.1
          */
-        Class<?>[] eagerExportProviders() default {};
+        Class<?>[] aotLibraryExports() default {};
     }
 
     /**

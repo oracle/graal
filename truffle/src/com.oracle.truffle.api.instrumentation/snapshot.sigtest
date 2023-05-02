@@ -454,8 +454,8 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.instrum
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean internal()
-meth public abstract !hasdefault java.lang.Class<?>[] defaultExportProviders()
-meth public abstract !hasdefault java.lang.Class<?>[] eagerExportProviders()
+meth public abstract !hasdefault java.lang.Class<?>[] aotLibraryExports()
+meth public abstract !hasdefault java.lang.Class<?>[] defaultLibraryExports()
 meth public abstract !hasdefault java.lang.Class<?>[] services()
 meth public abstract !hasdefault java.lang.String id()
 meth public abstract !hasdefault java.lang.String name()

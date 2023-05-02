@@ -41,7 +41,7 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.util.Collections;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -135,8 +135,10 @@ public final class InstrumentRegistrationProcessor extends AbstractRegistrationP
             case "loadTruffleService": {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(),
                                 types.TruffleInstrument_Registration);
-                generateLoadTruffleService(registration, builder, context, Map.of("defaultExportProviders", types.DefaultExportProvider,
-                                "eagerExportProviders", types.EagerExportProvider));
+                List<? extends TypeMirror> defaultExportProviders = resolveDefaultExportProviders(registration, context);
+                List<? extends TypeMirror> eagerExportProviders = resolveEagerExportProviders(registration, context);
+                generateLoadTruffleService(builder, context, List.of(types.DefaultExportProvider, types.EagerExportProvider),
+                                List.of(defaultExportProviders, eagerExportProviders));
                 break;
             }
             default:

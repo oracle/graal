@@ -15,6 +15,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44211 Added `TruffleSafepoint#setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)` to be able to return an object from the interruptible functional method.
 * GR-44211 Added `TruffleSafepoint#setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)` as a short-cut method to allow setting the blocked status for methods that throw `InterruptedException` and support interrupting using `Thread#interrupt()`.
 * GR-44829 TruffleStrings: added specialized TruffleStringBuilder types for better performance on UTF encodings.
+* GR-44217 TruffleLanguages and TruffleInstruments are loaded as Java modules.
+  * For named Java modules the `EagerExportProvider` instances are not loaded using the `ServiceLoader`. The exported libraries used for AOT must be registered using the `TruffleLanguage.Registration#aotLibraryExports` or `TruffleInstrument.Registration#aotLibraryExports`.
+  * For named Java modules the `DefaultExportProvider` instances are not loaded using the `ServiceLoader`. The exported libraries with enabled default export lookup must be registered using the `TruffleLanguage.Registration#defaultLibraryExports` or `TruffleInstrument.Registration#defaultLibraryExports`.
+
 
 
 ## Version 23.0.0

@@ -46,6 +46,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 
@@ -318,7 +319,10 @@ public @interface GenerateLibrary {
      * be interpreted as additional default exports. External default exports may specify with the
      * {@link ExportLibrary#priority() priority} whether they are looked up before or after existing
      * default exports specified for the library. Default exports always have a lower priority than
-     * explicit exports on the receiver type or exports that use dynamic dispatch.
+     * explicit exports on the receiver type or exports that use dynamic dispatch. In order for this
+     * to work the exported library must be registered using the
+     * {@link Registration#defaultLibraryExports} or
+     * {@code TruffleInstrument.Registration#defaultLibraryExports}.
      *
      * @see ExportLibrary#priority()
      * @since 20.1
