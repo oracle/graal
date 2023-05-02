@@ -46,13 +46,14 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.operation.introspection.ExceptionHandler;
 import com.oracle.truffle.api.operation.introspection.Instruction;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
 import com.oracle.truffle.api.source.SourceSection;
 
-public interface OperationRootNode extends NodeInterface, OperationIntrospection.Provider {
+public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospection.Provider {
 
     default String dump() {
         StringBuilder sb = new StringBuilder();
@@ -88,6 +89,28 @@ public interface OperationRootNode extends NodeInterface, OperationIntrospection
     }
 
     default InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * If an {@code OperationRootNode} is not well-formed, the Operation DSL will provide an
+     * actionable error message to fix it. The default implementations below are provided so that
+     * "abstract method not implemented" errors do not hide the DSL's error messages. When there are
+     * no errors, the DSL will generate actual implementations for these methods.
+     */
+
+    @Override
+    default Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    default void setOSRMetadata(Object osrMetadata) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    default Object getOSRMetadata() {
         throw new UnsupportedOperationException();
     }
 }
