@@ -36,6 +36,7 @@ import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -67,7 +68,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
 
     @Override
     @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         return visitObjectReferenceUninterruptibly(objRef, innerOffset, compressed, holderObject);
     }
@@ -103,6 +104,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.
                 Object obj = ohi.getForwardedObject(p, header);
+                assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
                 Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
                 RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
@@ -115,6 +117,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.
                 counters.noteCopiedReferent();
+                assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(copy).rawValue();
                 Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
             } else {

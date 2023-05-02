@@ -240,6 +240,6 @@ final class ReferenceObjectProcessing {
     private static boolean willSurviveThisCollection(Object obj) {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         Space space = HeapChunk.getSpace(chunk);
-        return !space.isFromSpace();
+        return space != null && !space.isFromSpace();
     }
 }

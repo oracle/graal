@@ -205,7 +205,7 @@ class BarrierSnippetCounters {
 class BarrierSnippetCountersFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.useMarkAndCopyGC() && SubstrateOptions.useRememberedSet();
+        return SubstrateOptions.useSerialOrParallelGC() && SubstrateOptions.useRememberedSet();
     }
 
     @Override

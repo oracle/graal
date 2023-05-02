@@ -36,16 +36,17 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 
-/** Common options that can be specified for both the serial and the epsilon GC. */
+/** Options that can be specified for the serial, the parallel, and the epsilon GC. */
+// TODO (chaeubl): rename
 public final class SerialAndEpsilonGCOptions {
     @Option(help = "The maximum heap size as percent of physical memory. Serial, parallel, and epsilon GC only.", type = OptionType.User) //
-    public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new NotifyGCRuntimeOptionKey<>(80, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly);
+    public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new NotifyGCRuntimeOptionKey<>(80, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     @Option(help = "The maximum size of the young generation as a percentage of the maximum heap size. Serial, parallel, and epsilon GC only.", type = OptionType.User) //
-    public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new NotifyGCRuntimeOptionKey<>(10, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly);
+    public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new NotifyGCRuntimeOptionKey<>(10, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     @Option(help = "The size of an aligned chunk. Serial, parallel, and epsilon GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(512 * 1024L, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly) {
+    public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(512 * 1024L, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             int multiple = 4096;
@@ -58,28 +59,28 @@ public final class SerialAndEpsilonGCOptions {
      * fit in an aligned chunk.
      */
     @Option(help = "The size at or above which an array will be allocated in its own unaligned chunk. Serial, parallel, and epsilon GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(0L, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly);
+    public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(0L, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     @Option(help = "Fill unused memory chunks with a sentinel value. Serial, parallel, and epsilon GC only.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> ZapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly);
+    public static final HostedOptionKey<Boolean> ZapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     @Option(help = "Before use, fill memory chunks with a sentinel value. Serial, parallel, and epsilon GC only.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> ZapProducedHeapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly);
+    public static final HostedOptionKey<Boolean> ZapProducedHeapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     @Option(help = "After use, Fill memory chunks with a sentinel value. Serial, parallel, and epsilon GC only.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Boolean> ZapConsumedHeapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly);
+    public static final HostedOptionKey<Boolean> ZapConsumedHeapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     @Option(help = "Bytes that can be allocated before (re-)querying the physical memory size. Serial, parallel, and epsilon GC only.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly);
+    public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     @Option(help = "Number of bytes at the beginning of each heap chunk that are not used for payload data, i.e., can be freely used as metadata by the heap chunk provider. Serial, parallel, and epsilon GC only.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0, SerialAndEpsilonGCOptions::markAndCopyOrEpsilonGCOnly);
+    public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     private SerialAndEpsilonGCOptions() {
     }
 
-    private static void markAndCopyOrEpsilonGCOnly(OptionKey<?> optionKey) {
-        if (!SubstrateOptions.useMarkAndCopyOrEpsilonGC()) {
+    private static void serialOrParallelOrEpsilonGCOnly(OptionKey<?> optionKey) {
+        if (!SubstrateOptions.useSerialOrParallelOrEpsilonGC()) {
             throw new InterruptImageBuilding(
                             "The option '" + optionKey.getName() +
                                             "' can only be used together with the serial ('--gc=serial'), parallel ('--gc=parallel'), or the epsilon garbage collector ('--gc=epsilon').");

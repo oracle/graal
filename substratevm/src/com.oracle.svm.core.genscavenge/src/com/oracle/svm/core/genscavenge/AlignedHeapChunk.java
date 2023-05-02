@@ -114,13 +114,12 @@ public final class AlignedHeapChunk {
         return result;
     }
 
-    /** Retract the latest allocation. Used by parallel collector. */
+    /** Retract the latest allocation. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static Pointer retractAllocation(AlignedHeader that, UnsignedWord size) {
+    static void retractAllocation(AlignedHeader that, UnsignedWord size) {
         Pointer newTop = HeapChunk.getTopPointer(that).subtract(size);
         assert newTop.aboveOrEqual(getObjectsStart(that));
         HeapChunk.setTopPointer(that, newTop);
-        return newTop;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -167,7 +166,7 @@ public final class AlignedHeapChunk {
     }
 
     /** Methods for a {@link MemoryWalker} to access an aligned heap chunk. */
-    @AutomaticallyRegisteredImageSingleton(onlyWith = UseMarkAndCopyOrEpsilonGC.class)
+    @AutomaticallyRegisteredImageSingleton(onlyWith = UseSerialOrEpsilonGC.class)
     static final class MemoryWalkerAccessImpl extends HeapChunk.MemoryWalkerAccessImpl<AlignedHeapChunk.AlignedHeader> {
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -177,11 +176,6 @@ public final class AlignedHeapChunk {
         @Override
         public boolean isAligned(AlignedHeapChunk.AlignedHeader heapChunk) {
             return true;
-        }
-
-        @Override
-        public UnsignedWord getAllocationStart(AlignedHeapChunk.AlignedHeader heapChunk) {
-            return getObjectsStart(heapChunk);
         }
     }
 }

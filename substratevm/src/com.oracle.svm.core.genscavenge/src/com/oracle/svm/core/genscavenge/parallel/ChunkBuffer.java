@@ -36,10 +36,12 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Synchronized buffer that stores "grey" heap chunks to be scanned.
+ * Synchronized buffer that stores pointers into "grey" heap chunks that need to be scanned. Note
+ * that the pointers don't necessarily point to the beginning of a chunk.
  */
 public class ChunkBuffer {
     private static final int INITIAL_SIZE = 1024 * wordSize();
@@ -65,7 +67,7 @@ public class ChunkBuffer {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void push(Pointer ptr) {
-        assert !ParallelGC.isInParallelPhase() || ParallelGC.mutex.hasOwner();
+        assert !ParallelGC.singleton().isInParallelPhase() && VMThreads.ownsThreadMutex() || ParallelGC.singleton().getMutex().hasOwner();
         if (top >= size) {
             size *= 2;
             assert top < size;
@@ -78,8 +80,8 @@ public class ChunkBuffer {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pointer pop() {
-        assert ParallelGC.isInParallelPhase();
-        ParallelGC.mutex.lockNoTransitionUnspecifiedOwner();
+        assert ParallelGC.singleton().isInParallelPhase();
+        ParallelGC.singleton().getMutex().lockNoTransitionUnspecifiedOwner();
         try {
             if (top > 0) {
                 top -= wordSize();
@@ -88,13 +90,13 @@ public class ChunkBuffer {
                 return WordFactory.nullPointer();
             }
         } finally {
-            ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
+            ParallelGC.singleton().getMutex().unlockNoTransitionUnspecifiedOwner();
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isEmpty() {
-        assert !ParallelGC.isInParallelPhase();
+        assert !ParallelGC.singleton().isInParallelPhase();
         return top == 0;
     }
 

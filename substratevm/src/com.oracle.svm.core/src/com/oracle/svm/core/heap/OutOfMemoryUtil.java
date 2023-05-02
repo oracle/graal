@@ -42,6 +42,7 @@ public class OutOfMemoryUtil {
     @Uninterruptible(reason = "Not uninterruptible but it doesn't matter for the callers.", calleeMustBe = false)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Can't allocate while out of memory.")
     public static OutOfMemoryError reportOutOfMemoryError(OutOfMemoryError error) {
+        // TEMP (chaeubl): fix this
         if (SubstrateGCOptions.ExitOnOutOfMemoryError.getValue()) {
             if (LibC.isSupported()) {
                 Log.log().string("Terminating due to java.lang.OutOfMemoryError: ").string(JDKUtils.getRawMessage(error)).newline();

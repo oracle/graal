@@ -166,9 +166,9 @@ public final class OldGeneration extends Generation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressWarnings("static-method")
-    AlignedHeapChunk.AlignedHeader requestAlignedChunk(boolean reportOutOfMemory) {
+    AlignedHeapChunk.AlignedHeader requestAlignedChunk() {
         assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
-        AlignedHeapChunk.AlignedHeader chunk = HeapImpl.getChunkProvider().produceAlignedChunk(reportOutOfMemory);
+        AlignedHeapChunk.AlignedHeader chunk = HeapImpl.getChunkProvider().produceAlignedChunk();
         if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, chunk.isNull())) {
             throw VMError.shouldNotReachHere("OldGeneration.requestAlignedChunk: failure to allocate aligned chunk");
         }

@@ -98,7 +98,7 @@ public final class Target_java_lang_ref_Reference<T> {
 
     @SuppressWarnings("unused") //
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    @ExcludeFromReferenceMap(reason = "Some GCs process this field manually.", onlyIf = NotMarkAndCopyOrEpsilonGC.class) //
+    @ExcludeFromReferenceMap(reason = "Some GCs process this field manually.", onlyIf = NotSerialNotParallelNotEpsilonGC.class) //
     transient Target_java_lang_ref_Reference<?> discovered;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeQueueValue.class) //
@@ -226,9 +226,9 @@ class ComputeQueueValue implements FieldValueTransformer {
 }
 
 @Platforms(Platform.HOSTED_ONLY.class)
-class NotMarkAndCopyOrEpsilonGC implements BooleanSupplier {
+class NotSerialNotParallelNotEpsilonGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return !SubstrateOptions.useMarkAndCopyOrEpsilonGC();
+        return !SubstrateOptions.useSerialOrParallelOrEpsilonGC();
     }
 }

@@ -32,9 +32,10 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class UseMarkAndCopyOrEpsilonGC implements BooleanSupplier {
+// TODO (chaeubl): rename
+public class UseSerialOrEpsilonGC implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return SubstrateOptions.useMarkAndCopyOrEpsilonGC();
+        return SubstrateOptions.useSerialOrParallelOrEpsilonGC();
     }
 }

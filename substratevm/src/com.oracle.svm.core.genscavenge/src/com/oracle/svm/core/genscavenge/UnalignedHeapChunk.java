@@ -165,7 +165,7 @@ public final class UnalignedHeapChunk {
         return ImageSingletons.lookup(UnalignedHeapChunk.MemoryWalkerAccessImpl.class);
     }
 
-    @AutomaticallyRegisteredImageSingleton(onlyWith = UseMarkAndCopyOrEpsilonGC.class)
+    @AutomaticallyRegisteredImageSingleton(onlyWith = UseSerialOrEpsilonGC.class)
     static final class MemoryWalkerAccessImpl extends HeapChunk.MemoryWalkerAccessImpl<UnalignedHeapChunk.UnalignedHeader> {
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -175,11 +175,6 @@ public final class UnalignedHeapChunk {
         @Override
         public boolean isAligned(UnalignedHeapChunk.UnalignedHeader heapChunk) {
             return false;
-        }
-
-        @Override
-        public UnsignedWord getAllocationStart(UnalignedHeapChunk.UnalignedHeader heapChunk) {
-            return getObjectStart(heapChunk);
         }
     }
 }

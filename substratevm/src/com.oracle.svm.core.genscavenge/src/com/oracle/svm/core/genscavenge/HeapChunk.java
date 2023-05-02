@@ -175,9 +175,9 @@ public final class HeapChunk {
     public static void initialize(Header<?> chunk, Pointer objectsStart, UnsignedWord chunkSize) {
         HeapChunk.setEndOffset(chunk, chunkSize);
         HeapChunk.setTopPointer(chunk, objectsStart);
-        HeapChunk.setSpace(chunk, null);
-        HeapChunk.setNext(chunk, WordFactory.nullPointer());
-        HeapChunk.setPrevious(chunk, WordFactory.nullPointer());
+        chunk.setSpace(null);
+        chunk.setOffsetToNextChunk(WordFactory.zero());
+        chunk.setOffsetToPreviousChunk(WordFactory.zero());
 
         /*
          * The epoch is obviously not random, but cheap to use, and we cannot use a random number
@@ -227,6 +227,10 @@ public final class HeapChunk {
         that.setEndOffset(newEnd);
     }
 
+    /**
+     * If the parallel GC is used, then this method is racy. So, it may return null or an outdated
+     * value if it is called for an unaligned heap chunk that is in the middle of being promoted.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Space getSpace(Header<?> that) {
         return that.getSpace();
@@ -234,6 +238,7 @@ public final class HeapChunk {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setSpace(Header<?> that, Space newSpace) {
+        assert newSpace == null || that.getSpace() == null : "heap chunk must be removed from its current space before it can be registered with a new space";
         that.setSpace(newSpace);
     }
 
@@ -367,26 +372,5 @@ public final class HeapChunk {
         public UnsignedWord getSize(T heapChunk) {
             return HeapChunk.getEndOffset(heapChunk);
         }
-
-        @Override
-        public UnsignedWord getAllocationEnd(T heapChunk) {
-            return HeapChunk.getTopPointer(heapChunk);
-        }
-
-        @Override
-        public String getRegion(T heapChunk) {
-            /* This method knows too much about spaces, especially the "free" space. */
-            Space space = getSpace(heapChunk);
-            String result;
-            if (space == null) {
-                result = "free";
-            } else if (space.isYoungSpace()) {
-                result = "young";
-            } else {
-                result = "old";
-            }
-            return result;
-        }
-
     }
 }

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.AlwaysInline;
@@ -45,17 +44,12 @@ public interface ObjectReferenceVisitor {
     boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject);
 
     /**
-     * This method is invoked from both uninterruptible (parallel GC) and regular (HeapDumpWriter, HeapVerifier etc)
-     * contexts. It is marked @Uninterruptible, so that uninterruptible invocations are possible, but with
-     * calleeMustBe=false, so that it can call interruptible implementations.
-     *
      * @param innerOffset If the reference is a {@linkplain CodeReferenceMapDecoder derived
      *            reference}, a positive integer that must be subtracted from the address to which
      *            the object reference points in order to get the start of the referenced object.
      */
     @AlwaysInline("GC performance")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
     default boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         VMError.guarantee(innerOffset == 0, "visitor does not support derived references");
         return visitObjectReference(objRef, compressed, holderObject);

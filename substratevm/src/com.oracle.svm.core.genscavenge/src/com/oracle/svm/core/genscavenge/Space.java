@@ -209,21 +209,19 @@ public final class Space {
         return allocateInNewChunkParallel(oldChunk, objectSize);
     }
 
-    /**
-     * Retract the latest allocation. Used by parallel collector.
-     */
+    /** Retract the latest allocation. */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static Pointer retractAllocation(UnsignedWord objectSize) {
+    private static void retractAllocation(UnsignedWord objectSize) {
         assert ParallelGC.isEnabled() && ParallelGC.isInParallelPhase();
         AlignedHeapChunk.AlignedHeader oldChunk = ParallelGC.singleton().getAllocationChunk();
         assert oldChunk.isNonNull();
-        return AlignedHeapChunk.retractAllocation(oldChunk, objectSize);
+        AlignedHeapChunk.retractAllocation(oldChunk, objectSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private Pointer allocateInNewChunk(UnsignedWord objectSize) {
-        AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk(true);
+        AlignedHeapChunk.AlignedHeader newChunk = requestAlignedHeapChunk();
         if (newChunk.isNonNull()) {
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
         }
@@ -236,7 +234,7 @@ public final class Space {
         ParallelGC.mutex.lockNoTransitionUnspecifiedOwner();
         try {
             ParallelGC.singleton().pushAllocChunk(oldChunk);
-            newChunk = requestAlignedHeapChunk(false);
+            newChunk = requestAlignedHeapChunk();
         } finally {
             ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
         }
@@ -540,7 +538,7 @@ public final class Space {
             appendAlignedHeapChunk(chunk, originalSpace);
         } finally {
             if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
-                ParallelGC.singleton().push(HeapChunk.asPointer(chunk));
+                ParallelGC.singleton().push(chunk);
                 if (ParallelGC.isInParallelPhase()) {
                     ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
                 }
@@ -569,7 +567,7 @@ public final class Space {
             appendUnalignedHeapChunk(chunk, originalSpace);
         } finally {
             if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
-                ParallelGC.singleton().push(HeapChunk.asPointer(chunk).or(ParallelGC.UNALIGNED_BIT));
+                ParallelGC.singleton().push(chunk);
                 if (ParallelGC.isInParallelPhase()) {
                     ParallelGC.mutex.unlockNoTransitionUnspecifiedOwner();
                 }
@@ -587,13 +585,13 @@ public final class Space {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk(boolean reportOutOfMemory) {
+    private AlignedHeapChunk.AlignedHeader requestAlignedHeapChunk() {
         AlignedHeapChunk.AlignedHeader chunk;
         if (isYoungSpace()) {
             assert isSurvivorSpace();
             chunk = HeapImpl.getHeapImpl().getYoungGeneration().requestAlignedSurvivorChunk();
         } else {
-            chunk = HeapImpl.getHeapImpl().getOldGeneration().requestAlignedChunk(reportOutOfMemory);
+            chunk = HeapImpl.getHeapImpl().getOldGeneration().requestAlignedChunk();
         }
         if (chunk.isNonNull()) {
             appendAlignedHeapChunk(chunk);

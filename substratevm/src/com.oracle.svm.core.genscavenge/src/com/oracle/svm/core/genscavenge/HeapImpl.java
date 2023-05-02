@@ -906,7 +906,7 @@ public final class HeapImpl extends Heap {
     }
 }
 
-@TargetClass(value = java.lang.Runtime.class, onlyWith = UseMarkAndCopyOrEpsilonGC.class)
+@TargetClass(value = java.lang.Runtime.class, onlyWith = UseSerialOrEpsilonGC.class)
 @SuppressWarnings("static-method")
 final class Target_java_lang_Runtime {
     @Substitute

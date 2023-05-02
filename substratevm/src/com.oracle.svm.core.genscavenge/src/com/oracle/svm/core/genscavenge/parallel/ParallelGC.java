@@ -46,7 +46,6 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
@@ -64,7 +63,6 @@ import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.PlatformThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.PlatformThreads.OSThreadHandlePointer;
@@ -72,33 +70,31 @@ import com.oracle.svm.core.thread.PlatformThreads.ThreadLocalKey;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * A garbage collector that tries to shorten GC pause by executing work on multiple "worker threads".
- * Currently the only phase supported is scanning grey objects. Number of worker threads can be set with
- * a runtime option.
+ * A garbage collector that tries to shorten GC pauses by using multiple "worker threads".
+ * Currently, the only phase supported is scanning grey objects during a full GC. The number of
+ * worker threads can be set with a runtime option (see {@link SubstrateOptions#ParallelGCThreads}).
  *
- * Worker threads use heap chunks as the unit of work. Chunks to be scanned are stored in the synchronized
- * {@link ChunkBuffer}. Worker threads pop chunks from the buffer and scan them for references to live
- * objects to be promoted. For each object being promoted, they speculatively allocate memory for its copy
- * in the to-space, then compete to install forwarding pointer in the original object. The winning thread
- * proceeds to copy object data, losing threads retract the speculatively allocated memory.
+ * Worker threads use heap chunks as the unit of work. Chunks to be scanned are stored in the
+ * synchronized {@link ChunkBuffer}. Worker threads pop chunks from the buffer and scan them for
+ * references to live objects to be promoted. When promoting an aligned chunk object, they
+ * speculatively allocate memory for its copy in the to-space, then compete to install forwarding
+ * pointer in the original object. The winning thread proceeds to copy object data, losing threads
+ * retract the speculatively allocated memory.
  *
- * Each worker thread allocates memory in its own thread local "allocation chunk" for speed. As allocation
- * chunks become filled up, they are pushed to {@link ChunkBuffer}. This pop-scan-push cycle continues until
- * the chunk buffer becomes empty. At this point, worker threads are parked and the GC routine continues on
- * the main GC thread.
+ * Each worker thread allocates memory in its own thread local "allocation chunk" for speed. As
+ * allocation chunks become filled up, they are pushed to {@link ChunkBuffer}. This pop-scan-push
+ * cycle continues until the chunk buffer becomes empty. At this point, worker threads are parked
+ * and the GC routine continues on the main GC thread.
  */
 public class ParallelGC {
-
-    public static final int UNALIGNED_BIT = 0x01;
-
+    private static final int UNALIGNED_BIT = 0x01;
     private static final int MAX_WORKER_THREADS = 8;
 
-    private final CEntryPointLiteral<CFunctionPointer> gcWorkerRunFunc;
-
-    public static final VMMutex mutex = new VMMutex("ParallelGCImpl");
+    private final VMMutex mutex = new VMMutex("parallelGC");
     private final VMCondition seqPhase = new VMCondition(mutex);
     private final VMCondition parPhase = new VMCondition(mutex);
     private final ChunkBuffer buffer = new ChunkBuffer();
+    private final CEntryPointLiteral<CFunctionPointer> gcWorkerRunFunc = CEntryPointLiteral.create(ParallelGC.class, "gcWorkerRun", GCWorkerThreadState.class);
 
     private boolean initialized;
     private OSThreadHandlePointer workerThreads;
@@ -110,9 +106,9 @@ public class ParallelGC {
     private volatile boolean shutdown;
     private volatile Throwable error;
 
+    // TEMP (chaeubl): finish reviewing ChunkBuffer and ParallelGC.
     @Platforms(Platform.HOSTED_ONLY.class)
     public ParallelGC() {
-        gcWorkerRunFunc = CEntryPointLiteral.create(ParallelGC.class, "gcWorkerRun", GCWorkerThreadState.class);
     }
 
     @Fold
@@ -126,8 +122,13 @@ public class ParallelGC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isInParallelPhase() {
-        return singleton().inParallelPhase;
+    public boolean isInParallelPhase() {
+        return inParallelPhase;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public VMMutex getMutex() {
+        return mutex;
     }
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
@@ -145,25 +146,34 @@ public class ParallelGC {
     }
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
-    public void push(Pointer ptr) {
+    public void push(AlignedHeapChunk.AlignedHeader aChunk) {
+        push(HeapChunk.asPointer(aChunk));
+    }
+
+    @Uninterruptible(reason = "Called from a GC worker thread.")
+    public void push(UnalignedHeapChunk.UnalignedHeader uChunk) {
+        push(HeapChunk.asPointer(uChunk).or(ParallelGC.UNALIGNED_BIT));
+    }
+
+    @Uninterruptible(reason = "Called from a GC worker thread.")
+    private void push(Pointer ptr) {
         assert ptr.isNonNull();
-        if (buffer != null) {
-            buffer.push(ptr);
-            if (inParallelPhase) {
-                parPhase.signal();
-            }
+        buffer.push(ptr);
+        if (inParallelPhase) {
+            parPhase.signal();
         }
     }
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
     public void pushAllocChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        assert isEnabled() && GCImpl.getGCImpl().isCompleteCollection();
+        assert GCImpl.getGCImpl().isCompleteCollection();
         GCWorkerThreadState state = getWorkerThreadState();
         if (chunk.notEqual(state.getScannedChunk())) {
             UnsignedWord scanOffset = state.getAllocChunkScanOffset();
             assert scanOffset.aboveThan(0);
             if (chunk.getTopOffset().aboveThan(scanOffset)) {
-                push(HeapChunk.asPointer(chunk).add(scanOffset));
+                Pointer ptrIntoChunk = HeapChunk.asPointer(chunk).add(scanOffset);
+                push(ptrIntoChunk);
             }
         }
     }
@@ -176,7 +186,6 @@ public class ParallelGC {
         return workerStates.addressOf(numWorkerThreads);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void initialize() {
         if (initialized) {
             return;
@@ -206,15 +215,14 @@ public class ParallelGC {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getWorkerCount() {
-        int index = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ParallelGCThreads);
-        int setting = IsolateArgumentParser.getIntOptionValue(index);
+        int setting = SubstrateOptions.ParallelGCThreads.getValue();
         return setting > 0 ? setting : getDefaultWorkerCount();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getDefaultWorkerCount() {
+        // TEMP (chaeubl): this is incorrect if the container support is present.
         int cpus = Jvm.JVM_ActiveProcessorCount();
         return UninterruptibleUtils.Math.min(cpus, MAX_WORKER_THREADS);
     }
@@ -273,19 +281,22 @@ public class ParallelGC {
     public void waitForIdle() {
         GCWorkerThreadState state = getWorkerThreadState();
         assert state.getAllocChunk().isNonNull();
-        push(HeapChunk.asPointer(state.getAllocChunk()));
+        push(state.getAllocChunk());
 
         mutex.lockNoTransitionUnspecifiedOwner();
         try {
             while (busyWorkerThreads > 0) {
-                seqPhase.blockNoTransitionUnspecifiedOwner(); // wait for worker threads to become ready
+                /* Wait for worker threads to become ready. */
+                seqPhase.blockNoTransitionUnspecifiedOwner();
             }
 
             inParallelPhase = true;
-            parPhase.broadcast(); // let worker threads run
+            /* Let worker threads run. */
+            parPhase.broadcast();
 
             while (inParallelPhase) {
-                seqPhase.blockNoTransitionUnspecifiedOwner(); // wait for them to become idle
+                /* Wait for them to become idle. */
+                seqPhase.blockNoTransitionUnspecifiedOwner();
             }
         } finally {
             mutex.unlockNoTransitionUnspecifiedOwner();
@@ -294,7 +305,7 @@ public class ParallelGC {
         haltOnError();
 
         assert buffer.isEmpty();
-        // Reset thread local allocation chunks.
+        /* Reset thread local allocation chunks. */
         state.setAllocChunk(WordFactory.nullPointer());
         for (int i = 0; i < numWorkerThreads; i++) {
             workerStates.addressOf(i).setAllocChunk(WordFactory.nullPointer());
@@ -329,14 +340,14 @@ public class ParallelGC {
             HeapChunk.walkObjectsFromInline(allocChunk, scanPointer, GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
             state.setScannedChunk(WordFactory.nullPointer());
             if (state.getAllocChunk().equal(allocChunk)) {
-                // remember top offset so that we don't scan the same objects again
+                /* Remember top offset so that we don't scan the same objects again. */
                 state.setAllocChunkScanOffset(allocChunk.getTopOffset());
             }
         }
     }
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
-    private boolean allocChunkNeedsScanning(GCWorkerThreadState state) {
+    private static boolean allocChunkNeedsScanning(GCWorkerThreadState state) {
         AlignedHeapChunk.AlignedHeader allocChunk = state.getAllocChunk();
         return allocChunk.isNonNull() && allocChunk.getTopOffset().aboveThan(state.getAllocChunkScanOffset());
     }
@@ -360,7 +371,7 @@ public class ParallelGC {
 
             buffer.release();
 
-            // signal the worker threads so that they can shut down
+            /* Signal the worker threads so that they can shut down. */
             shutdown = true;
             parPhase.broadcast();
             for (int i = 0; i < numWorkerThreads; i++) {
@@ -417,7 +428,7 @@ public class ParallelGC {
     private static class UseParallelGC implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return SubstrateOptions.UseParallelGC.getValue();
+            return ParallelGC.isEnabled();
         }
     }
 }

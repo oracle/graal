@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.genscavenge.UseMarkAndCopyOrEpsilonGC;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -47,6 +46,7 @@ import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
+import com.oracle.svm.core.genscavenge.UseSerialOrEpsilonGC;
 import com.oracle.svm.core.genscavenge.jvmstat.EpsilonGCPerfData;
 import com.oracle.svm.core.genscavenge.jvmstat.SerialGCPerfData;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
@@ -72,7 +72,7 @@ import com.oracle.svm.core.jvmstat.PerfManager;
 class GenScavengeGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return new UseMarkAndCopyOrEpsilonGC().getAsBoolean();
+        return new UseSerialOrEpsilonGC().getAsBoolean();
     }
 
     @Override
@@ -161,7 +161,7 @@ class GenScavengeGCFeature implements InternalFeature {
     }
 
     private static PerfDataHolder createPerfData() {
-        if (SubstrateOptions.useMarkAndCopyGC()) {
+        if (SubstrateOptions.useSerialOrParallelGC()) {
             return new SerialGCPerfData();
         } else {
             assert SubstrateOptions.UseEpsilonGC.getValue();

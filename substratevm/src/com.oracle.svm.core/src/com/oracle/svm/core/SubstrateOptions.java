@@ -326,23 +326,24 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Number of worker threads used by ParallelGC.", type = OptionType.User)//
+    @Option(help = "Number of GC worker threads. Parallel and G1 GC only.", type = OptionType.User)//
     public static final RuntimeOptionKey<Integer> ParallelGCThreads = new RuntimeOptionKey<>(0, Immutable);
 
     private static void requireMultiThreading(OptionKey<?> optionKey) {
-        if (!SubstrateOptions.MultiThreaded.getValue()) {
-            throw new InterruptImageBuilding(
-                            "The option '" + optionKey.getName() + "' requires the option MultiThreaded to be set.");
+        if (!MultiThreaded.getValue()) {
+            throw new InterruptImageBuilding(String.format("The option %s requires the option %s to be set.",
+                            SubstrateOptionsParser.commandArgument(optionKey, "+"),
+                            SubstrateOptionsParser.commandArgument(MultiThreaded, "+")));
         }
     }
 
     @Fold
-    public static boolean useMarkAndCopyGC() {
+    public static boolean useSerialOrParallelGC() {
         return UseSerialGC.getValue() || UseParallelGC.getValue();
     }
 
     @Fold
-    public static boolean useMarkAndCopyOrEpsilonGC() {
+    public static boolean useSerialOrParallelOrEpsilonGC() {
         return UseSerialGC.getValue() || UseParallelGC.getValue() || UseEpsilonGC.getValue();
     }
 
