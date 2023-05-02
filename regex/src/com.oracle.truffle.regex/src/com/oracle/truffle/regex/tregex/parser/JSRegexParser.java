@@ -73,7 +73,7 @@ public final class JSRegexParser implements RegexParser {
         this.source = source;
         this.flags = RegexFlags.parseFlags(source);
         this.lexer = new JSRegexLexer(source, flags);
-        this.astBuilder = new RegexASTBuilder(language, source, flags, flags.isUnicode(), compilationBuffer);
+        this.astBuilder = new RegexASTBuilder(language, source, flags, flags.isEitherUnicode(), compilationBuffer);
     }
 
     public JSRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer, RegexSource originalSource) throws RegexSyntaxException {
@@ -81,7 +81,7 @@ public final class JSRegexParser implements RegexParser {
         this.source = source;
         this.flags = RegexFlags.parseFlags(source);
         this.lexer = new JSRegexLexer(source, flags);
-        this.astBuilder = new RegexASTBuilder(language, originalSource, flags, flags.isUnicode(), compilationBuffer);
+        this.astBuilder = new RegexASTBuilder(language, originalSource, flags, flags.isEitherUnicode(), compilationBuffer);
     }
 
     public static Group parseRootLess(RegexLanguage language, String pattern) throws RegexSyntaxException {
@@ -146,7 +146,8 @@ public final class JSRegexParser implements RegexParser {
                         astBuilder.replaceCurTermWithDeadNode();
                         break;
                     }
-                    if (flags.isUnicode() && flags.isIgnoreCase()) {
+                    // TODO: Check that this is correct for UnicodeSets.
+                    if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
                         astBuilder.addCopy(token, globals.getJsUnicodeIgnoreCaseWordBoundarySubstitution());
                     } else {
                         astBuilder.addCopy(token, globals.getJsWordBoundarySubstitution());
@@ -160,7 +161,8 @@ public final class JSRegexParser implements RegexParser {
                         astBuilder.replaceCurTermWithDeadNode();
                         break;
                     }
-                    if (flags.isUnicode() && flags.isIgnoreCase()) {
+                    // TODO: Check that this is correct for UnicodeSets.
+                    if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
                         astBuilder.addCopy(token, globals.getJsUnicodeIgnoreCaseNonWordBoundarySubsitution());
                     } else {
                         astBuilder.addCopy(token, globals.getJsNonWordBoundarySubstitution());
@@ -176,7 +178,7 @@ public final class JSRegexParser implements RegexParser {
                     if (prevKind == Token.Kind.quantifier) {
                         throw syntaxError(JsErrorMessages.QUANTIFIER_ON_QUANTIFIER);
                     }
-                    if (flags.isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
+                    if (flags.isEitherUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
                         throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                     }
                     if (astBuilder.getCurTerm().isLookBehindAssertion()) {

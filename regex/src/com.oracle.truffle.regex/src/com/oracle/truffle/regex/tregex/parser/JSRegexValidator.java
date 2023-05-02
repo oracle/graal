@@ -123,7 +123,7 @@ public class JSRegexValidator implements RegexValidator {
                         case Null:
                             throw syntaxError(JsErrorMessages.QUANTIFIER_WITHOUT_TARGET);
                         case LookAheadAssertion:
-                            if (flags.isUnicode()) {
+                            if (flags.isEitherUnicode()) {
                                 throw syntaxError(JsErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
                             }
                             break;

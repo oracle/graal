@@ -43,6 +43,8 @@ package com.oracle.truffle.regex.tregex.parser;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.RegexSyntaxException;
+import org.junit.Assert;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -61,8 +63,11 @@ public class JsFlagsTest {
         assertTrue(parse("y").isSticky());
         assertTrue(parse("g").isGlobal());
         assertTrue(parse("u").isUnicode());
+        assertTrue(parse("u").isEitherUnicode());
         assertTrue(parse("s").isDotAll());
         assertTrue(parse("d").hasIndices());
+        assertTrue(parse("v").isUnicodeSets());
+        assertTrue(parse("v").isEitherUnicode());
 
         RegexFlags allFlags = parse("imygusd");
         assertTrue(allFlags.isIgnoreCase());
@@ -81,5 +86,13 @@ public class JsFlagsTest {
         assertFalse(noFlags.isUnicode());
         assertFalse(noFlags.isDotAll());
         assertFalse(noFlags.hasIndices());
+        assertFalse(noFlags.isUnicodeSets());
+        assertFalse(noFlags.isEitherUnicode());
+
+        try {
+            parse("uv");
+            Assert.fail("flags u and v cannot be set at the same time");
+        } catch (RegexSyntaxException e) {
+        }
     }
 }

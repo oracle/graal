@@ -76,4 +76,5 @@ public interface JsErrorMessages {
 
     String REPEATED_FLAG = "Repeated regex flag";
     String UNSUPPORTED_FLAG = "Unsupported regex flag";
+    String BOTH_FLAGS_SET_U_V = "Both flags 'u' and 'v' cannot be set at same time";
 }

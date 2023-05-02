@@ -103,16 +103,17 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected boolean featureEnabledOctalEscapes() {
-        return !flags.isUnicode();
+        return !flags.isEitherUnicode();
     }
 
     @Override
     protected boolean featureEnabledUnicodePropertyEscapes() {
-        return flags.isUnicode();
+        return flags.isEitherUnicode();
     }
 
     @Override
     protected void caseFold(CodePointSetAccumulator charClass) {
+        // TODO: Do not case-fold here UnicodeSets mode.
         CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
         CaseFoldTable.applyCaseFold(charClass, caseFoldTmp, caseFolding);
     }
@@ -157,13 +158,15 @@ public final class JSRegexLexer extends RegexLexer {
             case 'D':
                 return Constants.NON_DIGITS;
             case 'w':
-                if (flags.isUnicode() && flags.isIgnoreCase()) {
+                // TODO: Check that this is correct for UnicodeSets.
+                if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
                     return Constants.WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.WORD_CHARS;
                 }
             case 'W':
-                if (flags.isUnicode() && flags.isIgnoreCase()) {
+                // TODO: Check that this is correct for UnicodeSets.
+                if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
                     return Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.NON_WORD_CHARS;
@@ -180,7 +183,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected Token handleBoundedQuantifierSyntaxError() throws RegexSyntaxException {
-        if (flags.isUnicode()) {
+        if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INCOMPLETE_QUANTIFIER);
         }
         position = getLastTokenPosition() + 1;
@@ -194,7 +197,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void handleCCRangeWithPredefCharClass(int startPos) {
-        if (flags.isUnicode()) {
+        if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_CHARACTER_CLASS);
         }
     }
@@ -211,14 +214,14 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void handleIncompleteEscapeX() {
-        if (flags.isUnicode()) {
+        if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
         }
     }
 
     @Override
     protected void handleInvalidBackReference(int reference) {
-        if (flags.isUnicode()) {
+        if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
         }
     }
@@ -229,7 +232,7 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     private int handleInvalidEscape(int c) {
-        if (flags.isUnicode()) {
+        if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
         }
         return c;
@@ -260,7 +263,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void handleUnmatchedRightBrace() {
-        if (flags.isUnicode()) {
+        if (flags.isEitherUnicode()) {
             // In ECMAScript regular expressions, syntax characters such as '}' and ']'
             // cannot be used as atomic patterns. However, Annex B relaxes this condition
             // and allows the use of unmatched '}' and ']', which then match themselves.
@@ -276,7 +279,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected void handleUnmatchedRightBracket() {
-        if (flags.isUnicode()) {
+        if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.UNMATCHED_RIGHT_BRACKET);
         }
     }
@@ -316,7 +319,7 @@ public final class JSRegexLexer extends RegexLexer {
     @Override
     protected Token parseCustomEscape(char c) {
         if (c == 'k') {
-            if (flags.isUnicode() || hasNamedCaptureGroups()) {
+            if (flags.isEitherUnicode() || hasNamedCaptureGroups()) {
                 if (atEnd()) {
                     handleUnfinishedEscape();
                 }
@@ -345,10 +348,10 @@ public final class JSRegexLexer extends RegexLexer {
     protected int parseCustomEscapeChar(char c, boolean inCharClass) {
         switch (c) {
             case '0':
-                if (flags.isUnicode() && lookahead(RegexLexer::isDecimalDigit, 1)) {
+                if (flags.isEitherUnicode() && lookahead(RegexLexer::isDecimalDigit, 1)) {
                     throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
                 }
-                if (!flags.isUnicode() && lookahead(RegexLexer::isOctalDigit, 1)) {
+                if (!flags.isEitherUnicode() && lookahead(RegexLexer::isOctalDigit, 1)) {
                     return parseOctal(0);
                 }
                 return '\0';
@@ -358,7 +361,7 @@ public final class JSRegexLexer extends RegexLexer {
                     return handleInvalidControlEscape();
                 }
                 final char controlLetter = curChar();
-                if (!flags.isUnicode() && (isDecimalDigit(controlLetter) || controlLetter == '_') && inCharClass) {
+                if (!flags.isEitherUnicode() && (isDecimalDigit(controlLetter) || controlLetter == '_') && inCharClass) {
                     advance();
                     return controlLetter % 32;
                 }
@@ -369,7 +372,7 @@ public final class JSRegexLexer extends RegexLexer {
                 advance();
                 return Character.toUpperCase(controlLetter) - ('A' - 1);
             case 'u':
-                final int unicodeEscape = parseUnicodeEscapeChar(flags.isUnicode());
+                final int unicodeEscape = parseUnicodeEscapeChar(flags.isEitherUnicode());
                 return unicodeEscape < 0 ? c : unicodeEscape;
             default:
                 return -1;
@@ -391,7 +394,7 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     private char handleInvalidControlEscape() throws RegexSyntaxException {
-        if (flags.isUnicode()) {
+        if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_CONTROL_CHAR_ESCAPE);
         }
         return '\\';
@@ -450,7 +453,7 @@ public final class JSRegexLexer extends RegexLexer {
         for (int i = 0; i < maxDigits; i++) {
             if (atEnd() || !isHexDigit(curChar())) {
                 if (i < minDigits) {
-                    if (flags.isUnicode()) {
+                    if (flags.isEitherUnicode()) {
                         throw syntaxError(JsErrorMessages.INVALID_UNICODE_ESCAPE);
                     } else {
                         position = initialIndex;
