@@ -50,8 +50,11 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.NativeSource.Content;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
 import com.oracle.truffle.nfi.NativeSource.ParsedSignature;
+import com.oracle.truffle.nfi.api.LongNativePointerLibraryGen;
 
-@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true, contextPolicy = ContextPolicy.SHARED)
+@TruffleLanguage.Registration(id = "nfi", name = "TruffleNFI", version = "0.1", characterMimeTypes = NFILanguage.MIME_TYPE, internal = true, contextPolicy = ContextPolicy.SHARED, eagerExportProviders = {
+                NFIPointerGen.NativePointerLibraryEagerProvider.class, NFISignatureGen.SignatureLibraryEagerProvider.class, NFISymbolGen.NativePointerLibraryEagerProvider.class,
+                LongNativePointerLibraryGen.NativePointerLibraryEagerProvider.class})
 public class NFILanguage extends TruffleLanguage<NFIContext> {
 
     public static final String MIME_TYPE = "application/x-native";

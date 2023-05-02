@@ -150,6 +150,7 @@ final class EngineAccessor extends Accessor {
     static final HostSupport HOST = ACCESSOR.hostSupport();
     static final LanguageProviderSupport LANGUAGE_PROVIDER = ACCESSOR.languageProviderSupport();
     static final InstrumentProviderSupport INSTRUMENT_PROVIDER = ACCESSOR.instrumentProviderSupport();
+    static final ObjectSupport OBJECT = ACCESSOR.objectSupport();
 
     private static List<AbstractClassLoaderSupplier> locatorLoaders() {
         if (ImageInfo.inImageRuntimeCode()) {
@@ -293,7 +294,10 @@ final class EngineAccessor extends Accessor {
         @Override
         public <T> Iterable<T> loadServices(Class<T> type) {
             Map<Class<?>, T> found = new LinkedHashMap<>();
-            // Library providers exported by Truffle are not on the GuestLangToolsLoader path.
+            // 1) Add known Truffle DynamicObjectLibraryProvider service.
+            OBJECT.lookupTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            // 2) Library providers exported by Truffle are not on the GuestLangToolsLoader path.
+            // Deprecated, remove in 23.1 + 2
             if (type.getClassLoader() == Truffle.class.getClassLoader()) {
                 ClassLoader loader = type.getClassLoader();
                 ModuleUtils.exportToUnnamedModuleOf(loader);
@@ -301,14 +305,14 @@ final class EngineAccessor extends Accessor {
                     found.putIfAbsent(service.getClass(), service);
                 }
             }
-            // Search guest languages and tools.
-            // 1) Use TruffleLanguageProvider lookup
+            // 3) Search guest languages using TruffleLanguageProvider lookup
             LanguageCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
-            // 2) Use TruffleInstrumentProvider lookup
+            // 4) Search guest tools using TruffleInstrumentProvider lookup
             InstrumentCache.loadTruffleService(type).forEach((s) -> found.putIfAbsent(s.getClass(), s));
+            // 5) Use ServiceLoader lookup for open Truffle or for Truffle in unnamed module.
+            // Deprecated, remove in 23.1 + 2
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
-                // 3) Use ServiceLoader lookup for open Truffle or for Truffle in unnamed module.
                 if (seesTheSameClass(loader, type)) {
                     ModuleUtils.exportToUnnamedModuleOf(loader);
                     for (T service : ServiceLoader.load(type, loader)) {
