@@ -32,9 +32,10 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsCache;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessCache;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
 
 public class LazyContextCaches extends ContextAccessImpl {
-    // region Reference Processing
+    // region Command processing
 
     public LazyContextCaches(EspressoContext context) {
         super(context);
@@ -73,37 +74,17 @@ public class LazyContextCaches extends ContextAccessImpl {
         return cache;
     }
 
-    // endregion Reference Processing
+    // endregion Command processing
 
     // region Shared Interop
 
-    private final ConcurrentHashMap<SharedInteropCacheKey, CallTarget> sharedInteropCache = new ConcurrentHashMap<>();
+    // Maps interop messages to their implementation. The key depends on both the interop message
+    // and the dispatch class of the receiver.
+    private final ConcurrentHashMap<InteropMessageFactory.Key, CallTarget> sharedInteropCache = new ConcurrentHashMap<>();
 
-    public CallTarget getInteropMessage(String message, Supplier<CallTarget> supplier) {
-        SharedInteropCacheKey key = new SharedInteropCacheKey(message);
+    public CallTarget getInteropMessage(String message, Class<?> dispatch, Supplier<CallTarget> supplier) {
+        InteropMessageFactory.Key key = new InteropMessageFactory.Key(dispatch, message);
         return sharedInteropCache.computeIfAbsent(key, (unused) -> supplier.get());
-    }
-
-    private static final class SharedInteropCacheKey {
-        private final String message;
-
-        SharedInteropCacheKey(String message) {
-            this.message = message;
-        }
-
-        @Override
-        public int hashCode() {
-            return message.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof SharedInteropCacheKey) {
-                SharedInteropCacheKey otherMessage = (SharedInteropCacheKey) obj;
-                return message.equals(otherMessage.message);
-            }
-            return false;
-        }
     }
     // endregion Shared Interop
 }
