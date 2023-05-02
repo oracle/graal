@@ -689,8 +689,13 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
                 ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, receiverType, typeAESCrypt, nonNullReceiver);
-                ForeignCallNode call = b.add(new ForeignCallNode(mode.isEncrypt() ? ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT : ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT,
+                ForeignCallNode call = b.append(new ForeignCallNode(mode.isEncrypt() ? ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT : ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT,
                                 inAddr, outAddr, kAddr, len));
+                /*
+                 * readEmbeddedAESCryptKArrayStart has a fallback path, so the final return will
+                 * involve a merge with a valid frame state. We can use a placeholder state here.
+                 */
+                b.setStateAfterSkipVerification(call);
                 helper.emitFinalReturn(JavaKind.Int, call);
                 return true;
             }
@@ -736,8 +741,13 @@ public class HotSpotGraphBuilderPlugins {
                 // Read GHASH.subkeyHtbl
                 ValueNode subkeyHtblAddr = readFieldArrayStart(b, helper, typeGHASH, "subkeyHtbl", nonNullGHASH, JavaKind.Long);
 
-                ForeignCallNode call = b.add(new ForeignCallNode(GALOIS_COUNTER_MODE_CRYPT,
+                ForeignCallNode call = b.append(new ForeignCallNode(GALOIS_COUNTER_MODE_CRYPT,
                                 inAddr, len, ctAddr, outAddr, kAddr, stateAddr, subkeyHtblAddr, counterAddr));
+                /*
+                 * readEmbeddedAESCryptKArrayStart has a fallback path, so the final return will
+                 * involve a merge with a valid frame state. We can use a placeholder state here.
+                 */
+                b.setStateAfterSkipVerification(call);
                 helper.emitFinalReturn(JavaKind.Int, call);
                 return true;
             }
