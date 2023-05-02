@@ -199,6 +199,7 @@ public class MapInterop extends EspressoInterop {
         }
 
         public void registerMessages(Class<?> cls) {
+            InteropMessageFactory.register(cls, "hasHashEntries", MapInteropFactory.NodesFactory.HasHashEntriesNodeGen::create);
             InteropMessageFactory.register(cls, "isHashEntryReadable", MapInteropFactory.NodesFactory.IsHashEntryReadableNodeGen::create);
             InteropMessageFactory.register(cls, "isHashEntryModifiable", MapInteropFactory.NodesFactory.IsHashEntryModifiableNodeGen::create);
             InteropMessageFactory.register(cls, "isHashEntryRemovable", MapInteropFactory.NodesFactory.IsHashEntryRemovableNodeGen::create);

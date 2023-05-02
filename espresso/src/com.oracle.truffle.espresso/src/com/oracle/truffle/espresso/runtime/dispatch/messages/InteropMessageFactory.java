@@ -8,8 +8,14 @@ import org.graalvm.collections.EconomicMap;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.espresso.EspressoLanguage;
 
+/**
+ * Provides {@link CallTarget} factories for interop messages.
+ * <p>
+ * Factories need to be registered through {@link #register(Class, String, Supplier)} before being
+ * able to be {@link #getFactory(EspressoLanguage, Class, String)} fetched.
+ */
 public final class InteropMessageFactory {
-    private static final class Key {
+    public static final class Key {
         private final Class<?> cls;
         private final String message;
 
@@ -42,7 +48,7 @@ public final class InteropMessageFactory {
         assert cls != null;
         assert message != null;
         assert factory != null;
-        messageMap.put(new Key(cls, message), factory);
+        messageMap.putIfAbsent(new Key(cls, message), factory);
     }
 
     public static Supplier<CallTarget> getFactory(EspressoLanguage lang, Class<?> cls, String message) {

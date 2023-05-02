@@ -156,7 +156,7 @@ public final class ListInterop extends IterableInterop {
         static Object doCached(StaticObject receiver, int index,
                         @Bind("getMeta().java_util_List_get") Method getMethod,
                         @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
-            return lookupAndInvoke.execute(receiver, getMethod, index);
+            return lookupAndInvoke.execute(receiver, getMethod, new Object[]{index});
         }
     }
 
@@ -185,7 +185,7 @@ public final class ListInterop extends IterableInterop {
         static void doCached(StaticObject receiver, int index, Object value,
                         @Bind("getMeta().java_util_List_set") Method setMethod,
                         @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
-            lookupAndInvoke.execute(receiver, setMethod, index, value);
+            lookupAndInvoke.execute(receiver, setMethod, new Object[]{index, value});
         }
     }
 
@@ -217,7 +217,7 @@ public final class ListInterop extends IterableInterop {
         static void doCached(StaticObject receiver, Object value,
                         @Bind("getMeta().java_util_List_add") Method addMethod,
                         @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
-            lookupAndInvoke.execute(receiver, addMethod, value);
+            lookupAndInvoke.execute(receiver, addMethod, new Object[]{value});
         }
     }
 

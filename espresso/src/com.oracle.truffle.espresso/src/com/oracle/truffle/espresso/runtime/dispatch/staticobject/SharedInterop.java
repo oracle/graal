@@ -1264,12 +1264,13 @@ public class SharedInterop {
     @ExportMessage
     public static boolean hasIterator(StaticObject receiver,
                     @Cached IndirectCallNode callNode,
-                    @Bind("getContext(receiver)") EspressoContext ctx) {
+                    @Bind("getContext(receiver)") EspressoContext ctx,
+                    @CachedLibrary("receiver") InteropLibrary lib) {
         CallTarget target = getTarget(receiver, ctx, "hasIterator");
         if (target != null) {
             return (boolean) callNode.call(target, receiver);
         }
-        return false;
+        return lib.hasArrayElements(receiver);
     }
 
     @ExportMessage

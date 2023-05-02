@@ -135,13 +135,13 @@ public class ThrowableInterop extends EspressoInterop {
         }
 
         public void registerMessages(Class<?> cls) {
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.IsExceptionNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.IsExceptionNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
         }
 
         abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {

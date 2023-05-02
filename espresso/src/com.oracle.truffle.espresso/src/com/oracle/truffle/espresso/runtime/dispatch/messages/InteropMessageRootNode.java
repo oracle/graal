@@ -19,7 +19,7 @@ public final class InteropMessageRootNode extends RootNode {
 
     public InteropMessageRootNode(TruffleLanguage<?> language, InteropMessage node, Consumer<InteropException> handler) {
         super(language);
-        this.node = node;
+        this.node = insert(node);
         this.interopExceptionHandler = handler;
     }
 
