@@ -222,7 +222,7 @@ public class InvocationPluginHelper implements DebugCloseable {
             x = origY;
             y = origX;
         }
-        assert !canonicalizedCondition.mustNegate() : canonicalizedCondition;
+        GraalError.guarantee(!canonicalizedCondition.mustNegate(), "negate is unhandled: %s", canonicalizedCondition);
         return createCompare(canonicalizedCondition.getCanonicalCondition(), x, y);
     }
 
@@ -236,10 +236,10 @@ public class InvocationPluginHelper implements DebugCloseable {
                     return IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
                 }
             case LT:
-                assert x.getStackKind() != JavaKind.Object;
+                GraalError.guarantee(x.getStackKind() != JavaKind.Object, "object not allowed");
                 return IntegerLessThanNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
             case BT:
-                assert x.getStackKind() != JavaKind.Object;
+                GraalError.guarantee(x.getStackKind() != JavaKind.Object, "object not allowed");
                 return IntegerBelowNode.create(b.getConstantReflection(), b.getMetaAccess(), y.getOptions(), null, x, y, NodeView.DEFAULT);
             default:
                 throw GraalError.shouldNotReachHere("Unexpected condition: " + cond);
