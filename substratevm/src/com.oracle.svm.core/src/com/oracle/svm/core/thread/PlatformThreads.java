@@ -93,6 +93,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -865,6 +866,11 @@ public abstract class PlatformThreads {
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
         return StackTraceUtils.asyncGetStackTrace(thread);
+    }
+
+    static void visitCurrentStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        assert !isVirtual(Thread.currentThread());
+        StackTraceUtils.visitCurrentThreadStackFrames(callerSP, WordFactory.nullPointer(), visitor);
     }
 
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {

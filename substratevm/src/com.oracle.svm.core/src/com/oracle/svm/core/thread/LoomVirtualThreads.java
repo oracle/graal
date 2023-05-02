@@ -41,6 +41,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -161,6 +162,15 @@ final class LoomVirtualThreads implements VirtualThreads {
     }
 
     @Override
+    public void visitCurrentVirtualOrPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        if (!isVirtual(Thread.currentThread())) {
+            visitCurrentPlatformThreadStackFrames(callerSP, visitor);
+            return;
+        }
+        visitCurrentVirtualThreadStackFrames(callerSP, visitor);
+    }
+
+    @Override
     public StackTraceElement[] getVirtualOrPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
         if (!isVirtual(thread)) {
             return getPlatformThreadStackTraceAtSafepoint(thread, callerSP);
@@ -182,6 +192,18 @@ final class LoomVirtualThreads implements VirtualThreads {
         }
         assert VMOperation.isInProgressAtSafepoint();
         return StackTraceUtils.getThreadStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
+    }
+
+    private static void visitCurrentVirtualThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        Thread carrier = cast(Thread.currentThread()).carrierThread;
+        if (carrier == null) {
+            return;
+        }
+        Pointer endSP = getCarrierSPOrElse(carrier, WordFactory.nullPointer());
+        if (endSP.isNull()) {
+            return;
+        }
+        StackTraceUtils.visitCurrentThreadStackFrames(callerSP, endSP, visitor);
     }
 
     private static Pointer getCarrierSPOrElse(Thread carrier, Pointer other) {
@@ -223,6 +245,11 @@ final class LoomVirtualThreads implements VirtualThreads {
         }
         assert !filterExceptions : "exception stack traces can be taken only for the current thread";
         return StackTraceUtils.asyncGetStackTrace(thread);
+    }
+
+    private static void visitCurrentPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        Pointer startSP = getCarrierSPOrElse(Thread.currentThread(), callerSP);
+        StackTraceUtils.visitCurrentThreadStackFrames(startSP, WordFactory.nullPointer(), visitor);
     }
 
     private static StackTraceElement[] getPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP) {

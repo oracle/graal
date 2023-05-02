@@ -31,6 +31,8 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.stack.StackFrameVisitor;
+
 /** Operations on virtual threads. */
 public interface VirtualThreads {
     @Fold
@@ -81,6 +83,8 @@ public interface VirtualThreads {
      * thread, therefore this method is also responsible for taking platform thread stack traces.
      */
     StackTraceElement[] getVirtualOrPlatformThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP);
+
+    void visitCurrentVirtualOrPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor);
 
     StackTraceElement[] getVirtualOrPlatformThreadStackTraceAtSafepoint(Thread thread, Pointer callerSP);
 }

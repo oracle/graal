@@ -44,6 +44,7 @@ import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
@@ -245,6 +246,17 @@ public final class SubstrateVirtualThreads implements VirtualThreads {
             return null;
         }
         return StackTraceUtils.getStackTrace(false, callerSP, endSP);
+    }
+
+    @Override
+    public void visitCurrentVirtualOrPlatformThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        if (!isVirtual(Thread.currentThread())) {
+            PlatformThreads.visitCurrentStackFrames(callerSP, visitor);
+            return;
+        }
+        Pointer endSP = current().getBaseSP();
+        VMError.guarantee(endSP.isNonNull(), "unexpected null endSP");
+        StackTraceUtils.visitCurrentThreadStackFrames(callerSP, endSP, visitor);
     }
 
     @Override
