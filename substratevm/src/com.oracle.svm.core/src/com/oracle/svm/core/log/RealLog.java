@@ -634,6 +634,11 @@ public class RealLog extends Log {
 
         string(t.getClass().getName()).string(": ").string(detailMessage);
         if (!JDKUtils.isStackTraceValid(t)) {
+            /*
+             * We accept that there might be a race with concurrent calls to
+             * `Throwable#fillInStackTrace`, which changes `Throwable#backtrace`. We accept that and
+             * the code can deal with that. Worst case we don't get a stack trace.
+             */
             int remaining = printBacktraceLocked(t, maxFrames);
             printRemainingFramesCount(remaining);
         } else {
