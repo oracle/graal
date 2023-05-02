@@ -634,7 +634,7 @@ public class RealLog extends Log {
 
         string(t.getClass().getName()).string(": ").string(detailMessage);
         if (!JDKUtils.isStackTraceValid(t)) {
-            int remaining = printBacktrackLocked(t, maxFrames);
+            int remaining = printBacktraceLocked(t, maxFrames);
             printRemainingFramesCount(remaining);
         } else {
             StackTraceElement[] stackTrace = JDKUtils.getRawStackTrace(t);
@@ -657,7 +657,7 @@ public class RealLog extends Log {
     private static final VMMutex BACKTRACE_PRINTER_MUTEX = new VMMutex("RealLog.backTracePrinterMutex");
     private final BacktracePrinter backtracePrinter = new BacktracePrinter();
 
-    private int printBacktrackLocked(Throwable t, int maxFrames) {
+    private int printBacktraceLocked(Throwable t, int maxFrames) {
         if (VMOperation.isInProgress()) {
             if (BACKTRACE_PRINTER_MUTEX.hasOwner()) {
                 /*

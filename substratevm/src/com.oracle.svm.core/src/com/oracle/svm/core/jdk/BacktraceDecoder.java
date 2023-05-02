@@ -57,7 +57,7 @@ public abstract class BacktraceDecoder {
                     break;
                 }
                 CodePointer ip = WordFactory.pointer(address);
-                framesDecoded = printCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecode);
+                framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecode);
                 if (framesDecoded == maxFramesDecode) {
                     break;
                 }
@@ -67,7 +67,7 @@ public abstract class BacktraceDecoder {
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private int printCodePointer(CodePointer ip, int oldFramesDecoded, int maxFramesProcessed, int maxFramesDecode) {
+    private int visitCodePointer(CodePointer ip, int oldFramesDecoded, int maxFramesProcessed, int maxFramesDecode) {
         int framesDecoded = oldFramesDecoded;
         UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
         if (untetheredInfo.isNull()) {
@@ -78,7 +78,7 @@ public abstract class BacktraceDecoder {
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
             CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            framesDecoded = printFrame(ip, tetheredCodeInfo, framesDecoded, maxFramesProcessed, maxFramesDecode);
+            framesDecoded = visitFrame(ip, tetheredCodeInfo, framesDecoded, maxFramesProcessed, maxFramesDecode);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
@@ -88,7 +88,7 @@ public abstract class BacktraceDecoder {
     private final CodeInfoDecoder.FrameInfoCursor frameInfoCursor = new CodeInfoDecoder.FrameInfoCursor();
 
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
-    private int printFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesDecoded, int maxFramesProcessed, int maxFramesDecode) {
+    private int visitFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesDecoded, int maxFramesProcessed, int maxFramesDecode) {
         int framesDecoded = oldFramesDecoded;
         frameInfoCursor.initialize(tetheredCodeInfo, ip);
         while (frameInfoCursor.advance()) {
