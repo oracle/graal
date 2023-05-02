@@ -79,7 +79,7 @@ To see more verbose output during the installation, as the download progress bar
 If a component is installed that depends on another component, GraalVM Updater will search for the appropriate dependency and install it as well.
 If a required component cannot be found, the installation will fail.
 
-> Note:  See the [Install Components on GraalVM Enterprise guide](https://www.graalvm.org/22.3/reference-manual/graalvm-updater/#install-components-on-graalvm-enterprise) for information on installing components on older GraalVM Enterprise releases.
+> Note: See the [Install Components on GraalVM Enterprise guide](https://www.graalvm.org/22.3/reference-manual/graalvm-updater/#install-components-on-graalvm-enterprise) for information on installing components on older GraalVM Enterprise releases.
 
 ## Install Components Manually
 
@@ -177,7 +177,7 @@ Refer to the distribution and/or desktop environment documentation for the detai
 
 GraalVM Updater intentionally does not support an option to disable certificate or hostname verification, for security reasons.
 A user may try to add a proxy's certificate to the GraalVM default security trust store.
-A user can also download a component manually to a folder, and then run `gu -L install /path/to/file` to install from a local filesystem (see [Install Components Manually](#install-components-manually)).
+You can also download a component manually to a directory, and then run `gu -L install /path/to/file` to install from a local filesystem (see [Install Components Manually](#install-components-manually)).
 
 ### Working without Internet Access
 
@@ -234,9 +234,8 @@ GraalVM Updater usage options:
 * `gu list [-clv] <expression>`: list installed components or components from catalog
 * `gu remove [-0DfMxv] <id>`: uninstall a component
 * `gu upgrade [-cCnLsuxSd] [<ver>] [<cmp>]`: upgrade to the recent GraalVM version
-* `gu upgrade --edition ee`: upgrade from GraalVM Community Edition to the most recent available version of Oracle GraalVM
 * `gu rebuild-images`: rebuild the native launchers. Use `-h` for detailed usage
-*
+
 GraalVM Updater common options:
 * `-A, --auto-yes`: say YES or ACCEPT to a question
 * `-c, --catalog`: treat parameters as component IDs from the catalog of GraalVM components. This is the default
