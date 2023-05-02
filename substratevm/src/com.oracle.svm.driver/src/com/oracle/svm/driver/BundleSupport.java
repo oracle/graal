@@ -289,7 +289,7 @@ final class BundleSupport {
     }
 
     private void initializeContainerImage() {
-        String bundleFileName = bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION).toString();
+        String bundleFileName = bundlePath == null ? "" : bundlePath.resolve(bundleName + BUNDLE_FILE_EXTENSION).toString();
 
         if(bundleDockerfile != null && dockerfile == null) {
             dockerfile = bundleDockerfile;
