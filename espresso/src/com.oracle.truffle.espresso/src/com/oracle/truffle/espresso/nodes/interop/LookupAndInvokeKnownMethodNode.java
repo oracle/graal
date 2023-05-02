@@ -83,8 +83,13 @@ import com.oracle.truffle.espresso.runtime.dispatch.staticobject.EspressoInterop
 @SuppressWarnings("unused")
 public abstract class LookupAndInvokeKnownMethodNode extends EspressoNode {
     static final int LIMIT = 3;
+    static final Object[] EMPTY_ARGS = new Object[0];
 
-    public abstract Object execute(StaticObject receiver, Method resolutionSeed, Object... arguments);
+    public final Object execute(StaticObject receiver, Method resolutionSeed) {
+        return execute(receiver, resolutionSeed, EMPTY_ARGS);
+    }
+
+    public abstract Object execute(StaticObject receiver, Method resolutionSeed, Object[] arguments);
 
     @Specialization(guards = {"resolutionSeed == cachedSeed", "cachedSeed.getParameterCount() == 0", "cachedSeed.getDeclaringKlass().isInterface()",
                     "receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
