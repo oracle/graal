@@ -33,6 +33,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jfr.events.ThreadCPULoadEvent;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.utils.JfrVisited;
 import com.oracle.svm.core.jfr.utils.JfrVisitedTable;
@@ -87,6 +88,7 @@ public final class JfrThreadRepository implements JfrRepository {
             if (thread != null) {
                 registerThread(thread);
             }
+            ThreadCPULoadEvent.initCurrentTime(isolateThread);
         }
     }
 

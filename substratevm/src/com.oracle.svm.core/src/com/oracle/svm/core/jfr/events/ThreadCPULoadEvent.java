@@ -41,7 +41,6 @@ import com.oracle.svm.core.jdk.Jvm;
 
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -165,7 +164,9 @@ public class ThreadCPULoadEvent {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void initCurrentTime(IsolateThread isolateThread) {
-        timeTL.set(isolateThread, getCurrentTime());
+        if (timeTL.get(isolateThread) <= 0) {
+            timeTL.set(isolateThread, getCurrentTime());
+        }
     }
 
     private static final class EmitThreadCPULoadEventsVMOperation extends JavaVMOperation {
