@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,6 +36,7 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -63,19 +63,13 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-        return visitObjectReferenceUninterruptibly(objRef, 0, compressed, holderObject);
+        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
     }
 
     @Override
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
-        return visitObjectReferenceUninterruptibly(objRef, innerOffset, compressed, holderObject);
-    }
-
-    @AlwaysInline("GC performance")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private boolean visitObjectReferenceUninterruptibly(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         assert innerOffset >= 0;
         assert !objRef.isNull();
         counters.noteObjRef();
@@ -160,19 +154,17 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         void noteUnmodifiedReference();
 
-        void toLog();
-
         void reset();
     }
 
     public static class RealCounters implements Counters {
-        private UninterruptibleUtils.AtomicLong objRef;
-        private UninterruptibleUtils.AtomicLong nullObjRef;
-        private UninterruptibleUtils.AtomicLong nullReferent;
-        private UninterruptibleUtils.AtomicLong forwardedReferent;
-        private UninterruptibleUtils.AtomicLong nonHeapReferent;
-        private UninterruptibleUtils.AtomicLong copiedReferent;
-        private UninterruptibleUtils.AtomicLong unmodifiedReference;
+        private final AtomicLong objRef = new AtomicLong(0);
+        private final AtomicLong nullObjRef = new AtomicLong(0);
+        private final AtomicLong nullReferent = new AtomicLong(0);
+        private final AtomicLong forwardedReferent = new AtomicLong(0);
+        private final AtomicLong nonHeapReferent = new AtomicLong(0);
+        private final AtomicLong copiedReferent = new AtomicLong(0);
+        private final AtomicLong unmodifiedReference = new AtomicLong(0);
 
         RealCounters() {
             reset();
@@ -237,8 +229,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             unmodifiedReference.incrementAndGet();
         }
 
-        @Override
-        public void toLog() {
+        private void toLog() {
             Log log = Log.log();
             log.string("[GreyToBlackObjRefVisitor.counters:");
             log.string("  objRef: ").signed(objRef.get());
@@ -294,10 +285,6 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
         @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void noteUnmodifiedReference() {
-        }
-
-        @Override
-        public void toLog() {
         }
 
         @Override
