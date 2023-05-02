@@ -806,7 +806,7 @@ final class Target_java_lang_ClassValue {
 }
 
 @SuppressWarnings({"deprecation", "unused"})
-@TargetClass(java.lang.Compiler.class)
+@TargetClass(className = "java.lang.Compiler", onlyWith = JDK20OrEarlier.class)
 final class Target_java_lang_Compiler {
     @Substitute
     static Object command(Object arg) {
