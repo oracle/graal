@@ -323,16 +323,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
-                    helper.intrinsicRangeCheck(helper.add(srcIndex, len), Condition.AT, srcLength);
-
-                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode endIndex = helper.add(destIndex, len);
-                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
-                    ValueNode shiftDestLength = helper.shr(destLength, 1);
-                    helper.intrinsicRangeCheck(endIndex, Condition.AT, shiftDestLength);
+                    helper.intrinsicArrayRangeCheck(src, srcIndex, len);
+                    helper.intrinsicArrayRangeCheckScaled(dest, destIndex, len);
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointerScaled(dest, JavaKind.Char, destIndex);
@@ -361,15 +353,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
-                    helper.intrinsicRangeCheck(helper.add(srcIndex, len), Condition.AT, srcLength);
-
-                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode endIndex = helper.add(destIndex, len);
-                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
-                    helper.intrinsicRangeCheck(endIndex, Condition.AT, destLength);
+                    helper.intrinsicArrayRangeCheck(src, srcIndex, len);
+                    helper.intrinsicArrayRangeCheck(dest, destIndex, len);
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Byte, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Char, destIndex);
@@ -408,16 +393,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode endIndex = helper.add(destIndex, len);
-                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
-                    ValueNode shiftedSrcLength = helper.shr(srcLength, 1);
-                    helper.intrinsicRangeCheck(endIndex, Condition.AT, shiftedSrcLength);
-
-                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
-                    helper.intrinsicRangeCheck(helper.add(destIndex, len), Condition.AT, destLength);
+                    helper.intrinsicArrayRangeCheckScaled(src, srcIndex, len);
+                    helper.intrinsicArrayRangeCheck(dest, destIndex, len);
 
                     ValueNode srcPointer = helper.arrayElementPointerScaled(src, JavaKind.Char, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, destIndex);
@@ -445,15 +422,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // @formatter:on
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
-
-                    helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode endIndex = helper.add(srcIndex, len);
-                    ValueNode srcLength = helper.length(b.nullCheckedValue(src));
-                    helper.intrinsicRangeCheck(endIndex, Condition.AT, srcLength);
-
-                    helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode destLength = helper.length(b.nullCheckedValue(dest));
-                    helper.intrinsicRangeCheck(helper.add(destIndex, len), Condition.AT, destLength);
+                    helper.intrinsicArrayRangeCheck(src, srcIndex, len);
+                    helper.intrinsicArrayRangeCheck(dest, destIndex, len);
 
                     ValueNode srcPointer = helper.arrayElementPointer(src, JavaKind.Char, srcIndex);
                     ValueNode destPointer = helper.arrayElementPointer(dest, JavaKind.Byte, destIndex);
@@ -461,6 +431,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
                 return true;
             }
+
         });
 
         r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class);

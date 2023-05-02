@@ -263,6 +263,28 @@ public class InvocationPluginHelper implements DebugCloseable {
         return b.intrinsicRangeCheck(compare, canonicalizedCondition.mustNegate());
     }
 
+    /**
+     * Check that all indexes in the half open range [{@code index}, {@code index + offset}) are
+     * within {@code array}.
+     */
+    public void intrinsicArrayRangeCheck(ValueNode array, ValueNode index, ValueNode offset) {
+        intrinsicRangeCheck(index, Condition.LT, ConstantNode.forInt(0));
+        ValueNode length = length(b.nullCheckedValue(array));
+        intrinsicRangeCheck(add(index, offset), Condition.AT, length);
+    }
+
+    /**
+     * Check that all indexes in the half open range [{@code 2 * index},
+     * {@code 2 * (index + offset)}) are within {@code array}. To avoid overflow issues, the
+     * underlying length is divided by 2.
+     */
+    public void intrinsicArrayRangeCheckScaled(ValueNode array, ValueNode index, ValueNode offset) {
+        intrinsicRangeCheck(index, Condition.LT, ConstantNode.forInt(0));
+        ValueNode length = length(b.nullCheckedValue(array));
+        ValueNode shiftedLength = shr(length, 1);
+        intrinsicRangeCheck(add(index, offset), Condition.AT, shiftedLength);
+    }
+
     public AbstractBeginNode emitReturnIf(LogicNode condition, ValueNode returnValue, double returnProbability) {
         return emitReturnIf(condition, false, returnValue, returnProbability);
     }
