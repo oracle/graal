@@ -55,6 +55,7 @@ import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signat
 public class InstructionModel implements InfoDumpable {
     public enum InstructionKind {
         BRANCH,
+        BRANCH_BACKWARD,
         BRANCH_FALSE,
         POP,
         INSTRUMENTATION_ENTER,
@@ -220,6 +221,7 @@ public class InstructionModel implements InfoDumpable {
     public boolean isControlFlow() {
         switch (kind) {
             case BRANCH:
+            case BRANCH_BACKWARD:
             case BRANCH_FALSE:
             case RETURN:
             case YIELD:
@@ -240,11 +242,6 @@ public class InstructionModel implements InfoDumpable {
             default:
                 return false;
         }
-    }
-
-    // TODO: code invoking this method should likely be fixed.
-    public boolean hasImmediates() {
-        return immediates.size() > 0;
     }
 
     public InstructionModel addImmediate(ImmediateKind kind, String name) {

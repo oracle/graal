@@ -108,6 +108,7 @@ public class OperationsModel extends Template implements InfoDumpable {
 
     public InstructionModel popInstruction;
     public InstructionModel branchInstruction;
+    public InstructionModel branchBackwardInstruction;
     public InstructionModel branchFalseInstruction;
     public InstructionModel throwInstruction;
     public InstructionModel yieldInstruction;
@@ -126,6 +127,7 @@ public class OperationsModel extends Template implements InfoDumpable {
     public void addDefault() {
         popInstruction = instruction(InstructionKind.POP, "pop");
         branchInstruction = instruction(InstructionKind.BRANCH, "branch").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
+        branchBackwardInstruction = instruction(InstructionKind.BRANCH_BACKWARD, "branch.backward").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         throwInstruction = instruction(InstructionKind.THROW, "throw").addImmediate(ImmediateKind.INTEGER, "exception_local");
 

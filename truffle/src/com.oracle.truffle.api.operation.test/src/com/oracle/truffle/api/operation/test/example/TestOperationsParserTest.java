@@ -277,7 +277,7 @@ public class TestOperationsParserTest {
     @Test
     public void testSumLoop() {
         // i = 0; j = 0;
-        // while (i < arg0) { j = j + i; i = i + 1;}
+        // while (i < arg0) { j = j + i; i = i + 1; }
         // return j;
 
         RootCallTarget root = parse("sumLoop", b -> {
@@ -678,7 +678,9 @@ public class TestOperationsParserTest {
         // }
         // arg0.append(5);
 
-        RootCallTarget root = parse("finallyTryBranchBackwardOutOfHandler", b -> {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Backward branches are unsupported. Use a While operation to model backward control flow.");
+        parse("finallyTryBranchBackwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
             OperationLocal local = b.createLocal();
@@ -721,8 +723,6 @@ public class TestOperationsParserTest {
 
             b.endRoot();
         });
-
-        testOrdering(false, root, 1L, 2L, 3L, 4L);
     }
 
     /*
@@ -2085,7 +2085,6 @@ public class TestOperationsParserTest {
         assertEquals(1L, root.call());
     }
 
-
     @Test
     public void testBranchBackward() {
         // x = 0;
@@ -2094,7 +2093,9 @@ public class TestOperationsParserTest {
         // x = x + 1;
         // goto lbl;
 
-        RootCallTarget root = parse("branchBackward", b -> {
+        thrown.expect(IllegalStateException.class);
+        thrown.expectMessage("Backward branches are unsupported. Use a While operation to model backward control flow.");
+        parse("branchBackward", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLabel lbl = b.createLabel();
@@ -2130,8 +2131,6 @@ public class TestOperationsParserTest {
 
             b.endRoot();
         });
-
-        assertEquals(6L, root.call());
     }
 
     @Test

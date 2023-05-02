@@ -94,6 +94,7 @@ import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
+import com.oracle.truffle.dsl.processor.java.model.CodeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeNames;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -227,6 +228,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         // This method delegates to the current tier's continueAt, handling the case where
         // the tier changes.
         operationNodeGen.add(createContinueAt());
+
+        // Define the members required to support OSR.
+        operationNodeGen.addAll(new OSRMembersFactory().create());
 
         // Define the static method to create a root node.
         operationNodeGen.add(createCreate());
@@ -791,6 +795,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             switch (instr.kind) {
                 case BRANCH:
+                case BRANCH_BACKWARD:
                 case BRANCH_FALSE:
                     buildIntrospectionArgument(b, "BRANCH_OFFSET", "bc[bci + 1]");
                     break;
@@ -810,7 +815,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case CUSTOM:
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
-                    assert instr.hasImmediates() : "Short circuit operations should always have branch targets.";
+                    assert !instr.getImmediates().isEmpty() : "Short circuit operations should always have branch targets.";
                     buildIntrospectionArgument(b, "BRANCH_OFFSET", "bc[bci + 1]");
                     break;
             }
@@ -2515,17 +2520,15 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                     b.statement("doEmitLeaves(label.declaringOp)");
 
-                    b.declaration(context.getType(int.class), "argument");
                     b.startIf().string("label.isDefined()").end().startBlock();
-                    b.statement("argument = label.index");
-                    b.end().startElseBlock();
+                    buildThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
+                    b.end();
                     // Mark the branch target as uninitialized. Add this location to a work list to
                     // be processed once the label is defined.
-                    b.statement("argument = " + UNINIT);
                     b.startStatement().startCall("registerUnresolvedLabel");
                     b.string("label");
                     b.string("bci + 1");
-                    b.end(3);
+                    b.end(2);
                     b.newLine();
                     b.lineComment("We need to track branch targets inside finally handlers so that they can be adjusted each time the handler is emitted.");
                     b.startIf().string("label.finallyTryOp != " + UNINIT).end().startBlock();
@@ -2542,7 +2545,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.end();
 
                     b.end();
-                    yield new String[]{"argument"};
+                    yield new String[]{UNINIT};
                 }
                 case YIELD -> {
                     b.statement("ContinuationLocation continuation = new ContinuationLocationImpl(numYields++, bci + 2, curStack)");
@@ -2864,8 +2867,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT});
                         b.end().startElseBlock();
                         emitFinallyRelativeBranchCheck(b, 1);
-                        buildEmitInstruction(b, model.branchInstruction, new String[]{"(short) ((int[]) data)[0]"});
-                        b.statement("int toUpdate = ((int[]) data)[1];");
+                        buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"(short) ((int[]) data)[0]"});
+                        b.statement("int toUpdate = ((int[]) data)[1]");
                         b.statement("bc[toUpdate] = (short) bci");
                         b.end();
                         if (model.enableTracing) {
@@ -2971,25 +2974,52 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startFor().string("int handlerBci = 0; handlerBci < handlerBc.length;").end().startBlock();
             b.startSwitch().string("handlerBc[handlerBci]").end().startBlock();
 
-            // fix up data objects
-            for (InstructionModel instr : model.getInstructions()) {
+            // Fix up instructions.
+            Set<InstructionKind> relocatable = Set.of(InstructionKind.BRANCH, InstructionKind.BRANCH_BACKWARD, InstructionKind.BRANCH_FALSE, InstructionKind.YIELD);
+            Map<Boolean, List<InstructionModel>> builtinsGroupedByNeedsRelocation = model.getInstructions().stream().filter(instr -> !instr.isCustomInstruction()).collect(
+                            Collectors.partitioningBy(instr -> relocatable.contains(instr.kind)));
+            Map<Integer, List<InstructionModel>> nonRelocatingBuiltinsGroupedByLength = builtinsGroupedByNeedsRelocation.get(false).stream().collect(
+                            Collectors.groupingBy(InstructionModel::getInstructionLength));
+            Map<Integer, List<InstructionModel>> customInstructionsGroupedByEncoding = model.getInstructions().stream().filter(InstructionModel::isCustomInstruction).collect(
+                            Collectors.groupingBy(instr -> (instr.kind == InstructionKind.CUSTOM_SHORT_CIRCUIT) ? 0 : instr.id));
+
+            // Non-relocatable builtins (one case per instruction length)
+            for (Map.Entry<Integer, List<InstructionModel>> entry : nonRelocatingBuiltinsGroupedByLength.entrySet()) {
+                for (InstructionModel instr : entry.getValue()) {
+                    b.startCase().tree(createInstructionConstant(instr)).end();
+                }
+                b.startBlock();
+                b.statement("handlerBci += " + entry.getKey());
+                b.statement("break");
+                b.end();
+            }
+
+            // Relocatable builtins (one case each)
+            for (InstructionModel instr : builtinsGroupedByNeedsRelocation.get(true)) {
                 b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
 
                 switch (instr.kind) {
                     case BRANCH:
+                    case BRANCH_BACKWARD:
                     case BRANCH_FALSE:
                         b.statement("int branchIdx = handlerBci + 1"); // BCI of branch immediate
                         b.statement("short branchTarget = handlerBc[branchIdx]");
 
-                        // Mark branch target as unresolved, if necessary.
-                        b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
-                        b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
-                        b.statement("OperationLabelImpl lbl = (OperationLabelImpl) context.handlerUnresolvedLabelsByIndex.get(branchIdx)");
-                        b.statement("assert !lbl.isDefined()");
-                        b.startStatement().startCall("registerUnresolvedLabel");
-                        b.string("lbl");
-                        b.string("offsetBci + branchIdx");
-                        b.end(3);
+                        if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
+                            // Backward branches are only used internally by while loops. They
+                            // should be resolved when the while loop ends.
+                            b.startAssert().string("branchTarget != " + UNINIT).end();
+                        } else {
+                            // Mark branch target as unresolved, if necessary.
+                            b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
+                            b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
+                            b.statement("OperationLabelImpl lbl = (OperationLabelImpl) context.handlerUnresolvedLabelsByIndex.get(branchIdx)");
+                            b.statement("assert !lbl.isDefined()");
+                            b.startStatement().startCall("registerUnresolvedLabel");
+                            b.string("lbl");
+                            b.string("offsetBci + branchIdx");
+                            b.end(3);
+                        }
 
                         b.newLine();
 
@@ -3014,29 +3044,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("bc[offsetBci + locationBci] = (short) constantPool.addConstant(newContinuation)");
                         b.statement("continuationLocations.add(newContinuation)");
                         break;
-
-                    case CUSTOM:
-                    case CUSTOM_SHORT_CIRCUIT:
-                        List<InstructionImmediate> immediates = instr.getImmediates();
-                        for (int i = 0; i < immediates.size(); i++) {
-                            InstructionImmediate immediate = immediates.get(i);
-                            switch (immediate.kind) {
-                                case BYTECODE_INDEX:
-                                    // Custom operations don't have non-local branches/children, so
-                                    // this immediate is *always* relative.
-                                    b.statement("bc[offsetBci + handlerBci + " + immediate.offset + "] += offsetBci /* adjust " + immediate.name + " */");
-                                    break;
-                                case NODE:
-                                    // Allocate a separate Node for each handler.
-                                    b.statement("bc[offsetBci + handlerBci + " + immediate.offset + "] = (short) allocateNode()");
-                                    break;
-                                default:
-                                    // do nothing
-                                    break;
-                            }
-                        }
-                        break;
-
                     default:
                         // do nothing
                         break;
@@ -3045,9 +3052,44 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.statement("handlerBci += " + instr.getInstructionLength());
                 b.statement("break");
                 b.end();
+
             }
-            b.end();
-            b.end();
+
+            // One case per custom instruction (except short circuit instructions, which all have
+            // the same encoding).
+            for (List<InstructionModel> instrs : customInstructionsGroupedByEncoding.values()) {
+                for (InstructionModel instr : instrs) {
+                    b.startCase().tree(createInstructionConstant(instr)).end();
+                }
+                b.startBlock();
+
+                InstructionModel instr = instrs.get(0);
+                List<InstructionImmediate> immediates = instr.getImmediates();
+                for (int i = 0; i < immediates.size(); i++) {
+                    InstructionImmediate immediate = immediates.get(i);
+                    switch (immediate.kind) {
+                        case BYTECODE_INDEX:
+                            // Custom operations don't have non-local branches/children, so
+                            // this immediate is *always* relative.
+                            b.statement("bc[offsetBci + handlerBci + " + immediate.offset + "] += offsetBci /* adjust " + immediate.name + " */");
+                            break;
+                        case NODE:
+                            // Allocate a separate Node for each handler.
+                            b.statement("bc[offsetBci + handlerBci + " + immediate.offset + "] = (short) allocateNode()");
+                            break;
+                        default:
+                            // do nothing
+                            break;
+                    }
+                }
+
+                b.statement("handlerBci += " + instr.getInstructionLength());
+                b.statement("break");
+                b.end();
+            }
+
+            b.end(); // switch
+            b.end(); // for
 
             b.statement("bci += handlerBc.length");
 
@@ -3178,6 +3220,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             switch (instr.kind) {
                 case BRANCH:
+                case BRANCH_BACKWARD:
                 case INSTRUMENTATION_ENTER:
                 case INSTRUMENTATION_EXIT:
                 case INSTRUMENTATION_LEAVE:
@@ -3591,16 +3634,34 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 switch (instr.kind) {
                     case BRANCH:
+                        b.statement("bci = bc[bci + 1]");
+                        b.statement("continue loop");
+                        break;
+                    case BRANCH_BACKWARD:
                         if (tier.isUncached) {
-                            b.startIf().string("bc[bci + 1] <= bci").end().startBlock();
-
                             b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("$this.changeInterpreters(TIER1)");
                             b.statement("return (sp << 16) | bc[bci + 1]");
                             b.end();
+                        } else {
+                            b.startIf().startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("$this").end(2).startBlock();
 
-                            b.end();
+                            b.startAssign("Object osrResult");
+                            b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
+                            b.string("$this");
+                            b.string("(sp << 16) | bc[bci + 1]"); // target
+                            b.string("null"); // interpreterState
+                            b.string("null"); // beforeTransfer
+                            b.string("frame"); // parentFrame
+                            b.end(2);
+
+                            b.startIf().string("osrResult != null").end().startBlock();
+                            b.statement("frame.setObject(sp, osrResult)");
+                            b.statement("sp++");
+                            b.startReturn().string("((sp - 1) << 16) | 0xffff").end();
+
+                            b.end(2);
                         }
                         b.statement("bci = bc[bci + 1]");
                         b.statement("continue loop");
@@ -3940,6 +4001,64 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             return "do" + Arrays.stream(withoutPrefix.split("\\.")).map(part -> firstLetterUpperCase(part)).collect(Collectors.joining());
         }
+    }
+
+    class OSRMembersFactory {
+        final String METADATA_FIELD_NAME = "osrMetadata_";
+
+        private List<CodeElement<Element>> create() {
+            List<CodeElement<Element>> result = new ArrayList<>();
+
+            result.add(createExecuteOSR());
+            result.addAll(createMetadataMembers());
+            result.addAll(createStoreAndRestoreParentFrameMethods());
+
+            return result;
+        }
+
+        private CodeExecutableElement createExecuteOSR() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "executeOSR");
+            CodeTreeBuilder b = ex.getBuilder();
+            b.startReturn().startCall("continueAt");
+            b.string("osrFrame");
+            if (model.enableYield) {
+                // TODO: is this correct?
+                b.string("osrFrame");
+            }
+            b.string("target");
+            b.end(2);
+
+            return ex;
+        }
+
+        private List<CodeElement<Element>> createMetadataMembers() {
+            CodeVariableElement osrMetadataField = compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getDeclaredType(Object.class), METADATA_FIELD_NAME));
+
+            CodeExecutableElement getOSRMetadata = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "getOSRMetadata");
+            getOSRMetadata.getBuilder().startReturn().string(METADATA_FIELD_NAME).end();
+
+            CodeExecutableElement setOSRMetadata = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "setOSRMetadata");
+            setOSRMetadata.getBuilder().startAssign(METADATA_FIELD_NAME).variable(setOSRMetadata.getParameters().get(0)).end();
+
+            return List.of(osrMetadataField, getOSRMetadata, setOSRMetadata);
+        }
+
+        private List<CodeExecutableElement> createStoreAndRestoreParentFrameMethods() {
+            // Append parent frame to end of array so that regular argument reads work as expected.
+            CodeExecutableElement storeParentFrameInArguments = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "storeParentFrameInArguments");
+            CodeTreeBuilder sb = storeParentFrameInArguments.getBuilder();
+            sb.declaration(context.getType(Object[].class), "parentArgs", "parentFrame.getArguments()");
+            sb.declaration(context.getType(Object[].class), "result", "Arrays.copyOf(parentArgs, parentArgs.length + 1)");
+            sb.statement("result[result.length - 1] = parentFrame");
+            sb.startReturn().string("result").end();
+
+            CodeExecutableElement restoreParentFrameFromArguments = GeneratorUtils.overrideImplement(types.BytecodeOSRNode, "restoreParentFrameFromArguments");
+            CodeTreeBuilder rb = restoreParentFrameFromArguments.getBuilder();
+            rb.startReturn().cast(types.Frame).string("arguments[arguments.length - 1]").end();
+
+            return List.of(storeParentFrameInArguments, restoreParentFrameFromArguments);
+        }
+
     }
 
     class OperationLocalImplFactory {
