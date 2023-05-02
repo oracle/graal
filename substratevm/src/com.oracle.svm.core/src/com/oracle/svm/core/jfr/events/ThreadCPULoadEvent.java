@@ -62,9 +62,16 @@ public class ThreadCPULoadEvent {
         }
     }
 
+    @Uninterruptible(reason = "Check should emit in emit events as a minor optimization.")
+    private static boolean shouldEmit() {
+        return JfrEvent.ThreadCPULoad.shouldEmit();
+    }
+
     public static void emitEvents() {
-        EmitThreadCPULoadEventsVMOperation vmOp = new EmitThreadCPULoadEventsVMOperation();
-        vmOp.enqueue();
+        if (shouldEmit()) {
+            EmitThreadCPULoadEventsVMOperation vmOp = new EmitThreadCPULoadEventsVMOperation();
+            vmOp.enqueue();
+        }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
