@@ -39,6 +39,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.asm.Label;
@@ -78,6 +79,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
+import org.graalvm.compiler.lir.StandardOp.LabelOp;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
@@ -94,6 +96,7 @@ import org.graalvm.compiler.lir.amd64.AMD64PrefetchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ReadProcid;
 import org.graalvm.compiler.lir.amd64.AMD64ReadTimestampCounterWithProcid;
 import org.graalvm.compiler.lir.amd64.AMD64VZeroUpper;
+import org.graalvm.compiler.lir.amd64.EndbranchOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
@@ -119,6 +122,7 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
@@ -127,6 +131,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringByNodePhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.amd64.AMD64IntrinsicStubs;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CPUFeatureAccess;
@@ -756,12 +761,40 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public Register getHeapBaseRegister() {
             return ReservedRegisters.singleton().getHeapBaseRegister();
         }
+
+        @Override
+        protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
+            super.emitRangeTableSwitch(lowKey, defaultTarget, targets, key);
+            markIndirectBranchTargets(targets);
+        }
+
+        @Override
+        protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash) {
+            super.emitHashTableSwitch(keys, defaultTarget, targets, value, hash);
+            markIndirectBranchTargets(targets);
+        }
+
+        private void markIndirectBranchTargets(LabelRef[] labels) {
+            for (LabelRef label : labels) {
+                label.getTargetBlock().setIndirectBranchTarget();
+            }
+        }
     }
 
     public class SubstrateAMD64NodeLIRBuilder extends AMD64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
         public SubstrateAMD64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AMD64NodeMatchRules nodeMatchRules) {
             super(graph, gen, nodeMatchRules);
+        }
+
+        @Override
+        public void doBlockPrologue(@SuppressWarnings("unused") HIRBlock block, @SuppressWarnings("unused") OptionValues options) {
+            if (SubstrateOptions.IndirectBranchTargetMarker.getValue() && block.isIndirectBranchTarget()) {
+                List<LIRInstruction> lir = gen.getResult().getLIR().getLIRforBlock(block);
+                GraalError.guarantee(lir.size() == 1 && lir.get(0) instanceof LabelOp, "block may only contain an initial LabelOp before emitting endbranch");
+                gen.append(EndbranchOp.create());
+            }
+            super.doBlockPrologue(block, options);
         }
 
         @Override
@@ -999,7 +1032,22 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             crb.recordMark(PROLOGUE_END);
         }
 
+        protected void emitEndBranch(CompilationResultBuilder crb) {
+            /*
+             * Emit an endbranch instruction if we are runtime compiling or the method can be
+             * dynamically bound.
+             */
+            if (SubstrateOptions.IndirectBranchTargetMarker.getValue() && (ImageInfo.inImageRuntimeCode() || !method.canBeStaticallyBound())) {
+                ((AMD64Assembler) crb.asm).endbranch();
+            }
+        }
+
         protected void makeFrame(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
+            emitEndBranch(crb);
+            reserveStackFrame(crb, asm);
+        }
+
+        protected final void reserveStackFrame(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
             maybePushBasePointer(crb, asm);
             asm.decrementq(rsp, crb.frameMap.frameSize());
         }

@@ -11,6 +11,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-46392) Add `--parallelism` option to control how many threads are used by the build process.
 * (GR-46392) Add build resources section to the build output that shows the memory and thread limits of the build process.
 * (GR-47365) Throw `MissingReflectionRegistrationError` when attempting to create a proxy class without having it registered at build-time, instead of a `VMError`.
+* (GR-46064) Add option `-H:±IndirectBranchTargetMarker` to mark indirect branch targets on AMD64 with an endbranch instruction. This is a prerequisite for future Intel CET support.
 
 ## Version 23.0.0
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.
