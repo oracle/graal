@@ -74,7 +74,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleInjectImmutableFrameFieldsPhase;
+import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -352,6 +354,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection,
                     Plugins plugins, ParsingReason reason) {
         StaticObjectSupport.registerInvocationPlugins(plugins, reason);
+        TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), providers.getReplacements());
 
         /*
          * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so
@@ -440,7 +443,6 @@ public final class TruffleBaseFeature implements InternalFeature {
         this.graalGraphObjectReplacer = graalGraphObjectReplacer;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (graalGraphObjectReplacer == null) {
@@ -448,6 +450,8 @@ public final class TruffleBaseFeature implements InternalFeature {
             SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess);
             graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
         }
+
+        TruffleHostEnvironment.overrideLookup(new SubstrateTruffleHostEnvironmentLookup());
 
         StaticObjectSupport.beforeAnalysis(access);
         markAsUnsafeAccessed = access::registerAsUnsafeAccessed;
@@ -540,7 +544,13 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
-        TruffleInjectImmutableFrameFieldsPhase.install(suites.getHighTier(), HostedOptionValues.singleton());
+        /*
+         * Please keep this code in sync with the HotSpot configuration in
+         * TruffleCommunityCompilerConfiguration.
+         */
+        if (hosted) {
+            InjectImmutableFrameFieldsPhase.install(suites.getHighTier(), HostedOptionValues.singleton());
+        }
     }
 
     @Override

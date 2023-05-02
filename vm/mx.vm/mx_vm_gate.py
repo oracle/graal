@@ -230,21 +230,28 @@ def _test_libgraal_systemic_failure_detection():
     """
     Tests that system compilation failures are detected and cause the VM to exit.
     """
-    vmargs = ['-Dlibgraal.CrashAt=get,set,toString']
-    cmd = ["dacapo:fop", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
-    out = mx.OutputCapture()
-    exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
-    if exitcode == 0:
-        mx.abort('Expected benchmark to result in non-zero exit code: ' + ' '.join(cmd) + linesep + out.data)
-    else:
-        expect = 'Systemic Graal compilation failure detected'
-        if expect not in out.data:
-            mx.abort(f'Expected "{expect}" in output:{linesep}{out.data}')
+    for rate in (-1, 1):
+        vmargs = [
+            '-Dlibgraal.CrashAt=get,set,toString,charAt,equals,write,read,length',
+            f'-Dlibgraal.SystemicCompilationFailureRate={rate}',
+            '-Dlibgraal.CompilationFailureAction=Silent'
+        ]
+        cmd = ["dacapo:fop", "--tracker=none", "--"] + vmargs + ["--", "--preserve", '-n', '20']
+        out = mx.OutputCapture()
+        exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
+        print(rate, exitcode, bench_suite)
+        expect_exitcode_0 = rate >= 0
+        if (exitcode == 0) != expect_exitcode_0:
+            mx.abort(f'Unexpected benchmark exit code ({exitcode}): ' + ' '.join(cmd) + linesep + out.data)
+        else:
+            expect = 'Systemic Graal compilation failure detected'
+            if expect not in out.data:
+                mx.abort(f'Expected "{expect}" in output:{linesep}{out.data}')
 
-    # Only clean up scratch dir on success
-    for scratch_dir in bench_suite.scratchDirs():
-        mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
-        mx.rmtree(scratch_dir)
+        # Only clean up scratch dir on success
+        for scratch_dir in bench_suite.scratchDirs():
+            mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
+            mx.rmtree(scratch_dir)
 
 def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
     """

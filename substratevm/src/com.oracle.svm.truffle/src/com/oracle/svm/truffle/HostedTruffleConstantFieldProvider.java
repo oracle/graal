@@ -25,7 +25,6 @@
 package com.oracle.svm.truffle;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.truffle.compiler.TruffleConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -51,12 +50,12 @@ public final class HostedTruffleConstantFieldProvider implements ConstantFieldPr
      * <p>
      * However, the "stableness" of the array can be a dynamic property guarded by assumptions in
      * the runtime execution. In other words, it is possible for the array to be considered stable
-     * in a runtime compilation, and for the compilation to be invalided when the array is changed.
-     * Therefore, this constant folding must not happen during native image generation, as
+     * in a Truffle guest compilation, and for the compilation to be invalidated when the array is
+     * changed. Therefore, this constant folding must not happen during native image generation, as
      * invalidation of such code is impossible.
      * <p>
      * We disable the constant folding of such fields when preparing runtime graphs, so that during
-     * partial evaluation the {@link TruffleConstantFieldProvider} can do the correct constant
+     * partial evaluation the Truffle constant field provider delegate can do the correct constant
      * folding that takes stable array dimensions into account.
      * <p>
      * Similar restrictions are needed for the Node's {@link Child} and {@link Children}

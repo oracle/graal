@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
+import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -35,19 +36,19 @@ public class SubstrateTruffleMethod extends SubstrateMethod implements TruffleMe
 
     /**
      * In practice, there are very few distinct flag combinations, i.e., only a few
-     * {@link TruffleMethodInfo} instances in the image heap, so a single object reference is more
-     * compact than storing individual flags directly in each method object.
+     * {@link PartialEvaluationMethodInfo} instances in the image heap, so a single object reference
+     * is more compact than storing individual flags directly in each method object.
      */
-    private final TruffleMethodInfo truffleMethodInfo;
+    private final PartialEvaluationMethodInfo truffleMethodInfo;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateTruffleMethod(AnalysisMethod aMethod, HostedStringDeduplication stringTable, TruffleMethodInfo truffleMethodInfo) {
+    public SubstrateTruffleMethod(AnalysisMethod aMethod, HostedStringDeduplication stringTable, PartialEvaluationMethodInfo truffleMethodInfo) {
         super(aMethod, stringTable);
         this.truffleMethodInfo = truffleMethodInfo;
     }
 
     @Override
-    public TruffleMethodInfo getTruffleMethodInfo() {
+    public PartialEvaluationMethodInfo getTruffleMethodInfo() {
         return truffleMethodInfo;
     }
 }
