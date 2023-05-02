@@ -46,6 +46,8 @@ import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
@@ -219,17 +221,20 @@ public final class ListInterop extends IterableInterop {
         }
     }
 
-    public static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(ListInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(ListInterop.class, IterableInterop.Nodes.getInstance());
         }
 
-        public static void registerMessages(Class<? extends ListInterop> cls) {
-            IterableInterop.Nodes.registerMessages(cls);
+        public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "hasArrayElements", ListInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
             InteropMessageFactory.register(cls, "getArraySize", ListInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
             InteropMessageFactory.register(cls, "readArrayElement", ListInteropFactory.NodesFactory.ReadArrayElementNodeGen::create);

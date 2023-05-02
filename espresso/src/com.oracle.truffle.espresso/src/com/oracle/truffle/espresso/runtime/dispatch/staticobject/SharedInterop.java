@@ -33,26 +33,41 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.ArrayIterator;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.HashIterator;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodesCollector;
 
+/**
+ * Implementation of Espresso interop in a way that can be safely shared across contexts until code
+ * sharing is implemented.
+ * 
+ * This works by looking up the context of the receiver, then selecting the context-specific
+ * implementation for the object, based on the dispatch class that would have been selected when the
+ * language is not shared.
+ * 
+ * In case an implementation cannot be found, the message will return the default value, as defined
+ * in {@link InteropLibrary}.
+ * 
+ * @see #getTarget(StaticObject, EspressoContext, String)
+ * @see InteropMessageFactory
+ */
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 public class SharedInterop {
+    /*
+     * Force initialization of necessary classes. They must be initialized before trying to access a
+     * message implementation, as the registration happens in their static initializer.
+     */
     static {
-        BaseInterop.Nodes.ensureInitialized();
-        EspressoInterop.Nodes.ensureInitialized();
-        MapInterop.Nodes.ensureInitialized();
-        ThrowableInterop.Nodes.ensureInitialized();
-        InterruptedExceptionInterop.Nodes.ensureInitialized();
-        IterableInterop.Nodes.ensureInitialized();
-        ListInterop.Nodes.ensureInitialized();
-        IteratorInterop.Nodes.ensureInitialized();
-        MapEntryInterop.Nodes.ensureInitialized();
+        for (InteropNodes nodes : InteropNodesCollector.getInstances(InteropNodes.class)) {
+            nodes.register();
+        }
     }
 
     @TruffleBoundary
     private static CallTarget getTarget(StaticObject receiver, EspressoContext ctx, String message) {
         assert !StaticObject.isNull(receiver);
+        // Find not shared dispatch class.
         Class<?> dispatch = receiver.getKlass().getDispatch();
-        return ctx.getLazyCaches().getInteropMessage(message, InteropMessageFactory.getFactory(ctx.getLanguage(), dispatch, message));
+        return ctx.getLazyCaches().getInteropMessage(message, dispatch, InteropMessageFactory.getFactory(ctx.getLanguage(), dispatch, message));
     }
 
     private static UnsupportedMessageException unsupported() throws UnsupportedMessageException {

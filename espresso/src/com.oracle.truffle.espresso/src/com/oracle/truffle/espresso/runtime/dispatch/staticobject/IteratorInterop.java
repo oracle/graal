@@ -36,6 +36,8 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
@@ -67,17 +69,20 @@ public class IteratorInterop extends EspressoInterop {
         }
     }
 
-    public static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(IteratorInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(IteratorInterop.class, EspressoInterop.Nodes.getInstance());
         }
 
-        public static void registerMessages(Class<? extends IteratorInterop> cls) {
-            EspressoInterop.Nodes.registerMessages(cls);
+        public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "isIterator", IteratorInteropFactory.NodesFactory.IsIteratorNodeGen::create);
             InteropMessageFactory.register(cls, "hasIteratorNextElement", IteratorInteropFactory.NodesFactory.HasIteratorNextElementNodeGen::create);
             InteropMessageFactory.register(cls, "getIteratorNextElement", IteratorInteropFactory.NodesFactory.GetIteratorNextElementNodeGen::create);

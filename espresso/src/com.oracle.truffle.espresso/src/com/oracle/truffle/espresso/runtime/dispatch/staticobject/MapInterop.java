@@ -43,6 +43,8 @@ import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -183,17 +185,20 @@ public class MapInterop extends EspressoInterop {
 
     // endregion ### Hashes
 
-    public static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(MapInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(MapInterop.class, EspressoInterop.Nodes.getInstance());
         }
 
-        private static void registerMessages(Class<? extends MapInterop> cls) {
-            EspressoInterop.Nodes.registerMessages(cls);
+        public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "isHashEntryReadable", MapInteropFactory.NodesFactory.IsHashEntryReadableNodeGen::create);
             InteropMessageFactory.register(cls, "isHashEntryModifiable", MapInteropFactory.NodesFactory.IsHashEntryModifiableNodeGen::create);
             InteropMessageFactory.register(cls, "isHashEntryRemovable", MapInteropFactory.NodesFactory.IsHashEntryRemovableNodeGen::create);

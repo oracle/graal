@@ -85,6 +85,8 @@ import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
@@ -890,55 +892,59 @@ public class EspressoInterop extends BaseInterop {
 
     // endregion ### Date/time conversions
 
-    public static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(EspressoInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(EspressoInterop.class, BaseInterop.Nodes.getInstance());
         }
 
-        public static void registerMessages(Class<? extends EspressoInterop> cls) {
-            BaseInterop.Nodes.registerMessages(cls);
-            InteropMessageFactory.register(cls, "IsBooleanNode", EspressoInteropFactory.NodesFactory.IsBooleanNodeGen::create);
-            InteropMessageFactory.register(cls, "AsBooleanNode", EspressoInteropFactory.NodesFactory.AsBooleanNodeGen::create);
-            InteropMessageFactory.register(cls, "IsNumberNode", EspressoInteropFactory.NodesFactory.IsNumberNodeGen::create);
-            InteropMessageFactory.register(cls, "FitsInByteNode", EspressoInteropFactory.NodesFactory.FitsInByteNodeGen::create);
-            InteropMessageFactory.register(cls, "FitsInShortNode", EspressoInteropFactory.NodesFactory.FitsInShortNodeGen::create);
-            InteropMessageFactory.register(cls, "FitsInIntNode", EspressoInteropFactory.NodesFactory.FitsInIntNodeGen::create);
-            InteropMessageFactory.register(cls, "FitsInLongNode", EspressoInteropFactory.NodesFactory.FitsInLongNodeGen::create);
-            InteropMessageFactory.register(cls, "FitsInFloatNode", EspressoInteropFactory.NodesFactory.FitsInFloatNodeGen::create);
-            InteropMessageFactory.register(cls, "FitsInDoubleNode", EspressoInteropFactory.NodesFactory.FitsInDoubleNodeGen::create);
-            InteropMessageFactory.register(cls, "AsByteNode", EspressoInteropFactory.NodesFactory.AsByteNodeGen::create);
-            InteropMessageFactory.register(cls, "AsShortNode", EspressoInteropFactory.NodesFactory.AsShortNodeGen::create);
-            InteropMessageFactory.register(cls, "AsIntNode", EspressoInteropFactory.NodesFactory.AsIntNodeGen::create);
-            InteropMessageFactory.register(cls, "AsLongNode", EspressoInteropFactory.NodesFactory.AsLongNodeGen::create);
-            InteropMessageFactory.register(cls, "AsFloatNode", EspressoInteropFactory.NodesFactory.AsFloatNodeGen::create);
-            InteropMessageFactory.register(cls, "AsDoubleNode", EspressoInteropFactory.NodesFactory.AsDoubleNodeGen::create);
-            InteropMessageFactory.register(cls, "GetArraySizeNode", EspressoInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
-            InteropMessageFactory.register(cls, "HasArrayElementsNode", EspressoInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
-            InteropMessageFactory.register(cls, "IsArrayElementReadableNode", EspressoInteropFactory.NodesFactory.IsArrayElementReadableNodeGen::create);
-            InteropMessageFactory.register(cls, "IsArrayElementModifiableNode", EspressoInteropFactory.NodesFactory.IsArrayElementModifiableNodeGen::create);
-            InteropMessageFactory.register(cls, "IsArrayElementInsertableNode", EspressoInteropFactory.NodesFactory.IsArrayElementInsertableNodeGen::create);
-            InteropMessageFactory.register(cls, "ReadMemberNode", EspressoInteropFactory.NodesFactory.ReadMemberNodeGen::create);
-            InteropMessageFactory.register(cls, "HasMembersNode", EspressoInteropFactory.NodesFactory.HasMembersNodeGen::create);
-            InteropMessageFactory.register(cls, "IsMemberReadableNode", EspressoInteropFactory.NodesFactory.IsMemberReadableNodeGen::create);
-            InteropMessageFactory.register(cls, "IsMemberModifiableNode", EspressoInteropFactory.NodesFactory.IsMemberModifiableNodeGen::create);
-            InteropMessageFactory.register(cls, "WriteMemberNode", EspressoInteropFactory.NodesFactory.WriteMemberNodeGen::create);
-            InteropMessageFactory.register(cls, "IsMemberInsertableNode", EspressoInteropFactory.NodesFactory.IsMemberInsertableNodeGen::create);
-            InteropMessageFactory.register(cls, "GetMembersNode", EspressoInteropFactory.NodesFactory.GetMembersNodeGen::create);
-            InteropMessageFactory.register(cls, "IsMemberInvocableNode", EspressoInteropFactory.NodesFactory.IsMemberInvocableNodeGen::create);
-            InteropMessageFactory.register(cls, "InvokeMemberNode", EspressoInteropFactory.NodesFactory.InvokeMemberNodeGen::create);
-            InteropMessageFactory.register(cls, "IsDateNode", EspressoInteropFactory.NodesFactory.IsDateNodeGen::create);
-            InteropMessageFactory.register(cls, "AsDateNode", EspressoInteropFactory.NodesFactory.AsDateNodeGen::create);
-            InteropMessageFactory.register(cls, "IsTimeNode", EspressoInteropFactory.NodesFactory.IsTimeNodeGen::create);
-            InteropMessageFactory.register(cls, "AsTimeNode", EspressoInteropFactory.NodesFactory.AsTimeNodeGen::create);
-            InteropMessageFactory.register(cls, "IsTimeZoneNode", EspressoInteropFactory.NodesFactory.IsTimeZoneNodeGen::create);
-            InteropMessageFactory.register(cls, "AsTimeZoneNode", EspressoInteropFactory.NodesFactory.AsTimeZoneNodeGen::create);
-            InteropMessageFactory.register(cls, "AsInstantNode", EspressoInteropFactory.NodesFactory.AsInstantNodeGen::create);
-            InteropMessageFactory.register(cls, "IsDurationNode", EspressoInteropFactory.NodesFactory.IsDurationNodeGen::create);
-            InteropMessageFactory.register(cls, "AsDurationNode", EspressoInteropFactory.NodesFactory.AsDurationNodeGen::create);
+        @Override
+        protected void registerMessages(Class<?> cls) {
+            InteropMessageFactory.register(cls, "isBooleanNode", EspressoInteropFactory.NodesFactory.IsBooleanNodeGen::create);
+            InteropMessageFactory.register(cls, "asBooleanNode", EspressoInteropFactory.NodesFactory.AsBooleanNodeGen::create);
+            InteropMessageFactory.register(cls, "isNumberNode", EspressoInteropFactory.NodesFactory.IsNumberNodeGen::create);
+            InteropMessageFactory.register(cls, "fitsInByteNode", EspressoInteropFactory.NodesFactory.FitsInByteNodeGen::create);
+            InteropMessageFactory.register(cls, "fitsInShortNode", EspressoInteropFactory.NodesFactory.FitsInShortNodeGen::create);
+            InteropMessageFactory.register(cls, "fitsInIntNode", EspressoInteropFactory.NodesFactory.FitsInIntNodeGen::create);
+            InteropMessageFactory.register(cls, "fitsInLongNode", EspressoInteropFactory.NodesFactory.FitsInLongNodeGen::create);
+            InteropMessageFactory.register(cls, "fitsInFloatNode", EspressoInteropFactory.NodesFactory.FitsInFloatNodeGen::create);
+            InteropMessageFactory.register(cls, "fitsInDoubleNode", EspressoInteropFactory.NodesFactory.FitsInDoubleNodeGen::create);
+            InteropMessageFactory.register(cls, "asByteNode", EspressoInteropFactory.NodesFactory.AsByteNodeGen::create);
+            InteropMessageFactory.register(cls, "asShortNode", EspressoInteropFactory.NodesFactory.AsShortNodeGen::create);
+            InteropMessageFactory.register(cls, "asIntNode", EspressoInteropFactory.NodesFactory.AsIntNodeGen::create);
+            InteropMessageFactory.register(cls, "asLongNode", EspressoInteropFactory.NodesFactory.AsLongNodeGen::create);
+            InteropMessageFactory.register(cls, "asFloatNode", EspressoInteropFactory.NodesFactory.AsFloatNodeGen::create);
+            InteropMessageFactory.register(cls, "asDoubleNode", EspressoInteropFactory.NodesFactory.AsDoubleNodeGen::create);
+            InteropMessageFactory.register(cls, "getArraySizeNode", EspressoInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
+            InteropMessageFactory.register(cls, "hasArrayElementsNode", EspressoInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementReadableNode", EspressoInteropFactory.NodesFactory.IsArrayElementReadableNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementModifiableNode", EspressoInteropFactory.NodesFactory.IsArrayElementModifiableNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementInsertableNode", EspressoInteropFactory.NodesFactory.IsArrayElementInsertableNodeGen::create);
+            InteropMessageFactory.register(cls, "readMemberNode", EspressoInteropFactory.NodesFactory.ReadMemberNodeGen::create);
+            InteropMessageFactory.register(cls, "hasMembersNode", EspressoInteropFactory.NodesFactory.HasMembersNodeGen::create);
+            InteropMessageFactory.register(cls, "isMemberReadableNode", EspressoInteropFactory.NodesFactory.IsMemberReadableNodeGen::create);
+            InteropMessageFactory.register(cls, "isMemberModifiableNode", EspressoInteropFactory.NodesFactory.IsMemberModifiableNodeGen::create);
+            InteropMessageFactory.register(cls, "writeMemberNode", EspressoInteropFactory.NodesFactory.WriteMemberNodeGen::create);
+            InteropMessageFactory.register(cls, "isMemberInsertableNode", EspressoInteropFactory.NodesFactory.IsMemberInsertableNodeGen::create);
+            InteropMessageFactory.register(cls, "getMembersNode", EspressoInteropFactory.NodesFactory.GetMembersNodeGen::create);
+            InteropMessageFactory.register(cls, "isMemberInvocableNode", EspressoInteropFactory.NodesFactory.IsMemberInvocableNodeGen::create);
+            InteropMessageFactory.register(cls, "invokeMemberNode", EspressoInteropFactory.NodesFactory.InvokeMemberNodeGen::create);
+            InteropMessageFactory.register(cls, "isDateNode", EspressoInteropFactory.NodesFactory.IsDateNodeGen::create);
+            InteropMessageFactory.register(cls, "asDateNode", EspressoInteropFactory.NodesFactory.AsDateNodeGen::create);
+            InteropMessageFactory.register(cls, "isTimeNode", EspressoInteropFactory.NodesFactory.IsTimeNodeGen::create);
+            InteropMessageFactory.register(cls, "asTimeNode", EspressoInteropFactory.NodesFactory.AsTimeNodeGen::create);
+            InteropMessageFactory.register(cls, "isTimeZoneNode", EspressoInteropFactory.NodesFactory.IsTimeZoneNodeGen::create);
+            InteropMessageFactory.register(cls, "asTimeZoneNode", EspressoInteropFactory.NodesFactory.AsTimeZoneNodeGen::create);
+            InteropMessageFactory.register(cls, "asInstantNode", EspressoInteropFactory.NodesFactory.AsInstantNodeGen::create);
+            InteropMessageFactory.register(cls, "isDurationNode", EspressoInteropFactory.NodesFactory.IsDurationNodeGen::create);
+            InteropMessageFactory.register(cls, "asDurationNode", EspressoInteropFactory.NodesFactory.AsDurationNodeGen::create);
         }
 
         static abstract class IsBooleanNode extends InteropMessage.IsBoolean {

@@ -42,6 +42,8 @@ import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
@@ -108,17 +110,20 @@ public class MapEntryInterop extends EspressoInterop {
     }
 
     @SuppressWarnings("unused")
-    public static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(MapEntryInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(MapEntryInterop.class, EspressoInterop.Nodes.getInstance());
         }
 
-        public static void registerMessages(Class<? extends MapEntryInterop> cls) {
-            EspressoInterop.Nodes.registerMessages(cls);
+        public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "hasArrayElements", MapEntryInteropFactory.NodesFactory.HasArrayElementsNodeGen::create);
             InteropMessageFactory.register(cls, "getArraySize", MapEntryInteropFactory.NodesFactory.GetArraySizeNodeGen::create);
             InteropMessageFactory.register(cls, "isArrayElementModifiable", MapEntryInteropFactory.NodesFactory.IsArrayElementModifiableNodeGen::create);

@@ -32,7 +32,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -45,6 +44,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.VM;
 
 /**
@@ -190,14 +191,10 @@ public class BaseInterop {
     }
 
     @ExportMessage
-    public static int identityHashCode(StaticObject object,
-                    @CachedLibrary("object") InteropLibrary thisLibrary, @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+    public static int identityHashCode(StaticObject object) throws UnsupportedMessageException {
         object.checkNotForeign();
-        if (thisLibrary.hasIdentity(object)) {
-            return VM.JVM_IHashCode(object, null /*- path where language is needed is never reached through here. */);
-        }
-        error.enter();
-        throw UnsupportedMessageException.create();
+        // Working with espresso objects here, guaranteed to have identity.
+        return VM.JVM_IHashCode(object, null /*- path where language is needed is never reached through here. */);
     }
 
     // endregion ### Identity/hashCode
@@ -225,16 +222,21 @@ public class BaseInterop {
     // endregion ### Language/DisplayString
 
     @SuppressWarnings("unused")
-    public static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(BaseInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(BaseInterop.class, null);
         }
 
-        public static void registerMessages(Class<? extends BaseInterop> cls) {
+        @Override
+        public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "isNull", BaseInteropFactory.NodesFactory.IsNullNodeGen::create);
             InteropMessageFactory.register(cls, "isString", BaseInteropFactory.NodesFactory.IsStringNodeGen::create);
             InteropMessageFactory.register(cls, "asString", BaseInteropFactory.NodesFactory.AsStringNodeGen::create);
@@ -359,14 +361,10 @@ public class BaseInterop {
 
         static abstract class IdentityHashCodeNode extends InteropMessage.IdentityHashCode {
             @Specialization
-            static int doStaticObject(StaticObject receiver,
-                            @CachedLibrary(limit = "1") InteropLibrary thisLibrary, @Cached BranchProfile error) throws UnsupportedMessageException {
+            static int doStaticObject(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
-                if (thisLibrary.hasIdentity(receiver)) {
-                    return VM.JVM_IHashCode(receiver, null /*- path where language is needed is never reached through here. */);
-                }
-                error.enter();
-                throw UnsupportedMessageException.create();
+                // Working with espresso objects here, guaranteed to have identity.
+                return VM.JVM_IHashCode(receiver, null /*- path where language is needed is never reached through here. */);
             }
         }
 

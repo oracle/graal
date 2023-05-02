@@ -35,6 +35,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
@@ -119,17 +121,20 @@ public class ThrowableInterop extends EspressoInterop {
     }
 
     @SuppressWarnings("unused")
-    static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(ThrowableInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(ThrowableInterop.class, EspressoInterop.Nodes.getInstance());
         }
 
-        public static void registerMessages(Class<? extends ThrowableInterop> cls) {
-            EspressoInterop.Nodes.registerMessages(cls);
+        public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.IsExceptionNodeGen::create);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
@@ -137,10 +142,6 @@ public class ThrowableInterop extends EspressoInterop {
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ThrowableInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
-        }
-
-        static {
-            registerMessages(ThrowableInterop.class);
         }
 
         abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {

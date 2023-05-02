@@ -31,6 +31,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
@@ -41,17 +43,20 @@ public class InterruptedExceptionInterop extends ThrowableInterop {
     }
 
     @SuppressWarnings("unused")
-    static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(InterruptedExceptionInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(InterruptedExceptionInterop.class, ThrowableInterop.Nodes.getInstance());
         }
 
-        public static void registerMessages(Class<? extends ThrowableInterop> cls) {
-            ThrowableInterop.Nodes.registerMessages(cls);
+        public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "getExceptionTypeNode", InterruptedExceptionInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
         }
 
