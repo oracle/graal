@@ -1341,7 +1341,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         int callLine = caller.getLine();
         assert callLine >= -1 : callLine;
-        Integer fileIndex;
+        int fileIndex;
         if (callLine == -1) {
             log(context, "  Unable to retrieve call line for inlined method %s", callee.getFullMethodName());
             /* continue with line 0 and fileIndex 1 as we must insert a tree node */
