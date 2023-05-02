@@ -112,7 +112,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     @GenerateUncached
     @ReportPolymorphism
     public abstract static class DynamicToEspresso extends EspressoNode {
-        protected static final int LIMIT = 8;
+        protected static final int LIMIT = 4;
 
         public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 

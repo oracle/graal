@@ -256,7 +256,7 @@ public abstract class ToReference extends ToEspressoNode {
     @GenerateUncached
     @ReportPolymorphism
     public abstract static class DynamicToReference extends EspressoNode {
-        protected static final int LIMIT = 8;
+        protected static final int LIMIT = 4;
 
         public abstract StaticObject execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
@@ -297,12 +297,13 @@ public abstract class ToReference extends ToEspressoNode {
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "doCached")
         public StaticObject doGeneric(Object value, Klass targetType,
+                        @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             if (targetType.isInterface()) {
                 if (isTypeMappingEnabled(targetType)) {
                     try {
                         Object metaObject = getMetaObjectOrThrow(value, interop);
-                        ObjectKlass proxyKlass = LookupProxyKlassNodeGen.getUncached().execute(metaObject, getMetaName(metaObject, interop), targetType);
+                        ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
                         if (proxyKlass != null) {
                             targetType.safeInitialize();
                             return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
