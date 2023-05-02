@@ -118,7 +118,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
         if (!Files.exists(libraryPath)) {
             return null;
         }
-        String nfiSource = String.format("load(RTLD_LAZY|ISOLATED_NAMESPACE) '%s'", libraryPath);
+        String nfiSource = String.format("load(RTLD_LAZY|RTLD_LOCAL|ISOLATED_NAMESPACE) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }
 

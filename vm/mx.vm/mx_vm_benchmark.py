@@ -1158,7 +1158,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             import mx_compiler
             res = mx_compiler._ctw_jvmci_export_args(arg_prefix='--vm.-') + [
                    '--ctw',
-                   '--vm.cp=' + mx.distribution('GRAAL_ONLY_TEST').path + os.pathsep + mx.distribution('GRAAL_TEST').path,
+                   '--vm.cp=' + mx.distribution('GRAAL_TEST').path,
                    '--vm.DCompileTheWorld.MaxCompiles=10000',
                    '--vm.DCompileTheWorld.Classpath=' + mx.library('DACAPO_MR1_BACH').get_path(resolve=True),
                    '--vm.DCompileTheWorld.Verbose=false',

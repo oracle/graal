@@ -43,6 +43,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.NewCompiler;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.RegisterRuntime;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
 import static org.graalvm.jniutils.JNIUtil.GetArrayLength;
 import static org.graalvm.jniutils.JNIUtil.GetByteArrayElements;
@@ -66,7 +67,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationRe
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerEnvironment;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.jniutils.JNI.JArray;
@@ -101,6 +101,18 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 final class TruffleToLibGraalEntryPoints {
 
+    @TruffleToLibGraal(RegisterRuntime)
+    @SuppressWarnings({"unused", "try"})
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_registerRuntime")
+    public static boolean registerRuntime(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JObject truffleRuntime) {
+        try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, RegisterRuntime, env)) {
+            return LibGraalTruffleHostEnvironmentLookup.registerRuntime(env, truffleRuntime);
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return false;
+        }
+    }
+
     @TruffleToLibGraal(InitializeRuntime)
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeRuntime")
@@ -109,7 +121,6 @@ final class TruffleToLibGraalEntryPoints {
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, InitializeRuntime, env)) {
             ResolvedJavaType classLoaderDelegate = LibGraal.unhand(ResolvedJavaType.class, classLoaderDelegateId);
             HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, HotSpotGraalOptionValues.defaultOptions());
-            TruffleCompilerEnvironment.initialize(new LibGraalTruffleCompilerEnvironment(hsTruffleRuntime));
             long truffleRuntimeHandle = LibGraalObjectHandles.create(hsTruffleRuntime);
             return truffleRuntimeHandle;
         } catch (Throwable t) {
@@ -154,7 +165,6 @@ final class TruffleToLibGraalEntryPoints {
         JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, GetCompilerConfigurationFactoryName, env);
         try (JNIMethodScope s = scope) {
             HSTruffleCompilerRuntime hsTruffleRuntime = LibGraalObjectHandles.resolve(truffleRuntimeHandle, HSTruffleCompilerRuntime.class);
-            assert TruffleCompilerEnvironment.get().runtime() == hsTruffleRuntime;
             OptionValues graalOptions = hsTruffleRuntime.getGraalOptions(OptionValues.class);
             String compConfig = Options.TruffleCompilerConfiguration.getValue(graalOptions);
             CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(compConfig, graalOptions, HotSpotJVMCIRuntime.runtime());
@@ -450,4 +460,5 @@ final class TruffleToLibGraalEntryPoints {
             throw new InternalError(e);
         }
     }
+
 }

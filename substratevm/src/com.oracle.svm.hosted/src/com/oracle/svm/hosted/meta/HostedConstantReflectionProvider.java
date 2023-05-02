@@ -52,6 +52,12 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
     }
 
     @Override
+    public Boolean constantEquals(Constant x, Constant y) {
+        /* Delegate to the AnalysisConstantReflectionProvider. */
+        return universe.getConstantReflectionProvider().constantEquals(x, y);
+    }
+
+    @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
         return memoryAccess;
     }

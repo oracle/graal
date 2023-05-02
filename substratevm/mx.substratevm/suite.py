@@ -303,6 +303,10 @@ suite = {
                 "jdk.jfr@11..18": [
                     "jdk.jfr.internal.handlers",
                 ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                ],
             },
             "javaCompliance" : "17+",
             "checkstyleVersion" : "10.7.0",
@@ -433,6 +437,11 @@ suite = {
                 "java.base" : [
                     "jdk.internal.misc",
                 ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.site",
+                ],
             },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "17+",
@@ -499,9 +508,16 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.common",
             ],
+            "requires" : [
+                "jdk.internal.vm.ci"
+            ],
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.misc"
+                ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
@@ -572,6 +588,12 @@ suite = {
             "dependencies": [
                 "com.oracle.graal.pointsto",
             ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                ]
+            },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "17+",
             "annotationProcessors": [
@@ -934,6 +956,11 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "com.oracle.svm.graal",
             ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ],
+            },
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
             "annotationProcessors": [
@@ -1063,6 +1090,11 @@ suite = {
         "com.oracle.svm.polyglot": {
             "subDir": "src",
             "sourceDirs": ["src"],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.meta",
+                ],
+            },
             "generatedDependencies": [
                 "com.oracle.svm.graal",
             ],
@@ -1112,6 +1144,11 @@ suite = {
                 "java.base" : [
                     "jdk.internal.misc",
                 ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.hotspot",
+                ]
             },
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "17+",
@@ -1132,6 +1169,11 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core",
             ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                ]
+            },
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
@@ -1171,6 +1213,11 @@ suite = {
                 "com.oracle.svm.configure",
                 "com.oracle.svm.driver",
             ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                ]
+            },
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
@@ -1217,6 +1264,12 @@ suite = {
             "requires" : [
                 "jdk.unsupported",
             ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.common",
+                ]
+            },
             "checkstyle" : "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [

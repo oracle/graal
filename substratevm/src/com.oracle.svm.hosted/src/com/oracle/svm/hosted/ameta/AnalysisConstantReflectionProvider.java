@@ -44,6 +44,7 @@ import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
@@ -67,6 +68,21 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.classInitializationSupport = classInitializationSupport;
+    }
+
+    @Override
+    public Boolean constantEquals(Constant x, Constant y) {
+        if (x == y) {
+            return true;
+        } else if (x instanceof SubstrateObjectConstant && y instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) x, (SubstrateObjectConstant) y);
+        } else if (x instanceof ImageHeapConstant cx && cx.isBackedByHostedObject() && y instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) cx.getHostedObject(), (SubstrateObjectConstant) y);
+        } else if (y instanceof ImageHeapConstant cy && cy.isBackedByHostedObject() && x instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) cy.getHostedObject(), (SubstrateObjectConstant) x);
+        } else {
+            return x.equals(y);
+        }
     }
 
     @Override
