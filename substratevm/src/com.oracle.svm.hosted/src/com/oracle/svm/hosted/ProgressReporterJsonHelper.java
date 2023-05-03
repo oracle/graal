@@ -28,11 +28,9 @@ package com.oracle.svm.hosted;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
 
@@ -44,10 +42,9 @@ public class ProgressReporterJsonHelper {
     private static final String RESOURCE_USAGE_KEY = "resource_usage";
 
     private final Map<String, Object> statsHolder = new HashMap<>();
-    private final Path jsonOutputFile;
 
-    ProgressReporterJsonHelper(Path outFile) {
-        this.jsonOutputFile = outFile;
+    ProgressReporterJsonHelper() {
+        recordSystemFixedValues();
     }
 
     private void recordSystemFixedValues() {
@@ -107,16 +104,8 @@ public class ProgressReporterJsonHelper {
         }
     }
 
-    public Path printToFile() {
-        recordSystemFixedValues();
-        String description = "image statistics in json";
-        return ReportUtils.report(description, jsonOutputFile.toAbsolutePath(), out -> {
-            try {
-                new JsonWriter(out).print(statsHolder);
-            } catch (IOException e) {
-                throw VMError.shouldNotReachHere("Failed to create " + jsonOutputFile, e);
-            }
-        }, false);
+    public void print(JsonWriter writer) throws IOException {
+        writer.print(statsHolder);
     }
 
     interface JsonMetric {
@@ -174,7 +163,7 @@ public class ProgressReporterJsonHelper {
         }
     }
 
-    enum AnalysisResults implements JsonMetric {
+    public enum AnalysisResults implements JsonMetric {
         TYPES_TOTAL("types", "total"),
         TYPES_REACHABLE("types", "reachable"),
         TYPES_JNI("types", "jni"),
