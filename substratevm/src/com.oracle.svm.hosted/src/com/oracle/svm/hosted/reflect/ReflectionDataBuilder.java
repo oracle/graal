@@ -525,9 +525,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForGenericSignature(DuringAnalysisAccessImpl access, Type[] types) {
+        registerTypesForGenericSignature(access, types, 0);
+    }
+
+    private void registerTypesForGenericSignature(DuringAnalysisAccessImpl access, Type[] types, int dimension) {
         if (types != null) {
             for (Type type : types) {
-                registerTypesForGenericSignature(access, type);
+                registerTypesForGenericSignature(access, type, dimension);
             }
         }
     }
@@ -571,19 +575,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             ClassForNameSupport.registerClass(clazz);
         } else if (type instanceof TypeVariable<?>) {
             /* Bounds are reified lazily. */
-            registerTypesForGenericSignature(access, queryGenericInfo(((TypeVariable<?>) type)::getBounds));
+            registerTypesForGenericSignature(access, queryGenericInfo(((TypeVariable<?>) type)::getBounds), dimension);
         } else if (type instanceof GenericArrayType) {
-            registerTypesForGenericSignature(access, ((GenericArrayType) type).getGenericComponentType(), dimension + 1);
+            registerTypesForGenericSignature(access, queryGenericInfo(((GenericArrayType) type)::getGenericComponentType), dimension + 1);
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
-            registerTypesForGenericSignature(access, parameterizedType.getActualTypeArguments());
-            registerTypesForGenericSignature(access, parameterizedType.getRawType(), dimension);
-            registerTypesForGenericSignature(access, parameterizedType.getOwnerType());
+            registerTypesForGenericSignature(access, queryGenericInfo(parameterizedType::getActualTypeArguments));
+            registerTypesForGenericSignature(access, queryGenericInfo(parameterizedType::getRawType), dimension);
+            registerTypesForGenericSignature(access, queryGenericInfo(parameterizedType::getOwnerType));
         } else if (type instanceof WildcardType) {
             /* Bounds are reified lazily. */
             WildcardType wildcardType = (WildcardType) type;
-            registerTypesForGenericSignature(access, queryGenericInfo(wildcardType::getLowerBounds));
-            registerTypesForGenericSignature(access, queryGenericInfo(wildcardType::getUpperBounds));
+            registerTypesForGenericSignature(access, queryGenericInfo(wildcardType::getLowerBounds), dimension);
+            registerTypesForGenericSignature(access, queryGenericInfo(wildcardType::getUpperBounds), dimension);
         }
     }
 
