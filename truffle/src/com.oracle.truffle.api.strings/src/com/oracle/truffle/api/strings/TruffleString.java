@@ -2164,15 +2164,10 @@ public final class TruffleString extends AbstractTruffleString {
      * forces the calculation of the string's precise {@link CodeRange} and hash code.
      *
      * @since 23.0
-     * @deprecated use {@link #fromConstant(String, Encoding, boolean)} instead.
      */
-    @Deprecated(since = "23.0")
     @TruffleBoundary
     public static TruffleString fromConstant(String s, Encoding encoding) {
-        TruffleString string = FromJavaStringNode.getUncached().execute(s, encoding);
-        string.getCodeRangeUncached(encoding);
-        string.hashCodeUncached(encoding);
-        return string;
+        return fromConstant(s, encoding, false);
     }
 
     /**
