@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.windows;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -31,6 +32,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.WinBase.FILETIME;
@@ -46,6 +48,13 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime((OSThreadHandle) hThread, includeSystemTime);
     }
 
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
+        return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+    }
+
     /**
      * Returns the thread CPU time. Based on <link href=
      * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/windows/os_windows.cpp#L4618">os::thread_cpu_time</link>.
@@ -54,9 +63,8 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
      *            returns user time.
      */
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
+    private long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         FILETIME create = StackValue.get(FILETIME.class);
         FILETIME exit = StackValue.get(FILETIME.class);
         FILETIME kernel = StackValue.get(FILETIME.class);

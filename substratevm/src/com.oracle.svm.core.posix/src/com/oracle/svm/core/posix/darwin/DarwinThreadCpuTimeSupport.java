@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
@@ -36,6 +37,7 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo;
 import com.oracle.svm.core.posix.headers.darwin.DarwinThreadInfo.thread_basic_info_data_t;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
@@ -48,6 +50,12 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         return getThreadCpuTime(pthread, includeSystemTime);
     }
 
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
+        return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+    }
+
     /**
      * Returns the thread CPU time. Based on <link href=
      * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/bsd/os_bsd.cpp#L2344">os::thread_cpu_time</link>.
@@ -56,9 +64,8 @@ final class DarwinThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
      *            returns user time.
      */
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
+    private long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
         int threadsMachPort = DarwinPthread.pthread_mach_thread_np((pthread_t) osThreadHandle);
         CIntPointer sizePointer = UnsafeStackValue.get(Integer.BYTES);
         sizePointer.write(DarwinThreadInfo.THREAD_INFO_MAX());

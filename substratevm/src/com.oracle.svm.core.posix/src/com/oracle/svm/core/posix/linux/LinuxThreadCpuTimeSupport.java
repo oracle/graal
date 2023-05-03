@@ -75,7 +75,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
             return getThreadUserTime(kernelThreadId.get(isolateThread));
         }
 
-        return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+        return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread));
     }
 
     /**
@@ -86,12 +86,8 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
      *            returns user time.
      */
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime) {
-        if (!includeSystemTime) {
-            return -1;
-        }
+    private long getThreadCpuTime(OSThreadHandle osThreadHandle) {
         CIntPointer threadsClockId = StackValue.get(Integer.BYTES);
         if (LinuxPthread.pthread_getcpuclockid((pthread_t) osThreadHandle, threadsClockId) != 0) {
             return -1;

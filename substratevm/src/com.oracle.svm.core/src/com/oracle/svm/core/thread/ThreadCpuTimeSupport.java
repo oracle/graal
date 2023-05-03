@@ -47,16 +47,6 @@ public interface ThreadCpuTimeSupport {
     long getCurrentThreadCpuTime(boolean includeSystemTime);
 
     /**
-     * Returns the {@code osThreadHandle} thread CPU time.
-     *
-     * @param osThreadHandle the OS thread handle
-     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
-     *            returns user time.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    long getThreadCpuTime(OSThreadHandle osThreadHandle, boolean includeSystemTime);
-
-    /**
      * Returns the {@code isolateThread} thread CPU time.
      *
      * @param isolateThread existing context for the current thread.
@@ -64,9 +54,7 @@ public interface ThreadCpuTimeSupport {
      *            returns user time.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    default long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
-        return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
-    }
+    long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime);
 
     default void init(@SuppressWarnings("unused") IsolateThread isolateThread) {
     }
