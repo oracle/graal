@@ -104,11 +104,11 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         // Property set
         assertPartialEvalEquals(toRootNode((f) -> fbs.property = 42), toRootNode((f) -> {
             finalProperty.setInt(staticObject, 42);
-            return null;
+            return finalProperty.getInt(staticObject);
         }), new Object[0]);
         assertPartialEvalEquals(toRootNode((f) -> fbs.property = 42), toRootNode((f) -> {
             property.setInt(staticObject, 42);
-            return null;
+            return property.getInt(staticObject);
         }), new Object[0]);
 
         finalProperty.setInt(staticObject, 42);
