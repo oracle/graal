@@ -54,7 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
@@ -105,7 +104,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         @CompilationFinal Map<String, LanguageInfo> accessiblePublicLanguages;
         final Object internalFileSystemContext;
         final Object publicFileSystemContext;
-        final ReentrantLock operationLock;
 
         private boolean multipleThreadsInitialized;
 
@@ -118,7 +116,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             // file systems are patched after preinitialization internally using a delegate field
             this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystemConfig.fileSystem);
             this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystemConfig.internalFileSystem);
-            this.operationLock = new ReentrantLock();
         }
 
         void computeAccessPermissions(PolyglotContextConfig config) {
@@ -220,6 +217,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     private Thread creatingThread;
     private volatile boolean created;
     private volatile boolean initialized;
+    private boolean initializing;
     volatile boolean finalized;
     volatile TruffleLanguage.ExitMode exited;
     @CompilationFinal private volatile Value hostBindings;
@@ -382,9 +380,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     boolean finalizeContext(boolean mustSuceed, boolean notifyInstruments) {
         boolean performFinalize = false;
-        ReentrantLock lock = lazy.operationLock;
-        lock.lock();
-        try {
+        synchronized (context) {
+            waitWhileInitializing();
             if (!initialized) {
                 return false;
             }
@@ -392,8 +389,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 finalized = true;
                 performFinalize = true;
             }
-        } finally {
-            lock.unlock();
         }
 
         if (performFinalize) {
@@ -406,7 +401,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             try {
                 LANGUAGE.finalizeContext(env);
             } catch (Throwable t) {
-                if (!mustSuceed || (!(t instanceof AbstractTruffleException) && !(t instanceof PolyglotEngineImpl.CancelExecution) && !(t instanceof PolyglotContextImpl.ExitException))) {
+                if (!mustSuceed || PolyglotContextImpl.isInternalError(t)) {
                     throw t;
                 } else {
                     /*
@@ -431,9 +426,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     boolean exitContext(TruffleLanguage.ExitMode exitMode, int exitCode) {
         boolean performExit = false;
-        ReentrantLock lock = lazy.operationLock;
-        lock.lock();
-        try {
+        synchronized (context) {
+            waitWhileInitializing();
             if (!initialized) {
                 return false;
             }
@@ -441,8 +435,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 exited = exitMode;
                 performExit = true;
             }
-        } finally {
-            lock.unlock();
         }
 
         if (performExit) {
@@ -522,7 +514,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 return false;
             }
         } catch (Throwable t) {
-            if (t instanceof AbstractTruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
+            if (!PolyglotContextImpl.isInternalError(t)) {
                 throw new IllegalStateException("Guest language code was run during language disposal!", t);
             }
             throw t;
@@ -547,6 +539,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
              * TruffleLanguage#finalizeContext if the context is closed normally.
              */
             context.checkClosedOrDisposing(false);
+            if (context.finalizingEmbedderThreads) {
+                throw PolyglotEngineException.closedException("The Context is already closed.");
+            }
             lazy.ownedAlivePolyglotThreads.add(thread);
         }
         try {
@@ -600,6 +595,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         }
 
         if (!created) {
+            if (context.finalizingEmbedderThreads) {
+                throw PolyglotEngineException.illegalState(String.format(
+                                "Creation of context for language %s is no longer allowed. Language contexts are finalized when embedder threads are being finalized.", language.getId()));
+            }
+
             language.validateSandbox(context.config.sandboxPolicy);
             checkAccess(accessingLanguage);
 
@@ -738,58 +738,98 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return false;
         }
 
-        boolean initialize = false;
-        ReentrantLock lock = lazy.operationLock;
-        lock.lock();
+        if (context.finalizingEmbedderThreads) {
+            throw PolyglotEngineException.illegalState(String.format(
+                            "Initialization of context for language %s is no longer allowed. Language contexts are finalized when embedder threads are being finalized.", language.getId()));
+        }
+
+        synchronized (context) {
+            waitWhileInitializing();
+            if (initialized) {
+                return false;
+            } else {
+                initializing = true;
+            }
+        }
         try {
-            initialize = !initialized;
-            if (initialize) {
-                if (eventsEnabled) {
-                    EngineAccessor.INSTRUMENT.notifyLanguageContextInitialize(context.engine, context.creatorTruffleContext, language.info);
-                }
+            assert !initialized;
+            boolean threadInitialized = false;
+            if (eventsEnabled) {
+                EngineAccessor.INSTRUMENT.notifyLanguageContextInitialize(context.engine, context.creatorTruffleContext, language.info);
+            }
 
-                initialized = true; // Allow language use during initialization
-                try {
-                    LANGUAGE.initializeThread(env, Thread.currentThread());
-                    LANGUAGE.postInitEnv(env);
-
-                } catch (Throwable e) {
-                    // language not successfully initialized, reset to avoid inconsistent
-                    // language contexts
-                    initialized = false;
-                    try {
-                        if (eventsEnabled) {
-                            EngineAccessor.INSTRUMENT.notifyLanguageContextInitializeFailed(context.engine, context.creatorTruffleContext, language.info);
-                        }
-                    } catch (Throwable inner) {
-                        e.addSuppressed(inner);
+            initialized = true; // Allow language use during initialization
+            try {
+                if (!language.isHost()) {
+                    /*
+                     * Host language is initialized while the context is not entered, therefore
+                     * PolyglotThreadInfo for the thread does not exist and initializeThread should
+                     * not be called.
+                     */
+                    synchronized (context) {
+                        PolyglotThreadInfo polyglotThreadInfo = context.getCurrentThreadInfo();
+                        polyglotThreadInfo.initializeLanguageContext(this);
+                        threadInitialized = true;
                     }
-                    throw e;
                 }
+                LANGUAGE.postInitEnv(env);
 
-                if (eventsEnabled) {
-                    EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.creatorTruffleContext, language.info);
+            } catch (Throwable e) {
+                // language not successfully initialized, reset to avoid inconsistent
+                // language contexts
+                initialized = false;
+                if (threadInitialized) {
+                    if (!language.isHost()) {
+                        synchronized (context) {
+                            PolyglotThreadInfo polyglotThreadInfo = context.getCurrentThreadInfo();
+                            polyglotThreadInfo.clearLanguageContextInitialized(language);
+                        }
+                    }
                 }
+                try {
+                    if (eventsEnabled) {
+                        EngineAccessor.INSTRUMENT.notifyLanguageContextInitializeFailed(context.engine, context.creatorTruffleContext, language.info);
+                    }
+                } catch (Throwable inner) {
+                    e.addSuppressed(inner);
+                }
+                throw e;
+            }
+
+            if (eventsEnabled) {
+                EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(context.engine, context.creatorTruffleContext, language.info);
             }
         } finally {
-            lock.unlock();
+            synchronized (context) {
+                initializing = false;
+                context.notifyAll();
+            }
         }
 
-        if (initialize) {
-            synchronized (context) {
-                ensureMultiThreadingInitialized(false);
-                for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                    final Thread thread = threadInfo.getThread();
-                    if (thread == Thread.currentThread()) {
-                        continue;
-                    }
-                    LANGUAGE.initializeThread(env, thread);
+        synchronized (context) {
+            ensureMultiThreadingInitialized(false);
+            for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
+                final Thread thread = threadInfo.getThread();
+                if (thread == Thread.currentThread()) {
+                    continue;
+                }
+                if (!threadInfo.isLanguageContextInitialized(language) && !threadInfo.isFinalizationComplete()) {
+                    threadInfo.initializeLanguageContext(this);
                 }
             }
         }
 
-        return initialize;
+        return true;
+    }
 
+    private void waitWhileInitializing() {
+        assert Thread.holdsLock(context);
+        while (initializing) {
+            try {
+                context.wait();
+            } catch (InterruptedException ie) {
+            }
+        }
     }
 
     void ensureMultiThreadingInitialized(boolean mustSucceed) {
@@ -801,7 +841,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             try {
                 LANGUAGE.initializeMultiThreading(env);
             } catch (Throwable t) {
-                if (!mustSucceed || (!(t instanceof AbstractTruffleException) && !(t instanceof PolyglotEngineImpl.CancelExecution) && !(t instanceof PolyglotContextImpl.ExitException))) {
+                if (!mustSucceed || PolyglotContextImpl.isInternalError(t)) {
                     throw t;
                 } else {
                     /*
