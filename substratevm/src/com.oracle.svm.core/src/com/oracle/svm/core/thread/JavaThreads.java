@@ -307,17 +307,19 @@ public final class JavaThreads {
     }
 
     static void initNewThreadLocalsAndLoader(Target_java_lang_Thread tjlt, boolean allowThreadLocals, boolean inheritThreadLocals, Thread parent) {
-        if (JavaVersionUtil.JAVA_SPEC >= 19 && !allowThreadLocals) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && JavaVersionUtil.JAVA_SPEC <= 20 && !allowThreadLocals) {
             tjlt.threadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
             tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
             tjlt.contextClassLoader = Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER;
         } else if (inheritThreadLocals) {
             Target_java_lang_ThreadLocal_ThreadLocalMap parentMap = toTarget(parent).inheritableThreadLocals;
-            if (parentMap != null && (JavaVersionUtil.JAVA_SPEC < 19 || (parentMap != Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED && parentMap.size() > 0))) {
+            if (parentMap != null && (JavaVersionUtil.JAVA_SPEC < 19 ||
+                            ((JavaVersionUtil.JAVA_SPEC > 20 || parentMap != Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED) &&
+                                            parentMap.size() > 0))) {
                 tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(parentMap);
             }
             ClassLoader parentLoader = parent.getContextClassLoader();
-            if (JavaVersionUtil.JAVA_SPEC < 19 || parentLoader != Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER) {
+            if (JavaVersionUtil.JAVA_SPEC < 19 || JavaVersionUtil.JAVA_SPEC > 20 || parentLoader != Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER) {
                 tjlt.contextClassLoader = parentLoader;
             } else {
                 tjlt.contextClassLoader = ClassLoader.getSystemClassLoader();

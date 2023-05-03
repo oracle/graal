@@ -56,7 +56,9 @@ import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
+import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
+import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -71,7 +73,7 @@ public final class Target_java_lang_Thread {
     public static StackTraceElement[] EMPTY_STACK_TRACE;
 
     @Alias //
-    @TargetElement(onlyWith = JDK19OrLater.class) //
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK20OrEarlier.class}) //
     static int NO_THREAD_LOCALS;
 
     @Alias //
@@ -190,12 +192,12 @@ public final class Target_java_lang_Thread {
     native void setPriority(int newPriority);
 
     @Alias
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK20OrEarlier.class})
     static native boolean isSupportedClassLoader(ClassLoader loader);
 
     @Substitute
     public ClassLoader getContextClassLoader() {
-        if (JavaVersionUtil.JAVA_SPEC >= 19 && !isSupportedClassLoader(contextClassLoader)) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && JavaVersionUtil.JAVA_SPEC <= 20 && !isSupportedClassLoader(contextClassLoader)) {
             return ClassLoader.getSystemClassLoader();
         }
         return contextClassLoader;
@@ -203,7 +205,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     public void setContextClassLoader(ClassLoader cl) {
-        if (JavaVersionUtil.JAVA_SPEC >= 19 && !isSupportedClassLoader(contextClassLoader)) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && JavaVersionUtil.JAVA_SPEC <= 20 && !isSupportedClassLoader(contextClassLoader)) {
             throw new UnsupportedOperationException("The context class loader cannot be set");
         }
         contextClassLoader = cl;
@@ -358,7 +360,7 @@ public final class Target_java_lang_Thread {
         this.threadData = new ThreadData();
 
         String nameLocal = (name != null) ? name : genThreadName();
-        boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
+        boolean allowThreadLocals = JavaVersionUtil.JAVA_SPEC >= 21 ? true : (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, allowThreadLocals, inheritThreadLocals);
 
@@ -386,7 +388,7 @@ public final class Target_java_lang_Thread {
         this.tid = Target_java_lang_Thread_ThreadIdentifiers.next();
         this.inheritedAccessControlContext = Target_java_lang_Thread_Constants.NO_PERMISSIONS_ACC;
 
-        boolean allowThreadLocals = (characteristics & NO_THREAD_LOCALS) == 0;
+        boolean allowThreadLocals = JavaVersionUtil.JAVA_SPEC >= 21 ? true : (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initNewThreadLocalsAndLoader(this, allowThreadLocals, inheritThreadLocals, Thread.currentThread());
 
@@ -530,8 +532,14 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
+    @TargetElement(onlyWith = {JDK19OrLater.class, JDK20OrEarlier.class})
     private boolean isAlive0() {
+        return PlatformThreads.isAlive(JavaThreads.fromTarget(this));
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    private boolean alive() {
         return PlatformThreads.isAlive(JavaThreads.fromTarget(this));
     }
 
@@ -774,7 +782,9 @@ final class Target_java_lang_Thread_Constants {
     // Checkstyle: stop
     @SuppressWarnings("removal") @Alias static AccessControlContext NO_PERMISSIONS_ACC;
 
-    @Alias static ClassLoader NOT_SUPPORTED_CLASSLOADER;
+    @Alias //
+    @TargetElement(onlyWith = JDK20OrEarlier.class) //
+    static ClassLoader NOT_SUPPORTED_CLASSLOADER;
     // Checkstyle: resume
 }
 
