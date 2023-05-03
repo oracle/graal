@@ -313,7 +313,7 @@ public abstract class ToReference extends ToEspressoNode {
         }
 
         @Specialization(guards = {
-                        "interop.isNull(value)",
+                        "!interop.isNull(value)",
                         "targetType.isInterface()",
                         "!isStaticObject(value)"
         })
@@ -337,7 +337,7 @@ public abstract class ToReference extends ToEspressoNode {
         }
 
         @Specialization(guards = {
-                        "interop.isNull(value)",
+                        "!interop.isNull(value)",
                         "!isStaticObject(value)"
         })
         public StaticObject doArray(Object value, @SuppressWarnings("unused") ArrayKlass targetType,
@@ -356,7 +356,7 @@ public abstract class ToReference extends ToEspressoNode {
         }
 
         @Specialization(guards = {
-                        "interop.isNull(value)",
+                        "!interop.isNull(value)",
                         "isTypeConverterEnabled(targetType)",
                         "!isStaticObject(value)"
         })
