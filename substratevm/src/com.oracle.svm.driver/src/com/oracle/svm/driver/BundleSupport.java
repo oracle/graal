@@ -138,6 +138,7 @@ final class BundleSupport {
     private final String containerToolJsonKey = "containerTool";
     private final String containerToolVersionJsonKey = "containerToolVersion";
     private final String containerImageJsonKey = "containerImage";
+    final Map<String, String> containerEnvironment = new HashMap<>();
 
 
     enum BundleOptionVariants {
@@ -351,18 +352,43 @@ final class BundleSupport {
 
         int exitStatusCode = createContainer();
         switch (ExitStatus.of(exitStatusCode)) {
-            case OK:
-                break;
-            case BUILDER_ERROR:
+            case OK -> fetchContainerEnvironment();
+            case BUILDER_ERROR ->
                 /* Exit, builder has handled error reporting. */
-                throw NativeImage.showError(null, null, exitStatusCode);
-            case OUT_OF_MEMORY:
+                    throw NativeImage.showError(null, null, exitStatusCode);
+            case OUT_OF_MEMORY -> {
                 nativeImage.showOutOfMemoryWarning();
                 throw NativeImage.showError(null, null, exitStatusCode);
-            default:
+            }
+            default -> {
                 String message = String.format("Container build request for '%s' failed with exit status %d",
                         nativeImage.imageName, exitStatusCode);
                 throw NativeImage.showError(message, null, exitStatusCode);
+            }
+        }
+    }
+
+    private void fetchContainerEnvironment() {
+        ProcessBuilder pb = new ProcessBuilder(containerTool, "run", "--rm", containerImage, "bash", "-c", "/usr/bin/env");
+        Process p = null;
+        try {
+            p = pb.start();
+            p.waitFor();
+            (new BufferedReader(new InputStreamReader(p.getInputStream())))
+                    .lines()
+                    .toList()
+                    .forEach(env -> {
+                        String[] envParts = SubstrateUtil.split(env,"=",2);
+                        if(envParts.length == 2) {
+                            containerEnvironment.put(envParts[0], envParts[1]);
+                        }
+                    });
+        } catch (IOException | InterruptedException e) {
+            throw NativeImage.showError(e.getMessage());
+        } finally {
+            if (p != null) {
+                p.destroy();
+            }
         }
     }
 
@@ -431,13 +457,18 @@ final class BundleSupport {
 
     List<String> createContainerCommand(Path argFile, Path builderArgFile) {
         Path containerRoot = Path.of("/");
-        return List.of(containerTool, "run", "--network=none", "--rm",
+        List<String> containerCommand = new ArrayList<>(List.of(containerTool, "run", "--network=none", "--rm"));
+        nativeImage.imageBuilderEnvironment
+                .forEach((key, value) -> containerCommand.addAll(List.of("-e", key + "=" + value)));
+        containerCommand.addAll(List.of(
                 "--mount", "type=bind,source=" + nativeImage.config.getJavaHome() + ",target=" + containerGraalVMHome + ",readonly",
                 "--mount", "type=bind,source=" + inputDir + ",target=" + containerRoot.resolve(rootDir.relativize(inputDir)) + ",readonly",
                 "--mount", "type=bind,source=" + outputDir + ",target=" + containerRoot.resolve(rootDir.relativize(outputDir)),
                 "--mount", "type=bind,source=" + argFile + ",target=" + argFile + ",readonly",
                 "--mount", "type=bind,source=" + builderArgFile + ",target=" + builderArgFile + ",readonly",
-                containerImage);
+                containerImage)
+        );
+        return containerCommand;
     }
 
     private BundleSupport(NativeImage nativeImage) {

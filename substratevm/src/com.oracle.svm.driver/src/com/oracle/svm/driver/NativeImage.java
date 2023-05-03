@@ -1576,7 +1576,12 @@ public class NativeImage {
         command.add(NativeImageGeneratorRunner.IMAGE_BUILDER_ARG_FILE_OPTION + builderArgFile);
         ProcessBuilder pb = new ProcessBuilder();
         pb.command(command);
-        Map<String, String> environment = pb.environment();
+        Map<String, String> environment;
+        if(useBundle() && bundleSupport.useContainer) {
+            environment = bundleSupport.containerEnvironment;
+        } else {
+            environment = pb.environment();
+        }
         String deprecatedSanitationKey = "NATIVE_IMAGE_DEPRECATED_BUILDER_SANITATION";
         String deprecatedSanitationValue = System.getenv().getOrDefault(deprecatedSanitationKey, "false");
         if (Boolean.parseBoolean(deprecatedSanitationValue)) {
