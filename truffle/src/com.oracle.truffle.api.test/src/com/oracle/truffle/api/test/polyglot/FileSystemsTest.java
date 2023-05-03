@@ -94,6 +94,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.TestUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
@@ -2926,7 +2927,7 @@ public class FileSystemsTest {
         try {
             final Class<?> langCacheClz = Class.forName("com.oracle.truffle.polyglot.LanguageCache", true, FileSystemsTest.class.getClassLoader());
             final Method reset = langCacheClz.getDeclaredMethod("resetNativeImageCacheLanguageHomes");
-            reset.setAccessible(true);
+            ReflectionUtils.setAccessible(reset, true);
             reset.invoke(null);
         } catch (ReflectiveOperationException re) {
             throw new RuntimeException(re);
@@ -2965,7 +2966,7 @@ public class FileSystemsTest {
     private static FileSystem createPreInitializeContextFileSystem() throws ReflectiveOperationException {
         Class<? extends FileSystem> clazz = Class.forName("com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem").asSubclass(FileSystem.class);
         Constructor<? extends FileSystem> init = clazz.getDeclaredConstructor();
-        init.setAccessible(true);
+        ReflectionUtils.setAccessible(init, true);
         return init.newInstance();
     }
 
@@ -2973,10 +2974,10 @@ public class FileSystemsTest {
         String workDir = cwd.toString();
         Class<? extends FileSystem> clazz = Class.forName("com.oracle.truffle.polyglot.FileSystems$PreInitializeContextFileSystem").asSubclass(FileSystem.class);
         Method preInitClose = clazz.getDeclaredMethod("onPreInitializeContextEnd");
-        preInitClose.setAccessible(true);
+        ReflectionUtils.setAccessible(preInitClose, true);
         preInitClose.invoke(fileSystem);
         Method patchStart = clazz.getDeclaredMethod("onLoadPreinitializedContext", FileSystem.class);
-        patchStart.setAccessible(true);
+        ReflectionUtils.setAccessible(patchStart, true);
         patchStart.invoke(fileSystem, newFullIOFileSystem(Paths.get(workDir)));
     }
 
