@@ -3660,8 +3660,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.statement("frame.setObject(sp, osrResult)");
                             b.statement("sp++");
                             b.startReturn().string("((sp - 1) << 16) | 0xffff").end();
+                            b.end();
 
-                            b.end(2);
+                            b.end();
                         }
                         b.statement("bci = bc[bci + 1]");
                         b.statement("continue loop");
@@ -4022,7 +4023,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startReturn().startCall("continueAt");
             b.string("osrFrame");
             if (model.enableYield) {
-                // TODO: is this correct?
                 b.string("osrFrame");
             }
             b.string("target");

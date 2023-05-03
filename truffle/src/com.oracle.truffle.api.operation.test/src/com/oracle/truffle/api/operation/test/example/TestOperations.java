@@ -56,8 +56,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.ProvidedTags;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -72,7 +70,7 @@ import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
 
 @GenerateOperations(//
-                languageClass = TestLanguage.class, //
+                languageClass = OperationTestLanguage.class, //
                 enableYield = true, //
                 enableSerialization = true, //
                 boxingEliminationTypes = {long.class}, //
@@ -310,16 +308,6 @@ class TestClosure {
     public Object call() {
         return root.call(frame);
     }
-}
-
-@ProvidedTags(ExpressionTag.class)
-@TruffleLanguage.Registration(id = "test")
-class TestLanguage extends TruffleLanguage<Object> {
-    @Override
-    protected Object createContext(Env env) {
-        return new Object();
-    }
-
 }
 
 class Association {
