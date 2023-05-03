@@ -322,9 +322,9 @@ public class SubstrateGraphBuilderPlugins {
                     // Pattern is a classname (possibly empty) with a trailing wildcard
                     final String className = p.substring(poffset, nameLen - 1);
                     if (!negate) {
-                        if (className.endsWith("$$Lambda")) {
+                        if (className.endsWith(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING)) {
                             try {
-                                String lambdaHolderName = className.split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0];
+                                String lambdaHolderName = className.split(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN)[0];
                                 RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
                             } catch (ClassNotFoundException e) {
                                 // no class, no registration
