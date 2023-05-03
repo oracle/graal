@@ -125,8 +125,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
         public Object doCached(Object value, @SuppressWarnings("unused") Klass targetType,
                         @SuppressWarnings("unused") @Cached("targetType") Klass cachedTargetType,
-                        @Cached("createToEspressoNode(cachedTargetType)") ToEspressoNode toEspressoNode,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @Cached("createToEspressoNode(cachedTargetType)") ToEspressoNode toEspressoNode) throws UnsupportedTypeException {
             return toEspressoNode.execute(value);
         }
 
