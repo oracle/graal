@@ -142,8 +142,5 @@ public class Unistd {
 
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int geteuid();
-
-        @CFunction(transition = Transition.NO_TRANSITION)
-        public static native int gettid();
     }
 }

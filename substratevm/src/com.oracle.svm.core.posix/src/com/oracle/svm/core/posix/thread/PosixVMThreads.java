@@ -45,6 +45,9 @@ import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
 
+import com.oracle.svm.core.os.IsDefined;
+import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
+
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
 
@@ -57,6 +60,9 @@ public final class PosixVMThreads extends VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected OSThreadId getCurrentOSThreadId() {
+        if (IsDefined.isLinux()) {
+            return LinuxPthread.gettid();
+        }
         return Pthread.pthread_self();
     }
 

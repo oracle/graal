@@ -40,8 +40,8 @@ import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -52,18 +52,18 @@ import java.util.regex.Pattern;
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
 
-    private static final FastThreadLocalInt kernelThreadId = FastThreadLocalFactory.createInt("LinuxThreadCpuTimeSupport.kernelThreadId");
+    private static final FastThreadLocalWord<LinuxPthread.pid_t> kernelThreadId = FastThreadLocalFactory.createWord("LinuxThreadCpuTimeSupport.kernelThreadId");
 
     @Override
     public void init(IsolateThread isolateThread) {
-        kernelThreadId.set(isolateThread, Unistd.NoTransitions.gettid());
+        kernelThreadId.set(isolateThread, LinuxPthread.gettid());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
         if (!includeSystemTime) {
-            return getThreadUserTime(Unistd.NoTransitions.gettid());
+            return getThreadUserTime(LinuxPthread.gettid());
         }
         return getThreadCpuTimeImpl(LinuxTime.CLOCK_THREAD_CPUTIME_ID());
     }
@@ -105,7 +105,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
-    private static long getThreadUserTime(int tid) {
+    private static long getThreadUserTime(LinuxPthread.pid_t tid) {
         return getSlowThreadUserTimeImpl(tid);
     }
 
@@ -113,8 +113,8 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      * Returns the thread user time. Based on <link href=
      * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/linux/os_linux.cpp#L5012">slow_thread_cpu_time</link>.
      */
-    private static long getSlowThreadUserTimeImpl(int tid) {
-        String fileName = "/proc/self/task/" + tid + "/stat";
+    private static long getSlowThreadUserTimeImpl(LinuxPthread.pid_t tid) {
+        String fileName = "/proc/self/task/" + tid.rawValue() + "/stat";
         try (BufferedReader buff = new BufferedReader(new FileReader(fileName))) {
             String line = buff.readLine();
             Matcher matcher = PatternSingleton.USER_CPU_TIME_PATTERN.matcher(line);

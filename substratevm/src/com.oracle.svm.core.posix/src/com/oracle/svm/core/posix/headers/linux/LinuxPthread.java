@@ -34,12 +34,16 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
+import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 
 // Checkstyle: stop
 
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
 public class LinuxPthread {
+
+    public interface pid_t extends OSThreadId {
+    }
 
     @CFunction
     public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
@@ -49,4 +53,7 @@ public class LinuxPthread {
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_condattr_setclock(Pthread.pthread_condattr_t attr, int clock_id);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native pid_t gettid();
 }
