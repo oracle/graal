@@ -617,6 +617,16 @@ public abstract class VMThreads {
         THREAD_MUTEX.guaranteeIsOwner(message, allowUnspecifiedOwner);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean ownsThreadMutex() {
+        return THREAD_MUTEX.isOwner();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean ownsThreadMutex(boolean allowUnspecifiedOwner) {
+        return THREAD_MUTEX.isOwner(allowUnspecifiedOwner);
+    }
+
     public static boolean printLocationInfo(Log log, UnsignedWord value, boolean allowUnsafeOperations) {
         for (IsolateThread thread = firstThreadUnsafe(); thread.isNonNull(); thread = nextThread(thread)) {
             if (thread.equal(value)) {

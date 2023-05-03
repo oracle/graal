@@ -475,14 +475,14 @@ public final class ThreadLocalAllocation {
         while (alignedChunk.isNonNull()) {
             AlignedHeader next = HeapChunk.getNext(alignedChunk);
             HeapChunk.setNext(alignedChunk, WordFactory.nullPointer());
-            eden.appendAlignedHeapChunk(alignedChunk);
+            eden.appendAlignedHeapChunk(alignedChunk, null);
             alignedChunk = next;
         }
 
         while (unalignedChunk.isNonNull()) {
             UnalignedHeader next = HeapChunk.getNext(unalignedChunk);
             HeapChunk.setNext(unalignedChunk, WordFactory.nullPointer());
-            eden.appendUnalignedHeapChunk(unalignedChunk);
+            eden.appendUnalignedHeapChunk(unalignedChunk, null);
             unalignedChunk = next;
         }
     }

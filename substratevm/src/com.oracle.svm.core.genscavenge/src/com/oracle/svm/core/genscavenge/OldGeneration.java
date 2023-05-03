@@ -74,31 +74,25 @@ public final class OldGeneration extends Generation {
     /** Promote an Object to ToSpace if it is not already in ToSpace. */
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
+    Object promoteAlignedObject(Object original, Space originalSpace) {
         assert originalSpace.isFromSpace();
         return getToSpace().promoteAlignedObject(original, originalSpace);
     }
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
-        assert originalSpace.isFromSpace();
-        getToSpace().promoteUnalignedHeapChunk(originalChunk, originalSpace);
+    Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk) {
+        getToSpace().promoteUnalignedHeapChunk(originalChunk);
         return original;
     }
 
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
-        assert originalSpace.isFromSpace();
+    void promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned) {
         if (isAligned) {
-            getToSpace().promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+            getToSpace().promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk);
         } else {
-            getToSpace().promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+            getToSpace().promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk);
         }
-        return true;
     }
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {

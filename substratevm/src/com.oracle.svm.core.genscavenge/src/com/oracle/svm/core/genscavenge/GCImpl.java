@@ -199,7 +199,7 @@ public final class GCImpl implements GC {
         assert VMOperation.isGCInProgress() : "Collection should be a VMOperation.";
         assert getCollectionEpoch().equal(data.getRequestingEpoch());
 
-        if (SubstrateOptions.UseParallelGC.getValue()) {
+        if (ParallelGC.isEnabled()) {
             ParallelGC.singleton().initialize();
         }
 
@@ -1101,20 +1101,23 @@ public final class GCImpl implements GC {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @SuppressWarnings("static-method")
     Object promoteObject(Object original, UnsignedWord header) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
         Header<?> originalChunk = getChunk(original, isAligned);
+
+        /* If the parallel GC is used, then the space may be outdated or null. */
         Space originalSpace = HeapChunk.getSpace(originalChunk);
-        if (!originalSpace.isFromSpace()) {
+        assert originalSpace != null || ParallelGC.isEnabled() && ParallelGC.singleton().isInParallelPhase();
+        if (originalSpace == null || !originalSpace.isFromSpace()) {
+            /* Object was already promoted or is currently being promoted. */
             return original;
         }
 
         Object result = null;
         if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
             if (isAligned) {
-                result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+                result = heap.getYoungGeneration().promoteAlignedObject(original, originalSpace);
             } else {
                 result = heap.getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
             }
@@ -1122,11 +1125,13 @@ public final class GCImpl implements GC {
                 accounting.onSurvivorOverflowed();
             }
         }
-        if (result == null) { // complete collection, tenuring age reached, or survivor space full
+
+        /* Complete collection, tenuring age reached, or survivor space full. */
+        if (result == null) {
             if (isAligned) {
-                result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+                result = heap.getOldGeneration().promoteAlignedObject(original, originalSpace);
             } else {
-                result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
+                result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk);
             }
             assert result != null : "promotion failure in old generation must have been handled";
         }
@@ -1160,7 +1165,7 @@ public final class GCImpl implements GC {
                     }
                 }
                 if (!promoted) {
-                    heap.getOldGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
+                    heap.getOldGeneration().promoteChunk(originalChunk, isAligned);
                 }
             }
         }

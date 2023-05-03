@@ -253,10 +253,9 @@ public final class YoungGeneration extends Generation {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    protected Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
-        assert originalSpace.isFromSpace();
+    Object promoteAlignedObject(Object original, Space originalSpace) {
         assert ObjectHeaderImpl.isAlignedObject(original);
+        assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
 
         // The object might fit in an existing chunk in the survivor space. If it doesn't, we get
@@ -269,8 +268,7 @@ public final class YoungGeneration extends Generation {
 
     @AlwaysInline("GC performance")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
+    Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
         assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
         if (!unalignedChunkFitsInSurvivors(originalChunk)) {
@@ -279,13 +277,12 @@ public final class YoungGeneration extends Generation {
 
         int age = originalSpace.getNextAgeForPromotion();
         Space toSpace = getSurvivorToSpaceAt(age - 1);
-        toSpace.promoteUnalignedHeapChunk(originalChunk, originalSpace);
+        toSpace.promoteUnalignedHeapChunk(originalChunk);
         return original;
     }
 
-    @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
+    boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
         assert originalSpace.isFromSpace();
         assert originalSpace.getAge() < maxSurvivorSpaces;
         if (!fitsInSurvivors(originalChunk, isAligned)) {
@@ -295,9 +292,9 @@ public final class YoungGeneration extends Generation {
         int age = originalSpace.getNextAgeForPromotion();
         Space toSpace = getSurvivorToSpaceAt(age - 1);
         if (isAligned) {
-            toSpace.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+            toSpace.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk);
         } else {
-            toSpace.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+            toSpace.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk);
         }
         return true;
     }
