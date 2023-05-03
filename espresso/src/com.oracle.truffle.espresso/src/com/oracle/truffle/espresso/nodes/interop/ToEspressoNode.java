@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -120,12 +122,35 @@ public abstract class ToEspressoNode extends EspressoNode {
             return ToEspressoNode.createToEspresso(targetType, targetType.getMeta());
         }
 
-        protected static ToEspressoNode getUncachedToEspressoNode(Klass targetType) {
-            return ToEspressoNode.getUncachedToEspresso(targetType, targetType.getMeta());
+        @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
+        public Object doCached(Object value, @SuppressWarnings("unused") Klass targetType,
+                        @SuppressWarnings("unused") @Cached("targetType") Klass cachedTargetType,
+                        @Cached("createToEspressoNode(cachedTargetType)") ToEspressoNode toEspressoNode,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+            return toEspressoNode.execute(value);
         }
+
+        @Megamorphic
+        @Specialization(replaces = "doCached")
+        public Object doGeneric(Object value, Klass targetType,
+                        @Cached ToEspressoNode.GenericToEspresso genericToEspresso) throws UnsupportedTypeException {
+            return genericToEspresso.execute(value, targetType);
+        }
+    }
+
+    @NodeInfo(shortName = "Generic toEspresso node")
+    @GenerateUncached
+    public abstract static class GenericToEspresso extends EspressoNode {
+        protected static final int LIMIT = 2;
+
+        public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
         public static boolean isStaticObject(Object value) {
             return value instanceof StaticObject;
+        }
+
+        public static boolean isTypeConverterEnabled(Klass klass) {
+            return ToEspressoNode.isTypeConverterEnabled(klass);
         }
 
         @Specialization
@@ -137,69 +162,92 @@ public abstract class ToEspressoNode extends EspressoNode {
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.cat("Cannot cast ", value, " to ", targetType.getTypeAsString()));
         }
 
-        @Specialization(guards = "interop.isNull(value)")
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
         public Object doForeignNull(Object value, @SuppressWarnings("unused") Klass targetType,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
         }
 
-        @Specialization(guards = "targetType == cachedTargetType", limit = "LIMIT")
-        public Object doCached(Object value, @SuppressWarnings("unused") Klass targetType,
-                        @SuppressWarnings("unused") @Cached("targetType") Klass cachedTargetType,
-                        @Cached("createToEspressoNode(cachedTargetType)") ToEspressoNode toEspressoNode,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-            return toEspressoNode.execute(value);
-        }
-
-        @Megamorphic
-        @Specialization(replaces = "doCached", guards = {
-                        "!isStaticObject(value)",
-                        "!interop.isNull(value)"
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "targetType.isInterface()",
+                        "!isStaticObject(value)"
         })
-        public Object doGeneric(Object value, Klass targetType,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-            if (targetType.isInterface()) {
-                if (isTypeMappingEnabled(targetType)) {
-                    try {
-                        Object metaObject = getMetaObjectOrThrow(value, interop);
-                        ObjectKlass proxyKlass = LookupProxyKlassNodeGen.getUncached().execute(metaObject, getMetaName(metaObject, interop), targetType);
-                        if (proxyKlass != null) {
-                            targetType.safeInitialize();
-                            return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
-                        }
-                        throw new ClassCastException();
-                    } catch (ClassCastException e) {
-                        throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getNameAsString(), e.getMessage()));
-                    }
-                }
-            }
-            if (targetType.isArray()) {
-                if (targetType == getMeta()._byte_array) {
-                    return ToReferenceFactory.ToByteArrayNodeGen.getUncached().execute(value);
-                } else {
-                    if (interop.hasArrayElements(value) && !isHostString(value)) {
-                        return StaticObject.createForeign(EspressoLanguage.get(this), targetType, value, interop);
-                    }
-                    throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
-                }
-            }
-            if (isTypeConverterEnabled(targetType)) {
+        public Object doInterface(Object value, @SuppressWarnings("unused") Klass targetType,
+                        @Cached LookupProxyKlassNode lookupProxyKlassNode,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+            if (isTypeMappingEnabled(targetType)) {
                 try {
                     Object metaObject = getMetaObjectOrThrow(value, interop);
-                    String metaName = getMetaName(metaObject, interop);
-
-                    // check if there's a specific type mapping available
-                    PolyglotTypeMappings.TypeConverter converter = LookupTypeConverterNodeGen.getUncached().execute(metaName);
-                    if (converter != null) {
-                        return converter.convert(StaticObject.createForeign(getLanguage(), targetType, value, interop));
+                    ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
+                    if (proxyKlass != null) {
+                        targetType.safeInitialize();
+                        return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
                     }
                     throw new ClassCastException();
                 } catch (ClassCastException e) {
-                    throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getNameAsString(), e.getMessage()));
+                    // fall through to throw exception
                 }
             }
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getTypeAsString()));
+        }
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "!isStaticObject(value)"
+        })
+        public Object doArray(Object value, @SuppressWarnings("unused") ArrayKlass targetType,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+            if (targetType == getMeta()._byte_array) {
+                if (interop.hasBufferElements(value) && !isHostString(value)) {
+                    return StaticObject.createForeign(EspressoLanguage.get(this), getMeta()._byte_array, value, interop);
+                }
+                throw UnsupportedTypeException.create(new Object[]{value}, getMeta()._byte_array.getTypeAsString());
+            } else {
+                if (interop.hasArrayElements(value) && !isHostString(value)) {
+                    return StaticObject.createForeign(EspressoLanguage.get(this), targetType, value, interop);
+                }
+                throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
+            }
+        }
+
+        @Specialization(guards = {
+                        "interop.isNull(value)",
+                        "isTypeConverterEnabled(targetType)",
+                        "!isStaticObject(value)"
+        })
+        public Object doTypeConverter(Object value, @SuppressWarnings("unused") Klass targetType,
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
             try {
-                return getUncachedToEspressoNode(targetType).execute(value);
+                Object metaObject = getMetaObjectOrThrow(value, interop);
+                String metaName = getMetaName(metaObject, interop);
+
+                // check if there's a specific type mapping available
+                PolyglotTypeMappings.TypeConverter converter = LookupTypeConverterNodeGen.getUncached().execute(metaName);
+                if (converter != null) {
+                    return converter.convert(StaticObject.createForeign(getLanguage(), targetType, value, interop));
+                }
+                throw new ClassCastException();
+            } catch (ClassCastException e) {
+                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getNameAsString(), e.getMessage()));
+            }
+        }
+
+        @Specialization(guards = {
+                        "!interop.isNull(value)",
+                        "!isStaticObject(value)",
+                        "!targetType.isInterface()",
+                        "!targetType.isArray()",
+                        "!isTypeConverterEnabled(targetType)"
+        })
+        public Object doGeneric(Object value, Klass targetType,
+                        @Bind("getMeta()") Meta meta,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+            try {
+                return getUncachedToEspresso(targetType, meta).execute(value);
             } catch (IllegalStateException ex) {
                 // hit the unknown type case, so inline generic handling for that here
                 if (targetType instanceof ObjectKlass) {
