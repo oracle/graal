@@ -62,8 +62,6 @@ import argparse
 import shlex
 import json
 
-from io import StringIO
-
 _suite = mx.suite('compiler')
 
 """ Prefix for running the VM. """
@@ -150,46 +148,6 @@ def _is_jvmci_enabled(vmargs):
     :param list vmargs: VM arguments to inspect
     """
     return _get_XX_option_value(vmargs, 'EnableJVMCI', mx_sdk_vm.jdk_enables_jvmci_by_default(jdk))
-
-def _nodeCostDump(args, extraVMarguments=None):
-    """list the costs associated with each Node type"""
-    parser = ArgumentParser(prog='mx nodecostdump')
-    parser.add_argument('--regex', action='store', help="Node Name Regex", default=False, metavar='<regex>')
-    parser.add_argument('--markdown', action='store_true', help="Format to Markdown table")
-    args, vmargs = parser.parse_known_args(args)
-    additionalPrimarySuiteClassPath = '-Dprimary.suite.cp=' + mx.primary_suite().dir
-    vmargs.extend([additionalPrimarySuiteClassPath, '-cp', mx.classpath('org.graalvm.compiler.hotspot.test'), '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.test.NodeCostDumpUtil'])
-    out = mx.OutputCapture()
-    regex = ""
-    if args.regex:
-        regex = args.regex
-    run_vm(vmargs + _remove_empty_entries(extraVMarguments) + [regex], out=out)
-    if args.markdown:
-        stringIO = StringIO(out.data)
-        reader = csv.reader(stringIO, delimiter=';', lineterminator="\n")
-        firstRow = True
-        maxLen = 0
-        for row in reader:
-            for col in row:
-                maxLen = max(maxLen, len(col))
-        stringIO.seek(0)
-        for row in reader:
-            s = '|'
-            if firstRow:
-                firstRow = False
-                nrOfCols = len(row)
-                for col in row:
-                    s = s + col + "|"
-                print(s)
-                s = '|'
-                for _ in range(nrOfCols):
-                    s = s + ('-' * maxLen) + '|'
-            else:
-                for col in row:
-                    s = s + col + "|"
-            print(s)
-    else:
-        print(out.data)
 
 def _ctw_jvmci_export_args(arg_prefix='--'):
     """
@@ -1434,7 +1392,6 @@ mx.update_commands(_suite, {
     'vm': [run_vm_with_jvmci_compiler, '[-options] class [args...]'],
     'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
-    'nodecostdump' : [_nodeCostDump, ''],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
     'renamegraalpackages' : [renamegraalpackages, '[options]'],
