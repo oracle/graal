@@ -56,9 +56,6 @@ public interface ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime);
 
-    default void init(@SuppressWarnings("unused") IsolateThread isolateThread) {
-    }
-
     @Fold
     static ThreadCpuTimeSupport getInstance() {
         return ImageSingletons.lookup(ThreadCpuTimeSupport.class);

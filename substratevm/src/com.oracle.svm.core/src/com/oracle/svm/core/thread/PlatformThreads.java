@@ -830,8 +830,6 @@ public abstract class PlatformThreads {
                 currentThread.get().interrupt();
             }
 
-            ThreadCpuTimeSupport.getInstance().init(toTarget(thread).isolateThread);
-
             ThreadListenerSupport.get().beforeThreadRun();
             thread.run();
         } catch (Throwable ex) {

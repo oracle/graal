@@ -608,6 +608,11 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static OSThreadId findOSThreadIdForIsolateThread(IsolateThread isolateThread) {
+        return OSThreadIdTL.get(isolateThread);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void guaranteeOwnsThreadMutex(String message) {
         THREAD_MUTEX.guaranteeIsOwner(message);
     }

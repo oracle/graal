@@ -38,10 +38,9 @@ import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.util.TimeUtils;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -51,13 +50,6 @@ import java.util.regex.Pattern;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
-
-    private static final FastThreadLocalWord<LinuxPthread.pid_t> kernelThreadId = FastThreadLocalFactory.createWord("LinuxThreadCpuTimeSupport.kernelThreadId");
-
-    @Override
-    public void init(IsolateThread isolateThread) {
-        kernelThreadId.set(isolateThread, LinuxPthread.gettid());
-    }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -72,7 +64,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
         if (!includeSystemTime) {
-            return getThreadUserTime(kernelThreadId.get(isolateThread));
+            return getThreadUserTime(VMThreads.findOSThreadIdForIsolateThread(isolateThread));
         }
 
         return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread));
@@ -83,8 +75,6 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/linux/os_linux.cpp#L4956">fast_cpu_time</link>.
      *
      * @param osThreadHandle the pthread
-     * @param includeSystemTime if {@code true} includes both system and user time, if {@code false}
-     *            returns user time.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private long getThreadCpuTime(OSThreadHandle osThreadHandle) {
@@ -105,7 +95,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     }
 
     @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
-    private static long getThreadUserTime(LinuxPthread.pid_t tid) {
+    private static long getThreadUserTime(OSThreadId tid) {
         return getSlowThreadUserTimeImpl(tid);
     }
 
@@ -113,7 +103,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      * Returns the thread user time. Based on <link href=
      * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/linux/os_linux.cpp#L5012">slow_thread_cpu_time</link>.
      */
-    private static long getSlowThreadUserTimeImpl(LinuxPthread.pid_t tid) {
+    private static long getSlowThreadUserTimeImpl(OSThreadId tid) {
         String fileName = "/proc/self/task/" + tid.rawValue() + "/stat";
         try (BufferedReader buff = new BufferedReader(new FileReader(fileName))) {
             String line = buff.readLine();
