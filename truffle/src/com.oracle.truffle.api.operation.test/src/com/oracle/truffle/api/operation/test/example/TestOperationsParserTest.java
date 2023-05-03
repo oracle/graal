@@ -71,7 +71,7 @@ import com.oracle.truffle.api.operation.OperationParser;
 public class TestOperationsParserTest {
     // @formatter:off
 
-    private static final TestLanguage LANGUAGE = null;
+    private static final OperationTestLanguage LANGUAGE = null;
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
