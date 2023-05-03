@@ -48,9 +48,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.resources.MissingResourceMetadataException;
+import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError;
+import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
@@ -312,7 +314,7 @@ public final class Resources {
     /**
      * If {@code throwOnMissing} is false, we have to distinguish an entry that was in the metadata
      * from one that was not, so the caller can correctly throw the
-     * {@link MissingResourceMetadataException}. This is needed because different modules can be
+     * {@link MissingResourceRegistrationError}. This is needed because different modules can be
      * tried on the same resource name, causing an unexpected exception if we throw directly.
      */
     public Object get(Module module, String resourceName, boolean throwOnMissing) {
@@ -320,7 +322,7 @@ public final class Resources {
         String moduleName = moduleName(module);
         Object entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
-            if (MissingResourceMetadataException.Options.ThrowMissingMetadataExceptions.getValue()) {
+            if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 for (Pair<String, Pattern> pattern : excludePatterns) {
                     if (Objects.equals(moduleName, pattern.getLeft()) && (pattern.getRight().matcher(resourceName).matches() || pattern.getRight().matcher(canonicalResourceName).matches())) {
                         return missingMetadata(resourceName, throwOnMissing);
@@ -362,10 +364,9 @@ public final class Resources {
 
     private static Object missingMetadata(String resourceName, boolean throwOnMissing) {
         if (throwOnMissing) {
-            throw MissingResourceMetadataException.missingResource(resourceName);
-        } else {
-            return MISSING_METADATA;
+            MissingResourceRegistrationUtils.missingResource(resourceName);
         }
+        return MISSING_METADATA;
     }
 
     @SuppressWarnings("deprecation")
@@ -421,7 +422,7 @@ public final class Resources {
         }
 
         if (!isInMetadata) {
-            throw MissingResourceMetadataException.missingResource(resourceName);
+            MissingResourceRegistrationUtils.missingResource(resourceName);
         }
         if (entry == null || entry == MISSING_METADATA) {
             return null;
@@ -463,7 +464,7 @@ public final class Resources {
         }
 
         if (missingMetadata) {
-            throw MissingResourceMetadataException.missingResource(resourceName);
+            MissingResourceRegistrationUtils.missingResource(resourceName);
         }
 
         if (resourcesURLs.isEmpty()) {

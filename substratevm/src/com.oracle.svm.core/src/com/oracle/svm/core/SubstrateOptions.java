@@ -930,6 +930,21 @@ public class SubstrateOptions {
     @Option(help = "file:doc-files/MissingRegistrationPathsHelp.txt")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ThrowMissingRegistrationErrorsPaths = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
+    public enum ReportingMode {
+        Warn,
+        Throw,
+        ExitTest,
+        Exit
+    }
+
+    @Option(help = {"Select the mode in which the missing reflection registrations will be reported.",
+                    "Possible values are:",
+                    "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
+                    "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
+                    "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
+    public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(
+                    ReportingMode.Throw);
+
     @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
 

@@ -87,6 +87,7 @@ import java.util.regex.Pattern;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.jdk.Resources;
 
 /**
@@ -573,7 +574,7 @@ public class NativeImageResourceFileSystem extends FileSystem {
             throw new NullPointerException("Path is null!");
         }
         IndexNode indexNode = inodes.get(IndexNode.keyOf(path));
-        if (indexNode == null && MissingResourceMetadataException.Options.ThrowMissingMetadataExceptions.getValue()) {
+        if (indexNode == null && MissingRegistrationUtils.throwMissingRegistrationErrors()) {
             // Try to access the resource to see if the metadata is present
             Resources.singleton().get(getString(path), true);
         }
