@@ -1,3 +1,26 @@
+/*
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+
 package com.oracle.truffle.espresso.runtime.dispatch.messages;
 
 import java.time.Instant;
@@ -37,7 +60,7 @@ public abstract class InteropMessage extends EspressoNode {
     public abstract Object execute(Object[] args) throws InteropException;
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsNull extends InteropMessage {
+    public abstract static class IsNull extends InteropMessage {
         @Override
         public final String name() {
             return "isNull";
@@ -53,7 +76,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsBoolean extends InteropMessage {
+    public abstract static class IsBoolean extends InteropMessage {
         @Override
         public final String name() {
             return "isBoolean";
@@ -69,7 +92,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsBoolean extends InteropMessage {
+    public abstract static class AsBoolean extends InteropMessage {
         @Override
         public final String name() {
             return "asBoolean";
@@ -85,7 +108,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsExecutable extends InteropMessage {
+    public abstract static class IsExecutable extends InteropMessage {
         @Override
         public final String name() {
             return "isExecutable";
@@ -101,7 +124,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class Execute extends InteropMessage {
+    public abstract static class Execute extends InteropMessage {
         @Override
         public final String name() {
             return "execute";
@@ -117,7 +140,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasExecutableName extends InteropMessage {
+    public abstract static class HasExecutableName extends InteropMessage {
         @Override
         public final String name() {
             return "hasExecutableName";
@@ -133,7 +156,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetExecutableName extends InteropMessage {
+    public abstract static class GetExecutableName extends InteropMessage {
         @Override
         public final String name() {
             return "getExecutableName";
@@ -149,7 +172,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasDeclaringMetaObject extends InteropMessage {
+    public abstract static class HasDeclaringMetaObject extends InteropMessage {
         @Override
         public final String name() {
             return "hasDeclaringMetaObject";
@@ -165,7 +188,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetDeclaringMetaObject extends InteropMessage {
+    public abstract static class GetDeclaringMetaObject extends InteropMessage {
         @Override
         public final String name() {
             return "getDeclaringMetaObject";
@@ -181,7 +204,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsInstantiable extends InteropMessage {
+    public abstract static class IsInstantiable extends InteropMessage {
         @Override
         public final String name() {
             return "isInstantiable";
@@ -197,7 +220,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class Instantiate extends InteropMessage {
+    public abstract static class Instantiate extends InteropMessage {
         @Override
         public final String name() {
             return "instantiate";
@@ -214,7 +237,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsString extends InteropMessage {
+    public abstract static class IsString extends InteropMessage {
         @Override
         public final String name() {
             return "isString";
@@ -230,7 +253,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsString extends InteropMessage {
+    public abstract static class AsString extends InteropMessage {
         @Override
         public final String name() {
             return "asString";
@@ -246,7 +269,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsTruffleString extends InteropMessage {
+    public abstract static class AsTruffleString extends InteropMessage {
         @Override
         public final String name() {
             return "asTruffleString";
@@ -262,7 +285,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsNumber extends InteropMessage {
+    public abstract static class IsNumber extends InteropMessage {
         @Override
         public final String name() {
             return "isNumber";
@@ -278,7 +301,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class FitsInByte extends InteropMessage {
+    public abstract static class FitsInByte extends InteropMessage {
         @Override
         public final String name() {
             return "fitsInByte";
@@ -294,7 +317,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class FitsInShort extends InteropMessage {
+    public abstract static class FitsInShort extends InteropMessage {
         @Override
         public final String name() {
             return "fitsInShort";
@@ -310,7 +333,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class FitsInInt extends InteropMessage {
+    public abstract static class FitsInInt extends InteropMessage {
         @Override
         public final String name() {
             return "fitsInInt";
@@ -326,7 +349,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class FitsInLong extends InteropMessage {
+    public abstract static class FitsInLong extends InteropMessage {
         @Override
         public final String name() {
             return "fitsInLong";
@@ -342,7 +365,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class FitsInFloat extends InteropMessage {
+    public abstract static class FitsInFloat extends InteropMessage {
         @Override
         public final String name() {
             return "fitsInFloat";
@@ -358,7 +381,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class FitsInDouble extends InteropMessage {
+    public abstract static class FitsInDouble extends InteropMessage {
         @Override
         public final String name() {
             return "fitsInDouble";
@@ -374,7 +397,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsByte extends InteropMessage {
+    public abstract static class AsByte extends InteropMessage {
         @Override
         public final String name() {
             return "asByte";
@@ -390,7 +413,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsShort extends InteropMessage {
+    public abstract static class AsShort extends InteropMessage {
         @Override
         public final String name() {
             return "asShort";
@@ -406,7 +429,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsInt extends InteropMessage {
+    public abstract static class AsInt extends InteropMessage {
         @Override
         public final String name() {
             return "asInt";
@@ -422,7 +445,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsLong extends InteropMessage {
+    public abstract static class AsLong extends InteropMessage {
         @Override
         public final String name() {
             return "asLong";
@@ -438,7 +461,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsFloat extends InteropMessage {
+    public abstract static class AsFloat extends InteropMessage {
         @Override
         public final String name() {
             return "asFloat";
@@ -454,7 +477,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsDouble extends InteropMessage {
+    public abstract static class AsDouble extends InteropMessage {
         @Override
         public final String name() {
             return "asDouble";
@@ -470,7 +493,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasMembers extends InteropMessage {
+    public abstract static class HasMembers extends InteropMessage {
         @Override
         public final String name() {
             return "hasMembers";
@@ -486,7 +509,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetMembers extends InteropMessage {
+    public abstract static class GetMembers extends InteropMessage {
         @Override
         public final String name() {
             return "getMembers";
@@ -503,7 +526,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsMemberReadable extends InteropMessage {
+    public abstract static class IsMemberReadable extends InteropMessage {
         @Override
         public final String name() {
             return "isMemberReadable";
@@ -520,7 +543,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadMember extends InteropMessage {
+    public abstract static class ReadMember extends InteropMessage {
         @Override
         public final String name() {
             return "readMember";
@@ -537,7 +560,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsMemberModifiable extends InteropMessage {
+    public abstract static class IsMemberModifiable extends InteropMessage {
         @Override
         public final String name() {
             return "isMemberModifiable";
@@ -554,7 +577,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsMemberInsertable extends InteropMessage {
+    public abstract static class IsMemberInsertable extends InteropMessage {
         @Override
         public final String name() {
             return "isMemberInsertable";
@@ -571,7 +594,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteMember extends InteropMessage {
+    public abstract static class WriteMember extends InteropMessage {
         @Override
         public final String name() {
             return "writeMember";
@@ -589,7 +612,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsMemberRemovable extends InteropMessage {
+    public abstract static class IsMemberRemovable extends InteropMessage {
         @Override
         public final String name() {
             return "isMemberRemovable";
@@ -606,7 +629,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class RemoveMember extends InteropMessage {
+    public abstract static class RemoveMember extends InteropMessage {
         @Override
         public final String name() {
             return "removeMember";
@@ -624,7 +647,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsMemberInvocable extends InteropMessage {
+    public abstract static class IsMemberInvocable extends InteropMessage {
         @Override
         public final String name() {
             return "isMemberInvocable";
@@ -641,7 +664,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class InvokeMember extends InteropMessage {
+    public abstract static class InvokeMember extends InteropMessage {
         @Override
         public final String name() {
             return "invokeMember";
@@ -659,7 +682,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsMemberInternal extends InteropMessage {
+    public abstract static class IsMemberInternal extends InteropMessage {
         @Override
         public final String name() {
             return "isMemberInternal";
@@ -676,7 +699,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasMemberReadSideEffects extends InteropMessage {
+    public abstract static class HasMemberReadSideEffects extends InteropMessage {
         @Override
         public final String name() {
             return "hasMemberReadSideEffects";
@@ -693,7 +716,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasMemberWriteSideEffects extends InteropMessage {
+    public abstract static class HasMemberWriteSideEffects extends InteropMessage {
         @Override
         public final String name() {
             return "hasMemberWriteSideEffects";
@@ -710,7 +733,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasHashEntries extends InteropMessage {
+    public abstract static class HasHashEntries extends InteropMessage {
         @Override
         public final String name() {
             return "hasHashEntries";
@@ -726,7 +749,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetHashSize extends InteropMessage {
+    public abstract static class GetHashSize extends InteropMessage {
         @Override
         public final String name() {
             return "getHashSize";
@@ -742,7 +765,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsHashEntryReadable extends InteropMessage {
+    public abstract static class IsHashEntryReadable extends InteropMessage {
         @Override
         public final String name() {
             return "isHashEntryReadable";
@@ -758,7 +781,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadHashValue extends InteropMessage {
+    public abstract static class ReadHashValue extends InteropMessage {
         @Override
         public final String name() {
             return "readHashValue";
@@ -774,7 +797,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadHashValueOrDefault extends InteropMessage {
+    public abstract static class ReadHashValueOrDefault extends InteropMessage {
         @Override
         public final String name() {
             return "readHashValueOrDefault";
@@ -790,7 +813,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsHashEntryModifiable extends InteropMessage {
+    public abstract static class IsHashEntryModifiable extends InteropMessage {
         @Override
         public final String name() {
             return "isHashEntryModifiable";
@@ -806,7 +829,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsHashEntryInsertable extends InteropMessage {
+    public abstract static class IsHashEntryInsertable extends InteropMessage {
         @Override
         public final String name() {
             return "isHashEntryInsertable";
@@ -822,7 +845,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsHashEntryWritable extends InteropMessage {
+    public abstract static class IsHashEntryWritable extends InteropMessage {
         @Override
         public final String name() {
             return "isHashEntryWritable";
@@ -838,7 +861,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteHashEntry extends InteropMessage {
+    public abstract static class WriteHashEntry extends InteropMessage {
         @Override
         public final String name() {
             return "writeHashEntry";
@@ -855,7 +878,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsHashEntryRemovable extends InteropMessage {
+    public abstract static class IsHashEntryRemovable extends InteropMessage {
         @Override
         public final String name() {
             return "isHashEntryRemovable";
@@ -871,7 +894,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class RemoveHashEntry extends InteropMessage {
+    public abstract static class RemoveHashEntry extends InteropMessage {
         @Override
         public final String name() {
             return "removeHashEntry";
@@ -888,7 +911,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsHashEntryExisting extends InteropMessage {
+    public abstract static class IsHashEntryExisting extends InteropMessage {
         @Override
         public final String name() {
             return "isHashEntryExisting";
@@ -904,7 +927,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetHashEntriesIterator extends InteropMessage {
+    public abstract static class GetHashEntriesIterator extends InteropMessage {
         @Override
         public final String name() {
             return "getHashEntriesIterator";
@@ -920,7 +943,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetHashKeysIterator extends InteropMessage {
+    public abstract static class GetHashKeysIterator extends InteropMessage {
         @Override
         public final String name() {
             return "getHashKeysIterator";
@@ -936,7 +959,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetHashValuesIterator extends InteropMessage {
+    public abstract static class GetHashValuesIterator extends InteropMessage {
         @Override
         public final String name() {
             return "getHashValuesIterator";
@@ -952,7 +975,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasArrayElements extends InteropMessage {
+    public abstract static class HasArrayElements extends InteropMessage {
         @Override
         public final String name() {
             return "hasArrayElements";
@@ -968,7 +991,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadArrayElement extends InteropMessage {
+    public abstract static class ReadArrayElement extends InteropMessage {
         @Override
         public final String name() {
             return "readArrayElement";
@@ -985,7 +1008,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetArraySize extends InteropMessage {
+    public abstract static class GetArraySize extends InteropMessage {
         @Override
         public final String name() {
             return "getArraySize";
@@ -1001,7 +1024,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsArrayElementReadable extends InteropMessage {
+    public abstract static class IsArrayElementReadable extends InteropMessage {
         @Override
         public final String name() {
             return "isArrayElementReadable";
@@ -1018,7 +1041,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteArrayElement extends InteropMessage {
+    public abstract static class WriteArrayElement extends InteropMessage {
         @Override
         public final String name() {
             return "writeArrayElement";
@@ -1036,7 +1059,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class RemoveArrayElement extends InteropMessage {
+    public abstract static class RemoveArrayElement extends InteropMessage {
         @Override
         public final String name() {
             return "removeArrayElement";
@@ -1054,7 +1077,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsArrayElementModifiable extends InteropMessage {
+    public abstract static class IsArrayElementModifiable extends InteropMessage {
         @Override
         public final String name() {
             return "isArrayElementModifiable";
@@ -1071,7 +1094,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsArrayElementInsertable extends InteropMessage {
+    public abstract static class IsArrayElementInsertable extends InteropMessage {
         @Override
         public final String name() {
             return "isArrayElementInsertable";
@@ -1088,7 +1111,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsArrayElementRemovable extends InteropMessage {
+    public abstract static class IsArrayElementRemovable extends InteropMessage {
         @Override
         public final String name() {
             return "isArrayElementRemovable";
@@ -1105,7 +1128,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasBufferElements extends InteropMessage {
+    public abstract static class HasBufferElements extends InteropMessage {
         @Override
         public final String name() {
             return "hasBufferElements";
@@ -1121,7 +1144,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsBufferWritable extends InteropMessage {
+    public abstract static class IsBufferWritable extends InteropMessage {
         @Override
         public final String name() {
             return "isBufferWritable";
@@ -1137,7 +1160,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetBufferSize extends InteropMessage {
+    public abstract static class GetBufferSize extends InteropMessage {
         @Override
         public final String name() {
             return "getBufferSize";
@@ -1153,7 +1176,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadBufferByte extends InteropMessage {
+    public abstract static class ReadBufferByte extends InteropMessage {
         @Override
         public final String name() {
             return "readBufferByte";
@@ -1170,7 +1193,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteBufferByte extends InteropMessage {
+    public abstract static class WriteBufferByte extends InteropMessage {
         @Override
         public final String name() {
             return "writeBufferByte";
@@ -1189,7 +1212,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadBufferShort extends InteropMessage {
+    public abstract static class ReadBufferShort extends InteropMessage {
         @Override
         public final String name() {
             return "readBufferShort";
@@ -1206,7 +1229,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteBufferShort extends InteropMessage {
+    public abstract static class WriteBufferShort extends InteropMessage {
         @Override
         public final String name() {
             return "writeBufferShort";
@@ -1225,7 +1248,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadBufferInt extends InteropMessage {
+    public abstract static class ReadBufferInt extends InteropMessage {
         @Override
         public final String name() {
             return "readBufferInt";
@@ -1242,7 +1265,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteBufferInt extends InteropMessage {
+    public abstract static class WriteBufferInt extends InteropMessage {
         @Override
         public final String name() {
             return "writeBufferInt";
@@ -1261,7 +1284,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadBufferLong extends InteropMessage {
+    public abstract static class ReadBufferLong extends InteropMessage {
         @Override
         public final String name() {
             return "readBufferLong";
@@ -1278,7 +1301,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteBufferLong extends InteropMessage {
+    public abstract static class WriteBufferLong extends InteropMessage {
         @Override
         public final String name() {
             return "writeBufferLong";
@@ -1297,7 +1320,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadBufferFloat extends InteropMessage {
+    public abstract static class ReadBufferFloat extends InteropMessage {
         @Override
         public final String name() {
             return "readBufferFloat";
@@ -1314,7 +1337,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteBufferFloat extends InteropMessage {
+    public abstract static class WriteBufferFloat extends InteropMessage {
         @Override
         public final String name() {
             return "writeBufferFloat";
@@ -1333,7 +1356,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ReadBufferDouble extends InteropMessage {
+    public abstract static class ReadBufferDouble extends InteropMessage {
         @Override
         public final String name() {
             return "readBufferDouble";
@@ -1350,7 +1373,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class WriteBufferDouble extends InteropMessage {
+    public abstract static class WriteBufferDouble extends InteropMessage {
         @Override
         public final String name() {
             return "writeBufferDouble";
@@ -1369,7 +1392,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsPointer extends InteropMessage {
+    public abstract static class IsPointer extends InteropMessage {
         @Override
         public final String name() {
             return "isPointer";
@@ -1385,7 +1408,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsPointer extends InteropMessage {
+    public abstract static class AsPointer extends InteropMessage {
         @Override
         public final String name() {
             return "asPointer";
@@ -1401,7 +1424,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ToNative extends InteropMessage {
+    public abstract static class ToNative extends InteropMessage {
         @Override
         public final String name() {
             return "toNative";
@@ -1418,7 +1441,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsInstant extends InteropMessage {
+    public abstract static class AsInstant extends InteropMessage {
         @Override
         public final String name() {
             return "asInstant";
@@ -1434,7 +1457,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsTimeZone extends InteropMessage {
+    public abstract static class IsTimeZone extends InteropMessage {
         @Override
         public final String name() {
             return "isTimeZone";
@@ -1450,7 +1473,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsTimeZone extends InteropMessage {
+    public abstract static class AsTimeZone extends InteropMessage {
         @Override
         public final String name() {
             return "asTimeZone";
@@ -1466,7 +1489,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsDate extends InteropMessage {
+    public abstract static class IsDate extends InteropMessage {
         @Override
         public final String name() {
             return "isDate";
@@ -1482,7 +1505,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsDate extends InteropMessage {
+    public abstract static class AsDate extends InteropMessage {
         @Override
         public final String name() {
             return "asDate";
@@ -1498,7 +1521,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsTime extends InteropMessage {
+    public abstract static class IsTime extends InteropMessage {
         @Override
         public final String name() {
             return "isTime";
@@ -1514,7 +1537,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsTime extends InteropMessage {
+    public abstract static class AsTime extends InteropMessage {
         @Override
         public final String name() {
             return "asTime";
@@ -1530,7 +1553,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsDuration extends InteropMessage {
+    public abstract static class IsDuration extends InteropMessage {
         @Override
         public final String name() {
             return "isDuration";
@@ -1546,7 +1569,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class AsDuration extends InteropMessage {
+    public abstract static class AsDuration extends InteropMessage {
         @Override
         public final String name() {
             return "asDuration";
@@ -1562,7 +1585,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsException extends InteropMessage {
+    public abstract static class IsException extends InteropMessage {
         @Override
         public final String name() {
             return "isException";
@@ -1578,7 +1601,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ThrowException extends InteropMessage {
+    public abstract static class ThrowException extends InteropMessage {
         @Override
         public final String name() {
             return "throwException";
@@ -1594,7 +1617,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetExceptionType extends InteropMessage {
+    public abstract static class GetExceptionType extends InteropMessage {
         @Override
         public final String name() {
             return "getExceptionType";
@@ -1610,7 +1633,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsExceptionIncompleteSource extends InteropMessage {
+    public abstract static class IsExceptionIncompleteSource extends InteropMessage {
         @Override
         public final String name() {
             return "isExceptionIncompleteSource";
@@ -1626,7 +1649,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetExceptionExitStatus extends InteropMessage {
+    public abstract static class GetExceptionExitStatus extends InteropMessage {
         @Override
         public final String name() {
             return "getExceptionExitStatus";
@@ -1642,7 +1665,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasExceptionCause extends InteropMessage {
+    public abstract static class HasExceptionCause extends InteropMessage {
         @Override
         public final String name() {
             return "hasExceptionCause";
@@ -1658,7 +1681,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetExceptionCause extends InteropMessage {
+    public abstract static class GetExceptionCause extends InteropMessage {
         @Override
         public final String name() {
             return "getExceptionCause";
@@ -1674,7 +1697,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasExceptionMessage extends InteropMessage {
+    public abstract static class HasExceptionMessage extends InteropMessage {
         @Override
         public final String name() {
             return "hasExceptionMessage";
@@ -1690,7 +1713,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetExceptionMessage extends InteropMessage {
+    public abstract static class GetExceptionMessage extends InteropMessage {
         @Override
         public final String name() {
             return "getExceptionMessage";
@@ -1706,7 +1729,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasExceptionStackTrace extends InteropMessage {
+    public abstract static class HasExceptionStackTrace extends InteropMessage {
         @Override
         public final String name() {
             return "hasExceptionStackTrace";
@@ -1722,7 +1745,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetExceptionStackTrace extends InteropMessage {
+    public abstract static class GetExceptionStackTrace extends InteropMessage {
         @Override
         public final String name() {
             return "getExceptionStackTrace";
@@ -1738,7 +1761,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasIterator extends InteropMessage {
+    public abstract static class HasIterator extends InteropMessage {
         @Override
         public final String name() {
             return "hasIterator";
@@ -1754,7 +1777,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetIterator extends InteropMessage {
+    public abstract static class GetIterator extends InteropMessage {
         @Override
         public final String name() {
             return "getIterator";
@@ -1770,7 +1793,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsIterator extends InteropMessage {
+    public abstract static class IsIterator extends InteropMessage {
         @Override
         public final String name() {
             return "isIterator";
@@ -1786,7 +1809,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasIteratorNextElement extends InteropMessage {
+    public abstract static class HasIteratorNextElement extends InteropMessage {
         @Override
         public final String name() {
             return "hasIteratorNextElement";
@@ -1802,7 +1825,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetIteratorNextElement extends InteropMessage {
+    public abstract static class GetIteratorNextElement extends InteropMessage {
         @Override
         public final String name() {
             return "getIteratorNextElement";
@@ -1818,7 +1841,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasSourceLocation extends InteropMessage {
+    public abstract static class HasSourceLocation extends InteropMessage {
         @Override
         public final String name() {
             return "hasSourceLocation";
@@ -1834,7 +1857,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetSourceLocation extends InteropMessage {
+    public abstract static class GetSourceLocation extends InteropMessage {
         @Override
         public final String name() {
             return "getSourceLocation";
@@ -1850,7 +1873,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasLanguage extends InteropMessage {
+    public abstract static class HasLanguage extends InteropMessage {
         @Override
         public final String name() {
             return "hasLanguage";
@@ -1866,7 +1889,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetLanguage extends InteropMessage {
+    public abstract static class GetLanguage extends InteropMessage {
         @Override
         public final String name() {
             return "getLanguage";
@@ -1882,7 +1905,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasMetaObject extends InteropMessage {
+    public abstract static class HasMetaObject extends InteropMessage {
         @Override
         public final String name() {
             return "hasMetaObject";
@@ -1898,7 +1921,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetMetaObject extends InteropMessage {
+    public abstract static class GetMetaObject extends InteropMessage {
         @Override
         public final String name() {
             return "getMetaObject";
@@ -1914,7 +1937,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class ToDisplayString extends InteropMessage {
+    public abstract static class ToDisplayString extends InteropMessage {
         @Override
         public final String name() {
             return "toDisplayString";
@@ -1931,7 +1954,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsMetaObject extends InteropMessage {
+    public abstract static class IsMetaObject extends InteropMessage {
         @Override
         public final String name() {
             return "isMetaObject";
@@ -1947,7 +1970,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetMetaQualifiedName extends InteropMessage {
+    public abstract static class GetMetaQualifiedName extends InteropMessage {
         @Override
         public final String name() {
             return "getMetaQualifiedName";
@@ -1963,7 +1986,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetMetaSimpleName extends InteropMessage {
+    public abstract static class GetMetaSimpleName extends InteropMessage {
         @Override
         public final String name() {
             return "getMetaSimpleName";
@@ -1979,7 +2002,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsMetaInstance extends InteropMessage {
+    public abstract static class IsMetaInstance extends InteropMessage {
         @Override
         public final String name() {
             return "isMetaInstance";
@@ -1995,7 +2018,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasMetaParents extends InteropMessage {
+    public abstract static class HasMetaParents extends InteropMessage {
         @Override
         public final String name() {
             return "hasMetaParents";
@@ -2011,7 +2034,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetMetaParents extends InteropMessage {
+    public abstract static class GetMetaParents extends InteropMessage {
         @Override
         public final String name() {
             return "getMetaParents";
@@ -2027,7 +2050,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsIdenticalOrUndefined extends InteropMessage {
+    public abstract static class IsIdenticalOrUndefined extends InteropMessage {
         @Override
         public final String name() {
             return "isIdenticalOrUndefined";
@@ -2043,7 +2066,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsIdentical extends InteropMessage {
+    public abstract static class IsIdentical extends InteropMessage {
         @Override
         public final String name() {
             return "isIdentical";
@@ -2060,7 +2083,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IdentityHashCode extends InteropMessage {
+    public abstract static class IdentityHashCode extends InteropMessage {
         @Override
         public final String name() {
             return "identityHashCode";
@@ -2076,7 +2099,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class IsScope extends InteropMessage {
+    public abstract static class IsScope extends InteropMessage {
         @Override
         public final String name() {
             return "isScope";
@@ -2092,7 +2115,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class HasScopeParent extends InteropMessage {
+    public abstract static class HasScopeParent extends InteropMessage {
         @Override
         public final String name() {
             return "hasScopeParent";
@@ -2108,7 +2131,7 @@ public abstract class InteropMessage extends EspressoNode {
     }
 
     @GenerateUncached(inherit = true)
-    public static abstract class GetScopeParent extends InteropMessage {
+    public abstract static class GetScopeParent extends InteropMessage {
         @Override
         public final String name() {
             return "getScopeParent";
