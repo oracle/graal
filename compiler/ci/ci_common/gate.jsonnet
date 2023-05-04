@@ -192,35 +192,35 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local gates = {
-    "gate-compiler-test-labsjdk-20-linux-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test-labsjdk-17-linux-amd64": t("1:00:00"),
-    "gate-compiler-test-labsjdk-20-linux-aarch64": t("1:50:00"),
-    "gate-compiler-test-labsjdk-20-darwin-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test-labsjdk-20-darwin-aarch64": t("1:00:00"),
-    "gate-compiler-test_zgc-labsjdk-20-linux-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test_zgc-labsjdk-20-linux-aarch64": t("1:50:00"),
-    "gate-compiler-test_zgc-labsjdk-20-darwin-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test_zgc-labsjdk-20-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-21-linux-aarch64": t("1:50:00"),
+    "gate-compiler-test-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-21-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test_zgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test_zgc-labsjdk-21-linux-aarch64": t("1:50:00"),
+    "gate-compiler-test_zgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test_zgc-labsjdk-21-darwin-aarch64": t("1:00:00"),
 
     "gate-compiler-style-labsjdk-20-linux-amd64": t("45:00"),
 
-    "gate-compiler-ctw-labsjdk-20-linux-amd64": c.mach5_target,
-    "gate-compiler-ctw-labsjdk-20-windows-amd64": t("1:50:00"),
-    "gate-compiler-ctw_zgc-labsjdk-20-linux-amd64": c.mach5_target,
+    "gate-compiler-ctw-labsjdk-21-linux-amd64": c.mach5_target,
+    "gate-compiler-ctw-labsjdk-21-windows-amd64": t("1:50:00"),
+    "gate-compiler-ctw_zgc-labsjdk-21-linux-amd64": c.mach5_target,
 
-    "gate-compiler-ctw_economy-labsjdk-20-linux-amd64": {},
-    "gate-compiler-ctw_economy-labsjdk-20-windows-amd64": t("1:50:00"),
+    "gate-compiler-ctw_economy-labsjdk-21-linux-amd64": {},
+    "gate-compiler-ctw_economy-labsjdk-21-windows-amd64": t("1:50:00"),
 
-    "gate-compiler-benchmarktest-labsjdk-20-linux-amd64": {},
-    "gate-compiler-benchmarktest_zgc-labsjdk-20-linux-amd64": {},
+    "gate-compiler-benchmarktest-labsjdk-21-linux-amd64": {},
+    "gate-compiler-benchmarktest_zgc-labsjdk-21-linux-amd64": {},
 
-    "gate-compiler-truffle_xcomp-labsjdk-20-linux-amd64": t("1:30:00"),
-    "gate-compiler-truffle_xcomp_zgc-labsjdk-20-linux-amd64": t("1:30:00"),
+    "gate-compiler-truffle_xcomp-labsjdk-21-linux-amd64": t("1:30:00"),
+    "gate-compiler-truffle_xcomp_zgc-labsjdk-21-linux-amd64": t("1:30:00"),
 
-    "gate-compiler-bootstrap_lite-labsjdk-20-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-bootstrap_lite-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
 
-    "gate-compiler-bootstrap_full-labsjdk-20-linux-amd64": s.many_cores + c.mach5_target,
-    "gate-compiler-bootstrap_full_zgc-labsjdk-20-linux-amd64": s.many_cores + c.mach5_target
+    "gate-compiler-bootstrap_full-labsjdk-21-linux-amd64": s.many_cores + c.mach5_target,
+    "gate-compiler-bootstrap_full_zgc-labsjdk-21-linux-amd64": s.many_cores + c.mach5_target
   },
 
   # This map defines the builders that run daily. Each key in this map
@@ -229,13 +229,13 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
-    "daily-compiler-ctw-labsjdk-20-linux-aarch64": {},
-    "daily-compiler-ctw-labsjdk-20-darwin-amd64": {},
-    "daily-compiler-ctw-labsjdk-20-darwin-aarch64": {},
+    "daily-compiler-ctw-labsjdk-21-linux-aarch64": {},
+    "daily-compiler-ctw-labsjdk-21-darwin-amd64": {},
+    "daily-compiler-ctw-labsjdk-21-darwin-aarch64": {},
 
-    "daily-compiler-ctw_economy-labsjdk-20-linux-aarch64": {},
-    "daily-compiler-ctw_economy-labsjdk-20-darwin-amd64": {},
-    "daily-compiler-ctw_economy-labsjdk-20-darwin-aarch64": {},
+    "daily-compiler-ctw_economy-labsjdk-21-linux-aarch64": {},
+    "daily-compiler-ctw_economy-labsjdk-21-darwin-amd64": {},
+    "daily-compiler-ctw_economy-labsjdk-21-darwin-aarch64": {},
   },
 
   # This map defines the builders that run weekly. Each key in this map
@@ -244,7 +244,7 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local weeklies = {
-    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-20-linux-amd64": {
+    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-21-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
@@ -254,30 +254,30 @@
     "weekly-compiler-test-labsjdk-17-darwin-amd64": {},
     "weekly-compiler-test-labsjdk-17-darwin-aarch64": {},
 
-    "weekly-compiler-test_vec16-labsjdk-20-linux-amd64": {},
-    "weekly-compiler-test_avx0-labsjdk-20-linux-amd64": {},
-    "weekly-compiler-test_avx1-labsjdk-20-linux-amd64": {},
+    "weekly-compiler-test_vec16-labsjdk-21-linux-amd64": {},
+    "weekly-compiler-test_avx0-labsjdk-21-linux-amd64": {},
+    "weekly-compiler-test_avx1-labsjdk-21-linux-amd64": {},
 
-    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-20-linux-amd64": {
+    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-21-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
     "weekly-compiler-bootstrap_lite-labsjdk-17-darwin-amd64": t("1:00:00") + c.mach5_target,
 
-    "weekly-compiler-benchmarktest-labsjdk-20Debug-linux-amd64": t("3:00:00"),
+    "weekly-compiler-benchmarktest-labsjdk-21Debug-linux-amd64": t("3:00:00"),
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test-labsjdk-20Debug-linux-amd64": t("5:00:00"),
+    "weekly-compiler-test-labsjdk-21Debug-linux-amd64": t("5:00:00"),
 
-    "weekly-compiler-test_serialgc-labsjdk-20-linux-amd64": t("1:00:00") + c.mach5_target,
-    "weekly-compiler-test_serialgc-labsjdk-20-linux-aarch64": t("1:50:00"),
-    "weekly-compiler-test_serialgc-labsjdk-20-darwin-amd64": t("1:00:00") + c.mach5_target,
-    "weekly-compiler-test_serialgc-labsjdk-20-darwin-aarch64": t("1:00:00"),
+    "weekly-compiler-test_serialgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-21-linux-aarch64": t("1:50:00"),
+    "weekly-compiler-test_serialgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-21-darwin-aarch64": t("1:00:00"),
 
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-20-linux-amd64": t("1:30:00"),
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-20-linux-aarch64": t("1:30:00"),
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-21-linux-amd64": t("1:30:00"),
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-21-linux-aarch64": t("1:30:00"),
   },
 
   # This map defines overrides and field extensions for monthly builds.
@@ -378,7 +378,7 @@
   local all_platforms_builds = [self.make_build(jdk, os_arch, task).build
     for jdk in [
       "17",
-      "20"
+      "21"
     ]
     for os_arch in all_os_arches
     for task in [
@@ -399,7 +399,7 @@
     local all_zgc_builds = [self.make_build(jdk, os_arch, task).build
       for jdk in [
         "17",
-        "20"
+        "21"
       ]
       for os_arch in [
         "linux-amd64",
@@ -417,7 +417,7 @@
     ],
 
   # Run unittests with SerialGC.
-  local all_serialgc_builds = [self.make_build("20", os_arch, task).build
+  local all_serialgc_builds = [self.make_build("21", os_arch, task).build
     for os_arch in [
       "linux-amd64",
       "linux-aarch64",
@@ -430,8 +430,8 @@
     ]
   ],
 
-  # Builds run on only on linux-amd64-jdk20
-  local linux_amd64_jdk20_builds = [self.make_build("20", "linux-amd64", task).build
+  # Builds run on only on linux-amd64-jdk21
+  local linux_amd64_jdk21_builds = [self.make_build("21", "linux-amd64", task).build
     for task in [
       "ctw_phaseplan_fuzzing",
       "coverage_avx3",
@@ -440,20 +440,19 @@
       "test_avx1",
       "test_javabase",
       "test_jtt_phaseplan_fuzzing",
+    ]
+  ],
+
+  # Builds run on only on jdk21=0
+  local jdk20_builds = [self.make_build("20", os_arch, task).build
+    for os_arch in all_os_arches
+    for task in [
       "style"
     ]
   ],
 
-  # Builds run on only on jdk21
-  local jdk21_builds = [self.make_build("21", os_arch, task, jdk_name="oraclejdk").build
-    for os_arch in all_os_arches
-    for task in [
-      "test",
-    ]
-  ],
-
-  # Builds run on only on linux-amd64-jdk20Debug
-  local linux_amd64_jdk20Debug_builds = [self.make_build("20Debug", "linux-amd64", task).build
+  # Builds run on only on linux-amd64-jdk21Debug
+  local linux_amd64_jdk21Debug_builds = [self.make_build("21Debug", "linux-amd64", task).build
     for task in [
       "benchmarktest",
       "test"
@@ -465,9 +464,9 @@
     all_platforms_builds +
     all_zgc_builds +
     all_serialgc_builds +
-    jdk21_builds +
-    linux_amd64_jdk20_builds +
-    linux_amd64_jdk20Debug_builds,
+    jdk20_builds +
+    linux_amd64_jdk21_builds +
+    linux_amd64_jdk21Debug_builds,
 
   builds: if
       self.check_manifest(gates,     all_builds, std.thisFile, "gates").result &&

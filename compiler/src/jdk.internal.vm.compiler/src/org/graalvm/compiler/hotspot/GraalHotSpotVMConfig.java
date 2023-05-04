@@ -675,7 +675,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     }
 
     // If the nmethod_entry_barrier field is non-null then an entry barrier must be emitted
-    public final int threadDisarmedOffset = getFieldValue("CompilerToVM::Data::thread_disarmed_offset", Integer.class, "int", 0, zgcSupport);
+    public final int threadDisarmedOffset = getFieldValue(
+                    JDK >= 21 ? "CompilerToVM::Data::thread_disarmed_guard_value_offset" : "CompilerToVM::Data::thread_disarmed_offset",
+                    Integer.class, "int", 0, zgcSupport);
     public final long nmethodEntryBarrier = getFieldValue("CompilerToVM::Data::nmethod_entry_barrier", Long.class, "address", 0L, zgcSupport);
 
     // ZGC support
