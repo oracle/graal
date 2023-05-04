@@ -174,6 +174,14 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
         if (!Uninterruptible.Utils.inliningAllowed(caller, callee)) {
             return false;
         }
+        if (callee.getReturnsAllInstantiatedTypes()) {
+            /*
+             * When a callee returns all instantiated types then it cannot be inlined. Inlining the
+             * method would expose the method's return values instead of treating it as an
+             * AllInstantiatedTypeFlow.
+             */
+            return false;
+        }
         return true;
     }
 

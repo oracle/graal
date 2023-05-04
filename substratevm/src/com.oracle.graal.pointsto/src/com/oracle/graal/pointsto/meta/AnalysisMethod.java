@@ -151,6 +151,16 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     protected AnalysisMethod[] implementations;
 
+    /**
+     * Indicates that this method returns all instantiated types. This is necessary when there are
+     * control flows present which cannot be tracked by analysis, which happens for continuation
+     * support.
+     *
+     * This should only be set via calling
+     * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
+     */
+    private boolean returnsAllInstantiatedTypes;
+
     @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
@@ -215,6 +225,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         this.multiMethodKey = multiMethodKey;
         assert original.multiMethodMap != null;
         multiMethodMap = original.multiMethodMap;
+        returnsAllInstantiatedTypes = original.returnsAllInstantiatedTypes;
 
         if (PointstoOptions.TrackAccessChain.getValue(declaringClass.universe.hostVM().options())) {
             startTrackInvocations();
@@ -922,6 +933,18 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             createAction.accept(newMethod);
             return newMethod;
         });
+    }
+
+    /**
+     * This should only be set via calling
+     * {@code FeatureImpl.BeforeAnalysisAccessImpl#registerOpaqueMethodReturn}.
+     */
+    public void setReturnsAllInstantiatedTypes() {
+        returnsAllInstantiatedTypes = true;
+    }
+
+    public boolean getReturnsAllInstantiatedTypes() {
+        return returnsAllInstantiatedTypes;
     }
 
     protected abstract AnalysisMethod createMultiMethod(AnalysisMethod analysisMethod, MultiMethodKey newMultiMethodKey);
