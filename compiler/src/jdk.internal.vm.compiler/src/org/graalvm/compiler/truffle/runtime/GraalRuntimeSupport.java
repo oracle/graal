@@ -238,7 +238,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         try {
             return optimizedCallTarget.callInlined(callNode, arguments);
         } catch (Throwable t) {
-            GraalRuntimeAccessor.LANGUAGE.onThrowable(callNode, null, t, null);
+            GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(callNode, null, t, null);
             throw OptimizedCallTarget.rethrow(t);
         }
     }
