@@ -1561,7 +1561,7 @@ public class NativeImage {
             bundleSupport.replacePathsForContainerBuild(arguments);
             bundleSupport.replacePathsForContainerBuild(finalImageBuilderArgs);
             Path binJava = Paths.get("bin", "java");
-            javaExecutable = bundleSupport.containerGraalVMHome.resolve(binJava).toString();
+            javaExecutable = BundleSupport.CONTAINER_GRAAL_VM_HOME.resolve(binJava).toString();
         }
 
         Path argFile = createVMInvocationArgumentFile(arguments);
