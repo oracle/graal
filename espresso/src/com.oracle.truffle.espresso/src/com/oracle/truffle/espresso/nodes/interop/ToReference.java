@@ -294,6 +294,10 @@ public abstract class ToReference extends ToEspressoNode {
             return ToReference.isTypeConverterEnabled(klass);
         }
 
+        public static boolean isInterfaceMappingEnabled(Klass klass) {
+            return ToReference.isTypeMappingEnabled(klass);
+        }
+
         @Specialization
         public StaticObject doStaticObject(StaticObject value, @SuppressWarnings("unused") Klass targetType,
                         @Cached InstanceOf.Dynamic instanceOf) throws UnsupportedTypeException {
@@ -315,25 +319,23 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "!interop.isNull(value)",
                         "targetType.isInterface()",
+                        "isInterfaceMappingEnabled(targetType)",
                         "!isStaticObject(value)"
         })
-        public StaticObject doInterface(Object value, @SuppressWarnings("unused") Klass targetType,
+        public StaticObject doMappedInterface(Object value, @SuppressWarnings("unused") Klass targetType,
                         @Cached LookupProxyKlassNode lookupProxyKlassNode,
                         @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-            if (isTypeMappingEnabled(targetType)) {
-                try {
-                    Object metaObject = getMetaObjectOrThrow(value, interop);
-                    ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
-                    if (proxyKlass != null) {
-                        targetType.safeInitialize();
-                        return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
-                    }
-                    throw new ClassCastException();
-                } catch (ClassCastException e) {
-                    // fall through to throw exception
+            try {
+                Object metaObject = getMetaObjectOrThrow(value, interop);
+                ObjectKlass proxyKlass = lookupProxyKlassNode.execute(metaObject, getMetaName(metaObject, interop), targetType);
+                if (proxyKlass != null) {
+                    targetType.safeInitialize();
+                    return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
                 }
+                throw new ClassCastException();
+            } catch (ClassCastException e) {
+                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getTypeAsString()));
             }
-            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", targetType.getTypeAsString()));
         }
 
         @Specialization(guards = {
@@ -346,13 +348,11 @@ public abstract class ToReference extends ToEspressoNode {
                 if (interop.hasBufferElements(value) && !isHostString(value)) {
                     return StaticObject.createForeign(EspressoLanguage.get(this), getMeta()._byte_array, value, interop);
                 }
-                throw UnsupportedTypeException.create(new Object[]{value}, getMeta()._byte_array.getTypeAsString());
-            } else {
-                if (interop.hasArrayElements(value) && !isHostString(value)) {
-                    return StaticObject.createForeign(EspressoLanguage.get(this), targetType, value, interop);
-                }
-                throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
             }
+            if (interop.hasArrayElements(value) && !isHostString(value)) {
+                return StaticObject.createForeign(EspressoLanguage.get(this), targetType, value, interop);
+            }
+            throw UnsupportedTypeException.create(new Object[]{value}, targetType.getTypeAsString());
         }
 
         @Specialization(guards = {
