@@ -188,14 +188,32 @@ public class SubstrateOptions {
      * for a description of the levels.
      */
     public enum OptimizationLevel {
-        O0,
-        O1,
-        O2,
-        BUILD_TIME
+        O0("No optimizations", 0),
+        O1("Basic optimizations", 1),
+        O2("Advanced optimizations", 2),
+        O3("Aggressive optimizations", 3),
+        BUILD_TIME("Optimize for shortest build time", -1);
+
+        private final String description;
+        private final int level;
+
+        private OptimizationLevel(String description, int level) {
+            this.description = description;
+            this.level = level;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public boolean isMinimalLevel(OptimizationLevel other) {
+            return this.level >= other.level;
+        }
     }
 
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
-    @Option(help = "Control code optimizations: b - quick build mode for development, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations (default).", type = OptionType.User)//
+    @Option(help = "Control native-image code optimizations: b - optimize for shortest build time," +
+                    "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - aggressive optimizations.", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
@@ -230,11 +248,11 @@ public class SubstrateOptions {
             return OptimizationLevel.O0;
         } else if (intLevel == 1) {
             return OptimizationLevel.O1;
-        } else if (intLevel >= 2) {
-            /*
-             * We allow all positive numbers, and treat that as our current highest supported level.
-             */
+        } else if (intLevel == 2) {
             return OptimizationLevel.O2;
+        } else if (intLevel > 2) {
+            // We allow all positive numbers, and treat that as our current highest supported level.
+            return OptimizationLevel.O3;
         } else {
             throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value >= 0)", value);
         }
