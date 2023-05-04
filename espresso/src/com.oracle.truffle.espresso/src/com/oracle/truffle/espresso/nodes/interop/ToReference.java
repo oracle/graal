@@ -306,7 +306,7 @@ public abstract class ToReference extends ToEspressoNode {
                         "!isStaticObject(value)"
         })
         public StaticObject doForeignNull(Object value, @SuppressWarnings("unused") Klass targetType,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
         }
 

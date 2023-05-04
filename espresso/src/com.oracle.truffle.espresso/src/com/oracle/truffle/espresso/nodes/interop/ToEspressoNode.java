@@ -164,7 +164,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                         "!isStaticObject(value)"
         })
         public Object doForeignNull(Object value, @SuppressWarnings("unused") Klass targetType,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
         }
 
