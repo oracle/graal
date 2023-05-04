@@ -1142,7 +1142,8 @@ public final class Interop {
      * @throws UnknownIdentifierException if the given member does not exist or is not
      *             {@link #isMemberInvocable(Object, String) invocable}.
      * @throws UnsupportedTypeException if one of the arguments is not compatible to the executable
-     *             signature. The exception is thrown on best effort basis, dynamic languages may
+     *             signature. Also thrown if the return value is not compatible with the passed
+     *             targetType.The exception is thrown on best effort basis, dynamic languages may
      *             throw their own exceptions if the arguments are wrong.
      * @throws ArityException if the number of expected arguments does not match the number of
      *             actual arguments.
