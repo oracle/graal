@@ -298,7 +298,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) {
         CompilerAsserts.partialEvaluationConstant(klass);
         /*
