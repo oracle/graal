@@ -192,7 +192,7 @@ public class CollectProcessor extends BaseProcessor {
         private final TypeElement cls;
         private final String getter;
 
-        public ClassAndInstanceGetter(TypeElement cls, String getter) {
+        ClassAndInstanceGetter(TypeElement cls, String getter) {
             this.cls = cls;
             if (getter == null || getter.length() == 0) {
                 this.getter = "new " + cls.getQualifiedName() + "()";

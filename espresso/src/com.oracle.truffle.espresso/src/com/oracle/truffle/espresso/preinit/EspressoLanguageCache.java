@@ -51,8 +51,7 @@ public final class EspressoLanguageCache {
     public enum CacheCapability {
         DEFAULT(0b00),
         PRE_INITIALIZED(0b01),
-        SHARED(0b10),
-        ;
+        SHARED(0b10);
 
         private final byte kind;
 

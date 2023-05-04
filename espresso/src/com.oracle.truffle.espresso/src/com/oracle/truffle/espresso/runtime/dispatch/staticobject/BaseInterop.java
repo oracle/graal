@@ -253,21 +253,21 @@ public class BaseInterop {
             InteropMessageFactory.register(cls, "toDisplayString", BaseInteropFactory.NodesFactory.ToDisplayStringNodeGen::create);
         }
 
-        static abstract class IsNullNode extends InteropMessage.IsNull {
+        abstract static class IsNullNode extends InteropMessage.IsNull {
             @Specialization
             boolean doStaticObject(StaticObject receiver) {
                 return StaticObject.isNull(receiver);
             }
         }
 
-        static abstract class IsStringNode extends InteropMessage.IsString {
+        abstract static class IsStringNode extends InteropMessage.IsString {
             @Specialization
             boolean doStaticObject(StaticObject receiver) {
                 return StaticObject.notNull(receiver) && receiver.getKlass() == receiver.getKlass().getMeta().java_lang_String;
             }
         }
 
-        static abstract class AsStringNode extends InteropMessage.AsString {
+        abstract static class AsStringNode extends InteropMessage.AsString {
             @Specialization
             String doStaticObject(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -278,7 +278,7 @@ public class BaseInterop {
             }
         }
 
-        static abstract class IsMetaObjectNode extends InteropMessage.IsMetaObject {
+        abstract static class IsMetaObjectNode extends InteropMessage.IsMetaObject {
             @Specialization
             boolean doStaticObject(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -286,7 +286,7 @@ public class BaseInterop {
             }
         }
 
-        static abstract class GetMetaQualifiedNameNode extends InteropMessage.GetMetaQualifiedName {
+        abstract static class GetMetaQualifiedNameNode extends InteropMessage.GetMetaQualifiedName {
             @Specialization
             Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -298,7 +298,7 @@ public class BaseInterop {
             }
         }
 
-        static abstract class GetMetaSimpleNameNode extends InteropMessage.GetMetaSimpleName {
+        abstract static class GetMetaSimpleNameNode extends InteropMessage.GetMetaSimpleName {
             @Specialization
             Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -310,7 +310,7 @@ public class BaseInterop {
             }
         }
 
-        static abstract class IsMetaInstanceNode extends InteropMessage.IsMetaInstance {
+        abstract static class IsMetaInstanceNode extends InteropMessage.IsMetaInstance {
             @Specialization
             boolean doStaticObject(StaticObject receiver, Object instance,
                             @Cached BranchProfile error) throws UnsupportedMessageException {
@@ -323,7 +323,7 @@ public class BaseInterop {
             }
         }
 
-        static abstract class HasMetaObjectNode extends InteropMessage.HasMetaObject {
+        abstract static class HasMetaObjectNode extends InteropMessage.HasMetaObject {
             @Specialization
             boolean doStaticObject(StaticObject receiver) {
                 if (receiver.isForeignObject()) {
@@ -333,7 +333,7 @@ public class BaseInterop {
             }
         }
 
-        static abstract class GetMetaObjectNode extends InteropMessage.GetMetaObject {
+        abstract static class GetMetaObjectNode extends InteropMessage.GetMetaObject {
             @Specialization
             Object doStaticObject(StaticObject receiver, @Cached BranchProfile error) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -345,7 +345,7 @@ public class BaseInterop {
             }
         }
 
-        static abstract class IsIdenticalOrUndefinedNode extends InteropMessage.IsIdenticalOrUndefined {
+        abstract static class IsIdenticalOrUndefinedNode extends InteropMessage.IsIdenticalOrUndefined {
             @Specialization
             public static TriState doStaticObject(StaticObject receiver, StaticObject other) {
                 receiver.checkNotForeign();
@@ -359,7 +359,7 @@ public class BaseInterop {
             }
         }
 
-        static abstract class IdentityHashCodeNode extends InteropMessage.IdentityHashCode {
+        abstract static class IdentityHashCodeNode extends InteropMessage.IdentityHashCode {
             @Specialization
             static int doStaticObject(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -375,14 +375,14 @@ public class BaseInterop {
             }
         }
 
-        static abstract class GetLanguageNode extends InteropMessage.GetLanguage {
+        abstract static class GetLanguageNode extends InteropMessage.GetLanguage {
             @Specialization
             static Class<? extends TruffleLanguage<?>> doStaticObject(StaticObject receiver) {
                 return EspressoLanguage.class;
             }
         }
 
-        static abstract class ToDisplayStringNode extends InteropMessage.ToDisplayString {
+        abstract static class ToDisplayStringNode extends InteropMessage.ToDisplayString {
             @Specialization
             static Object doStaticObject(StaticObject receiver, boolean allowSideEffects) {
                 if (receiver.isForeignObject()) {

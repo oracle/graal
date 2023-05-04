@@ -947,7 +947,7 @@ public class EspressoInterop extends BaseInterop {
             InteropMessageFactory.register(cls, "asDuration", EspressoInteropFactory.NodesFactory.AsDurationNodeGen::create);
         }
 
-        static abstract class IsBooleanNode extends InteropMessage.IsBoolean {
+        abstract static class IsBooleanNode extends InteropMessage.IsBoolean {
             @Specialization
             public static boolean isBoolean(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -956,7 +956,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsBooleanNode extends InteropMessage.AsBoolean {
+        abstract static class AsBooleanNode extends InteropMessage.AsBoolean {
             @Specialization
             static boolean asBoolean(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -967,7 +967,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsNumberNode extends InteropMessage.IsNumber {
+        abstract static class IsNumberNode extends InteropMessage.IsNumber {
             @Specialization
             static boolean isNumber(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -981,7 +981,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class FitsInByteNode extends InteropMessage.FitsInByte {
+        abstract static class FitsInByteNode extends InteropMessage.FitsInByte {
             @Specialization
             static boolean fitsInByte(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1018,7 +1018,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class FitsInShortNode extends InteropMessage.FitsInShort {
+        abstract static class FitsInShortNode extends InteropMessage.FitsInShort {
             @Specialization
             static boolean fitsInShort(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1051,7 +1051,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class FitsInIntNode extends InteropMessage.FitsInInt {
+        abstract static class FitsInIntNode extends InteropMessage.FitsInInt {
             @Specialization
             static boolean fitsInInt(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1080,7 +1080,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class FitsInLongNode extends InteropMessage.FitsInLong {
+        abstract static class FitsInLongNode extends InteropMessage.FitsInLong {
             @Specialization
             static boolean fitsInLong(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1105,7 +1105,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class FitsInFloatNode extends InteropMessage.FitsInFloat {
+        abstract static class FitsInFloatNode extends InteropMessage.FitsInFloat {
             @Specialization
             static boolean fitsInFloat(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1141,7 +1141,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class FitsInDoubleNode extends InteropMessage.FitsInDouble {
+        abstract static class FitsInDoubleNode extends InteropMessage.FitsInDouble {
             @Specialization
             static boolean fitsInDouble(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1166,7 +1166,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsByteNode extends InteropMessage.AsByte {
+        abstract static class AsByteNode extends InteropMessage.AsByte {
             @Specialization
             static byte asByte(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -1178,7 +1178,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsShortNode extends InteropMessage.AsShort {
+        abstract static class AsShortNode extends InteropMessage.AsShort {
             @Specialization
             static short asShort(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -1190,7 +1190,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsIntNode extends InteropMessage.AsInt {
+        abstract static class AsIntNode extends InteropMessage.AsInt {
             @Specialization
             static int asInt(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -1202,7 +1202,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsLongNode extends InteropMessage.AsLong {
+        abstract static class AsLongNode extends InteropMessage.AsLong {
             @Specialization
             static long asLong(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -1214,7 +1214,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsFloatNode extends InteropMessage.AsFloat {
+        abstract static class AsFloatNode extends InteropMessage.AsFloat {
             @Specialization
             static float asFloat(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -1226,7 +1226,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsDoubleNode extends InteropMessage.AsDouble {
+        abstract static class AsDoubleNode extends InteropMessage.AsDouble {
             @Specialization
             static double asDouble(StaticObject receiver) throws UnsupportedMessageException {
                 receiver.checkNotForeign();
@@ -1238,7 +1238,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class GetArraySizeNode extends InteropMessage.GetArraySize {
+        abstract static class GetArraySizeNode extends InteropMessage.GetArraySize {
             @Specialization
             static long getArraySize(StaticObject receiver,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLib,
@@ -1252,7 +1252,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class HasArrayElementsNode extends InteropMessage.HasArrayElements {
+        abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
             @Specialization
             static boolean hasArrayElements(StaticObject receiver) {
                 if (receiver.isForeignObject()) {
@@ -1619,7 +1619,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
+        abstract static class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
             @Specialization
             static boolean isArrayElementReadable(StaticObject receiver, long index,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLib) {
@@ -1628,7 +1628,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
+        abstract static class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
             @Specialization
             static boolean isArrayElementReadable(StaticObject receiver, long index,
                             @CachedLibrary(limit = "1") InteropLibrary receiverLib) {
@@ -1637,14 +1637,14 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
+        abstract static class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
             @Specialization
             static boolean isArrayElementInsertable(StaticObject receiver, long index) {
                 return false;
             }
         }
 
-        static abstract class ReadMemberNode extends InteropMessage.ReadMember {
+        abstract static class ReadMemberNode extends InteropMessage.ReadMember {
             @Specialization
             static Object readMember(StaticObject receiver, String member,
                             @Cached LookupInstanceFieldNode lookupField,
@@ -1682,7 +1682,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class HasMembersNode extends InteropMessage.HasMembers {
+        abstract static class HasMembersNode extends InteropMessage.HasMembers {
             @Specialization
             static boolean hasMembers(StaticObject receiver) {
                 if (receiver.isForeignObject()) {
@@ -1692,7 +1692,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsMemberReadableNode extends InteropMessage.IsMemberReadable {
+        abstract static class IsMemberReadableNode extends InteropMessage.IsMemberReadable {
             @Specialization
             static boolean isMemberReadable(StaticObject receiver, String member,
                             @Cached LookupInstanceFieldNode lookupField,
@@ -1710,7 +1710,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsMemberModifiableNode extends InteropMessage.IsMemberModifiable {
+        abstract static class IsMemberModifiableNode extends InteropMessage.IsMemberModifiable {
             @Specialization
             static boolean isMemberModifiable(StaticObject receiver, String member,
                             @Cached LookupInstanceFieldNode lookup) {
@@ -1723,7 +1723,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class WriteMemberNode extends InteropMessage.WriteMember {
+        abstract static class WriteMemberNode extends InteropMessage.WriteMember {
             @Specialization
             static void writeMember(StaticObject receiver, String member, Object value,
                             @Cached LookupInstanceFieldNode lookup,
@@ -1745,14 +1745,14 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsMemberInsertableNode extends InteropMessage.IsMemberInsertable {
+        abstract static class IsMemberInsertableNode extends InteropMessage.IsMemberInsertable {
             @Specialization
             static boolean isMemberInsertable(StaticObject receiver, String member) {
                 return false;
             }
         }
 
-        static abstract class GetMembersNode extends InteropMessage.GetMembers {
+        abstract static class GetMembersNode extends InteropMessage.GetMembers {
             @Specialization
             @TruffleBoundary
             static Object getMembers(StaticObject receiver,
@@ -1793,7 +1793,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsMemberInvocableNode extends InteropMessage.IsMemberInvocable {
+        abstract static class IsMemberInvocableNode extends InteropMessage.IsMemberInvocable {
             @Specialization
             static boolean isMemberInvocable(StaticObject receiver,
                             String member,
@@ -1807,7 +1807,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class InvokeMemberNode extends InteropMessage.InvokeMember {
+        abstract static class InvokeMemberNode extends InteropMessage.InvokeMember {
             @Specialization
             static Object invokeMember(StaticObject receiver,
                             String member,
@@ -1863,7 +1863,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsDateNode extends InteropMessage.IsDate {
+        abstract static class IsDateNode extends InteropMessage.IsDate {
             @Specialization
             static boolean isDate(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1879,7 +1879,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsDateNode extends InteropMessage.AsDate {
+        abstract static class AsDateNode extends InteropMessage.AsDate {
             @TruffleBoundary
             @Specialization
             static LocalDate asDate(StaticObject receiver,
@@ -1921,7 +1921,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsTimeNode extends InteropMessage.IsTime {
+        abstract static class IsTimeNode extends InteropMessage.IsTime {
             @Specialization
             static boolean isTime(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1936,7 +1936,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsTimeNode extends InteropMessage.AsTime {
+        abstract static class AsTimeNode extends InteropMessage.AsTime {
             @Specialization
             @TruffleBoundary
             static LocalTime asTime(StaticObject receiver,
@@ -1978,7 +1978,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsTimeZoneNode extends InteropMessage.IsTimeZone {
+        abstract static class IsTimeZoneNode extends InteropMessage.IsTimeZone {
             @Specialization
             static boolean isTimeZone(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -1993,7 +1993,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsTimeZoneNode extends InteropMessage.AsTimeZone {
+        abstract static class AsTimeZoneNode extends InteropMessage.AsTimeZone {
             @TruffleBoundary
             @Specialization
             static ZoneId asTimeZone(StaticObject receiver,
@@ -2019,7 +2019,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsInstantNode extends InteropMessage.AsInstant {
+        abstract static class AsInstantNode extends InteropMessage.AsInstant {
             @TruffleBoundary
             @Specialization
             static Instant asInstant(StaticObject receiver,
@@ -2048,7 +2048,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class IsDurationNode extends InteropMessage.IsDuration {
+        abstract static class IsDurationNode extends InteropMessage.IsDuration {
             @Specialization
             static boolean isDuration(StaticObject receiver) {
                 receiver.checkNotForeign();
@@ -2060,7 +2060,7 @@ public class EspressoInterop extends BaseInterop {
             }
         }
 
-        static abstract class AsDurationNode extends InteropMessage.AsDuration {
+        abstract static class AsDurationNode extends InteropMessage.AsDuration {
             @Specialization
             static Duration asDuration(StaticObject receiver,
                             @Cached BranchProfile error) throws UnsupportedMessageException {

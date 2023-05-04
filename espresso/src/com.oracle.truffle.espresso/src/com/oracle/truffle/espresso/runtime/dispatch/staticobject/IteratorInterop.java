@@ -88,14 +88,14 @@ public class IteratorInterop extends EspressoInterop {
             InteropMessageFactory.register(cls, "getIteratorNextElement", IteratorInteropFactory.NodesFactory.GetIteratorNextElementNodeGen::create);
         }
 
-        static abstract class IsIteratorNode extends InteropMessage.IsIterator {
+        abstract static class IsIteratorNode extends InteropMessage.IsIterator {
             @Specialization
             static boolean isIterator(StaticObject receiver) {
                 return true;
             }
         }
 
-        static abstract class HasIteratorNextElementNode extends InteropMessage.HasIteratorNextElement {
+        abstract static class HasIteratorNextElementNode extends InteropMessage.HasIteratorNextElement {
             @Specialization
             static boolean hasIteratorNextElement(StaticObject receiver,
                             @Bind("getMeta().java_util_Iterator_hasNext") Method hasNext,
@@ -104,7 +104,7 @@ public class IteratorInterop extends EspressoInterop {
             }
         }
 
-        static abstract class GetIteratorNextElementNode extends InteropMessage.GetIteratorNextElement {
+        abstract static class GetIteratorNextElementNode extends InteropMessage.GetIteratorNextElement {
             @Specialization
             static Object getIteratorNextElement(StaticObject receiver,
                             @Bind("getMeta().java_util_Iterator_next") Method next,

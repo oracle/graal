@@ -240,18 +240,18 @@ public final class ListInterop extends IterableInterop {
             InteropMessageFactory.register(cls, "readArrayElement", ListInteropFactory.NodesFactory.ReadArrayElementNodeGen::create);
             InteropMessageFactory.register(cls, "writeArrayElement", ListInteropFactory.NodesFactory.WriteArrayElementNodeGen::create);
             InteropMessageFactory.register(cls, "isArrayElementReadable", ListInteropFactory.NodesFactory.IsArrayElementReadableNodeGen::create);
-            InteropMessageFactory.register(cls, "isArrayElementModifiable", ListInteropFactory.NodesFactory.isArrayElementModifiableNodeGen::create);
+            InteropMessageFactory.register(cls, "isArrayElementModifiable", ListInteropFactory.NodesFactory.IsArrayElementModifiableNodeGen::create);
             InteropMessageFactory.register(cls, "isArrayElementInsertable", ListInteropFactory.NodesFactory.IsArrayElementInsertableNodeGen::create);
         }
 
-        static abstract class HasArrayElementsNode extends InteropMessage.HasArrayElements {
+        abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
             @Specialization
             boolean doStaticObject(StaticObject receiver) {
                 return true;
             }
         }
 
-        static abstract class GetArraySizeNode extends InteropMessage.GetArraySize {
+        abstract static class GetArraySizeNode extends InteropMessage.GetArraySize {
             @Specialization
             static long getArraySize(StaticObject receiver,
                             @Bind("getMeta().java_util_List_size") Method listSizeMethod,
@@ -260,7 +260,7 @@ public final class ListInterop extends IterableInterop {
             }
         }
 
-        static abstract class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
+        abstract static class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
             @Specialization
             static Object readArrayElement(StaticObject receiver, long index,
                             @Cached ListGet listGet,
@@ -275,7 +275,7 @@ public final class ListInterop extends IterableInterop {
             }
         }
 
-        static abstract class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
+        abstract static class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
             @Specialization
             static void writeArrayElement(StaticObject receiver, long index, Object value,
                             @Cached ListSet listSet,
@@ -299,7 +299,7 @@ public final class ListInterop extends IterableInterop {
             }
         }
 
-        static abstract class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
+        abstract static class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
             @Specialization
             static boolean isArrayElementReadable(StaticObject receiver, long index,
                             @Bind("getMeta().java_util_List_size") Method listSizeMethod,
@@ -308,7 +308,7 @@ public final class ListInterop extends IterableInterop {
             }
         }
 
-        static abstract class isArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
+        abstract static class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
             @Specialization
             static boolean isArrayElementModifiable(StaticObject receiver, long index,
                             @Bind("getMeta().java_util_List_size") Method listSizeMethod,
@@ -317,7 +317,7 @@ public final class ListInterop extends IterableInterop {
             }
         }
 
-        static abstract class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
+        abstract static class IsArrayElementInsertableNode extends InteropMessage.IsArrayElementInsertable {
             @Specialization
             static boolean isArrayElementInsertable(@SuppressWarnings("unused") StaticObject receiver, @SuppressWarnings("unused") long index) {
                 // we can't easily determine is the guest list is modifiable or not,

@@ -132,35 +132,35 @@ public class MapEntryInterop extends EspressoInterop {
             InteropMessageFactory.register(cls, "readArrayElement", MapEntryInteropFactory.NodesFactory.ReadArrayElementNodeGen::create);
         }
 
-        static abstract class HasArrayElementsNode extends InteropMessage.HasArrayElements {
+        abstract static class HasArrayElementsNode extends InteropMessage.HasArrayElements {
             @Specialization
             boolean doStaticObject(StaticObject receiver) {
                 return true;
             }
         }
 
-        static abstract class GetArraySizeNode extends InteropMessage.GetArraySize {
+        abstract static class GetArraySizeNode extends InteropMessage.GetArraySize {
             @Specialization
             long doStaticObject(StaticObject receiver) {
                 return 2;
             }
         }
 
-        static abstract class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
+        abstract static class IsArrayElementModifiableNode extends InteropMessage.IsArrayElementModifiable {
             @Specialization
             boolean doStaticObject(StaticObject receiver, long index) {
                 return index == 1;
             }
         }
 
-        static abstract class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
+        abstract static class IsArrayElementReadableNode extends InteropMessage.IsArrayElementReadable {
             @Specialization
             boolean doStaticObject(StaticObject receiver, long index) {
                 return index == 0 || index == 1;
             }
         }
 
-        static abstract class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
+        abstract static class WriteArrayElementNode extends InteropMessage.WriteArrayElement {
             @Specialization
             void doStaticObject(StaticObject receiver, long index, Object value,
                             @Cached InvokeEspressoNode invoke) throws InvalidArrayIndexException {
@@ -178,7 +178,7 @@ public class MapEntryInterop extends EspressoInterop {
             }
         }
 
-        static abstract class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
+        abstract static class ReadArrayElementNode extends InteropMessage.ReadArrayElement {
             @Specialization
             Object doStaticObject(StaticObject receiver, long index,
                             @Cached InvokeEspressoNode invoke) throws InvalidArrayIndexException {
