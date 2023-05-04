@@ -26,11 +26,12 @@ package org.graalvm.compiler.phases;
 
 import java.util.Optional;
 
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.GraphState;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /***
@@ -45,10 +46,6 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
     @SuppressWarnings("serial")
     public static class VerificationError extends AssertionError {
 
-        public VerificationError(String message) {
-            super(message);
-        }
-
         public VerificationError(String format, Object... args) {
             super(String.format(format, args));
         }
@@ -57,8 +54,12 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
             super(message, cause);
         }
 
-        public VerificationError(ResolvedJavaMethod method, int bci, String format, Object... args) {
-            this(String.format("In %s: %s", method.asStackTraceElement(bci), format), args);
+        public VerificationError(Invoke invoke, String format, Object... args) {
+            this(String.format("In %s: %s", invoke.asNode().graph().method().asStackTraceElement(invoke.bci()), format), args);
+        }
+
+        public VerificationError(CallTargetNode target, String format, Object... args) {
+            this(target.invoke(), format, args);
         }
     }
 

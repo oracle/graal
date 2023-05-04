@@ -57,6 +57,9 @@ public class VerifyPluginFrameState extends VerifyPhase<CoreProviders> {
 
     Set<Node> transitiveUsages(Node node, Set<Node> usages) {
         for (Node usage : node.usages()) {
+            if (usages.contains(usage)) {
+                continue;
+            }
             if (usage instanceof Proxy) {
                 transitiveUsages(usage, usages);
             } else {
@@ -111,13 +114,13 @@ public class VerifyPluginFrameState extends VerifyPhase<CoreProviders> {
                     ResolvedJavaMethod invokedMethod = call.targetMethod();
                     if (graphBuilderContextType.isAssignableFrom(invokedMethod.getDeclaringClass())) {
                         if (invokedMethod.getName().equals("add")) {
-                            throw new VerificationError(method, invoke.bci(), "%s is added multiple times %s %s", added, invoke, call.invoke());
+                            throw new VerificationError(invoke, "%s is added multiple times %s %s", added, invoke, call.invoke());
                         } else if (invokedMethod.getName().equals("addPush")) {
-                            throw new VerificationError(method, invoke.bci(), "%s is both added %s and pushed %s", added, invoke, call.invoke());
+                            throw new VerificationError(invoke, "%s is both added %s and pushed %s", added, invoke, call.invoke());
                         }
                     } else if (invocationPluginHelperType.isAssignableFrom(invokedMethod.getDeclaringClass())) {
                         if (invokedMethod.getName().startsWith("emitReturn") || invokedMethod.getName().equals("emitFinalReturn")) {
-                            throw new VerificationError(method, invoke.bci(), "%s is both added %s and pushed %s", added, invoke, call.invoke());
+                            throw new VerificationError(invoke, "%s is both added %s and pushed %s", added, invoke, call.invoke());
                         }
                     }
                 }
