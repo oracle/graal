@@ -133,7 +133,7 @@ public final class NativeLibrarySupport {
                 return;
             }
         }
-        throw new UnsatisfiedLinkError("no " + name + " in java.library.path");
+        throw new UnsatisfiedLinkError("No " + name + " in java.library.path");
     }
 
     /** Returns the directory containing the native image, or {@code null}. */

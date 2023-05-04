@@ -238,14 +238,14 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createIntegerOverflowException() {
         vmErrorIfImplicitExceptionsAreFatal();
-        return new ArithmeticException("integer overflow");
+        return new ArithmeticException("Integer overflow");
     }
 
     /** Foreign call: {@link #CREATE_LONG_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createLongOverflowException() {
         vmErrorIfImplicitExceptionsAreFatal();
-        return new ArithmeticException("long overflow");
+        return new ArithmeticException("Long overflow");
     }
 
     /** Foreign call: {@link #CREATE_ASSERTION_ERROR_NULLARY}. */
@@ -358,14 +358,14 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewIntegerOverflowException() {
         vmErrorIfImplicitExceptionsAreFatal();
-        throw new ArithmeticException("integer overflow");
+        throw new ArithmeticException("Integer overflow");
     }
 
     /** Foreign call: {@link #THROW_NEW_LONG_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewLongOverflowException() {
         vmErrorIfImplicitExceptionsAreFatal();
-        throw new ArithmeticException("long overflow");
+        throw new ArithmeticException("Long overflow");
     }
 
     /** Foreign call: {@link #THROW_NEW_ASSERTION_ERROR_NULLARY}. */

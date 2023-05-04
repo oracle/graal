@@ -129,7 +129,7 @@ final class PinnedObjectImpl implements PinnedObject {
     @SuppressWarnings("unchecked")
     public <T extends PointerBase> T addressOfArrayElement(int index) {
         if (referent == null) {
-            throw new NullPointerException("null PinnedObject");
+            throw new NullPointerException("PinnedObject is missing a referent");
         }
         DynamicHub hub = ObjectHeader.readDynamicHubFromObject(referent);
         UnsignedWord offsetOfArrayElement = LayoutEncoding.getArrayElementOffset(hub.getLayoutEncoding(), index);

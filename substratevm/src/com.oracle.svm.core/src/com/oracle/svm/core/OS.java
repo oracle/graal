@@ -66,7 +66,7 @@ public enum OS {
         if (name.contains("Windows")) {
             return WINDOWS;
         }
-        throw new IllegalArgumentException("unknown OS: " + name);
+        throw new IllegalArgumentException("Unknown OS: " + name);
     }
 
     private static final OS current = findCurrent();

@@ -800,7 +800,7 @@ public abstract class PlatformThreads {
         boolean started = doStartThread(thread, stackSize);
         if (!started) {
             unattachedStartedThreads.decrementAndGet();
-            throw new OutOfMemoryError("unable to create native thread: possibly out of memory or process/resource limits reached");
+            throw new OutOfMemoryError("Unable to create native thread: possibly out of memory or process/resource limits reached");
         }
     }
 
@@ -963,7 +963,7 @@ public abstract class PlatformThreads {
     static void sleep(long millis) throws InterruptedException {
         assert !isCurrentThreadVirtual();
         if (millis < 0) {
-            throw new IllegalArgumentException("timeout value is negative");
+            throw new IllegalArgumentException("Timeout value is negative");
         }
         sleep0(TimeUtils.millisToNanos(millis));
         if (Thread.interrupted()) { // clears the interrupted flag as required of Thread.sleep()

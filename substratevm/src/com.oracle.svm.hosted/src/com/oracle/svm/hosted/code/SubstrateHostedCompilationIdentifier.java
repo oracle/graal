@@ -70,7 +70,7 @@ public class SubstrateHostedCompilationIdentifier implements CompilationIdentifi
                 sb.append(']');
                 break;
             default:
-                throw new GraalError("unknown verbosity: " + verbosity);
+                throw new GraalError("Unknown verbosity: " + verbosity);
         }
         return sb;
     }

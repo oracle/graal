@@ -1037,7 +1037,7 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
             case JVM_SIGNATURE_LONG:
                 return HPROF_LONG;
             default:
-                throw new RuntimeException("should not reach here");
+                throw new RuntimeException("Should not reach here");
         }
     }
 
@@ -1226,7 +1226,7 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
                     size += 8;
                     break;
                 default:
-                    throw new RuntimeException("should not reach here");
+                    throw new RuntimeException("Should not reach here");
             }
         }
         return size;

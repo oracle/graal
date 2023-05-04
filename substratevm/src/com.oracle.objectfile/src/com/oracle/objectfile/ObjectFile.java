@@ -122,7 +122,7 @@ public abstract class ObjectFile {
     private final int pageSize;
 
     public ObjectFile(int pageSize) {
-        assert pageSize > 0 : "invalid page size";
+        assert pageSize > 0 : "Invalid page size";
         this.pageSize = pageSize;
     }
 
@@ -178,7 +178,7 @@ public abstract class ObjectFile {
         } else if (osName.startsWith("Windows")) {
             return "Windows";
         } else {
-            throw new IllegalStateException("unsupported OS: " + osName);
+            throw new IllegalStateException("Unsupported OS: " + osName);
         }
     }
 
@@ -199,7 +199,7 @@ public abstract class ObjectFile {
             case PECOFF:
                 return ".obj";
             default:
-                throw new AssertionError("unreachable");
+                throw new AssertionError("Unreachable");
         }
     }
 
@@ -212,7 +212,7 @@ public abstract class ObjectFile {
             case "Windows":
                 return Format.PECOFF;
             default:
-                throw new AssertionError("unreachable"); // we must handle any output of getHostOS()
+                throw new AssertionError("Unreachable"); // we must handle any output of getHostOS()
         }
     }
 
@@ -225,7 +225,7 @@ public abstract class ObjectFile {
             case PECOFF:
                 return new PECoffObjectFile(pageSize);
             default:
-                throw new AssertionError("unreachable");
+                throw new AssertionError("Unreachable");
         }
     }
 
@@ -1237,9 +1237,9 @@ public abstract class ObjectFile {
             }
         }
         if (headers.size() == 0) {
-            throw new IllegalStateException("file has no header");
+            throw new IllegalStateException("File has no header");
         } else if (headers.size() > 1) {
-            throw new IllegalStateException("file has multiple headers");
+            throw new IllegalStateException("File has multiple headers");
         } else {
             assert headers.size() == 1;
         }
@@ -1559,7 +1559,7 @@ public abstract class ObjectFile {
             Set<LayoutDecision> remainingDecisions = new HashSet<>();
             remainingDecisions.addAll(allDecisions);
             remainingDecisions.removeAll(reverseBuildOrder);
-            throw new IllegalStateException("cyclic build dependencies: " + dependencyGraphAsDotString(remainingDecisions));
+            throw new IllegalStateException("Cyclic build dependencies: " + dependencyGraphAsDotString(remainingDecisions));
         }
         assert reverseBuildOrder.get(0) == dummyFinalDecision; // it's the final one, innit
 
@@ -1632,7 +1632,7 @@ public abstract class ObjectFile {
                         assert valueDecided != null;
                         break;
                     default:
-                        throw new AssertionError("unreachable");
+                        throw new AssertionError("Unreachable");
                 }
                 d.setValue(valueDecided); // sets decision to "taken"
             }
@@ -1684,7 +1684,7 @@ public abstract class ObjectFile {
     protected abstract int getMinimumFileSize();
 
     public int getPageSize() {
-        assert pageSize > 0 : "must be initialized";
+        assert pageSize > 0 : "Must be initialized";
         return pageSize;
     }
 

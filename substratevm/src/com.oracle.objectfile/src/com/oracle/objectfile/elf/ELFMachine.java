@@ -95,7 +95,7 @@ public enum ELFMachine/* implements Integral */ {
             case "riscv64":
                 return RISCV64;
         }
-        throw new IllegalStateException("unknown CPU type: " + s);
+        throw new IllegalStateException("Unknown CPU type: " + s);
     }
 
     public static ELFRelocationMethod getRelocation(ELFMachine m, RelocationKind k) {
@@ -120,7 +120,7 @@ public enum ELFMachine/* implements Integral */ {
                         return ELFX86_64Relocation.R_PC64;
                     default:
                     case UNKNOWN:
-                        throw new IllegalArgumentException("cannot map unknown relocation kind to an ELF x86-64 relocation type");
+                        throw new IllegalArgumentException("Cannot map unknown relocation kind to an ELF x86-64 relocation type");
                 }
             case AArch64:
                 switch (k) {
@@ -164,7 +164,7 @@ public enum ELFMachine/* implements Integral */ {
                         return ELFAArch64Relocation.R_AARCH64_LDST8_ABS_LO12_NC;
                     default:
                     case UNKNOWN:
-                        throw new IllegalArgumentException("cannot map unknown relocation kind to an ELF aarch64 relocation type: " + k);
+                        throw new IllegalArgumentException("Cannot map unknown relocation kind to an ELF aarch64 relocation type: " + k);
 
                 }
             case RISCV64:
@@ -173,10 +173,10 @@ public enum ELFMachine/* implements Integral */ {
                         return ELFRISCV64Relocation.R_RISCV_64;
                     default:
                     case UNKNOWN:
-                        throw new IllegalArgumentException("cannot map unknown relocation kind to an ELF riscv64 relocation type: " + k);
+                        throw new IllegalArgumentException("Cannot map unknown relocation kind to an ELF riscv64 relocation type: " + k);
                 }
             default:
-                throw new IllegalStateException("unknown ELF machine type");
+                throw new IllegalStateException("Unknown ELF machine type");
         }
     }
 
@@ -190,7 +190,7 @@ public enum ELFMachine/* implements Integral */ {
             case 0xF3:
                 return RISCV64;
             default:
-                throw new IllegalStateException("unknown ELF machine type");
+                throw new IllegalStateException("Unknown ELF machine type");
         }
     }
 
@@ -202,7 +202,7 @@ public enum ELFMachine/* implements Integral */ {
         } else if (this == RISCV64) {
             return 0xF3;
         } else {
-            throw new IllegalStateException("should not reach here");
+            throw new IllegalStateException("Should not reach here");
         }
     }
 

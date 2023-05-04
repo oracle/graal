@@ -309,7 +309,7 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
             assert sym.getDefinedOffset() == 0 : "Relocation for non-external symbol with section base offset != 0 not supported";
         }
         if (log2length < 0 || log2length >= 4) {
-            throw new IllegalArgumentException("length must be in {1,2,4,8} bytes, so log2length must be in [0,3]");
+            throw new IllegalArgumentException("Length must be in {1,2,4,8} bytes, so log2length must be in [0,3]");
         }
         int startPos = oa.pos();
         oa.write4Byte(sectionOffset);
@@ -381,7 +381,7 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
                         return X86_64Reloc.SIGNED;
                     default:
                     case UNKNOWN:
-                        throw new IllegalArgumentException("unknown relocation kind: " + kind);
+                        throw new IllegalArgumentException("Unknown relocation kind: " + kind);
                 }
             case ARM64:
                 switch (kind) {
@@ -400,10 +400,10 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
                         return ARM64Reloc.PAGEOFF12;
                     default:
                     case UNKNOWN:
-                        throw new IllegalArgumentException("unknown relocation kind: " + kind);
+                        throw new IllegalArgumentException("Unknown relocation kind: " + kind);
                 }
             default:
-                throw new IllegalArgumentException("unknown relocation kind: " + kind);
+                throw new IllegalArgumentException("Unknown relocation kind: " + kind);
         }
     }
 
