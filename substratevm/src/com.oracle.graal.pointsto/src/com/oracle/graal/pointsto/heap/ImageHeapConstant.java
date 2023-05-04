@@ -189,6 +189,12 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return type.getName();
     }
 
+    /**
+     * Returns a new image heap instance, as if {@link Object#clone} was called on the original
+     * object. If the type is not cloneable, then null is returned.
+     */
+    public abstract ImageHeapConstant forObjectClone();
+
     @Override
     public boolean equals(Object o) {
         if (o instanceof ImageHeapConstant other) {

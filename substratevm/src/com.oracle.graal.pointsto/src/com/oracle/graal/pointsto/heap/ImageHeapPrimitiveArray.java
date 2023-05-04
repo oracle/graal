@@ -39,6 +39,10 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
     private final Object array;
     private final int length;
 
+    ImageHeapPrimitiveArray(AnalysisType type, int length) {
+        this(type, null, Array.newInstance(type.getComponentType().getStorageKind().toJavaClass(), length), length);
+    }
+
     ImageHeapPrimitiveArray(ResolvedJavaType type, JavaConstant object, Object array, int length) {
         this(type, object, array, createIdentityHashCode(object), false, length);
     }
@@ -83,6 +87,11 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
     }
 
     @Override
+    public void setElement(int idx, JavaConstant value) {
+        Array.set(array, idx, value.asBoxedPrimitive());
+    }
+
+    @Override
     public int getLength() {
         return length;
     }
@@ -97,6 +106,16 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
     public JavaConstant uncompress() {
         assert compressed;
         return new ImageHeapPrimitiveArray(type, hostedObject, array, identityHashCode, false, length);
+    }
+
+    @Override
+    public ImageHeapConstant forObjectClone() {
+        assert type.isCloneableWithAllocation() : "all arrays implement Cloneable";
+
+        Object newArray = getClone(type.getComponentType().getJavaKind(), array);
+        /* The new constant is never backed by a hosted object, regardless of the input object. */
+        JavaConstant newObject = null;
+        return new ImageHeapPrimitiveArray(type, newObject, newArray, createIdentityHashCode(newObject), compressed, length);
     }
 
     @Override
