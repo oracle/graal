@@ -207,7 +207,8 @@ public abstract class LoopFragment {
             } catch (Throwable t) {
                 StructuredGraph graph = graph();
                 if (duplicationMap instanceof NodeMap<?>) {
-                    TTY.printf("GR-42126 data: graph size %s,loop begin node count %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count());
+                    int nodeCount = graph.getNodeCount();
+                    TTY.printf("GR-42126 data: graph size %s,loop begin node count %s%n", nodeCount, graph.getNodes(LoopBeginNode.TYPE).count());
                     NodeMap<?> nm = (NodeMap<?>) duplicationMap;
                     Object[] rawValues = nm.rawValues();
                     int nullEntries = 0;
@@ -218,7 +219,10 @@ public abstract class LoopFragment {
                     }
                     TTY.printf("GR-42126 data: node map of length %s with %s null entires%n", rawValues.length, nullEntries);
                     if (rawValues.length < 1000) {
-                        TTY.printf("GR-42126 data:%s%n", Arrays.toString(rawValues));
+                        TTY.printf("GR-42126 node map data:%s%n", Arrays.toString(rawValues));
+                    }
+                    if (nodeCount < 1000) {
+                        TTY.printf("GR-42126 graph data:%s%n", Arrays.toString(graph.getRawNodes()));
                     }
                 } else {
                     TTY.printf("GR-42126 data: graph size %s,loop begin node count %s, map size %s, map type %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count(),
