@@ -170,7 +170,6 @@ public abstract class ToEspressoNode extends EspressoNode {
 
         @Specialization(guards = {
                         "!interop.isNull(value)",
-                        "targetType.isInterface()",
                         "isTypeMappingEnabled(targetType)",
                         "!isStaticObject(value)"
         })

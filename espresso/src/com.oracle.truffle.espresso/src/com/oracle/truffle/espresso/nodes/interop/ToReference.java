@@ -312,7 +312,6 @@ public abstract class ToReference extends ToEspressoNode {
 
         @Specialization(guards = {
                         "!interop.isNull(value)",
-                        "targetType.isInterface()",
                         "isTypeMappingEnabled(targetType)",
                         "!isStaticObject(value)"
         })
