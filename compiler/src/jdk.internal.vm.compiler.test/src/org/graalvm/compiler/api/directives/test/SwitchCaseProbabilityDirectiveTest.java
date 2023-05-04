@@ -27,11 +27,13 @@ package org.graalvm.compiler.api.directives.test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.SwitchCaseProbabilityNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -136,12 +138,14 @@ public class SwitchCaseProbabilityDirectiveTest extends GraalCompilerTest {
 
     @Test(expected = GraalError.class)
     public void testMissingProbability() {
-        test("missingProbability", 1);
+        OptionValues optionValues = new OptionValues(getInitialOptions(), DebugOptions.DumpOnError, false);
+        test(optionValues, "missingProbability", 1);
     }
 
     @Test(expected = GraalError.class)
     public void testIncorrectTotalProbability() {
-        test("incorrectTotalProbability", 3);
+        OptionValues optionValues = new OptionValues(getInitialOptions(), DebugOptions.DumpOnError, false);
+        test(optionValues, "incorrectTotalProbability", 3);
     }
 
     @Override
