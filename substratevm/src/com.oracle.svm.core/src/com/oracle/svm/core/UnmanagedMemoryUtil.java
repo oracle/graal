@@ -217,6 +217,60 @@ public final class UnmanagedMemoryUtil {
     }
 
     /**
+     * Compares two memory areas one long word at a time. Returns the word index at which the two
+     * long words differ.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static UnsignedWord compareLongOffset(Pointer from, Pointer to, UnsignedWord size) {
+        UnsignedWord offset = WordFactory.zero();
+
+        while (offset.belowThan(size)) {
+            if (from.readLong(offset) != to.readLong(offset)) {
+                return offset;
+            }
+            offset = offset.add(Long.BYTES);
+        }
+
+        return WordFactory.signed(-1);
+    }
+
+    /**
+     * Compares two memory areas one byte at a time. Returns the byte index at which the first
+     * difference occurs.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static UnsignedWord compareBytesOffset(Pointer from, Pointer to, UnsignedWord initialOffset, UnsignedWord end) {
+        UnsignedWord offset = initialOffset;
+
+        while (offset.belowThan(end)) {
+            if (from.readByte(offset) != to.readByte(offset)) {
+                return offset;
+            }
+            offset = offset.add(1);
+        }
+
+        return WordFactory.signed(-1);
+    }
+
+    /**
+     * Compares two memory areas one byte at a time. Returns the byte index at which the first
+     * difference occurs.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord compareOffset(Pointer from, Pointer to, UnsignedWord size) {
+        UnsignedWord alignBits = WordFactory.unsigned(0x7);
+        UnsignedWord alignedSize = size.and(alignBits.not());
+
+        UnsignedWord compareLong = compareLongOffset(from, to, alignedSize);
+        if (compareLong.equal(WordFactory.signed(-1))) {
+            return compareBytesOffset(from, to, alignedSize, size);
+        }
+
+        // get the exact offset
+        return compareBytesOffset(from, to, compareLong, size);
+    }
+
+    /**
      * Set the bytes of a memory area to a given value. Does *NOT* guarantee any size for the
      * individual read/write operations and therefore does not guarantee any atomicity.
      */
