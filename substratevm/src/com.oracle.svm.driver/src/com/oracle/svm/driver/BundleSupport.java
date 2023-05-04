@@ -487,13 +487,13 @@ final class BundleSupport {
         Path containerRoot = Path.of("/");
         List<String> containerCommand = new ArrayList<>(List.of(containerTool, "run", "--network=none", "--rm"));
         nativeImage.imageBuilderEnvironment
-                .forEach((key, value) -> containerCommand.addAll(List.of("-e", key + "=" + value)));
+                .forEach((key, value) -> containerCommand.addAll(List.of("-e", key + "=" + SubstrateUtil.quoteShellArg(value))));
         containerCommand.addAll(List.of(
-                "--mount", "type=bind,source=" + nativeImage.config.getJavaHome() + ",target=" + CONTAINER_GRAAL_VM_HOME + ",readonly",
-                "--mount", "type=bind,source=" + inputDir + ",target=" + containerRoot.resolve(rootDir.relativize(inputDir)) + ",readonly",
-                "--mount", "type=bind,source=" + outputDir + ",target=" + containerRoot.resolve(rootDir.relativize(outputDir)),
-                "--mount", "type=bind,source=" + argFile + ",target=" + argFile + ",readonly",
-                "--mount", "type=bind,source=" + builderArgFile + ",target=" + builderArgFile + ",readonly",
+                "--mount", SubstrateUtil.quoteShellArg("type=bind,source=" + nativeImage.config.getJavaHome() + ",target=" + CONTAINER_GRAAL_VM_HOME.toString() + ",readonly"),
+                "--mount", SubstrateUtil.quoteShellArg("type=bind,source=" + inputDir + ",target=" + containerRoot.resolve(rootDir.relativize(inputDir)) + ",readonly"),
+                "--mount", SubstrateUtil.quoteShellArg("type=bind,source=" + outputDir + ",target=" + containerRoot.resolve(rootDir.relativize(outputDir))),
+                "--mount", SubstrateUtil.quoteShellArg("type=bind,source=" + argFile + ",target=" + argFile + ",readonly"),
+                "--mount", SubstrateUtil.quoteShellArg("type=bind,source=" + builderArgFile + ",target=" + builderArgFile + ",readonly"),
                 containerImage)
         );
         return containerCommand;
