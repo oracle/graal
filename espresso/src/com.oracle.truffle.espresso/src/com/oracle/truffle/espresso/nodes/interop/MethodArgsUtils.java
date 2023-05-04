@@ -33,6 +33,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -111,7 +112,7 @@ public class MethodArgsUtils {
         StaticObject varArgsArray = isPrimitive ? varArgsType.getAllocator().createNewPrimitiveArray(varArgsType, varArgsLength) : varArgsType.allocateReferenceArray(varArgsLength);
 
         if (isPrimitive) {
-            varArgsType = primitiveTypeToBoxedType(varArgsType);
+            varArgsType = primitiveTypeToBoxedType((PrimitiveKlass) varArgsType);
         }
 
         int index = 0;
@@ -136,7 +137,7 @@ public class MethodArgsUtils {
         return new CandidateMethodWithArgs(matched.getMethod(), finalConvertedArgs, matched.getParameterTypes());
     }
 
-    public static Klass boxedTypeToPrimitiveType(Klass primitiveType) {
+    public static PrimitiveKlass boxedTypeToPrimitiveType(Klass primitiveType) {
         Meta meta = primitiveType.getMeta();
         if (primitiveType == meta.java_lang_Boolean) {
             return meta._boolean;
@@ -159,26 +160,21 @@ public class MethodArgsUtils {
         }
     }
 
-    static Klass primitiveTypeToBoxedType(Klass primitiveType) {
+    public static Klass primitiveTypeToBoxedType(PrimitiveKlass primitiveType) {
         Meta meta = primitiveType.getMeta();
-        if (primitiveType == meta._boolean) {
-            return meta.java_lang_Boolean;
-        } else if (primitiveType == meta._byte) {
-            return meta.java_lang_Byte;
-        } else if (primitiveType == meta._short) {
-            return meta.java_lang_Short;
-        } else if (primitiveType == meta._char) {
-            return meta.java_lang_Character;
-        } else if (primitiveType == meta._int) {
-            return meta.java_lang_Integer;
-        } else if (primitiveType == meta._long) {
-            return meta.java_lang_Long;
-        } else if (primitiveType == meta._float) {
-            return meta.java_lang_Float;
-        } else if (primitiveType == meta._double) {
-            return meta.java_lang_Double;
-        } else {
-            return null;
+        switch (primitiveType.getPrimitiveJavaKind()) {
+            // @formatter:off
+            case Int: return meta.java_lang_Integer;
+            case Boolean: return meta.java_lang_Boolean;
+            case Char: return meta.java_lang_Character;
+            case Short: return meta.java_lang_Short;
+            case Byte: return meta.java_lang_Byte;
+            case Long: return meta.java_lang_Long;
+            case Double: return meta.java_lang_Double;
+            case Float: return meta.java_lang_Float;
+            case Void: return meta.java_lang_Void;
+            default: return null;
+            // @formatter:on
         }
     }
 

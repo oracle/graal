@@ -66,28 +66,6 @@ public abstract class ToReference extends ToEspressoNode {
 
     @TruffleBoundary
     public static ToReference createToReference(Klass targetType, Meta meta) {
-        if (targetType.isPrimitive()) {
-            switch (targetType.getJavaKind()) {
-                case Boolean:
-                    return ToReferenceFactory.ToBooleanNodeGen.create();
-                case Byte:
-                    return ToReferenceFactory.ToByteNodeGen.create();
-                case Short:
-                    return ToReferenceFactory.ToShortNodeGen.create();
-                case Int:
-                    return ToReferenceFactory.ToIntegerNodeGen.create();
-                case Float:
-                    return ToReferenceFactory.ToFloatNodeGen.create();
-                case Long:
-                    return ToReferenceFactory.ToLongNodeGen.create();
-                case Double:
-                    return ToReferenceFactory.ToDoubleNodeGen.create();
-                case Char:
-                    return ToReferenceFactory.ToCharNodeGen.create();
-                case Void:
-                    return ToReferenceFactory.ToVoidNodeGen.create();
-            }
-        }
         if (targetType == meta.java_lang_Void) {
             return ToReferenceFactory.ToVoidNodeGen.create();
         }
@@ -184,28 +162,6 @@ public abstract class ToReference extends ToEspressoNode {
 
     @TruffleBoundary
     static ToReference getUncachedToReference(Klass targetType, Meta meta) {
-        if (targetType.isPrimitive()) {
-            switch (targetType.getJavaKind()) {
-                case Boolean:
-                    return ToReferenceFactory.ToBooleanNodeGen.getUncached();
-                case Byte:
-                    return ToReferenceFactory.ToByteNodeGen.getUncached();
-                case Short:
-                    return ToReferenceFactory.ToShortNodeGen.getUncached();
-                case Int:
-                    return ToReferenceFactory.ToIntegerNodeGen.getUncached();
-                case Float:
-                    return ToReferenceFactory.ToFloatNodeGen.getUncached();
-                case Long:
-                    return ToReferenceFactory.ToLongNodeGen.getUncached();
-                case Double:
-                    return ToReferenceFactory.ToDoubleNodeGen.getUncached();
-                case Char:
-                    return ToReferenceFactory.ToCharNodeGen.getUncached();
-                case Void:
-                    return ToReferenceFactory.ToVoidNodeGen.getUncached();
-            }
-        }
         if (targetType == meta.java_lang_Void) {
             return ToReferenceFactory.ToVoidNodeGen.getUncached();
         }

@@ -50,9 +50,12 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.LookupTypeConverterNode;
+import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToReference;
@@ -2055,7 +2058,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
                 Object result = interop.invokeMember(InteropUtils.unwrapForeign(getLanguage(), receiver), hostMember, hostArguments);
-                return toEspressoNode.execute(result, targetClass.getMirrorKlass(meta));
+                Klass targetKlass = targetClass.getMirrorKlass(meta);
+                if (targetKlass.isPrimitive()) {
+                    targetKlass = MethodArgsUtils.primitiveTypeToBoxedType((PrimitiveKlass) targetKlass);
+                }
+                return toEspressoNode.execute(result, targetKlass);
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);

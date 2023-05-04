@@ -34,6 +34,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 
@@ -296,8 +297,8 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         Meta meta = toType.getMeta();
         boolean fromIsPrimitive = fromType.isPrimitive();
         boolean toIsPrimitive = toType.isPrimitive();
-        Klass fromAsPrimitive = fromIsPrimitive ? fromType : MethodArgsUtils.boxedTypeToPrimitiveType(fromType);
-        Klass toAsPrimitive = toIsPrimitive ? toType : MethodArgsUtils.boxedTypeToPrimitiveType(toType);
+        PrimitiveKlass fromAsPrimitive = fromIsPrimitive ? (PrimitiveKlass) fromType : MethodArgsUtils.boxedTypeToPrimitiveType(fromType);
+        PrimitiveKlass toAsPrimitive = toIsPrimitive ? (PrimitiveKlass) toType : MethodArgsUtils.boxedTypeToPrimitiveType(toType);
         if (toAsPrimitive != null && fromAsPrimitive != null) {
             if (toAsPrimitive == fromAsPrimitive) {
                 assert fromIsPrimitive != toIsPrimitive;
@@ -310,7 +311,7 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         } else if (fromAsPrimitive == meta._char && (toType == meta.java_lang_String || toType == meta.java_lang_CharSequence)) {
             // char|Character <: String|CharSequence
             return true;
-        } else if (toAsPrimitive == null && fromAsPrimitive != null && toType.isAssignableFrom(MethodArgsUtils.primitiveTypeToBoxedType(fromAsPrimitive))) {
+        } else if (toAsPrimitive == null && fromAsPrimitive != null && toType.isAssignableFrom(MethodArgsUtils.primitiveTypeToBoxedType((PrimitiveKlass) fromAsPrimitive))) {
             // primitive|boxed <: Number et al
             return true;
         }
