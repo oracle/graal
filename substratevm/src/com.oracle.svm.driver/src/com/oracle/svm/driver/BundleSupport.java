@@ -117,7 +117,7 @@ final class BundleSupport {
     static final String BUNDLE_OPTION = "--bundle";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
 
-    final Path containerGraalVMHome = Path.of("/graalvm");
+    static final Path CONTAINER_GRAAL_VM_HOME = Path.of("/graalvm");
     boolean useContainer;
     private String containerTool;
     private String bundleContainerTool;
@@ -129,15 +129,39 @@ final class BundleSupport {
     private Path bundleDockerfile;
     private static final List<String> SUPPORTED_CONTAINER_TOOLS = List.of("podman", "docker");
     private static final String DEFAULT_DOCKERFILE = "ARG BASE_IMAGE=container-registry.oracle.com/os/oraclelinux:8-slim" + System.lineSeparator() +
-            "FROM ${BASE_IMAGE}" + System.lineSeparator() +
+            "FROM ${BASE_IMAGE} as base" + System.lineSeparator() +
             "RUN microdnf update -y oraclelinux-release-el8 \\" + System.lineSeparator() +
-            "&& microdnf --enablerepo ol8_codeready_builder install bzip2-devel ed gcc gcc-c++ gcc-gfortran gzip file fontconfig less libcurl-devel make openssl openssl-devel readline-devel tar glibc-langpack-en \\" + System.lineSeparator() +
-            "vi which xz-devel zlib-devel findutils glibc-static libstdc++ libstdc++-devel libstdc++-static zlib-static \\" + System.lineSeparator() +
-            "&& microdnf clean all" + System.lineSeparator() +
-            "RUN fc-cache -f -v";
-    private final String containerToolJsonKey = "containerTool";
-    private final String containerToolVersionJsonKey = "containerToolVersion";
-    private final String containerImageJsonKey = "containerImage";
+            "   && microdnf --enablerepo ol8_codeready_builder install bzip2-devel ed gcc gcc-c++ gcc-gfortran gzip file fontconfig less libcurl-devel make openssl openssl-devel readline-devel tar glibc-langpack-en \\" + System.lineSeparator() +
+            "   vi which xz-devel zlib-devel findutils glibc-static libstdc++ libstdc++-devel libstdc++-static zlib-static \\" + System.lineSeparator() +
+            "   && microdnf clean all" + System.lineSeparator() +
+            "RUN fc-cache -f -v" + System.lineSeparator() +
+            "ENV LANG=en_US.UTF-8 \\" + System.lineSeparator() +
+            "   JAVA_HOME=" + CONTAINER_GRAAL_VM_HOME + System.lineSeparator() +
+            "WORKDIR /";
+    private static final String DEFAULT_DOCKERFILE_MUSLIB = "FROM base as muslib" + System.lineSeparator() +
+            "ARG TEMP_REGION=\"\"" + System.lineSeparator() +
+            "ARG MUSL_LOCATION=http://more.musl.cc/10/x86_64-linux-musl/x86_64-linux-musl-native.tgz" + System.lineSeparator() +
+            "ARG ZLIB_LOCATION=https://zlib.net/fossils/zlib-1.2.11.tar.gz" + System.lineSeparator() +
+            "ENV TOOLCHAIN_DIR=/usr/local/musl \\" + System.lineSeparator() +
+            "   CC=$TOOLCHAIN_DIR/bin/gcc" + System.lineSeparator() +
+            "RUN echo \"$TEMP_REGION\" > /etc/dnf/vars/ociregion \\" + System.lineSeparator() +
+            "   && rm -rf /etc/yum.repos.d/ol8_graalvm_community.repo \\" + System.lineSeparator() +
+            "   && mkdir -p $TOOLCHAIN_DIR \\" + System.lineSeparator() +
+            "   && microdnf install -y wget tar gzip make \\" + System.lineSeparator() +
+            "   && wget $MUSL_LOCATION && tar -xvf  x86_64-linux-musl-native.tgz -C $TOOLCHAIN_DIR --strip-components=1  \\" + System.lineSeparator() +
+            "   && wget $ZLIB_LOCATION && tar -xvf zlib-1.2.11.tar.gz \\" + System.lineSeparator() +
+            "   && cd zlib-1.2.11 \\" + System.lineSeparator() +
+            "   && ./configure --prefix=$TOOLCHAIN_DIR --static \\" + System.lineSeparator() +
+            "   && make && make install" + System.lineSeparator() +
+            "FROM base as final" + System.lineSeparator() +
+            "COPY --from=muslib /usr/local/musl /usr/local/musl" + System.lineSeparator() +
+            "RUN echo \"\" > /etc/dnf/vars/ociregion" + System.lineSeparator() +
+            "ENV TOOLCHAIN_DIR=/usr/local/musl \\" + System.lineSeparator() +
+            "   CC=$TOOLCHAIN_DIR/bin/gcc" + System.lineSeparator() +
+            "ENV PATH=$TOOLCHAIN_DIR/bin:$PATH";
+    private static final String CONTAINER_TOOL_JSON_KEY = "containerTool";
+    private static final String CONTAINER_TOOL_VERSION_JSON_KEY = "containerToolVersion";
+    private static final String CONTAINER_IMAGE_JSON_KEY = "containerImage";
     final Map<String, String> containerEnvironment = new HashMap<>();
 
 
@@ -300,9 +324,13 @@ final class BundleSupport {
         try {
             if (dockerfile == null) {
                 dockerfile = Files.createTempFile("Dockerfile", null);
-                Files.write(dockerfile, DEFAULT_DOCKERFILE.getBytes());
+                String dockerfileText = DEFAULT_DOCKERFILE;
+                if(nativeImage.getNativeImageArgs().contains("--static") && nativeImage.getNativeImageArgs().contains("--libc=musl")) {
+                    dockerfileText += System.lineSeparator() + DEFAULT_DOCKERFILE_MUSLIB;
+                }
+                Files.write(dockerfile, dockerfileText.getBytes());
                 dockerfile.toFile().deleteOnExit();
-                containerImage = SubstrateUtil.digest(DEFAULT_DOCKERFILE);
+                containerImage = SubstrateUtil.digest(dockerfileText);
             } else {
                 containerImage = SubstrateUtil.digest(Files.readString(dockerfile));
             }
@@ -461,7 +489,7 @@ final class BundleSupport {
         nativeImage.imageBuilderEnvironment
                 .forEach((key, value) -> containerCommand.addAll(List.of("-e", key + "=" + value)));
         containerCommand.addAll(List.of(
-                "--mount", "type=bind,source=" + nativeImage.config.getJavaHome() + ",target=" + containerGraalVMHome + ",readonly",
+                "--mount", "type=bind,source=" + nativeImage.config.getJavaHome() + ",target=" + CONTAINER_GRAAL_VM_HOME + ",readonly",
                 "--mount", "type=bind,source=" + inputDir + ",target=" + containerRoot.resolve(rootDir.relativize(inputDir)) + ",readonly",
                 "--mount", "type=bind,source=" + outputDir + ",target=" + containerRoot.resolve(rootDir.relativize(outputDir)),
                 "--mount", "type=bind,source=" + argFile + ",target=" + argFile + ",readonly",
@@ -588,9 +616,9 @@ final class BundleSupport {
         if(Files.exists(containerFile)) {
             try (Reader reader = Files.newBufferedReader(containerFile)) {
                 EconomicMap<String, Object> json = JSONParser.parseDict(reader);
-                if(json.get(containerImageJsonKey) != null) bundleContainerImage =  json.get(containerImageJsonKey).toString();
-                if(json.get(containerToolJsonKey) != null) bundleContainerTool = json.get(containerToolJsonKey).toString();
-                if(json.get(containerToolVersionJsonKey) != null) bundleContainerToolVersion = json.get(containerToolVersionJsonKey).toString();
+                if(json.get(CONTAINER_IMAGE_JSON_KEY) != null) bundleContainerImage =  json.get(CONTAINER_IMAGE_JSON_KEY).toString();
+                if(json.get(CONTAINER_TOOL_JSON_KEY) != null) bundleContainerTool = json.get(CONTAINER_TOOL_JSON_KEY).toString();
+                if(json.get(CONTAINER_TOOL_VERSION_JSON_KEY) != null) bundleContainerToolVersion = json.get(CONTAINER_TOOL_VERSION_JSON_KEY).toString();
             } catch (IOException e) {
                 throw NativeImage.showError("Failed to read bundle-file " + pathSubstitutionsFile, e);
             }
@@ -659,7 +687,7 @@ final class BundleSupport {
 
     void replacePathsForContainerBuild(List<String> arguments) {
         arguments.replaceAll(arg -> arg
-                .replace(nativeImage.config.getJavaHome().toString(), containerGraalVMHome.toString())
+                .replace(nativeImage.config.getJavaHome().toString(), CONTAINER_GRAAL_VM_HOME.toString())
                 .replace(rootDir.toString(), "")
         );
     }
@@ -939,9 +967,9 @@ final class BundleSupport {
 
         if(useContainer) {
             Map<String, Object> containerInfo = new HashMap<>();
-            if(containerImage != null) containerInfo.put(containerImageJsonKey, containerImage);
-            if(containerTool != null) containerInfo.put(containerToolJsonKey, containerTool);
-            if(containerToolVersion != null) containerInfo.put(containerToolVersionJsonKey, containerToolVersion);
+            if(containerImage != null) containerInfo.put(CONTAINER_IMAGE_JSON_KEY, containerImage);
+            if(containerTool != null) containerInfo.put(CONTAINER_TOOL_JSON_KEY, containerTool);
+            if(containerToolVersion != null) containerInfo.put(CONTAINER_TOOL_VERSION_JSON_KEY, containerToolVersion);
 
             if(!containerInfo.isEmpty()) {
                 Path containerFile = stageDir.resolve("container.json");
