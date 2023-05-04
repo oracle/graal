@@ -257,7 +257,10 @@ Increase the amount of available memory to reduce the time to build the native b
 #### <a name="glossary-peak-rss"></a>Peak RSS
 Peak [resident set size](https://en.wikipedia.org/wiki/Resident_set_size) as reported by the operating system.
 This value indicates the maximum amount of memory consumed by the build process.
-If the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of available memory of the system can be reduced to a value closer to the peak RSS.
+By default, the process will only use available memory, so memory that the operating system can make available without having to swap out memory used by other processes.
+Therefore, consider freeing up memory if builds are slow, for example, by closing applications that you do not need.
+Note that, by default, the build process will also not use more than 32GB if available.
+If the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of total memory of the system can be reduced to a value closer to the peak RSS to lower operational costs.
 
 #### <a name="glossary-cpu-load"></a>CPU load
 The CPU time used by the process divided by the total process time.

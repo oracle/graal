@@ -29,8 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -58,7 +56,6 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
@@ -83,7 +80,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.OptionUtils;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.ExitStatus;
 import com.oracle.svm.core.util.VMError;
@@ -252,9 +248,6 @@ public class NativeImage {
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
 
-    static final String oXmx = "-Xmx";
-    static final String oXms = "-Xms";
-
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
@@ -281,7 +274,6 @@ public class NativeImage {
     private String printFlagsWithExtraHelpOptionQuery = null;
 
     final Registry optionRegistry;
-    private LinkedHashSet<EnabledOption> enabledLanguages;
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
     private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
@@ -808,14 +800,7 @@ public class NativeImage {
 
     private void prepareImageBuildArgs() {
         addImageBuilderJavaArgs("-Xss10m");
-        addImageBuilderJavaArgs(oXms + getXmsValue());
-        String xmxVal = getXmxValue(1);
-        if (!"0".equals(xmxVal)) {
-            addImageBuilderJavaArgs(oXmx + xmxVal);
-        }
-
-        /* Let builder exit on first OutOfMemoryError. */
-        addImageBuilderJavaArgs("-XX:+ExitOnOutOfMemoryError");
+        addImageBuilderJavaArgs(MemoryUtil.determineMemoryFlags());
 
         /* Prevent JVM that runs the image builder to steal focus. */
         addImageBuilderJavaArgs("-Djava.awt.headless=true");
@@ -841,18 +826,6 @@ public class NativeImage {
         if (!enabledOptions.isEmpty()) {
             addPlainImageBuilderArg(oHFallbackThreshold + SubstrateOptions.NoFallback);
         }
-
-        /* Determine if truffle is needed- any MacroOption of kind Language counts */
-        enabledLanguages = optionRegistry.getEnabledOptions(OptionUtils.MacroOptionKind.Language);
-
-        /* Provide more memory for image building if we have more than one language. */
-        if (enabledLanguages.size() > 1) {
-            long baseMemRequirements = SubstrateOptionsParser.parseLong("4g");
-            long memRequirements = baseMemRequirements + enabledLanguages.size() * SubstrateOptionsParser.parseLong("1g");
-            /* Add mem-requirement for polyglot building - gets further consolidated (use max) */
-            addImageBuilderJavaArgs(oXmx + memRequirements);
-        }
-
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity()); // legacy
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.image-build-time.PreinitializeContexts=", ",", Function.identity());
     }
@@ -861,27 +834,6 @@ public class NativeImage {
         boolean elementsRemoved = args.removeIf(arg -> arg.startsWith(argPrefix));
         args.add(argPrefix + argSuffix);
         return elementsRemoved;
-    }
-
-    private static <T> T consolidateArgs(Collection<String> args, String argPrefix,
-                    Function<String, T> fromSuffix, Function<T, String> toSuffix,
-                    Supplier<T> init, BiFunction<T, T, T> combiner) {
-        T consolidatedValue = null;
-        boolean needsConsolidate = false;
-        for (String arg : args) {
-            if (arg.startsWith(argPrefix)) {
-                if (consolidatedValue == null) {
-                    consolidatedValue = init.get();
-                } else {
-                    needsConsolidate = true;
-                }
-                consolidatedValue = combiner.apply(consolidatedValue, fromSuffix.apply(arg.substring(argPrefix.length())));
-            }
-        }
-        if (consolidatedValue != null && needsConsolidate) {
-            replaceArg(args, argPrefix, toSuffix.apply(consolidatedValue));
-        }
-        return consolidatedValue;
     }
 
     private static LinkedHashSet<String> collectListArgs(Collection<String> args, String argPrefix, String delimiter) {
@@ -1052,14 +1004,7 @@ public class NativeImage {
                 }
             }
         }
-        /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
-        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
-        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
-        if (xmxValue != null) {
-            if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
-                replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
-            }
-        }
+
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
 
         /* Perform option consolidation of imageBuilderArgs */
@@ -2000,14 +1945,15 @@ public class NativeImage {
     }
 
     void showOutOfMemoryWarning() {
+        String xmxFlag = "-Xmx";
         String lastMaxHeapValue = null;
         for (String arg : imageBuilderJavaArgs) {
-            if (arg.startsWith(oXmx)) {
-                lastMaxHeapValue = arg.substring(oXmx.length());
+            if (arg.startsWith(xmxFlag)) {
+                lastMaxHeapValue = arg;
             }
         }
-        String maxHeapText = lastMaxHeapValue == null ? "" : " (The maximum heap size of the process was set to '" + lastMaxHeapValue + "'.)";
-        String additionalAction = lastMaxHeapValue == null ? "" : " or increase the maximum heap size using the '" + oXmx + "' option";
+        String maxHeapText = lastMaxHeapValue == null ? "" : " (The maximum heap size of the process was set with '" + lastMaxHeapValue + "'.)";
+        String additionalAction = lastMaxHeapValue == null ? "" : " or increase the maximum heap size using the '" + xmxFlag + "' option";
         showMessage("The Native Image build process ran out of memory.%s%nPlease make sure your build system has more memory available%s.", maxHeapText, additionalAction);
     }
 
@@ -2086,26 +2032,6 @@ public class NativeImage {
 
     List<String> getNativeImageArgs() {
         return Stream.concat(getDefaultNativeImageArgs().stream(), config.getBuildArgs().stream()).toList();
-    }
-
-    protected String getXmsValue() {
-        return "1g";
-    }
-
-    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize is deprecated after JDK 11
-    private static long getPhysicalMemorySize() {
-        OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
-        long totalPhysicalMemorySize = ((com.sun.management.OperatingSystemMXBean) osMXBean).getTotalPhysicalMemorySize();
-        return totalPhysicalMemorySize;
-    }
-
-    protected String getXmxValue(int maxInstances) {
-        Long memMax = Long.divideUnsigned(Long.divideUnsigned(getPhysicalMemorySize(), 10) * 8, maxInstances);
-        String maxXmx = "14g";
-        if (Long.compareUnsigned(memMax, SubstrateOptionsParser.parseLong(maxXmx)) >= 0) {
-            return maxXmx;
-        }
-        return Long.toUnsignedString(memMax);
     }
 
     private static boolean isDumbTerm() {

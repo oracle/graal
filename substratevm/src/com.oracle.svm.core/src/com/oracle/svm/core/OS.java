@@ -31,7 +31,6 @@ public enum OS {
 
     DARWIN("Darwin", false),
     LINUX("Linux", true),
-    SOLARIS("Solaris", true),
     WINDOWS("Windows", false);
 
     /**
@@ -60,9 +59,6 @@ public enum OS {
         final String name = System.getProperty("os.name");
         if (name.equals("Linux")) {
             return LINUX;
-        }
-        if (name.equals("SunOS")) {
-            return SOLARIS;
         }
         if (name.equals("Mac OS X") || name.equals("Darwin")) {
             return DARWIN;
