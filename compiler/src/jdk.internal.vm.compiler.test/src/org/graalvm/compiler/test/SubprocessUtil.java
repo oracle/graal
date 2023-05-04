@@ -249,6 +249,7 @@ public final class SubprocessUtil {
             for (String line : output) {
                 msg.format("%s%n", line);
             }
+            msg.format("exit code: %s%n", exitCode);
             if (delimiter != null) {
                 msg.format("%s%n", delimiter);
             }
