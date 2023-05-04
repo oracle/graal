@@ -39,4 +39,7 @@ public class LibCHelper {
     // Checkstyle: stop
     public static native CCharPointer SVM_FindJavaTZmd(CCharPointer tzMappings, int length);
     // Checkstyle: start
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native long getThreadUserTime(long tid);
 }

@@ -35,18 +35,12 @@ import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
-import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.util.TimeUtils;
-
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.BufferedReader;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import com.oracle.svm.core.LibCHelper;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
 final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
@@ -55,7 +49,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
         if (!includeSystemTime) {
-            return getThreadUserTime(LinuxPthread.gettid());
+            return LibCHelper.getThreadUserTime(LinuxPthread.gettid().rawValue());
         }
         return getThreadCpuTimeImpl(LinuxTime.CLOCK_THREAD_CPUTIME_ID());
     }
@@ -64,7 +58,8 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
         if (!includeSystemTime) {
-            return getThreadUserTime(VMThreads.findOSThreadIdForIsolateThread(isolateThread));
+            OSThreadId tid = VMThreads.findOSThreadIdForIsolateThread(isolateThread);
+            return LibCHelper.getThreadUserTime(tid.rawValue());
         }
 
         return getThreadCpuTime(VMThreads.findOSThreadHandleForIsolateThread(isolateThread));
@@ -92,46 +87,5 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
             return -1;
         }
         return time.tv_sec() * TimeUtils.nanosPerSecond + time.tv_nsec();
-    }
-
-    @Uninterruptible(reason = "Used as a transition between uninterruptible and interruptible code", calleeMustBe = false)
-    private static long getThreadUserTime(OSThreadId tid) {
-        return getSlowThreadUserTimeImpl(tid);
-    }
-
-    /*
-     * Returns the thread user time. Based on <link href=
-     * "https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/linux/os_linux.cpp#L5012">slow_thread_cpu_time</link>.
-     */
-    private static long getSlowThreadUserTimeImpl(OSThreadId tid) {
-        String fileName = "/proc/self/task/" + tid.rawValue() + "/stat";
-        try (BufferedReader buff = new BufferedReader(new FileReader(fileName))) {
-            String line = buff.readLine();
-            Matcher matcher = PatternSingleton.USER_CPU_TIME_PATTERN.matcher(line);
-            if (matcher.find()) {
-                String userTime = matcher.group(1);
-                try {
-                    long clockTicksPerSeconds = Unistd.sysconf(Unistd._SC_CLK_TCK());
-                    return Long.parseLong(userTime) * TimeUtils.nanosPerSecond / clockTicksPerSeconds;
-                } catch (NumberFormatException e) {
-                }
-            }
-        } catch (IOException e) {
-        }
-        return -1;
-    }
-
-    private static class PatternSingleton {
-        // File /proc/self/task/tid/stat
-        // Field 2 is a filename in parentheses
-        // Field 3 is a character
-        // Fields 1,4-8 are integers
-        // Fields 9-15 are unsigned integers
-        // Field 14 is the CPU time spent in user code
-        private static final String USER_CPU_TIME_REGEX = """
-                -?\\d+ \\(.+\\) . -?\\d+ -?\\d+ -?\\d+ -?\\d+ -?\\d+ \
-                \\d+ \\d+ \\d+ \\d+ \\d+ \
-                (\\d+) \\d+""";
-        private static final Pattern USER_CPU_TIME_PATTERN = Pattern.compile(USER_CPU_TIME_REGEX);
     }
 }
