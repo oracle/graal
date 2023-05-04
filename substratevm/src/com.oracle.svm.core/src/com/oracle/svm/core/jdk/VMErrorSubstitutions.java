@@ -27,7 +27,9 @@ package com.oracle.svm.core.jdk;
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import org.graalvm.compiler.nodes.UnreachableNode;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -35,9 +37,11 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -134,6 +138,10 @@ public class VMErrorSubstitutions {
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
         ThreadStackPrinter.printBacktrace();
+
+        if (SubstrateOptions.SpawnIsolates.getValue() && CurrentIsolate.getCurrentThread().isNull()) {
+            CEntryPointActions.enterAttachThreadFromCrashHandler((Isolate) KnownIntrinsics.heapBase());
+        }
 
         SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
