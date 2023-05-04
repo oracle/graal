@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -281,6 +282,7 @@ public abstract class ToReference extends ToEspressoNode {
 
     @NodeInfo(shortName = "Generic toEspresso node")
     @GenerateUncached
+    @ImportStatic(ToEspressoNode.class)
     public abstract static class GenericToReference extends EspressoNode {
         protected static final int LIMIT = 2;
 
@@ -288,14 +290,6 @@ public abstract class ToReference extends ToEspressoNode {
 
         public static boolean isStaticObject(Object value) {
             return value instanceof StaticObject;
-        }
-
-        public static boolean isTypeConverterEnabled(Klass klass) {
-            return ToReference.isTypeConverterEnabled(klass);
-        }
-
-        public static boolean isInterfaceMappingEnabled(Klass klass) {
-            return ToReference.isTypeMappingEnabled(klass);
         }
 
         @Specialization
@@ -319,7 +313,7 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "!interop.isNull(value)",
                         "targetType.isInterface()",
-                        "isInterfaceMappingEnabled(targetType)",
+                        "isTypeMappingEnabled(targetType)",
                         "!isStaticObject(value)"
         })
         public StaticObject doMappedInterface(Object value, @SuppressWarnings("unused") Klass targetType,
@@ -380,9 +374,9 @@ public abstract class ToReference extends ToEspressoNode {
         @Specialization(guards = {
                         "!interop.isNull(value)",
                         "!isStaticObject(value)",
-                        "!targetType.isInterface()",
                         "!targetType.isArray()",
-                        "!isTypeConverterEnabled(targetType)"
+                        "!isTypeConverterEnabled(targetType)",
+                        "!isTypeMappingEnabled(targetType)"
         })
         public StaticObject doGeneric(Object value, Klass targetType,
                         @Bind("getMeta()") Meta meta,
