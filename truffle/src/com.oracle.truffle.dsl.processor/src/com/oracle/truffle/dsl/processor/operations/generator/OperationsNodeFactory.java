@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor.operations.generator;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.addSuppressWarnings;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
-import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createPartialEvaluationConstant;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.addField;
@@ -60,6 +59,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOError;
 import java.io.IOException;
+import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -106,7 +106,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
-import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
@@ -181,9 +180,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Define the interpreter implementations. The root node defines fields for the current
         // interpreter and for each variant.
         if (model.generateUncached) {
-            // Transitioning between Uncached and Cached requires memory barriers, so we need Unsafe
-            operationNodeGen.addAll(GeneratorUtils.createUnsafeSingleton());
-
             operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER0).create());
         }
         operationNodeGen.addAll(createInterpreterTiers());
@@ -325,7 +321,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
         consts.addElementsTo(operationNodeGen);
 
-        // Define a helper to initialize the cached nodes.
+        // Define helpers for obtaining and initializing the cached nodes.
+        operationNodeGen.add(createGetCachedNodes());
+        operationNodeGen.add(createInitializeCachedNodes());
         operationNodeGen.add(createCreateCachedNodes());
 
         // TODO: this method is here for debugging and should probably be omitted before we release
@@ -569,6 +567,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.startTryBlock();
 
         b.statement("int state = startState");
+        // These don't change between invocations. Read them once.
+        b.statement("short[] bc = this.bc");
+        b.statement("Object[] constants = this.constants");
 
         b.startWhile().string("true").end().startBlock();
 
@@ -579,6 +580,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (tier.isUncached) {
                 // We don't want to compile this code path.
                 b.tree(createTransferToInterpreterAndInvalidate("this"));
+            } else {
+                // Obtain the cached nodes, forcing initialization if necessary
+                b.statement("Node[] cachedNodes = getCachedNodes()");
             }
             b.startAssign("state").startCall(tier.interpreterClassName() + ".continueAt");
             b.string("this, frame");
@@ -587,8 +591,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
             b.string("bc");
             b.string("constants");
-            b.string("handlers");
-            b.string("numLocals");
             if (!tier.isUncached) {
                 b.string("cachedNodes");
             }
@@ -1035,20 +1037,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.returnStatement();
         b.end();
 
-        // deopt and invalidate before changing state
         b.tree(createTransferToInterpreterAndInvalidate("this"));
-
-        // If we generate an uncached version, we need to initialize the cached nodes when switching
-        // from it.
-        if (model.generateUncached) {
-            b.startIf().string("currentTier == TIER0").end().startBlock();
-            b.declaration(new ArrayCodeTypeMirror(types.Node), "nodes", "createCachedNodes()");
-            b.lineComment("For thread-safety, ensure that all stores into \"nodes\" happen before we make \"cachedNodes\" point at it.");
-            b.startStatement().startCall("UNSAFE", "storeFence").end(2);
-            b.startAssign("cachedNodes").string("nodes").end();
-            b.end(); // } if
-        }
-
         b.statement("currentTier = newTier");
 
         return ex;
@@ -1098,12 +1087,53 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // node and nodeIndex are guaranteed to be set, since we continue to the top of the loop
         // when there's no node.
+        b.startAssert().string("result[nodeIndex] == null").end();
         b.statement("result[nodeIndex] = insert(node)");
 
         b.end(); // } while
         b.startAssert().string("bci == bc.length").end();
 
         b.startReturn().string("result").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createInitializeCachedNodes() {
+        TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "initializeCachedNodes");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.tree(createNeverPartOfCompilation());
+        b.declaration(new ArrayCodeTypeMirror(types.Node), "result", "this.cachedNodes");
+
+        b.startIf().string("result != null").end().startBlock();
+        b.startReturn().string("result").end();
+        b.end();
+
+        b.startAssign("result").startCall("createCachedNodes").end(2);
+
+        b.lineComment("For thread-safety, ensure that all stores into \"result\" happen before we make \"cachedNodes\" point to it.");
+        b.startStatement().startStaticCall(context.getType(VarHandle.class), "storeStoreFence").end(2);
+        b.startAssign("this.cachedNodes").string("result").end();
+        b.startReturn().string("result").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createGetCachedNodes() {
+        TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "getCachedNodes");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.declaration(new ArrayCodeTypeMirror(types.Node), "result", "this.cachedNodes");
+
+        b.startIf().string("result == null").end().startBlock();
+        b.tree(createTransferToInterpreterAndInvalidate("this"));
+        b.startAssign("result").startCall("initializeCachedNodes").end(2);
+        b.end();
+
+        b.startReturn().string("result").end();
+        b.end();
 
         return ex;
     }
@@ -3563,8 +3593,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
             ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "constants"));
-            ex.addParameter(new CodeVariableElement(context.getType(int[].class), "handlers"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "numLocals"));
             if (!tier.isUncached) {
                 ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
             }
@@ -3734,6 +3762,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("throw sneakyThrow((Throwable) frame.getObject(bc[bci + 1]))");
                         break;
                     case YIELD:
+                        b.statement("int numLocals = $this.numLocals");
                         b.statement("frame.copyTo(numLocals, generatorFrame, numLocals, (sp - 1 - numLocals))");
                         b.statement("frame.setObject(sp - 1, ((ContinuationLocation) constants[bc[bci + 1]]).createResult(generatorFrame, frame.getObject(sp - 1)))");
                         b.statement("return (((sp - 1) << 16) | 0xffff)");
@@ -3808,6 +3837,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException"), "ex");
 
+            b.statement("int[] handlers = $this.handlers");
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
 
             // todo: this could get improved
@@ -3815,7 +3845,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startIf().string("handlers[idx + 1] <= bci").end().startBlock().statement("continue").end();
 
             b.statement("bci = handlers[idx + 2]");
-            b.statement("sp = handlers[idx + 3] + numLocals");
+            b.statement("sp = handlers[idx + 3] + $this.numLocals");
             b.statement("frame.setObject(handlers[idx + 4], ex)");
 
             b.statement("continue loop");

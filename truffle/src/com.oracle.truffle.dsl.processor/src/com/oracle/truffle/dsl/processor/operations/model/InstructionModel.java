@@ -43,7 +43,6 @@ package com.oracle.truffle.dsl.processor.operations.model;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -244,8 +243,8 @@ public class InstructionModel implements InfoDumpable {
         }
     }
 
-    public InstructionModel addImmediate(ImmediateKind kind, String name) {
-        immediates.add(new InstructionImmediate(1 + immediates.size(), kind, name));
+    public InstructionModel addImmediate(ImmediateKind immediateKind, String immediateName) {
+        immediates.add(new InstructionImmediate(1 + immediates.size(), immediateKind, immediateName));
         return this;
     }
 
@@ -253,14 +252,14 @@ public class InstructionModel implements InfoDumpable {
         return immediates;
     }
 
-    public List<InstructionImmediate> getImmediates(ImmediateKind kind) {
-        return immediates.stream().filter(imm -> imm.kind == kind).toList();
+    public List<InstructionImmediate> getImmediates(ImmediateKind immediateKind) {
+        return immediates.stream().filter(imm -> imm.kind == immediateKind).toList();
     }
 
-    public InstructionImmediate getImmediate(ImmediateKind kind) {
-        List<InstructionImmediate> immediates = getImmediates(kind);
-        assert immediates.size() == 1;
-        return immediates.get(0);
+    public InstructionImmediate getImmediate(ImmediateKind immediateKind) {
+        List<InstructionImmediate> filteredImmediates = getImmediates(immediateKind);
+        assert filteredImmediates.size() == 1;
+        return filteredImmediates.get(0);
     }
 
     public int getInstructionLength() {
