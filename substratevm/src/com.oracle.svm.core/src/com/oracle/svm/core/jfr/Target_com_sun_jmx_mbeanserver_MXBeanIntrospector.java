@@ -28,7 +28,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "com.sun.jmx.mbeanserver.MXBeanIntrospector", onlyWith = JfrHostedEnabled.class)
+@TargetClass(className = "com.sun.jmx.mbeanserver.MXBeanIntrospector", onlyWith = HasJfrSupport.class)
 final class Target_com_sun_jmx_mbeanserver_MXBeanIntrospector {
 
     /* Reset caches that are used at image build time when FlightRecorder is enabled. */
@@ -38,6 +38,6 @@ final class Target_com_sun_jmx_mbeanserver_MXBeanIntrospector {
     private static Target_com_sun_jmx_mbeanserver_MBeanIntrospector_MBeanInfoMap mbeanInfoMap;
 }
 
-@TargetClass(className = "com.sun.jmx.mbeanserver.MBeanIntrospector", innerClass = "MBeanInfoMap", onlyWith = JfrHostedEnabled.class)
+@TargetClass(className = "com.sun.jmx.mbeanserver.MBeanIntrospector", innerClass = "MBeanInfoMap", onlyWith = HasJfrSupport.class)
 final class Target_com_sun_jmx_mbeanserver_MBeanIntrospector_MBeanInfoMap {
 }

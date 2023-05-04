@@ -35,7 +35,7 @@ import jdk.jfr.Event;
 @Name("com.jfr.String")
 @Label("String Event")
 @Description("An event with a string payload")
-@StackTrace(false)
+@StackTrace()
 public class StringEvent extends Event {
 
     @Label("Message") public String message;

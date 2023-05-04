@@ -28,8 +28,6 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * Returns {@code true} if the Native Image is built with JFR support. This does not necessarily
@@ -44,17 +42,5 @@ public class HasJfrSupport implements BooleanSupplier {
     @Fold
     public static boolean get() {
         return ImageSingletons.contains(JfrManager.class);
-    }
-}
-
-/**
- * Returns {@code true} if the HotSpot JVM is recording and emitting JFR events while doing the
- * Native Image build.
- */
-@Platforms(Platform.HOSTED_ONLY.class)
-class JfrHostedEnabled implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return ImageSingletons.contains(JfrManager.class) && ImageSingletons.lookup(JfrManager.class).hostedEnabled;
     }
 }

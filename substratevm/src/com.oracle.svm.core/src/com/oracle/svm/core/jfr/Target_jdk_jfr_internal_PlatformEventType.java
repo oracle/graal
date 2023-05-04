@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,15 +28,12 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.jfr.FlightRecorder;
+import jdk.jfr.internal.PlatformEventType;
 
-@TargetClass(value = jdk.jfr.FlightRecorder.class, onlyWith = HasJfrSupport.class)
-final class Target_jdk_jfr_FlightRecorder {
-    /*
-     * Ignore all state of the FlightRecorder maintained when profiling the image generator itself.
-     */
+@TargetClass(PlatformEventType.class)
+public final class Target_jdk_jfr_internal_PlatformEventType {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private static FlightRecorder platformRecorder;
+    private boolean enabled;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private static boolean initialized;
+    private boolean committable;
 }

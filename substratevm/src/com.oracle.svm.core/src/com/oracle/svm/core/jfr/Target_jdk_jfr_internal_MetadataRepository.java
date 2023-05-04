@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +23,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.jfr.FlightRecorder;
+import jdk.jfr.internal.MetadataRepository;
 
-@TargetClass(value = jdk.jfr.FlightRecorder.class, onlyWith = HasJfrSupport.class)
-final class Target_jdk_jfr_FlightRecorder {
+@TargetClass(value = MetadataRepository.class, onlyWith = HasJfrSupport.class)
+final class Target_jdk_jfr_internal_MetadataRepository {
     /*
      * Ignore all state of the FlightRecorder maintained when profiling the image generator itself.
      */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private static FlightRecorder platformRecorder;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private static boolean initialized;
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    private static MetadataRepository instance = new MetadataRepository();
 }

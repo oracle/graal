@@ -35,7 +35,7 @@ import jdk.jfr.Event;
 @Name("com.jfr.Class")
 @Label("Class Event")
 @Description("An event with a class payload")
-@StackTrace(false)
+@StackTrace()
 public class ClassEvent extends Event {
 
     @Label("Class") public Class<?> clazz;

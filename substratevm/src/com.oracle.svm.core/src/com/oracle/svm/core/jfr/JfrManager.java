@@ -66,12 +66,8 @@ import jdk.jfr.internal.jfc.JFC;
 public class JfrManager {
     private static final String DEFAULT_JFC_NAME = "default";
 
-    @Platforms(Platform.HOSTED_ONLY.class) //
-    final boolean hostedEnabled;
-
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrManager(boolean hostedEnabled) {
-        this.hostedEnabled = hostedEnabled;
+    public JfrManager() {
     }
 
     public static boolean isJFREnabled() {
@@ -239,12 +235,12 @@ public class JfrManager {
                 Duration dDelay = Duration.ofNanos(delay);
                 recording.scheduleStart(dDelay);
 
-                msg.append("Recording " + recording.getId() + " scheduled to start in ");
+                msg.append("Recording ").append(recording.getId()).append(" scheduled to start in ");
                 msg.append(Utils.formatTimespan(dDelay, " "));
                 msg.append(".");
             } else {
                 recording.start();
-                msg.append("Started recording " + recording.getId() + ".");
+                msg.append("Started recording ").append(recording.getId()).append(".");
             }
 
             if (recording.isToDisk() && duration == null && maxAge == null && maxSize == null) {

@@ -28,7 +28,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "com.sun.jmx.mbeanserver.MXBeanLookup", onlyWith = JfrHostedEnabled.class)
+@TargetClass(className = "com.sun.jmx.mbeanserver.MXBeanLookup", onlyWith = HasJfrSupport.class)
 final class Target_com_sun_jmx_mbeanserver_MXBeanLookup {
 
     /* Reset caches that are used at image build time when FlightRecorder is enabled. */
@@ -36,6 +36,6 @@ final class Target_com_sun_jmx_mbeanserver_MXBeanLookup {
     private static Target_com_sun_jmx_mbeanserver_WeakIdentityHashMap mbscToLookup;
 }
 
-@TargetClass(className = "com.sun.jmx.mbeanserver.WeakIdentityHashMap", onlyWith = JfrHostedEnabled.class)
+@TargetClass(className = "com.sun.jmx.mbeanserver.WeakIdentityHashMap", onlyWith = HasJfrSupport.class)
 final class Target_com_sun_jmx_mbeanserver_WeakIdentityHashMap {
 }
