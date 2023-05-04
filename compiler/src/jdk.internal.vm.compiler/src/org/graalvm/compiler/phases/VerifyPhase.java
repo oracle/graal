@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /***
@@ -54,6 +55,10 @@ public abstract class VerifyPhase<C> extends BasePhase<C> {
 
         public VerificationError(String message, Throwable cause) {
             super(message, cause);
+        }
+
+        public VerificationError(ResolvedJavaMethod method, int bci, String format, Object... args) {
+            this(String.format("In %s: %s", method.asStackTraceElement(bci), format), args);
         }
     }
 
