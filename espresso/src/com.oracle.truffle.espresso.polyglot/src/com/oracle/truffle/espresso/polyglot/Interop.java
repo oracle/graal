@@ -1134,6 +1134,23 @@ public final class Interop {
     public static native Object invokeMember(Object receiver, String member, Object... arguments)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
 
+    /**
+     * Invokes a member for a given receiver and arguments where the expected return target type is
+     * passed in to assist the runtime in converting the result of the invocation. Otherwise,
+     * equivalent to {@link #invokeMember(Object, String, Object...)}.
+     *
+     * @throws UnknownIdentifierException if the given member does not exist or is not
+     *             {@link #isMemberInvocable(Object, String) invocable}.
+     * @throws UnsupportedTypeException if one of the arguments is not compatible to the executable
+     *             signature. The exception is thrown on best effort basis, dynamic languages may
+     *             throw their own exceptions if the arguments are wrong.
+     * @throws ArityException if the number of expected arguments does not match the number of
+     *             actual arguments.
+     * @throws UnsupportedMessageException when the receiver does not support invoking at all, e.g.
+     *             when storing executable members is not allowed.
+     * @see #isMemberInvocable(Object, String)
+     * @since 23.0
+     */
     public static native <T> T invokeMemberWithCast(Class<T> targetType, Object receiver, String member, Object... arguments)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException;
 
