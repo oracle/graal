@@ -28,14 +28,16 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.Formatter;
 import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
+import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
@@ -205,10 +207,12 @@ public abstract class LoopFragment {
             try {
                 nodes.markAll(duplicationNodes);
             } catch (Throwable t) {
+                StringBuilder sb = new StringBuilder();
+                Formatter f = new Formatter(sb);
                 StructuredGraph graph = graph();
                 if (duplicationMap instanceof NodeMap<?>) {
                     int nodeCount = graph.getNodeCount();
-                    TTY.printf("GR-42126 data: graph size %s,loop begin node count %s%n", nodeCount, graph.getNodes(LoopBeginNode.TYPE).count());
+                    f.format("GR-42126 data: graph size %s,loop begin node count %s%n", nodeCount, graph.getNodes(LoopBeginNode.TYPE).count());
                     NodeMap<?> nm = (NodeMap<?>) duplicationMap;
                     Object[] rawValues = nm.rawValues();
                     int nullEntries = 0;
@@ -217,22 +221,24 @@ public abstract class LoopFragment {
                             nullEntries++;
                         }
                     }
-                    TTY.printf("GR-42126 data: node map of length %s with %s null entires%n", rawValues.length, nullEntries);
+                    f.format("GR-42126 data: node map of length %s with %s null entires%n", rawValues.length, nullEntries);
                     if (rawValues.length < 1000) {
-                        TTY.printf("GR-42126 node map data:%s%n", Arrays.toString(rawValues));
+                        f.format("GR-42126 node map data:%s%n", Arrays.toString(rawValues));
                     }
                     if (nodeCount < 1000) {
-                        TTY.printf("GR-42126 graph data:%s%n", Arrays.toString(graph.getRawNodes()));
+                        f.format("GR-42126 graph data:%s%n", Arrays.toString(graph.getRawNodes()));
                     }
                 } else {
-                    TTY.printf("GR-42126 data: graph size %s,loop begin node count %s, map size %s, map type %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count(),
+                    f.format("GR-42126 data: graph size %s,loop begin node count %s, map size %s, map type %s%n", graph.getNodeCount(), graph.getNodes(LoopBeginNode.TYPE).count(),
                                     duplicationMap.size(),
                                     duplicationMap.getClass());
                 }
                 checkNoNulls(duplicationNodes);
                 checkNoNulls(duplicationMap);
-                graph().getDebug().forceDump(graph(), "map of type %s has a null key", duplicationMap.getClass());
-                throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
+                if (GraalCompilerOptions.CompilationFailureAction.getValue(graph.getOptions()) == ExceptionAction.Diagnose) {
+                    graph().getDebug().forceDump(graph(), "map of type %s has a null key", duplicationMap.getClass());
+                }
+                throw GraalError.shouldNotReachHere(t, sb.toString()); // ExcludeFromJacocoGeneratedReport
             }
             nodesReady = true;
         } else {
