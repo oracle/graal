@@ -40,14 +40,15 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Synchronized buffer that stores pointers into "grey" heap chunks that need to be scanned. Note
- * that the pointers don't necessarily point to the beginning of a chunk.
+ * A queue that stores pointers into "grey" heap chunks that need to be scanned. Note that the
+ * pointers don't necessarily point to the beginning of a chunk. GC workers threads may only access
+ * the queue if they hold {@link ParallelGC#getMutex()}.
  */
-public class ChunkBuffer {
+public class ChunkQueue {
     private static final int INITIAL_SIZE = 1024 * wordSize();
 
     private Pointer buffer;
-    private int size = INITIAL_SIZE;
+    private int size;
     private int top;
 
     @Fold
@@ -56,23 +57,26 @@ public class ChunkBuffer {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    ChunkBuffer() {
+    ChunkQueue() {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void initialize() {
+        assert top == 0 && size == 0 && buffer.isNull();
+        top = 0;
+        size = INITIAL_SIZE;
         buffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(size));
-        VMError.guarantee(buffer.isNonNull());
+        VMError.guarantee(buffer.isNonNull(), "Failed to allocate native memory for the ChunkBuffer.");
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void push(Pointer ptr) {
-        assert !ParallelGC.singleton().isInParallelPhase() && VMThreads.ownsThreadMutex() || ParallelGC.singleton().getMutex().hasOwner();
+        assert !ParallelGC.singleton().isInParallelPhase() && VMThreads.ownsThreadMutex() || ParallelGC.singleton().isInParallelPhase() && ParallelGC.singleton().getMutex().isOwner(true);
         if (top >= size) {
             size *= 2;
             assert top < size;
             buffer = ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(buffer, WordFactory.unsigned(size));
-            VMError.guarantee(buffer.isNonNull());
+            VMError.guarantee(buffer.isNonNull(), "Failed to allocate native memory for the ChunkBuffer.");
         }
         buffer.writeWord(top, ptr);
         top += wordSize();
@@ -80,18 +84,12 @@ public class ChunkBuffer {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pointer pop() {
-        assert ParallelGC.singleton().isInParallelPhase();
-        ParallelGC.singleton().getMutex().lockNoTransitionUnspecifiedOwner();
-        try {
-            if (top > 0) {
-                top -= wordSize();
-                return buffer.readWord(top);
-            } else {
-                return WordFactory.nullPointer();
-            }
-        } finally {
-            ParallelGC.singleton().getMutex().unlockNoTransitionUnspecifiedOwner();
+        assert ParallelGC.singleton().isInParallelPhase() && ParallelGC.singleton().getMutex().isOwner(true);
+        if (top > 0) {
+            top -= wordSize();
+            return buffer.readWord(top);
         }
+        return WordFactory.nullPointer();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -101,7 +99,10 @@ public class ChunkBuffer {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    void release() {
+    void teardown() {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(buffer);
+        buffer = WordFactory.nullPointer();
+        size = 0;
+        top = 0;
     }
 }

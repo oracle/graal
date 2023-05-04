@@ -210,17 +210,15 @@ public final class Space {
             }
         }
         /* Slow-path: try allocating a new chunk for the requested memory. */
-        return allocateInNewChunkParallel(oldChunk, objectSize);
+        return allocateInNewChunkParallel(objectSize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private Pointer allocateInNewChunkParallel(AlignedHeapChunk.AlignedHeader oldChunk, UnsignedWord objectSize) {
+    private Pointer allocateInNewChunkParallel(UnsignedWord objectSize) {
         AlignedHeapChunk.AlignedHeader newChunk;
         ParallelGC.singleton().getMutex().lockNoTransitionUnspecifiedOwner();
         try {
-            if (oldChunk.isNonNull()) {
-                ParallelGC.singleton().pushAllocChunk(oldChunk);
-            }
+            ParallelGC.singleton().pushAllocChunk();
             newChunk = requestAlignedHeapChunk();
         } finally {
             ParallelGC.singleton().getMutex().unlockNoTransitionUnspecifiedOwner();
@@ -361,7 +359,7 @@ public final class Space {
     private static boolean verifyMutualExclusionForAppendChunk() {
         return !SubstrateOptions.MultiThreaded.getValue() ||
                         VMThreads.ownsThreadMutex(true) ||
-                        ParallelGC.isEnabled() && VMOperation.isGCInProgress() && ParallelGC.singleton().isInParallelPhase() && ParallelGC.singleton().getMutex().isOwner();
+                        ParallelGC.isEnabled() && VMOperation.isGCInProgress() && ParallelGC.singleton().isInParallelPhase() && ParallelGC.singleton().getMutex().isOwner(true);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
