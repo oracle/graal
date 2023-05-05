@@ -295,6 +295,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
+                assert RuntimeCompilationFeature.verifyNodes(graph);
 
             } catch (Throwable ex) {
                 debug.handle(ex);
@@ -459,6 +460,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                     convertDeoptimizeToGuard.apply(graph, hostedProviders);
 
                     graphEncoder.prepare(graph);
+                    assert RuntimeCompilationFeature.verifyNodes(graph);
                 } catch (Throwable ex) {
                     debug.handle(ex);
                 }
