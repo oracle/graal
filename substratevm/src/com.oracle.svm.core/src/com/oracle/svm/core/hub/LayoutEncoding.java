@@ -355,7 +355,7 @@ public class LayoutEncoding {
         DynamicHub hub = oh.dynamicHubFromObjectHeader(header);
         int encoding = hub.getLayoutEncoding();
         boolean withOptionalIdHashField = addOptionalIdHashField ||
-                (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && oh.hasOptionalIdentityHashField(header));
+                        (!ConfigurationValues.getObjectLayout().hasFixedIdentityHashField() && oh.hasOptionalIdentityHashField(header));
         return getSizeFromEncoding(obj, hub, encoding, withOptionalIdHashField);
     }
 
