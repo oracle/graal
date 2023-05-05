@@ -51,7 +51,8 @@ public final class SubstrateHostInliningPhase extends HostInliningPhase {
     private final TruffleFeature truffleFeature = ImageSingletons.lookup(TruffleFeature.class);
 
     SubstrateHostInliningPhase(CanonicalizerPhase canonicalizer) {
-        super(canonicalizer);
+        super(canonicalizer, -1.0d); // -1.0 effectively disables frequency based inlining by
+                                     // default.
     }
 
     @Override
