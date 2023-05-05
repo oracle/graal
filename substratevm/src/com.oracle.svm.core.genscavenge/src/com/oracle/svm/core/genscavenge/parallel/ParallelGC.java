@@ -66,6 +66,7 @@ import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.PlatformThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.PlatformThreads.OSThreadHandlePointer;
 import com.oracle.svm.core.thread.PlatformThreads.ThreadLocalKey;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -471,6 +472,9 @@ class ParallelGCFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        UserError.guarantee(Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class),
+                        "The parallel garbage collector ('--gc=parallel') is currently only supported on Linux and macOS.");
+
         ImageSingletons.add(ParallelGC.class, new ParallelGC());
     }
 }
