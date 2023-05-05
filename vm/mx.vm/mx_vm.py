@@ -159,7 +159,7 @@ if mx.suite('tools', fatalIfMissing=False) is not None and mx.suite('graal-js', 
 polybench_benchmark_methods = ["_run"]
 
 
-llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-clang++', 'bgraalvm-native-ld']
+llvm_components = ['bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-clang++', 'bgraalvm-native-flang', 'bgraalvm-native-ld']
 
 # pylint: disable=line-too-long
 ce_components_minimal = ['bgu', 'bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'jss', 'lg', 'libpoly', 'lsp', 'nfi-libffi', 'nfi', 'poly', 'polynative', 'pro', 'sdk', 'spolyglot', 'tfl', 'tflm']
