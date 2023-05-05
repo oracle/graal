@@ -1246,12 +1246,24 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (fileName().length() == 0) {
                 return Stream.empty();
             }
-            final CallNode root = new Builder(debugContext, compilation.getTargetCodeSize(), true).build(compilation);
+            boolean omitInline = SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue();
+            int maxDepth = SubstrateOptions.DebugCodeInfoMaxDepth.getValue();
+            boolean useSourceMappings = SubstrateOptions.DebugCodeInfoUseSourceMappings.getValue();
+            if (omitInline) {
+                if (!SubstrateOptions.DebugCodeInfoMaxDepth.hasBeenSet()) {
+                    /* TopLevelVisitor will not go deeper than level 2 */
+                    maxDepth = 2;
+                }
+                if (!SubstrateOptions.DebugCodeInfoUseSourceMappings.hasBeenSet()) {
+                    /* Skip expensive CompilationResultFrameTree building with SourceMappings */
+                    useSourceMappings = false;
+                }
+            }
+            final CallNode root = new Builder(debugContext, compilation.getTargetCodeSize(), maxDepth, useSourceMappings, true).build(compilation);
             if (root == null) {
                 return Stream.empty();
             }
             final List<DebugLocationInfo> locationInfos = new ArrayList<>();
-            final boolean omitInline = SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue();
             int frameSize = getFrameSize();
             final Visitor visitor = (omitInline ? new TopLevelVisitor(locationInfos, frameSize) : new MultiLevelVisitor(locationInfos, frameSize));
             // arguments passed by visitor to apply are

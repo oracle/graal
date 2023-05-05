@@ -663,6 +663,10 @@ public class SubstrateOptions {
     @Option(help = "Use old debuginfo", deprecated = true, deprecationMessage = "Please use the -g option.")//
     public static final HostedOptionKey<Boolean> UseOldDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateUseOldDebugInfo);
 
+    public static boolean useDebugInfoGeneration() {
+        return useLIRBackend() && GenerateDebugInfo.getValue() > 0 && !UseOldDebugInfo.getValue();
+    }
+
     private static void validateUseOldDebugInfo(HostedOptionKey<Boolean> optionKey) {
         if (optionKey.getValue() && SubstrateOptions.GenerateDebugInfo.getValue() < 1) {
             throw UserError.abort("The option '%s' can only be used together with '%s'.",
@@ -697,7 +701,13 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
-    public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(false);
+
+    @Option(help = "Specify maximum inlining depth to consider when building DebugCodeInfo") //
+    public static final HostedOptionKey<Integer> DebugCodeInfoMaxDepth = new HostedOptionKey<>(Integer.MAX_VALUE);
+
+    @Option(help = "Do not use SourceMappings for generating DebugCodeInfo (i.e. only use Infopoints)") //
+    public static final HostedOptionKey<Boolean> DebugCodeInfoUseSourceMappings = new HostedOptionKey<>(false);
 
     @Option(help = "Emit debuginfo debug.svm.imagebuild.* sections with detailed image-build options.")//
     public static final HostedOptionKey<Boolean> UseImagebuildDebugSections = new HostedOptionKey<>(true);
