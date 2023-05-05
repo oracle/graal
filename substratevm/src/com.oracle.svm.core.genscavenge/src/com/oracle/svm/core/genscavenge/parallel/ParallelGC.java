@@ -62,6 +62,7 @@ import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.option.SubstrateOptionKey;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.PlatformThreads.OSThreadHandle;
 import com.oracle.svm.core.thread.PlatformThreads.OSThreadHandlePointer;
@@ -474,7 +475,13 @@ class ParallelGCFeature implements InternalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         UserError.guarantee(Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class),
                         "The parallel garbage collector ('--gc=parallel') is currently only supported on Linux and macOS.");
+        verifyOptionEnabled(SubstrateOptions.SpawnIsolates);
 
         ImageSingletons.add(ParallelGC.class, new ParallelGC());
+    }
+
+    private static void verifyOptionEnabled(SubstrateOptionKey<Boolean> option) {
+        String optionMustBeEnabledFmt = "When using the parallel garbage collector ('--gc=parallel'), please note that option '%s' must be enabled.";
+        UserError.guarantee(option.getValue(), optionMustBeEnabledFmt, option.getName());
     }
 }
