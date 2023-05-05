@@ -125,7 +125,7 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
             List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.LOCAL_SETTER);
             InstructionImmediate imm = imms.get(index);
             b.startStaticCall(context.getTypes().LocalSetter, "get");
-            b.string("$bc[$bci + " + imm.offset + "]");
+            b.string("readShortInBounds($bc, $bci + " + imm.offset + ")");
             b.end();
             return false;
         }
@@ -136,8 +136,8 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
             List<InstructionImmediate> imms = instr.getImmediates(ImmediateKind.LOCAL_SETTER_RANGE_START);
             InstructionImmediate imm = imms.get(index);
             b.startStaticCall(context.getTypes().LocalSetterRange, "get");
-            b.string("$bc[$bci + " + imm.offset + "]"); // start
-            b.string("$bc[$bci + " + (imm.offset + 1) + "]"); // length
+            b.string("readShortInBounds($bc, $bci + " + imm.offset + ")"); // start
+            b.string("readShortInBounds($bc, $bci + " + (imm.offset + 1) + ")"); // length
             b.end();
             return false;
         }

@@ -187,6 +187,11 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER1).create());
         operationNodeGen.add(new ContinueAtFactory(InterpreterTier.INSTRUMENTED).create());
 
+        // Define helpers used by the continueAt methods to access arrays.
+        operationNodeGen.add(createReadShortInBounds());
+        operationNodeGen.add(createReadNodeInBounds());
+        operationNodeGen.add(createReadObjectInBounds());
+
         // Define the builder class.
         operationNodeGen.add(new BuilderFactory().create());
 
@@ -784,7 +789,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         b.startFor().string("int bci = 0; bci < bc.length;").end().startBlock();
 
-        b.startSwitch().string("bc[bci]").end().startBlock();
+        b.startSwitch().string(readBc("bci")).end().startBlock();
 
         for (InstructionModel instr : model.getInstructions()) {
             b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
@@ -799,26 +804,26 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case BRANCH:
                 case BRANCH_BACKWARD:
                 case BRANCH_FALSE:
-                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "bc[bci + 1]");
+                    buildIntrospectionArgument(b, "BRANCH_OFFSET", readBc("bci + 1"));
                     break;
                 case LOAD_CONSTANT:
-                    buildIntrospectionArgument(b, "CONSTANT", "constants[bc[bci + 1]]");
+                    buildIntrospectionArgument(b, "CONSTANT", readConst(readBc("bci + 1")));
                     break;
                 case LOAD_ARGUMENT:
-                    buildIntrospectionArgument(b, "ARGUMENT", "bc[bci + 1]");
+                    buildIntrospectionArgument(b, "ARGUMENT", readBc("bci + 1"));
                     break;
                 case LOAD_LOCAL:
                 case STORE_LOCAL:
                 case LOAD_LOCAL_MATERIALIZED:
                 case STORE_LOCAL_MATERIALIZED:
                 case THROW:
-                    buildIntrospectionArgument(b, "LOCAL", "bc[bci + 1]");
+                    buildIntrospectionArgument(b, "LOCAL", readBc("bci + 1"));
                     break;
                 case CUSTOM:
                     break;
                 case CUSTOM_SHORT_CIRCUIT:
                     assert !instr.getImmediates().isEmpty() : "Short circuit operations should always have branch targets.";
-                    buildIntrospectionArgument(b, "BRANCH_OFFSET", "bc[bci + 1]");
+                    buildIntrospectionArgument(b, "BRANCH_OFFSET", readBc("bci + 1"));
                     break;
             }
 
@@ -1056,7 +1061,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.string("loop: ").startWhile().string("bci < bc.length").end().startBlock();
         b.statement("int nodeIndex");
         b.statement("Node node");
-        b.startSwitch().string("bc[bci]").end().startBlock();
+        b.startSwitch().string(readBc("bci")).end().startBlock();
 
         Map<Boolean, List<InstructionModel>> instructionsGroupedByIsCustom = model.getInstructions().stream().collect(Collectors.partitioningBy(instr -> instr.isCustomInstruction()));
         Map<Integer, List<InstructionModel>> builtinsGroupedByLength = instructionsGroupedByIsCustom.get(false).stream().collect(Collectors.groupingBy(instr -> instr.getInstructionLength()));
@@ -1074,7 +1079,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         for (InstructionModel instr : instructionsGroupedByIsCustom.get(true)) {
             b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
-            b.statement("nodeIndex = bc[bci + " + imm.offset + "]");
+            b.statement("nodeIndex = " + readBc("bci + " + imm.offset));
             b.statement("node = new " + cachedDataClassName(instr) + "()");
             b.statement("bci += " + instr.getInstructionLength());
             b.statement("break");
@@ -1146,7 +1151,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         b.statement("int bci = 0");
         b.startWhile().string("bci < bc.length").end().startBlock();
-        b.startSwitch().string("bc[bci]").end().startBlock();
+        b.startSwitch().string(readBc("bci")).end().startBlock();
         for (InstructionModel instr : model.getInstructions()) {
             b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
 
@@ -1161,13 +1166,13 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case LOCAL_SETTER:
                     case LOCAL_SETTER_RANGE_LENGTH:
                     case LOCAL_SETTER_RANGE_START:
-                        b.statement("result += bc[bci + " + imm.offset + "]");
+                        b.statement("result += " + readBc("bci + " + imm.offset));
                         break;
                     case CONSTANT:
-                        b.statement("result += constants[bc[bci + " + imm.offset + "]]");
+                        b.statement("result += " + readConst(readBc("bci + " + imm.offset)));
                         break;
                     case NODE:
-                        b.statement("result += (cachedNodes == null) ? null : cachedNodes[bc[bci + " + imm.offset + "]]");
+                        b.statement("result += (cachedNodes == null) ? null : " + readNode(types.Node, readBc("bci + " + imm.offset)));
                         break;
                     default:
                         break;
@@ -1609,6 +1614,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(createDoEmitLeaves());
             builder.add(createAllocateNode());
             builder.add(createInFinallyTryHandler());
+            builder.add(createWriteShortInBounds());
             if (model.enableSerialization) {
                 builder.add(createSerialize());
                 builder.add(createDeserialize());
@@ -1934,7 +1940,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("int[] sites = unresolvedLabels.remove(impl)");
             b.startIf().string("sites != null").end().startBlock();
             b.startFor().string("int site : sites").end().startBlock();
-            b.statement("bc[site] = (short) impl.index");
+            b.statement(writeBc("site", "(short) impl.index"));
             b.end(2);
 
             return ex;
@@ -2339,7 +2345,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     }
                     // Go through the work list and fill in the branch target for each branch.
                     b.startFor().string("int site : (int[]) ((Object[]) operationStack[operationSp].data)[0]").end().startBlock();
-                    b.statement("bc[site] = (short) bci");
+                    b.statement(writeBc("site", "(short) bci"));
                     b.end();
                     break;
                 case SOURCE_SECTION:
@@ -2387,8 +2393,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.statement("exHandlers[exHandlerIndex + 2] = bci /* handler start */");
                     b.statement("doEmitFinallyHandler(ctx)");
                     buildEmitInstruction(b, model.throwInstruction, new String[]{"exceptionLocal"});
-                    b.statement("bc[endBranchIndex] = (short) bci");
-
+                    b.statement(writeBc("endBranchIndex", "(short) bci"));
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) operationStack[operationSp].data");
@@ -2859,7 +2864,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT});
                         b.end().startElseBlock();
                         b.statement("int toUpdate = ((int[]) data)[0]");
-                        b.statement("bc[toUpdate] = (short) bci");
+                        b.statement(writeBc("toUpdate", "(short) bci"));
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -2883,10 +2888,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                             }
                         }
                         b.statement("int toUpdate = ((int[]) data)[0]");
-                        b.statement("bc[toUpdate] = (short) bci");
+                        b.statement(writeBc("toUpdate", "(short) bci"));
                         b.end().startElseBlock();
                         b.statement("int toUpdate = ((int[]) data)[1]");
-                        b.statement("bc[toUpdate] = (short) bci");
+                        b.statement(writeBc("toUpdate", "(short) bci"));
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -2901,7 +2906,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         emitFinallyRelativeBranchCheck(b, 1);
                         buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"(short) ((int[]) data)[0]"});
                         b.statement("int toUpdate = ((int[]) data)[1]");
-                        b.statement("bc[toUpdate] = (short) bci");
+                        b.statement(writeBc("toUpdate", "(short) bci"));
                         b.end();
                         if (model.enableTracing) {
                             b.statement("basicBlockBoundary[bci] = true");
@@ -2918,7 +2923,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.end();
                         b.startElseIf().string("childIndex == 1").end().startBlock();
                         b.statement("int toUpdate = dArray[3] /* branch past catch fix-up index */");
-                        b.statement("bc[toUpdate] = (short) bci");
+                        b.statement(writeBc("toUpdate", "(short) bci"));
                         b.statement("doCreateExceptionHandler(dArray[0], dArray[1], dArray[2], dArray[4], dArray[5])");
                         b.end();
                         if (model.enableTracing) {
@@ -3004,7 +3009,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             b.startFor().string("int handlerBci = 0; handlerBci < handlerBc.length;").end().startBlock();
-            b.startSwitch().string("handlerBc[handlerBci]").end().startBlock();
+            b.startSwitch().string(readHandlerBc("handlerBci")).end().startBlock();
 
             // Fix up instructions.
             Set<InstructionKind> relocatable = Set.of(InstructionKind.BRANCH, InstructionKind.BRANCH_BACKWARD, InstructionKind.BRANCH_FALSE, InstructionKind.YIELD);
@@ -3035,7 +3040,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case BRANCH_BACKWARD:
                     case BRANCH_FALSE:
                         b.statement("int branchIdx = handlerBci + 1"); // BCI of branch immediate
-                        b.statement("short branchTarget = handlerBc[branchIdx]");
+                        b.statement("short branchTarget = " + readHandlerBc("branchIdx"));
 
                         if (instr.kind == InstructionKind.BRANCH_BACKWARD) {
                             // Backward branches are only used internally by while loops. They
@@ -3057,23 +3062,23 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                         // Adjust relative branch targets.
                         b.startIf().string("context.finallyRelativeBranches.contains(branchIdx)").end().startBlock();
-                        b.statement("bc[offsetBci + branchIdx] = (short) (offsetBci + branchTarget) /* relocated */");
+                        b.statement(writeBc("offsetBci + branchIdx", "(short) (offsetBci + branchTarget)") + " /* relocated */");
                         b.startIf().string("inFinallyTryHandler(context.parentContext)").end().startBlock();
                         b.lineComment("If we're currently nested inside some other finally handler, the branch will also need to be relocated in that handler.");
                         b.statement("context.parentContext.finallyRelativeBranches.add(offsetBci + branchIdx)");
                         b.end();
                         b.end().startElseBlock();
-                        b.statement("bc[offsetBci + branchIdx] = (short) branchTarget");
+                        b.statement(writeBc("offsetBci + branchIdx", "(short) branchTarget"));
                         b.end();
                         break;
 
                     case YIELD:
                         b.statement("int locationBci = handlerBci + 1");
-                        b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) constantPool.getConstant(handlerBc[locationBci]);");
+                        b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) constantPool.getConstant(" + readHandlerBc("locationBci") + ")");
                         // The continuation should resume after this yield instruction
                         b.statement("assert cl.bci == locationBci + 1");
                         b.statement("ContinuationLocationImpl newContinuation = new ContinuationLocationImpl(numYields++, offsetBci + cl.bci, curStack + cl.sp)");
-                        b.statement("bc[offsetBci + locationBci] = (short) constantPool.addConstant(newContinuation)");
+                        b.statement(writeBc("offsetBci + locationBci", "(short) constantPool.addConstant(newContinuation)"));
                         b.statement("continuationLocations.add(newContinuation)");
                         break;
                     default:
@@ -3103,11 +3108,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                         case BYTECODE_INDEX:
                             // Custom operations don't have non-local branches/children, so
                             // this immediate is *always* relative.
-                            b.statement("bc[offsetBci + handlerBci + " + immediate.offset + "] += offsetBci /* adjust " + immediate.name + " */");
+                            b.statement("int newOffset = " + readBc("offsetBci + handlerBci + " + immediate.offset) + " + offsetBci /* adjust " + immediate.name + " */");
+                            b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset, "(short) newOffset"));
                             break;
                         case NODE:
                             // Allocate a separate Node for each handler.
-                            b.statement("bc[offsetBci + handlerBci + " + immediate.offset + "] = (short) allocateNode()");
+                            b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset, "(short) allocateNode()"));
                             break;
                         default:
                             // do nothing
@@ -3184,9 +3190,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end();
 
-            b.statement("bc[bci++] = (short) instr");
+            b.statement(writeBc("bci++", "(short) instr"));
             b.startFor().string("int i = 0; i < data.length; i++").end().startBlock();
-            b.statement("bc[bci++] = (short) data[i]");
+            b.statement(writeBc("bci++", "(short) data[i]"));
             b.end();
 
             return ex;
@@ -3426,6 +3432,26 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createWriteShortInBounds() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "writeShortInBounds");
+            ex.addParameter(new CodeVariableElement(context.getType(short[].class), "array"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+            ex.addParameter(new CodeVariableElement(context.getType(short.class), "value"));
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.statement("array[index] = value");
+
+            return ex;
+        }
+
+        private static String writeBc(String index, String value) {
+            return String.format("writeShortInBounds(bc, %s, %s)", index, value);
+        }
+
+        private static String readHandlerBc(String index) {
+            return String.format("readShortInBounds(handlerBc, %s)", index);
+        }
+
         // Finally handler code gets emitted in multiple locations. When a branch target is inside a
         // finally handler, the instruction referencing it needs to be remembered so that we can
         // relocate the target each time we emit the instruction.
@@ -3639,7 +3665,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startTryBlock();
 
-            b.startSwitch().string("bc[bci]").end().startBlock();
+            b.startSwitch().string(readBc("bci")).end().startBlock();
 
             for (InstructionModel instr : model.getInstructions()) {
 
@@ -3664,7 +3690,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 switch (instr.kind) {
                     case BRANCH:
-                        b.statement("bci = bc[bci + 1]");
+                        b.statement("bci = " + readBc("bci + 1"));
                         b.statement("continue loop");
                         break;
                     case BRANCH_BACKWARD:
@@ -3672,7 +3698,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("$this.changeInterpreters(TIER1)");
-                            b.statement("return (sp << 16) | bc[bci + 1]");
+                            b.statement("return (sp << 16) | " + readBc("bci + 1"));
                             b.end();
                         } else {
                             b.startIf().startStaticCall(types.BytecodeOSRNode, "pollOSRBackEdge").string("$this").end(2).startBlock();
@@ -3680,7 +3706,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.startAssign("Object osrResult");
                             b.startStaticCall(types.BytecodeOSRNode, "tryOSR");
                             b.string("$this");
-                            b.string("(sp << 16) | bc[bci + 1]"); // target
+                            b.string("(sp << 16) | " + readBc("bci + 1")); // target
                             b.string("null"); // interpreterState
                             b.string("null"); // beforeTransfer
                             b.string("frame"); // parentFrame
@@ -3694,7 +3720,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                             b.end();
                         }
-                        b.statement("bci = bc[bci + 1]");
+                        b.statement("bci = + " + readBc("bci + 1"));
                         b.statement("continue loop");
                         break;
                     case BRANCH_FALSE:
@@ -3704,7 +3730,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("continue loop");
                         b.end().startElseBlock();
                         b.statement("sp -= 1");
-                        b.statement("bci = bc[bci + 1]");
+                        b.statement("bci = " + readBc("bci + 1"));
                         b.statement("continue loop");
                         b.end();
                         break;
@@ -3715,21 +3741,21 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case INSTRUMENTATION_LEAVE:
                         break;
                     case LOAD_ARGUMENT:
-                        b.statement("frame.setObject(sp, frame.getArguments()[bc[bci + 1]])");
+                        b.statement("frame.setObject(sp, frame.getArguments()[" + readBc("bci + 1") + "])");
                         b.statement("sp += 1");
                         break;
                     case LOAD_CONSTANT:
-                        b.statement("frame.setObject(sp, constants[bc[bci + 1]])");
+                        b.statement("frame.setObject(sp, " + readConst(readBc("bci + 1")) + ")");
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        b.statement("frame.setObject(sp, " + localFrame + ".getObject(bc[bci + 1]))");
+                        b.statement("frame.setObject(sp, " + localFrame + ".getObject(" + readBc("bci + 1") + "))");
                         b.statement("sp += 1");
                         break;
                     }
                     case LOAD_LOCAL_MATERIALIZED:
-                        b.statement("frame.setObject(sp - 1, ((VirtualFrame) frame.getObject(sp - 1)).getObject(bc[bci + 1]))");
+                        b.statement("frame.setObject(sp - 1, ((VirtualFrame) frame.getObject(sp - 1)).getObject(" + readBc("bci + 1") + "))");
                         break;
                     case POP:
                         b.statement("frame.clear(sp - 1)");
@@ -3749,24 +3775,24 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case STORE_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        b.statement(localFrame + ".setObject(bc[bci + 1], frame.getObject(sp - 1))");
+                        b.statement(localFrame + ".setObject(" + readBc("bci + 1") + ", frame.getObject(sp - 1))");
                         b.statement("frame.clear(sp - 1)");
                         b.statement("sp -= 1");
                         break;
                     }
                     case STORE_LOCAL_MATERIALIZED:
-                        b.statement("((VirtualFrame) frame.getObject(sp - 2)).setObject(bc[bci + 1], frame.getObject(sp - 1))");
+                        b.statement("((VirtualFrame) frame.getObject(sp - 2)).setObject(" + readBc("bci + 1") + ", frame.getObject(sp - 1))");
                         b.statement("frame.clear(sp - 1)");
                         b.statement("frame.clear(sp - 2)");
                         b.statement("sp -= 2");
                         break;
                     case THROW:
-                        b.statement("throw sneakyThrow((Throwable) frame.getObject(bc[bci + 1]))");
+                        b.statement("throw sneakyThrow((Throwable) frame.getObject(" + readBc("bci + 1") + "))");
                         break;
                     case YIELD:
                         b.statement("int numLocals = $this.numLocals");
                         b.statement("frame.copyTo(numLocals, generatorFrame, numLocals, (sp - 1 - numLocals))");
-                        b.statement("frame.setObject(sp - 1, ((ContinuationLocation) constants[bc[bci + 1]]).createResult(generatorFrame, frame.getObject(sp - 1)))");
+                        b.statement("frame.setObject(sp - 1, ((ContinuationLocation) " + readConst(readBc("bci + 1")) + ").createResult(generatorFrame, frame.getObject(sp - 1)))");
                         b.statement("return (((sp - 1) << 16) | 0xffff)");
                         break;
                     case SUPERINSTRUCTION:
@@ -3801,7 +3827,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         }
                         break;
                     case MERGE_VARIADIC:
-                        b.statement("frame.setObject(sp - 1, mergeVariadic((Object[])frame.getObject(sp - 1)))");
+                        b.statement("frame.setObject(sp - 1, mergeVariadic((Object[]) frame.getObject(sp - 1)))");
                         break;
                     case CUSTOM: {
                         results.add(buildCustomInstructionExecute(b, instr, false));
@@ -3812,7 +3838,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                         b.startIf().string("result", instr.continueWhen ? " != " : " == ", "Boolean.TRUE").end().startBlock();
                         // don't pop (the argument used in the SC op is the result)
-                        b.statement("bci = bc[bci + 1]");
+                        b.statement("bci = " + readBc("bci + 1"));
                         b.statement("continue loop");
                         b.end().startElseBlock();
                         b.statement("frame.clear(sp - 1)");
@@ -3940,8 +3966,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (!tier.isUncached) {
                 // if cached, retrieve the node
                 InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
-                String nodeIndex = "bc[bci + " + imm.offset + "]";
-                CodeTree readNode = CodeTreeBuilder.createBuilder().cast(cachedType, "cachedNodes[" + nodeIndex + "]").build();
+                String nodeIndex = readBc("bci + " + imm.offset);
+                CodeTree readNode = CodeTreeBuilder.createBuilder().string(readNode(cachedType, nodeIndex)).build();
                 b.declaration(cachedType, "node", readNode);
             }
 
@@ -3981,14 +4007,14 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 for (InstructionImmediate immediate : instr.getImmediates(ImmediateKind.LOCAL_SETTER)) {
                     b.startStaticCall(types.LocalSetter, "get");
-                    b.string("bc[bci + " + immediate.offset + "]");
+                    b.string(readBc("bci + " + immediate.offset));
                     b.end();
                 }
 
                 for (InstructionImmediate immediate : instr.getImmediates(ImmediateKind.LOCAL_SETTER_RANGE_START)) {
                     b.startStaticCall(types.LocalSetterRange, "get");
-                    b.string("bc[bci + " + immediate.offset + "]"); // start
-                    b.string("bc[bci + " + (immediate.offset + 1) + "]"); // length
+                    b.string(readBc("bci + " + immediate.offset)); // start
+                    b.string(readBc("bci + " + (immediate.offset + 1))); // length
                     b.end();
                 }
             }
@@ -4034,6 +4060,42 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             return "do" + Arrays.stream(withoutPrefix.split("\\.")).map(part -> firstLetterUpperCase(part)).collect(Collectors.joining());
         }
+    }
+
+    private CodeExecutableElement createReadShortInBounds() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(short.class), "readShortInBounds");
+        ex.addParameter(new CodeVariableElement(context.getType(short[].class), "array"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+        CodeTreeBuilder b = ex.getBuilder();
+        b.startReturn().string("array[index]").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createReadNodeInBounds() {
+        CodeTypeParameterElement T = new CodeTypeParameterElement(CodeNames.of("T"), types.Node);
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), T.asType(), "readNodeInBounds");
+        ex.getTypeParameters().add(T);
+
+        ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "array"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+        ex.addParameter(new CodeVariableElement(generic(context.getType(Class.class), T.asType()), "expectedType"));
+        CodeTreeBuilder b = ex.getBuilder();
+        b.startReturn().cast(T.asType()).string("array[index]").end();
+
+        addSuppressWarnings(context, ex, "unchecked");
+
+        return ex;
+    }
+
+    private CodeExecutableElement createReadObjectInBounds() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object.class), "readObjectInBounds");
+        ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "array"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
+        CodeTreeBuilder b = ex.getBuilder();
+        b.startReturn().string("array[index]").end();
+
+        return ex;
     }
 
     class OSRMembersFactory {
@@ -4421,6 +4483,18 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeTree createOperationConstant(OperationModel op) {
         return CodeTreeBuilder.createBuilder().staticReference(operationsElement.asType(), op.getConstantName()).build();
+    }
+
+    private static String readBc(String index) {
+        return String.format("readShortInBounds(bc, %s)", index);
+    }
+
+    private static String readConst(String index) {
+        return String.format("readObjectInBounds(constants, %s)", index);
+    }
+
+    private static String readNode(TypeMirror expectedType, String index) {
+        return String.format("readNodeInBounds(cachedNodes, %s, %s.class)", index, expectedType);
     }
 
     private static String cachedDataClassName(InstructionModel instr) {
