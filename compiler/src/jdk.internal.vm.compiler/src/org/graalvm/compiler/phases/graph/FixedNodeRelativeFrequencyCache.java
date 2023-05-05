@@ -32,6 +32,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -53,6 +54,9 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
     private static final CounterKey computeNodeRelativeFrequencyCounter = DebugContext.counter("ComputeNodeRelativeFrequency");
 
     private final EconomicMap<FixedNode, Double> cache = EconomicMap.create(Equivalence.IDENTITY);
+
+    private ControlFlowGraph lastCFG = null;
+    private Graph.Mark lastCFGMark = null;
 
     /**
      * <p>
@@ -102,12 +106,15 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
             return cachedValue;
         }
 
-        ControlFlowGraph cfg = ControlFlowGraph.compute(node.graph(), false, false, false, false);
+        if (lastCFG == null || (lastCFGMark != null && !lastCFGMark.isCurrent())) {
+            lastCFG = ControlFlowGraph.compute(node.graph(), false, false, false, false);
+            lastCFGMark = node.graph().getMark();
+        }
 
         double relativeFrequency = 0.0;
         if (current.predecessor() == null) {
             if (current instanceof AbstractMergeNode) {
-                relativeFrequency = handleMerge(current, relativeFrequency, cfg);
+                relativeFrequency = handleMerge(current, relativeFrequency, lastCFG);
             } else {
                 assert current instanceof StartNode;
                 relativeFrequency = 1D;
