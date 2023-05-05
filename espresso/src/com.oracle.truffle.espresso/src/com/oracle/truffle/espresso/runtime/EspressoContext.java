@@ -932,6 +932,10 @@ public final class EspressoContext {
         shutdownManager.destroyVM();
     }
 
+    public void ensureThreadsJoined() {
+        shutdownManager.ensureThreadsJoined();
+    }
+
     public boolean isClosing() {
         return shutdownManager.isClosing();
     }

@@ -295,6 +295,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void finalizeContext(EspressoContext context) {
+        context.ensureThreadsJoined();
         TruffleSafepoint sp = TruffleSafepoint.getCurrent();
         boolean prev = sp.setAllowActions(false);
         try {
