@@ -127,6 +127,11 @@ public final class UninterruptibleAnnotationChecker {
                 violations.add("Method " + method.format("%H.%n(%p)") +
                                 " uses an unspecific reason but is annotated with 'callerMustBe = true'. Please document in the reason why the callers need to be uninterruptible.");
             }
+
+            if (!annotation.calleeMustBe()) {
+                violations.add("Method " + method.format("%H.%n(%p)") +
+                                " uses an unspecific reason but is annotated with 'calleeMustBe = false'. Please document in the reason why it is safe to execute interruptible code.");
+            }
         } else if (isSimilarToUnspecificReason(annotation.reason())) {
             violations.add("Method " + method.format("%H.%n(%p)") + " uses a reason that is similar to the unspecific reason '" + Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE + "'. " +
                             "If the method has an inherent reason for being uninterruptible, besides being called from uninterruptible code, then please improve the reason. " +
