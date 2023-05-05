@@ -311,7 +311,7 @@ public abstract class OverLoadedMethodSelectorNode extends EspressoNode {
         } else if (fromAsPrimitive == meta._char && (toType == meta.java_lang_String || toType == meta.java_lang_CharSequence)) {
             // char|Character <: String|CharSequence
             return true;
-        } else if (toAsPrimitive == null && fromAsPrimitive != null && toType.isAssignableFrom(MethodArgsUtils.primitiveTypeToBoxedType((PrimitiveKlass) fromAsPrimitive))) {
+        } else if (toAsPrimitive == null && fromAsPrimitive != null && toType.isAssignableFrom(MethodArgsUtils.primitiveTypeToBoxedType(fromAsPrimitive))) {
             // primitive|boxed <: Number et al
             return true;
         }
