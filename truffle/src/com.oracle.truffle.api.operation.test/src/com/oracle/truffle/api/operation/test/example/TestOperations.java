@@ -73,6 +73,7 @@ import com.oracle.truffle.api.operation.Variadic;
                 languageClass = OperationTestLanguage.class, //
                 enableYield = true, //
                 enableSerialization = true, //
+                allowUnsafe = true, //
                 boxingEliminationTypes = {long.class}, //
                 decisionsFile = "decisions.json")
 @GenerateAOT

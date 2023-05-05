@@ -101,6 +101,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
         model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();
         model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableSerialization", true).getValue();
+        model.allowUnsafe = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "allowUnsafe", true).getValue();
 
         model.addDefault();
 
