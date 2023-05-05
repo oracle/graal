@@ -1315,6 +1315,9 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
             if isinstance(image_config, mx_sdk.LibraryConfig):
                 suffix = _lib_suffix
+                if _get_svm_support().is_pgo_supported():
+                    # If pgo is supported, we should dump on exit also for library launchers
+                    build_args.append('-H:+ProfilingEnableProfileDumpHooks')
                 build_args.append('--shared')
                 project_name_f = GraalVmNativeImage.project_name
             elif isinstance(image_config, mx_sdk.LauncherConfig):
