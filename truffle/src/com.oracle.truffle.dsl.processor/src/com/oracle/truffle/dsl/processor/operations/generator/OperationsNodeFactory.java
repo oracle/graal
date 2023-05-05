@@ -111,6 +111,9 @@ import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Instru
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
+
+import sun.misc.Unsafe;
+
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 
 public class OperationsNodeFactory implements ElementHelpers {
@@ -187,11 +190,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER1).create());
         operationNodeGen.add(new ContinueAtFactory(InterpreterTier.INSTRUMENTED).create());
 
-        // Define helpers used by the continueAt methods to access arrays.
-        operationNodeGen.add(createReadShortInBounds());
-        operationNodeGen.add(createReadNodeInBounds());
-        operationNodeGen.add(createReadObjectInBounds());
-
         // Define the builder class.
         operationNodeGen.add(new BuilderFactory().create());
 
@@ -257,6 +255,16 @@ public class OperationsNodeFactory implements ElementHelpers {
                 operationNodeGen.add(tagToClass);
             }
         }
+
+        if (model.allowUnsafe) {
+            // Define Unsafe singleton, if enabled
+            operationNodeGen.addAll(GeneratorUtils.createUnsafeSingleton());
+        }
+
+        // Define helpers used by the continueAt methods to access arrays.
+        operationNodeGen.add(createReadShortInBounds());
+        operationNodeGen.add(createReadNodeInBounds());
+        operationNodeGen.add(createReadObjectInBounds());
 
         // Define the method to change between interpreters.
         operationNodeGen.add(createChangeInterpreters());
@@ -4067,7 +4075,14 @@ public class OperationsNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(context.getType(short[].class), "array"));
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
         CodeTreeBuilder b = ex.getBuilder();
-        b.startReturn().string("array[index]").end();
+
+        b.startReturn();
+        if (model.allowUnsafe) {
+            b.startCall("UNSAFE", "getShort").string("array").string("Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE").end();
+        } else {
+            b.string("array[index]");
+        }
+        b.end();
 
         return ex;
     }
@@ -4081,7 +4096,14 @@ public class OperationsNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
         ex.addParameter(new CodeVariableElement(generic(context.getType(Class.class), T.asType()), "expectedType"));
         CodeTreeBuilder b = ex.getBuilder();
-        b.startReturn().cast(T.asType()).string("array[index]").end();
+
+        b.startReturn().cast(T.asType());
+        if (model.allowUnsafe) {
+            b.startCall("UNSAFE", "getObject").string("array").string("Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE").end();
+        } else {
+            b.string("array[index]");
+        }
+        b.end();
 
         addSuppressWarnings(context, ex, "unchecked");
 
@@ -4093,7 +4115,14 @@ public class OperationsNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "array"));
         ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
         CodeTreeBuilder b = ex.getBuilder();
-        b.startReturn().string("array[index]").end();
+
+        b.startReturn();
+        if (model.allowUnsafe) {
+            b.startCall("UNSAFE", "getObject").string("array").string("Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE").end();
+        } else {
+            b.string("array[index]");
+        }
+        b.end();
 
         return ex;
     }

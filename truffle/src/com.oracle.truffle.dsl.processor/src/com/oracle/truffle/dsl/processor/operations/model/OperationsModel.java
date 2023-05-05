@@ -90,6 +90,7 @@ public class OperationsModel extends Template implements InfoDumpable {
 
     public boolean enableYield;
     public boolean enableSerialization = true;
+    public boolean allowUnsafe;
     public DeclaredType languageClass;
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;

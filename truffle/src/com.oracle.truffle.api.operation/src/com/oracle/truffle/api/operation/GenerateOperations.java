@@ -65,4 +65,6 @@ public @interface GenerateOperations {
 
     boolean enableSerialization() default false;
 
+    boolean allowUnsafe() default false;
+
 }
