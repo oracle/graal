@@ -67,8 +67,8 @@ final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
-        if (!SubstrateOptions.EnableSignalAPI.getValue()) {
-            throw new IllegalArgumentException("Installing signal handlers is not enabled");
+        if (!SubstrateOptions.EnableSignalHandling.getValue()) {
+            throw new IllegalArgumentException("Signal handlers can't be installed if signal handling is disabled, see option '" + SubstrateOptions.EnableSignalHandling.getName() + "'.");
         }
         return Util_jdk_internal_misc_Signal.handle0(sig, nativeH);
     }
@@ -129,9 +129,6 @@ final class Util_jdk_internal_misc_Signal {
      * is called from within a static synchronized call to ensure race-free execution.
      */
     static long handle0(int sig, long nativeH) {
-        if (!SubstrateOptions.EnableSignalHandling.getValue()) {
-            return sunMiscSignalIgnoreHandler;
-        }
         ensureInitialized();
         final Signal.SignalDispatcher newDispatcher = nativeHToDispatcher(nativeH);
         /* If the dispatcher is the CSunMiscSignal handler, then check if the signal is in range. */
@@ -157,7 +154,7 @@ final class Util_jdk_internal_misc_Signal {
         }
 
         updateDispatcher(sig, newDispatcher);
-        final Signal.SignalDispatcher oldDispatcher = PosixUtils.installSignalHandler(sig, newDispatcher);
+        final Signal.SignalDispatcher oldDispatcher = PosixUtils.installSignalHandler(sig, newDispatcher, Signal.SA_RESTART());
         CIntPointer sigset = UnsafeStackValue.get(CIntPointer.class);
         sigset.write(1 << (sig - 1));
         Signal.sigprocmask(Signal.SIG_UNBLOCK(), (Signal.sigset_tPointer) sigset, WordFactory.nullPointer());
@@ -456,7 +453,7 @@ final class IgnoreSignalsStartupHook implements RuntimeSupport.Hook {
             /*
              * Replace with no-op signal handler if a custom one has not already been installed.
              */
-            final SignalDispatcher signalResult = PosixUtils.installSignalHandler(signum, NOOP_SIGNAL_HANDLER.getFunctionPointer());
+            final SignalDispatcher signalResult = PosixUtils.installSignalHandler(signum, NOOP_SIGNAL_HANDLER.getFunctionPointer(), Signal.SA_RESTART());
             if (signalResult == Signal.SIG_ERR()) {
                 throw VMError.shouldNotReachHere(String.format("IgnoreSignalsStartupHook: Could not install signal: %s", signal));
             }
