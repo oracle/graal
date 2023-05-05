@@ -54,20 +54,6 @@ public interface VirtualThreads {
 
     void join(Thread thread, long millis) throws InterruptedException;
 
-    void yield();
-
-    void sleepMillis(long millis) throws InterruptedException;
-
-    boolean isAlive(Thread thread);
-
-    void unpark(Thread thread);
-
-    void park();
-
-    void parkNanos(long nanos);
-
-    void parkUntil(long deadline);
-
     void pinCurrent();
 
     void unpinCurrent();

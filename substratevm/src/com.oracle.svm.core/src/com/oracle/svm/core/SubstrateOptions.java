@@ -138,9 +138,6 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Support continuations (without requiring a Project Loom JDK)") //
-    public static final HostedOptionKey<Boolean> SupportContinuations = new HostedOptionKey<>(false);
-
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
     public static final int NoFallback = 0;
