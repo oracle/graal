@@ -1029,6 +1029,8 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
 
+        b.statement("int currentTier = this.currentTier");
+
         b.startIf().string("newTier == currentTier").end().startBlock();
         b.returnStatement();
         b.end();
@@ -1038,7 +1040,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.end();
 
         b.tree(createTransferToInterpreterAndInvalidate("this"));
-        b.statement("currentTier = newTier");
+        b.statement("this.currentTier = newTier");
 
         return ex;
     }

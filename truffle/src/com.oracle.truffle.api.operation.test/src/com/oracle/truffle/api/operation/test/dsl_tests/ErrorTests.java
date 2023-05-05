@@ -46,6 +46,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -136,6 +137,48 @@ public class ErrorTests {
 
         protected InvalidConstructor(FrameDescriptor.Builder builder, TruffleLanguage<?> language) {
             super(language, builder.build());
+        }
+    }
+
+    @GenerateOperations(languageClass = ErrorLanguage.class)
+    public abstract class BadOverrides extends RootNode implements OperationRootNode {
+        protected BadOverrides(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed. Override executeProlog and executeEpilog to perform actions before and after execution.")
+        @Override
+        public final Object execute(VirtualFrame frame) {
+            return null;
+        }
+
+        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed.")
+        public final Object getOSRMetadata() {
+            return null;
+        }
+
+        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed.")
+        public final void setOSRMetadata(Object osrMetadata) {
+        }
+
+        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed.")
+        public final Object[] storeParentFrameInArguments(VirtualFrame parentFrame) {
+            return null;
+        }
+
+        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed.")
+        public final Frame restoreParentFrameFromArguments(Object[] arguments) {
+            return null;
+        }
+
+        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed.")
+        public final InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
+            return null;
+        }
+
+        @ExpectError("This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed.")
+        public final SourceSection getSourceSectionAtBci(int bci) {
+            return null;
         }
     }
 
