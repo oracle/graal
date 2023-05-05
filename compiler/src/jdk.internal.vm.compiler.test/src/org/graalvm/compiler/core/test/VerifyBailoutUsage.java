@@ -85,9 +85,8 @@ public class VerifyBailoutUsage extends VerifyPhase<CoreProviders> {
                 if (callee.getDeclaringClass().equals(bailoutType)) {
                     // we only allow the getter
                     if (!callee.getName().equals("isPermanent")) {
-                        throw new VerificationError("Call to %s at callsite %s is prohibited. Consider using %s for permanent bailouts or %s for retryables.", callee.format("%H.%n(%p)"),
-                                        caller.format("%H.%n(%p)"), PermanentBailoutException.class.getName(),
-                                        RetryableBailoutException.class.getName());
+                        throw new VerificationError(t, "call to %s is prohibited. Consider using %s for permanent bailouts or %s for retryables.", callee.format("%H.%n(%p)"),
+                                        PermanentBailoutException.class.getName(), RetryableBailoutException.class.getName());
                     }
                 }
             }

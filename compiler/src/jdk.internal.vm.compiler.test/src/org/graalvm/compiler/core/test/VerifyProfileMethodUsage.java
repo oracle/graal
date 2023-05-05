@@ -76,8 +76,7 @@ public class VerifyProfileMethodUsage extends VerifyPhase<CoreProviders> {
             for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
                 ResolvedJavaMethod callee = t.targetMethod();
                 if (callee.equals(getProfilingInfo) || callee.equals(getProfilingInfo2)) {
-                    throw new VerificationError("Profiling information must be accessed through the profile provider in method '%s' of class '%s'..",
-                                    graph.method().getName(), graph.method().getDeclaringClass().getName());
+                    throw new VerificationError(t, "profiling information must be accessed through the profile provider");
                 }
             }
         }

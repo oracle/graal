@@ -55,7 +55,7 @@ public class VerifyArchUsageInPlugins extends VerifyPhase<CoreProviders> {
         for (MethodCallTargetNode t : graph.getNodes(MethodCallTargetNode.TYPE)) {
             ResolvedJavaMethod callee = t.targetMethod();
             if (architecture.isAssignableFrom(callee.getDeclaringClass())) {
-                throw new VerificationError("Architecture methods are unsafe to use within InvocationPlugin.apply methods:" + callee);
+                throw new VerificationError(t, "Architecture methods are unsafe to use within InvocationPlugin.apply methods:" + callee);
             }
         }
     }
