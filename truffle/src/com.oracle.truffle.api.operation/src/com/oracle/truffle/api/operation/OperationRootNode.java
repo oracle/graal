@@ -76,10 +76,6 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
 
     Object execute(VirtualFrame frame);
 
-    default SourceSection getSourceSectionAtBci(int bci) {
-        return null;
-    }
-
     @SuppressWarnings("unused")
     default void executeProlog(VirtualFrame frame) {
     }
@@ -88,8 +84,12 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
     default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
     }
 
+    default SourceSection getSourceSectionAtBci(int bci) {
+        throw new AbstractMethodError();
+    }
+
     default InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
-        throw new UnsupportedOperationException();
+        throw new AbstractMethodError();
     }
 
     /**
@@ -101,16 +101,16 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
 
     @Override
     default Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
-        throw new UnsupportedOperationException();
+        throw new AbstractMethodError();
     }
 
     @Override
     default void setOSRMetadata(Object osrMetadata) {
-        throw new UnsupportedOperationException();
+        throw new AbstractMethodError();
     }
 
     @Override
     default Object getOSRMetadata() {
-        throw new UnsupportedOperationException();
+        throw new AbstractMethodError();
     }
 }

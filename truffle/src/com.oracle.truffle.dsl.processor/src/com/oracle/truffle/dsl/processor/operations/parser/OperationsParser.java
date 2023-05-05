@@ -169,6 +169,34 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             model.fdConstructor = ctors.get(0);
         }
 
+        // Detect method implementations that will be overridden by the generated class.
+        List<ExecutableElement> overrides = List.of(
+                        ElementUtils.findMethod(types.RootNode, "execute"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "executeOSR"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "getOSRMetadata"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "storeParentFrameInArguments"),
+                        ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments"),
+                        ElementUtils.findMethod(types.OperationRootNode, "materializeInstrumentTree"),
+                        ElementUtils.findMethod(types.OperationRootNode, "getSourceSectionAtBci"));
+
+        for (ExecutableElement override : overrides) {
+            ExecutableElement declared = ElementUtils.findMethod(typeElement, override.getSimpleName().toString());
+            if (declared == null) {
+                continue;
+            }
+
+            String executeSuffix = override.getSimpleName().toString().equals("execute") ? " Override executeProlog and executeEpilog to perform actions before and after execution." : "";
+
+            if (declared.getModifiers().contains(Modifier.FINAL)) {
+                model.addError(declared,
+                                "This method is overridden by the generated Operations class, so it cannot be declared final. Since it is overridden, the definition is unreachable and can be removed." +
+                                                executeSuffix);
+            } else {
+                model.addWarning(declared, "This method is overridden by the generated Operations class, so this definition is unreachable and can be removed." + executeSuffix);
+            }
+        }
+
         if (model.hasErrors()) {
             return model;
         }
