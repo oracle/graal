@@ -51,7 +51,7 @@ public class NativeImageDebugInfoStripFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.GenerateDebugInfo.getValue() > 0 && SubstrateOptions.StripDebugInfo.getValue() && (SubstrateOptions.useLIRBackend() || SubstrateOptions.useLLVMBackend());
+        return SubstrateOptions.useDebugInfoGeneration() || SubstrateOptions.UseOldDebugInfo.getValue();
     }
 
     @SuppressWarnings("try")
