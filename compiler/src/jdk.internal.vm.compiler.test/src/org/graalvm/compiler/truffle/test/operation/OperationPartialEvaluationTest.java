@@ -72,7 +72,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
             b.emitLoadConstant(22L);
             b.endAddOperation();
 
-            b.emitLoadConstant(-21L);
+            b.emitLoadConstant(-20L);
 
             b.endAddOperation();
 
@@ -83,7 +83,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
 
         warmup(root);
 
-        assertPartialEvalEquals(supplier(122L), root);
+        assertPartialEvalEquals(supplier(42L), root);
     }
 
     @Test
@@ -127,7 +127,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
             b.endAddOperation();
             b.endStoreLocal();
 
-            b.beginStoreLocal(i);
+            b.beginStoreLocal(sum);
             b.beginAddOperation();
             b.emitLoadLocal(sum);
             b.emitLoadLocal(i);
