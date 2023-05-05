@@ -48,6 +48,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
+import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.core.thread.PlatformThreads;
 
 /**
  * This class holds various JFR-specific thread local values.
@@ -221,7 +223,7 @@ public class JfrThreadLocal implements ThreadListener {
      * moment, only the current thread may be excluded/included. See GR-44616.
      */
     public void setExcluded(Thread thread, boolean excluded) {
-        if (!thread.equals(Thread.currentThread())) {
+        if (thread == null || !thread.equals(Thread.currentThread())) {
             return;
         }
         IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
@@ -233,8 +235,19 @@ public class JfrThreadLocal implements ThreadListener {
         }
     }
 
+    /**
+     * Allocation JFR events can be emitted along the allocation slow path. In some cases, when the
+     * slow path may be taken, a {@link Thread} object may not yet be assigned to the current thread
+     * See {@link PlatformThreads#ensureCurrentAssigned(String, ThreadGroup, boolean)} where a
+     * {@link Thread} object must be created before it can be assigned to the current thread. This
+     * may happen during shutdown in {@link JavaMainWrapper}. Therefore, this method must account
+     * for the case where {@link Thread#currentThread()} returns null.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCurrentThreadExcluded() {
+        if (Thread.currentThread() == null) {
+            return true;
+        }
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
     }
