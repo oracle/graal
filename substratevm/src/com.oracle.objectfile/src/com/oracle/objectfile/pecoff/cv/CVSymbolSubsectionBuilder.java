@@ -34,6 +34,7 @@ import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 
 import java.lang.reflect.Modifier;
 
@@ -204,8 +205,9 @@ final class CVSymbolSubsectionBuilder {
         /* define 'this' as a local just as we define other object pointers */
         if (!Modifier.isStatic(method.getModifiers())) {
             final TypeEntry thisType = primaryEntry.getClassEntry();
+            DebugInfoProvider.DebugLocalInfo thisparam = method.getThisParam();
             final int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(thisType);
-            addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, "this", typeIndex, 1));
+            addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, thisparam.name(), typeIndex, 1));
             addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, javaGP64registers[gpRegisterIndex], externalName, 0, 8));
             addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
             gpRegisterIndex++;
@@ -213,9 +215,9 @@ final class CVSymbolSubsectionBuilder {
 
         /* define function parameters (p1, p2...) according to the calling convention */
         for (int i = 0; i < method.getParamCount(); i++) {
+            final DebugInfoProvider.DebugLocalInfo paramInfo = method.getParam(i);
             final TypeEntry paramType = method.getParamType(i);
             final int typeIndex = cvDebugInfo.getCVTypeSection().addTypeRecords(paramType).getSequenceNumber();
-            final String paramName = "p" + (i + 1);
             if (paramType.isPrimitive()) {
                 /* simple primitive */
                 final PrimitiveTypeEntry primitiveTypeEntry = (PrimitiveTypeEntry) paramType;
@@ -224,7 +226,7 @@ final class CVSymbolSubsectionBuilder {
                     /* floating point primitive */
                     if (fpRegisterIndex < javaFP64registers.length) {
                         final short register = paramType.getSize() == Double.BYTES ? javaFP64registers[fpRegisterIndex] : javaFP32registers[fpRegisterIndex];
-                        addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
+                        addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramInfo.name(), typeIndex, 1));
                         addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));
                         addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
                         fpRegisterIndex++;
@@ -246,7 +248,7 @@ final class CVSymbolSubsectionBuilder {
                         register = 0; /* Avoid warning. */
                         throw new RuntimeException("Unknown primitive (type" + paramType.getTypeName() + ") size:" + paramType.getSize());
                     }
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
+                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramInfo.name(), typeIndex, 1));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 8));
                     gpRegisterIndex++;
@@ -257,7 +259,7 @@ final class CVSymbolSubsectionBuilder {
             } else {
                 /* Java object. */
                 if (gpRegisterIndex < javaGP64registers.length) {
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramName, typeIndex, 1));
+                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramInfo.name(), typeIndex, 1));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, javaGP64registers[gpRegisterIndex], externalName, 0, 8));
                     addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
                     gpRegisterIndex++;
