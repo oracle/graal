@@ -21,23 +21,6 @@ import com.oracle.svm.core.util.VMError;
  * allocation slow path. Maybe the map can be created in hosted mode before any allocation happens
  */
 public class JfrThrottler {
-    public UninterruptibleUtils.AtomicBoolean disabled; // Already volatile
-    private JfrThrottlerWindow window0; // Race allowed
-    private JfrThrottlerWindow window1; // Race allowed
-    private volatile JfrThrottlerWindow activeWindow;
-    public volatile long eventSampleSize;  // Race allowed
-    public volatile long periodNs; // Race allowed
-    // Only accessed in critical section
-    private double ewmaPopulationSizeAlpha = 0;
-    // Only accessed in critical section
-    private double avgPopulationSize = 0;
-    // Copied from hotspot
-    private final int windowDivisor = 5;
-    // does it have to be volatile? The same thread will set and check this.
-    private volatile boolean reconfigure;
-    // Can't use reentrant lock because it allocates
-    private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock;
-
     private static final long SECOND_IN_NS = 1000000000;
     private static final long SECOND_IN_MS = 1000;
     private static final long MINUTE_IN_NS = SECOND_IN_NS * 60;
@@ -49,6 +32,20 @@ public class JfrThrottler {
     private static final long TEN_PER_S_IN_MINUTES = 600;
     private static final long TEN_PER_S_IN_HOURS = 36000;
     private static final long TEN_PER_S_IN_DAYS = 864000;
+    // Can't use reentrant lock because it allocates
+    private final UninterruptibleUtils.AtomicPointer<IsolateThread> lock;
+    // Copied from hotspot
+    private final int windowDivisor = 5;
+
+    public UninterruptibleUtils.AtomicBoolean disabled; // Already volatile
+    private JfrThrottlerWindow window0;
+    private JfrThrottlerWindow window1;
+    private volatile JfrThrottlerWindow activeWindow;
+    public volatile long eventSampleSize;
+    public volatile long periodNs;
+    private volatile double ewmaPopulationSizeAlpha = 0;
+    private volatile double avgPopulationSize = 0;
+    private volatile boolean reconfigure;
     private long accumulatedDebtCarryLimit;
     private long accumulatedDebtCarryCount;
 
@@ -255,6 +252,7 @@ public class JfrThrottler {
         if (reconfigure) {
             setSamplePointsAndWindowDuration();
             accumulatedDebtCarryLimit = computeAccumulatedDebtCarryLimit(next.windowDurationNs);
+            // This effectively means we reset debt count upon reconfigure
             accumulatedDebtCarryCount = accumulatedDebtCarryLimit;
             // compute alpha and debt
             avgPopulationSize = 0;
@@ -322,6 +320,10 @@ public class JfrThrottler {
     /** Visible for testing. */
     public long getActiveWindowDebt() {
         return activeWindow.debt;
+    }
+
+    public double getWindowLookback() {
+        return windowLookback(activeWindow);
     }
 
     /** Visible for testing. */

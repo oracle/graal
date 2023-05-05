@@ -206,14 +206,6 @@ public class SubstrateJVM {
     }
 
     /**
-     * Use for time saving checks, not as a check before doing an operation that could result in
-     * races.
-     */
-    public static boolean isRecordingInterruptible() {
-        return get().recording;
-    }
-
-    /**
      * See {@link JVM#createJFR}. Until {@link #beginRecording} is executed, no JFR events can be
      * triggered yet. So, we don't need to take any precautions here.
      */
@@ -653,7 +645,6 @@ public class SubstrateJVM {
         return eventSettings[(int) event.getId()].isEnabled();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean shouldCommit(JfrEvent event) {
         // find the right throttler for the event (each event should have its own)like in hotspot
         // if none found, return true.
