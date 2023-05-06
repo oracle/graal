@@ -348,9 +348,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
 
                 /*
                  * The call tree is very convenient to debug host inlining decisions in addition to
-                 * IGV. To use pass
-                 * -H:Log=TruffleHostInliningPhase,~TruffleHostInliningPhase.CanonicalizerPhase to
-                 * filter noise by canonicalization.
+                 * IGV. To use pass -H:Log=HostInliningPhase,~HostInliningPhase.CanonicalizerPhase
+                 * to filter noise by canonicalization.
                  */
                 debug.log("Truffle host inlining completed after %s rounds. Graph cost changed from %s to %s after inlining: %n%s", round, beforeGraphSize, graphSize,
                                 printCallTree(context, root));

@@ -2045,12 +2045,21 @@ public class NativeImage {
     }
 
     private static boolean hasProgressSupport(List<String> imageBuilderArgs) {
-        return !isDumbTerm() && !SubstrateUtil.isRunningInCI() &&
-                        /*
-                         * When DebugOptions.Log is used, progress cannot be reported as logging
-                         * works around NativeImageSystemIOWrappers to access stdio handles.
-                         */
-                        getHostedOptionArgumentValues(imageBuilderArgs, oH + "Log=").isEmpty();
+        if (isDumbTerm() || SubstrateUtil.isRunningInCI()) {
+            return false;
+        }
+
+        /*
+         * When DebugOptions.Log is used and no LogFile is set, progress cannot be reported as
+         * logging works around NativeImageSystemIOWrappers to access stdio handles.
+         */
+        return !getHostedOptionArgumentValues(imageBuilderArgs, oH + "Log=").isEmpty() && !logRedirectedToFile();
+    }
+
+    private static boolean logRedirectedToFile() {
+        String value = System.getProperty("graal.LogFile");
+        // See HotSpotTTYStreamProvider for the meaning of %o and %e
+        return value != null && !value.equals("%o") && !value.equals("%e");
     }
 
     private boolean configureBuildOutput() {
