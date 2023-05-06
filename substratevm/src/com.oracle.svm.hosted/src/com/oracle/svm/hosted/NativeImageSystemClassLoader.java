@@ -174,7 +174,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         return null;
     }
 
-    static Class<?> defineClass(ClassLoader classLoader, String name, byte[] b, int offset, int length) {
+    public static Class<?> defineClass(ClassLoader classLoader, String name, byte[] b, int offset, int length) {
         try {
             return (Class<?>) defineClass.invoke(classLoader, name, b, offset, length);
         } catch (ReflectiveOperationException e) {
