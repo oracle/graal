@@ -242,6 +242,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             moduleName = null;
             bundleName = specParts[0];
         }
+        bundleName = bundleName.replace("/", ".");
         String packageName = packageName(bundleName);
         Set<Module> modules;
         if (ResourcesFeature.MODULE_NAME_ALL_UNNAMED.equals(moduleName)) {
@@ -269,7 +270,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     }
 
     private static String packageName(String bundleName) {
-        int classSep = bundleName.replace('/', '.').lastIndexOf('.');
+        int classSep = bundleName.lastIndexOf('.');
         if (classSep == -1) {
             return ""; /* unnamed package */
         }
