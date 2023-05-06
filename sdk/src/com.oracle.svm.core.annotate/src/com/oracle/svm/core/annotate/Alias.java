@@ -76,4 +76,45 @@ import org.graalvm.nativeimage.Platforms;
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.FIELD})
 @Platforms(Platform.HOSTED_ONLY.class)
 public @interface Alias {
+    /**
+     * Indicates the annotated method will always refer to the original method and not be
+     * substituted. It is used to surround the original method with advice. For example, given an
+     * original method {@code foo} defined as following:
+     * 
+     * <pre>
+     *     public class TestCase {
+     *         public void foo(){//...}
+     *     }
+     * </pre>
+     * 
+     * If we'd like to insert some code before {@code foo}, we can do like this:
+     * 
+     * <pre>
+     *    {@literal @}TargetClass(TestCase.class)
+     *     public class Target_TestCase {
+     *
+     *       {@literal @}Alias(noSubstitution=true)
+     *       {@literal @}TargetElement(name="foo")
+     *        public native void oldFoo();
+     *
+     *       {@literal @}Substitute
+     *       {@literal @}TargetElement(name="foo")
+     *        public void newFoo(){
+     *            // ... do something before foo
+     *            oldFoo(); // still invoke the original foo
+     *        }
+     *     }
+     * </pre>
+     * 
+     * The {@code oldFoo} and {@code newFoo} both refer to the original {@code foo}. At build time,
+     * {@code oldFoo} firstly refers to {@code foo}, but could be eventually replaced to
+     * {@code newFoo}. Then the {@code newFoo} will recursively call itself.
+     * <p>
+     * Therefore, we need to declare {@code noSubstitution=true} on {@code oldFoo} to indicate that
+     * {@code oldFoo} always refers to the original {@code foo}, and will never be substituted by
+     * {@code newFoo}.
+     * 
+     * @return
+     */
+    boolean noSubstitution() default false;
 }

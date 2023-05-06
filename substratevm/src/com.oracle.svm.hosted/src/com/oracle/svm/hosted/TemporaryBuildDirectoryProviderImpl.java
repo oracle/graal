@@ -67,7 +67,7 @@ public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirect
         }
     }
 
-    private static void deleteAll(Path path) {
+    public static void deleteAll(Path path) {
         try {
             Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
                 @Override

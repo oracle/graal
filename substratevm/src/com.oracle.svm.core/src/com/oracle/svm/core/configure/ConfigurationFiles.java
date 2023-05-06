@@ -54,7 +54,7 @@ public final class ConfigurationFiles {
 
         @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User, stability = OptionStability.STABLE)//
         @BundleMember(role = BundleMember.Role.Input)//
-        static final HostedOptionKey<LocatableMultiOptionValue.Paths> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
         @Option(help = "Resource path above configuration resources for dynamic features at runtime.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationResourceRoots = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
@@ -120,6 +120,13 @@ public final class ConfigurationFiles {
         @Option(help = "Resources describing predefined classes that can be loaded at runtime according to the schema at " +
                         "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/predefined-classes-config-schema-v1.0.0.json", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(
+                        LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+        @Option(help = "Files describing instrumented classes that can be loaded at runtime.", type = OptionType.User)//
+        @BundleMember(role = BundleMember.Role.Input)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Paths> InstrumentConfigurationFiles = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
+        @Option(help = "Resources describing instrumented classes that can be loaded at runtime.", type = OptionType.User)//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> InstrumentConfigurationResources = new HostedOptionKey<>(
                         LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "When configuration files do not match their schema, abort the image build instead of emitting a warning.")//
