@@ -69,6 +69,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
+import com.oracle.truffle.api.impl.asm.Type;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
@@ -688,6 +689,13 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
             mv.visitLabel(startBlock);
 
+            if (returnType.isPrimitive()) {
+                JavaKind kind = returnType.getJavaKind();
+                mv.visitLdcInsn(Type.getType(kind.toBoxedJavaClass()));
+            } else {
+                mv.visitLdcInsn(Type.getType(returnType.getTypeAsString()));
+            }
+
             mv.visitVarInsn(ALOAD, 0);
             mv.visitLdcInsn(Mangle.truffleJniMethodName(methodName, signature));
 
@@ -706,10 +714,9 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                 mv.visitInsn(ICONST_0);
                 mv.visitTypeInsn(ANEWARRAY, JL_OBJECT);
             }
-
             mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
-                            "invokeMember",
-                            "(Ljava/lang/Object;Ljava/lang/String;" +
+                            "invokeMemberWithCast",
+                            "(Ljava/lang/Class;Ljava/lang/Object;Ljava/lang/String;" +
                                             "[Ljava/lang/Object;)Ljava/lang/Object;",
                             false);
 

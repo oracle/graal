@@ -26,6 +26,7 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -49,14 +50,19 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.LookupTypeConverterNode;
+import com.oracle.truffle.espresso.nodes.interop.MethodArgsUtils;
 import com.oracle.truffle.espresso.nodes.interop.PolyglotTypeMappings;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.nodes.interop.ToReference;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.ForeignExceptionInterop;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
@@ -105,7 +111,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
          * value.
          */
         static Object unwrapForeign(EspressoLanguage language, StaticObject object) {
-            return object.isForeignObject() ? object.rawForeignObject(language) : object;
+            if (object.isForeignObject()) {
+                return object.rawForeignObject(language);
+            }
+            if (object.getKlass() != null && object.getKlass() == object.getKlass().getMeta().polyglot.ForeignException) {
+                return ForeignExceptionInterop.getRawForeignObject(object);
+            }
+            return object;
         }
 
         @TruffleBoundary
@@ -1960,17 +1972,19 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object[].class) StaticObject arguments,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
-                        @Cached ToEspressoNode toEspressoNode,
+                        @Bind("getMeta()") Meta meta,
+                        @Cached ToReference.DynamicToReference toEspressoNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached BranchProfile exceptionProfile) {
             assert InteropLibrary.getUncached().isString(member);
-            String hostMember = getMeta().toHostString(member);
+
+            String hostMember = meta.toHostString(member);
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
                 Object result = interop.invokeMember(InteropUtils.unwrapForeign(getLanguage(), receiver), hostMember, hostArguments);
-                return (StaticObject) toEspressoNode.execute(result, getMeta().java_lang_Object);
+                return toEspressoNode.execute(result, meta.java_lang_Object);
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -1990,15 +2004,92 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                          * foreign exception object, then the back trace is retained in the guest
                          * code and the stackTrace field set to null to trigger backtrace lookups
                          */
-                        Meta meta = getMeta();
-                        meta.java_lang_Throwable_backtrace.setObject(converted, getMeta().java_lang_Throwable_backtrace.getObject(foreignException));
+                        meta.java_lang_Throwable_backtrace.setObject(converted, meta.java_lang_Throwable_backtrace.getObject(foreignException));
                         if (meta.getJavaVersion().java9OrLater()) {
                             meta.java_lang_Throwable_depth.setInt(converted, meta.java_lang_Throwable_depth.getInt(foreignException));
                         }
                         meta.java_lang_Throwable_stackTrace.setObject(converted, StaticObject.NULL);
                         meta.HIDDEN_FRAMES.setHiddenObject(converted, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
 
-                        throw EspressoException.wrap(converted, getMeta());
+                        throw EspressoException.wrap(converted, meta);
+                    }
+                } catch (UnsupportedMessageException e) {
+                    // throw the original exception then
+                    throw ex;
+                }
+                throw EspressoException.wrap(foreignException, meta);
+            }
+        }
+    }
+
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnknownIdentifierException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ArityException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedTypeException;")
+    })
+    abstract static class InvokeMemberWithCast extends SubstitutionNode {
+        static final int LIMIT = 2;
+
+        abstract @JavaType(Object.class) StaticObject execute(
+                        @JavaType(Class.class) StaticObject targetClass,
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(String.class) StaticObject member,
+                        @JavaType(Object[].class) StaticObject arguments);
+
+        @Specialization
+        @JavaType(Object.class)
+        StaticObject doCached(
+                        @SuppressWarnings("unused") @JavaType(Class.class) StaticObject targetClass,
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(String.class) StaticObject member,
+                        @JavaType(Object[].class) StaticObject arguments,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
+                        @Bind("getMeta()") Meta meta,
+                        @Cached ToReference.DynamicToReference toEspressoNode,
+                        @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
+                        @Cached ToHostArguments toHostArguments,
+                        @Cached LookupTypeConverterNode lookupTypeConverterNode,
+                        @Cached BranchProfile exceptionProfile) {
+            assert InteropLibrary.getUncached().isString(member);
+            String hostMember = getMeta().toHostString(member);
+            try {
+                Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
+                Object result = interop.invokeMember(InteropUtils.unwrapForeign(getLanguage(), receiver), hostMember, hostArguments);
+                Klass targetKlass = targetClass.getMirrorKlass(meta);
+                if (targetKlass.isPrimitive()) {
+                    targetKlass = MethodArgsUtils.primitiveTypeToBoxedType((PrimitiveKlass) targetKlass);
+                }
+                return toEspressoNode.execute(result, targetKlass);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropExceptionAsGuest.execute(e);
+            } catch (EspressoException e) {
+                // make sure we don't try to convert espresso exceptions
+                throw e;
+            } catch (AbstractTruffleException ex) {
+                exceptionProfile.enter();
+                StaticObject foreignException = getAllocator().createForeignException(getContext(), ex, exceptionInterop);
+                try {
+                    Object metaObject = exceptionInterop.getMetaObject(ex);
+                    PolyglotTypeMappings.TypeConverter converter = lookupTypeConverterNode.execute(ToEspressoNode.getMetaName(metaObject, exceptionInterop));
+                    if (converter != null) {
+                        StaticObject converted = (StaticObject) converter.convert(foreignException);
+                        /*
+                         * The back trace of the foreign exception wrapper must be set to the
+                         * foreign exception object, then the back trace is retained in the guest
+                         * code and the stackTrace field set to null to trigger backtrace lookups
+                         */
+                        meta.java_lang_Throwable_backtrace.setObject(converted, meta.java_lang_Throwable_backtrace.getObject(foreignException));
+                        if (meta.getJavaVersion().java9OrLater()) {
+                            meta.java_lang_Throwable_depth.setInt(converted, meta.java_lang_Throwable_depth.getInt(foreignException));
+                        }
+                        meta.java_lang_Throwable_stackTrace.setObject(converted, StaticObject.NULL);
+                        meta.HIDDEN_FRAMES.setHiddenObject(converted, VM.StackTrace.FOREIGN_MARKER_STACK_TRACE);
+
+                        throw EspressoException.wrap(converted, meta);
                     }
                 } catch (UnsupportedMessageException e) {
                     // throw the original exception then
