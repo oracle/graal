@@ -980,7 +980,55 @@ suite = {
       "license": "GPLv2-CPE",
       "jacoco" : "exclude",
     },
-   },
+
+    "org.graalvm.shadowed.com.ibm.icu" : {
+      # shaded ICU4J + ICU4J-CHARSET
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "requires" : [
+        "java.logging",
+        "java.xml",
+        "java.desktop",
+      ],
+      "dependencies" : [
+      ],
+      "shadedDependencies" : [
+        "truffle:ICU4J",
+        "truffle:ICU4J-CHARSET",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "com.ibm.icu" : "org.graalvm.shadowed.com.ibm.icu",
+        },
+        "include" : [
+          "com/ibm/icu/ICUConfig.properties",
+          "com/ibm/icu/impl/data/**",
+          "com/ibm/icu/impl/duration/impl/data/**",
+          "LICENSE",
+        ],
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "META-INF/services/*", # deliberately excluding java.nio.charset.spi.CharsetProvider
+          "**/*.html",
+        ],
+        "patch" : {
+          "com/ibm/icu/ICUConfig.properties" : {
+            "com\\.ibm\\.icu\\." : "org.graalvm.shadowed.com.ibm.icu.",
+          },
+          "com/ibm/icu/util/VTimeZone.java" : {
+            " (BEGIN|END):(\\w+)\\b" : " \'\\1:\\2\'",
+          },
+        },
+      },
+      "description" : "ICU4J shaded library.",
+      "allowsJavadocWarnings": True,
+      "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+    },
+  },
 
   "licenses" : {
     "UPL" : {
@@ -1423,6 +1471,8 @@ suite = {
       "description" : "Truffle support distribution for ICU4J",
       "layout" : {
         "native-image.properties" : "file:mx.truffle/language-icu4j.properties",
+        "icu4j-resource-config.json" : "file:mx.truffle/icu4j-resource-config.json",
+        "icu4j-reflection-config.json" : "file:mx.truffle/icu4j-reflection-config.json",
       },
       "maven" : False,
     },
@@ -1449,6 +1499,39 @@ suite = {
         "truffle:TRUFFLE_API",
       ],
       "maven" : False,
+    },
+
+    "TRUFFLE_ICU4J" : {
+      # shaded ICU4J + ICU4J-CHARSET
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.icu4j",
+        "requires" : [
+        ],
+        "exports" : [
+          # Unqualified exports
+          "org.graalvm.shadowed.com.ibm.icu.lang",
+          "org.graalvm.shadowed.com.ibm.icu.math",
+          "org.graalvm.shadowed.com.ibm.icu.number",
+          "org.graalvm.shadowed.com.ibm.icu.text",
+          "org.graalvm.shadowed.com.ibm.icu.util",
+          "org.graalvm.shadowed.com.ibm.icu.charset",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "dependencies" : [
+        "org.graalvm.shadowed.com.ibm.icu",
+      ],
+      "distDependencies" : [
+      ],
+      "exclude" : [
+      ],
+      "description" : "ICU4J shaded module.",
+      "allowsJavadocWarnings": True,
+      "maven": True,
     },
   },
 }
