@@ -170,6 +170,11 @@ public final class JNIFunctionPointerTypes {
         JNIObjectHandle invoke(JNIEnvironment env);
     }
 
+    public interface ExceptionDescribeFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env);
+    }
+
     public interface ThrowFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         int invoke(JNIEnvironment env, JNIObjectHandle throwable);

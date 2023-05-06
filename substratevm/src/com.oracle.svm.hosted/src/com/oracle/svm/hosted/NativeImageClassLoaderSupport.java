@@ -27,10 +27,16 @@ package com.oracle.svm.hosted;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromClassPath;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromModule;
 import static com.oracle.svm.core.SubstrateOptions.IncludeAllFromPath;
+import static com.oracle.svm.core.configure.ConfigurationFile.CLASS_POSTFIX;
+import static com.oracle.svm.core.configure.ConfigurationFile.GENERATED_CLASSES_DIR;
+import static com.oracle.svm.core.configure.ConfigurationFile.UNNAMED_MODULE;
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
@@ -58,9 +64,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
@@ -72,12 +80,17 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.BiConsumer;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jdk.internal.module.ModulePatcher;
+import jdk.internal.module.ModulePath;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;
@@ -132,18 +145,41 @@ public class NativeImageClassLoaderSupport {
     private final Set<Class<?>> classesToIncludeUnconditionally = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @SuppressWarnings("this-escape")
-    protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
+    protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath, String[] instPath) {
 
         classes = EconomicMap.create();
         packages = EconomicMap.create();
         emptySet = EconomicSet.create();
         builderURILocations = EconomicSet.create();
         serviceProviders = new ConcurrentHashMap<>();
+        if (instPath.length != 0) {
+            // Prepend instrumented class path to the image class path
+            Stream<Path> instClassesStream = Arrays.stream(instPath)
+                            .map(Path::of)
+                            .flatMap(NativeImageClassLoaderSupport::toRealPath).flatMap(p -> {
+                                List<Path> ret = new ArrayList<>();
+                                Path generatedClasses = p.resolve(GENERATED_CLASSES_DIR);
+                                if (Files.isDirectory(generatedClasses)) {
+                                    ret.add(generatedClasses);
+                                }
+                                Path unnamedPath = p.resolve(UNNAMED_MODULE);
+                                if (Files.isDirectory(unnamedPath)) {
+                                    ret.add(unnamedPath);
+                                }
+                                return ret.stream();
+                            });
+            Stream<Path> classPathStream = Arrays.stream(classpath)
+                            .map(Path::of)
+                            .flatMap(NativeImageClassLoaderSupport::toRealPath);
 
-        imagecp = Arrays.stream(classpath)
-                        .map(Path::of)
-                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
-                        .toList();
+            imagecp = Stream.concat(instClassesStream, classPathStream)
+                            .toList();
+        } else {
+            imagecp = Arrays.stream(classpath)
+                            .map(Path::of)
+                            .flatMap(NativeImageClassLoaderSupport::toRealPath)
+                            .toList();
+        }
 
         String builderClassPathString = System.getProperty("java.class.path");
         String[] builderClassPathEntries = builderClassPathString.isEmpty() ? new String[0] : builderClassPathString.split(File.pathSeparator);
@@ -171,7 +207,21 @@ public class NativeImageClassLoaderSupport {
 
         upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
 
-        ModuleFinder modulePathsFinder = ModuleFinder.of(imagemp.toArray(Path[]::new));
+        ModulePatcher modulePatcher = null;
+        if (instPath.length != 0) {
+            List<Path> instrumentPath = Arrays.stream(instPath)
+                            .map(Path::of)
+                            .flatMap(NativeImageClassLoaderSupport::toRealPath)
+                            .collect(Collectors.toList());
+            Map<String, List<String>> patchMap = null;
+            try {
+                patchMap = preparePatchJars(instrumentPath);
+            } catch (IOException e) {
+                VMError.shouldNotReachHere("Cannot prepare module patch for instrumentation.", e);
+            }
+            modulePatcher = new ModulePatcher(patchMap);
+        }
+        ModuleFinder modulePathsFinder = ModulePath.of(modulePatcher, imagemp.toArray(Path[]::new));
         Set<String> moduleNames = modulePathsFinder.findAll().stream()
                         .map(moduleReference -> moduleReference.descriptor().name())
                         .collect(Collectors.toSet());
@@ -197,6 +247,71 @@ public class NativeImageClassLoaderSupport {
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
 
         annotationExtractor = new SubstrateAnnotationExtractor();
+    }
+
+    private static Map<String, List<String>> preparePatchJars(List<Path> instrumentPath) throws IOException {
+        Map<String, Pair<JarOutputStream, Path>> modulePatches = new HashMap<>();
+
+        // It is too early to use temporary directory managed by TemporaryBuildDirectoryProviderImpl
+        Path tempDirectory = Files.createTempDirectory("SVM-module-patchers-");
+        // Ensure the temporary directory will be cleaned
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> TemporaryBuildDirectoryProviderImpl.deleteAll(tempDirectory)));
+        try {
+            for (Path path : instrumentPath) {
+                // Check the first level of instrument class directory. Each directory here
+                // represents a module to be patched.
+                // This conversion is honored at configuration generating time by
+                // native-image-agent.
+                Files.list(path).filter(p -> !p.equals(path)).forEach(moduleRoot -> {
+                    try {
+                        Files.walkFileTree(moduleRoot, new SimpleFileVisitor<>() {
+                            @Override
+                            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                                if (file.toString().endsWith(CLASS_POSTFIX)) {
+                                    Path moduleRootPathFileName = moduleRoot.getFileName();
+                                    if (moduleRootPathFileName != null) {
+                                        String moduleName = moduleRootPathFileName.toString();
+                                        Pair<JarOutputStream, Path> pathPair = modulePatches.computeIfAbsent(moduleName, v -> {
+                                            Path patchJarPath = tempDirectory.resolve(moduleName + ".jar");
+                                            try {
+                                                return Pair.create(new JarOutputStream(new FileOutputStream(patchJarPath.toFile())), patchJarPath);
+                                            } catch (IOException e) {
+                                                VMError.shouldNotReachHere(e);
+                                                return null;
+                                            }
+                                        });
+                                        JarOutputStream jarOutputStream = pathPair.getLeft();
+                                        try (FileInputStream fileInputStream = new FileInputStream(file.toFile());
+                                                        BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
+                                            Path packagePath = moduleRoot.relativize(file.getParent());
+                                            JarEntry jarEntry = new JarEntry(packagePath.toString() + "/" + file.getFileName());
+                                            jarOutputStream.putNextEntry(jarEntry);
+                                            jarOutputStream.write(bufferedInputStream.readAllBytes());
+                                        }
+                                    }
+                                }
+                                return super.visitFile(file, attrs);
+                            }
+                        });
+                    } catch (IOException e) {
+                        VMError.shouldNotReachHere("Cannot prepare module patch for instrumentation while traversing directory " + moduleRoot, e);
+                    }
+                });
+            }
+        } catch (IOException e) {
+            VMError.shouldNotReachHere(e);
+        }
+
+        Map<String, List<String>> ret = new HashMap<>();
+        modulePatches.forEach((moduleName, pair) -> {
+            ret.put(moduleName, List.of(pair.getRight().toString()));
+            try {
+                pair.getLeft().close();
+            } catch (IOException e) {
+                VMError.shouldNotReachHere("Cannot prepare module patch for " + moduleName + " for instrumentation", e);
+            }
+        });
+        return ret;
     }
 
     private static Stream<Path> toRealPath(Path p) {

@@ -524,7 +524,8 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (linkAtBuildTime) {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
                 } else {
-                    ExceptionSynthesizer.throwException(this, findResolutionError((ResolvedJavaType) declaringClass, javaMethod), javaMethod.format("%H.%n(%P)"));
+                    ExceptionSynthesizer.throwException(this, findResolutionError((ResolvedJavaType) declaringClass, javaMethod),
+                                    String.format("Method %s is not resolved at build time.", javaMethod.format("%H.%n(%P)%R")));
                 }
             }
         }

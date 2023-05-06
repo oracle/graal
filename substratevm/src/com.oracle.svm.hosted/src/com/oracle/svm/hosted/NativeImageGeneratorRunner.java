@@ -111,6 +111,7 @@ public class NativeImageGeneratorRunner {
         arguments = extractDriverArguments(arguments);
         final String[] classPath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
         final String[] modulePath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
+        final String[] instPath = extractImagePathEntries(arguments, SubstrateOptions.INSTRUMENT_CLASSPATH_PREFIX);
         String keepAliveFile = extractKeepAliveFile(arguments);
         TimerTask timerTask = null;
         if (keepAliveFile != null) {
@@ -138,7 +139,7 @@ public class NativeImageGeneratorRunner {
         int exitStatus;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, modulePath, arguments);
+            ImageClassLoader imageClassLoader = installNativeImageClassLoader(classPath, modulePath, instPath, arguments);
             List<String> remainingArguments = imageClassLoader.classLoaderSupport.getRemainingArguments();
             if (!remainingArguments.isEmpty()) {
                 throw UserError.abort("Unknown options: %s", String.join(" ", remainingArguments));
@@ -200,6 +201,7 @@ public class NativeImageGeneratorRunner {
 
         Set<String> expectedBuilderDependencies = Set.of(
                         "java.base",
+                        "java.instrument",
                         "java.management",
                         "java.logging",
                         // workaround for GR-47773 on the module-path which requires java.sql (like
@@ -279,9 +281,9 @@ public class NativeImageGeneratorRunner {
      * @return NativeImageClassLoaderSupport that exposes the {@code ClassLoader} for image building
      *         via {@link NativeImageClassLoaderSupport#getClassLoader()}.
      */
-    public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath, List<String> arguments) {
+    public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath, String[] instPath, List<String> arguments) {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
-        NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
+        NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath, instPath);
         nativeImageClassLoaderSupport.setupHostedOptionParser(arguments);
         /* Perform additional post-processing with the created nativeImageClassLoaderSupport */
         for (NativeImageClassLoaderPostProcessing postProcessing : ServiceLoader.load(NativeImageClassLoaderPostProcessing.class)) {

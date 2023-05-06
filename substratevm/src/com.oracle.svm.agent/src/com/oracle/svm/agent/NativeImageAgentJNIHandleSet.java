@@ -41,6 +41,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangClassNotFoundException;
     final JNIMethodId javaLangClassGetName;
     final JNIMethodId javaLangClassGetInterfaces;
+    final JNIFieldId javaLangClassModule;
 
     final JNIMethodId javaLangReflectMemberGetName;
     final JNIMethodId javaLangReflectMemberGetDeclaringClass;
@@ -91,6 +92,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIFieldId javaLangInvokeSerializedLambdaCapturingClass;
 
     final JNIMethodId javaLangModuleGetName;
+    final JNIFieldId javaLangModuleName;
 
     private JNIMethodId javaLangInvokeCallSiteMakeSite = WordFactory.nullPointer();
     private JNIMethodId javaLangInvokeMethodHandleNativesLinkCallSiteImpl = WordFactory.nullPointer();
@@ -103,6 +105,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassNotFoundException = newClassGlobalRef(env, "java/lang/ClassNotFoundException");
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
         javaLangClassGetInterfaces = getMethodId(env, javaLangClass, "getInterfaces", "()[Ljava/lang/Class;", false);
+        javaLangClassModule = getFieldId(env, javaLangClass, "module", "Ljava/lang/Module;", false);
 
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
@@ -143,6 +146,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaUtilLocaleForLanguageTag = getMethodId(env, javaUtilLocale, "forLanguageTag", "(Ljava/lang/String;)Ljava/util/Locale;", true);
         javaUtilLocaleEquals = getMethodId(env, javaUtilLocale, "equals", "(Ljava/lang/Object;)Z", false);
         javaUtilLocaleToLanguageTag = getMethodId(env, javaUtilLocale, "toLanguageTag", "()Ljava/lang/String;", false);
+
+        javaLangModuleName = getFieldId(env, javaLangModule, "name", "Ljava/lang/String;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {

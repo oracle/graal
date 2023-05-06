@@ -84,7 +84,7 @@ public class OmitPreviousConfigTests {
             if (omittedConfig != null) {
                 shouldExcludeClassesWithHash = omittedConfig.getPredefinedClassesConfiguration()::containsClassWithHash;
             }
-            return configurationFileCollection.loadConfigurationSet(handler, null, shouldExcludeClassesWithHash);
+            return configurationFileCollection.loadConfigurationSet(handler, null, shouldExcludeClassesWithHash, null);
         } catch (Exception e) {
             throw VMError.shouldNotReachHere("Unexpected error while loading the configuration files.", e);
         }

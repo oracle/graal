@@ -39,7 +39,8 @@ public enum MetaInfFileType {
     ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFile.DYNAMIC_PROXY.getFileName()),
     SerializationConfiguration(ConfigurationFiles.Options.SerializationConfigurationResources, ConfigurationFile.SERIALIZATION.getFileName()),
     SerializationDenyConfiguration(ConfigurationFiles.Options.SerializationDenyConfigurationResources, ConfigurationFile.SERIALIZATION_DENY.getFileName()),
-    PredefinedClassesConfiguration(ConfigurationFiles.Options.PredefinedClassesConfigurationResources, ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
+    PredefinedClassesConfiguration(ConfigurationFiles.Options.PredefinedClassesConfigurationResources, ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()),
+    InstrumentConfiguration(ConfigurationFiles.Options.InstrumentConfigurationResources, ConfigurationFile.INSTRUMENT.getFileName());
 
     public final OptionKey<?> optionKey;
     public final String fileName;
