@@ -232,9 +232,10 @@ def _test_libgraal_systemic_failure_detection():
     """
     for rate in (-1, 1):
         vmargs = [
-            '-Dlibgraal.CrashAt=*e*,*a*',
-            f'-Dlibgraal.SystemicCompilationFailureRate={rate}',
-            '-Dlibgraal.CompilationFailureAction=Silent'
+            '-Dgraal.CrashAt=*e*,*a*',
+            f'-Dgraal.SystemicCompilationFailureRate={rate}',
+            '-Dgraal.DumpOnError=false',
+            '-Dgraal.CompilationFailureAction=Silent'
         ]
         cmd = ["dacapo:xalan", "--tracker=none", "--"] + vmargs + ["--", "--preserve", '-n', '20']
         out = mx.OutputCapture()
