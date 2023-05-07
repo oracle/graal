@@ -269,8 +269,6 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test-labsjdk-21Debug-linux-amd64": t("5:00:00"),
-
     "weekly-compiler-test_serialgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
     "weekly-compiler-test_serialgc-labsjdk-21-linux-aarch64": t("1:50:00"),
     "weekly-compiler-test_serialgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
@@ -456,7 +454,6 @@
   local linux_amd64_jdk21Debug_builds = [self.make_build("21Debug", "linux-amd64", task).build
     for task in [
       "benchmarktest",
-      "test"
     ]
   ],
 
