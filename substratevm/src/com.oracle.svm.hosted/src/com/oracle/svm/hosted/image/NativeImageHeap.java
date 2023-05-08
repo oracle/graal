@@ -247,7 +247,16 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private Object readObjectField(HostedField field, JavaConstant receiver) {
-        return universe.getSnippetReflection().asObject(Object.class, field.readStorageValue(receiver));
+        /*
+         * This method is only used to read the special fields of hybrid objects, which are
+         * currently not maintained as separate ImageHeapConstant and therefore cannot we read via
+         * the snapshot heap.
+         */
+        JavaConstant hostedConstant = receiver;
+        if (receiver instanceof ImageHeapConstant imageHeapConstant) {
+            hostedConstant = imageHeapConstant.getHostedObject();
+        }
+        return universe.getSnippetReflection().asObject(Object.class, field.readStorageValue(hostedConstant));
     }
 
     private static JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
@@ -313,8 +322,9 @@ public final class NativeImageHeap implements ImageHeap {
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
-        if (metaAccess.isInstanceOf(uncompressed, String.class)) {
-            handleImageString(universe.getSnippetReflection().asObject(String.class, uncompressed));
+        String stringConstant = universe.getSnippetReflection().asObject(String.class, uncompressed);
+        if (stringConstant != null) {
+            handleImageString(stringConstant);
         }
 
         final ObjectInfo existing = objects.get(uncompressed);
@@ -335,7 +345,7 @@ public final class NativeImageHeap implements ImageHeap {
      * {@link ImageHeapConstant} and this will be removed.
      */
     private JavaConstant maybeUnwrapString(JavaConstant constant) {
-        if (metaAccess.isInstanceOf(constant, String.class) && constant instanceof ImageHeapConstant ihc) {
+        if (metaAccess.isInstanceOf(constant, String.class) && constant instanceof ImageHeapConstant ihc && ihc.getHostedObject() != null) {
             return ihc.getHostedObject();
         }
         return constant;
@@ -598,23 +608,19 @@ public final class NativeImageHeap implements ImageHeap {
         return msg.append("    root: ").append(reason).append(System.lineSeparator());
     }
 
-    /** Determine if a constant will be immutable in the native image heap. */
-    private boolean isKnownImmutableConstant(final JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant) {
-            /* Currently injected ImageHeapObject cannot be marked as immutable. */
-            return false;
+    /**
+     * Determine if a constant will be immutable in the native image heap.
+     */
+    private boolean isKnownImmutableConstant(JavaConstant constant) {
+        JavaConstant hostedConstant = constant;
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            hostedConstant = imageHeapConstant.getHostedObject();
+            if (hostedConstant == null) {
+                /* A simulated ImageHeapConstant cannot be marked as immutable. */
+                return false;
+            }
         }
-        return isKnownImmutable(universe.getSnippetReflection().asObject(Object.class, constant));
-    }
-
-    /** Determine if an object in the host heap will be immutable in the native image heap. */
-    private boolean isKnownImmutable(final Object obj) {
-        if (obj instanceof String) {
-            // Strings need to have their hash code set or they are not immutable.
-            // If the hash is 0, then it will be recomputed again (and again)
-            // so the String is not immutable.
-            return obj.hashCode() != 0;
-        }
+        Object obj = universe.getSnippetReflection().asObject(Object.class, hostedConstant);
         return UniverseBuilder.isKnownImmutableType(obj.getClass()) || knownImmutableObjects.contains(obj);
     }
 
