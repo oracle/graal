@@ -38,6 +38,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -145,22 +146,28 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
 
     /**
      * Tries to build a {@link MinMaxNode} representation of the given conditional. Returns
-     * {@code null} if no simple equivalent form exists.
+     * {@code null} if no simple equivalent form exists. The returned node is not necessarily a
+     * {@link MinMaxNode}, it may be constant folded or an {@link IntegerConvertNode} applied to a
+     * {@link MinMaxNode}. Nodes built by this method are not added to the graph.
      */
     public static ValueNode fromConditional(ConditionalNode conditional) {
-        Stamp stamp = conditional.stamp(NodeView.DEFAULT);
-        if (!(stamp instanceof IntegerStamp)) {
+        return fromConditional(conditional.condition(), conditional.trueValue(), conditional.falseValue(), NodeView.DEFAULT);
+    }
+
+    /**
+     * @see #fromConditional(ConditionalNode)
+     */
+    public static ValueNode fromConditional(LogicNode condition, ValueNode trueValue, ValueNode falseValue, NodeView view) {
+        if (!trueValue.stamp(view).isIntegerStamp()) {
             return null;
         }
-        if (!(conditional.condition() instanceof IntegerLessThanNode || conditional.condition() instanceof IntegerBelowNode)) {
+        if (!(condition instanceof IntegerLessThanNode || condition instanceof IntegerBelowNode)) {
             return null;
         }
-        Signedness signedness = conditional.condition() instanceof IntegerBelowNode ? Signedness.UNSIGNED : Signedness.SIGNED;
-        CompareNode compare = (CompareNode) conditional.condition();
+        Signedness signedness = condition instanceof IntegerBelowNode ? Signedness.UNSIGNED : Signedness.SIGNED;
+        CompareNode compare = (CompareNode) condition;
         ValueNode x = compare.getX();
         ValueNode y = compare.getY();
-        ValueNode trueValue = conditional.trueValue();
-        ValueNode falseValue = conditional.falseValue();
 
         /*
          * Look for the pattern (x < y ? x : y) or (x < y ? y : x).
@@ -223,9 +230,9 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
 
         if (flipped) {
             // True/false values flipped against the condition: x < y ? y : x, this is a max.
-            minMax = signedness == Signedness.SIGNED ? MaxNode.create(x, y, NodeView.DEFAULT) : UnsignedMaxNode.create(x, y, NodeView.DEFAULT);
+            minMax = signedness == Signedness.SIGNED ? MaxNode.create(x, y, view) : UnsignedMaxNode.create(x, y, view);
         } else {
-            minMax = signedness == Signedness.SIGNED ? MinNode.create(x, y, NodeView.DEFAULT) : UnsignedMinNode.create(x, y, NodeView.DEFAULT);
+            minMax = signedness == Signedness.SIGNED ? MinNode.create(x, y, view) : UnsignedMinNode.create(x, y, view);
         }
         if (extension != null) {
             /*
@@ -233,7 +240,8 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
              * narrow min/max and need to extend it accordingly.
              */
             boolean zeroExtend = extension instanceof ZeroExtendNode;
-            minMax = IntegerConvertNode.convert(minMax, conditional.stamp(NodeView.DEFAULT), zeroExtend, NodeView.DEFAULT);
+            Stamp toStamp = trueValue.stamp(view).unrestricted();
+            minMax = IntegerConvertNode.convert(minMax, toStamp, zeroExtend, view);
         }
 
         return minMax;

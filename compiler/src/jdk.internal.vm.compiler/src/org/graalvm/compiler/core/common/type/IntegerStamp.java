@@ -2138,7 +2138,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return create(x.getBits(), Math.max(x.lowerBound(), y.lowerBound()), Math.max(x.upperBound(), y.upperBound()));
+                            long lowerBound = Math.max(x.lowerBound(), y.lowerBound());
+                            long upperBound = Math.max(x.upperBound(), y.upperBound());
+                            long mustBeSet = x.mustBeSet() & y.mustBeSet();
+                            long mayBeSet = x.mayBeSet() | y.mayBeSet();
+                            return create(x.getBits(), lowerBound, upperBound, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -2168,7 +2172,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return create(x.getBits(), Math.min(x.lowerBound(), y.lowerBound()), Math.min(x.upperBound(), y.upperBound()));
+                            long lowerBound = Math.min(x.lowerBound(), y.lowerBound());
+                            long upperBound = Math.min(x.upperBound(), y.upperBound());
+                            long mustBeSet = x.mustBeSet() & y.mustBeSet();
+                            long mayBeSet = x.mayBeSet() | y.mayBeSet();
+                            return create(x.getBits(), lowerBound, upperBound, mustBeSet, mayBeSet);
                         }
 
                         @Override
@@ -2198,8 +2206,15 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return StampFactory.forUnsignedInteger(x.getBits(), NumUtil.maxUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound()),
-                                            NumUtil.maxUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound()));
+                            if (x.sameSignBounds() && y.sameSignBounds()) {
+                                long lowerBound = NumUtil.maxUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound());
+                                long upperBound = NumUtil.maxUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound());
+                                long mustBeSet = x.mustBeSet() & y.mustBeSet();
+                                long mayBeSet = x.mayBeSet() | y.mayBeSet();
+                                return StampFactory.forUnsignedInteger(x.getBits(), lowerBound, upperBound, mustBeSet, mayBeSet);
+                            } else {
+                                return x.meet(y);
+                            }
                         }
 
                         @Override
@@ -2228,8 +2243,15 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
                             IntegerStamp x = (IntegerStamp) a;
                             IntegerStamp y = (IntegerStamp) b;
-                            return StampFactory.forUnsignedInteger(x.getBits(), NumUtil.minUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound()),
-                                            NumUtil.minUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound()));
+                            if (x.sameSignBounds() && y.sameSignBounds()) {
+                                long lowerBound = NumUtil.minUnsigned(x.unsignedLowerBound(), y.unsignedLowerBound());
+                                long upperBound = NumUtil.minUnsigned(x.unsignedUpperBound(), y.unsignedUpperBound());
+                                long mustBeSet = x.mustBeSet() & y.mustBeSet();
+                                long mayBeSet = x.mayBeSet() | y.mayBeSet();
+                                return StampFactory.forUnsignedInteger(x.getBits(), lowerBound, upperBound, mustBeSet, mayBeSet);
+                            } else {
+                                return x.meet(y);
+                            }
                         }
 
                         @Override
