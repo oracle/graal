@@ -35,6 +35,7 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
@@ -101,11 +102,16 @@ public final class OldGeneration extends Generation {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void prepareForPromotion() {
+        if (ParallelGC.isEnabled() && GCImpl.getGCImpl().isCompleteCollection()) {
+            return;
+        }
         toGreyObjectsWalker.setScanStart(getToSpace());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean scanGreyObjects() {
+        assert !ParallelGC.isEnabled() || !GCImpl.getGCImpl().isCompleteCollection();
+
         if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
         }

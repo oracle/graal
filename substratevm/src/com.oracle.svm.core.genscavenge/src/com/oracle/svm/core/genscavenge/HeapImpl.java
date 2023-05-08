@@ -710,7 +710,7 @@ public final class HeapImpl extends Heap {
             assert !isInImageHeap(obj) : "Image heap objects have identity hash code fields";
         }
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
-        return HeapChunk.getIdentityHashSalt(chunk).rawValue();
+        return HeapChunk.getIdentityHashSalt(chunk);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

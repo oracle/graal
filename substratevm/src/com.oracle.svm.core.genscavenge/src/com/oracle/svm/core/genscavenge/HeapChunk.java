@@ -263,8 +263,8 @@ public final class HeapChunk {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getIdentityHashSalt(Header<?> that) {
-        return that.getIdentityHashSalt(IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION);
+    public static long getIdentityHashSalt(Header<?> that) {
+        return that.getIdentityHashSalt(IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION).rawValue();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
