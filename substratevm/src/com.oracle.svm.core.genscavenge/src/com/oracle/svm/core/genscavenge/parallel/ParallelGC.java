@@ -142,7 +142,6 @@ public class ParallelGC {
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
     public void setAllocationChunk(AlignedHeapChunk.AlignedHeader chunk) {
-        assert chunk.isNonNull();
         GCWorkerThreadState state = getWorkerThreadState();
         state.setAllocChunk(chunk);
         state.setAllocChunkScanOffset(AlignedHeapChunk.getObjectsStartOffset());
@@ -240,13 +239,15 @@ public class ParallelGC {
         chunkQueue.teardown();
 
         /* Signal the worker threads so that they can shut down. */
+        inParallelPhase = true;
         shutdown = true;
         parPhase.broadcast();
         for (int i = 0; i < numWorkerThreads; i++) {
             OSThreadHandle thread = workerThreads.read(i);
             PlatformThreads.singleton().joinThreadUnmanaged(thread);
         }
-        assert busyWorkerThreads == 0;
+        inParallelPhase = false;
+        busyWorkerThreads = 0;
 
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(workerThreads);
         workerThreads = WordFactory.nullPointer();
