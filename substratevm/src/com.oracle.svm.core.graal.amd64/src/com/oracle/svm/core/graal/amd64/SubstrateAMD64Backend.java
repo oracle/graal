@@ -28,12 +28,10 @@ import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PR
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-import static jdk.vm.ci.amd64.AMD64.cpuRegisters;
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
-import static jdk.vm.ci.amd64.AMD64.xmmRegistersAVX512;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
@@ -910,21 +908,22 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 long offset = 0;
                 for (MemoryAssignment ret : cc.returnSaving) {
                     Value saveLocation = gen.getArithmetic().emitAdd(scratch, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
-                    switch (ret.kind()) {
-                        case INTEGER -> {
-                            var kind = gen.getValueKind(JavaKind.Long);
-                            var register = cpuRegisters[ret.index()];
-                            gen.getArithmetic().emitStore(kind, saveLocation, gen.emitReadRegister(register, kind), callState, MemoryOrderMode.PLAIN);
-                            offset += 8;
-                        }
-                        case FLOAT -> {
-                            var kind = gen.getValueKind(JavaKind.Double);
-                            var register = xmmRegistersAVX512[ret.index()];
-                            gen.getArithmetic().emitStore(kind, saveLocation, gen.emitReadRegister(register, kind), callState, MemoryOrderMode.PLAIN);
-                            offset += 16;
-                        }
-                        case STACK -> throw unsupportedFeature("Return should never happen on stack");
+                    if (ret.assignsToStack()) {
+                        throw unsupportedFeature("Return should never happen on stack.");
                     }
+                    var register = AMD64.allRegisters.get(ret.registerIndex());
+                    LIRKind kind;
+                    // There might a better/more natural way to check this
+                    if (register.getRegisterCategory().equals(AMD64.CPU)) {
+                        kind = gen.getValueKind(JavaKind.Long);
+                        offset += 8;
+                    } else if (register.getRegisterCategory().equals(AMD64.XMM)) {
+                        kind = gen.getValueKind(JavaKind.Double);
+                        offset += 16;
+                    } else {
+                        throw unsupportedFeature("Cannot use register " + register + " for return.");
+                    }
+                    gen.getArithmetic().emitStore(kind, saveLocation, gen.emitReadRegister(register, kind), callState, MemoryOrderMode.PLAIN);
                 }
             }
         }

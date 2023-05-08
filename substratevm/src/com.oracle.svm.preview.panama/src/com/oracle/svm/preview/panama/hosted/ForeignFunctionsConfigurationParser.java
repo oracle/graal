@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.preview.panama.hosted;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
@@ -35,13 +38,14 @@ import org.graalvm.nativeimage.impl.RuntimeForeignFunctionsAccessSupport;
 import com.oracle.svm.core.configure.ConfigurationParser;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-@SuppressWarnings("unused")
 public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
+    private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";
+    private static final String DOWNCALL_OPTION_FIRST_VARIADIC_ARG = "firstVariadicArg";
+
     private final RuntimeForeignFunctionsAccessSupport accessSupport;
 
     public ForeignFunctionsConfigurationParser(RuntimeForeignFunctionsAccessSupport access) {
         super(true);
-
         this.accessSupport = access;
     }
 
@@ -49,13 +53,43 @@ public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
     public void parseAndRegister(Object json, URI origin) {
         var topLevel = asMap(json, "first level of document must be a map");
         checkAttributes(topLevel, "foreign methods categories", List.of("downcalls"));
-        parseDowncallSignatures(asList(topLevel.get("downcalls"), "downcalls must be an array of method signatures"));
+        for (Object downcall : asList(topLevel.get("downcalls"), "downcalls must be an array of method signatures")) {
+            parseDowncall(downcall);
+        }
     }
 
-    private void parseDowncallSignatures(List<Object> signatures) {
-        for (Object signature : signatures) {
-            String input = asString(signature, "downcalls's elements must be function descriptors");
-            accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), FunctionDescriptorParser.parse(input));
+    private void parseDowncall(Object downcall) {
+        var map = asMap(downcall, "a downcall must be a map");
+        checkAttributes(map, "downcall", List.of("descriptor"), List.of("options"));
+        var descriptor = parseDowncallSignatures(map.get("descriptor"));
+        var options = parseOptions(map.get("options", null));
+        accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options.toArray());
+    }
+
+    private FunctionDescriptor parseDowncallSignatures(Object signature) {
+        String input = asString(signature, "downcalls's elements must be function descriptors");
+        return FunctionDescriptorParser.parse(input);
+    }
+
+    private List<Linker.Option> parseOptions(Object options) {
+        if (options == null) {
+            return List.of();
         }
+
+        ArrayList<Linker.Option> res = new ArrayList<>();
+        var map = asMap(options, "options must be a map");
+        checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE));
+
+        if (map.containsKey(DOWNCALL_OPTION_FIRST_VARIADIC_ARG)) {
+            int firstVariadic = (int) asLong(map.get(DOWNCALL_OPTION_FIRST_VARIADIC_ARG), DOWNCALL_OPTION_FIRST_VARIADIC_ARG);
+            res.add(Linker.Option.firstVariadicArg(firstVariadic));
+        }
+        if (map.containsKey(DOWNCALL_OPTION_CAPTURE_CALL_STATE)) {
+            var ccs = asList(map.get(DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_CAPTURE_CALL_STATE), DOWNCALL_OPTION_CAPTURE_CALL_STATE).stream()
+                            .map(cc -> asString(cc, DOWNCALL_OPTION_CAPTURE_CALL_STATE + " element")).toList();
+            res.add(Linker.Option.captureCallState(ccs.toArray(new String[0])));
+        }
+
+        return res;
     }
 }

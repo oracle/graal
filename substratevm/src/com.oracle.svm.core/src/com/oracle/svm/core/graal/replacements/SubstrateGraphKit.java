@@ -26,6 +26,7 @@ package com.oracle.svm.core.graal.replacements;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import jdk.vm.ci.code.CallingConvention;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -78,6 +79,7 @@ import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -195,10 +197,13 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
-        return createCFunctionCall(targetAddress, arguments, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true));
+        return createCFunctionCallWithCapture(targetAddress, arguments, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true),
+                        Set.of(),
+                        null);
     }
 
-    public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget, CallingConvention.Type convention) {
+    public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
+                    CallingConvention.Type convention, Set<CapturableState> statesToCapture, ValueNode captureBuffer) {
         boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
         if (emitTransition) {
             append(new CFunctionPrologueNode(newThreadStatus));
@@ -219,7 +224,7 @@ public class SubstrateGraphKit extends GraphKit {
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
-            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus);
+            CFunctionEpilogueNode epilogue = new CFunctionEpilogueNode(newThreadStatus, statesToCapture, captureBuffer);
             append(epilogue);
             epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
@@ -257,13 +262,13 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
-                    CallingConvention.Type callKind) {
+                    CallingConvention.Type convention) {
         frameState.clearStack();
 
         int bci = bci();
         CallTargetNode callTarget = getGraph().add(
                         new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
-                                        callKind, InvokeKind.Static));
+                                        convention, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         // Insert framestate.

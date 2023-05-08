@@ -82,7 +82,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
     private static final int FIRST_SUPPORTED_NON_PREVIEW = Integer.MAX_VALUE - 1; // TBD
 
     private static final Map<String, String[]> REQUIRES_CONCEALED = Map.of(
-                    "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta"},
+                    "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta", "jdk.vm.ci.amd64"},
                     "java.base", new String[]{"jdk.internal.foreign", "jdk.internal.foreign.abi", "jdk.internal.foreign.abi.x64", "jdk.internal.foreign.abi.x64.sysv"});
 
     private boolean sealed = false;
@@ -99,35 +99,12 @@ public class ForeignFunctionsFeature implements InternalFeature {
         UserError.guarantee(!sealed, "Registration of foreign functions was closed.");
     }
 
-    private class RuntimeForeignFunctionsAccessSupportImpl extends ConditionalConfigurationRegistry implements RuntimeForeignFunctionsAccessSupport {
-
+    private class RuntimeForeignFunctionsAccessSupportImpl extends ConditionalConfigurationRegistry implements StronglyTypedRuntimeForeignFunctionsAccessSupport {
         @Override
-        public void registerForDowncall(ConfigurationCondition condition, Object descO, Object... optionsO) {
+        public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
             checkNotSealed();
-            if (!(descO instanceof FunctionDescriptor)) {
-                throw new IllegalArgumentException("Desc must be an instance of " + FunctionDescriptor.class);
-            }
-            FunctionDescriptor desc = (FunctionDescriptor) descO;
-            Linker.Option[] options = new Linker.Option[optionsO.length];
-
-            for (int i = 0; i < optionsO.length; ++i) {
-                if (!(optionsO[i] instanceof Linker.Option)) {
-                    throw new IllegalArgumentException(i + "th option must be an instance of " + Linker.Option.class);
-                }
-                options[i] = (Linker.Option) optionsO[i];
-            }
-
             registerConditionalConfiguration(condition, () -> stubsToRegister.add(AbiUtils.getInstance().makeEntrypoint(desc, options)));
         }
-    }
-
-    public void registerEntrypoint(NativeEntryPointInfo nepi) {
-        checkNotSealed();
-        stubsToRegister.add(nepi);
-    }
-
-    public void registerEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
-        registerEntrypoint(AbiUtils.getInstance().makeEntrypoint(desc, options));
     }
 
     @Override
@@ -179,8 +156,10 @@ public class ForeignFunctionsFeature implements InternalFeature {
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "panama foreign",
                         ConfigurationFiles.Options.ForeignFunctionsConfigurationFiles, ConfigurationFiles.Options.ForeignFunctionsResources, ConfigurationFile.FOREIGN_FUNCTIONS.getFileName());
 
-        // Specializing the lambda form would define a new class, which is not allowed in
-        // SubstrateVM
+        /*
+         * Specializing the lambda form would define a new class, which is not allowed in
+         * SubstrateVM
+         */
         access.registerFieldValueTransformer(
                         ReflectionUtil.lookupField(
                                         ReflectionUtil.lookupClass(false, "jdk.internal.foreign.abi.DowncallLinker"),
