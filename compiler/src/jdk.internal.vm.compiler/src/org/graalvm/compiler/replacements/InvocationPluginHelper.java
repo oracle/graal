@@ -357,7 +357,8 @@ public class InvocationPluginHelper implements DebugCloseable {
      */
     public void emitFinalReturn(JavaKind kind, ValueNode returnValue) {
         assert !emittedReturn : "must only have one final return";
-        b.addPush(returnKind, returnValue);
+        assert kind == returnKind : "mismatch in return kind";
+        b.addPush(kind, returnValue);
 
         if (returns.size() > 0) {
             // Restore the previous frame state
