@@ -329,8 +329,8 @@ public class SubstrateOptions {
     @Option(help = "Number of GC worker threads. Parallel and G1 GC only.", type = OptionType.User)//
     public static final RuntimeOptionKey<Integer> ParallelGCThreads = new RuntimeOptionKey<>(0, Immutable);
 
-    private static void requireMultiThreading(OptionKey<?> optionKey) {
-        if (!MultiThreaded.getValue()) {
+    private static void requireMultiThreading(HostedOptionKey<Boolean> optionKey) {
+        if (optionKey.getValue() && !MultiThreaded.getValue()) {
             throw new InterruptImageBuilding(String.format("The option %s requires the option %s to be set.",
                             SubstrateOptionsParser.commandArgument(optionKey, "+"),
                             SubstrateOptionsParser.commandArgument(MultiThreaded, "+")));
