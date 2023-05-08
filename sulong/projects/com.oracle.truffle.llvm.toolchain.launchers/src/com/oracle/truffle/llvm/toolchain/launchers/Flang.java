@@ -27,40 +27,13 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.toolchain.launchers.linux;
+package com.oracle.truffle.llvm.toolchain.launchers;
 
 import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
-import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+public final class Flang {
 
-public final class LinuxLinker extends Driver {
-
-    public static final String LLD = "lld";
-    public static final String LD_LLD = "ld.lld";
-
-    private LinuxLinker() {
-        super(LD_LLD);
+    public static void main(String[] args) {
+        ClangLike.runFlang(args);
     }
-
-    public static List<String> getLinkerFlags() {
-        return Arrays.asList("--mllvm=-lto-embed-bitcode=optimized", "--lto-O0");
-    }
-
-    public static void link(String[] args) {
-        new LinuxLinker().doLink(args);
-    }
-
-    private void doLink(String[] args) {
-        List<String> sulongArgs = new ArrayList<>();
-        sulongArgs.add(exe);
-        sulongArgs.add("-L" + getSulongHome().resolve(ClangLike.NATIVE_PLATFORM).resolve("lib"));
-        sulongArgs.addAll(LinuxLinker.getLinkerFlags());
-        List<String> userArgs = Arrays.asList(args);
-        boolean verbose = userArgs.contains("-v");
-        runDriver(sulongArgs, userArgs, verbose, false, false);
-    }
-
 }

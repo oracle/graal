@@ -377,6 +377,7 @@ class ToolchainConfig(object):
         "CXX": ["graalvm-{name}-clang++", "graalvm-clang++", "clang++", "c++", "g++"],
         "CL": ["graalvm-{name}-clang-cl", "graalvm-clang-cl", "clang-cl", "cl"],
         "LD": ["graalvm-{name}-ld", "ld", "ld.lld", "lld", "lld-link", "ld64"],
+        "FC": ["graalvm-{name}-flang", "graalvm-flang", "flang-new", "flang"],
         "BINUTIL": ["graalvm-{name}-binutil"] + _llvm_tool_map + ["llvm-" + i for i in _llvm_tool_map]
     }
 
@@ -479,6 +480,7 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulo
                                        "CC": "com.oracle.truffle.llvm.toolchain.launchers.Clang",
                                        "CXX": "com.oracle.truffle.llvm.toolchain.launchers.ClangXX",
                                        "CL": "com.oracle.truffle.llvm.toolchain.launchers.ClangCL",
+                                       "FC": "com.oracle.truffle.llvm.toolchain.launchers.Flang",
                                        "LD": "com.oracle.truffle.llvm.toolchain.launchers.Linker",
                                        "BINUTIL": "com.oracle.truffle.llvm.toolchain.launchers.BinUtil",
                                    },
