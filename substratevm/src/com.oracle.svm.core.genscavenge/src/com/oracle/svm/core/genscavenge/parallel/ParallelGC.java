@@ -181,7 +181,7 @@ public class ParallelGC {
         AlignedHeapChunk.AlignedHeader chunk = state.getAllocChunk();
         if (chunk.isNonNull() && !chunk.equal(state.getScannedChunk())) {
             UnsignedWord scanOffset = state.getAllocChunkScanOffset();
-            assert scanOffset.aboveThan(0);
+            assert scanOffset.aboveOrEqual(AlignedHeapChunk.getObjectsStartOffset());
             if (chunk.getTopOffset().aboveThan(scanOffset)) {
                 Pointer ptrIntoChunk = HeapChunk.asPointer(chunk).add(scanOffset);
                 push(ptrIntoChunk);
@@ -246,6 +246,7 @@ public class ParallelGC {
         inParallelPhase = true;
         shutdown = true;
         parPhase.broadcast();
+
         for (int i = 0; i < numWorkerThreads; i++) {
             OSThreadHandle thread = workerThreads.read(i);
             PlatformThreads.singleton().joinThreadUnmanaged(thread);
@@ -334,18 +335,20 @@ public class ParallelGC {
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
     private static void scanAllocChunk(GCWorkerThreadState state) {
-        if (allocChunkNeedsScanning(state)) {
-            AlignedHeapChunk.AlignedHeader allocChunk = state.getAllocChunk();
-            UnsignedWord scanOffset = state.getAllocChunkScanOffset();
-            assert scanOffset.aboveThan(0);
-            Pointer scanPointer = HeapChunk.asPointer(allocChunk).add(scanOffset);
-            state.setScannedChunk(allocChunk);
-            HeapChunk.walkObjectsFromInline(allocChunk, scanPointer, GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
-            state.setScannedChunk(WordFactory.nullPointer());
-            if (state.getAllocChunk().equal(allocChunk)) {
-                /* Remember top offset so that we don't scan the same objects again. */
-                state.setAllocChunkScanOffset(allocChunk.getTopOffset());
-            }
+        if (!allocChunkNeedsScanning(state)) {
+            return;
+        }
+
+        AlignedHeapChunk.AlignedHeader allocChunk = state.getAllocChunk();
+        UnsignedWord scanOffset = state.getAllocChunkScanOffset();
+        assert scanOffset.aboveOrEqual(AlignedHeapChunk.getObjectsStartOffset());
+        Pointer scanPointer = HeapChunk.asPointer(allocChunk).add(scanOffset);
+        state.setScannedChunk(allocChunk);
+        HeapChunk.walkObjectsFromInline(allocChunk, scanPointer, GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
+        state.setScannedChunk(WordFactory.nullPointer());
+        if (allocChunk.equal(state.getAllocChunk())) {
+            /* Remember top offset so that we don't scan the same objects again. */
+            state.setAllocChunkScanOffset(allocChunk.getTopOffset());
         }
     }
 
@@ -391,6 +394,8 @@ public class ParallelGC {
         }
 
         assert chunkQueue.isEmpty();
+        assert !inParallelPhase;
+        assert busyWorkerThreads == 0;
 
         /* Reset all thread local states. */
         for (int i = 0; i < numWorkerThreads + 1; i++) {
@@ -413,7 +418,6 @@ public class ParallelGC {
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
     private void waitUntilWorkerThreadsFinish0() {
-        /* Wait for them to become idle. */
         while (inParallelPhase) {
             seqPhase.blockNoTransitionUnspecifiedOwner();
         }
