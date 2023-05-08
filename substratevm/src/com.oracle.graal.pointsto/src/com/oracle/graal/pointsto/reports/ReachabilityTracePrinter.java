@@ -24,7 +24,10 @@
  */
 package com.oracle.graal.pointsto.reports;
 
+import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
@@ -34,19 +37,29 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import org.graalvm.compiler.debug.MethodFilter;
 
 public final class ReachabilityTracePrinter {
-    public static void printTraceForTypes(String typesTraceOpt, BigBang bb, String reportsPath, String imageName) {
-        ReportUtils.report("trace for types", reportsPath, "trace_types_" + imageName, "txt",
+    public static Path printTraceForTypes(String typesTraceOpt, BigBang bb, String reportsPath, String imageName) {
+        return ReportUtils.report("trace for types", reportsPath, "trace_types_" + imageName, "txt",
                         writer -> printTraceForTypesImpl(typesTraceOpt, bb, writer));
     }
 
-    public static void printTraceForMethods(String methodsTraceOpt, BigBang bb, String reportsPath, String imageName) {
-        ReportUtils.report("trace for methods", reportsPath, "trace_methods_" + imageName, "txt",
+    public static Path printTraceForMethods(String methodsTraceOpt, BigBang bb, String reportsPath, String imageName) {
+        return ReportUtils.report("trace for methods", reportsPath, "trace_methods_" + imageName, "txt",
                         writer -> printTraceForMethodsImpl(methodsTraceOpt, bb, writer));
     }
 
-    public static void printTraceForFields(String fieldsTraceOpt, BigBang bb, String reportsPath, String imageName) {
-        ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + imageName, "txt",
+    public static Path printTraceForFields(String fieldsTraceOpt, BigBang bb, String reportsPath, String imageName) {
+        return ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + imageName, "txt",
                         writer -> printTraceForFieldsImpl(fieldsTraceOpt, bb, writer));
+    }
+
+    public static String readTrace(Path path) {
+        String content;
+        try {
+            content = Files.readString(path);
+        } catch (IOException ex) {
+            content = "";
+        }
+        return content;
     }
 
     private static void printTraceForTypesImpl(String typesTraceOpt, BigBang bb, PrintWriter writer) {
