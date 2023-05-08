@@ -151,11 +151,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private int callAndLoopCount;
     private int highestCompiledTier = 0;
 
-    public void compiledTier(int tier) {
+    final void compiledTier(int tier) {
         highestCompiledTier = Math.max(highestCompiledTier, tier);
     }
 
-    public int highestCompiledTier() {
+    public final int highestCompiledTier() {
         return highestCompiledTier;
     }
 
@@ -1021,6 +1021,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             compilationFailed = true;
             action = silent ? ExceptionAction.Silent : engine.compilationFailureAction;
         }
+
         if (action == ExceptionAction.Throw) {
             final InternalError error = new InternalError(serializedException.get());
             throw new OptimizationFailedException(error, this);
@@ -1034,8 +1035,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 String reason;
                 if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
                     reason = "engine.CompilationFailureAction=ExitVM";
-                } else if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
-                    reason = "engine.CompilationExceptionsAreFatal=true";
                 } else {
                     reason = "engine.PerformanceWarningsAreFatal=true";
                 }

@@ -27,9 +27,6 @@ package org.graalvm.compiler.truffle.runtime;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ArgumentTypeSpeculation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreFatal;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsArePrinted;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationExceptionsAreThrown;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
@@ -43,7 +40,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastT
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PriorityQueue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PropagateLoopCountToLexicalSingleCaller;
@@ -297,7 +293,7 @@ public final class EngineData {
         this.profilingEnabled = options.get(Profiling);
         this.traceTransferToInterpreter = options.get(TraceTransferToInterpreter);
         this.traceDeoptimizeFrame = options.get(TraceDeoptimizeFrame);
-        this.compilationFailureAction = computeCompilationFailureAction(options);
+        this.compilationFailureAction = options.get(CompilationFailureAction);
         validateOptions();
         parsedCompileOnly = null;
     }
@@ -376,23 +372,6 @@ public final class EngineData {
             throw new IllegalStateException("No polyglot engine initialized.");
         }
         return (Collection<OptimizedCallTarget>) GraalRuntimeAccessor.ENGINE.findCallTargets(polyglotEngine);
-    }
-
-    private static ExceptionAction computeCompilationFailureAction(OptionValues options) {
-        ExceptionAction action = options.get(CompilationFailureAction);
-        if (action.ordinal() < ExceptionAction.Print.ordinal() && options.get(CompilationExceptionsArePrinted)) {
-            action = ExceptionAction.Print;
-        }
-        if (action.ordinal() < ExceptionAction.Throw.ordinal() && options.get(CompilationExceptionsAreThrown)) {
-            action = ExceptionAction.Throw;
-        }
-        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && options.get(CompilationExceptionsAreFatal)) {
-            action = ExceptionAction.ExitVM;
-        }
-        if (action.ordinal() < ExceptionAction.ExitVM.ordinal() && !options.get(PerformanceWarningsAreFatal).isEmpty()) {
-            action = ExceptionAction.ExitVM;
-        }
-        return action;
     }
 
     private void validateOptions() {

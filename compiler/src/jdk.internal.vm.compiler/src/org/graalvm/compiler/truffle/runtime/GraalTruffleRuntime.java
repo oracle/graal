@@ -868,7 +868,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public CompilationTask submitForCompilation(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
         Priority priority = new Priority(optimizedCallTarget.getCallAndLoopCount(), lastTierCompilation ? Priority.Tier.LAST : Priority.Tier.FIRST);
         return getCompileQueue().submitCompilation(priority, optimizedCallTarget);
-
     }
 
     @SuppressWarnings("all")
@@ -879,13 +878,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public void finishCompilation(OptimizedCallTarget optimizedCallTarget, CompilationTask task, boolean mayBeAsynchronous) {
-
         if (!mayBeAsynchronous) {
             try {
                 uninterruptibleWaitForCompilation(task);
             } catch (ExecutionException e) {
                 if (optimizedCallTarget.engine.compilationFailureAction == ExceptionAction.Throw) {
-                    throw new RuntimeException(e.getCause());
+                    throw new OptimizationFailedException(e.getCause(), optimizedCallTarget);
                 } else {
                     if (assertionsEnabled()) {
                         e.printStackTrace();

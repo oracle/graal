@@ -122,7 +122,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
             }
         }.getCallTarget();
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
-        final int reprofileCount = target.getOptionValue(PolyglotCompilerOptions.ReplaceReprofileCount);
+        final int reprofileCount = 3;
         assertTrue(compilationThreshold >= 2);
 
         int expectedCompiledCount = 0;

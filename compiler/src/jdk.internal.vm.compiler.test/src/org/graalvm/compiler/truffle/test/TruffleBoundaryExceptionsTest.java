@@ -211,7 +211,7 @@ public class TruffleBoundaryExceptionsTest extends TestWithSynchronousCompiling 
         DeoptCountingExceptionOverBoundaryRootNode rootNode = new DeoptCountingExceptionOverBoundaryRootNode();
         final OptimizedCallTarget outerTarget = (OptimizedCallTarget) rootNode.getCallTarget();
         final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
-        final int invalidationReprofileCount = outerTarget.getOptionValue(PolyglotCompilerOptions.InvalidationReprofileCount);
+        final int invalidationReprofileCount = 3;
 
         for (int i = 0; i < compilationThreshold; i++) {
             try {

@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceStackTraceLimit;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TreatPerformanceWarningsAsErrors;
@@ -48,8 +47,8 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -104,7 +103,6 @@ public final class PerformanceInformationHandler implements Closeable {
     public static boolean isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind warningKind) {
         PerformanceInformationHandler handler = instance.get();
         return handler.options.get(TracePerformanceWarnings).contains(warningKind) ||
-                        handler.options.get(PerformanceWarningsAreFatal).contains(warningKind) ||
                         handler.options.get(TreatPerformanceWarningsAsErrors).contains(warningKind);
     }
 
@@ -243,9 +241,6 @@ public final class PerformanceInformationHandler implements Closeable {
             }
         }
 
-        if (!Collections.disjoint(getWarnings(), options.get(PerformanceWarningsAreFatal))) { // TODO
-            throw new AssertionError("Performance warning detected and is fatal.");
-        }
         if (!Collections.disjoint(getWarnings(), options.get(TreatPerformanceWarningsAsErrors))) {
             throw new AssertionError("Performance warning detected and is treated as a compilation error.");
         }

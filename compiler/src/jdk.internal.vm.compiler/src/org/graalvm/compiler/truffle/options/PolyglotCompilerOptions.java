@@ -283,12 +283,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Minimum number of calls before a call target is compiled (default: 3).", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(3);
 
-    @Option(help = "Delay compilation after an invalidation to allow for reprofiling. Deprecated: no longer has any effect.", category = OptionCategory.EXPERT, deprecated = true) //
-    public static final OptionKey<Integer> InvalidationReprofileCount = new OptionKey<>(3);
-
-    @Option(help = "Delay compilation after a node replacement. Deprecated: no longer has any effect.", category = OptionCategory.EXPERT, deprecated = true) //
-    public static final OptionKey<Integer> ReplaceReprofileCount = new OptionKey<>(3);
-
     @Option(help = "Speculate on arguments types at call sites (default: true)", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> ArgumentTypeSpeculation = new OptionKey<>(true);
 
@@ -326,19 +320,6 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> FirstTierBackedgeCounts = new OptionKey<>(true);
 
     // Failed compilation behavior
-
-    @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Print'") //
-    public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(false);
-
-    @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Throw'") //
-    public static final OptionKey<Boolean> CompilationExceptionsAreThrown = new OptionKey<>(false);
-
-    @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM'") //
-    public static final OptionKey<Boolean> CompilationExceptionsAreFatal = new OptionKey<>(false);
-
-    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL, deprecated = true, //
-                    deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM' 'engine.TreatPerformanceWarningsAsErrors=<PerformanceWarningKinds>'") //
-    public static final OptionKey<Set<PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     @Option(help = ExceptionAction.HELP, usageSyntax = "Silent|Print|Throw|Diagnose|ExitVM", category = OptionCategory.INTERNAL) //
     public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
@@ -406,10 +387,6 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Print statistics on expanded Truffle nodes during partial evaluation at the end of a run." + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
     public static final OptionKey<Set<CompilationTier>> NodeExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
-
-    @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL, deprecated = true,  //
-                    deprecationMessage = "The expansion histogram was superseeded by engine.TraceMethodExpansion, engine.TraceNodeExpansion, engine.MethodExpansionHistogram and engine.NodeExpansionHistogram.") //
-    public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
 
     // Inlining
 
@@ -498,9 +475,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Maximum number of instrumentation counters available (default: 10000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Integer> InstrumentationTableSize = new OptionKey<>(10000);
 
-    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes (default: 40000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use MaximumGraalGraphSize.") //
-    public static final OptionKey<Integer> MaximumGraalNodeCount = new OptionKey<>(400000);
-
     @Option(help = "Stop partial evaluation when the graph exceeded this size (default: 150000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Integer> MaximumGraalGraphSize = new OptionKey<>(150_000);
 
@@ -534,10 +508,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).", //
                     usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
-
-    @Option(help = "Forces the frame clearing mechanism to be executed, even if Frame.clear() is not used.", //
-                    category = OptionCategory.EXPERT, deprecated = true, deprecationMessage = "The analysis is now always executed, irrespective of this option") //
-    public static final OptionKey<Boolean> ForceFrameLivenessAnalysis = new OptionKey<>(false);
 
     // Compilation queue
     @Option(help = "Use the priority of compilation jobs in the compilation queue (default: true).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //

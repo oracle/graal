@@ -93,23 +93,15 @@ final class ExpansionStatistics {
         if (!isEnabled(options)) {
             return null;
         }
-        boolean legacyExpansion = options.get(PolyglotCompilerOptions.PrintExpansionHistogram);
         Set<CompilationTier> traceMethodExpansion = options.get(PolyglotCompilerOptions.TraceMethodExpansion);
         Set<CompilationTier> traceNodeExpansion = options.get(PolyglotCompilerOptions.TraceNodeExpansion);
         Set<CompilationTier> methodExpansionStatistics = options.get(PolyglotCompilerOptions.MethodExpansionStatistics);
         Set<CompilationTier> nodeExpansionStatistics = options.get(PolyglotCompilerOptions.NodeExpansionStatistics);
-        if (legacyExpansion) {
-            // make sure the deprecated flag still prints something comparable to the old flag
-            // remove this branch with the PrintExpansionHistogram option
-            traceMethodExpansion = new HashSet<>(traceMethodExpansion);
-            traceMethodExpansion.add(CompilationTier.truffleTier);
-        }
         return new ExpansionStatistics(partialEvaluator, traceMethodExpansion, traceNodeExpansion, methodExpansionStatistics, nodeExpansionStatistics);
     }
 
     static boolean isEnabled(org.graalvm.options.OptionValues options) {
-        if (options.get(PolyglotCompilerOptions.PrintExpansionHistogram) ||
-                        !options.get(PolyglotCompilerOptions.TraceMethodExpansion).isEmpty() ||
+        if (!options.get(PolyglotCompilerOptions.TraceMethodExpansion).isEmpty() ||
                         !options.get(PolyglotCompilerOptions.TraceNodeExpansion).isEmpty() ||
                         !options.get(PolyglotCompilerOptions.MethodExpansionStatistics).isEmpty() ||
                         !options.get(PolyglotCompilerOptions.NodeExpansionStatistics).isEmpty()) {
