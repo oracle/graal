@@ -58,6 +58,9 @@ public final class JSRegexLexer extends RegexLexer {
     private static final CodePointSet ID_START = UnicodeProperties.getProperty("ID_Start").union(CodePointSet.createNoDedup('$', '$', '_', '_'));
     private static final CodePointSet ID_CONTINUE = UnicodeProperties.getProperty("ID_Continue").union(CodePointSet.createNoDedup('$', '$', '\u200c', '\u200d'));
     private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '/', '?', '[', '\\', ']', '^', '{', '|', '}');
+    private static final TBitSet CLASS_SET_SYNTAX_CHARS = TBitSet.valueOf('(', ')', '-', '/', '[', '\\' ,']', '{', '|', '}');
+    private static final TBitSet CLASS_SET_RESERVED_PUNCTUATORS = TBitSet.valueOf('!', '#', '%', '&', ',', '-', ':', ';', '<', '=', '>', '@', '`', '~');
+    private static final TBitSet CLASS_SET_RESERVED_DOUBLE_PUNCTUATORS = TBitSet.valueOf('!', '#', '$', '%', '&', '*', '+', ',', '.', ':', ';', '<', '=', '>', '?', '@', '^', '`', '~');
     private final RegexFlags flags;
     private final CodePointSetAccumulator caseFoldTmp = new CodePointSetAccumulator();
 
@@ -109,6 +112,11 @@ public final class JSRegexLexer extends RegexLexer {
     @Override
     protected boolean featureEnabledUnicodePropertyEscapes() {
         return flags.isEitherUnicode();
+    }
+
+    @Override
+    protected boolean featureEnabledClassSetExpressions() {
+        return flags.isUnicodeSets();
     }
 
     @Override
@@ -173,6 +181,19 @@ public final class JSRegexLexer extends RegexLexer {
                 }
             default:
                 throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    @Override
+    protected void checkClassSetCharacter(int codePoint) throws RegexSyntaxException {
+        if (CLASS_SET_SYNTAX_CHARS.get(codePoint)) {
+            throw syntaxError(JsErrorMessages.unexpectedCharacterInClassSet(codePoint));
+        }
+        if (CLASS_SET_RESERVED_DOUBLE_PUNCTUATORS.get(codePoint)) {
+            String punctuator = Character.toString(codePoint);
+            if (lookahead(punctuator)) {
+                throw syntaxError(JsErrorMessages.unexpectedDoublePunctuatorInClassSet(punctuator));
+            }
         }
     }
 
@@ -244,7 +265,22 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected RegexSyntaxException handleMixedClassSetOperators(ClassSetOperator leftOperator, ClassSetOperator rightOperator) {
+        return syntaxError(JsErrorMessages.mixedOperatorsInClassSet(leftOperator, rightOperator));
+    }
+
+    @Override
+    protected RegexSyntaxException handleMissingClassSetOperand(ClassSetOperator operator) {
+        return syntaxError(JsErrorMessages.missingClassSetOperand(operator));
+    }
+
+    @Override
     protected void handleOctalOutOfRange() {
+    }
+
+    @Override
+    protected RegexSyntaxException handleRangeAsClassSetOperand(ClassSetOperator operator) {
+        return syntaxError(JsErrorMessages.rangeAsClassSetOperand(operator));
     }
 
     @Override
@@ -259,6 +295,11 @@ public final class JSRegexLexer extends RegexLexer {
     @Override
     protected RegexSyntaxException handleUnfinishedGroupQ() {
         return syntaxError(JsErrorMessages.INVALID_GROUP);
+    }
+
+    @Override
+    protected RegexSyntaxException handleUnfinishedRangeInClassSet() {
+        return syntaxError(JsErrorMessages.UNTERMINATED_CHARACTER_RANGE);
     }
 
     @Override
@@ -381,14 +422,21 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected int parseCustomEscapeCharFallback(int c, boolean inCharClass) {
-        if (c == '-') {
-            if (!inCharClass) {
+        if (inCharClass && flags.isUnicodeSets()) {
+            // parsing a ClassSetCharacter in ClassSetExpression
+            if (!SYNTAX_CHARS.get(c) && !CLASS_SET_RESERVED_PUNCTUATORS.get(c)) {
                 return handleInvalidEscape(c);
             }
-            return c;
-        }
-        if (!SYNTAX_CHARS.get(c)) {
-            return handleInvalidEscape(c);
+        } else if (inCharClass) {
+            // parsing a ClassAtom in NonemptyClassRanges
+            if (!SYNTAX_CHARS.get(c) && c != '-') {
+                return handleInvalidEscape(c);
+            }
+        } else {
+            // parsing an AtomEscape in Atom
+            if (!SYNTAX_CHARS.get(c)) {
+                return handleInvalidEscape(c);
+            }
         }
         return c;
     }

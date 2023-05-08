@@ -69,6 +69,7 @@ public class Token implements JsonConvertible {
         lookBehindAssertionBegin,
         groupEnd,
         charClass,
+        classSet,
         inlineFlags,
         conditionalBackreference
     }
@@ -150,6 +151,10 @@ public class Token implements JsonConvertible {
 
     public static CharacterClass createCharClass(CodePointSet codePointSet, boolean wasSingleChar) {
         return new CharacterClass(codePointSet, wasSingleChar);
+    }
+
+    public static ClassSet createClassSetExpression(ClassSetContents contents) {
+        return new ClassSet(contents);
     }
 
     public static Token createLookAheadAssertionBegin(boolean negated) {
@@ -351,6 +356,26 @@ public class Token implements JsonConvertible {
 
         public boolean wasSingleChar() {
             return wasSingleChar;
+        }
+    }
+
+    public static final class ClassSet extends Token {
+
+        private final ClassSetContents contents;
+
+        public ClassSet(ClassSetContents contents) {
+            super(Kind.classSet);
+            this.contents = contents;
+        }
+
+        @TruffleBoundary
+        @Override
+        public JsonObject toJson() {
+            return super.toJson().append(Json.prop("contents", contents));
+        }
+
+        public ClassSetContents getContents() {
+            return contents;
         }
     }
 

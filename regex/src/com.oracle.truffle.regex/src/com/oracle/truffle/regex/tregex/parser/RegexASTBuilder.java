@@ -89,7 +89,7 @@ public final class RegexASTBuilder {
     private final Counter.ThresholdCounter groupCount;
     private final NodeCountVisitor countVisitor;
     private final SetSourceSectionVisitor setSourceSectionVisitor;
-    private final boolean explodeUTF16;
+    private final boolean canExplodeUTF16;
     private final CompilationBuffer compilationBuffer;
 
     private Group curGroup;
@@ -99,11 +99,11 @@ public final class RegexASTBuilder {
     private final EconomicMap<Group, Integer> groupStartPositions;
 
     @TruffleBoundary
-    public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, boolean explodeUTF16, CompilationBuffer compilationBuffer) {
+    public RegexASTBuilder(RegexLanguage language, RegexSource source, RegexFlags flags, boolean canExplodeUTF16, CompilationBuffer compilationBuffer) {
         this.globals = language.parserGlobals;
         this.options = source.getOptions();
         this.encoding = source.getEncoding();
-        this.explodeUTF16 = explodeUTF16;
+        this.canExplodeUTF16 = canExplodeUTF16;
         this.ast = new RegexAST(language, source, flags);
         this.properties = ast.getProperties();
         this.groupCount = ast.getGroupCount();
@@ -195,7 +195,7 @@ public final class RegexASTBuilder {
      * @return the generated AST
      */
     public RegexAST popRootGroup() {
-        optimizeGroup();
+        optimizeGroup(curGroup);
         ast.getRoot().setEnclosedCaptureGroupsHigh(groupCount.getCount());
         return ast;
     }
@@ -330,7 +330,7 @@ public final class RegexASTBuilder {
             curGroup.removeLastSequence();
             ast.getNodeCount().dec();
         }
-        optimizeGroup();
+        optimizeGroup(curGroup);
         curGroup.setEnclosedCaptureGroupsHigh(groupCount.getCount());
         ast.addSourceSection(curGroup, token);
         if (curGroup.getParent().isSubtreeRoot()) {
@@ -367,6 +367,10 @@ public final class RegexASTBuilder {
         curTerm = term;
     }
 
+    private boolean shouldExplodeUTF16() {
+        return canExplodeUTF16 && options.isUTF16ExplodeAstralSymbols();
+    }
+
     /**
      * Adds a new {@link CharacterClass} to the current {@link Sequence}.
      * 
@@ -377,8 +381,8 @@ public final class RegexASTBuilder {
      */
     public void addCharClass(Token.CharacterClass token) {
         CodePointSet codePointSet = pruneCharClass(token.getCodePointSet());
-        if (explodeUTF16) {
-            addTerm(translateUnicodeCharClass(codePointSet, token));
+        if (shouldExplodeUTF16()) {
+            addTerm(translateUnicodeCharClass(codePointSet, token, token.wasSingleChar()));
         } else {
             addTerm(createCharClass(codePointSet, token, token.wasSingleChar()));
         }
@@ -409,9 +413,9 @@ public final class RegexASTBuilder {
         return characterClass;
     }
 
-    private Term translateUnicodeCharClass(CodePointSet codePointSet, Token.CharacterClass token) {
-        if (!options.isUTF16ExplodeAstralSymbols() || Constants.BMP_WITHOUT_SURROGATES.contains(codePointSet)) {
-            return createCharClass(codePointSet, token, token.wasSingleChar());
+    private Term translateUnicodeCharClass(CodePointSet codePointSet, Token token, boolean wasSingleChar) {
+        if (Constants.BMP_WITHOUT_SURROGATES.contains(codePointSet)) {
+            return createCharClass(codePointSet, token, wasSingleChar);
         }
         Group group = ast.createGroup();
         group.setEnclosedCaptureGroupsLow(groupCount.getCount());
@@ -510,6 +514,52 @@ public final class RegexASTBuilder {
         }
         assert !(group.size() == 1 && group.getFirstAlternative().getTerms().size() == 1);
         return group;
+    }
+
+    /**
+     * Adds a new {@link Group} representing a class set expression to the current {@link Sequence}.
+     *
+     * @param token aside from the source sections, the token most importantly contains the set of
+     *            code points and strings to be included in the class set
+     */
+    public void addClassSet(Token.ClassSet token) {
+        ClassSetContents contents = token.getContents();
+        pushGroup();
+
+        String[] sortedStrings = new String[contents.getStrings().size()];
+        contents.getStrings().toArray(sortedStrings);
+        Arrays.sort(sortedStrings, Comparator.comparingInt(String::length).reversed());
+        boolean firstString = true;
+        for (String string : sortedStrings) {
+            if (firstString) {
+                firstString = false;
+            } else {
+                nextSequence();
+            }
+            if (string.isEmpty()) {
+                continue;
+            }
+            if (shouldExplodeUTF16()) {
+                string.chars().forEachOrdered(ch -> addCharClass(CodePointSet.create(ch)));
+            } else {
+                string.codePoints().forEachOrdered(cp -> addCharClass(CodePointSet.create(cp)));
+            }
+        }
+
+        CodePointSet codePointSet = pruneCharClass(contents.getCodePointSet());
+        if (!codePointSet.isEmpty()) {
+            if (shouldExplodeUTF16()) {
+                addTerm(translateUnicodeCharClass(codePointSet, token, codePointSet.matchesSingleChar()));
+            } else {
+                addTerm(createCharClass(codePointSet, token, codePointSet.matchesSingleChar()));
+            }
+        }
+
+        if (contents.getStrings().contains("")) {
+            nextSequence();
+        }
+
+        popGroup();
     }
 
     public void addBackReference(Token.BackReference token) {
@@ -838,12 +888,12 @@ public final class RegexASTBuilder {
 
     /* optimizations */
 
-    private void optimizeGroup() {
-        if (curGroup.isConditionalBackReferenceGroup()) {
+    private void optimizeGroup(Group group) {
+        if (group.isConditionalBackReferenceGroup()) {
             return;
         }
-        sortAlternatives(curGroup);
-        mergeCommonPrefixes(curGroup);
+        sortAlternatives(group);
+        mergeCommonPrefixes(group);
     }
 
     /**
@@ -992,7 +1042,7 @@ public final class RegexASTBuilder {
                     innerGroup.setEnclosedCaptureGroupsHigh(enclosedCGHi);
                 }
                 if (!innerGroup.isEmpty() && !(innerGroup.size() == 1 && innerGroup.getFirstAlternative().isEmpty())) {
-                    mergeCommonPrefixes(innerGroup);
+                    optimizeGroup(innerGroup);
                     prefixSeq.add(innerGroup);
                 }
                 newAlternatives.add(prefixSeq);

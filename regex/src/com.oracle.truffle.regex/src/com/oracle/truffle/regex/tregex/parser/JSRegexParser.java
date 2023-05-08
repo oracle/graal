@@ -210,6 +210,9 @@ public final class JSRegexParser implements RegexParser {
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
+                case classSet:
+                    astBuilder.addClassSet((Token.ClassSet) token);
+                    break;
             }
         }
         if (!astBuilder.curGroupIsRoot()) {

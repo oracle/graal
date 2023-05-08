@@ -346,6 +346,11 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledClassSetExpressions() {
+        return false;
+    }
+
+    @Override
     protected CodePointSet getDotCodePointSet() {
         return getLocalFlags().isDotAll() ? Constants.DOT_ALL : PYTHON_DOT;
     }
@@ -412,6 +417,10 @@ public final class PythonRegexLexer extends RegexLexer {
         }
     }
 
+    @Override
+    protected void checkClassSetCharacter(int codePoint) throws RegexSyntaxException {
+    }
+
     private RegexSyntaxException handleBadCharacterInGroupName(ParseGroupNameResult result) {
         return syntaxErrorAtRel(PyErrorMessages.badCharacterInGroupName(result.groupName), result.groupName.length() + 1);
     }
@@ -470,8 +479,23 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected RegexSyntaxException handleMixedClassSetOperators(ClassSetOperator leftOperator, ClassSetOperator rightOperator) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    protected RegexSyntaxException handleMissingClassSetOperand(ClassSetOperator operator) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
     protected void handleOctalOutOfRange() {
         throw syntaxError(PyErrorMessages.invalidOctalEscape(substring(4)));
+    }
+
+    @Override
+    protected RegexSyntaxException handleRangeAsClassSetOperand(ClassSetOperator operator) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
@@ -487,6 +511,11 @@ public final class PythonRegexLexer extends RegexLexer {
     @Override
     protected RegexSyntaxException handleUnfinishedGroupQ() {
         return syntaxErrorHere(PyErrorMessages.UNEXPECTED_END_OF_PATTERN);
+    }
+
+    @Override
+    protected RegexSyntaxException handleUnfinishedRangeInClassSet() {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
