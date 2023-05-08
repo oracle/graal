@@ -27,8 +27,10 @@ package org.graalvm.compiler.hotspot.jdk20.test;
 import java.io.IOException;
 
 import org.graalvm.compiler.api.test.ModuleSupport;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.SubprocessTest;
 import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.junit.Assume;
@@ -63,7 +65,8 @@ public class PreviewEnabledTest extends HotSpotGraalCompilerTest {
             // resolve class, profile exceptions
             VirtualThreadsJFRTest.test();
             Class<?> clazz = Class.forName("java.lang.VirtualThread");
-            InstalledCode code = getCode(getResolvedJavaMethod(clazz, "mount"), null, true, true, getInitialOptions());
+            InstalledCode code = getCode(getResolvedJavaMethod(clazz, "mount"), null, true, true,
+                            new OptionValues(getInitialOptions(), GraalOptions.RemoveNeverExecutedCode, false));
             assertTrue(code.isValid());
             VirtualThreadsJFRTest.test();
             assertTrue(code.isValid());
