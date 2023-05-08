@@ -31,9 +31,12 @@ import com.oracle.svm.core.annotate.TargetClass;
 /**
  * System lookups are currently unsupported, but this would be possible and might be useful to do
  * so. There would be two issues to solve; other than that, the JDK's implementation can be reused:
- * - The library path(s): there might not be a JDK on the machine running the native image - On
- * linux64, the loaded libraries are {libc, libm, libdl} - Library loading: libraries are currently
- * loaded in "the global scope", which is not exactly the correct behavior
+ * <ul>
+ * <li>The library path(s): there might not be a JDK on the machine running the native image (on
+ * linux64, the loaded libraries are {libc, libm, libdl})</li>
+ * <li>Library loading: libraries are currently loaded in "the global scope", which is not exactly
+ * the correct behavior</li>
+ * </ul>
  */
 @TargetClass(className = "jdk.internal.foreign.SystemLookup")
 @Substitute

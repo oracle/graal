@@ -1738,7 +1738,7 @@ public class NativeImage {
 
     public void enablePreview() {
         if (config.libPreviewDir == null && PreviewFeatures.values().length > 0) {
-            throw showError("The irectory containing the preview modules was not found.");
+            throw showError("The directory containing the preview modules was not found.");
         }
 
         for (var preview : PreviewFeatures.values()) {
@@ -2085,25 +2085,20 @@ public class NativeImage {
     }
 
     protected static List<Path> getJars(Path dir, String... jarBaseNames) {
-        return getJars(dir, Arrays.asList(jarBaseNames));
-    }
-
-    protected static List<Path> getJars(Path dir, List<String> baseNameList) {
-        try {
-            return Files.list(dir)
-                            .filter(p -> {
-                                String jarFileName = p.getFileName().toString();
-                                String jarSuffix = ".jar";
-                                if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
-                                    return false;
-                                }
-                                if (baseNameList.isEmpty()) {
-                                    return true;
-                                }
-                                String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
-                                return baseNameList.contains(jarBaseName);
-                            })
-                            .collect(Collectors.toList());
+        List<String> baseNameList = Arrays.asList(jarBaseNames);
+        try (var files = Files.list(dir)) {
+            return files.filter(p -> {
+                String jarFileName = p.getFileName().toString();
+                String jarSuffix = ".jar";
+                if (!jarFileName.toLowerCase().endsWith(jarSuffix)) {
+                    return false;
+                }
+                if (baseNameList.isEmpty()) {
+                    return true;
+                }
+                String jarBaseName = jarFileName.substring(0, jarFileName.length() - jarSuffix.length());
+                return baseNameList.contains(jarBaseName);
+            }).collect(Collectors.toList());
         } catch (IOException e) {
             throw showError("Unable to use jar-files from directory " + dir, e);
         }

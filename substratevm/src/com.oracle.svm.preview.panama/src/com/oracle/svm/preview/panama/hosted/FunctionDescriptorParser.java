@@ -26,6 +26,7 @@ package com.oracle.svm.preview.panama.hosted;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
@@ -140,7 +141,7 @@ public final class FunctionDescriptorParser {
                 case 'J' -> parseValueLayout(long.class);
                 case 'F' -> parseValueLayout(float.class);
                 case 'D' -> parseValueLayout(double.class);
-                case 'A' -> parseValueLayout(MemoryLayout.class);
+                case 'A' -> parseValueLayout(MemorySegment.class);
                 case '[' -> parseSequenceLayout();
                 case '{' -> parseStructLayout();
                 case '<' -> parseUnionLayout();

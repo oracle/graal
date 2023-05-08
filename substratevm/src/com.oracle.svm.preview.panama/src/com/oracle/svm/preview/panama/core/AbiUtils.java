@@ -43,25 +43,16 @@ import jdk.internal.foreign.abi.LinkerOptions;
 import jdk.internal.foreign.abi.VMStorage;
 import jdk.internal.foreign.abi.x64.X86_64Architecture;
 import jdk.internal.foreign.abi.x64.sysv.CallArranger;
+import jdk.vm.ci.amd64.AMD64;
 
-@SuppressWarnings("unused")
 public abstract class AbiUtils {
-    /**
-     * From <a href="https://en.cppreference.com/w/c/language/arithmetic_types">cppreference</a>.
-     * Project Panama doesn't support (yet?) 32-bit architectures.
-     */
-    public enum DataModel {
-        LLP64(64),
-        LP64(64);
-
-        public final int wordSize;
-
-        DataModel(int wordSize) {
-            this.wordSize = wordSize;
-        }
-    }
-
     private abstract static class X86_64 extends AbiUtils {
+        private static final int INTEGER_OFFSET = 0;
+        private static final int VECTOR_OFFSET = 16;
+        static {
+            assert AMD64.rax == AMD64.allRegisters.get(INTEGER_OFFSET);
+            assert AMD64.xmm0 == AMD64.allRegisters.get(VECTOR_OFFSET);
+        }
 
         public MemoryAssignment[] toMemoryAssignment(VMStorage[] argMoves, boolean forReturn) {
             int size = 0;
@@ -82,13 +73,12 @@ public abstract class AbiUtils {
             int i = 0;
             for (VMStorage move : argMoves) {
                 if (move.type() != X86_64Architecture.StorageType.PLACEHOLDER) {
-                    MemoryAssignment.Kind kind = switch (move.type()) {
-                        case X86_64Architecture.StorageType.INTEGER -> MemoryAssignment.Kind.INTEGER;
-                        case X86_64Architecture.StorageType.VECTOR -> MemoryAssignment.Kind.FLOAT;
-                        case X86_64Architecture.StorageType.STACK -> MemoryAssignment.Kind.STACK;
+                    storages[i++] = switch (move.type()) {
+                        case X86_64Architecture.StorageType.INTEGER -> MemoryAssignment.toRegister(move.indexOrOffset() + INTEGER_OFFSET);
+                        case X86_64Architecture.StorageType.VECTOR -> MemoryAssignment.toRegister(move.indexOrOffset() + VECTOR_OFFSET);
+                        case X86_64Architecture.StorageType.STACK -> MemoryAssignment.toStack(move.indexOrOffset());
                         default -> throw unsupportedFeature("Unhandled VMStorage: " + move);
                     };
-                    storages[i++] = new MemoryAssignment(kind, move.indexOrOffset());
                 }
             }
 
@@ -138,11 +128,6 @@ public abstract class AbiUtils {
         }
 
         @Override
-        public DataModel dataModel() {
-            return DataModel.LP64;
-        }
-
-        @Override
         public int supportedCaptureMask() {
             return CapturableState.ERRNO.mask();
         }
@@ -172,9 +157,6 @@ public abstract class AbiUtils {
      * Foreign/HotSpot.
      */
     public abstract MemoryAssignment[] toMemoryAssignment(VMStorage[] moves, boolean forReturn);
-
-    @SuppressWarnings("unused")
-    public abstract DataModel dataModel();
 
     public abstract int supportedCaptureMask();
 }

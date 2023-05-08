@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.preview.panama.core;
 
-import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FunctionPointerHolder;
 
 public class ForeignFunctionsRuntime {
@@ -49,16 +48,36 @@ public class ForeignFunctionsRuntime {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void addStubPointer(NativeEntryPointInfo nepi, CFunctionPointer ptr) {
-        assert (!stubs.containsKey(nepi));
+        AnalysisError.UserError.guarantee(!stubs.containsKey(nepi), "Seems like multiple stubs were generate for " + nepi);
         stubs.put(nepi, new FunctionPointerHolder(ptr));
     }
 
+    /**
+     * We'd rather report the function descriptor rather than the native method type, but we don't
+     * have it available here. One could intercept this exception in
+     * {@link jdk.internal.foreign.abi.DowncallLinker.getBoundMethodHandle} and add information
+     * about the descriptor there.
+     */
     public CodePointer getStubPointer(NativeEntryPointInfo nep) {
         FunctionPointerHolder pointer = stubs.get(nep);
         if (pointer == null) {
-            throw unsupportedFeature("Cannot perform downcall if the descriptor was not registered.");
+            throw new UnregisteredDowncallStubException(nep);
         } else {
             return pointer.functionPointer;
+        }
+    }
+
+    @SuppressWarnings("serial")
+    public static class UnregisteredDowncallStubException extends RuntimeException {
+        private final NativeEntryPointInfo nep;
+
+        UnregisteredDowncallStubException(NativeEntryPointInfo nep) {
+            super(generateMessage(nep));
+            this.nep = nep;
+        }
+
+        private static String generateMessage(NativeEntryPointInfo nep) {
+            return "Cannot perform downcall with leaf type " + nep.nativeMethodType() + " as it was not registered at compilation time.";
         }
     }
 }

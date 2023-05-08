@@ -40,13 +40,13 @@ public final class DowncallStubsHolder {
     }
 
     /**
+     * Generate the name used by the stub associated to the provided {@link NativeEntryPointInfo}.
+     *
      * Naming scheme:
      * 
      * <pre>
-     *     downcall_(<c argument>*)<c return type>_<digest of <paramsMemoryAssignment>[_<returnMemoryAssignment>]>
+     *  downcall_(<c argument>*)<c return type>_<digest of paramsMemoryAssignment>[_<returnMemoryAssignment>]>
      * </pre>
-     * 
-     * .
      */
     public static String stubName(NativeEntryPointInfo nep) {
         StringBuilder builder = new StringBuilder("downcall_(");

@@ -28,14 +28,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -47,21 +53,29 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
 import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.CPrologueData;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.thread.Safepoint;
@@ -117,8 +131,51 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         return CFunctionPrologueDataNode.cFunctionPrologueData(anchor, newThreadStatus);
     }
 
+    @Uninterruptible(reason = "Interruptions might change call state.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    public static void captureCallState(int states, CIntPointer captureBuffer) {
+        /*
+         * Note that this method is called from inside the CFunction prologue, more precisely before
+         * transitioning back into Java. This means that the calls we do here should not transition
+         * to/from native, as this would introduce a safepoint.
+         *
+         * Note that the states must be captured in the same order as in the JDK: GET_LAST_ERROR,
+         * WSA_GET_LAST_ERROR, ERRNO
+         *
+         * There doesn't seem to be a "best" behavior when capture is requested for a state which is
+         * not supported (e.g. GET_LAST_ERROR on Linux). We simply ignore such capture requests and
+         * push the responsibility of checking that this won't happen to the caller (similarly to
+         * what is done in DowncallLinker::capture_state in HotSpot).
+         */
+        int i = 0;
+        if ((states & CapturableState.ERRNO.mask()) != 0 && LibC.isSupported()) {
+            // Despite the appearances, getting errno is NOT a function call.
+            captureBuffer.write(i, LibC.errno());
+            ++i;
+        }
+    }
+
+    private static final SnippetRuntime.SubstrateForeignCallDescriptor CAPTURE_CALL_STATE = SnippetRuntime.findForeignCall(CFunctionSnippets.class, "captureCallState", false, LocationIdentity.any());
+
+    @Node.NodeIntrinsic(value = ForeignCallNode.class)
+    public static native void call(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int states, CIntPointer captureBuffer);
+
+    @Fold
+    static boolean checkIfCaptureNeeded(int states) {
+        return states != 0;
+    }
+
     @Snippet
-    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus) {
+    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus, @ConstantParameter int states, CIntPointer captureBuffer) {
+        /*
+         * Putting this trivial check in a separate function might be a bit overkill, but this
+         * ensures that it is correctly folded, which should be sufficient to ensure that the
+         * if-the-else is itself folded.
+         */
+        if (checkIfCaptureNeeded(states)) {
+            call(CAPTURE_CALL_STATE, states, captureBuffer);
+        }
+
         if (SubstrateOptions.MultiThreaded.getValue()) {
             if (oldThreadStatus == StatusSupport.STATUS_IN_NATIVE) {
                 Safepoint.transitionNativeToJava(true);
@@ -191,6 +248,15 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
+            args.addConst("states", CapturableState.mask(node.getStatesToCapture()), StampFactory.objectNonNull());
+            ValueNode buffer = node.getCaptureBuffer();
+            if (buffer != null) {
+                args.add("captureBuffer", buffer);
+            } else {
+                ValueNode nullPtr = node.graph().unique(ConstantNode.forLong(WordFactory.nullPointer().rawValue()));
+                args.add("captureBuffer", nullPtr);
+            }
+
             SnippetTemplate template = template(tool, node, args);
             template.setMayRemoveLocation(true);
             template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -246,16 +312,24 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
             cur = ((FixedWithNextNode) cur).next();
         }
     }
+
+    public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(CAPTURE_CALL_STATE);
+    }
 }
 
 @AutomaticallyRegisteredFeature
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 class CFunctionSnippetsFeature implements InternalFeature {
-
     @Override
     @SuppressWarnings("unused")
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         new CFunctionSnippets(options, providers, lowerings);
+    }
+
+    @Override
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        CFunctionSnippets.registerForeignCalls(foreignCalls);
     }
 }

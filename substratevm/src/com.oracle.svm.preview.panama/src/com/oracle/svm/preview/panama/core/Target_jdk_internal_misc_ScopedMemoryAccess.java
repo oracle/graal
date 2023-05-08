@@ -32,13 +32,35 @@ import jdk.internal.foreign.MemorySessionImpl;
 
 /**
  * Gracefully handle unsupported features.
+ * <p>
+ * It seems like this could be easily supported once thread-local handshakes are supported.
  */
 @TargetClass(className = "jdk.internal.misc.ScopedMemoryAccess")
-public final class Target_java_jdk_internal_misc_ScopedMemoryAccess {
+public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitute
     static void registerNatives() {
     }
 
-    @Delete("Arena.openShared is not yet supported.")
+    /**
+     * Performs a thread-local handshake
+     * 
+     * <pre>
+     * {@code
+     * JVM_ENTRY(jboolean, ScopedMemoryAccess_closeScope(JNIEnv *env, jobject receiver, jobject deopt, jobject exception))
+     *   CloseScopedMemoryClosure cl(deopt, exception);
+     *   Handshake::execute(&cl);
+     *   return !cl._found;
+     * JVM_END
+     * }
+     * </pre>
+     *
+     * <code>CloseScopedMemoryClosure</code> can be summarised as follows: Each thread checks the
+     * last <code>max_critical_stack_depth</code> (fixed to 10) frames of its own stack trace. If it
+     * contains any <code>@Scoped</code>-annotated method called on the sessions being freed, it
+     * sets <code>_found</code> to true.
+     * <p>
+     * See scopedMemoryAccess.cpp in HotSpot.
+     */
+    @Delete("Arena.openShared is not supported.")
     native boolean closeScope0(MemorySessionImpl session);
 }

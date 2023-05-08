@@ -25,7 +25,6 @@
 package com.oracle.svm.core.graal.amd64;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-import static jdk.vm.ci.amd64.AMD64.cpuRegisters;
 import static jdk.vm.ci.amd64.AMD64.k1;
 import static jdk.vm.ci.amd64.AMD64.k2;
 import static jdk.vm.ci.amd64.AMD64.k3;
@@ -63,7 +62,6 @@ import static jdk.vm.ci.amd64.AMD64.xmm6;
 import static jdk.vm.ci.amd64.AMD64.xmm7;
 import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
-import static jdk.vm.ci.amd64.AMD64.xmmRegistersAVX512;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -264,7 +262,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         int currentStackOffset = (type.nativeABI() ? nativeParamsStackOffset : target.wordSize);
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
-        int startAt = 0;
+        int firstActualArgument = 0;
 
         JavaKind[] kinds = new JavaKind[locations.length];
 
@@ -274,7 +272,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             // We pretend it is the first stack argument to the function: this means the function
             // will safely ignore it,
             // but we will be able to access it right after the call concludes.
-            startAt = 1;
+            firstActualArgument = 1;
             // The actual allocation is done after allocating all other parameters, as it must be
             // done last
             // (it needs to be placed first on the stack, and this is done in reverse order)
@@ -284,7 +282,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             int currentGeneral = 0;
             int currentXMM = 0;
 
-            for (int i = startAt; i < parameterTypes.length; i++) {
+            for (int i = firstActualArgument; i < parameterTypes.length; i++) {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
@@ -344,36 +342,34 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         } else {
             final int baseStackOffset = currentStackOffset;
             Set<Register> usedRegisters = new HashSet<>();
-            assert parameterTypes.length == type.fixedParameterAssignment.length + startAt;
+            assert parameterTypes.length == type.fixedParameterAssignment.length + firstActualArgument;
 
-            for (int i = startAt; i < parameterTypes.length; i++) {
+            for (int i = firstActualArgument; i < parameterTypes.length; i++) {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
                 ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
 
-                var storage = type.fixedParameterAssignment[i - startAt];
-                switch (storage.kind()) {
-                    case INTEGER -> {
-                        assert Set.of(JavaKind.Byte, JavaKind.Boolean, JavaKind.Short, JavaKind.Char, JavaKind.Int, JavaKind.Long, JavaKind.Object).contains(kind);
-                        Register reg = cpuRegisters[storage.index()];
-                        locations[i] = reg.asValue(paramValueKind);
-                        assert !usedRegisters.contains(reg);
-                        usedRegisters.add(reg);
+                var storage = type.fixedParameterAssignment[i - firstActualArgument];
+                if (storage.assignsToRegister()) {
+                    if (!kind.isNumericInteger() && !kind.isNumericFloat()) {
+                        throw unsupportedFeature("Unsupported storage/kind pair. Storage: " + storage + " ; Kind: " + kind);
                     }
-                    case FLOAT -> { // i.e. xmm
-                        assert Set.of(JavaKind.Float, JavaKind.Double).contains(kind);
-                        Register reg = xmmRegistersAVX512[storage.index()];
-                        locations[i] = reg.asValue(paramValueKind);
-                        assert !usedRegisters.contains(reg);
-                        usedRegisters.add(reg);
-                    }
-                    case STACK -> {
-                        assert currentStackOffset == baseStackOffset + storage.index();
-                        locations[i] = StackSlot.get(paramValueKind, currentStackOffset, !type.outgoing);
-                        currentStackOffset += Math.max(paramValueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
-                    }
-                    default -> throw unsupportedFeature("Unsupported storage: " + storage + " (kind is " + kind + ")");
+                    Register reg = AMD64.allRegisters.get(storage.registerIndex());
+                    assert target.arch.canStoreValue(reg.getRegisterCategory(), paramValueKind.getPlatformKind());
+                    locations[i] = reg.asValue(paramValueKind);
+                    assert !usedRegisters.contains(reg);
+                    usedRegisters.add(reg);
+                } else {
+                    /*
+                     * There should be no "empty spaces" between arguments on the stack. This
+                     * assertion checks so, but assumes that stack arguments are encountered
+                     * "in order". This assumption might not be necessary, but simplifies the check
+                     * tremendously.
+                     */
+                    assert currentStackOffset == baseStackOffset + storage.stackOffset();
+                    locations[i] = StackSlot.get(paramValueKind, currentStackOffset, !type.outgoing);
+                    currentStackOffset += Math.max(paramValueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
                 }
             }
         }

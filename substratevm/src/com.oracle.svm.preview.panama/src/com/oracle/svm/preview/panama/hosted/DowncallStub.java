@@ -27,41 +27,31 @@ package com.oracle.svm.preview.panama.hosted;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.MethodType;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
-import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.preview.panama.core.DowncallStubsHolder;
 import com.oracle.svm.preview.panama.core.NativeEntryPointInfo;
-import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.internal.foreign.abi.CapturableState;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -79,7 +69,8 @@ import jdk.vm.ci.meta.Signature;
  * <li>If (part of) the call state must be captured, perform the necessary calls to get said * call
  * state and store the result in the appropriate place</li>
  * </ul>
- * In particular, this latest point means the stub must be uninterruptible.
+ * In particular, this latest point means that not safepoint can be placed between the requested
+ * call and the subsequent calls/memory accesses done to capture the call state.
  * <p>
  * Note that the stub *does not* perform argument preprocessing, e.g. if the first argument to the
  * native function is a memory segment which must be split across 3 int registers according to the
@@ -90,12 +81,6 @@ class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
         return SimpleSignature.fromKinds(new JavaKind[]{JavaKind.Object}, JavaKind.Object, metaAccess);
     }
-
-    private record CaptureMethod(Class<?> clazz, String name) {
-    }
-
-    private static final Map<CapturableState, CaptureMethod> CAPTURE_METHODS = Map.of(
-                    CapturableState.ERRNO, new CaptureMethod(LibC.class, "errno"));
 
     private final NativeEntryPointInfo nep;
 
@@ -124,59 +109,30 @@ class DowncallStub extends NonBytecodeMethod {
         ValueNode captureAddress = null;
         if (nep.capturesCallState()) {
             assert nep.captureAddressIndex() > nep.callAddressIndex();
-            // We already removed 1 element from the list, so we must offset the index by one as
-            // well
+            /*
+             * We already removed 1 element from the list, so we must offset the index by one as
+             * well
+             */
             captureAddress = arguments.remove(nep.captureAddressIndex() - 1);
         }
 
         state.clearLocals();
         SubstrateCallingConventionType cc = SubstrateCallingConventionKind.Native.toType(true)
                         .withParametersAssigned(nep.parametersAssignment())
-                        .withReturnSaving(nep.returnsAssignment()); // Assignment might be null, in
-                                                                    // which case this is a no-op
-        ValueNode returnValue = kit.createCFunctionCall(
+                        /* Assignment might be null, in which case this is a no-op */
+                        .withReturnSaving(nep.returnsAssignment());
+
+        ValueNode returnValue = kit.createCFunctionCallWithCapture(
                         callAddress,
                         arguments,
                         SimpleSignature.fromMethodType(nep.stubMethodType(), kit.getMetaAccess()),
                         VMThreads.StatusSupport.getNewThreadStatus(CFunction.Transition.TO_NATIVE),
                         deoptimizationTarget,
-                        cc);
+                        cc,
+                        capturedStates(nep),
+                        captureAddress);
 
         returnValue = adaptReturnValue(kit, nep.linkMethodType(), returnValue);
-
-        if (captureAddress != null) {
-            int index = 0;
-
-            // Relies on values() yielding the capturable states in the correct (yet unspecified)
-            // order
-            for (var capture : CapturableState.values()) {
-                if (nep.requiresCapture(capture)) {
-                    if (!CAPTURE_METHODS.containsKey(capture)) {
-                        throw unsupportedFeature("Capturing call state of " + capture + " is not supported.");
-                    }
-                    if (index != 0) {
-                        // It should work out of the box, but disabled until tested (only used on
-                        // Windows)
-                        throw unsupportedFeature("Capturing more than one state is not supported.");
-                    }
-
-                    var captureMethodInfo = CAPTURE_METHODS.get(capture);
-
-                    // This should boil down to a native call
-                    state.clearStack();
-                    InvokeNode captured = kit.createInvoke(captureMethodInfo.clazz, captureMethodInfo.name, CallTargetNode.InvokeKind.Static, state, kit.bci());
-                    captured.setInlineControl(Invoke.InlineControl.Never); // I don't know why, but
-                                                                           // that is apparently
-                                                                           // required
-
-                    AddressNode writeAddress = kit.append(new OffsetAddressNode(captureAddress, ConstantNode.forIntegerBits(64, index)));
-                    kit.emitWrite(writeAddress, captured);
-
-                    // Should offset by exactly one int
-                    index += 4;
-                }
-            }
-        }
 
         kit.createReturn(returnValue, JavaKind.Object);
 
@@ -209,7 +165,7 @@ class DowncallStub extends NonBytecodeMethod {
         return args;
     }
 
-    public static ValueNode adaptReturnValue(HostedGraphKit kit, MethodType signature, ValueNode invokeValue) {
+    private static ValueNode adaptReturnValue(HostedGraphKit kit, MethodType signature, ValueNode invokeValue) {
         ValueNode returnValue = invokeValue;
         JavaKind returnKind = JavaKind.fromJavaClass(signature.returnType());
         if (returnKind.equals(JavaKind.Void)) {
@@ -221,16 +177,23 @@ class DowncallStub extends NonBytecodeMethod {
         return returnValue;
     }
 
-    @Uninterruptible(reason = "Nothing must happen between requested downcall and subsequent calls collecting the call state.")
-    @SuppressWarnings("unused")
-    private static void annotationsHolder() {
-    }
+    /**
+     * Transform JDK/Panama capturable states into substrate capturable states.
+     */
+    private static Set<CapturableState> capturedStates(NativeEntryPointInfo nep) {
+        Set<CapturableState> states = new HashSet<>();
 
-    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
-                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "annotationsHolder")));
+        for (var state : jdk.internal.foreign.abi.CapturableState.values()) {
+            if (nep.requiresCapture(state)) {
+                try {
+                    var mappedState = CapturableState.valueOf(state.name());
+                    states.add(mappedState);
+                } catch (IllegalArgumentException e) {
+                    throw unsupportedFeature("Capturing " + state + " after a foreign downcall is not supported.");
+                }
+            }
+        }
 
-    @Override
-    public AnnotationValue[] getInjectedAnnotations() {
-        return INJECTED_ANNOTATIONS;
+        return states;
     }
 }

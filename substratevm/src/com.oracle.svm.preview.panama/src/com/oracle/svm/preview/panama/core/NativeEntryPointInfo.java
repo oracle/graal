@@ -44,12 +44,18 @@ public final class NativeEntryPointInfo {
     private final MemoryAssignment[] returnBuffering;
     private final int capturedStateMask;
 
+    /**
+     * Method type is of the form (<>: argument; []: optional argument)
+     * 
+     * <pre>
+     * {@code
+     *      [return buffer address] <call address> [capture state address] <actual arg 1> <actual arg 2> ...
+     * }
+     * </pre>
+     *
+     * where <actual arg i>s are the arguments which end up passed to the C native function
+     */
     public NativeEntryPointInfo(MethodType methodType, MemoryAssignment[] cc, MemoryAssignment[] returnBuffering, int stateCaptureMask) {
-        /*
-         * Method type is of the form (<>: argument; []: optional argument) [return buffer address]
-         * <call address> [capture state address] <actual arg 1> <actual arg 2> ... where <actual
-         * arg i>s are the arguments which end up passed to the C native function
-         */
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
