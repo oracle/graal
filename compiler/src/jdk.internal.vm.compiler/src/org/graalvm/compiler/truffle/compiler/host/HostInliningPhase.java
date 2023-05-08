@@ -117,8 +117,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
         @Option(help = "Maximum number of subtree invokes for a subtree to get inlined until it is considered too complex.")//
         public static final OptionKey<Integer> TruffleHostInliningMaxSubtreeInvokes = new OptionKey<>(20);
 
-        @Option(help = "Minimum relative frequency for calls to to get inlined. Default 0.001 on HotSpot and no minimum frequency on SVM.")//
-        public static final OptionKey<Double> TruffleHostInliningMinFrequency = new OptionKey<>(0.001d);
+        @Option(help = "Minimum relative frequency for calls to get inlined. Default 0.001 on HotSpot and no minimum frequency on SVM.")//
+        public static final OptionKey<Double> TruffleHostInliningMinFrequency = new OptionKey<>(DEFAULT_MIN_FREQUENCY);
 
     }
 
@@ -1393,7 +1393,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
             } else {
                 /*
                  * The default minimum frequency differs depending on the platform. On SVM we do not
-                 * want to a frequency based cut-off as we have more time to compile. On HotSpot
+                 * want to a use frequency based cut-off as we have more time to compile. On HotSpot
                  * compile time is more precious and can lead to significant warmup regressions if
                  * there is no frequency cutoff.
                  */

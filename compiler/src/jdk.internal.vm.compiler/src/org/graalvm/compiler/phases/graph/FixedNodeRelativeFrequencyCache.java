@@ -106,15 +106,10 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
             return cachedValue;
         }
 
-        if (lastCFG == null || (lastCFGMark != null && !lastCFGMark.isCurrent())) {
-            lastCFG = ControlFlowGraph.compute(node.graph(), false, false, false, false);
-            lastCFGMark = node.graph().getMark();
-        }
-
         double relativeFrequency = 0.0;
         if (current.predecessor() == null) {
             if (current instanceof AbstractMergeNode) {
-                relativeFrequency = handleMerge(current, relativeFrequency, lastCFG);
+                relativeFrequency = handleMerge(current, relativeFrequency);
             } else {
                 assert current instanceof StartNode;
                 relativeFrequency = 1D;
@@ -128,7 +123,7 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
         return relativeFrequency;
     }
 
-    private double handleMerge(FixedNode current, double relativeFrequency, ControlFlowGraph cfg) {
+    private double handleMerge(FixedNode current, double relativeFrequency) {
         double result = relativeFrequency;
         AbstractMergeNode currentMerge = (AbstractMergeNode) current;
         NodeInputList<EndNode> currentForwardEnds = currentMerge.forwardEnds();
@@ -140,9 +135,17 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
             result += applyAsDouble(endNode);
         }
         if (current instanceof LoopBeginNode) {
-            result = multiplyRelativeFrequencies(result, cfg.localLoopFrequency(((LoopBeginNode) current)));
+            computeLazyCFG(current);
+            result = multiplyRelativeFrequencies(result, lastCFG.localLoopFrequency(((LoopBeginNode) current)));
         }
         return result;
+    }
+
+    private void computeLazyCFG(FixedNode node) {
+        if (lastCFG == null || !lastCFGMark.isCurrent()) {
+            lastCFG = ControlFlowGraph.compute(node.graph(), false, false, false, false);
+            lastCFGMark = node.graph().getMark();
+        }
     }
 
     private static FixedNode findBegin(FixedNode node) {
