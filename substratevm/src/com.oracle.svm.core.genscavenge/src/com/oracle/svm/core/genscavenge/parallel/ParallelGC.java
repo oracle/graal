@@ -143,13 +143,15 @@ public class ParallelGC {
     @Uninterruptible(reason = "Called from a GC worker thread.")
     public void setAllocationChunk(AlignedHeapChunk.AlignedHeader chunk) {
         GCWorkerThreadState state = getWorkerThreadState();
+        assert state.getAllocChunk().isNull() && state.getAllocChunkScanOffset().equal(0);
+
         state.setAllocChunk(chunk);
         state.setAllocChunkScanOffset(AlignedHeapChunk.getObjectsStartOffset());
     }
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
     public void push(AlignedHeapChunk.AlignedHeader aChunk) {
-        push(HeapChunk.asPointer(aChunk));
+        push(AlignedHeapChunk.getObjectsStart(aChunk));
     }
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
@@ -170,22 +172,24 @@ public class ParallelGC {
     @Uninterruptible(reason = "Called from a GC worker thread.")
     public void pushAllocChunk() {
         assert GCImpl.getGCImpl().isCompleteCollection();
+
+        /*
+         * Scanning (and therefore enqueueing) is only necessary if there are any not yet scanned in
+         * the chunk.
+         */
         GCWorkerThreadState state = getWorkerThreadState();
         AlignedHeapChunk.AlignedHeader chunk = state.getAllocChunk();
-        if (chunk.isNull() || chunk.equal(state.getScannedChunk())) {
-            /*
-             * Scanning (and therefore enqueueing) is not necessary if we are already in the middle
-             * of scanning the chunk, or if we don't have a chunk.
-             */
-            return;
+        if (chunk.isNonNull() && !chunk.equal(state.getScannedChunk())) {
+            UnsignedWord scanOffset = state.getAllocChunkScanOffset();
+            assert scanOffset.aboveThan(0);
+            if (chunk.getTopOffset().aboveThan(scanOffset)) {
+                Pointer ptrIntoChunk = HeapChunk.asPointer(chunk).add(scanOffset);
+                push(ptrIntoChunk);
+            }
         }
 
-        UnsignedWord scanOffset = state.getAllocChunkScanOffset();
-        assert scanOffset.aboveThan(0);
-        if (chunk.getTopOffset().aboveThan(scanOffset)) {
-            Pointer ptrIntoChunk = HeapChunk.asPointer(chunk).add(scanOffset);
-            push(ptrIntoChunk);
-        }
+        state.setAllocChunk(WordFactory.nullPointer());
+        state.setAllocChunkScanOffset(WordFactory.zero());
     }
 
     @Uninterruptible(reason = "Called from a GC worker thread.")
@@ -323,12 +327,8 @@ public class ParallelGC {
         if (ptr.and(UNALIGNED_BIT).notEqual(0)) {
             UnalignedHeapChunk.walkObjectsInline((UnalignedHeapChunk.UnalignedHeader) ptr.and(~UNALIGNED_BIT), GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
         } else {
-            Pointer start = ptr;
             AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunkFromObjectPointer(ptr);
-            if (chunk.equal(ptr)) {
-                start = ptr.add(AlignedHeapChunk.getObjectsStartOffset());
-            }
-            HeapChunk.walkObjectsFromInline(chunk, start, GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
+            HeapChunk.walkObjectsFromInline(chunk, ptr, GCImpl.getGCImpl().getGreyToBlackObjectVisitor());
         }
     }
 
@@ -375,18 +375,19 @@ public class ParallelGC {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void waitForIdle() {
-        assert getWorkerThreadState().getAllocChunk().isNonNull();
         pushAllocChunk();
 
-        mutex.lockNoTransitionUnspecifiedOwner();
-        try {
-            /* Let worker threads run. */
-            inParallelPhase = true;
-            parPhase.broadcast();
+        if (!chunkQueue.isEmpty()) {
+            mutex.lockNoTransitionUnspecifiedOwner();
+            try {
+                /* Let worker threads run. */
+                inParallelPhase = true;
+                parPhase.broadcast();
 
-            waitUntilWorkerThreadsFinish0();
-        } finally {
-            mutex.unlockNoTransitionUnspecifiedOwner();
+                waitUntilWorkerThreadsFinish0();
+            } finally {
+                mutex.unlockNoTransitionUnspecifiedOwner();
+            }
         }
 
         assert chunkQueue.isEmpty();
@@ -395,6 +396,7 @@ public class ParallelGC {
         for (int i = 0; i < numWorkerThreads + 1; i++) {
             GCWorkerThreadState state = workerStates.addressOf(i);
             state.setAllocChunk(WordFactory.nullPointer());
+            state.setAllocChunkScanOffset(WordFactory.zero());
             assert state.getScannedChunk().isNull();
         }
     }
