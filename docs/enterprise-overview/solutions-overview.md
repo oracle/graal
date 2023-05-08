@@ -14,7 +14,7 @@ innovative approaches to running a business either on premises or on the cloud.
 
 Speed, dexterity, and leanness are key, then, to commanding the modern
 online marketplace.
-
+  
 ## Faster, Leaner Applications
 
 Oracle GraalVM is a foundation for innovation and improvement for both large
