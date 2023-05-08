@@ -14,7 +14,7 @@
       ["mx", "build"],
       ["mx", "javadoc"],
       ["zip", "-r", "javadoc.zip", "javadoc"],
-      ["cd", "../tools"],
+      ["cd", "../tools"],  
       ["mx", "build"],
       ["mx", "javadoc"],
       ["zip", "-r", "javadoc.zip", "javadoc"],
