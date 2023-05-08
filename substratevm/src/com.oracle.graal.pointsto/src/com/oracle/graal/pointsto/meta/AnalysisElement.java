@@ -387,16 +387,16 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
             } else if (current instanceof ResolvedJavaField field) {
                 /**
-                 * In {@link AnalysisUniverse#lookupAllowUnresolved(jdk.vm.ci.meta.JavaField}} we may register a
+                 * In {@link AnalysisUniverse#lookupAllowUnresolved(JavaField}} we may register a
                  * ResolvedJavaField as reason.
                  *
-                 * We convert it to AnalysisField to print more information about why the field is reachable.
+                 * We convert it to AnalysisField to print more information about why the field is
+                 * reachable.
                  */
                 AnalysisField analysisField = bb.getUniverse().lookup(field);
                 if (analysisField != null) {
                     return processReason(analysisField, prefix);
-                }
-                else {
+                } else {
                     reasonStr = "field " + ((ResolvedJavaField) current).format("%H.%n");
                 }
 
@@ -525,8 +525,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
                         /* For virtual methods we follow back type reachability. */
                         AnalysisType declaringClass = aMethod.getDeclaringClass();
                         assert declaringClass.isInstantiated() || declaringClass.isInHeap() || declaringClass.isAbstract() ||
-                                        (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable() : declaringClass +
-                                                        " is not reachable";
+                                        (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable()
+                                        : declaringClass + " is not reachable";
                         return "implementation invoked";
                     }
                 } else if (aMethod.isInlined()) {
@@ -539,8 +539,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
                          */
                         AnalysisType declaringClass = aMethod.getDeclaringClass();
                         assert declaringClass.isInstantiated() || declaringClass.isInHeap() || declaringClass.isAbstract() ||
-                                        (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable() : declaringClass +
-                                                        " is not reachable";
+                                        (declaringClass.isInterface() && aMethod.isDefault()) || declaringClass.isReachable()
+                                        : declaringClass + " is not reachable";
                         return "inlined";
                     }
                 } else if (aMethod.isIntrinsicMethod()) {
