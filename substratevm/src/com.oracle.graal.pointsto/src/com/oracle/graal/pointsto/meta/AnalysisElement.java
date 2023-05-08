@@ -385,8 +385,20 @@ public abstract class AnalysisElement implements AnnotatedElement {
             } else if (current instanceof ResolvedJavaMethod) {
                 reasonStr = ((ResolvedJavaMethod) current).format("%f method %H.%n");
 
-            } else if (current instanceof ResolvedJavaField) {
-                reasonStr = "field " + ((ResolvedJavaField) current).format("%H.%n");
+            } else if (current instanceof ResolvedJavaField field) {
+                /**
+                 * In {@link AnalysisUniverse#lookupAllowUnresolved(jdk.vm.ci.meta.JavaField}} we may register a
+                 * ResolvedJavaField as reason.
+                 *
+                 * We convert it to AnalysisField to print more information about why the field is reachable.
+                 */
+                AnalysisField analysisField = bb.getUniverse().lookup(field);
+                if (analysisField != null) {
+                    return processReason(analysisField, prefix);
+                }
+                else {
+                    reasonStr = "field " + ((ResolvedJavaField) current).format("%H.%n");
+                }
 
             } else if (current instanceof ResolvedJavaType) {
                 reasonStr = "type " + ((ResolvedJavaType) current).getName();
