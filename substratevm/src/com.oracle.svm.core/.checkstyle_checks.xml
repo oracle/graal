@@ -71,6 +71,12 @@
       <property name="message" value="Exception and error messages must not start with a lowercase letter"/>
       <property name="ignoreComments" value="true"/>
     </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow inconsistent exceptions and errors"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow inconsistent exceptions and errors"/>
+      <property name="idFormat" value="exceptionsAndErrors"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Tolerate inconsistent exceptions and errors"/>
+    </module>
 
     <module name="RegexpSinglelineJava">
       <property name="id" value="newLinesFormatStrings"/>
