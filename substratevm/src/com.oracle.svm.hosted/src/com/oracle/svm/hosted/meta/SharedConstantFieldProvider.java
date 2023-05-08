@@ -70,7 +70,18 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     @Override
     public boolean isStableField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        return super.isStableField(field, tool) && allowConstantFolding(field);
+        boolean stable;
+        /*
+         * GR-46030: JVMCI does not provide access yet to the proper "stable" flag that also takes
+         * the class loader of the using class into account. So we look at the annotation directly
+         * for now.
+         */
+        if (field.isAnnotationPresent(jdk.internal.vm.annotation.Stable.class)) {
+            stable = true;
+        } else {
+            stable = super.isStableField(field, tool);
+        }
+        return stable && allowConstantFolding(field);
     }
 
     private boolean allowConstantFolding(ResolvedJavaField field) {
