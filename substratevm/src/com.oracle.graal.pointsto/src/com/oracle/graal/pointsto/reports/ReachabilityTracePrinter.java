@@ -74,25 +74,29 @@ public final class ReachabilityTracePrinter {
                 String header = "Type " + type.toJavaName() + " is marked as allocated";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getAllocatedReason(), header);
                 writer.println(trace);
-            } else if (type.isInHeap()) {
+            }
+
+            if (type.isInHeap()) {
                 String header = "Type " + type.toJavaName() + " is marked as in-heap";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getInHeapReason(), header);
                 writer.println(trace);
-            } else if (type.isReachable()) {
+            }
+
+            if (type.isReachable()) {
                 String header = "Type " + type.toJavaName() + " is marked as reachable";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getReachableReason(), header);
                 writer.println(trace);
-            }
 
-            // print the first trace to avoid overwhelming users with information
-            break;
+                // print the first trace to avoid overwhelming users with information
+                break;
+            }
         }
     }
 
     private static void printTraceForMethodsImpl(String methodsTraceOpt, BigBang bb, PrintWriter writer) {
         MethodFilter matcher = MethodFilter.parse(methodsTraceOpt);
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            if (!matcher.matches(method)) {
+            if (!method.isReachable() || !matcher.matches(method)) {
                 continue;
             }
 
@@ -115,7 +119,7 @@ public final class ReachabilityTracePrinter {
         String[] patterns = fieldsTraceOpt.split(",");
         ObjectTreePrinter.SimpleMatcher matcher = new ObjectTreePrinter.SimpleMatcher(patterns);
         for (AnalysisField field : bb.getUniverse().getFields()) {
-            if (!matcher.matches(field.getWrapped().format("%H.%n"))) {
+            if (!field.isReachable() || !matcher.matches(field.getWrapped().format("%H.%n"))) {
                 continue;
             }
 
