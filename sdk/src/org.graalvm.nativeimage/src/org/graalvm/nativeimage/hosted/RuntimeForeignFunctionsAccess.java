@@ -60,10 +60,14 @@ public final class RuntimeForeignFunctionsAccess {
      * feature must be manually enabled, using
      * 
      * <pre>
-     *     --enable-preview -H:+ForeignFunctions
+     * {@code
+     *          --enable-preview
+     * }
      * </pre>
-     * <p>
-     * Currently weakly typed for compatibility reasons.
+     * 
+     * Even though this method is weakly typed for compatibility reasons, runtime checks will be
+     * performed to ensure that the arguments have the expected type. It will be deprecated in favor
+     * of strongly typed variant as soon as possible.
      *
      * @param desc A {@link java.lang.foreign.FunctionDescriptor} to register for downcalls.
      * @param options An array of {@link java.lang.foreign.Linker.Option} used for the downcalls.

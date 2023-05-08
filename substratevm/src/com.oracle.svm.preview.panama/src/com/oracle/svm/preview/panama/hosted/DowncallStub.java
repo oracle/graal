@@ -46,16 +46,20 @@ import org.graalvm.nativeimage.c.function.CFunction;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.common.meta.MultiMethod;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 import com.oracle.svm.hosted.code.NonBytecodeMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 import com.oracle.svm.preview.panama.core.DowncallStubsHolder;
 import com.oracle.svm.preview.panama.core.NativeEntryPointInfo;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.foreign.abi.CapturableState;
 import jdk.vm.ci.meta.JavaKind;
@@ -63,6 +67,24 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
 
+/**
+ * A stub for foreign downcalls. The stubs responsibilities are:
+ * <ul>
+ * <li>Unbox the arguments;</li>
+ * <li>Perform a C-function call :</li>
+ * <ul>
+ * <li>Provide it with a memory assignment for the arguments;</li>
+ * <li>If a buffered return is required, provide the return assignment as well.</li>
+ * </ul>
+ * <li>If (part of) the call state must be captured, perform the necessary calls to get said * call
+ * state and store the result in the appropriate place</li>
+ * </ul>
+ * In particular, this latest point means the stub must be uninterruptible.
+ * <p>
+ * Note that the stub *does not* perform argument preprocessing, e.g. if the first argument to the
+ * native function is a memory segment which must be split across 3 int registers according to the
+ * ABI, this function expects to receive this argument as three integers, not as a memory segment.
+ */
 @Platforms(Platform.HOSTED_ONLY.class)
 class DowncallStub extends NonBytecodeMethod {
     public static Signature createSignature(MetaAccessProvider metaAccess) {
@@ -89,7 +111,6 @@ class DowncallStub extends NonBytecodeMethod {
     }
 
     @Override
-    @SuppressWarnings("try")
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
         FrameStateBuilder state = kit.getFrameState();
@@ -123,10 +144,6 @@ class DowncallStub extends NonBytecodeMethod {
 
         returnValue = adaptReturnValue(kit, nep.linkMethodType(), returnValue);
 
-        /*
-         * Note that we might need to make this stub uninterrruptible as to prevent anything from
-         * altering the captured state before it is captured
-         */
         if (captureAddress != null) {
             int index = 0;
 
@@ -202,5 +219,18 @@ class DowncallStub extends NonBytecodeMethod {
         var boxed = kit.getMetaAccess().lookupJavaType(returnKind.toBoxedJavaClass());
         returnValue = kit.createBoxing(returnValue, returnKind, boxed);
         return returnValue;
+    }
+
+    @Uninterruptible(reason = "Nothing must happen between requested downcall and subsequent calls collecting the call state.")
+    @SuppressWarnings("unused")
+    private static void annotationsHolder() {
+    }
+
+    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
+                    Uninterruptible.Utils.getAnnotation(ReflectionUtil.lookupMethod(DowncallStub.class, "annotationsHolder")));
+
+    @Override
+    public AnnotationValue[] getInjectedAnnotations() {
+        return INJECTED_ANNOTATIONS;
     }
 }
