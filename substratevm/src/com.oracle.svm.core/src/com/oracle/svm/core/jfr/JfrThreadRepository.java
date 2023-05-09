@@ -78,6 +78,8 @@ public final class JfrThreadRepository implements JfrRepository {
     @Uninterruptible(reason = "Prevent any JFR events from triggering.")
     public void registerRunningThreads() {
         assert VMOperation.isInProgressAtSafepoint();
+        assert SubstrateJVM.get().isRecording();
+
         for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
             /*
              * IsolateThreads without a Java thread just started executing and will register
