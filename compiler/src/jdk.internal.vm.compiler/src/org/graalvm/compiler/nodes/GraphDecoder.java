@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -535,6 +537,7 @@ public class GraphDecoder {
     @SuppressWarnings("try")
     public final void decode(EncodedGraph encodedGraph, Iterable<EncodedNodeReference> nodeReferences) {
         try (DebugContext.Scope scope = debug.scope("GraphDecoder", graph)) {
+            recordGraphElements(encodedGraph);
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             LoopScope loopScope = createInitialLoopScope(methodScope, null);
             decode(loopScope);
@@ -559,6 +562,27 @@ public class GraphDecoder {
             }
         } catch (Throwable ex) {
             debug.handle(ex);
+        }
+    }
+
+    protected void recordGraphElements(EncodedGraph encodedGraph) {
+        List<ResolvedJavaMethod> inlinedMethods = encodedGraph.getInlinedMethods();
+        if (inlinedMethods != null) {
+            for (ResolvedJavaMethod other : inlinedMethods) {
+                graph.recordMethod(other);
+            }
+        }
+        Assumptions assumptions = graph.getAssumptions();
+        Assumptions inlinedAssumptions = encodedGraph.getAssumptions();
+        if (assumptions != null) {
+            if (inlinedAssumptions != null) {
+                assumptions.record(inlinedAssumptions);
+            }
+        } else {
+            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
+        }
+        if (encodedGraph.hasUnsafeAccess()) {
+            graph.markUnsafeAccess();
         }
     }
 

@@ -976,6 +976,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return true;
     }
 
+    public boolean isRecordingInlinedMethods() {
+        return methods != null;
+    }
+
     /**
      * Gets an unmodifiable view of the methods that were inlined while constructing this graph.
      */
