@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.20.1",
+  "mxversion": "6.23.3",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -203,6 +203,29 @@ suite = {
       "checkstyleVersion" : "10.7.0",
       "javaCompliance" : "17+",
       "workingSets" : "API,Graal",
+      "jacoco" : "include",
+      "jacocoExcludePackages" : [
+        "jdk.internal.vm.compiler.test",
+        "org.graalvm.libgraal.jni",
+        "org.graalvm.compiler.replacements",
+        "org.graalvm.compiler.hotspot.test",
+        "org.graalvm.nativebridge.processor.test",
+        "org.graalvm.compiler.replacements.test",
+        "org.graalvm.compiler.api.directives.test",
+        "org.graalvm.compiler.test",
+        "org.graalvm.compiler.core.test",
+        "org.graalvm.compiler.nodes.test",
+        "org.graalvm.compiler.loop.test",
+        "org.graalvm.compiler.core.aarch64.test",
+        "org.graalvm.compiler.jtt",
+        "org.graalvm.compiler.truffle.options",
+        "org.graalvm.compiler.truffle.jfr",
+        "org.graalvm.compiler.truffle.jfr.impl",
+        "org.graalvm.compiler.truffle.runtime",
+        "org.graalvm.compiler.truffle.test",
+        "org.graalvm.compiler.truffle.common.hotspot.libgraal",
+        "org.graalvm.compiler.truffle.compiler.hotspot.libgraal",
+      ],
     },
 
     "jdk.internal.vm.compiler.truffle.jfr" : {
@@ -280,6 +303,7 @@ suite = {
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
       "javaCompliance" : "17+",
+      "jacoco" : "exclude",
     },
 
     "org.graalvm.nativebridge.processor" : {
@@ -432,6 +456,7 @@ suite = {
       "javaCompliance" : "19+",
       "javaPreviewNeeded": "19+",
       "checkPackagePrefix" : "false",
+      "jacoco": "exclude",
       "testProject" : True,
     },
 
