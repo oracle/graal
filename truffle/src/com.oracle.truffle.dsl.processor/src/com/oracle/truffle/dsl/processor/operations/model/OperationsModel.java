@@ -94,7 +94,7 @@ public class OperationsModel extends Template implements InfoDumpable {
     public DeclaredType languageClass;
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
-    public boolean generateUncached;
+    public boolean enableBaselineInterpreter;
     public TypeSystemData typeSystem;
     public Set<TypeMirror> boxingEliminatedTypes;
     public List<VariableElement> serializedFields;

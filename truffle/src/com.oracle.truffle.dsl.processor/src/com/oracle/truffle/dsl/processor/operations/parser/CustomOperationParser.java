@@ -211,7 +211,9 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             throw new AssertionError();
         }
 
-        if (parent.generateUncached) {
+        // Use @GenerateUncached so that FlatNodeGenFactory generates an uncached execute method.
+        // The baseline interpreter will call this method.
+        if (parent.enableBaselineInterpreter) {
             nodeType.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
         }
 
@@ -323,7 +325,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             }
         }
 
-        if (parent.generateUncached) {
+        if (parent.enableBaselineInterpreter) {
             if (signature.isVoid) {
                 result.add(createExecuteMethod(signature, "executeUncached", context.getType(void.class), false, true));
             } else {
