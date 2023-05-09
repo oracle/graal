@@ -367,7 +367,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             return;
         }
 
-        if (annotationSubstitutions.findSubstitution(hostType).isPresent()) {
+        if (annotationSubstitutions.findFullSubstitution(hostType).isPresent()) {
             /* If the class is substituted clinit will be eliminated, so bail early. */
             reportSkippedSubstitution(hostType);
             return;
@@ -1108,8 +1108,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 } else if (isAliased(type)) {
                     msg += "is aliased";
                 } else {
-                    ResolvedJavaType substitutionType = findSubstitutionType(type);
-                    msg += "is substituted by " + substitutionType.toJavaName();
+                    ResolvedJavaType substitutionType = findFullSubstitutionType(type);
+                    msg += "is fully substituted by " + substitutionType.toJavaName();
                 }
                 msg += ".)";
             }
@@ -1138,15 +1138,15 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     private boolean suppressWarningsFor(ResolvedJavaType type) {
-        return warningsAreWhiteListed(type) || isAliased(type) || findSubstitutionType(type) != null;
+        return warningsAreWhiteListed(type) || isAliased(type) || findFullSubstitutionType(type) != null;
     }
 
     private boolean warningsAreWhiteListed(ResolvedJavaType type) {
         return suppressWarnings.contains(type);
     }
 
-    private ResolvedJavaType findSubstitutionType(ResolvedJavaType type) {
-        Optional<ResolvedJavaType> substTypeOptional = annotationSubstitutions.findSubstitution(type);
+    private ResolvedJavaType findFullSubstitutionType(ResolvedJavaType type) {
+        Optional<ResolvedJavaType> substTypeOptional = annotationSubstitutions.findFullSubstitution(type);
         return substTypeOptional.orElse(null);
     }
 
