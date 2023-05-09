@@ -933,7 +933,10 @@ public final class EspressoContext {
     }
 
     public void ensureThreadsJoined() {
-        shutdownManager.ensureThreadsJoined();
+        // shutdownManager could be null if we are closing a pre-initialized context
+        if (shutdownManager != null) {
+            shutdownManager.ensureThreadsJoined();
+        }
     }
 
     public boolean isClosing() {
