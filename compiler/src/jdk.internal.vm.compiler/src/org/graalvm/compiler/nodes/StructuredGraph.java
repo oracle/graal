@@ -575,10 +575,18 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return copy(newName, rootMethod, options, duplicationMapCallback, compilationId, debugForCopy, trackNodeSourcePosition);
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph copy(String newName, ResolvedJavaMethod rootMethodForCopy, OptionValues optionsForCopy, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback,
                     CompilationIdentifier newCompilationId, DebugContext debugForCopy, boolean trackNodeSourcePositionForCopy) {
+        List<ResolvedJavaMethod> inlinedMethodsForCopy = methods != null ? new ArrayList<>(methods) : null;
+        return copy(newName, rootMethodForCopy, inlinedMethodsForCopy, optionsForCopy, duplicationMapCallback, newCompilationId, debugForCopy, trackNodeSourcePositionForCopy);
+    }
+
+    @SuppressWarnings("try")
+    private StructuredGraph copy(String newName, ResolvedJavaMethod rootMethodForCopy, List<ResolvedJavaMethod> inlinedMethodsForCopy, OptionValues optionsForCopy,
+                    Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback,
+                    CompilationIdentifier newCompilationId, DebugContext debugForCopy, boolean trackNodeSourcePositionForCopy) {
         AllowAssumptions allowAssumptions = allowAssumptions();
+
         StructuredGraph copy = new StructuredGraph(newName,
                         rootMethodForCopy,
                         entryBCI,
@@ -586,7 +594,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         profileProvider,
                         graphState.copy(),
                         isSubstitution,
-                        methods != null ? new ArrayList<>(methods) : null,
+                        inlinedMethodsForCopy,
                         trackNodeSourcePositionForCopy,
                         newCompilationId,
                         optionsForCopy, debugForCopy, null, callerContext);
@@ -622,6 +630,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public StructuredGraph copy(ResolvedJavaMethod rootMethodForCopy, OptionValues optionsForCopy, DebugContext debugForCopy, boolean trackNodeSourcePositionForCopy) {
         return copy(name, rootMethodForCopy, optionsForCopy, null, compilationId, debugForCopy, trackNodeSourcePositionForCopy);
+    }
+
+    public StructuredGraph copy(ResolvedJavaMethod rootMethodForCopy, List<ResolvedJavaMethod> inlinedMethodsForCopy, OptionValues optionsForCopy, DebugContext debugForCopy,
+                    boolean trackNodeSourcePositionForCopy) {
+        return copy(name, rootMethodForCopy, inlinedMethodsForCopy, optionsForCopy, null, compilationId, debugForCopy, trackNodeSourcePositionForCopy);
     }
 
     public ParameterNode getParameter(int index) {
