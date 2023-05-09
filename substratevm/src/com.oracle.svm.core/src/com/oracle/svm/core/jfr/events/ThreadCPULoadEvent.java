@@ -25,106 +25,94 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jdk.Jvm;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
-import com.oracle.svm.core.heap.VMOperationInfos;
-
-import com.oracle.svm.core.jdk.Jvm;
-
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
-import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.util.TimeUtils;
 
 public class ThreadCPULoadEvent {
-
     private static final FastThreadLocalLong cpuTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.cpuTimeTL");
     private static final FastThreadLocalLong userTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.userTimeTL");
-    private static final FastThreadLocalLong timeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.timeTL");
+    private static final FastThreadLocalLong wallclockTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.wallclockTimeTL");
 
     private static volatile int lastActiveProcessorCount;
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void initWallclockTime(IsolateThread isolateThread) {
+        wallclockTimeTL.set(isolateThread, getCurrentTime());
+    }
+
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(IsolateThread isolateThread) {
-        if (JfrEvent.ThreadCPULoad.shouldEmit()) {
-            emitForThread(isolateThread);
-        }
-    }
-
-    @Uninterruptible(reason = "Check should emit in emit events as a minor optimization.")
-    private static boolean shouldEmit() {
-        return JfrEvent.ThreadCPULoad.shouldEmit();
-    }
-
-    public static void emitEvents() {
-        if (shouldEmit()) {
-            EmitThreadCPULoadEventsVMOperation vmOp = new EmitThreadCPULoadEventsVMOperation();
-            vmOp.enqueue();
-        }
-    }
-
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitForThread(IsolateThread isolateThread) {
-
-        long currCpuTime = getThreadCpuTime(isolateThread, true);
-        long prevCpuTime = cpuTimeTL.get(isolateThread);
-
-        long currTime = getCurrentTime();
-        long prevTime = timeTL.get(isolateThread);
-        timeTL.set(isolateThread, currTime);
-
-        // Threshold of 1 ms
-        if (currCpuTime - prevCpuTime < 1 * TimeUtils.nanosPerMilli) {
+        if (!JfrEvent.ThreadCPULoad.shouldEmit()) {
             return;
         }
 
-        long currUserTime = getThreadCpuTime(isolateThread, false);
+        long curCpuTime = getThreadCpuTime(isolateThread, true);
+        long prevCpuTime = cpuTimeTL.get(isolateThread);
+
+        long curTime = getCurrentTime();
+        long prevTime = wallclockTimeTL.get(isolateThread);
+        wallclockTimeTL.set(isolateThread, curTime);
+
+        /* Threshold of 1 ms. */
+        if (curCpuTime - prevCpuTime < 1 * TimeUtils.nanosPerMilli) {
+            return;
+        }
+
+        long curUserTime = getThreadCpuTime(isolateThread, false);
         long prevUserTime = userTimeTL.get(isolateThread);
 
-        long currSystemTime = currCpuTime - currUserTime;
+        long curSystemTime = curCpuTime - curUserTime;
         long prevSystemTime = prevCpuTime - prevUserTime;
 
-        // The user and total cpu usage clocks can have different resolutions, which can
-        // make us see decreasing system time. Ensure time doesn't go backwards.
-        if (prevSystemTime > currSystemTime) {
-            currCpuTime += prevSystemTime - currSystemTime;
-            currSystemTime = prevSystemTime;
+        /*
+         * The user and total cpu usage clocks can have different resolutions, which can make us see
+         * decreasing system time. Ensure time doesn't go backwards.
+         */
+        if (prevSystemTime > curSystemTime) {
+            curCpuTime += prevSystemTime - curSystemTime;
+            curSystemTime = prevSystemTime;
         }
 
         int processorsCount = getProcessorCount();
 
-        long userTime = currUserTime - prevUserTime;
-        long systemTime = currSystemTime - prevSystemTime;
-        long wallClockTime = currTime - prevTime;
+        long userTime = curUserTime - prevUserTime;
+        long systemTime = curSystemTime - prevSystemTime;
+        long wallClockTime = curTime - prevTime;
         float totalAvailableTime = wallClockTime * processorsCount;
 
-        // Avoid reporting percentages above the theoretical max
+        /* Avoid reporting percentages above the theoretical max. */
         if (userTime + systemTime > wallClockTime) {
             long excess = userTime + systemTime - wallClockTime;
-            currCpuTime -= excess;
+            curCpuTime -= excess;
             if (userTime > excess) {
                 userTime -= excess;
-                currUserTime -= excess;
+                curUserTime -= excess;
             } else {
                 excess -= userTime;
-                currUserTime -= userTime;
+                curUserTime -= userTime;
                 userTime = 0;
                 systemTime -= excess;
             }
         }
 
-        cpuTimeTL.set(isolateThread, currCpuTime);
-        userTimeTL.set(isolateThread, currUserTime);
+        cpuTimeTL.set(isolateThread, curCpuTime);
+        userTimeTL.set(isolateThread, curUserTime);
 
         JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
         JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
@@ -137,23 +125,36 @@ public class ThreadCPULoadEvent {
         JfrNativeEventWriter.endSmallEvent(data);
     }
 
+    public static void emitEvents() {
+        /* This is safe because the VM operation rechecks if the event should be emitted. */
+        if (shouldEmitUnsafe()) {
+            EmitThreadCPULoadEventsOperation vmOp = new EmitThreadCPULoadEventsOperation();
+            vmOp.enqueue();
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getProcessorCount() {
-        int currProcessorCount = Jvm.JVM_ActiveProcessorCount();
+        /*
+         * This should but does not take the container support into account. Unfortunately, it is
+         * currently not possible to call Containers.activeProcessorCount() from uninterruptible
+         * code.
+         */
+        int curProcessorCount = Jvm.JVM_ActiveProcessorCount();
         int prevProcessorCount = lastActiveProcessorCount;
-        lastActiveProcessorCount = currProcessorCount;
+        lastActiveProcessorCount = curProcessorCount;
 
-        // If the number of processors decreases, we don't know at what point during
-        // the sample interval this happened, so use the largest number to try
-        // to avoid percentages above 100%
-        // Math.max(int, int) does not have Uninterruptible annotation
-        return (currProcessorCount > prevProcessorCount) ? currProcessorCount : prevProcessorCount;
+        /*
+         * If the number of processors decreases, we don't know at what point during the sample
+         * interval this happened, so use the largest number to try to avoid percentages above 100%.
+         */
+        return UninterruptibleUtils.Math.max(curProcessorCount, prevProcessorCount);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
         long threadCpuTime = ThreadCpuTimeSupport.getInstance().getThreadCpuTime(
-                VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+                        VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
         return (threadCpuTime < 0) ? 0 : threadCpuTime;
     }
 
@@ -162,17 +163,15 @@ public class ThreadCPULoadEvent {
         return System.nanoTime();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initCurrentTime(IsolateThread isolateThread) {
-        if (timeTL.get(isolateThread) <= 0) {
-            timeTL.set(isolateThread, getCurrentTime());
-        }
+    @Uninterruptible(reason = "Used to avoid the VM operation if it is not absolutely needed.")
+    private static boolean shouldEmitUnsafe() {
+        /* The returned value is racy. */
+        return JfrEvent.ThreadCPULoad.shouldEmit();
     }
 
-    private static final class EmitThreadCPULoadEventsVMOperation extends JavaVMOperation {
-
-        EmitThreadCPULoadEventsVMOperation() {
-            super(VMOperationInfos.get(EmitThreadCPULoadEventsVMOperation.class, "Emit ThreadCPULoad events", SystemEffect.SAFEPOINT));
+    private static final class EmitThreadCPULoadEventsOperation extends JavaVMOperation {
+        EmitThreadCPULoadEventsOperation() {
+            super(VMOperationInfos.get(EmitThreadCPULoadEventsOperation.class, "Emit ThreadCPULoad events", SystemEffect.SAFEPOINT));
         }
 
         @Override

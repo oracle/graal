@@ -26,39 +26,30 @@
 
 package com.oracle.svm.test.jfr;
 
-import org.junit.Test;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
+
+import org.junit.Test;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
-import jdk.jfr.consumer.RecordedThread;
 
-/**
- * Test if event ThreadCPULoad is generated after a thread exit.
- */
 public class TestThreadCPULoadEvent extends JfrRecordingTest {
-
-    private static final int DELAY = 50;
+    private static final int DURATION_MS = 1000;
     private static final String THREAD_NAME_1 = "Thread-1";
     private static final String THREAD_NAME_2 = "Thread-2";
 
     @Test
     public void test() throws Throwable {
-
         String[] events = new String[]{"jdk.ThreadCPULoad"};
         Recording recording = startRecording(events);
 
-        Thread thread1 = createAndStartBusyWaitThread(THREAD_NAME_1, DELAY / 10);
-        Thread thread2 = createAndStartBusyWaitThread(THREAD_NAME_2, DELAY);
+        Thread thread1 = createAndStartBusyWaitThread(THREAD_NAME_1, 0.1);
+        Thread thread2 = createAndStartBusyWaitThread(THREAD_NAME_2, 1.0);
 
         thread1.join();
         thread2.join();
@@ -71,21 +62,25 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         Map<String, Float> systemTimes = new HashMap<>();
 
         for (RecordedEvent e : events) {
-            float userTime = e.<Float>getValue("user");
-            float systemTime = e.<Float>getValue("system");
+            float userTime = e.<Float> getValue("user");
+            float systemTime = e.<Float> getValue("system");
             assertTrue("User time is outside 0..1 range", 0.0 <= userTime && userTime <= 1.0);
             assertTrue("System time is outside 0..1 range", 0.0 <= systemTime && systemTime <= 1.0);
             systemTimes.put(e.getThread().getJavaName(), systemTime);
         }
 
         assertTrue("Thread-1 system cpu time is greater than Thread-2 system cpu time",
-                systemTimes.get(THREAD_NAME_1) < systemTimes.get(THREAD_NAME_2));
+                        systemTimes.get(THREAD_NAME_1) < systemTimes.get(THREAD_NAME_2));
     }
 
-    private static Thread createAndStartBusyWaitThread(String name, final int delay) {
+    private static Thread createAndStartBusyWaitThread(String name, double busyPercent) {
         Thread thread = new Thread(() -> {
-            busyWait(delay);
-            sleep(DELAY - delay);
+            assert busyPercent >= 0 && busyPercent <= 1;
+            long busyMs = (long) (DURATION_MS * busyPercent);
+            long idleMs = DURATION_MS - busyMs;
+
+            busyWait(busyMs);
+            sleep(idleMs);
         });
         thread.setName(name);
         thread.start();
@@ -93,31 +88,16 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
     }
 
     private static void busyWait(long delay) {
-        long time = System.currentTimeMillis() + delay;
-        do {
-            writeToFile();
-        } while (time > System.currentTimeMillis());
+        long end = System.currentTimeMillis() + delay;
+        while (end > System.currentTimeMillis()) {
+            /* Nothing to do. */
+        }
     }
 
     private static void sleep(long delay) {
         try {
             Thread.sleep(delay);
         } catch (InterruptedException ignored) {
-        }
-    }
-
-    private static void writeToFile() {
-        int fileSize = 1000;
-        try {
-            File temp = File.createTempFile("TestThreadCPULoadEventData_", ".tmp");
-            temp.deleteOnExit();
-            try (RandomAccessFile file = new RandomAccessFile(temp, "rw")) {
-                for (int i = 0; i < fileSize; i++) {
-                    file.writeByte(i);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 }
