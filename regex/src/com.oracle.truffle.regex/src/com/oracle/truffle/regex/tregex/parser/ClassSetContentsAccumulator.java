@@ -49,32 +49,24 @@ public class ClassSetContentsAccumulator {
 
     private final CodePointSetAccumulator codePointSet;
     private final EconomicSet<String> strings;
+    private boolean mayContainStrings;
 
     public ClassSetContentsAccumulator() {
         this.codePointSet = new CodePointSetAccumulator();
         this.strings = EconomicSet.create();
+        this.mayContainStrings = false;
     }
 
-    public void add(ClassSetContents classSet) {
+    public void addAll(ClassSetContents classSet) {
         codePointSet.addSet(classSet.getCodePointSet());
         strings.addAll(classSet.getStrings());
-    }
-
-    public void add(String string) {
-        if (string.codePointCount(0, string.length()) == 1) {
-            codePointSet.addCodePoint(string.codePointAt(0));
-        } else {
-            strings.add(string);
-        }
-    }
-
-    public void add(int codePoint) {
-        codePointSet.addCodePoint(codePoint);
+        mayContainStrings |= classSet.mayContainStrings();
     }
 
     public void retainAll(ClassSetContents classSet) {
         codePointSet.intersectWith(classSet.getCodePointSet());
         strings.retainAll(classSet.getStrings());
+        mayContainStrings &= classSet.mayContainStrings();
     }
 
     public void removeAll(ClassSetContents classSet, Encoding encoding) {
@@ -82,12 +74,16 @@ public class ClassSetContentsAccumulator {
         strings.removeAll(classSet.getStrings());
     }
 
+    public CodePointSet getCodePointSet() {
+        return codePointSet.toCodePointSet();
+    }
+
     public EconomicSet<String> getStrings() {
         return strings;
     }
 
-    public CodePointSet getCodePointSet() {
-        return codePointSet.toCodePointSet();
+    public boolean mayContainStrings() {
+        return mayContainStrings;
     }
 
     public void clear() {
@@ -97,12 +93,12 @@ public class ClassSetContentsAccumulator {
 
     public ClassSetContents finish(boolean invert, Encoding encoding) {
         if (invert) {
-            assert strings.isEmpty();
-            return ClassSetContents.createNestedClass(codePointSet.toCodePointSet().createInverse(encoding), EconomicSet.create());
+            assert !mayContainStrings && strings.isEmpty();
+            return ClassSetContents.createCharacterClass(codePointSet.toCodePointSet().createInverse(encoding));
         } else {
             EconomicSet<String> stringsCopy = EconomicSet.create(strings.size());
             stringsCopy.addAll(strings);
-            return ClassSetContents.createNestedClass(codePointSet.toCodePointSet(), stringsCopy);
+            return ClassSetContents.createClass(codePointSet.toCodePointSet(), stringsCopy, mayContainStrings);
         }
     }
 }

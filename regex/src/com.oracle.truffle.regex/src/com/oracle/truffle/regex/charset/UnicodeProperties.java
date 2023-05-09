@@ -42,7 +42,6 @@ package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.ClassSetContents;
-import org.graalvm.collections.EconomicSet;
 
 public class UnicodeProperties {
 
@@ -77,7 +76,7 @@ public class UnicodeProperties {
     private static ClassSetContents evaluatePropertySpecStrings(String propertySpec) {
         CodePointSet generalCategory = UnicodeGeneralCategories.getGeneralCategory(propertySpec);
         if (generalCategory != null) {
-            return ClassSetContents.createNestedClass(generalCategory, EconomicSet.create());
+            return ClassSetContents.createCharacterClass(generalCategory);
         }
         return UnicodePropertyData.retrievePropertyOfStrings(propertySpec);
     }

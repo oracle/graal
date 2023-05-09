@@ -67,7 +67,7 @@ class UnicodePropertyData {
     public static ClassSetContents retrievePropertyOfStrings(String propertySpec) {
         if (SET_ENCODINGS.containsKey(propertySpec)) {
             assert !CLASS_SET_ENCODINGS.containsKey(propertySpec);
-            return ClassSetContents.createNestedClass(SET_ENCODINGS.get(propertySpec), EconomicSet.create());
+            return ClassSetContents.createCharacterClass(SET_ENCODINGS.get(propertySpec));
         }
         if (CLASS_SET_ENCODINGS.containsKey(propertySpec)) {
             assert !SET_ENCODINGS.containsKey(propertySpec);
@@ -5121,7 +5121,7 @@ class UnicodePropertyData {
                         0x01f57a, 0x01f595, 0x01f596, 0x01f5a4, 0x01f5a4, 0x01f5fb, 0x01f64f, 0x01f680, 0x01f6c5, 0x01f6cc, 0x01f6cc, 0x01f6d0, 0x01f6d2, 0x01f6d5, 0x01f6d7, 0x01f6dc, 0x01f6df,
                         0x01f6eb, 0x01f6ec, 0x01f6f4, 0x01f6fc, 0x01f7e0, 0x01f7eb, 0x01f7f0, 0x01f7f0, 0x01f90c, 0x01f93a, 0x01f93c, 0x01f945, 0x01f947, 0x01f9ff, 0x01fa70, 0x01fa7c, 0x01fa80,
                         0x01fa88, 0x01fa90, 0x01fabd, 0x01fabf, 0x01fac5, 0x01face, 0x01fadb, 0x01fae0, 0x01fae8, 0x01faf0, 0x01faf8);
-        CLASS_SET_ENCODINGS.put("Basic_Emoji", ClassSetContents.createNestedClass(codePointSet, strings));
+        CLASS_SET_ENCODINGS.put("Basic_Emoji", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
     }
 
     private static void populateEMOJI_KEYCAP_SEQUENCE() {
@@ -5139,7 +5139,7 @@ class UnicodePropertyData {
         strings.add("\u0038\uFE0F\u20E3");
         strings.add("\u0039\uFE0F\u20E3");
         CodePointSet codePointSet = CodePointSet.createNoDedup();
-        CLASS_SET_ENCODINGS.put("Emoji_Keycap_Sequence", ClassSetContents.createNestedClass(codePointSet, strings));
+        CLASS_SET_ENCODINGS.put("Emoji_Keycap_Sequence", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
     }
 
     private static void populateRGI_EMOJI() {
@@ -7639,7 +7639,7 @@ class UnicodePropertyData {
                         0x01f57a, 0x01f595, 0x01f596, 0x01f5a4, 0x01f5a4, 0x01f5fb, 0x01f64f, 0x01f680, 0x01f6c5, 0x01f6cc, 0x01f6cc, 0x01f6d0, 0x01f6d2, 0x01f6d5, 0x01f6d7, 0x01f6dc, 0x01f6df,
                         0x01f6eb, 0x01f6ec, 0x01f6f4, 0x01f6fc, 0x01f7e0, 0x01f7eb, 0x01f7f0, 0x01f7f0, 0x01f90c, 0x01f93a, 0x01f93c, 0x01f945, 0x01f947, 0x01f9ff, 0x01fa70, 0x01fa7c, 0x01fa80,
                         0x01fa88, 0x01fa90, 0x01fabd, 0x01fabf, 0x01fac5, 0x01face, 0x01fadb, 0x01fae0, 0x01fae8, 0x01faf0, 0x01faf8);
-        CLASS_SET_ENCODINGS.put("RGI_Emoji", ClassSetContents.createNestedClass(codePointSet, strings));
+        CLASS_SET_ENCODINGS.put("RGI_Emoji", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
     }
 
     private static void populateRGI_EMOJI_FLAG_SEQUENCE() {
@@ -7903,7 +7903,7 @@ class UnicodePropertyData {
         strings.add("\uD83C\uDDFF\uD83C\uDDF2");
         strings.add("\uD83C\uDDFF\uD83C\uDDFC");
         CodePointSet codePointSet = CodePointSet.createNoDedup();
-        CLASS_SET_ENCODINGS.put("RGI_Emoji_Flag_Sequence", ClassSetContents.createNestedClass(codePointSet, strings));
+        CLASS_SET_ENCODINGS.put("RGI_Emoji_Flag_Sequence", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
     }
 
     private static void populateRGI_EMOJI_MODIFIER_SEQUENCE() {
@@ -8564,7 +8564,7 @@ class UnicodePropertyData {
         strings.add("\uD83E\uDEF8\uD83C\uDFFE");
         strings.add("\uD83E\uDEF8\uD83C\uDFFF");
         CodePointSet codePointSet = CodePointSet.createNoDedup();
-        CLASS_SET_ENCODINGS.put("RGI_Emoji_Modifier_Sequence", ClassSetContents.createNestedClass(codePointSet, strings));
+        CLASS_SET_ENCODINGS.put("RGI_Emoji_Modifier_Sequence", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
     }
 
     private static void populateRGI_EMOJI_TAG_SEQUENCE() {
@@ -8573,7 +8573,7 @@ class UnicodePropertyData {
         strings.add("\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC73\uDB40\uDC63\uDB40\uDC74\uDB40\uDC7F");
         strings.add("\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC77\uDB40\uDC6C\uDB40\uDC73\uDB40\uDC7F");
         CodePointSet codePointSet = CodePointSet.createNoDedup();
-        CLASS_SET_ENCODINGS.put("RGI_Emoji_Tag_Sequence", ClassSetContents.createNestedClass(codePointSet, strings));
+        CLASS_SET_ENCODINGS.put("RGI_Emoji_Tag_Sequence", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
     }
 
     private static void populateRGI_EMOJI_ZWJ_SEQUENCE() {
@@ -9929,6 +9929,6 @@ class UnicodePropertyData {
         strings.add("\uD83D\uDE36\u200D\uD83C\uDF2B\uFE0F");
         strings.add("\uD83E\uDDD1\u200D\uD83C\uDF84");
         CodePointSet codePointSet = CodePointSet.createNoDedup();
-        CLASS_SET_ENCODINGS.put("RGI_Emoji_ZWJ_Sequence", ClassSetContents.createNestedClass(codePointSet, strings));
+        CLASS_SET_ENCODINGS.put("RGI_Emoji_ZWJ_Sequence", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
     }
 }

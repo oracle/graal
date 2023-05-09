@@ -192,6 +192,12 @@ public abstract class RegexLexer {
     protected abstract void handleCCRangeWithPredefCharClass(int startPos);
 
     /**
+     * Handle complement of class set expressions containing strings, e.g. {@code [^\q{abc}]} or
+     * {@code \P{RGI_Emoji}}.
+     */
+    protected abstract RegexSyntaxException handleComplementOfStringSet();
+
+    /**
      * Handle empty group name in group references.
      */
     protected abstract RegexSyntaxException handleEmptyGroupName();
@@ -992,7 +998,7 @@ public abstract class RegexLexer {
 
     private ClassSetContents parseEscapeCharClass(char c) throws RegexSyntaxException {
         if (isPredefCharClass(c)) {
-            return ClassSetContents.createNestedClass(getPredefinedCharClass(c), EconomicSet.create());
+            return ClassSetContents.createCharacterClass(getPredefinedCharClass(c));
         } else if (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P')) {
             return parseUnicodeCharacterProperty(c == 'P');
         } else {
@@ -1026,6 +1032,9 @@ public abstract class RegexLexer {
         while (!atEnd()) {
             if (curChar() == ']' && (!featureEnabledCharClassFirstBracketIsLiteral() || position != startPos)) {
                 advance();
+                if (invert && curClassSet.mayContainStrings()) {
+                    throw handleComplementOfStringSet();
+                }
                 return curClassSet.finish(invert, encoding);
             }
 
@@ -1059,11 +1068,11 @@ public abstract class RegexLexer {
             }
             if (operator == null) {
                 // first operand
-                curClassSet.add(operand);
+                curClassSet.addAll(operand);
                 firstOperandIsRange = operand.isRange();
             } else {
                 switch (operator) {
-                    case Union -> curClassSet.add(operand);
+                    case Union -> curClassSet.addAll(operand);
                     case Intersection -> curClassSet.retainAll(operand);
                     case Difference -> curClassSet.removeAll(operand, encoding);
                 }
@@ -1167,6 +1176,10 @@ public abstract class RegexLexer {
         return sb.toString();
     }
 
+    private CodePointSet pruneCodePointSet(CodePointSet codePointSet) {
+        return encoding.getFullSet().createIntersection(codePointSet, curCharClass.getTmp());
+    }
+
     private ClassSetContents parseUnicodeCharacterProperty(boolean invert) throws RegexSyntaxException {
         if (!consumingLookahead("{")) {
             throw syntaxError(JsErrorMessages.INVALID_UNICODE_PROPERTY);
@@ -1182,14 +1195,19 @@ public abstract class RegexLexer {
             String propertyName = pattern.substring(namePos, position - 1);
             if (featureEnabledClassSetExpressions()) {
                 ClassSetContents property = UnicodeProperties.getPropertyOfStrings(propertyName);
-                assert !invert || property.isCodePointSetOnly();
-                CodePointSet propertySet = encoding.getFullSet().createIntersection(property.getCodePointSet(), curCharClass.getTmp());
-                ClassSetContents classSetContents = ClassSetContents.createNestedClass(invert ? propertySet.createInverse(encoding) : propertySet, property.getStrings());
-                return classSetContents;
+                if (invert) {
+                    if (property.mayContainStrings()) {
+                        throw handleComplementOfStringSet();
+                    }
+                    assert property.isCodePointSetOnly();
+                    return ClassSetContents.createCharacterClass(pruneCodePointSet(property.getCodePointSet()).createInverse(encoding));
+                } else {
+                    // TODO: check if 'return property;' is enough
+                    return property.pruneCodePointSet(encoding, curCharClass.getTmp());
+                }
             } else {
-                CodePointSet propertySet = encoding.getFullSet().createIntersection(UnicodeProperties.getProperty(propertyName), curCharClass.getTmp());
-                ClassSetContents classSetContents = ClassSetContents.createNestedClass(invert ? propertySet.createInverse(encoding) : propertySet, EconomicSet.create());
-                return classSetContents;
+                CodePointSet propertySet = pruneCodePointSet(UnicodeProperties.getProperty(propertyName));
+                return ClassSetContents.createCharacterClass(invert ? propertySet.createInverse(encoding) : propertySet);
             }
         } catch (IllegalArgumentException e) {
             throw syntaxError(e.getMessage());

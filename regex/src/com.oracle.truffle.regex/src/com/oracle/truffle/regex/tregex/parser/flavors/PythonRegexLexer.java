@@ -447,6 +447,11 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected RegexSyntaxException handleComplementOfStringSet() {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
     protected RegexSyntaxException handleEmptyGroupName() {
         return syntaxErrorHere(PyErrorMessages.MISSING_GROUP_NAME);
     }

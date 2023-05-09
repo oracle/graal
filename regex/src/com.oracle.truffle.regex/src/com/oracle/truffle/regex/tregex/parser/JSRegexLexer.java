@@ -58,7 +58,7 @@ public final class JSRegexLexer extends RegexLexer {
     private static final CodePointSet ID_START = UnicodeProperties.getProperty("ID_Start").union(CodePointSet.createNoDedup('$', '$', '_', '_'));
     private static final CodePointSet ID_CONTINUE = UnicodeProperties.getProperty("ID_Continue").union(CodePointSet.createNoDedup('$', '$', '\u200c', '\u200d'));
     private static final TBitSet SYNTAX_CHARS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '/', '?', '[', '\\', ']', '^', '{', '|', '}');
-    private static final TBitSet CLASS_SET_SYNTAX_CHARS = TBitSet.valueOf('(', ')', '-', '/', '[', '\\' ,']', '{', '|', '}');
+    private static final TBitSet CLASS_SET_SYNTAX_CHARS = TBitSet.valueOf('(', ')', '-', '/', '[', '\\', ']', '{', '|', '}');
     private static final TBitSet CLASS_SET_RESERVED_PUNCTUATORS = TBitSet.valueOf('!', '#', '%', '&', ',', '-', ':', ';', '<', '=', '>', '@', '`', '~');
     private static final TBitSet CLASS_SET_RESERVED_DOUBLE_PUNCTUATORS = TBitSet.valueOf('!', '#', '$', '%', '&', '*', '+', ',', '.', ':', ';', '<', '=', '>', '?', '@', '^', '`', '~');
     private final RegexFlags flags;
@@ -221,6 +221,11 @@ public final class JSRegexLexer extends RegexLexer {
         if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_CHARACTER_CLASS);
         }
+    }
+
+    @Override
+    protected RegexSyntaxException handleComplementOfStringSet() {
+        return syntaxError(JsErrorMessages.COMPLEMENT_OF_STRING_SET);
     }
 
     @Override

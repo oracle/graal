@@ -47,6 +47,7 @@ public class JsErrorMessages {
     /* syntax errors */
 
     public static final String CHAR_CLASS_RANGE_OUT_OF_ORDER = "Range out of order in character class";
+    public static final String COMPLEMENT_OF_STRING_SET = "Using complement operator ^ on class set containing strings";
     public static final String EMPTY_GROUP_NAME = "Empty named capture group name";
     public static final String ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE = "Ends with an unfinished escape sequence";
     public static final String ENDS_WITH_UNFINISHED_UNICODE_PROPERTY = "Ends with an unfinished Unicode property escape";

@@ -41,6 +41,8 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import org.graalvm.collections.EconomicSet;
@@ -49,7 +51,7 @@ public final class ClassSetContents implements JsonConvertible {
 
     enum Kind {
         Character,
-        NestedClass,
+        Class,
         Strings,
         Range
     }
@@ -57,27 +59,41 @@ public final class ClassSetContents implements JsonConvertible {
     private final Kind kind;
     private final CodePointSet codePointSet;
     private final EconomicSet<String> strings;
+    private final boolean mayContainStrings;
 
-    private ClassSetContents(Kind kind, CodePointSet codePointSet, EconomicSet<String> strings) {
+    private ClassSetContents(Kind kind, CodePointSet codePointSet, EconomicSet<String> strings, boolean mayContainStrings) {
         this.kind = kind;
         this.codePointSet = codePointSet;
         this.strings = strings;
+        this.mayContainStrings = mayContainStrings;
     }
 
     public static ClassSetContents createCharacter(int codePoint) {
-        return new ClassSetContents(Kind.Character, CodePointSet.create(codePoint), EconomicSet.create());
+        return new ClassSetContents(Kind.Character, CodePointSet.create(codePoint), EconomicSet.create(), false);
     }
 
-    public static ClassSetContents createNestedClass(CodePointSet codePointSet, EconomicSet<String> strings) {
-        return new ClassSetContents(Kind.NestedClass, codePointSet, strings);
+    public static ClassSetContents createUnicodePropertyOfStrings(CodePointSet codePointSet, EconomicSet<String> strings) {
+        return new ClassSetContents(Kind.Class, codePointSet, strings, true);
+    }
+
+    public static ClassSetContents createCharacterClass(CodePointSet codePointSet) {
+        return new ClassSetContents(Kind.Class, codePointSet, EconomicSet.create(), false);
+    }
+
+    public static ClassSetContents createClass(CodePointSet codePointSet, EconomicSet<String> strings, boolean mayContainStrings) {
+        return new ClassSetContents(Kind.Class, codePointSet, strings, mayContainStrings);
     }
 
     public static ClassSetContents createStrings(CodePointSet singleCodePoints, EconomicSet<String> strings) {
-        return new ClassSetContents(Kind.Strings, singleCodePoints, strings);
+        return new ClassSetContents(Kind.Strings, singleCodePoints, strings, !strings.isEmpty());
     }
 
     public static ClassSetContents createRange(int lo, int hi) {
-        return new ClassSetContents(Kind.Range, CodePointSet.create(lo, hi), EconomicSet.create());
+        return new ClassSetContents(Kind.Range, CodePointSet.create(lo, hi), EconomicSet.create(), false);
+    }
+
+    public ClassSetContents pruneCodePointSet(Encoding encoding, IntRangesBuffer buffer) {
+        return new ClassSetContents(kind, encoding.getFullSet().createIntersection(codePointSet, buffer), strings, mayContainStrings);
     }
 
     public EconomicSet<String> getStrings() {
@@ -103,6 +119,10 @@ public final class ClassSetContents implements JsonConvertible {
 
     public boolean isCodePointSetOnly() {
         return strings.isEmpty();
+    }
+
+    public boolean mayContainStrings() {
+        return mayContainStrings;
     }
 
     @Override

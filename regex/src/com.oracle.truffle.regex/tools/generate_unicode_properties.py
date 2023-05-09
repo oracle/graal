@@ -365,7 +365,7 @@ POPULATE_DEFS = '\n\n'.join(['''private static void populate%s() {
 POPULATE_STR_DEFS = '\n\n'.join(['''private static void populate%s() {
     %s
     CodePointSet codePointSet = %s;
-    CLASS_SET_ENCODINGS.put("%s", ClassSetContents.createNestedClass(codePointSet, strings));
+    CLASS_SET_ENCODINGS.put("%s", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
 }''' % (mangle_prop_name(name), str_property_strings(prop), str_property_single_code_points_to_java_array_init(prop), name)
                            for (name, prop) in sorted(str_prop_contents.items())])
 
@@ -438,7 +438,7 @@ class UnicodePropertyData {
     public static ClassSetContents retrievePropertyOfStrings(String propertySpec) {
         if (SET_ENCODINGS.containsKey(propertySpec)) {
             assert !CLASS_SET_ENCODINGS.containsKey(propertySpec);
-            return ClassSetContents.createNestedClass(SET_ENCODINGS.get(propertySpec), EconomicSet.create());
+            return ClassSetContents.createCharacterClass(SET_ENCODINGS.get(propertySpec));
         }
         if (CLASS_SET_ENCODINGS.containsKey(propertySpec)) {
             assert !SET_ENCODINGS.containsKey(propertySpec);
