@@ -258,9 +258,6 @@ public abstract class TruffleLanguage<C> {
     @CompilationFinal LanguageInfo languageInfo;
     @CompilationFinal Object polyglotLanguageInstance;
 
-    List<ContextThreadLocal<?>> contextThreadLocals;
-    List<ContextLocal<?>> contextLocals;
-
     /**
      * Constructor to be called by subclasses. Language should not create any {@link RootNode}s in
      * its constructor. The RootNodes created in the language constructor are not associated with a
@@ -1419,144 +1416,201 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Creates a new context local reference for this Truffle language. Context locals for languages
-     * allow to store additional top-level values for each context besides the language context. The
-     * advantage of context locals compared to storing the value in a field of the language context
-     * is that reading a context local requires one indirection less. It is recommended to use
-     * context locals for languages only if the read is critical for performance.
-     * <p>
-     * Context local references must be created during the invocation in the {@link TruffleLanguage}
-     * constructor. Calling this method at a later point in time will throw an
-     * {@link IllegalStateException}. For each registered {@link TruffleLanguage} subclass it is
-     * required to always produce the same number of context local references. The values produced
-     * by the factory must not be <code>null</code> and use a stable exact value type for each
-     * instance of a registered language class. If the return value of the factory is not stable or
-     * <code>null</code> then an {@link IllegalStateException} is thrown. These restrictions allow
-     * the Truffle runtime to read the value more efficiently.
-     * <p>
-     * Usage example:
+     * Builder for creating context local and context thread local references.
      *
-     * <pre>
-     * &#64;TruffleLanguage.Registration(id = "example", name = "ExampleLanguage")
-     * public final class ExampleLanguage extends TruffleLanguage<Env> {
-     *
-     *     final ContextLocal<ExampleLocal> contextLocal = createContextLocal(ExampleLocal::new);
-     *
-     *     &#64;Override
-     *     protected Env createContext(Env env) {
-     *         return env;
-     *     }
-     *
-     *     &#64;Override
-     *     protected CallTarget parse(ParsingRequest request) throws Exception {
-     *         return new RootNode(this) {
-     *             &#64;Override
-     *             public Object execute(VirtualFrame frame) {
-     *                 // fast read
-     *                 ExampleLocal local = contextLocal.get();
-     *                 // access local
-     *                 return "";
-     *             }
-     *         }.getCallTarget();
-     *     }
-     *
-     *     static final class ExampleLocal {
-     *
-     *         final Env env;
-     *
-     *         ExampleLocal(Env env) {
-     *             this.env = env;
-     *         }
-     *
-     *     }
-     * }
-     * </pre>
-     *
-     * @since 20.3
+     * @see TruffleLanguage#localsBuilder
+     * @see ContextLocalBuilder#createContextLocal
+     * @see ContextLocalBuilder#createContextThreadLocal
+     * @since 23.1
      */
-    protected final <T> ContextLocal<T> createContextLocal(ContextLocalFactory<C, T> factory) {
-        ContextLocal<T> local = ENGINE.createLanguageContextLocal(factory);
-        if (contextLocals == null) {
-            contextLocals = new ArrayList<>();
+    protected static final class ContextLocalBuilder<C> {
+
+        List<ContextLocal<?>> contextLocals;
+        List<ContextThreadLocal<?>> contextThreadLocals;
+
+        private ContextLocalBuilder() {
         }
-        try {
-            contextLocals.add(local);
-        } catch (UnsupportedOperationException e) {
-            throw new IllegalStateException("The set of context locals is frozen. Context locals can only be created during construction of the TruffleLanguage subclass.");
+
+        /**
+         * Creates a new context local reference for this Truffle language. Context locals for
+         * languages allow to store additional top-level values for each context besides the
+         * language context. The advantage of context locals compared to storing the value in a
+         * field of the language context is that reading a context local requires one indirection
+         * less. It is recommended to use context locals for languages only if the read is critical
+         * for performance.
+         * <p>
+         * Context local references must be created during the invocation in the
+         * {@link TruffleLanguage} constructor. Calling this method at a later point in time will
+         * throw an {@link IllegalStateException}. For each registered {@link TruffleLanguage}
+         * subclass it is required to always produce the same number of context local references.
+         * The values produced by the factory must not be <code>null</code> and use a stable exact
+         * value type for each instance of a registered language class. If the return value of the
+         * factory is not stable or <code>null</code> then an {@link IllegalStateException} is
+         * thrown. These restrictions allow the Truffle runtime to read the value more efficiently.
+         * <p>
+         * Usage example:
+         *
+         * <pre>
+         * &#64;TruffleLanguage.Registration(id = "example", name = "ExampleLanguage")
+         * public final class ExampleLanguage extends TruffleLanguage<Env> {
+         *
+         *     final ContextLocal<ExampleLocal> contextLocal = localsBuilder.createContextLocal(ExampleLocal::new);
+         *
+         *     &#64;Override
+         *     protected Env createContext(Env env) {
+         *         return env;
+         *     }
+         *
+         *     &#64;Override
+         *     protected CallTarget parse(ParsingRequest request) throws Exception {
+         *         return new RootNode(this) {
+         *             &#64;Override
+         *             public Object execute(VirtualFrame frame) {
+         *                 // fast read
+         *                 ExampleLocal local = contextLocal.get();
+         *                 // access local
+         *                 return "";
+         *             }
+         *         }.getCallTarget();
+         *     }
+         *
+         *     static final class ExampleLocal {
+         *
+         *         final Env env;
+         *
+         *         ExampleLocal(Env env) {
+         *             this.env = env;
+         *         }
+         *
+         *     }
+         * }
+         * </pre>
+         *
+         * @since 23.1
+         */
+        public <T> ContextLocal<T> createContextLocal(ContextLocalFactory<C, T> factory) {
+            ContextLocal<T> local = ENGINE.createLanguageContextLocal(factory);
+            if (contextLocals == null) {
+                contextLocals = new ArrayList<>();
+            }
+            try {
+                contextLocals.add(local);
+            } catch (UnsupportedOperationException e) {
+                throw new IllegalStateException("The set of context locals is frozen. Context locals can only be created during construction of the TruffleLanguage subclass.");
+            }
+            return local;
         }
-        return local;
+
+        /**
+         * Creates a new context thread local reference for this Truffle language. Context
+         * threadlocals for languages allow storing additional top-level values for each context and
+         * thread. The factory may be invoked on any thread other than the thread of the context
+         * thread local value.
+         * <p>
+         * Context thread local references must be created during the invocation in the
+         * {@link TruffleLanguage} constructor. Calling this method at a later point in time will
+         * throw an {@link IllegalStateException}. For each registered {@link TruffleLanguage}
+         * subclass it is required to always produce the same number of context thread local
+         * references. The values produced by the factory must not be <code>null</code> and use a
+         * stable exact value type for each instance of a registered language class. If the return
+         * value of the factory is not stable or <code>null</code> then an
+         * {@link IllegalStateException} is thrown. These restrictions allow the Truffle runtime to
+         * read the value more efficiently.
+         * <p>
+         * Context thread locals should not contain a strong reference to the provided thread. Use a
+         * weak reference instance for that purpose.
+         * <p>
+         * Usage example:
+         *
+         * <pre>
+         * &#64;TruffleLanguage.Registration(id = "example", name = "ExampleLanguage")
+         * public static class ExampleLanguage extends TruffleLanguage<Env> {
+         *
+         *     final ContextThreadLocal<ExampleLocal> threadLocal = localsBuilder.createContextThreadLocal(ExampleLocal::new);
+         *
+         *     &#64;Override
+         *     protected Env createContext(Env env) {
+         *         return env;
+         *     }
+         *
+         *     &#64;Override
+         *     protected CallTarget parse(ParsingRequest request) throws Exception {
+         *         return new RootNode(this) {
+         *             &#64;Override
+         *             public Object execute(VirtualFrame frame) {
+         *                 // fast read
+         *                 ExampleLocal local = threadLocal.get();
+         *                 // access local
+         *                 return "";
+         *             }
+         *         }.getCallTarget();
+         *     }
+         *
+         *     static final class ExampleLocal {
+         *
+         *         final Env env;
+         *         final WeakReference<Thread> thread;
+         *
+         *         ExampleLocal(Env env, Thread thread) {
+         *             this.env = env;
+         *             this.thread = new WeakReference<>(thread);
+         *         }
+         *
+         *     }
+         * }
+         * </pre>
+         *
+         * @since 23.1
+         */
+        public <T> ContextThreadLocal<T> createContextThreadLocal(ContextThreadLocalFactory<C, T> factory) {
+            ContextThreadLocal<T> local = ENGINE.createLanguageContextThreadLocal(factory);
+            if (contextThreadLocals == null) {
+                contextThreadLocals = new ArrayList<>();
+            }
+            try {
+                contextThreadLocals.add(local);
+            } catch (UnsupportedOperationException e) {
+                throw new IllegalStateException("The set of context thread locals is frozen. Context thread locals can only be created during construction of the TruffleLanguage subclass.");
+            }
+            return local;
+        }
     }
 
     /**
-     * Creates a new context thread local reference for this Truffle language. Context thread locals
-     * for languages allow storing additional top-level values for each context and thread. The
-     * factory may be invoked on any thread other than the thread of the context thread local value.
-     * <p>
-     * Context thread local references must be created during the invocation in the
-     * {@link TruffleLanguage} constructor. Calling this method at a later point in time will throw
-     * an {@link IllegalStateException}. For each registered {@link TruffleLanguage} subclass it is
-     * required to always produce the same number of context thread local references. The values
-     * produced by the factory must not be <code>null</code> and use a stable exact value type for
-     * each instance of a registered language class. If the return value of the factory is not
-     * stable or <code>null</code> then an {@link IllegalStateException} is thrown. These
-     * restrictions allow the Truffle runtime to read the value more efficiently.
-     * <p>
-     * Context thread locals should not contain a strong reference to the provided thread. Use a
-     * weak reference instance for that purpose.
-     * <p>
-     * Usage example:
+     * Builder for creating context local and context thread local references.
      *
-     * <pre>
-     * &#64;TruffleLanguage.Registration(id = "example", name = "ExampleLanguage")
-     * public static class ExampleLanguage extends TruffleLanguage<Env> {
+     * @see ContextLocalBuilder#createContextLocal
+     * @see ContextLocalBuilder#createContextThreadLocal
+     * @since 23.1
+     */
+    protected final ContextLocalBuilder<C> localsBuilder = new ContextLocalBuilder<>();
+
+    /**
+     * Creates a new context local reference for this Truffle language.
      *
-     *     final ContextThreadLocal<ExampleLocal> threadLocal = createContextThreadLocal(ExampleLocal::new);
+     * Starting with JDK 21, using this method leads to a this-escape warning. Use
+     * {@link ContextLocalBuilder#createContextLocal} instead.
      *
-     *     &#64;Override
-     *     protected Env createContext(Env env) {
-     *         return env;
-     *     }
-     *
-     *     &#64;Override
-     *     protected CallTarget parse(ParsingRequest request) throws Exception {
-     *         return new RootNode(this) {
-     *             &#64;Override
-     *             public Object execute(VirtualFrame frame) {
-     *                 // fast read
-     *                 ExampleLocal local = threadLocal.get();
-     *                 // access local
-     *                 return "";
-     *             }
-     *         }.getCallTarget();
-     *     }
-     *
-     *     static final class ExampleLocal {
-     *
-     *         final Env env;
-     *         final WeakReference<Thread> thread;
-     *
-     *         ExampleLocal(Env env, Thread thread) {
-     *             this.env = env;
-     *             this.thread = new WeakReference<>(thread);
-     *         }
-     *
-     *     }
-     * }
-     * </pre>
-     *
+     * @deprecated in 23.1, use {@link ContextLocalBuilder#createContextLocal} instead
      * @since 20.3
      */
+    @Deprecated
+    protected final <T> ContextLocal<T> createContextLocal(ContextLocalFactory<C, T> factory) {
+        return localsBuilder.createContextLocal(factory);
+    }
+
+    /**
+     * Creates a new context thread local reference for this Truffle language.
+     *
+     * Starting with JDK 21, using this method leads to a this-escape warning. Use
+     * {@link ContextLocalBuilder#createContextThreadLocal} instead.
+     *
+     * @deprecated in 23.1, use {@link ContextLocalBuilder#createContextThreadLocal} instead
+     * @since 20.3
+     */
+    @Deprecated
     protected final <T> ContextThreadLocal<T> createContextThreadLocal(ContextThreadLocalFactory<C, T> factory) {
-        ContextThreadLocal<T> local = ENGINE.createLanguageContextThreadLocal(factory);
-        if (contextThreadLocals == null) {
-            contextThreadLocals = new ArrayList<>();
-        }
-        try {
-            contextThreadLocals.add(local);
-        } catch (UnsupportedOperationException e) {
-            throw new IllegalStateException("The set of context thread locals is frozen. Context thread locals can only be created during construction of the TruffleLanguage subclass.");
-        }
-        return local;
+        return localsBuilder.createContextThreadLocal(factory);
     }
 
     /**
@@ -1609,7 +1663,7 @@ public abstract class TruffleLanguage<C> {
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
          * messages may be executed without a context being entered.
          *
-         * @see TruffleLanguage#createContextLocal(ContextLocalFactory)
+         * @see TruffleLanguage.ContextLocalBuilder#createContextLocal(ContextLocalFactory)
          * @since 20.3
          */
         T create(C context);
@@ -1633,7 +1687,7 @@ public abstract class TruffleLanguage<C> {
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
          * messages may be executed without a context being entered.
          *
-         * @see TruffleLanguage#createContextThreadLocal(ContextThreadLocalFactory)
+         * @see TruffleLanguage.ContextLocalBuilder#createContextThreadLocal(ContextThreadLocalFactory)
          * @since 20.3
          */
         T create(C context, Thread thread);

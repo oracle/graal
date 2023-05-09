@@ -151,17 +151,17 @@ final class LanguageAccessor extends Accessor {
             impl.languageInfo = language;
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
             if (polyglotLanguageInstance != null) {
-                if (impl.contextLocals == null) {
-                    impl.contextLocals = Collections.emptyList();
+                if (impl.localsBuilder.contextLocals == null) {
+                    impl.localsBuilder.contextLocals = Collections.emptyList();
                 } else {
-                    ENGINE.initializeLanguageContextLocal(impl.contextLocals, polyglotLanguageInstance);
-                    impl.contextLocals = Collections.unmodifiableList(impl.contextLocals);
+                    ENGINE.initializeLanguageContextLocal(impl.localsBuilder.contextLocals, polyglotLanguageInstance);
+                    impl.localsBuilder.contextLocals = Collections.unmodifiableList(impl.localsBuilder.contextLocals);
                 }
-                if (impl.contextThreadLocals == null) {
-                    impl.contextThreadLocals = Collections.emptyList();
+                if (impl.localsBuilder.contextThreadLocals == null) {
+                    impl.localsBuilder.contextThreadLocals = Collections.emptyList();
                 } else {
-                    ENGINE.initializeLanguageContextThreadLocal(impl.contextThreadLocals, polyglotLanguageInstance);
-                    impl.contextThreadLocals = Collections.unmodifiableList(impl.contextThreadLocals);
+                    ENGINE.initializeLanguageContextThreadLocal(impl.localsBuilder.contextThreadLocals, polyglotLanguageInstance);
+                    impl.localsBuilder.contextThreadLocals = Collections.unmodifiableList(impl.localsBuilder.contextThreadLocals);
                 }
             }
         }
