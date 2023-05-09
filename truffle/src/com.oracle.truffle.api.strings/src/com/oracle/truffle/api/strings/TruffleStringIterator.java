@@ -156,7 +156,7 @@ public final class TruffleStringIterator {
 
         abstract int executeInternal(Node node, TruffleStringIterator it);
 
-        @Specialization(guards = {"isFixedWidth(it.codeRangeA)", "isBestEffort(it.errorHandling)"})
+        @Specialization(guards = {"isUTF32(it.encoding) || isFixedWidth(it.codeRangeA)", "isBestEffort(it.errorHandling)"})
         static int fixed(Node node, TruffleStringIterator it,
                         @Shared("readRaw") @Cached TStringOpsNodes.RawReadValueNode readNode) {
             return readAndInc(node, it, readNode);
