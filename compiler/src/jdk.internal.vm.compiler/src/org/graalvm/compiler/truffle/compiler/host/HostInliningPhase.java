@@ -509,7 +509,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
                  */
                 boolean forceShallowInline = context.isBytecodeSwitch && (caller.forceShallowInline || caller.parent == null) && isBytecodeInterpreterSwitch(context.env, invoke.getTargetMethod());
 
-                CallTree callee = new CallTree(caller, invoke, block, deoptimized, unwind, inInterpreter, forceShallowInline);
+                double frequency = context.isFrequencyCutoffEnabled() ? block.getRelativeFrequency() : 1.0d;
+                CallTree callee = new CallTree(caller, invoke, deoptimized, unwind, inInterpreter, forceShallowInline, frequency);
                 children.add(callee);
 
                 if (forceShallowInline) {
@@ -1405,6 +1406,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
             return env.types();
         }
 
+        boolean isFrequencyCutoffEnabled() {
+            return minimumFrequency > 0.0D;
+        }
+
     }
 
     /**
@@ -1508,7 +1513,8 @@ public class HostInliningPhase extends AbstractInliningPhase {
         final double frequency;
         final int depth;
 
-        CallTree(CallTree parent, Invoke invoke, HIRBlock block, boolean deoptimized, boolean unwind, boolean inInterpreter, boolean forceShallowInline) {
+        CallTree(CallTree parent, Invoke invoke, boolean deoptimized, boolean unwind, boolean inInterpreter, boolean forceShallowInline,
+                        double relativeFrequency) {
             this.invoke = invoke;
             this.deoptimized = deoptimized;
             this.unwind = unwind;
@@ -1518,7 +1524,7 @@ public class HostInliningPhase extends AbstractInliningPhase {
             this.forceShallowInline = forceShallowInline;
             this.depth = parent.depth + 1;
             Objects.requireNonNull(cachedTargetMethod);
-            this.frequency = block.getRelativeFrequency() * parent.frequency;
+            this.frequency = relativeFrequency * parent.frequency;
         }
 
         CallTree(ResolvedJavaMethod root) {
@@ -1565,7 +1571,6 @@ public class HostInliningPhase extends AbstractInliningPhase {
         @Override
         public int compareTo(CallTree o) {
             assert subTreeFastPathInvokes != -1 && subTreeCost != -1 : "unexpected comparison";
-
             int compare = Double.compare(frequency, o.frequency);
             if (compare == 0) {
                 compare = Integer.compare(subTreeFastPathInvokes, o.subTreeFastPathInvokes);
