@@ -30,6 +30,8 @@ import com.oracle.svm.core.jfr.JfrThrottler;
 import org.junit.Test;
 import org.junit.Assert;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertFalse;
@@ -50,7 +52,6 @@ public class TestThrottler {
     @Test
     public void testCapSingleThread() {
         // Doesn't rotate after starting sampling
-
         JfrThrottler throttler = new JfrThrottler();
         throttler.setThrottle(SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         for (int i = 0; i < SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD; i++) {
@@ -67,7 +68,9 @@ public class TestThrottler {
     @Test
     public void testCapConcurrent() throws InterruptedException {
         final long samplesPerWindow = 100000;
+        final int testingThreadCount = 10;
         final AtomicInteger count = new AtomicInteger();
+        List<Thread> testingThreads = new ArrayList<>();
         JfrThrottler throttler = new JfrThrottler();
         throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         Runnable doSampling = () -> {
@@ -79,30 +82,29 @@ public class TestThrottler {
             }
         };
         count.set(0);
-        Thread firstThread = new Thread(doSampling);
-        Thread secondThread = new Thread(doSampling);
-        Thread thirdThread = new Thread(doSampling);
-        firstThread.start();
-        secondThread.start();
-        thirdThread.start();
-        firstThread.join();
-        secondThread.join();
-        thirdThread.join();
+
+        for (int i = 0; i < testingThreadCount; i++) {
+            Thread worker = new Thread(doSampling);
+            worker.start();
+            testingThreads.add(worker);
+        }
+        for (Thread thread : testingThreads) {
+            thread.join();
+        }
 
         assertFalse("failed! Too many samples taken! " + count.get(), count.get() > samplesPerWindow);
         // Previous measured population should be 3*samplesPerWindow
         // Force window rotation and repeat.
         count.set(0);
-        throttler.setThrottle(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
-        Thread fourthThread = new Thread(doSampling);
-        Thread fifthThread = new Thread(doSampling);
-        Thread sixthThread = new Thread(doSampling);
-        fourthThread.start();
-        fifthThread.start();
-        sixthThread.start();
-        fourthThread.join();
-        fifthThread.join();
-        sixthThread.join();
+        expireAndRotate(throttler);
+        for (int i = 0; i < testingThreadCount; i++) {
+            Thread worker = new Thread(doSampling);
+            worker.start();
+            testingThreads.add(worker);
+        }
+        for (Thread thread : testingThreads) {
+            thread.join();
+        }
 
         assertFalse("failed! Too many samples taken (after rotation)! " + count.get(), count.get() > samplesPerWindow);
     }
@@ -131,7 +133,6 @@ public class TestThrottler {
         expireAndRotate(throttler);
 
         assertTrue("After window rotation, it should be possible to take more samples", throttler.sample());
-
     }
 
     /**
@@ -158,11 +159,7 @@ public class TestThrottler {
             }
             expireAndRotate(throttler);
             double projectedPopulation = throttler.getActiveWindowProjectedPopulationSize();
-            if ((int) actualProjections[p] != (int) projectedPopulation)
-            {
-                System.out.println(actualProjections[p]+ " "+ projectedPopulation);
-            }
-//            assertTrue((int) actualProjections[p] == (int) projectedPopulation);
+            assertTrue((int) actualProjections[p] == (int) projectedPopulation);
         }
     }
 
@@ -203,7 +200,6 @@ public class TestThrottler {
         assertTrue("Debt is so high we should not skip any samples now.", throttler.getActiveWindowSamplingInterval() == 1);
         expireAndRotate(throttler);
         assertTrue("Debt should be forgiven at beginning of new period.", throttler.getActiveWindowDebt() == 0);
-
     }
 
     /**
