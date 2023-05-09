@@ -1011,13 +1011,17 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             # Stopped working as of 8u92 on the initial release
             del iterations["tomcat"]
 
-        if mx.get_jdk().javaCompliance >= '9':
+        jdk = mx.get_jdk()
+        if jdk.javaCompliance >= '9':
             if "batik" in iterations:
                 # batik crashes on JDK9+. This is fixed on the dacapo chopin branch only
                 del iterations["batik"]
             if "tradesoap" in iterations:
                 # validation fails transiently but frequently in the first iteration in JDK9+
                 del iterations["tradesoap"]
+            if "avrora" in iterations and jdk.javaCompliance >= '21':
+                # avrora uses java.lang.Compiler which was removed in JDK 21 (JDK-8307125)
+                del iterations["avrora"]
         elif not _is_batik_supported(java_home_jdk()):
             del iterations["batik"]
 

@@ -369,4 +369,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         return new RegisterArray(list);
     }
 
+    public RegisterArray getJavaGeneralParameterRegs() {
+        return generalParameterRegs;
+    }
 }

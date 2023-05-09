@@ -291,7 +291,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
 
         AnalysisType aType = toAnalysisType(original);
-        VMError.guarantee(aType.isLinked(), "types reachable for JIT compilation must not have linkage errors");
+        VMError.guarantee(aType.isLinked(), "Types reachable for JIT compilation must not have linkage errors");
         SubstrateType sType = types.get(aType);
 
         if (sType == null) {
@@ -320,7 +320,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else if (original instanceof AnalysisType) {
             return (AnalysisType) original;
         } else {
-            throw new InternalError("unexpected type " + original);
+            throw new InternalError("Unexpected type " + original);
         }
     }
 

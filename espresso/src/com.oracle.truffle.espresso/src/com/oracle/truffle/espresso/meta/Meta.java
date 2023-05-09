@@ -187,6 +187,8 @@ public final class Meta extends ContextAccessImpl {
                         java_lang_Void
         };
 
+        java_lang_Number = knownKlass(Type.java_lang_Number);
+
         java_lang_Boolean_valueOf = java_lang_Boolean.requireDeclaredMethod(Name.valueOf, Signature.Boolean_boolean);
         java_lang_Byte_valueOf = java_lang_Byte.requireDeclaredMethod(Name.valueOf, Signature.Byte_byte);
         java_lang_Character_valueOf = java_lang_Character.requireDeclaredMethod(Name.valueOf, Signature.Character_char);
@@ -1042,6 +1044,8 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_Double;
     public final ObjectKlass java_lang_Long;
     public final ObjectKlass java_lang_Void;
+
+    public final ObjectKlass java_lang_Number;
 
     // Boxing conversions.
     public final Method java_lang_Boolean_valueOf;
@@ -2009,7 +2013,7 @@ public final class Meta extends ContextAccessImpl {
     public Klass resolveSymbolAndAccessCheck(Symbol<Type> type, Klass accessingKlass) {
         assert accessingKlass != null;
         Klass klass = resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader(), java_lang_NoClassDefFoundError, accessingKlass.protectionDomain());
-        if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
+        if (!Klass.checkAccess(klass.getElementalType(), accessingKlass, false)) {
             throw throwException(java_lang_IllegalAccessError);
         }
         return klass;

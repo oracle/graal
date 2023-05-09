@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -39,6 +39,6 @@ BREAK 30 STEP_OVER "@test"
         MEMBER any "double*" "@F"
         MEMBER any "float*" "@G"
         MEMBER any "i128*" "@H"
-        MEMBER any "i64**" "@I"
+        MEMBER any "ptr*" "@I"
 
 

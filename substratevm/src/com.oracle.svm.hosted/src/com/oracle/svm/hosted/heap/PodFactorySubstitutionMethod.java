@@ -155,7 +155,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
      * @throws GraalError if no matching constructor found
      */
     private ResolvedJavaMethod findMatchingConstructor(ResolvedJavaMethod method, ResolvedJavaType typeToSearch) {
-        for (ResolvedJavaMethod ctor : typeToSearch.getDeclaredConstructors()) {
+        for (ResolvedJavaMethod ctor : typeToSearch.getDeclaredConstructors(false)) {
             if (parameterTypesMatch(method, ctor)) {
                 return ctor;
             }

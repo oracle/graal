@@ -450,7 +450,7 @@ public final class Target_java_lang_Thread {
      * Marks the thread as interrupted and wakes it up.
      *
      * See {@link PlatformThreads#parkCurrentPlatformOrCarrierThread},
-     * {@link PlatformThreads#unpark} and {@link JavaThreads#sleep} for vital aspects of the
+     * {@link PlatformThreads#unpark} and {@link PlatformThreads#sleep} for vital aspects of the
      * underlying mechanisms.
      */
     @Substitute
@@ -526,7 +526,7 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = JDK17OrEarlier.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private boolean isAlive() {
-        return JavaThreads.isAlive(JavaThreads.fromTarget(this));
+        return PlatformThreads.isAlive(JavaThreads.fromTarget(this));
     }
 
     @Substitute
@@ -539,28 +539,28 @@ public final class Target_java_lang_Thread {
     @TargetElement(onlyWith = JDK17OrEarlier.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static void yield() {
-        JavaThreads.yieldCurrent();
+        PlatformThreads.singleton().yieldCurrent();
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     private static void yield0() {
-        // Loom virtual threads are handled in yield()
-        JavaThreads.yieldCurrent();
+        // Virtual threads are handled in yield()
+        PlatformThreads.singleton().yieldCurrent();
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrEarlier.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static void sleep(long millis) throws InterruptedException {
-        JavaThreads.sleep(millis);
+        PlatformThreads.sleep(millis);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
     private static void sleep0(long millis) throws InterruptedException {
-        // Loom virtual threads are handled in sleep()
-        JavaThreads.sleep(millis);
+        // Virtual threads are handled in sleep()
+        PlatformThreads.sleep(millis);
     }
 
     @Substitute

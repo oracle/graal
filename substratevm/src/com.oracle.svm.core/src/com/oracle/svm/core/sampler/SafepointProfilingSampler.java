@@ -24,35 +24,73 @@
  */
 package com.oracle.svm.core.sampler;
 
-import com.oracle.svm.core.heap.RestrictHeapAccess;
-import com.oracle.svm.core.util.TimeUtils;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.LongSummaryStatistics;
+import java.util.concurrent.TimeUnit;
+
 import org.graalvm.collections.LockFreePrefixTree;
-import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.Threading;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.heap.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.ThreadListener;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
 public class SafepointProfilingSampler implements ProfilingSampler, ThreadListener {
     private static final int DEFAULT_STACK_SIZE = 8 * 1024;
 
+    static class Options {
+        @Option(help = "Dump some stats about the safepoint sampler into a file on this path.")//
+        static final HostedOptionKey<String> SafepointSamplerStats = new HostedOptionKey<>("");
+    }
+
     private final SamplingStackVisitor samplingStackVisitor = new SamplingStackVisitor();
     private final LockFreePrefixTree prefixTree = new LockFreePrefixTree(new LockFreePrefixTree.ObjectPoolingAllocator());
 
+    private final List<SamplerStats> statsList = new ArrayList<>();
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public SafepointProfilingSampler() {
+        if (!Options.SafepointSamplerStats.hasBeenSet()) {
+            return;
+        }
+        RuntimeSupport.getRuntimeSupport().addShutdownHook(isFirstIsolate -> {
+            try (OutputStreamWriter stream = new OutputStreamWriter(Files.newOutputStream(Path.of(Options.SafepointSamplerStats.getValue())))) {
+                for (SamplerStats stats : statsList) {
+                    stream.append(String.format("SampleCount    : %d%n", stats.safepointStats.getCount()))
+                                    .append(String.format("AverageRate    : %d us%n", TimeUnit.NANOSECONDS.toMicros((long) stats.safepointStats.getAverage())))
+                                    .append(String.format("MinimumRate    : %d us%n", TimeUnit.NANOSECONDS.toMicros(stats.safepointStats.getMin())))
+                                    .append(String.format("MaximumRate    : %d us%n", TimeUnit.NANOSECONDS.toMicros(stats.safepointStats.getMax())))
+                                    .append(String.format("DurationCount  : %d%n", stats.durationStats.getCount()))
+                                    .append(String.format("AverageDuration: %d us%n", TimeUnit.NANOSECONDS.toMicros((long) stats.durationStats.getAverage())))
+                                    .append(String.format("MinimumDuration: %d us%n", TimeUnit.NANOSECONDS.toMicros(stats.durationStats.getMin())))
+                                    .append(String.format("MaximumDuration: %d us%n", TimeUnit.NANOSECONDS.toMicros(stats.durationStats.getMax())))
+                                    .append(System.lineSeparator());
+                }
+            } catch (IOException ignored) {
+                // Silently ignore
+            }
+        });
     }
 
     @Override
     public void beforeThreadRun() {
         SamplingStackVisitor.StackTrace stackTrace = new SamplingStackVisitor.StackTrace(DEFAULT_STACK_SIZE);
-        ThreadingSupportImpl.RecurringCallbackTimer callback = ThreadingSupportImpl.createRecurringCallbackTimer(TimeUtils.millisToNanos(10), (access) -> sampleThreadStack(stackTrace));
-        ThreadingSupportImpl.setRecurringCallback(CurrentIsolate.getCurrentThread(), callback);
+        SamplerStats samplerStats = new SamplerStats();
+        statsList.add(samplerStats);
+        Threading.registerRecurringCallback(10, TimeUnit.MILLISECONDS, access -> sampleThreadStack(stackTrace, samplerStats));
     }
 
     @Override
@@ -66,7 +104,8 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate inside the safepoint sampler.")
-    private void sampleThreadStack(SamplingStackVisitor.StackTrace stackTrace) {
+    private void sampleThreadStack(SamplingStackVisitor.StackTrace stackTrace, SamplerStats samplerStats) {
+        samplerStats.started();
         stackTrace.reset();
         walkCurrentThread(stackTrace, samplingStackVisitor);
         if (stackTrace.overflow) {
@@ -90,6 +129,7 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
             }
         }
         node.incValue();
+        samplerStats.end();
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Allocations are not allowed in the safepoint sampler, but we keep them unrestricted due to analysis imprecision.")
@@ -101,5 +141,36 @@ public class SafepointProfilingSampler implements ProfilingSampler, ThreadListen
     private static void walkCurrentThread(SamplingStackVisitor.StackTrace data, SamplingStackVisitor visitor) {
         Pointer sp = KnownIntrinsics.readStackPointer();
         JavaStackWalker.walkCurrentThread(sp, visitor, data);
+    }
+
+    private static final class SamplerStats {
+        private final boolean enabled;
+        private final LongSummaryStatistics safepointStats;
+        private final LongSummaryStatistics durationStats;
+        private long lastSampleStart;
+
+        SamplerStats() {
+            this.enabled = Options.SafepointSamplerStats.hasBeenSet();
+            this.safepointStats = enabled ? new LongSummaryStatistics() : null;
+            this.durationStats = enabled ? new LongSummaryStatistics() : null;
+        }
+
+        private void started() {
+            if (!enabled) {
+                return;
+            }
+            long start = System.nanoTime();
+            if (lastSampleStart != 0) {
+                safepointStats.accept(start - lastSampleStart);
+            }
+            lastSampleStart = start;
+        }
+
+        private void end() {
+            if (!enabled) {
+                return;
+            }
+            durationStats.accept(System.nanoTime() - lastSampleStart);
+        }
     }
 }

@@ -49,6 +49,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
@@ -57,7 +58,6 @@ import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -124,9 +124,8 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("leave") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-                b.add(proxy);
-                b.setStateAfter(proxy);
+                StateSplitProxyNode proxy = b.append(new StateSplitProxyNode(null));
+                proxy.setStateAfter(b.getInvocationPluginBeforeState());
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.Leave));
                 return true;
             }
@@ -134,9 +133,8 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("leaveDetachThread") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-                b.add(proxy);
-                b.setStateAfter(proxy);
+                StateSplitProxyNode proxy = b.append(new StateSplitProxyNode(null));
+                proxy.setStateAfter(b.getInvocationPluginBeforeState());
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.DetachThread));
                 return true;
             }
@@ -144,9 +142,8 @@ public class CEntryPointSupport implements InternalFeature {
         r.register(new RequiredInvocationPlugin("leaveTearDownIsolate") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
-                b.add(proxy);
-                b.setStateAfter(proxy);
+                StateSplitProxyNode proxy = b.append(new StateSplitProxyNode(null));
+                proxy.setStateAfter(b.getInvocationPluginBeforeState());
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.TearDownIsolate));
                 return true;
             }

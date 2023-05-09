@@ -1558,6 +1558,12 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.frameaddress.p0":
                 case "llvm.frameaddress.p0i8":
                     return LLVMFrameAddressNodeGen.create(args[1]);
+                case "llvm.threadlocal.address.p0":
+                    /*
+                     * We already resolve TLS variables directly, when doing the symbol table
+                     * lookup. So for us, this is a noop.
+                     */
+                    return args[1];
                 case "llvm.va_start":
                     return LLVMVAStartNodeGen.create(callerArgumentCount, args[1]);
                 case "llvm.va_end":
@@ -1926,6 +1932,8 @@ public class BasicNodeFactory implements NodeFactory {
             case "sqrt":
                 if (declaration.getName().endsWith("v2f64")) {
                     return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 2);
+                } else if (declaration.getName().endsWith("v4f32")) {
+                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 4);
                 } else {
                     return LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen.create(args[1]);
                 }

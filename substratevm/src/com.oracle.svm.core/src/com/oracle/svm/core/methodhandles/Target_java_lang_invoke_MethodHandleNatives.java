@@ -106,7 +106,7 @@ final class Target_java_lang_invoke_MethodHandleNatives {
             flags = Target_java_lang_invoke_MethodHandleNatives_Constants.MN_IS_CONSTRUCTOR | constructor.getModifiers();
             refKind = Target_java_lang_invoke_MethodHandleNatives_Constants.REF_newInvokeSpecial;
         } else {
-            throw new InternalError("unknown member type: " + member.getClass());
+            throw new InternalError("Unknown member type: " + member.getClass());
         }
         flags |= refKind << Target_java_lang_invoke_MethodHandleNatives_Constants.MN_REFERENCE_KIND_SHIFT;
 
@@ -126,10 +126,10 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitute
     private static long objectFieldOffset(Target_java_lang_invoke_MemberName self) {
         if (self.reflectAccess == null && self.intrinsic == null) {
-            throw new InternalError("unresolved field");
+            throw new InternalError("Unresolved field");
         }
         if (!self.isField() || self.isStatic()) {
-            throw new InternalError("non-static field required");
+            throw new InternalError("Non-static field required");
         }
 
         /* Intrinsic arguments are not accessed through their offset. */
@@ -146,10 +146,10 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitute
     private static long staticFieldOffset(Target_java_lang_invoke_MemberName self) {
         if (self.reflectAccess == null && self.intrinsic == null) {
-            throw new InternalError("unresolved field");
+            throw new InternalError("Unresolved field");
         }
         if (!self.isField() || !self.isStatic()) {
-            throw new InternalError("static field required");
+            throw new InternalError("Static field required");
         }
         /* Intrinsic arguments are not accessed through their offset. */
         if (self.intrinsic != null) {
@@ -165,10 +165,10 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @Substitute
     private static Object staticFieldBase(Target_java_lang_invoke_MemberName self) {
         if (self.reflectAccess == null) {
-            throw new InternalError("unresolved field");
+            throw new InternalError("Unresolved field");
         }
         if (!self.isField() || !self.isStatic()) {
-            throw new InternalError("static field required");
+            throw new InternalError("Static field required");
         }
         return ((Field) self.reflectAccess).getType().isPrimitive() ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields();
     }

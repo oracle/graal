@@ -814,10 +814,11 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
                          '-cp', classpath('com.oracle.svm.test'),
                          '-Dgraal.LogFile=graal.log',
                          '-g',
-                         '-H:-OmitInlinedMethodDebugLineInfo',
                          '-H:+SourceLevelDebug',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
+                         # We do not want to step into class initializer, so initialize everything at build time.
+                         '--initialize-at-build-time=hello',
                          'hello.Hello'] + args
 
     def build_debug_test(extra_args):
@@ -1172,7 +1173,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
             jar_distributions=libgraal_jar_distributions,
-            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
+            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleLibGraalFeature'],
             add_to_module='java.base',
             headers=False,
         ),

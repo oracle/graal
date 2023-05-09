@@ -84,6 +84,15 @@ public class JmxCommonFeature implements InternalFeature {
         rci.initializeAtBuildTime("com.sun.jmx.defaults.JmxProperties", "JMX support");
         rci.initializeAtBuildTime("com.sun.jmx.remote.internal.ServerNotifForwarder", "JMX support");
 
+        rci.initializeAtBuildTime("sun.rmi.runtime.Log$LoggerLogFactory", "JMX support");
+        rci.initializeAtBuildTime("java.beans.Introspector$1", "JMX support");
+        rci.initializeAtBuildTime("com.sun.jmx.remote.internal.ArrayNotificationBuffer$BroadcasterQuery", "JMX support");
+        rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.WeakIdentityHashMap", "JMX support");
+        rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.MBeanIntrospector$PerInterfaceMap", "JMX support");
+        rci.initializeAtBuildTime("com.sun.jmx.mbeanserver.MBeanIntrospector$MBeanInfoMap", "JMX support");
+        rci.initializeAtBuildTime("sun.rmi.runtime.Log$InternalStreamHandler", "JMX support");
+        rci.initializeAtBuildTime("java.rmi.server.RemoteObjectInvocationHandler$MethodToHash_Maps", "JMX support");
+
         rci.initializeAtRunTime("sun.rmi.transport.ConnectionInputStream", "JMX support");
         rci.initializeAtRunTime("java.rmi.MarshalledObject$MarshalledObjectInputStream", "JMX support");
         rci.initializeAtRunTime("sun.rmi.server.UnicastRef2", "JMX support");

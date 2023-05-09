@@ -228,14 +228,14 @@ final class WhiteListParser extends ConfigurationParser {
     }
 
     private boolean registerDeclaredConstructors(AnalysisType type) {
-        for (AnalysisMethod method : type.getDeclaredConstructors()) {
+        for (AnalysisMethod method : type.getDeclaredConstructors(false)) {
             whiteList.add(new AnalysisMethodNode(method));
         }
         return true;
     }
 
     private boolean registerDeclaredMethods(AnalysisType type) {
-        for (AnalysisMethod method : type.getDeclaredMethods()) {
+        for (AnalysisMethod method : type.getDeclaredMethods(false)) {
             whiteList.add(new AnalysisMethodNode(method));
         }
         return true;

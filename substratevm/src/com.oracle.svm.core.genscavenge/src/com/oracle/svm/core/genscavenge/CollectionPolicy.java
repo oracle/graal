@@ -30,6 +30,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.UserError;
@@ -176,6 +177,7 @@ public interface CollectionPolicy {
      * survivor-to spaces of all ages. In other words, when copying during a collection, up to 2x
      * this amount can be used for surviving objects.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     UnsignedWord getSurvivorSpacesCapacity();
 
     /** The capacity of the young generation, comprising the eden and survivor spaces. */
@@ -200,6 +202,7 @@ public interface CollectionPolicy {
      * 1 (straight from eden) and the {@linkplain HeapParameters#getMaxSurvivorSpaces() number of
      * survivor spaces + 1}.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int getTenuringAge();
 
     /** Called at the beginning of a collection, in the safepoint operation. */

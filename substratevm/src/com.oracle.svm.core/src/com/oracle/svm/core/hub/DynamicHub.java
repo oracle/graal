@@ -618,6 +618,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return arrayHub;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getReferenceMapIndex() {
         return referenceMapIndex;
     }
@@ -662,6 +663,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return name;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getHubType() {
         return hubType;
     }

@@ -414,7 +414,7 @@ public final class MachOObjectFile extends ObjectFile {
 
     public LoadCommand getLoadCommand(LoadCommandKind k) {
         if (k == LoadCommandKind.SEGMENT_64) {
-            throw new IllegalArgumentException("use getSegments() to get segments");
+            throw new IllegalArgumentException("Use getSegments() to get segments");
         }
         for (LoadCommand cmd : loadCommands) {
             if (cmd.cmdKind == k) {

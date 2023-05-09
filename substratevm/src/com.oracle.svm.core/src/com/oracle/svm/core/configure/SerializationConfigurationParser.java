@@ -55,26 +55,27 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     @Override
     public void parseAndRegister(Object json, URI origin) {
         if (json instanceof List) {
-            parseOldConfiguration(asList(json, "first level of document must be an array of serialization lists"));
+            parseOldConfiguration(asList(json, "First-level of document must be an array of serialization lists"));
         } else if (json instanceof EconomicMap) {
-            parseNewConfiguration(asMap(json, "first level of document must be a map of serialization types"));
+            parseNewConfiguration(asMap(json, "First-level of document must be a map of serialization types"));
         } else {
-            throw new JSONParserException("first level of document must either be an array of serialization lists or a map of serialization types");
+            throw new JSONParserException("First-level of document must either be an array of serialization lists or a map of serialization types");
         }
     }
 
     private void parseOldConfiguration(List<Object> listOfSerializationConfigurationObjects) {
-        parseSerializationTypes(asList(listOfSerializationConfigurationObjects, "second level of document must be serialization descriptor objects"), false);
+        parseSerializationTypes(asList(listOfSerializationConfigurationObjects, "Second-level of document must be serialization descriptor objects"), false);
     }
 
     private void parseNewConfiguration(EconomicMap<String, Object> listOfSerializationConfigurationObjects) {
         if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY)) {
-            throw new JSONParserException("second level of document must be arrays of serialization descriptor objects");
+            throw new JSONParserException("Second-level of document must be arrays of serialization descriptor objects");
         }
 
-        parseSerializationTypes(asList(listOfSerializationConfigurationObjects.get(SERIALIZATION_TYPES_KEY), "types must be an array of serialization descriptor objects"), false);
+        parseSerializationTypes(asList(listOfSerializationConfigurationObjects.get(SERIALIZATION_TYPES_KEY), "The types property must be an array of serialization descriptor objects"), false);
         parseSerializationTypes(
-                        asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY), "lambdaCapturingTypes must be an array of serialization descriptor objects"),
+                        asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY),
+                                        "The lambdaCapturingTypes property must be an array of serialization descriptor objects"),
                         true);
 
         if (listOfSerializationConfigurationObjects.containsKey(PROXY_SERIALIZATION_TYPES_KEY)) {
@@ -84,7 +85,7 @@ public class SerializationConfigurationParser extends ConfigurationParser {
 
     private void parseSerializationTypes(List<Object> listOfSerializationTypes, boolean lambdaCapturingTypes) {
         for (Object serializationType : listOfSerializationTypes) {
-            parseSerializationDescriptorObject(asMap(serializationType, "third level of document must be serialization descriptor objects"), lambdaCapturingTypes);
+            parseSerializationDescriptorObject(asMap(serializationType, "Third-level of document must be serialization descriptor objects"), lambdaCapturingTypes);
         }
     }
 

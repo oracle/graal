@@ -1,4 +1,4 @@
-From aeae49c2d76c58e5879ffd8c8d72b58b9a57f65c Mon Sep 17 00:00:00 2001
+From ad8c24826902958ffb3f4c1cfa9b37bf0311cc19 Mon Sep 17 00:00:00 2001
 From: Sacha Coppey <sacha.coppey@oracle.com>
 Date: Mon, 14 Nov 2022 00:36:07 +0100
 Subject: [PATCH 4/4] [GR-42419] Add Graal Calling conventions in LLVM
@@ -14,32 +14,32 @@ Subject: [PATCH 4/4] [GR-42419] Add Graal Calling conventions in LLVM
  7 files changed, 36 insertions(+), 2 deletions(-)
 
 diff --git a/llvm/include/llvm/IR/CallingConv.h b/llvm/include/llvm/IR/CallingConv.h
-index fd2854246522..2e8e575616f1 100644
+index 9fefeef05cb2..aa8e6ba09a8d 100644
 --- a/llvm/include/llvm/IR/CallingConv.h
 +++ b/llvm/include/llvm/IR/CallingConv.h
-@@ -252,6 +252,9 @@ namespace CallingConv {
-     /// M68k_INTR - Calling convention used for M68k interrupt routines.
-     M68k_INTR = 101,
+@@ -241,6 +241,9 @@ namespace CallingConv {
+     /// Preserve X2-X15, X19-X29, SP, Z0-Z31, P0-P15.
+     AArch64_SME_ABI_Support_Routines_PreserveMost_From_X2 = 103,
  
-+    /// Calling convention used by Graal
-+    GRAAL = 102,
++    /// Calling convention used by GraalVM
++    GRAAL = 487,
 +
-     /// The highest possible calling convention ID. Must be some 2^k - 1.
+     /// The highest possible ID. Must be some 2^k - 1.
      MaxID = 1023
    };
 diff --git a/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp b/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp
-index 06e21f90ebf1..6e70db04256f 100644
+index 6f2058c72157..dc00ea7e0f05 100644
 --- a/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64ISelLowering.cpp
-@@ -5726,6 +5726,7 @@ CCAssignFn *AArch64TargetLowering::CCAssignFnForCall(CallingConv::ID CC,
+@@ -6212,6 +6212,7 @@ CCAssignFn *AArch64TargetLowering::CCAssignFnForCall(CallingConv::ID CC,
    case CallingConv::Swift:
    case CallingConv::SwiftTail:
    case CallingConv::Tail:
 +  case CallingConv::GRAAL:
-     if (Subtarget->isTargetWindows() && IsVarArg)
-       return CC_AArch64_Win64_VarArg;
-     if (!Subtarget->isTargetDarwin())
-@@ -8702,9 +8703,9 @@ Register AArch64TargetLowering::
+     if (Subtarget->isTargetWindows() && IsVarArg) {
+       if (Subtarget->isWindowsArm64EC())
+         return CC_AArch64_Arm64EC_VarArg;
+@@ -9650,9 +9651,9 @@ Register AArch64TargetLowering::
  getRegisterByName(const char* RegName, LLT VT, const MachineFunction &MF) const {
    Register Reg = MatchRegisterName(RegName);
    if (AArch64::X1 <= Reg && Reg <= AArch64::X28) {
@@ -52,12 +52,12 @@ index 06e21f90ebf1..6e70db04256f 100644
    }
    if (Reg)
 diff --git a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
-index c891a49531e8..a1007f6a76e7 100644
+index b323ad5cc9f1..aacfee4f6fde 100644
 --- a/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
 +++ b/llvm/lib/Target/AArch64/AArch64RegisterInfo.cpp
-@@ -344,6 +344,13 @@ AArch64RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
-       Reserved.set(*SubReg);
-   }
+@@ -433,6 +433,13 @@ AArch64RegisterInfo::getStrictlyReservedRegs(const MachineFunction &MF) const {
+ 
+   markSuperRegs(Reserved, AArch64::FPCR);
  
 +  if (MF.getFunction().getCallingConv() == CallingConv::GRAAL) {
 +    markSuperRegs(Reserved, AArch64::X27);
@@ -70,10 +70,10 @@ index c891a49531e8..a1007f6a76e7 100644
    return Reserved;
  }
 diff --git a/llvm/lib/Target/RISCV/RISCVISelLowering.cpp b/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
-index f85508970d64..f1c13ac80578 100644
+index 9765128e5daa..becf3ddec55f 100644
 --- a/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
 +++ b/llvm/lib/Target/RISCV/RISCVISelLowering.cpp
-@@ -10942,6 +10942,7 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
+@@ -12608,6 +12608,7 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
      report_fatal_error("Unsupported calling convention");
    case CallingConv::C:
    case CallingConv::Fast:
@@ -82,10 +82,10 @@ index f85508970d64..f1c13ac80578 100644
    case CallingConv::GHC:
      if (!MF.getSubtarget().getFeatureBits()[RISCV::FeatureStdExtF] ||
 diff --git a/llvm/lib/Target/RISCV/RISCVRegisterInfo.cpp b/llvm/lib/Target/RISCV/RISCVRegisterInfo.cpp
-index 0c9219076498..9bb95036b583 100644
+index 927845aa23d1..28a8424efc2f 100644
 --- a/llvm/lib/Target/RISCV/RISCVRegisterInfo.cpp
 +++ b/llvm/lib/Target/RISCV/RISCVRegisterInfo.cpp
-@@ -108,6 +108,11 @@ BitVector RISCVRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
+@@ -114,6 +114,11 @@ BitVector RISCVRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
    markSuperRegs(Reserved, RISCV::FRM);
    markSuperRegs(Reserved, RISCV::FFLAGS);
  
@@ -98,10 +98,10 @@ index 0c9219076498..9bb95036b583 100644
    return Reserved;
  }
 diff --git a/llvm/lib/Target/X86/X86ISelLowering.cpp b/llvm/lib/Target/X86/X86ISelLowering.cpp
-index cd45c48259bb..9b014d6fb2a5 100644
+index cf17c51b04fc..29954785e599 100644
 --- a/llvm/lib/Target/X86/X86ISelLowering.cpp
 +++ b/llvm/lib/Target/X86/X86ISelLowering.cpp
-@@ -28224,6 +28224,8 @@ Register X86TargetLowering::getRegisterByName(const char* RegName, LLT VT,
+@@ -28794,6 +28794,8 @@ Register X86TargetLowering::getRegisterByName(const char* RegName, LLT VT,
                         .Case("rsp", X86::RSP)
                         .Case("ebp", X86::EBP)
                         .Case("rbp", X86::RBP)
@@ -111,7 +111,7 @@ index cd45c48259bb..9b014d6fb2a5 100644
  
    if (Reg == X86::EBP || Reg == X86::RBP) {
 diff --git a/llvm/lib/Target/X86/X86RegisterInfo.cpp b/llvm/lib/Target/X86/X86RegisterInfo.cpp
-index f2658f70434b..ad89ba279193 100644
+index 7ce3dca7f3a7..acc9225fd31b 100644
 --- a/llvm/lib/Target/X86/X86RegisterInfo.cpp
 +++ b/llvm/lib/Target/X86/X86RegisterInfo.cpp
 @@ -614,6 +614,21 @@ BitVector X86RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
@@ -137,5 +137,5 @@ index f2658f70434b..ad89ba279193 100644
                                   {X86::SIL, X86::DIL, X86::BPL, X86::SPL,
                                    X86::SIH, X86::DIH, X86::BPH, X86::SPH}));
 -- 
-2.36.2
+2.38.4
 

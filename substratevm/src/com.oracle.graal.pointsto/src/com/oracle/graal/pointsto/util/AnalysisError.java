@@ -158,11 +158,11 @@ public class AnalysisError extends Error {
     }
 
     public static RuntimeException shouldNotReachHereUnexpectedInput(Object input) {
-        throw new AnalysisError("should not reach here: unexpected input: " + input);
+        throw new AnalysisError("Should not reach here: unexpected input: " + input);
     }
 
     public static RuntimeException shouldNotReachHere(String msg) {
-        throw new AnalysisError("should not reach here: " + msg);
+        throw new AnalysisError("Should not reach here: " + msg);
     }
 
     public static RuntimeException shouldNotReachHere(Throwable cause) {
@@ -175,7 +175,7 @@ public class AnalysisError extends Error {
 
     public static void guarantee(boolean condition) {
         if (!condition) {
-            throw new AnalysisError("guarantee failed");
+            throw new AnalysisError("Guarantee failed");
         }
     }
 

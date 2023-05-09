@@ -54,7 +54,9 @@ long double __sulong_longdouble_pow(long double x, long double y) {
 }
 
 #define DECLARE_UNARY_INTRINSIC(fn)                                                                                                                  \
-    long double __sulong_longdouble_##fn(long double value) { return fn##l(value); }
+    long double __sulong_longdouble_##fn(long double value) {                                                                                        \
+        return fn##l(value);                                                                                                                         \
+    }
 
 DECLARE_UNARY_INTRINSIC(sqrt)
 DECLARE_UNARY_INTRINSIC(log)

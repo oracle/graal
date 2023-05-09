@@ -70,12 +70,14 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -279,27 +281,145 @@ final class Target_java_lang_StringUTF16 {
 final class Target_java_lang_Throwable {
 
     @Alias @RecomputeFieldValue(kind = Reset)//
-    private Object backtrace;
+    Object backtrace;
 
-    @Alias @RecomputeFieldValue(kind = Reset)//
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = ThrowableStackTraceFieldValueTransformer.class)//
     StackTraceElement[] stackTrace;
 
     @Alias String detailMessage;
 
+    // Checkstyle: stop
+    @Alias//
+    static StackTraceElement[] UNASSIGNED_STACK;
+    // Checkstyle: resume
+
+    /**
+     * Fills in the execution stack trace. {@link Throwable#fillInStackTrace()} cannot be
+     * {@code synchronized}, because it might be called in a {@link VMOperation} (via one of the
+     * {@link Throwable} constructors), where we are not allowed to block. To work around that, we
+     * do the following:
+     * <ul>
+     * <li>If we are not in a {@link VMOperation}, it executes {@link #fillInStackTrace(int)} in a
+     * block {@code synchronized} by the supplied {@link Throwable}. This is the default case.
+     * <li>If we are in a {@link VMOperation}, it checks if the {@link Throwable} is currently
+     * locked. If not, {@link #fillInStackTrace(int)} is called without synchronization, which is
+     * safe in a {@link VMOperation}. If it is locked, we do not do any filling (and thus do not
+     * collect the stack trace).
+     * </ul>
+     */
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
-    private Object fillInStackTrace() {
-        stackTrace = JavaThreads.getStackTrace(true, Thread.currentThread());
+    public Target_java_lang_Throwable fillInStackTrace() {
+        if (VMOperation.isInProgress()) {
+            if (MonitorSupport.singleton().isLockedByAnyThread(this)) {
+                /*
+                 * The Throwable is locked. We cannot safely fill in the stack trace. Do nothing and
+                 * accept that we will not get a stack track.
+                 */
+            } else {
+                /*
+                 * The Throwable is not locked. We can safely fill the stack trace without
+                 * synchronization because we VMOperation is single threaded.
+                 */
+
+                /* Copy of `Throwable#fillInStackTrace()` */
+                if (stackTrace != null || backtrace != null) {
+                    fillInStackTrace(0);
+                    stackTrace = UNASSIGNED_STACK;
+                }
+            }
+        } else {
+            synchronized (this) {
+                /* Copy of `Throwable#fillInStackTrace()` */
+                if (stackTrace != null || backtrace != null) {
+                    fillInStackTrace(0);
+                    stackTrace = UNASSIGNED_STACK;
+                }
+            }
+        }
         return this;
     }
 
+    /**
+     * Records the execution stack in an internal format. The information is transformed into a
+     * {@link StackTraceElement} array in
+     * {@link Target_java_lang_StackTraceElement#of(Object, int)}.
+     *
+     * @param dummy to change signature
+     */
     @Substitute
-    private StackTraceElement[] getOurStackTrace() {
-        if (stackTrace != null) {
-            return stackTrace;
-        } else {
-            return new StackTraceElement[0];
+    @NeverInline("Starting a stack walk in the caller frame")
+    Target_java_lang_Throwable fillInStackTrace(int dummy) {
+        /*
+         * Start out by clearing the backtrace for this object, in case the VM runs out of memory
+         * while allocating the stack trace.
+         */
+        backtrace = null;
+
+        if (DeoptimizationSupport.enabled()) {
+            /*
+             * Runtime compilation and deoptimized frames are not yet optimized (GR-45765). Eagerly
+             * construct a stack trace and store it in backtrace. We cannot directly use
+             * `stackTrace` because it is overwritten by the caller.
+             */
+            backtrace = JavaThreads.getStackTrace(true, Thread.currentThread());
+            return this;
         }
+
+        BacktraceVisitor visitor = new BacktraceVisitor();
+        JavaThreads.visitCurrentStackFrames(visitor);
+        backtrace = visitor.getArray();
+        return this;
+    }
+}
+
+final class ThrowableStackTraceFieldValueTransformer implements FieldValueTransformer {
+
+    private static final StackTraceElement[] UNASSIGNED_STACK = ReflectionUtil.readStaticField(Throwable.class, "UNASSIGNED_STACK");
+
+    @Override
+    public Object transform(Object receiver, Object originalValue) {
+        if (originalValue == null) { // Immutable stack
+            return null;
+        }
+        return UNASSIGNED_STACK;
+    }
+}
+
+@TargetClass(java.lang.StackTraceElement.class)
+@Platforms(InternalPlatform.NATIVE_ONLY.class)
+final class Target_java_lang_StackTraceElement {
+    /**
+     * Constructs the {@link StackTraceElement} array from a backtrace.
+     *
+     * @param x backtrace stored in {@link Target_java_lang_Throwable#backtrace}
+     * @param depth ignored
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK19OrLater.class)
+    static StackTraceElement[] of(Object x, int depth) {
+        if (x instanceof StackTraceElement[] stackTrace) {
+            /* Stack trace eagerly created. */
+            return stackTrace;
+        }
+        return StackTraceBuilder.build(x);
+    }
+
+    /**
+     * Constructs the {@link StackTraceElement} array from a {@link Throwable}.
+     *
+     * @param t the {@link Throwable} object
+     * @param depth ignored
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrEarlier.class)
+    static StackTraceElement[] of(Target_java_lang_Throwable t, int depth) {
+        Object x = t.backtrace;
+        if (x instanceof StackTraceElement[] stackTrace) {
+            /* Stack trace eagerly created. */
+            return stackTrace;
+        }
+        return StackTraceBuilder.build(x);
     }
 }
 
@@ -479,7 +599,7 @@ final class Target_java_lang_Math {
     }
 }
 
-@TargetClass(java.lang.StrictMath.class)
+@TargetClass(value = StrictMath.class, onlyWith = JDK20OrEarlier.class)
 @Platforms(InternalPlatform.NATIVE_ONLY.class)
 final class Target_java_lang_StrictMath {
 
@@ -686,7 +806,7 @@ final class Target_java_lang_ClassValue {
 }
 
 @SuppressWarnings({"deprecation", "unused"})
-@TargetClass(java.lang.Compiler.class)
+@TargetClass(className = "java.lang.Compiler", onlyWith = JDK20OrEarlier.class)
 final class Target_java_lang_Compiler {
     @Substitute
     static Object command(Object arg) {

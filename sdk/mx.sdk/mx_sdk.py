@@ -55,6 +55,8 @@ from mx_bisect_strategy import BuildStepsGraalVMStrategy
 from mx_gate import Task
 from mx_unittest import unittest
 
+# re-export custom mx project classes so they can be used from suite.py
+from mx_sdk_toolchain import ToolchainTestProject # pylint: disable=unused-import
 
 _suite = mx.suite('sdk')
 
@@ -63,8 +65,9 @@ define_bisect_default_build_steps(BuildStepsGraalVMStrategy())
 
 
 def _sdk_gate_runner(args, tasks):
-    with Task('SDK UnitTests', tasks, tags=['test']) as t:
-        if t: unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--fail-fast'])
+    with Task('SDK UnitTests', tasks, tags=['test'], report=True) as t:
+        if t:
+            unittest(['--suite', 'sdk', '--enable-timing', '--verbose', '--max-class-failures=25'], test_report_tags={'task': t.title})
     with Task('Check Copyrights', tasks) as t:
         if t:
             if mx.command_function('checkcopyrights')(['--primary', '--', '--projects', 'src']) != 0:

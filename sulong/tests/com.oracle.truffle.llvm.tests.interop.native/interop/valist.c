@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,13 @@
  */
 
 #include <stdarg.h>
-#include <stdlib.h>
 #include <graalvm/llvm/polyglot.h>
+
+#if defined(_WIN32)
+#include <malloc.h>
+#else
+#include <stdlib.h>
+#endif
 
 typedef int int_t;
 POLYGLOT_DECLARE_TYPE(int_t)

@@ -103,6 +103,7 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
         return allocate(nbytes, alignment, false);
     }

@@ -539,6 +539,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         AnalysisMethod origMethod = method.getMultiMethod(ORIGINAL_METHOD).getWrapped();
         DeoptimizationUtils.registerDeoptEntries(graph, registeredRuntimeCompilations.contains(origMethod), ParseOnceRuntimeCompilationFeature::getDeoptTargetMethod);
 
+        assert RuntimeCompilationFeature.verifyNodes(graph);
         var previous = runtimeGraphs.put(method, graph);
         assert previous == null;
 
@@ -827,6 +828,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                     substrateAnalysisMethods.add(sMethod);
                     graphEncoder.prepare(graph);
                 }
+                assert RuntimeCompilationFeature.verifyNodes(graph);
             } else if (multiMethodKey == DEOPT_TARGET_METHOD) {
                 parsedDeoptMethods.add(aMethod);
                 totalParsedDeoptMethods.incrementAndGet();

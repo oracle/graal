@@ -57,7 +57,7 @@ public final class SubstrateTruffleCompilationIdentifier extends SubstrateCompil
                 sb.append(']');
                 break;
             default:
-                throw new GraalError("unknown verbosity: " + verbosity);
+                throw new GraalError("Unknown verbosity: " + verbosity);
         }
         return sb;
     }

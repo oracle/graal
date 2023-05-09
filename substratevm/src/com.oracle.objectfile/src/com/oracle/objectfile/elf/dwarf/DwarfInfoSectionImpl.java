@@ -32,29 +32,29 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
-
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.InterfaceClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
-import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
-import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
 
 /**
  * Section generator for debug_info section.
@@ -1341,7 +1341,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         int callLine = caller.getLine();
         assert callLine >= -1 : callLine;
-        Integer fileIndex;
+        int fileIndex;
         if (callLine == -1) {
             log(context, "  Unable to retrieve call line for inlined method %s", callee.getFullMethodName());
             /* continue with line 0 and fileIndex 1 as we must insert a tree node */
@@ -1349,9 +1349,12 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             fileIndex = 1;
         } else {
             FileEntry subFileEntry = caller.getFileEntry();
-            assert subFileEntry != null : caller.getClassName() + "." + caller.getMethodName() + "(" + caller.getFileName() + ":" + callLine + ")";
-            fileIndex = caller.getFileIndex();
-            assert fileIndex != null;
+            if (subFileEntry != null) {
+                fileIndex = subFileEntry.getIdx();
+            } else {
+                log(context, "  Unable to retrieve caller FileEntry for inlined method %s (caller method %s)", callee.getFullMethodName(), caller.getFullMethodName());
+                fileIndex = 1;
+            }
         }
         final int code;
         code = DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine_with_children;

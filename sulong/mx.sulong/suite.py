@@ -263,7 +263,6 @@ suite = {
       "subDir" : "tests",
       "native" : True,
       "vpath" : True,
-      "defaultBuild" : False,
       "results" : ["bin/"],
       "buildDependencies" : [
         "SULONG_BOOTSTRAP_TOOLCHAIN",
@@ -872,7 +871,9 @@ suite = {
     "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
       "subDir" : "projects",
       "vpath" : True,
-      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/runtimes",
+      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>",
+      "cmakeSubdir" : "runtimes",
+      "symlinkSource" : True,
       "class" : "CMakeNinjaProject",
       "toolchain" : "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       # NinjaBuildTask uses only 1 job otherwise
@@ -1586,9 +1587,11 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
-        "truffle:ANTLR4",
         "SULONG_API",
         "SULONG_TOOLCHAIN_CONFIG",
+      ],
+      "exclude" : [
+        "truffle:ANTLR4",
       ],
       "javaProperties" : {
         "org.graalvm.language.llvm.home": "<sulong_home>",
@@ -1788,7 +1791,6 @@ suite = {
 
     "SULONG_TEST" : {
       "subDir" : "tests",
-      "defaultBuild" : False,
       "dependencies" : [
         "com.oracle.truffle.llvm.tests",
         "com.oracle.truffle.llvm.tests.types",
@@ -1838,6 +1840,7 @@ suite = {
       "distDependencies" : ["SULONG_TEST"],
       "license" : "BSD-new",
       "testDistribution" : True,
+      "defaultBuild" : False,
     },
 
     "LLIR_TEST_GEN_SOURCES" : {
@@ -2007,7 +2010,6 @@ suite = {
       "native" : True,
       "relpath" : True,
       "platformDependent" : True,
-      "defaultBuild" : False,
       "layout" : {
         "./" : ["dependency:com.oracle.truffle.llvm.tests.tck.native/*"],
       },

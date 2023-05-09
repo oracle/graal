@@ -33,7 +33,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfo;
-import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.SplittableRandomAccessors;
 import com.oracle.svm.core.util.VMError;
 
@@ -120,13 +119,6 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
         return true;
     }
 
-    /** Deprecated: use a dedicated {@link JavaVMOperation} subclass instead. */
-    @Deprecated(forRemoval = true)
-    public static void enqueueBlockingSafepoint(@SuppressWarnings("unused") String name, SubstrateUtil.Thunk thunk) {
-        ThunkOperation vmOperation = new ThunkOperation(thunk);
-        vmOperation.enqueue();
-    }
-
     @Override
     public final void operate(NativeVMOperationData data) {
         operate();
@@ -134,20 +126,4 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Whitelisted because some operations may allocate.")
     protected abstract void operate();
-
-    /** Deprecated: use a dedicated {@link JavaVMOperation} subclass instead. */
-    @Deprecated(forRemoval = true)
-    private static class ThunkOperation extends JavaVMOperation {
-        private SubstrateUtil.Thunk thunk;
-
-        ThunkOperation(SubstrateUtil.Thunk thunk) {
-            super(VMOperationInfos.get(ThunkOperation.class, "Unnamed VM operation", SystemEffect.SAFEPOINT));
-            this.thunk = thunk;
-        }
-
-        @Override
-        public void operate() {
-            thunk.invoke();
-        }
-    }
 }

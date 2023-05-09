@@ -359,6 +359,7 @@ final class WindowsVMCondition extends VMCondition {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void signal() {
         Process.NoTransitions.WakeConditionVariable(getStructPointer());
     }

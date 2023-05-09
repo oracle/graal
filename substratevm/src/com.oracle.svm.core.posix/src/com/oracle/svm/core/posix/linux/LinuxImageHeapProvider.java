@@ -211,6 +211,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
 
         if (haveDynamicMethodResolution) {
             heapBase = heapBase.add(preHeapRequiredBytes);
+            if (allocatedMemory.isNonNull()) {
+                allocatedMemory.add(preHeapRequiredBytes);
+            }
             Pointer installOffset = heapBase.subtract(DynamicMethodAddressResolutionHeapSupport.get().getRequiredPreHeapMemoryInBytes());
             int error = DynamicMethodAddressResolutionHeapSupport.get().install(installOffset);
 
@@ -374,12 +377,13 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 UnsignedWord totalAddressSpaceSize = getImageHeapAddressSpaceSize();
                 Pointer addressSpaceStart = (Pointer) heapBase;
                 if (DynamicMethodAddressResolutionHeapSupport.isEnabled()) {
-                    totalAddressSpaceSize = totalAddressSpaceSize.add(DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes());
-                    addressSpaceStart = addressSpaceStart.subtract(DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes());
+                    UnsignedWord preHeapRequiredBytes = DynamicMethodAddressResolutionHeapSupport.get().getDynamicMethodAddressResolverPreHeapMemoryBytes();
+                    totalAddressSpaceSize = totalAddressSpaceSize.add(preHeapRequiredBytes);
+                    addressSpaceStart = addressSpaceStart.subtract(preHeapRequiredBytes);
                 }
 
                 if (VirtualMemoryProvider.get().free(addressSpaceStart, totalAddressSpaceSize) != 0) {
-                    return CEntryPointErrors.MAP_HEAP_FAILED;
+                    return CEntryPointErrors.FREE_IMAGE_HEAP_FAILED;
                 }
             }
         }

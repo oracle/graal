@@ -43,8 +43,8 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -443,6 +443,7 @@ public final class NonmovableArrays {
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
             return walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
@@ -453,6 +454,7 @@ public final class NonmovableArrays {
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
         if (array.isNonNull()) {
             assert startIndex >= 0 && count <= lengthOf(array) - startIndex;
@@ -460,13 +462,18 @@ public final class NonmovableArrays {
             assert refSize == (1 << readElementShift(array));
             Pointer p = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
             for (int i = 0; i < count; i++) {
-                if (!visitor.visitObjectReference(p, true, null)) {
+                if (!callVisitor(visitor, p)) {
                     return false;
                 }
                 p = p.add(refSize);
             }
         }
         return true;
+    }
+
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static boolean callVisitor(ObjectReferenceVisitor visitor, Pointer p) {
+        return visitor.visitObjectReference(p, true, null);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

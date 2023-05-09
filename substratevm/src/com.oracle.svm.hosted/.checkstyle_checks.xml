@@ -30,6 +30,15 @@
     </module>
 
     <module name="RegexpSinglelineJava">
+      <property name="id" value="exceptionsAndErrors"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Consistent exception and error messages."/>
+      <property name="severity" value="error"/> 
+      <property name="format" value=" [A-Z][a-zA-Z0-9]*(Error|Exception)\(&quot;[a-z]"/>
+      <property name="message" value="Exception and error messages must not start with a lowercase letter"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
       <property name="id" value="newLinesFormatStrings"/>
       <metadata name="net.sf.eclipsecs.core.comment" value="Proper new lines in format strings"/>
       <property name="severity" value="error"/> 

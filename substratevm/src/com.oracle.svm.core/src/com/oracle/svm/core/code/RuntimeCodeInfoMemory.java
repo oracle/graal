@@ -201,14 +201,16 @@ public class RuntimeCodeInfoMemory {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void walkRuntimeMethodsDuringGC(CodeInfoVisitor visitor) {
         assert VMOperation.isGCInProgress() : "otherwise, we would need to make sure that the CodeInfo is not freeded by the GC";
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
             for (int i = 0; i < length;) {
-                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
-                if (info.isNonNull()) {
-                    visitor.visitCode(CodeInfoAccess.convert(info));
+                UntetheredCodeInfo untetheredInfo = NonmovableArrays.getWord(table, i);
+                if (untetheredInfo.isNonNull()) {
+                    CodeInfo info = CodeInfoAccess.convert(untetheredInfo);
+                    callVisitor(visitor, info);
                 }
 
                 /*
@@ -216,7 +218,7 @@ public class RuntimeCodeInfoMemory {
                  * visit the now updated entry one more time. However, this could have the effect
                  * that some entries are visited more than once.
                  */
-                if (info == NonmovableArrays.getWord(table, i)) {
+                if (untetheredInfo == NonmovableArrays.getWord(table, i)) {
                     i++;
                 }
             }
@@ -228,23 +230,24 @@ public class RuntimeCodeInfoMemory {
         if (table.isNonNull()) {
             int length = NonmovableArrays.lengthOf(table);
             for (int i = 0; i < length; i++) {
-                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
-                if (info.isNonNull()) {
-                    Object tether = CodeInfoAccess.acquireTether(info);
+                UntetheredCodeInfo untetheredInfo = NonmovableArrays.getWord(table, i);
+                if (untetheredInfo.isNonNull()) {
+                    Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
                     try {
-                        callVisitor(visitor, info, tether);
+                        CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
+                        callVisitor(visitor, info);
                     } finally {
-                        CodeInfoAccess.releaseTether(info, tether);
+                        CodeInfoAccess.releaseTether(untetheredInfo, tether);
                     }
-                    assert info == NonmovableArrays.getWord(table, i);
+                    assert untetheredInfo == NonmovableArrays.getWord(table, i);
                 }
             }
         }
     }
 
-    @Uninterruptible(reason = "Call the visitor, which may execute interruptible code.", calleeMustBe = false)
-    private static void callVisitor(CodeInfoVisitor visitor, UntetheredCodeInfo info, Object tether) {
-        visitor.visitCode(CodeInfoAccess.convert(info, tether));
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
+    private static void callVisitor(CodeInfoVisitor visitor, CodeInfo info) {
+        visitor.visitCode(info);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
