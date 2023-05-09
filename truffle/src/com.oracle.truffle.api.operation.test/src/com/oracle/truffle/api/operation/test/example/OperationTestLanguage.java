@@ -6,8 +6,10 @@ import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 
 @ProvidedTags(ExpressionTag.class)
-@TruffleLanguage.Registration(id = "OperationTestLanguage")
+@TruffleLanguage.Registration(id = OperationTestLanguage.ID)
 public class OperationTestLanguage extends TruffleLanguage<Object> {
+    public static final String ID = "OperationTestLanguage";
+
     @Override
     protected Object createContext(Env env) {
         return new Object();

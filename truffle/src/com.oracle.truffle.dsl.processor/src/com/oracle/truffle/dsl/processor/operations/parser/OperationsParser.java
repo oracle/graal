@@ -253,7 +253,6 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         model.boxingEliminatedTypes = beTypes;
 
         // optimization decisions & tracing
-
         AnnotationValue decisionsFileValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
         AnnotationValue decisionsOverrideFilesValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsOverrideFiles", false);
         String[] decisionsOverrideFilesPath = new String[0];
@@ -281,7 +280,6 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         }
 
         // custom operations
-
         for (TypeElement te : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
             AnnotationMirror op = ElementUtils.findAnnotationMirror(te, types.Operation);
             if (op == null) {

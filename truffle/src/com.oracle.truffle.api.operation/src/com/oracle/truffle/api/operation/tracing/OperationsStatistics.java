@@ -60,14 +60,19 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.tools.utils.json.JSONTokener;
 
-// per-context singleton
+/**
+ * This is a per-context singleton. It retains tracing statistics for each root node and writes them
+ * out to the state file on exit. If the state file already has data, new data obtained during
+ * tracing will be combined with existing data.
+ */
 public class OperationsStatistics {
-    private final Map<Class<?>, GlobalOperationStatistics> statisticsMap = new HashMap<>();
     static final ThreadLocal<OperationsStatistics> STATISTICS = new ThreadLocal<>();
+    private final Map<Class<?>, OperationRootNodeStatistics> rootNodeStatistics = new HashMap<>();
     private Path statePath;
     private FileChannel stateFile;
     private FileLock fileLock;
@@ -105,8 +110,8 @@ public class OperationsStatistics {
 
             for (int i = 0; i < o.length(); i++) {
                 JSONObject data = o.getJSONObject(i);
-                GlobalOperationStatistics value = GlobalOperationStatistics.deserialize(this, data);
-                this.statisticsMap.put(value.opsClass, value);
+                OperationRootNodeStatistics value = OperationRootNodeStatistics.deserialize(this, data);
+                this.rootNodeStatistics.put(value.operationClass, value);
             }
 
         } catch (IOException | ClassNotFoundException e) {
@@ -118,7 +123,7 @@ public class OperationsStatistics {
         try {
             try {
                 JSONArray result = new JSONArray();
-                this.statisticsMap.forEach((k, v) -> {
+                this.rootNodeStatistics.forEach((k, v) -> {
                     result.put(v.serialize());
                 });
 
@@ -134,7 +139,7 @@ public class OperationsStatistics {
             throw new RuntimeException(e);
         }
 
-        this.statisticsMap.forEach((k, v) -> {
+        this.rootNodeStatistics.forEach((k, v) -> {
             try {
                 v.writeDecisions(dumpWriter);
             } catch (IOException e) {
@@ -143,27 +148,54 @@ public class OperationsStatistics {
         });
     }
 
-    synchronized GlobalOperationStatistics getStatsistics(Class<?> opsClass) {
-        return statisticsMap.computeIfAbsent(opsClass, (c) -> new GlobalOperationStatistics(opsClass));
+    synchronized OperationRootNodeStatistics getStatistics(Class<?> operationsClass) {
+        return rootNodeStatistics.computeIfAbsent(operationsClass, (c) -> OperationRootNodeStatistics.createFromClass(operationsClass));
     }
 
-    // per-context per-ops
-    static final class GlobalOperationStatistics {
-        private final List<EnabledExecutionTracer> allTracers = new ArrayList<>();
+    /**
+     * Manages the tracing state for a particular root node.
+     */
+    static final class OperationRootNodeStatistics {
         private final ThreadLocal<EnabledExecutionTracer> currentTracer = new ThreadLocal<>();
+        private final List<EnabledExecutionTracer> allTracers = new ArrayList<>();
 
-        Class<?> opsClass;
-        String decisionsFile;
-        String[] instrNames;
-        String[][] specNames;
+        final Class<?> operationClass;
+        final String decisionsFile;
+        final String[] instructionNames;
+        final String[][] specializationNames;
 
-        GlobalOperationStatistics(Class<?> opsClass) {
-            this.opsClass = opsClass;
-            setNames();
+        OperationRootNodeStatistics(Class<?> operationsClass, String decisionsFile, String[] instructionNames, String[][] specializationNames) {
+            this.operationClass = operationsClass;
+            this.decisionsFile = decisionsFile;
+            this.instructionNames = instructionNames;
+            this.specializationNames = specializationNames;
+        }
+
+        private static OperationRootNodeStatistics createFromClass(Class<?> operationsClass) {
+            if (!operationsClass.isAnnotationPresent(TracingMetadata.class)) {
+                throw new AssertionError(String.format("Operations class %s does not contain the @%s annotation.", operationsClass.getName(), TracingMetadata.class.getName()));
+            }
+            TracingMetadata metadata = operationsClass.getAnnotation(TracingMetadata.class);
+
+            String[] instructionNames = metadata.instructionNames();
+
+            // Convert specializationNames to a 2D array indexed first by instruction id.
+            String[][] specializationNames = new String[instructionNames.length][];
+
+            Map<String, Integer> instructionNameToId = new HashMap<>();
+            for (int i = 0; i < instructionNames.length; i++) {
+                instructionNameToId.put(instructionNames[i], i);
+            }
+
+            for (TracingMetadata.SpecializationNames entry : metadata.specializationNames()) {
+                int instructionId = instructionNameToId.get(entry.instruction());
+                specializationNames[instructionId] = entry.specializations();
+            }
+
+            return new OperationRootNodeStatistics(operationsClass, metadata.decisionsFile(), instructionNames, specializationNames);
         }
 
         public void writeDecisions(PrintWriter dumpWriter) throws IOException {
-            setNames();
             EnabledExecutionTracer tracer = collect();
             try (FileChannel ch = FileChannel.open(Path.of(decisionsFile), StandardOpenOption.WRITE, StandardOpenOption.CREATE)) {
                 JSONArray result = tracer.serializeDecisions(this, dumpWriter);
@@ -172,9 +204,9 @@ public class OperationsStatistics {
             }
         }
 
-        private static GlobalOperationStatistics deserialize(OperationsStatistics parent, JSONObject data) throws ClassNotFoundException {
-            Class<?> key = Class.forName(data.getString("key"));
-            GlobalOperationStatistics result = parent.getStatsistics(key);
+        private static OperationRootNodeStatistics deserialize(OperationsStatistics parent, JSONObject data) throws ClassNotFoundException {
+            Class<?> key = Class.forName(data.getString("rootNode"));
+            OperationRootNodeStatistics result = parent.getStatistics(key);
             result.allTracers.add(EnabledExecutionTracer.deserialize(result, data));
             return result;
         }
@@ -189,24 +221,9 @@ public class OperationsStatistics {
         }
 
         private JSONObject serialize() {
-            setNames();
-            JSONObject result = collect().serialize(this);
-            result.put("key", opsClass.getName());
+            JSONObject result = collect().serialize();
+            result.put("rootNode", operationClass.getName());
             return result;
-        }
-
-        private void setNames() {
-            if (this.decisionsFile != null) {
-                return;
-            }
-
-            this.decisionsFile = ExecutionTracer.DECISIONS_FILE_MAP.get(opsClass);
-            this.instrNames = ExecutionTracer.INSTR_NAMES_MAP.get(opsClass);
-            this.specNames = ExecutionTracer.SPECIALIZATION_NAMES_MAP.get(opsClass);
-
-            if (decisionsFile == null || instrNames == null || specNames == null) {
-                throw new AssertionError();
-            }
         }
 
         public EnabledExecutionTracer getTracer() {
@@ -231,15 +248,15 @@ public class OperationsStatistics {
         static final DisabledExecutionTracer INSTANCE = new DisabledExecutionTracer();
 
         @Override
-        public void startFunction(Node node) {
+        public void startRoot(RootNode rootNode) {
         }
 
         @Override
-        public void endFunction(Node node) {
+        public void endRoot(RootNode rootNode) {
         }
 
         @Override
-        public void traceInstruction(int bci, int id, int... arguments) {
+        public void traceInstruction(int bci, int id, boolean isVariadic) {
         }
 
         @Override
@@ -257,7 +274,7 @@ public class OperationsStatistics {
 
     private static final class EnabledExecutionTracer extends ExecutionTracer {
 
-        private final GlobalOperationStatistics stats;
+        private final OperationRootNodeStatistics stats;
 
         private static class PseudoInstruction {
             private String name;
@@ -268,7 +285,7 @@ public class OperationsStatistics {
                 this.isRegular = isRegular;
             }
 
-            String name(GlobalOperationStatistics stats) {
+            String getName() {
                 return this.name;
             }
 
@@ -280,8 +297,8 @@ public class OperationsStatistics {
                 return new PseudoInstruction(s.substring(1), s.charAt(0) == 'R');
             }
 
-            String serialize(GlobalOperationStatistics stats) {
-                return (isRegular() ? 'R' : 'g') + name(stats);
+            String serializedName() {
+                return (isRegular() ? 'R' : 'g') + this.name;
             }
 
             @Override
@@ -299,18 +316,18 @@ public class OperationsStatistics {
         private static class RegularInstruction extends PseudoInstruction {
             private final int instruction;
 
-            RegularInstruction(GlobalOperationStatistics stats, int instruction) {
-                super(stats.instrNames[instruction], true);
+            RegularInstruction(OperationRootNodeStatistics stats, int instruction) {
+                super(stats.instructionNames[instruction], true);
                 this.instruction = instruction;
             }
         }
 
-        private static class SpecializationKey extends PseudoInstruction {
+        private static class SpecializationState extends PseudoInstruction {
             final int instructionId;
             @CompilationFinal(dimensions = 1) final boolean[] activeSpecializations;
-            int countActive = -1;
+            int countActive = -1; // lazily computed
 
-            SpecializationKey(GlobalOperationStatistics stats, int instructionId, boolean[] activeSpecializations) {
+            SpecializationState(OperationRootNodeStatistics stats, int instructionId, boolean[] activeSpecializations) {
                 super(makeName(stats, instructionId, activeSpecializations), false);
                 this.instructionId = instructionId;
                 this.activeSpecializations = activeSpecializations;
@@ -325,20 +342,6 @@ public class OperationsStatistics {
                 return result;
             }
 
-            public int getCountActive() {
-                if (countActive == -1) {
-                    int c = 0;
-                    for (int i = 0; i < activeSpecializations.length; i++) {
-                        if (activeSpecializations[i]) {
-                            c++;
-                        }
-                    }
-                    countActive = c;
-                }
-
-                return countActive;
-            }
-
             @Override
             public boolean equals(Object obj) {
                 if (this == obj) {
@@ -350,8 +353,22 @@ public class OperationsStatistics {
                 if (getClass() != obj.getClass()) {
                     return false;
                 }
-                SpecializationKey other = (SpecializationKey) obj;
+                SpecializationState other = (SpecializationState) obj;
                 return Arrays.equals(activeSpecializations, other.activeSpecializations) && instructionId == other.instructionId;
+            }
+
+            private int getCountActive() {
+                if (countActive == -1) {
+                    int c = 0;
+                    for (int i = 0; i < activeSpecializations.length; i++) {
+                        if (activeSpecializations[i]) {
+                            c++;
+                        }
+                    }
+                    countActive = c;
+                }
+
+                return countActive;
             }
 
             private int[] specializationIds() {
@@ -368,8 +385,8 @@ public class OperationsStatistics {
 
             private JSONObject serialize() {
                 JSONObject result = new JSONObject();
-                result.put("i", instructionId);
-                result.put("n", activeSpecializations.length);
+                result.put("id", instructionId);
+                result.put("count", activeSpecializations.length);
 
                 JSONArray activeSpecsData = new JSONArray();
                 for (int i = 0; i < activeSpecializations.length; i++) {
@@ -378,34 +395,34 @@ public class OperationsStatistics {
                     }
                 }
 
-                result.put("a", activeSpecsData);
+                result.put("active", activeSpecsData);
 
                 return result;
             }
 
-            private static SpecializationKey deserialize(GlobalOperationStatistics stats, JSONObject obj) {
-                int id = obj.getInt("i");
-                int count = obj.getInt("n");
+            private static SpecializationState deserialize(OperationRootNodeStatistics stats, JSONObject obj) {
+                int id = obj.getInt("id");
+                int count = obj.getInt("count");
                 boolean[] activeSpecializations = new boolean[count];
-                JSONArray activeSpecsData = obj.getJSONArray("a");
+                JSONArray activeSpecsData = obj.getJSONArray("active");
                 for (int i = 0; i < activeSpecsData.length(); i++) {
                     activeSpecializations[activeSpecsData.getInt(i)] = true;
                 }
 
-                return new SpecializationKey(stats, id, activeSpecializations);
+                return new SpecializationState(stats, id, activeSpecializations);
             }
 
             @Override
             public String toString() {
-                return "SpecializationKey [" + instructionId + ", " + Arrays.toString(activeSpecializations) + "]";
+                return "SpecializationState [" + instructionId + ", " + Arrays.toString(activeSpecializations) + "]";
             }
 
-            private static String makeName(GlobalOperationStatistics stats, int instructionId, boolean[] activeSpecializations) {
-                String s = stats.instrNames[instructionId] + ".q";
+            private static String makeName(OperationRootNodeStatistics stats, int instructionId, boolean[] activeSpecializations) {
+                String s = stats.instructionNames[instructionId] + ".q";
 
                 for (int i = 0; i < activeSpecializations.length; i++) {
                     if (activeSpecializations[i]) {
-                        s += "." + stats.specNames[instructionId][i];
+                        s += "." + stats.specializationNames[instructionId][i];
                     }
                 }
 
@@ -413,17 +430,17 @@ public class OperationsStatistics {
             }
         }
 
-        private static class InstructionSequenceKey extends PseudoInstruction {
+        private static class InstructionSequence extends PseudoInstruction {
             final int[] instructions;
 
-            InstructionSequenceKey(GlobalOperationStatistics stats, int[] instructions) {
+            InstructionSequence(OperationRootNodeStatistics stats, int[] instructions) {
                 super(makeName(stats, instructions), false);
                 this.instructions = instructions;
             }
 
             @Override
             public boolean equals(Object obj) {
-                return obj.getClass() == InstructionSequenceKey.class && Arrays.equals(((InstructionSequenceKey) obj).instructions, instructions);
+                return obj.getClass() == InstructionSequence.class && Arrays.equals(((InstructionSequence) obj).instructions, instructions);
             }
 
             @Override
@@ -433,109 +450,115 @@ public class OperationsStatistics {
 
             @Override
             public String toString() {
-                return "InstructionSequenceKey " + Arrays.toString(instructions);
+                return "InstructionSequence " + Arrays.toString(instructions);
             }
 
             public String toKey() {
                 return String.join(",", Arrays.stream(instructions).mapToObj(Integer::toString).toArray(String[]::new));
             }
 
-            public static InstructionSequenceKey fromKey(GlobalOperationStatistics stats, String key) {
+            public static InstructionSequence fromKey(OperationRootNodeStatistics stats, String key) {
                 int[] instructions = Arrays.stream(key.split(",")).mapToInt(Integer::parseInt).toArray();
-                return new InstructionSequenceKey(stats, instructions);
+                return new InstructionSequence(stats, instructions);
             }
 
-            public Object toString(String[] instrNames) {
-                return String.join(",", Arrays.stream(instructions).mapToObj(x -> instrNames[x]).toArray(String[]::new));
-            }
-
-            static String makeName(GlobalOperationStatistics stats, int[] instructions) {
+            static String makeName(OperationRootNodeStatistics stats, int[] instructions) {
                 String s = "si";
 
                 for (int i = 0; i < instructions.length; i++) {
-                    s += "." + stats.instrNames[instructions[i]];
+                    s += "." + stats.instructionNames[instructions[i]];
                 }
 
                 return s;
             }
         }
 
-        // quickening
-        private Map<SpecializationKey, Long> activeSpecializationsMap = new HashMap<>();
+        private static final class Counter<T> extends HashMap<T, Long> {
+            private static final long serialVersionUID = -3031871917813857590L;
 
-        // superinstructions
-        private Map<InstructionSequenceKey, Long> instructionSequencesMap = new HashMap<>();
+            private void increment(T key) {
+                merge(key, 1L, EnabledExecutionTracer::saturatingAdd);
+            }
+        }
 
-        // common / uncommon
-        private Map<PseudoInstruction, Long> numNodesWithInstruction = new HashMap<>();
-        private Map<PseudoInstruction, Set<Node>> nodesWithInstruction = new HashMap<>();
-        private Map<Node, Long> hitCount = new HashMap<>();
+        // Frequent specialization states are used for quickening.
+        private Counter<SpecializationState> specializationStatesSeen = new Counter<>();
+        // Frequent instruction sequences are used for superinstructions.
+        private Counter<InstructionSequence> instructionSequencesSeen = new Counter<>();
 
-        private List<Node> nodeStack = new ArrayList<>();
-        private Node curNode;
+        // An instruction frequency heuristic that prioritizes instructions used by "hot" nodes.
+        // Each instruction's frequency is calculated as the sum of all instructions executed across
+        // all of the root nodes that contain the instruction.
+        private Map<PseudoInstruction, Long> weightedInstructionFrequency = new HashMap<>();
+        private Counter<RootNode> instructionsExecuted = new Counter<>();
+        private Map<PseudoInstruction, Set<RootNode>> instructionUseSites = new HashMap<>();
 
+        // Models current tracing state for a root node. When a root node calls another root node,
+        // an instance of this class captures the current tracing state, allowing tracing to resume
+        // after the call.
+        private static final class TracingStackEntry {
+            private final RootNode rootNode;
+            private final int[] instrHistory;
+            private final int instrHistoryLength;
+
+            private TracingStackEntry(RootNode rootNode, int[] instrHistory, int instrHistoryLength) {
+                this.rootNode = rootNode;
+                this.instrHistory = instrHistory;
+                this.instrHistoryLength = instrHistoryLength;
+            }
+
+        }
+
+        private List<TracingStackEntry> stack = new ArrayList<>();
         private static final int MAX_SUPERINSTR_LEN = 8;
-        List<int[]> instrHistoryStack = new ArrayList<>();
-        List<Integer> instrHistoryLenStack = new ArrayList<>();
+        private RootNode currentRootNode;
         private int[] instrHistory = null;
         private int instrHistoryLen = 0;
 
-        private EnabledExecutionTracer(GlobalOperationStatistics stats) {
+        private EnabledExecutionTracer(OperationRootNodeStatistics stats) {
             this.stats = stats;
         }
 
         @Override
-        public void startFunction(Node node) {
-            if (curNode != null) {
-                nodeStack.add(curNode);
+        public void startRoot(RootNode rootNode) {
+            if (currentRootNode != null) {
+                stack.add(new TracingStackEntry(currentRootNode, instrHistory, instrHistoryLen));
             }
-            curNode = node;
-
-            if (instrHistory != null) {
-                instrHistoryStack.add(instrHistory);
-                instrHistoryLenStack.add(instrHistoryLen);
-            }
-
+            currentRootNode = rootNode;
             instrHistory = new int[MAX_SUPERINSTR_LEN];
             instrHistoryLen = 0;
         }
 
         @Override
-        public void endFunction(Node node) {
-            if (curNode != node) {
+        public void endRoot(RootNode rootNode) {
+            if (currentRootNode != rootNode) {
                 throw new AssertionError("Tracer start/stop mismatch");
             }
 
-            if (nodeStack.size() > 0) {
-                curNode = nodeStack.remove(nodeStack.size() - 1);
+            if (stack.size() > 0) {
+                TracingStackEntry entry = stack.remove(stack.size() - 1);
+                currentRootNode = entry.rootNode;
+                instrHistory = entry.instrHistory;
+                instrHistoryLen = entry.instrHistoryLength;
             } else {
-                curNode = null;
-            }
-
-            if (instrHistoryStack.size() > 0) {
-                instrHistory = instrHistoryStack.remove(instrHistoryStack.size() - 1);
-                instrHistoryLen = instrHistoryLenStack.remove(instrHistoryLenStack.size() - 1);
-            } else {
+                currentRootNode = null;
                 instrHistory = null;
+                instrHistoryLen = 0;
             }
         }
 
         private void encounterPseudoInstruction(PseudoInstruction instr) {
-            nodesWithInstruction.computeIfAbsent(instr, k -> new HashSet<>()).add(curNode);
+            instructionUseSites.computeIfAbsent(instr, k -> new HashSet<>()).add(currentRootNode);
         }
 
         @Override
-        public void traceInstruction(int bci, int id, int... arguments) {
-            hitCount.merge(curNode, 1L, EnabledExecutionTracer::saturatingAdd);
-
+        public void traceInstruction(int bci, int id, boolean isVariadic) {
+            instructionsExecuted.increment(currentRootNode);
             encounterPseudoInstruction(new RegularInstruction(stats, id));
 
-            boolean isBranch = arguments[0] != 0;
-            boolean isVariadic = arguments[1] != 0;
-
-            // SI finding
+            // Trace instruction sequences for superinstructions.
             if (isVariadic) {
-                // we don't support variadic
+                // We don't support variadic superinstructions.
                 instrHistoryLen = 0;
             } else {
                 if (instrHistoryLen == MAX_SUPERINSTR_LEN) {
@@ -547,8 +570,8 @@ public class OperationsStatistics {
 
                 for (int i = 0; i < instrHistoryLen - 1; i++) {
                     int[] curHistory = Arrays.copyOfRange(instrHistory, i, instrHistoryLen);
-                    InstructionSequenceKey key = new InstructionSequenceKey(stats, curHistory);
-                    instructionSequencesMap.merge(key, 1L, EnabledExecutionTracer::saturatingAdd);
+                    InstructionSequence key = new InstructionSequence(stats, curHistory);
+                    instructionSequencesSeen.increment(key);
                     encounterPseudoInstruction(key);
                 }
             }
@@ -563,18 +586,10 @@ public class OperationsStatistics {
             }
         }
 
-        private static int saturatingAdd(int x, int y) {
-            try {
-                return Math.addExact(x, y);
-            } catch (ArithmeticException e) {
-                return Integer.MAX_VALUE;
-            }
-        }
-
         @Override
         public void traceActiveSpecializations(int bci, int id, boolean[] activeSpecializations) {
             if (activeSpecializations.length < 2) {
-                // we do not care for single specialisation instructions
+                // Instructions with one specialization cannot be quickened.
                 return;
             }
 
@@ -590,14 +605,9 @@ public class OperationsStatistics {
                 return;
             }
 
-            SpecializationKey key = new SpecializationKey(stats, id, activeSpecializations);
-            Long l = activeSpecializationsMap.get(key);
+            SpecializationState key = new SpecializationState(stats, id, activeSpecializations);
+            specializationStatesSeen.increment(key);
             encounterPseudoInstruction(key);
-            if (l == null) {
-                activeSpecializationsMap.put(key, 1L);
-            } else if (l != Long.MAX_VALUE) {
-                activeSpecializationsMap.put(key, l + 1);
-            }
         }
 
         @Override
@@ -610,91 +620,93 @@ public class OperationsStatistics {
         }
 
         private void merge(EnabledExecutionTracer other) {
-            other.activeSpecializationsMap.forEach((k, v) -> {
-                Long existing = this.activeSpecializationsMap.get(k);
+            other.specializationStatesSeen.forEach((k, v) -> {
+                Long existing = this.specializationStatesSeen.get(k);
                 if (existing == null) {
-                    this.activeSpecializationsMap.put(k, v);
+                    this.specializationStatesSeen.put(k, v);
                 } else if (Long.MAX_VALUE - existing > v) {
-                    this.activeSpecializationsMap.put(k, existing + v);
+                    this.specializationStatesSeen.put(k, existing + v);
                 } else {
-                    this.activeSpecializationsMap.put(k, Long.MAX_VALUE);
+                    this.specializationStatesSeen.put(k, Long.MAX_VALUE);
                 }
             });
 
-            other.nodesWithInstruction.forEach((k, v) -> {
-                nodesWithInstruction.computeIfAbsent(k, k2 -> new HashSet<>()).addAll(v);
+            other.instructionUseSites.forEach((k, v) -> {
+                instructionUseSites.computeIfAbsent(k, k2 -> new HashSet<>()).addAll(v);
             });
-            other.numNodesWithInstruction.forEach((k, v) -> {
-                numNodesWithInstruction.merge(k, v, EnabledExecutionTracer::saturatingAdd);
+            other.weightedInstructionFrequency.forEach((k, v) -> {
+                weightedInstructionFrequency.merge(k, v, EnabledExecutionTracer::saturatingAdd);
             });
-            other.instructionSequencesMap.forEach((k, v) -> {
-                instructionSequencesMap.merge(k, v, EnabledExecutionTracer::saturatingAdd);
+            other.instructionSequencesSeen.forEach((k, v) -> {
+                instructionSequencesSeen.merge(k, v, EnabledExecutionTracer::saturatingAdd);
             });
-            other.hitCount.forEach((k, v) -> {
-                hitCount.merge(k, v, EnabledExecutionTracer::saturatingAdd);
+            other.instructionsExecuted.forEach((k, v) -> {
+                instructionsExecuted.merge(k, v, EnabledExecutionTracer::saturatingAdd);
             });
         }
 
-        private void calcNumNodesWithInstruction(GlobalOperationStatistics stats) {
-            nodesWithInstruction.forEach((k, v) -> {
-                long totalCount = v.stream().map(hitCount::get).filter(x -> x != null).reduce(0L, EnabledExecutionTracer::saturatingAdd);
-                numNodesWithInstruction.merge(k, totalCount, EnabledExecutionTracer::saturatingAdd);
+        private void calculateWeightedInstructionFrequency() {
+            instructionUseSites.forEach((instr, nodes) -> {
+                // Bias each instruction's frequency based on how "hot" the nodes containing the
+                // instruction are (i.e., how many instructions they execute).
+                long totalCount = nodes.stream().map(instructionsExecuted::get).filter(x -> x != null).reduce(0L, EnabledExecutionTracer::saturatingAdd);
+                weightedInstructionFrequency.merge(instr, totalCount, EnabledExecutionTracer::saturatingAdd);
             });
-            nodesWithInstruction.clear();
+            instructionUseSites.clear();
         }
 
-        private JSONObject serialize(GlobalOperationStatistics stats) {
+        private JSONObject serialize() {
             JSONObject result = new JSONObject();
 
             JSONArray activeSpecializationsData = new JSONArray();
-            activeSpecializationsMap.forEach((k, v) -> {
+            specializationStatesSeen.forEach((k, v) -> {
                 JSONObject activeSpecData = k.serialize();
-                activeSpecData.put("c", v);
+                activeSpecData.put("count", v);
                 activeSpecializationsData.put(activeSpecData);
             });
-            result.put("as", activeSpecializationsData);
+            result.put("activeSpecializations", activeSpecializationsData);
 
-            JSONObject ni = new JSONObject();
-            calcNumNodesWithInstruction(stats);
-            numNodesWithInstruction.forEach((k, v) -> {
-                ni.put(k.serialize(stats), v);
+            JSONObject instructionFrequency = new JSONObject();
+            calculateWeightedInstructionFrequency();
+            weightedInstructionFrequency.forEach((k, v) -> {
+                instructionFrequency.put(k.serializedName(), v);
             });
-            result.put("ni", ni);
+            result.put("instructionFrequency", instructionFrequency);
 
             JSONObject instructionSequences = new JSONObject();
-            instructionSequencesMap.forEach((k, v) -> {
+            instructionSequencesSeen.forEach((k, v) -> {
                 instructionSequences.put(k.toKey(), v);
             });
-            result.put("is", instructionSequences);
+            result.put("instructionSequences", instructionSequences);
 
             return result;
         }
 
-        private static EnabledExecutionTracer deserialize(GlobalOperationStatistics stats, JSONObject obj) {
+        private static EnabledExecutionTracer deserialize(OperationRootNodeStatistics stats, JSONObject obj) {
             EnabledExecutionTracer inst = new EnabledExecutionTracer(stats);
-            JSONArray activeSpecializationsData = obj.getJSONArray("as");
+            JSONArray activeSpecializationsData = obj.getJSONArray("activeSpecializations");
 
             for (int i = 0; i < activeSpecializationsData.length(); i++) {
                 JSONObject activeSpecData = activeSpecializationsData.getJSONObject(i);
-                long count = activeSpecData.getLong("c");
-                SpecializationKey key = SpecializationKey.deserialize(stats, activeSpecData);
-                inst.activeSpecializationsMap.put(key, count);
+                long count = activeSpecData.getLong("count");
+                SpecializationState key = SpecializationState.deserialize(stats, activeSpecData);
+                inst.specializationStatesSeen.put(key, count);
             }
 
-            JSONObject ni = obj.getJSONObject("ni");
-            for (String key : ni.keySet()) {
-                inst.numNodesWithInstruction.put(PseudoInstruction.parse(key), ni.getLong(key));
+            JSONObject instructionFrequency = obj.getJSONObject("instructionFrequency");
+            for (String key : instructionFrequency.keySet()) {
+                inst.weightedInstructionFrequency.put(PseudoInstruction.parse(key), instructionFrequency.getLong(key));
             }
 
-            JSONObject instructionSequences = obj.getJSONObject("is");
+            JSONObject instructionSequences = obj.getJSONObject("instructionSequences");
             for (String key : instructionSequences.keySet()) {
-                inst.instructionSequencesMap.put(InstructionSequenceKey.fromKey(stats, key), instructionSequences.getLong(key));
+                inst.instructionSequencesSeen.put(InstructionSequence.fromKey(stats, key), instructionSequences.getLong(key));
             }
 
             return inst;
         }
 
-        private static void orderDecisions(List<Decision> output, List<Decision> input, int expectedCount, GlobalOperationStatistics stats) {
+        private static void orderDecisions(List<Decision> output, List<Decision> input, int expectedCount, OperationRootNodeStatistics stats) {
             int outputCount = input.size() < expectedCount ? input.size() : expectedCount;
 
             for (int i = 0; i < outputCount; i++) {
@@ -710,19 +722,19 @@ public class OperationsStatistics {
 
         private static final int NUM_DECISIONS = 30;
 
-        public JSONArray serializeDecisions(GlobalOperationStatistics stats, PrintWriter dumpWriter) {
+        public JSONArray serializeDecisions(OperationRootNodeStatistics stats, PrintWriter dumpWriter) {
             JSONArray result = new JSONArray();
             result.put("This file is autogenerated by the Operations DSL.");
             result.put("Do not modify, as it will be overwritten when running with tracing support.");
             result.put("Use the overrides file to alter the optimisation decisions.");
 
-            calcNumNodesWithInstruction(stats);
+            calculateWeightedInstructionFrequency();
 
             List<Decision> decisions = new ArrayList<>();
-            activeSpecializationsMap.entrySet().forEach(e -> {
+            specializationStatesSeen.entrySet().forEach(e -> {
                 decisions.add(new Decision.Quicken(e.getKey().instructionId, e.getKey().specializationIds(), e.getValue()));
             });
-            instructionSequencesMap.entrySet().forEach(e -> {
+            instructionSequencesSeen.entrySet().forEach(e -> {
                 decisions.add(new Decision.SuperInstruction(e.getKey().instructions, e.getValue()));
             });
 
@@ -737,8 +749,8 @@ public class OperationsStatistics {
 
             // the common / uncommon instructions don't compete with other decisions,
             // so we add them at the end
-            numNodesWithInstruction.entrySet().stream().map(e -> {
-                Decision d = new Decision.CommonInstruction(e.getKey().name(stats), e.getValue(), e.getKey().isRegular());
+            weightedInstructionFrequency.entrySet().stream().map(e -> {
+                Decision d = new Decision.CommonInstruction(e.getKey().getName(), e.getValue(), e.getKey().isRegular());
                 for (Decision pre : acceptedDecisions) {
                     d.acceptedBefore(pre, stats);
                 }
@@ -747,7 +759,7 @@ public class OperationsStatistics {
 
             if (dumpWriter != null) {
                 dumpWriter.println("======================== OPERATION DSL TRACING DECISIONS ======================== ");
-                dumpWriter.println("# For " + stats.opsClass.getSimpleName());
+                dumpWriter.println("# For " + stats.operationClass.getSimpleName());
                 dumpWriter.println();
             }
 
@@ -770,7 +782,7 @@ public class OperationsStatistics {
 
         @Override
         public String toString() {
-            return "EnabledExecutionTracer [" + activeSpecializationsMap + "]";
+            return "EnabledExecutionTracer [" + specializationStatesSeen + "]";
         }
 
     }
