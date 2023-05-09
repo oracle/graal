@@ -77,7 +77,6 @@ import com.oracle.truffle.api.operation.Variadic;
                 boxingEliminationTypes = {long.class}, //
                 decisionsFile = "decisions.json")
 @GenerateAOT
-@GenerateUncached
 @OperationProxy(SomeOperationNode.class)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScAnd", continueWhen = true)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScOr", continueWhen = false)

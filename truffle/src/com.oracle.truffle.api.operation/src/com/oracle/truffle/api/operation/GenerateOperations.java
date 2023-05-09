@@ -50,21 +50,35 @@ import com.oracle.truffle.api.TruffleLanguage;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface GenerateOperations {
-
+    // The TruffleLanguage for this node.
     Class<? extends TruffleLanguage<?>> languageClass();
 
-    String decisionsFile() default "";
-
-    String[] decisionOverrideFiles() default {};
-
-    Class<?>[] boxingEliminationTypes() default {};
-
-    boolean forceTracing() default false;
-
+    // Whether to generate a yield operation to support coroutines.
     boolean enableYield() default false;
 
+    // Whether to generate serialization/deserialization logic.
     boolean enableSerialization() default false;
 
+    // Whether to generate a baseline interpreter that does not use specialization.
+    // The node will transition to a specializing interpreter when it is hot enough.
+    boolean enableBaselineInterpreter() default false;
+
+    // Path to a file containing optimization decisions. This file is generated using tracing on a
+    // representative corpus of code.
+    String decisionsFile() default "";
+
+    // Path to files with manually-provided optimization decisions.
+    String[] decisionOverrideFiles() default {};
+
+    // Whether to build the interpreter with tracing. Can also be set with the
+    // truffle.dsl.OperationsEnableTracing option.
+    boolean forceTracing() default false;
+
+    // Types the interpreter should attempt to avoid boxing.
+    Class<?>[] boxingEliminationTypes() default {};
+
+    // Whether to use Unsafe array accesses. Unsafe accesses are optimized, since they do not
+    // perform array bounds checks.
     boolean allowUnsafe() default false;
 
 }

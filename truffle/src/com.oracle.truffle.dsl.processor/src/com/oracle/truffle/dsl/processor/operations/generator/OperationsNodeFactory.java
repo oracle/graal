@@ -181,7 +181,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.createDocBuilder().startDoc().lines(model.infodump()).end();
 
         // Define the interpreter implementations.
-        if (model.generateUncached) {
+        if (model.enableBaselineInterpreter) {
             operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER0).create());
         }
         operationNodeGen.addAll(createInterpreterTiers());
@@ -292,7 +292,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         if (model.hasBoxingElimination()) {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "localBoxingState")));
         }
-        if (model.generateUncached) {
+        if (model.enableBaselineInterpreter) {
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
         }
         if (model.enableTracing) {
@@ -416,13 +416,13 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // The base copy method performs a shallow copy of all fields.
         // Some fields should be manually reinitialized to default values.
-        b.statement("clone.currentTier = " + (model.generateUncached ? InterpreterTier.TIER0.name() : InterpreterTier.TIER1.name()));
+        b.statement("clone.cachedNodes = null"); // cachedNodes will be set on first execution
 
-        if (model.generateUncached) {
-            b.statement("clone.cachedNodes = null");
+        if (model.enableBaselineInterpreter) {
             b.statement("clone.uncachedExecuteCount = 16");
+            b.statement("clone.currentTier = " + InterpreterTier.TIER0.name());
         } else {
-            b.statement("clone.cachedNodes = clone.createCachedNodes()");
+            b.statement("clone.currentTier = " + InterpreterTier.TIER1.name());
         }
 
         b.startReturn().string("clone").end();
@@ -452,7 +452,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private List<InterpreterTier> getInterpreterTiers() {
         List<InterpreterTier> tiers = new ArrayList<>();
-        if (model.generateUncached) {
+        if (model.enableBaselineInterpreter) {
             tiers.add(InterpreterTier.TIER0);
         }
         tiers.add(InterpreterTier.TIER1);
@@ -476,7 +476,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "currentTier");
         fld = compFinal(fld);
 
-        if (model.generateUncached) {
+        if (model.enableBaselineInterpreter) {
             fld.createInitBuilder().string(InterpreterTier.TIER0.name());
         } else {
             fld.createInitBuilder().string(InterpreterTier.TIER1.name());
@@ -2474,11 +2474,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             b.startAssign("result.numNodes").string("numNodes").end();
-            if (!model.generateUncached) {
-                // If we don't start out in uncached, we need to initialize the cached nodes from
-                // the start.
-                b.statement("result.cachedNodes = result.createCachedNodes()");
-            }
 
             if (model.enableYield) {
                 b.startFor().string("ContinuationLocation location : continuationLocations").end().startBlock();
@@ -2490,11 +2485,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startAssign("result.handlers").string("Arrays.copyOf(exHandlers, exHandlerCount)").end();
             b.startAssign("result.numLocals").string("numLocals").end();
             b.startAssign("result.buildIndex").string("buildIndex").end();
-
-            if (model.hasBoxingElimination() && !model.generateUncached) {
-                // need to initialize it now
-                b.startAssign("result.localBoxingState").string("new byte[numLocals]").end();
-            }
 
             b.startAssert().string("builtNodes.size() == buildIndex").end();
             b.statement("builtNodes.add(result)");
@@ -4384,7 +4374,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 el.add(createSetBoxing(instr));
             }
 
-            if (OperationsNodeFactory.this.model.generateUncached) {
+            if (OperationsNodeFactory.this.model.enableBaselineInterpreter) {
                 // We inject a method to ensure the uncached entrypoint is statically known. We do
                 // not need this method on the base class.
                 for (ExecutableElement met : ElementFilter.methodsIn(el.getEnclosedElements())) {

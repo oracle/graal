@@ -101,6 +101,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
         model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();
         model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableSerialization", true).getValue();
+        model.enableBaselineInterpreter = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableBaselineInterpreter", true).getValue();
         model.allowUnsafe = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "allowUnsafe", true).getValue();
 
         model.addDefault();
@@ -203,12 +204,6 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         }
 
         // TODO: metadata
-
-        // find @GenerateUncached
-        AnnotationMirror generateUncachedMirror = ElementUtils.findAnnotationMirror(typeElement, types.GenerateUncached);
-        if (generateUncachedMirror != null) {
-            model.generateUncached = true;
-        }
 
         // find and bind type system
         AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);
