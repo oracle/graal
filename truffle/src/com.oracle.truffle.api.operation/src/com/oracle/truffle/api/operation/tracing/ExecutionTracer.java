@@ -44,41 +44,25 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.tracing.OperationsStatistics.DisabledExecutionTracer;
 
 // per-context per-ops per-thread
 public abstract class ExecutionTracer {
-
-    // TODO refactor this to store everything in a class
-    // TODO refactor using an annotation instead of a static class.
-    // target file name
-    static final Map<Class<?>, String> DECISIONS_FILE_MAP = new HashMap<>();
-    // operation class ->
-    static final Map<Class<?>, String[]> INSTR_NAMES_MAP = new HashMap<>();
-    // operation class -> instruction -> specialization
-    static final Map<Class<?>, String[][]> SPECIALIZATION_NAMES_MAP = new HashMap<>();
-
     public static ExecutionTracer get(Class<?> operationsClass) {
         OperationsStatistics stats = OperationsStatistics.STATISTICS.get();
         if (stats == null) {
             return DisabledExecutionTracer.INSTANCE;
         } else {
-            return stats.getStatsistics(operationsClass).getTracer();
+            return stats.getStatistics(operationsClass).getTracer();
         }
     }
 
-    public static synchronized void initialize(Class<?> opsClass, String decisionsFile, String[] instrNames, String[][] specNames) {
-        DECISIONS_FILE_MAP.put(opsClass, decisionsFile);
-        INSTR_NAMES_MAP.put(opsClass, instrNames);
-        SPECIALIZATION_NAMES_MAP.put(opsClass, specNames);
-    }
+    public abstract void startRoot(RootNode rootNode);
 
-    // TODO rename startRoot
-    public abstract void startFunction(Node node);
+    public abstract void endRoot(RootNode rootNode);
 
-    public abstract void endFunction(Node node);
-
-    public abstract void traceInstruction(int bci, int id, int... arguments);
+    public abstract void traceInstruction(int bci, int id, boolean isVariadic);
 
     public abstract void traceActiveSpecializations(int bci, int id, boolean[] activeSpecializations);
 

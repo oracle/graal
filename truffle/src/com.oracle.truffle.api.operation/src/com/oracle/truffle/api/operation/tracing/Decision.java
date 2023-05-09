@@ -45,7 +45,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.operation.tracing.OperationsStatistics.GlobalOperationStatistics;
+import com.oracle.truffle.api.operation.tracing.OperationsStatistics.OperationRootNodeStatistics;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -61,20 +61,20 @@ abstract class Decision {
 
     abstract double value();
 
-    abstract String id(GlobalOperationStatistics stats);
+    abstract String id(OperationRootNodeStatistics stats);
 
-    protected abstract String prettyPrint(GlobalOperationStatistics stats, double normalizationValue);
+    protected abstract String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue);
 
-    protected String createsInstruction(GlobalOperationStatistics stats) {
+    protected String createsInstruction(OperationRootNodeStatistics stats) {
         return null;
     }
 
     @SuppressWarnings("unused")
-    boolean acceptedBefore(Decision decision, GlobalOperationStatistics stats) {
+    boolean acceptedBefore(Decision decision, OperationRootNodeStatistics stats) {
         return false;
     }
 
-    JSONObject serialize(GlobalOperationStatistics stats, double normalizationValue) {
+    JSONObject serialize(OperationRootNodeStatistics stats, double normalizationValue) {
         JSONObject obj = new JSONObject();
         obj.put("_comment", "value: " + value() / normalizationValue);
         obj.put("type", type);
@@ -100,15 +100,15 @@ abstract class Decision {
         }
 
         @Override
-        String id(GlobalOperationStatistics stats) {
-            String s = Arrays.stream(specializations).mapToObj(x -> stats.specNames[instruction][x]).collect(Collectors.joining(","));
-            return String.format("quicken:%s:%s", stats.instrNames[instruction], s);
+        String id(OperationRootNodeStatistics stats) {
+            String s = Arrays.stream(specializations).mapToObj(x -> stats.specializationNames[instruction][x]).collect(Collectors.joining(","));
+            return String.format("quicken:%s:%s", stats.instructionNames[instruction], s);
         }
 
         @Override
-        JSONObject serialize(GlobalOperationStatistics stats, double norm) {
+        JSONObject serialize(OperationRootNodeStatistics stats, double norm) {
             JSONObject result = super.serialize(stats, norm);
-            String instrName = stats.instrNames[instruction];
+            String instrName = stats.instructionNames[instruction];
             String shortName;
             if (instrName.startsWith("c.")) {
                 shortName = instrName.substring(2);
@@ -121,32 +121,32 @@ abstract class Decision {
             JSONArray specsData = new JSONArray();
             result.put("specializations", specsData);
             for (int i : specializations) {
-                specsData.put(stats.specNames[instruction][i]);
+                specsData.put(stats.specializationNames[instruction][i]);
             }
 
             return result;
         }
 
         @Override
-        protected String prettyPrint(GlobalOperationStatistics stats, double normalizationValue) {
+        protected String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("Quicken ").append(id(stats)).append('\n');
             sb.append("    value: ").append(value() / normalizationValue).append('\n');
             sb.append("    total execution count: ").append(executionCount).append('\n');
-            sb.append("    instruction: ").append(stats.instrNames[instruction]).append('\n');
+            sb.append("    instruction: ").append(stats.instructionNames[instruction]).append('\n');
             for (int i = 0; i < specializations.length; i++) {
-                sb.append("    specialization[").append(i).append("]: ").append(stats.specNames[instruction][specializations[i]]).append('\n');
+                sb.append("    specialization[").append(i).append("]: ").append(stats.specializationNames[instruction][specializations[i]]).append('\n');
             }
 
             return sb.toString();
         }
 
         @Override
-        protected String createsInstruction(GlobalOperationStatistics stats) {
-            String s = stats.instrNames[instruction] + ".q";
+        protected String createsInstruction(OperationRootNodeStatistics stats) {
+            String s = stats.instructionNames[instruction] + ".q";
 
-            List<String> specs = Arrays.stream(specializations).mapToObj(x -> stats.specNames[instruction][x]).collect(Collectors.toList());
+            List<String> specs = Arrays.stream(specializations).mapToObj(x -> stats.specializationNames[instruction][x]).collect(Collectors.toList());
             specs.sort(null);
 
             for (String spec : specs) {
@@ -173,12 +173,12 @@ abstract class Decision {
         }
 
         @Override
-        String id(GlobalOperationStatistics stats) {
-            return String.format("si:%s", Arrays.stream(instructions).mapToObj(x -> stats.instrNames[x]).collect(Collectors.joining(",")));
+        String id(OperationRootNodeStatistics stats) {
+            return String.format("si:%s", Arrays.stream(instructions).mapToObj(x -> stats.instructionNames[x]).collect(Collectors.joining(",")));
         }
 
         @Override
-        boolean acceptedBefore(Decision decision, GlobalOperationStatistics stats) {
+        boolean acceptedBefore(Decision decision, OperationRootNodeStatistics stats) {
             boolean changed = false;
             if (decision instanceof SuperInstruction) {
                 SuperInstruction si = (SuperInstruction) decision;
@@ -199,38 +199,38 @@ abstract class Decision {
         }
 
         @Override
-        JSONObject serialize(GlobalOperationStatistics stats, double norm) {
+        JSONObject serialize(OperationRootNodeStatistics stats, double norm) {
             JSONObject result = super.serialize(stats, norm);
 
             JSONArray instrNames = new JSONArray();
             result.put("instructions", instrNames);
             for (int i : instructions) {
-                instrNames.put(stats.instrNames[i]);
+                instrNames.put(stats.instructionNames[i]);
             }
 
             return result;
         }
 
         @Override
-        protected String prettyPrint(GlobalOperationStatistics stats, double normalizationValue) {
+        protected String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("SuperInstruction ").append(id(stats)).append('\n');
             sb.append("    value: ").append(value() / normalizationValue).append('\n');
             sb.append("    total execution count: ").append(executionCount).append('\n');
             for (int i = 0; i < instructions.length; i++) {
-                sb.append("    instruction[").append(i).append("]: ").append(stats.instrNames[instructions[i]]).append('\n');
+                sb.append("    instruction[").append(i).append("]: ").append(stats.instructionNames[instructions[i]]).append('\n');
             }
 
             return sb.toString();
         }
 
         @Override
-        protected String createsInstruction(GlobalOperationStatistics stats) {
+        protected String createsInstruction(OperationRootNodeStatistics stats) {
             String s = "si";
 
             for (int i = 0; i < instructions.length; i++) {
-                s += "." + stats.instrNames[instructions[i]];
+                s += "." + stats.instructionNames[instructions[i]];
             }
 
             return s;
@@ -259,7 +259,7 @@ abstract class Decision {
         }
 
         @Override
-        boolean acceptedBefore(Decision decision, GlobalOperationStatistics stats) {
+        boolean acceptedBefore(Decision decision, OperationRootNodeStatistics stats) {
             if (instruction.equals(decision.createsInstruction(stats))) {
                 doCount = true;
                 return true;
@@ -269,19 +269,19 @@ abstract class Decision {
         }
 
         @Override
-        JSONObject serialize(GlobalOperationStatistics stats, double norm) {
+        JSONObject serialize(OperationRootNodeStatistics stats, double norm) {
             JSONObject result = super.serialize(stats, 1.0);
             result.put("instruction", instruction);
             return result;
         }
 
         @Override
-        String id(GlobalOperationStatistics stats) {
+        String id(OperationRootNodeStatistics stats) {
             return "c:" + instruction;
         }
 
         @Override
-        protected String prettyPrint(GlobalOperationStatistics stats, double normalizationValue) {
+        protected String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("Common ").append(id(stats)).append('\n');

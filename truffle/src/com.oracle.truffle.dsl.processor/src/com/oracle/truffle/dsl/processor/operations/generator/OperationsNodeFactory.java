@@ -180,8 +180,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Print a summary of the model in a docstring at the start.
         operationNodeGen.createDocBuilder().startDoc().lines(model.infodump()).end();
 
-        // Define the interpreter implementations. The root node defines fields for the current
-        // interpreter and for each variant.
+        // Define the interpreter implementations.
         if (model.generateUncached) {
             operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER0).create());
         }
@@ -205,17 +204,11 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Define the classes that model instruction data (e.g., cache data, continuation data).
         operationNodeGen.add(new BoxableInterfaceFactory().create());
 
-        // Define a static singleton object for instructions that don't have any data.
-        operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(int[].class), "NO_DATA = new int[0]"));
-
         // Define the classes that implement continuations (yield).
         if (model.enableYield) {
             operationNodeGen.add(new ContinuationRootFactory().create());
             operationNodeGen.add(new ContinuationLocationImplFactory().create());
         }
-
-        // Define a static block with any necessary initialization code.
-        operationNodeGen.add(createStaticConstructor());
 
         // Define the generated node's constructor.
         operationNodeGen.add(createConstructor());
@@ -256,9 +249,14 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
         }
 
+        // Define an Unsafe singleton, if Unsafe is allowed.
         if (model.allowUnsafe) {
-            // Define Unsafe singleton, if enabled
             operationNodeGen.addAll(GeneratorUtils.createUnsafeSingleton());
+        }
+
+        // Generate a {@link @TracingConfiguration} annotation, if tracing is enabled.
+        if (model.enableTracing) {
+            operationNodeGen.addAnnotationMirror(createTracingMetadata());
         }
 
         // Define helpers used by the continueAt methods to access arrays.
@@ -487,41 +485,29 @@ public class OperationsNodeFactory implements ElementHelpers {
         return fld;
     }
 
-    private CodeExecutableElement createStaticConstructor() {
-        CodeExecutableElement ctor = new CodeExecutableElement(Set.of(STATIC), null, "<cinit>");
-        CodeTreeBuilder b = ctor.createBuilder();
+    private CodeAnnotationMirror createTracingMetadata() {
+        CodeAnnotationMirror mir = new CodeAnnotationMirror(types.OperationTracingMetadata);
 
-        if (model.enableTracing) {
-            b.startStatement().startStaticCall(types.ExecutionTracer, "initialize");
-            b.typeLiteral(model.templateType.asType());
-            b.doubleQuote(model.decisionsFilePath);
+        mir.setElementValue("decisionsFile", new CodeAnnotationValue(model.decisionsFilePath));
 
-            b.startNewArray(arrayOf(context.getType(String.class)), null);
-            b.string("null");
-            for (InstructionModel instruction : model.getInstructions()) {
-                b.doubleQuote(instruction.name);
-            }
-            b.end();
+        List<CodeAnnotationValue> instructionNames = model.getInstructions().stream().map(instr -> new CodeAnnotationValue(instr.name)).collect(Collectors.toList());
+        // instruction opcodes start at 1. Insert a placeholder element to simplify indexing.
+        instructionNames.add(0, new CodeAnnotationValue("NO_INSTRUCTION"));
+        mir.setElementValue("instructionNames", new CodeAnnotationValue(instructionNames));
 
-            b.startNewArray(arrayOf(context.getType(String[].class)), null);
-            b.string("null");
-            for (InstructionModel instruction : model.getInstructions()) {
-                if (instruction.kind == InstructionKind.CUSTOM || instruction.kind == InstructionKind.CUSTOM_SHORT_CIRCUIT) {
-                    b.startNewArray(arrayOf(context.getType(String.class)), null);
-                    for (SpecializationData spec : instruction.nodeData.getSpecializations()) {
-                        b.doubleQuote(spec.getId());
-                    }
-                    b.end();
-                } else {
-                    b.string("null");
-                }
-            }
-            b.end();
+        List<CodeAnnotationValue> specializationNames = model.getInstructions().stream().filter(instr -> instr.isCustomInstruction()).map(instr -> {
+            CodeAnnotationMirror instructionSpecializationNames = new CodeAnnotationMirror(types.OperationTracingMetadata_SpecializationNames);
 
-            b.end(2);
-        }
+            instructionSpecializationNames.setElementValue("instruction", new CodeAnnotationValue(instr.name));
 
-        return ctor;
+            List<CodeAnnotationValue> specializations = instr.nodeData.getSpecializations().stream().map(spec -> new CodeAnnotationValue(spec.getId())).collect(Collectors.toList());
+            instructionSpecializationNames.setElementValue("specializations", new CodeAnnotationValue(specializations));
+
+            return new CodeAnnotationValue(instructionSpecializationNames);
+        }).collect(Collectors.toList());
+        mir.setElementValue("specializationNames", new CodeAnnotationValue(specializationNames));
+
+        return mir;
     }
 
     private CodeExecutableElement createConstructor() {
@@ -2541,7 +2527,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             String[] args = switch (operation.kind) {
                 case LOAD_LOCAL -> new String[]{"((OperationLocalImpl) arg0).index"};
                 case STORE_LOCAL, LOAD_LOCAL_MATERIALIZED, STORE_LOCAL_MATERIALIZED -> new String[]{"((OperationLocalImpl) operationStack[operationSp].data).index"};
-                case RETURN -> new String[]{"NO_DATA"};
+                case RETURN -> new String[]{};
                 case LOAD_ARGUMENT -> new String[]{"arg0"};
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(arg0)"};
                 case BRANCH -> {
@@ -2953,6 +2939,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.string("withSource ? Arrays.copyOf(sourceInfo, sourceInfoIndex) : null");
                         b.string("Arrays.copyOf(exHandlers, exHandlerCount)");
                         b.string("unresolvedLabelsByIndex");
+                        if (model.enableTracing) {
+                            b.string("basicBlockBoundary");
+                        }
                         b.end(2);
 
                         for (CodeVariableElement field : builderContextSensitiveState) {
@@ -3013,7 +3002,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.statement("System.arraycopy(context.handlerBc, 0, bc, bci, context.handlerBc.length)");
             if (model.enableTracing) {
-                b.statement("System.arraycopy(context.handlerBasicBlockBoundary, 0, basicBlockBoundary, bci, context.handlerBasicBlockBoundary.length)");
+                b.statement("System.arraycopy(context.handlerBasicBlockBoundary, 0, basicBlockBoundary, bci, context.handlerBc.length + 1)");
             }
 
             b.startFor().string("int handlerBci = 0; handlerBci < handlerBc.length;").end().startBlock();
@@ -3214,24 +3203,24 @@ public class OperationsNodeFactory implements ElementHelpers {
             int variadicCount = model.popVariadicInstruction.length - 1;
 
             b.startIf().string("count <= ").string(variadicCount).end().startBlock();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + count, NO_DATA)").end();
+            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + count)").end();
             b.end().startElseBlock();
 
             b.startIf().string("curStack + 1 > maxStack").end().startBlock();
             b.statement("maxStack = curStack + 1");
             b.end();
             b.statement("int elementCount = count + 1");
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.storeNullInstruction)).string(", NO_DATA)").end();
+            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.storeNullInstruction)).end(2);
 
             b.startWhile().string("elementCount > 8").end().startBlock();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[variadicCount])).string(", NO_DATA)").end();
+            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.popVariadicInstruction[variadicCount])).end(2);
             b.statement("elementCount -= 7");
             b.end();
 
             b.startIf().string("elementCount > 0").end().startBlock();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + elementCount, NO_DATA)").end();
+            b.startStatement().startCall("doEmitInstruction").startGroup().tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + elementCount").end(3);
             b.end();
-            b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.mergeVariadicInstruction)).string(", NO_DATA)").end();
+            b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.mergeVariadicInstruction)).end(2);
             b.end();
 
             b.statement("curStack -= count - 1");
@@ -3648,13 +3637,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (model.enableTracing) {
                 b.declaration(context.getType(boolean[].class), "basicBlockBoundary", "$this.basicBlockBoundary");
 
-                b.declaration(types.ExecutionTracer, "tracer");
+                b.declaration(types.ExecutionTracer, "tracer",
+                                CodeTreeBuilder.createBuilder().startStaticCall(types.ExecutionTracer, "get").typeLiteral(operationNodeGen.asType()).end());
 
-                b.startAssign("tracer").startStaticCall(types.ExecutionTracer, "get");
-                b.typeLiteral(model.templateType.asType());
-                b.end(2);
-
-                b.statement("tracer.startFunction($this)");
+                b.statement("tracer.startRoot($this)");
 
                 b.startTryBlock();
             }
@@ -3691,8 +3677,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.startStatement().startCall("tracer.traceInstruction");
                     b.string("bci");
                     b.string(instr.id);
-                    b.string(instr.isControlFlow() ? "1" : "0");
-                    b.string((instr.signature != null && instr.signature.isVariadic) ? "1" : "0");
+                    b.string(String.valueOf(instr.signature != null && instr.signature.isVariadic));
                     b.end(2);
                 }
 
@@ -3896,7 +3881,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             if (model.enableTracing) {
                 b.end().startFinallyBlock();
-                b.statement("tracer.endFunction($this)");
+                b.statement("tracer.endRoot($this)");
                 b.end();
             }
 
@@ -3912,19 +3897,13 @@ public class OperationsNodeFactory implements ElementHelpers {
             TypeMirror returnType = isShortCircuit ? context.getType(Object.class) : context.getType(void.class);
             CodeExecutableElement helper = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), returnType, helperName);
 
-            // In continueAt, just call the helper.
-            if (isShortCircuit) {
-                // continueAt needs the boolean result to decide whether to branch.
-                continueAtBuilder.startAssign("Object result");
-            } else {
-                continueAtBuilder.startStatement();
-            }
-            continueAtBuilder.startCall(helperName);
             helper.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-            continueAtBuilder.string("frame");
+
             if (!tier.isUncached) {
                 helper.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
-                continueAtBuilder.string("cachedNodes");
+                if (model.enableTracing) {
+                    helper.addParameter(new CodeVariableElement(types.ExecutionTracer, "tracer"));
+                }
             }
 
             List<CodeVariableElement> extraParams = List.of(
@@ -3933,50 +3912,46 @@ public class OperationsNodeFactory implements ElementHelpers {
                             new CodeVariableElement(context.getType(int.class), "bci"),
                             new CodeVariableElement(context.getType(int.class), "sp"));
 
-            for (CodeVariableElement param : extraParams) {
-                helper.addParameter(param);
-                continueAtBuilder.string(param.getName());
-            }
-            continueAtBuilder.end(2);
+            helper.getParameters().addAll(extraParams);
 
             TypeMirror cachedType = new GeneratedTypeMirror("", cachedDataClassName(instr));
             boolean isVoid = instr.signature.isVoid;
 
-            // Create the helper.
             CodeTreeBuilder b = helper.createBuilder();
 
-            if (!tier.isUncached && model.enableTracing) {
-                b.startBlock();
-
-                b.startAssign("var specInfo").startStaticCall(types.Introspection, "getSpecializations");
-                b.startGroup().cast(cachedType).string("curObj").end();
-                b.end(2);
-
-                b.startStatement().startCall("tracer.traceActiveSpecializations");
-                b.string("bci");
-                b.string(instr.id);
-                b.startNewArray(arrayOf(context.getType(boolean.class)), null);
-                for (int i = 0; i < instr.nodeData.getSpecializations().size(); i++) {
-                    if (instr.nodeData.getSpecializations().get(i).isFallback()) {
-                        break;
-                    }
-                    b.string("specInfo.get(" + i + ").isActive()");
-                }
-                b.end();
-                b.end(2);
-
-                b.end();
-            }
-
-            // since an instruction produces at most one value, stackEffect is at most 1.
+            // Since an instruction produces at most one value, stackEffect is at most 1.
             int stackEffect = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
 
             if (!tier.isUncached) {
-                // if cached, retrieve the node
+                // If not tier 0, retrieve the node.
                 InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
                 String nodeIndex = readBc("bci + " + imm.offset);
                 CodeTree readNode = CodeTreeBuilder.createBuilder().string(readNode(cachedType, nodeIndex)).build();
                 b.declaration(cachedType, "node", readNode);
+
+                if (model.enableTracing) {
+                    b.startBlock();
+
+                    b.startAssign("var specInfo").startStaticCall(types.Introspection, "getSpecializations");
+                    b.string("node");
+                    b.end(2);
+
+                    b.startStatement().startCall("tracer.traceActiveSpecializations");
+                    b.string("bci");
+                    b.string(instr.id);
+                    b.startNewArray(arrayOf(context.getType(boolean.class)), null);
+                    for (int i = 0; i < instr.nodeData.getSpecializations().size(); i++) {
+                        if (instr.nodeData.getSpecializations().get(i).isFallback()) {
+                            break;
+                        }
+                        b.string("specInfo.get(" + i + ").isActive()");
+                    }
+                    b.end();
+                    b.end(2);
+
+                    b.end();
+                }
+
             }
 
             if (isVoid) {
@@ -3998,7 +3973,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.string("frame");
 
-            // the uncached node takes all of its parameters. the cached node computes them itself.
+            // The tier 0 version takes all of its parameters. Other versions compute them.
             if (tier.isUncached) {
                 for (int i = 0; i < instr.signature.valueCount; i++) {
                     TypeMirror targetType = instr.signature.getParameterType(i);
@@ -4030,6 +4005,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.variables(extraParams);
             b.end(2);
 
+            // Update the stack.
             if (!isVoid && !isShortCircuit) {
                 if (stackEffect == 1) {
                     b.statement("frame.setObject(sp, result)");
@@ -4037,13 +4013,22 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.statement("frame.setObject(sp - " + (1 - stackEffect) + ", result)");
                 }
             }
-
             for (int i = stackEffect; i < 0; i++) {
                 // When stackEffect is negative, values should be cleared from the top of the stack.
                 b.statement("frame.clear(sp - " + -i + ")");
             }
 
-            // NB: we update sp inside continueAt (not in the helper method).
+            // In continueAt, call the helper and adjust sp.
+            if (isShortCircuit) {
+                // continueAt needs the boolean result to decide whether to branch.
+                continueAtBuilder.startAssign("Object result");
+            } else {
+                continueAtBuilder.startStatement();
+            }
+            continueAtBuilder.startCall(helperName);
+            continueAtBuilder.variables(helper.getParameters());
+            continueAtBuilder.end(2);
+
             if (stackEffect > 0) {
                 continueAtBuilder.statement("sp += " + stackEffect);
             } else if (stackEffect < 0) {
