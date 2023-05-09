@@ -401,7 +401,7 @@ public abstract class CompilationWrapper<T> {
     private static final GlobalAtomicLong failedCompilations = new GlobalAtomicLong(0L);
     private static final GlobalAtomicLong compilationPeriodStart = new GlobalAtomicLong(0L);
     private static final int COMPILATION_FAILURE_DETECTION_PERIOD_MS = 2000;
-    private static final int MIN_COMPILATIONS_FOR_FAILURE_DETECTION = 100;
+    private static final int MIN_COMPILATIONS_FOR_FAILURE_DETECTION = 25;
 
     /**
      * Gets the start of the current compilation period, initializing it to {@code initialValue} if

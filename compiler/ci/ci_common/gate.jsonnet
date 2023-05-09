@@ -269,8 +269,6 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test-labsjdk-21Debug-linux-amd64": t("5:00:00"),
-
     "weekly-compiler-test_serialgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
     "weekly-compiler-test_serialgc-labsjdk-21-linux-aarch64": t("1:50:00"),
     "weekly-compiler-test_serialgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
@@ -376,11 +374,6 @@
 
   # Builds run on all platforms (platform = JDK + OS + ARCH)
   local all_platforms_builds = [self.make_build(jdk, os_arch, task).build
-    for jdk in [
-      "17",
-      "21"
-    ]
-    for os_arch in all_os_arches
     for task in [
       "test",
       "truffle_xcomp",
@@ -392,6 +385,11 @@
       "bootstrap_lite",
       "bootstrap_full"
     ]
+    for jdk in [
+      "17",
+      if $.contains(task, "coverage") then "20" else "21" # JaCoCo does not yet support JDK 21 (GR-46006)
+    ]
+    for os_arch in all_os_arches
   ],
 
     # Test ZGC on support platforms.  Windows requires version 1083 or later which will
@@ -443,19 +441,19 @@
     ]
   ],
 
-  # Builds run on only on jdk21=0
-  local jdk20_builds = [self.make_build("20", os_arch, task).build
-    for os_arch in all_os_arches
-    for task in [
-      "style"
-    ]
-  ],
+  # JaCoCo does not yet support JDK 21
+  local coverage_avx3_builds = [self.make_build("20", "linux-amd64", "coverage_avx3").build],
+
+  # Run the style build only on linux-amd64-jdk20 as code quality tools
+  # only need to run on one platform. Furthermore they should be run on
+  # JDK-(latest - 1) as most tools won't support JDK-latest until it has
+  # at least been released.
+  local style_builds = [self.make_build("20", "linux-amd64", "style").build],
 
   # Builds run on only on linux-amd64-jdk21Debug
   local linux_amd64_jdk21Debug_builds = [self.make_build("21Debug", "linux-amd64", task).build
     for task in [
       "benchmarktest",
-      "test"
     ]
   ],
 
@@ -464,7 +462,8 @@
     all_platforms_builds +
     all_zgc_builds +
     all_serialgc_builds +
-    jdk20_builds +
+    style_builds +
+    coverage_avx3_builds +
     linux_amd64_jdk21_builds +
     linux_amd64_jdk21Debug_builds,
 
