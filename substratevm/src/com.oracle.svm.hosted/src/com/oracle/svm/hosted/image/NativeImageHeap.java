@@ -288,7 +288,7 @@ public final class NativeImageHeap implements ImageHeap {
     public void addConstant(final JavaConstant constant, boolean immutableFromParent, final Object reason) {
         assert addObjectsPhase.isAllowed() : "Objects cannot be added at phase: " + addObjectsPhase.toString() + " with reason: " + reason;
 
-        if (constant.isNull() || metaAccess.isInstanceOf(constant, WordBase.class)) {
+        if (constant.getJavaKind().isPrimitive() || constant.isNull() || metaAccess.isInstanceOf(constant, WordBase.class)) {
             return;
         }
 
