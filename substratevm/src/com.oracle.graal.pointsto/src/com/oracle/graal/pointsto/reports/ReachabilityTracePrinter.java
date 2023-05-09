@@ -74,20 +74,16 @@ public final class ReachabilityTracePrinter {
                 String header = "Type " + type.toJavaName() + " is marked as allocated";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getAllocatedReason(), header);
                 writer.println(trace);
-            }
-
-            if (type.isInHeap()) {
+                break;
+            } else if (type.isInHeap()) {
                 String header = "Type " + type.toJavaName() + " is marked as in-heap";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getInHeapReason(), header);
                 writer.println(trace);
-            }
-
-            if (type.isReachable()) {
+                break;
+            } else if (type.isReachable()) {
                 String header = "Type " + type.toJavaName() + " is marked as reachable";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getReachableReason(), header);
                 writer.println(trace);
-
-                // print the first trace to avoid overwhelming users with information
                 break;
             }
         }
