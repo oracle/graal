@@ -9,10 +9,11 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 {
   vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
   vm_java_20:: graal_common.labsjdk20 + vm_common.vm_env_mixin('20'),
-  vm_java_21:: graal_common.oraclejdk21 + vm_common.vm_env_mixin('21'),
+  vm_java_21:: graal_common.labsjdk21 + vm_common.vm_env_mixin('21'),
 
   vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
   vm_java_20_llvm:: self.vm_java_20 + graal_common['labsjdk-ce-20-llvm'],
+  vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
 
   binaries_repository: 'lafo',
   svm_suite:: '/substratevm',

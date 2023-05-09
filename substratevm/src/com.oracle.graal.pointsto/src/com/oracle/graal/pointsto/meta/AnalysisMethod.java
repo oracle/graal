@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.GraphDecoder;
@@ -223,7 +224,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
         String aName = wrapped.getName();
         if (multiMethodKey != ORIGINAL_METHOD) {
-            aName += MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
+            aName += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
         }
         return aName;
     }

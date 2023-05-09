@@ -77,10 +77,14 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
         try {
             return target.callDirect(this, arguments);
         } catch (Throwable t) {
-            Throwable profiledT = profileExceptionType(t);
-            GraalRuntimeAccessor.LANGUAGE.onThrowable(this, null, profiledT, null);
-            throw OptimizedCallTarget.rethrow(profiledT);
+            throw handleException(t);
         }
+    }
+
+    private RuntimeException handleException(Throwable t) {
+        Throwable profiledT = profileExceptionType(t);
+        GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(this, null, profiledT, null);
+        throw OptimizedCallTarget.rethrow(profiledT);
     }
 
     @SuppressWarnings("unchecked")

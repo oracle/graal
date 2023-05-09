@@ -324,8 +324,8 @@ public final class JavaStackWalker {
             }
 
             Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-            CodeInfo tetheredInfo = CodeInfoAccess.convert(untetheredInfo, tether);
             try {
+                CodeInfo tetheredInfo = CodeInfoAccess.convert(untetheredInfo, tether);
                 // now the value in walk.getIPCodeInfo() can be passed to interruptible code
                 if (!callVisitor(walk, tetheredInfo, visitor, data)) {
                     return false;

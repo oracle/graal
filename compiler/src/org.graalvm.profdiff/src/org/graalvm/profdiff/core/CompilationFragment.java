@@ -102,6 +102,11 @@ public class CompilationFragment extends CompilationUnit {
         return super.getCompilationId() + "#" + fragmentId;
     }
 
+    @Override
+    protected String getCompilationKind() {
+        return "fragment";
+    }
+
     /**
      * Gets the path from root to the root of this fragment in the inlining tree of the parent's
      * compilation unit.

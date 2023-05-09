@@ -234,6 +234,8 @@ public class ImplicitExceptions {
         return new ArithmeticException("/ by zero");
     }
 
+    // Checkstyle: allow inconsistent exceptions and errors
+
     /** Foreign call: {@link #CREATE_INTEGER_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createIntegerOverflowException() {
@@ -247,6 +249,8 @@ public class ImplicitExceptions {
         vmErrorIfImplicitExceptionsAreFatal();
         return new ArithmeticException("long overflow");
     }
+
+    // Checkstyle: disallow inconsistent exceptions and errors
 
     /** Foreign call: {@link #CREATE_ASSERTION_ERROR_NULLARY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
@@ -354,6 +358,8 @@ public class ImplicitExceptions {
         throw new ArithmeticException("/ by zero");
     }
 
+    // Checkstyle: allow inconsistent exceptions and errors
+
     /** Foreign call: {@link #THROW_NEW_INTEGER_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewIntegerOverflowException() {
@@ -367,6 +373,8 @@ public class ImplicitExceptions {
         vmErrorIfImplicitExceptionsAreFatal();
         throw new ArithmeticException("long overflow");
     }
+
+    // Checkstyle: disallow inconsistent exceptions and errors
 
     /** Foreign call: {@link #THROW_NEW_ASSERTION_ERROR_NULLARY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)

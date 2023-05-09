@@ -556,4 +556,9 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(original);
     }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return original.getConstantValue();
+    }
 }

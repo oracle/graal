@@ -86,7 +86,7 @@ public final class ReplacementsUtil {
     }
 
     @Fold
-    public static int charArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
+    public static long charArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
         return metaAccess.getArrayIndexScale(JavaKind.Char);
     }
 
@@ -96,7 +96,7 @@ public final class ReplacementsUtil {
     }
 
     @Fold
-    public static int byteArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
+    public static long byteArrayIndexScale(@InjectedParameter MetaAccessProvider metaAccess) {
         return metaAccess.getArrayIndexScale(JavaKind.Byte);
     }
 

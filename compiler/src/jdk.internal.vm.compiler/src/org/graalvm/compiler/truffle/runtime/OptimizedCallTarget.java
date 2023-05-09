@@ -57,7 +57,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BlockNode;
-import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -470,7 +469,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             return callIndirect(prev, args);
         } catch (Throwable t) {
-            GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
+            GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(prev, null, t, null);
             throw rethrow(t);
         } finally {
             encapsulating.set(prev);
@@ -502,17 +501,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Node location, Object... args) {
         try {
-            try {
-                Object result;
-                profileArguments(args);
-                result = doInvoke(args);
-                if (CompilerDirectives.inCompiledCode()) {
-                    result = injectReturnValueProfile(result);
-                }
-                return result;
-            } catch (Throwable t) {
-                throw rethrow(profileExceptionType(t));
+            profileArguments(args);
+            Object result = doInvoke(args);
+            if (CompilerDirectives.inCompiledCode()) {
+                result = injectReturnValueProfile(result);
             }
+            return result;
         } finally {
             // this is needed to keep the values from being cleared as non-live locals
             Reference.reachabilityFence(location);
@@ -722,12 +716,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             Object toRet = rootNode.execute(frame);
             TruffleSafepoint.poll(rootNode);
             return toRet;
-        } catch (ControlFlowException t) {
-            throw rethrow(profileExceptionType(t));
         } catch (Throwable t) {
-            Throwable profiledT = profileExceptionType(t);
-            GraalRuntimeAccessor.LANGUAGE.onThrowable(null, this, profiledT, frame);
-            throw rethrow(profiledT);
+            throw handleException(frame, t);
         } finally {
             if (CompilerDirectives.inInterpreter() && tier != CompilationState.INTERPRETED) {
                 notifyDeoptimized(frame);
@@ -737,6 +727,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             Reference.reachabilityFence(this);
             Reference.reachabilityFence(tier);
         }
+    }
+
+    private RuntimeException handleException(VirtualFrame frame, Throwable t) {
+        Throwable profiledT = profileExceptionType(t);
+        GraalRuntimeAccessor.LANGUAGE.addStackFrameInfo(null, this, profiledT, frame);
+        throw rethrow(profiledT);
     }
 
     private void notifyDeoptimized(VirtualFrame frame) {

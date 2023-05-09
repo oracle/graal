@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -489,6 +490,11 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @Override
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(wrapped);
+    }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return getUniverse().lookup(getWrapped().getConstantValue());
     }
 
     public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {

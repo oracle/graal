@@ -24,9 +24,9 @@
  */
 package org.graalvm.profdiff.core.pair;
 
-import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
+import org.graalvm.profdiff.core.Writer;
 
 /**
  * A pair of compilations of the same method in two experiments. At most one of the compilations may
@@ -51,12 +51,15 @@ public class CompilationUnitPair {
      * @param compilationUnit1 a compilation unit from the first experiment
      * @param compilationUnit2 a compilation unit from the second experiment
      */
-    @SuppressWarnings("this-escape")
     public CompilationUnitPair(CompilationUnit compilationUnit1, CompilationUnit compilationUnit2) {
-        assert compilationUnit1 != null || compilationUnit2 != null;
-        assert !bothNotNull() || compilationUnit1.getMethod().getMethodName().equals(compilationUnit2.getMethod().getMethodName());
         this.compilationUnit1 = compilationUnit1;
         this.compilationUnit2 = compilationUnit2;
+        if (compilationUnit1 != null && compilationUnit2 != null && !compilationUnit1.getMethod().getMethodName().equals(compilationUnit2.getMethod().getMethodName())) {
+            throw new IllegalArgumentException("The compilation units must be linked to the same method.");
+        }
+        if (compilationUnit1 == null && compilationUnit2 == null) {
+            throw new IllegalArgumentException("At least one of the compilation units must not be null.");
+        }
     }
 
     /**
@@ -102,33 +105,18 @@ public class CompilationUnitPair {
     }
 
     /**
-     * Formats a header containing the compilation ID, an execution summary, the experiment ID of
-     * each hot compilation in the pair. Returns {@code null} if the pair does not contain a hot
-     * compilation. The execution summary is omitted if the profile is not available.
+     * Writes the headers of hot compilations units (zero, one, or two) to the destination writer.
      *
-     * @return a header for hot compilations or {@code null}
+     * @param writer the destination writer
      */
-    public String formatHeaderForHotCompilations() {
-        if (!someHot()) {
-            return null;
-        }
-        StringBuilder sb = new StringBuilder("Compilation ");
+    public void writeHeadersForHotCompilations(Writer writer) {
         if (bothHot()) {
-            sb.append(compilationUnit1 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit1.getCompilationId());
-            if (compilationUnit1.getMethod().getExperiment().isProfileAvailable()) {
-                sb.append(" (").append(compilationUnit1.createExecutionSummary()).append(")");
-            }
-            sb.append(" in experiment ").append(compilationUnit1.getMethod().getExperiment().getExperimentId()).append(" vs compilation ").append(
-                            compilationUnit2 instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit2.getCompilationId());
-            if (compilationUnit2.getMethod().getExperiment().isProfileAvailable()) {
-                sb.append(" (").append(compilationUnit2.createExecutionSummary()).append(")");
-            }
-            sb.append(" in experiment ").append(compilationUnit2.getMethod().getExperiment().getExperimentId());
-        } else {
-            CompilationUnit compilationUnit = compilationUnit1 != null && compilationUnit1.isHot() ? compilationUnit1 : compilationUnit2;
-            sb.append(compilationUnit instanceof CompilationFragment ? "fragment" : "unit").append(' ').append(compilationUnit.getCompilationId()).append(" is ").append(
-                            compilationUnit.isHot() ? "hot" : "present").append(" only in experiment ").append(compilationUnit.getMethod().getExperiment().getExperimentId());
+            writer.write(compilationUnit1.toString());
+            writer.writeln(" vs");
+            writer.writeln(compilationUnit2.toString());
+        } else if (someHot()) {
+            CompilationUnit hotCompilationUnit = compilationUnit1 != null && compilationUnit1.isHot() ? compilationUnit1 : compilationUnit2;
+            writer.writeln(hotCompilationUnit.toString());
         }
-        return sb.toString();
     }
 }

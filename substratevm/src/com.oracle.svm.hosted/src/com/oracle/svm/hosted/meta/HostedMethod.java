@@ -42,6 +42,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -150,7 +151,7 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
         Function<Integer, Pair<String, String>> nameGenerator = (collisionCount) -> {
             String name = wrapped.wrapped.getName(); // want name w/o any multimethodkey suffix
             if (key != ORIGINAL_METHOD) {
-                name += MULTI_METHOD_KEY_SEPARATOR + key;
+                name += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + key;
             }
             if (collisionCount > 0) {
                 name = name + METHOD_NAME_COLLISION_SEPARATOR + collisionCount;

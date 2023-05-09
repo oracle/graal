@@ -3,14 +3,15 @@ layout: ohc
 permalink: /overview/architecture/
 ---
 
-# Oracle GraalVM Enterprise Edition Architecture Overview
+# Oracle GraalVM Architecture Overview
 
-Oracle GraalVM Enterprise Edition (GraalVM Enterprise) is a high performance JDK distribution, built on the global standard for application development.
-It is designed to accelerate the execution of applications written in Java and other JVM languages while also providing runtimes for JavaScript, Python, and a number of other popular languages. 
-GraalVM Enterprise's polyglot capabilities make it possible to mix multiple programming languages in a single application while eliminating any foreign language call costs.
+Oracle GraalVM is a high-performance JDK distribution designed to accelerate Java applications using the advanced Graal compiler.
+In addition to the standard just-in-time (JIT) setup on HotSpot, Graal can also be used as an ahead-of-time (AOT) compiler.
+This enables a new execution mode that makes applications smaller, leaner, and more secure, without compromising run-time performance.
+Moreover, Oracle GraalVM also provides runtimes for JavaScript, Python, and several other languages that can interoperate with Java and between each other.
 
-This page provides developers, solution architects, and infrastructure architects with an architectural overview of GraalVM Enterprise, as well as information about runtime modes, certified platforms, available distributions, core and additional components, and support levels for various features.
-The conceptual overview and advantages of GraalVM Enterprise are described on the [Solutions Overview](solutions-overview.md) page.
+Here you can find information about the architectural overview of Oracle GraalVM, runtime modes, certified platforms, available distributions, core and additional components, and support levels for various features.
+The conceptual overview and advantages of Oracle GraalVM are described on the [Solutions Overview](solutions-overview.md) page.
 
 * [Architecture](#graalvm-enterprise-architecture)
 * [Runtime Modes](#runtime-modes)
@@ -19,31 +20,27 @@ The conceptual overview and advantages of GraalVM Enterprise are described on th
 
 ## Architecture
 
-![](/img/graalvm_architecture.png)
+Oracle GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](../reference-manual/java/compiler.md), which is written in Java, to the HotSpot Java Virtual Machine.
 
-*Figure 1. GraalVM Enterprise Runtime*
+Oracle GraalVM includes [Native Image](../reference-manual/native-image/README.md): a technology that can compile Java applications into binaries for a specific operating system and architecture.
 
-The preceding diagram illustrates a complete high-level architecture of GraalVM Enterprise.
-
-GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](../reference-manual/java/compiler.md), which is written in Java, to the HotSpot Java Virtual Machine.
-
-In addition to running Java and JVM-based languages, [GraalVM's language implementation framework (Truffle)](../../truffle/docs/README.md), makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
+In addition to running Java and JVM-based languages, [Oracle GraalVM's language implementation framework (Truffle)](../../truffle/docs/README.md), makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
 With Truffle, Java and other supported languages can directly interoperate with each other and pass data back and forth in the same memory space.
 
 ## Runtime Modes
 
-GraalVM Enterprise is unique as a runtime environment offering several modes of operation: JVM runtime mode, Native Image, Java on Truffle (the same Java application can be run on either).
+Oracle GraalVM is unique as a runtime environment offering several modes of operation: JVM runtime mode, Native Image, Java on Truffle (the same Java application can be run on either).
 
 #### JVM Runtime Mode
-When running programs on the HotSpot JVM, GraalVM defaults to the [Graal compiler](../reference-manual/java/compiler.md) as the top-tier JIT compiler.
+When running programs on the HotSpot JVM, GraalVM defaults to the [Graal compiler](../reference-manual/java/compiler.md) as the last-tier JIT compiler.
 At runtime, an application is loaded and executed normally on the JVM.
 The JVM passes bytecodes for Java or any other JVM-native language to the compiler, which compiles that to the machine code and returns it to the JVM.
 Interpreters for supported languages, written on top of the [Truffle framework](../../truffle/docs/README.md), are themselves Java programs that run on the JVM.
 
 #### Native Image
 [Native Image](../reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone binary executable or a native shared library.
-The Java bytecode that is processed when building a native executable includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
-A generated self-contained native executable is specific to each individual operating systems and machine architecture that does not require a JVM.
+The Java bytecode that is processed when building a native executable includes all application classes, dependencies, third-party dependent libraries, and any JDK classes that are required.
+A self-contained native executable is generated specifically for one operating system and machine architecture and no longer requires a JVM to run.
 
 #### Java on Truffle
 [Java on Truffle](../reference-manual/java-on-truffle/README.md) is an implementation of the Java Virtual Machine Specification, built with the [Truffle framework](../../truffle/docs/README.md).
@@ -51,38 +48,28 @@ It is a complete Java VM that includes all core components, implements the same 
 
 ## Distribution Components List
 
-GraalVM Enterprise consists of core and additional functionalities.
+Oracle GraalVM consists of core and additional functionalities.
 
 ### Core Components
 
 * Java HotSpot VM
-* Graal compiler - the top-tier JIT compiler
+* [Graal compiler](..reference-manual/java/compiler.md) -- the top-tier JIT compiler
+* [Native Image](../reference-manual/native-image/README.md) -- a technology to compile a Java application ahead-of-time into a binary
+* [GraalVM Updater](../reference-manual/graalvm-updater.md) -- a utility to install additional features
 * Polyglot API – the APIs for combining programming languages in a shared runtime
-* [GraalVM Updater](../reference-manual/graalvm-updater.md) - a utility to install additional functionalities
 
 ### Additional Functionalities
-GraalVM Enterprise JDK installation can be extended with more languages runtimes and utilities.
 
-Tools/Utilities:
-
-* [Native Image](../reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native platform executable.
-* [LLVM toolchain](../reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM.
-
-Runtimes:
+Oracle GraalVM JDK installation can be extended with more language runtimes and utilities.
 
 * [JavaScript](../reference-manual/js/README.md) -- REPL with the JavaScript interpreter
-* [Node.js](../../reference-manual/js/NodeJS.md) -- the Node.js 16.14.2 runtime for JavaScript
+* [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter
+* [LLVM toolchain](../reference-manual/llvm/README.md) -- a set of tools and APIs for compiling native programs to bitcode
 * [LLVM](../reference-manual/llvm/README.md) -- LLVM runtime with `lli` tool to directly execute programs from LLVM bitcode
-* [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
-* [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible runtime
-* [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.3 compatible runtime
-* [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible runtime
-* [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm) runtime
-
+* [Node.js](../../reference-manual/js/NodeJS.md) -- the Node.js 16.14.2 runtime for JavaScript
 ## What to Read Next
 
-Users who are new to GraalVM Enterprise or have little experience using it, continue to [Getting Started with GraalVM Enterprise](../getting-started/graalvm-enterprise/get-started-graalvm-enterprise.md).
-Download and install GraalVM Enterprise on your local machine, try running the examples provided in the guide, or test GraalVM Enterprise with your workload.
+Users who are new to Oracle GraalVM or have little experience using it, continue to [Getting Started with Oracle GraalVM](../getting-started/graalvm-enterprise/get-started-graalvm-enterprise.md).
+Download and install Oracle GraalVM on your local machine, try running the examples provided in the guide, or test Oracle GraalVM with your workload.
 
-Developers, who have GraalVM Enterprise already installed or have experience using it in the past, can skip the getting started guide and proceed to the [Reference Manuals](../reference-manual/reference-manuals.md) for
-in-depth coverage of GraalVM Enterprise technologies.
+Developers, who have Oracle GraalVM already installed or have experience using it in the past, can skip the getting started guide and proceed to the [Reference Manuals](../reference-manual/reference-manuals.md) for in-depth coverage of Oracle GraalVM technologies.

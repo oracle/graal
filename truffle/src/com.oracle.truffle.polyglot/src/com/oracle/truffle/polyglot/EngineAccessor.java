@@ -783,7 +783,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public <T, R> R leaveAndEnter(Object polyglotContext, TruffleSafepoint.Interrupter interrupter, TruffleSafepoint.InterruptibleFunction<T, R> interruptible, T object) {
             PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
-            return context.leaveAndEnter(interrupter, interruptible, object);
+            return context.leaveAndEnter(interrupter, interruptible, object, false);
         }
 
         @Override

@@ -484,7 +484,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
                 includedClasses.add(type);
             }
         }
-        return includedClasses.toArray(new HostedType[0]);
+        return includedClasses.toArray(HostedType.EMPTY_ARRAY);
     }
 
     private AnnotationValue[] registerAnnotationValues(AnnotatedElement element) {
@@ -690,7 +690,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     @Override
     public void encodeAllAndInstall(SnippetReflectionProvider snippetReflection) {
         UnsafeArrayTypeWriter buf = UnsafeArrayTypeWriter.create(ByteArrayReader.supportsUnalignedMemoryAccess());
-        int typesIndex = encodeAndAddCollection(buf, sortedTypes.toArray(new HostedType[0]), this::encodeType, false);
+        int typesIndex = encodeAndAddCollection(buf, sortedTypes.toArray(HostedType.EMPTY_ARRAY), this::encodeType, false);
         assert typesIndex == 0;
         for (HostedType declaringType : sortedTypes) {
             DynamicHub hub = declaringType.getHub();

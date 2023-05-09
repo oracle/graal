@@ -126,4 +126,9 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider,
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(original);
     }
+
+    @Override
+    public JavaConstant getConstantValue() {
+        return original.getConstantValue();
+    }
 }

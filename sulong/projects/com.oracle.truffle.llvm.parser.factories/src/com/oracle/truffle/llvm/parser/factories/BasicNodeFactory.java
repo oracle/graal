@@ -1932,6 +1932,8 @@ public class BasicNodeFactory implements NodeFactory {
             case "sqrt":
                 if (declaration.getName().endsWith("v2f64")) {
                     return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 2);
+                } else if (declaration.getName().endsWith("v4f32")) {
+                    return LLVMCMathsIntrinsicsFactory.LLVMSqrtVectorNodeGen.create(args[1], 4);
                 } else {
                     return LLVMCMathsIntrinsicsFactory.LLVMSqrtNodeGen.create(args[1]);
                 }

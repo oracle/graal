@@ -204,7 +204,7 @@ def _tools_gate_runner(args, tasks):
     with Task('Tools Signature Tests', tasks) as t:
         if t: sigtest(['--check', 'binary'])
     with Task('Tools UnitTests', tasks) as t:
-        if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--fail-fast'])
+        if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--max-class-failures=25'])
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
 

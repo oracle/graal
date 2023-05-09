@@ -53,6 +53,7 @@ If a method exceeds the limit, it is likely that the same code also has a high c
 ## Debugging Host Inlining
 
 The inlining decisions performed by this phase is best debugged with `-H:Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Dgraal.Log=HostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
+You can redirect the output to a file with `-Dgraal.LogFile=FILE` (works for both).
 
 Consider the following example, which shows previously described common patterns of partial evaluatable code in Truffle interpreters:
 
@@ -187,6 +188,8 @@ This prints:
 ```
 
 Note that we have also used the `-Dgraal.Dump=:3 ` option, which sends the graphs to any running `IdealGraphVisualizer` instance for further inspection.
+On Native Image, use `-H:Dump=:2 -H:MethodFilter=...` to dump host compilation graphs of a given method.
+
 To debug CUTOFF decisions for incomplete exploration (entries with `incomplete  true`) use the `-Dgraal.TruffleHostInliningPrintExplored=true` option to see all incomplete subtrees in the log.
 
 ## Tuning Host Inlining

@@ -1587,9 +1587,11 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
-        "truffle:ANTLR4",
         "SULONG_API",
         "SULONG_TOOLCHAIN_CONFIG",
+      ],
+      "exclude" : [
+        "truffle:ANTLR4",
       ],
       "javaProperties" : {
         "org.graalvm.language.llvm.home": "<sulong_home>",

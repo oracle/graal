@@ -503,6 +503,10 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     public InvokeWithExceptionNode startInvokeWithException(CallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
         ExceptionObjectNode exceptionObject = createExceptionObjectNode(frameStateBuilder, invokeBci);
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionObject, invokeBci));
+        if (graph.trackNodeSourcePosition()) {
+            NodeSourcePosition nodeSourcePosition = invoke.getNodeSourcePosition();
+            invoke.setNodeSourcePosition(new NodeSourcePosition(nodeSourcePosition.getCaller(), nodeSourcePosition.getMethod(), invokeBci));
+        }
         return startWithException(invoke, exceptionObject, frameStateBuilder, invokeBci);
     }
 

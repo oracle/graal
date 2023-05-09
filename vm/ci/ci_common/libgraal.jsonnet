@@ -112,7 +112,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
-                 jdk_name = if jdk == "21" then "oraclejdk" else "labsjdk",
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
@@ -146,7 +145,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
-                 jdk_name = if jdk == "21" then "oraclejdk" else "labsjdk",
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,

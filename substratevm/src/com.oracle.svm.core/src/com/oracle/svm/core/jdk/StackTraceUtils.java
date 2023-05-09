@@ -30,21 +30,30 @@ import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
+import java.util.Arrays;
 
-import com.oracle.svm.core.hub.DynamicHub;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.LoomSupport;
@@ -53,6 +62,7 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VirtualThreads;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -67,21 +77,25 @@ public class StackTraceUtils {
      * Captures the stack trace of the current thread. In almost any context, calling
      * {@link JavaThreads#getStackTrace} for {@link Thread#currentThread()} is preferable.
      *
-     * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if max
-     * depth > 0, or all if max depth <= 0.
+     * Captures at most {@link SubstrateOptions#maxJavaStackTraceDepth()} stack trace elements if
+     * max depth > 0, or all if max depth <= 0.
      */
     public static StackTraceElement[] getStackTrace(boolean filterExceptions, Pointer startSP, Pointer endSP) {
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
-        JavaStackWalker.walkCurrentThread(startSP, endSP, visitor);
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(filterExceptions, SubstrateOptions.maxJavaStackTraceDepth());
+        visitCurrentThreadStackFrames(startSP, endSP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
+    }
+
+    public static void visitCurrentThreadStackFrames(Pointer startSP, Pointer endSP, StackFrameVisitor visitor) {
+        JavaStackWalker.walkCurrentThread(startSP, endSP, visitor);
     }
 
     /**
      * Captures the stack trace of a thread (potentially the current thread) while stopped at a
      * safepoint. Used by {@link Thread#getStackTrace()} and {@link Thread#getAllStackTraces()}.
      *
-     * Captures at most {@link SubstrateOptions#MaxJavaStackTraceDepth} stack trace elements if max
-     * depth > 0, or all if max depth <= 0.
+     * Captures at most {@link SubstrateOptions#maxJavaStackTraceDepth()} stack trace elements if
+     * max depth > 0, or all if max depth <= 0.
      */
     @NeverInline("Potentially starting a stack walk in the caller frame")
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread) {
@@ -94,14 +108,14 @@ public class StackTraceUtils {
 
     public static StackTraceElement[] getThreadStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
         assert VMOperation.isInProgressAtSafepoint();
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
         JavaStackWalker.walkThread(isolateThread, endSP, visitor, null);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
 
     public static StackTraceElement[] getThreadStackTraceAtSafepoint(Pointer startSP, Pointer endSP, CodePointer startIP) {
         assert VMOperation.isInProgressAtSafepoint();
-        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.MaxJavaStackTraceDepth.getValue());
+        BuildStackTraceVisitor visitor = new BuildStackTraceVisitor(false, SubstrateOptions.maxJavaStackTraceDepth());
         JavaStackWalker.walkThreadAtSafepoint(startSP, endSP, startIP, visitor);
         return visitor.trace.toArray(NO_ELEMENTS);
     }
@@ -235,6 +249,109 @@ public class StackTraceUtils {
                 result = Target_java_lang_Thread.EMPTY_STACK_TRACE;
             }
         }
+    }
+
+}
+
+/**
+ * Visits the stack frames and collects a backtrace in an internal format to be stored in
+ * {@link Target_java_lang_Throwable#backtrace}.
+ */
+final class BacktraceVisitor extends StackFrameVisitor {
+
+    private int index = 0;
+    private final int limit = SubstrateOptions.maxJavaStackTraceDepth();
+
+    /*
+     * Empirical data suggests that most stack traces tend to be relatively short (<100). We choose
+     * the initial size so that these cases do not need to reallocate the array.
+     */
+    private static final int INITIAL_TRACE_SIZE = 80;
+    private long[] trace = new long[INITIAL_TRACE_SIZE];
+
+    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
+    private static boolean decodeCodePointer(BuildStackTraceVisitor visitor, CodePointer ip) {
+        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
+        if (untetheredInfo.isNull()) {
+            /* Unknown frame. Must not happen for AOT-compiled code. */
+            throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
+        }
+
+        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+        try {
+            CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
+            if (!visitFrame(visitor, ip, tetheredCodeInfo)) {
+                return true;
+            }
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredInfo, tether);
+        }
+        return false;
+    }
+
+    @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
+    private static boolean visitFrame(BuildStackTraceVisitor visitor, CodePointer ip, CodeInfo tetheredCodeInfo) {
+        return visitor.visitFrame(WordFactory.nullPointer(), ip, tetheredCodeInfo, null);
+    }
+
+    @Override
+    protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
+        if (index >= limit) {
+            // cutoff
+            return false;
+        }
+        VMError.guarantee(deoptimizedFrame == null, "Deoptimization not supported");
+        long rawValue = ip.rawValue();
+        VMError.guarantee(rawValue != 0, "Unexpected code pointer: 0");
+        add(rawValue);
+        return true;
+    }
+
+    private void add(long value) {
+        if (index == trace.length) {
+            trace = Arrays.copyOf(trace, Math.min(trace.length * 2, limit));
+        }
+        trace[index++] = value;
+    }
+
+    /**
+     * Gets the backtrace array.
+     *
+     * Tradeoff question: should we make a copy of the trace array to trim it to length index?
+     * <ul>
+     * <li>Benefit: lower memory footprint for exceptions that are long-lived.
+     * <li>Downside: more work for copying for every exception.
+     * </ul>
+     * Currently, we do not trim the array. The assumption is that most exception stack traces are
+     * short-lived and are never moved by the GC.
+     */
+    long[] getArray() {
+        VMError.guarantee(trace != null, "Already acquired");
+        VMError.guarantee(index == trace.length || trace[index] == 0, "Unterminated trace?");
+        long[] tmp = trace;
+        trace = null;
+        return tmp;
+    }
+}
+
+/**
+ * Decodes the internal backtrace stored in {@link Target_java_lang_Throwable#backtrace} and creates
+ * the corresponding {@link StackTraceElement} array.
+ */
+final class StackTraceBuilder extends BacktraceDecoder {
+
+    static StackTraceElement[] build(Object backtrace) {
+        var stackTraceBuilder = new StackTraceBuilder();
+        stackTraceBuilder.visitBacktrace(backtrace, Integer.MAX_VALUE, SubstrateOptions.maxJavaStackTraceDepth());
+        return stackTraceBuilder.trace.toArray(new StackTraceElement[0]);
+    }
+
+    private final ArrayList<StackTraceElement> trace = new ArrayList<>();
+
+    @Override
+    protected void processFrameInfo(FrameInfoQueryResult frameInfo) {
+        StackTraceElement sourceReference = frameInfo.getSourceReference();
+        trace.add(sourceReference);
     }
 }
 
