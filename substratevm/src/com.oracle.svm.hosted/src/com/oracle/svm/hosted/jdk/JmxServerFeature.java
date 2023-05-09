@@ -99,7 +99,7 @@ public class JmxServerFeature implements InternalFeature {
     /**
      * This method configures reflection metadata only required by a JMX server.
      * <ul>
-     * <li>Here we register all the custom substrate MXBeans. They won't be accounted for by the
+     * <li>Here we register all the custom MXBeans of Substrate VM. They will not be accounted for by the
      * native image tracing agent so a user may not know they need to register them.</li>
      * <li>We also register {@link com.sun.jmx.remote.protocol.rmi.ServerProvider} which can be
      * reflectively looked up on a code path starting from
