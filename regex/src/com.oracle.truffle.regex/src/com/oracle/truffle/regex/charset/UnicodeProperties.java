@@ -41,6 +41,8 @@
 package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.regex.tregex.parser.ClassSetContents;
+import org.graalvm.collections.EconomicSet;
 
 public class UnicodeProperties {
 
@@ -50,6 +52,10 @@ public class UnicodeProperties {
 
     public static CodePointSet getProperty(String propertySpec, boolean caseInsensitive) {
         return evaluatePropertySpec(normalizePropertySpec(propertySpec, caseInsensitive));
+    }
+
+    public static ClassSetContents getPropertyOfStrings(String propertySpec) {
+        return evaluatePropertySpecStrings(normalizePropertySpec(propertySpec, false));
     }
 
     /**
@@ -62,6 +68,18 @@ public class UnicodeProperties {
             return generalCategory;
         }
         return UnicodePropertyData.retrieveProperty(propertySpec);
+    }
+
+    /**
+     * @param propertySpec *Normalized* Unicode character property specification (i.e. only
+     *            abbreviated properties and property values)
+     */
+    private static ClassSetContents evaluatePropertySpecStrings(String propertySpec) {
+        CodePointSet generalCategory = UnicodeGeneralCategories.getGeneralCategory(propertySpec);
+        if (generalCategory != null) {
+            return ClassSetContents.createNestedClass(generalCategory, EconomicSet.create());
+        }
+        return UnicodePropertyData.retrievePropertyOfStrings(propertySpec);
     }
 
     private static String normalizePropertySpec(String propertySpec, boolean caseInsensitive) {

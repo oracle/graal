@@ -1179,9 +1179,18 @@ public abstract class RegexLexer {
             throw syntaxError(JsErrorMessages.ENDS_WITH_UNFINISHED_UNICODE_PROPERTY);
         }
         try {
-            CodePointSet propertySet = encoding.getFullSet().createIntersection(UnicodeProperties.getProperty(pattern.substring(namePos, position - 1)), curCharClass.getTmp());
-            ClassSetContents classSetContents = ClassSetContents.createNestedClass(invert ? propertySet.createInverse(encoding) : propertySet, EconomicSet.create());
-            return classSetContents;
+            String propertyName = pattern.substring(namePos, position - 1);
+            if (featureEnabledClassSetExpressions()) {
+                ClassSetContents property = UnicodeProperties.getPropertyOfStrings(propertyName);
+                assert !invert || property.isCodePointSetOnly();
+                CodePointSet propertySet = encoding.getFullSet().createIntersection(property.getCodePointSet(), curCharClass.getTmp());
+                ClassSetContents classSetContents = ClassSetContents.createNestedClass(invert ? propertySet.createInverse(encoding) : propertySet, property.getStrings());
+                return classSetContents;
+            } else {
+                CodePointSet propertySet = encoding.getFullSet().createIntersection(UnicodeProperties.getProperty(propertyName), curCharClass.getTmp());
+                ClassSetContents classSetContents = ClassSetContents.createNestedClass(invert ? propertySet.createInverse(encoding) : propertySet, EconomicSet.create());
+                return classSetContents;
+            }
         } catch (IllegalArgumentException e) {
             throw syntaxError(e.getMessage());
         }
