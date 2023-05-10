@@ -34,7 +34,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
-public class FieldTypeFlow extends TypeFlow<AnalysisField> {
+public class FieldTypeFlow extends TypeFlow<AnalysisField> implements GlobalFlow {
 
     private static final AtomicReferenceFieldUpdater<FieldTypeFlow, FieldFilterTypeFlow> FILTER_FLOW_UPDATER = AtomicReferenceFieldUpdater.newUpdater(FieldTypeFlow.class, FieldFilterTypeFlow.class,
                     "filterFlow");

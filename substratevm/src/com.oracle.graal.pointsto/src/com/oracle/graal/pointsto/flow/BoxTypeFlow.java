@@ -32,7 +32,7 @@ import jdk.vm.ci.code.BytecodePosition;
 public class BoxTypeFlow extends NewInstanceTypeFlow {
 
     public BoxTypeFlow(BytecodePosition position, AnalysisType type) {
-        super(position, type);
+        super(position, type, true);
     }
 
     public BoxTypeFlow(PointsToAnalysis bb, BoxTypeFlow original, MethodFlowsGraph methodFlows) {

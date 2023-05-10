@@ -403,7 +403,7 @@ public class TypeStateUtils {
     }
 
     public static boolean closeToAllInstantiated(BigBang bb, TypeState state) {
-        if (state instanceof AnyPrimitiveTypeState) {
+        if (state.isPrimitive()) {
             return false;
         }
         return closeToAllInstantiated(bb, state.typesCount());

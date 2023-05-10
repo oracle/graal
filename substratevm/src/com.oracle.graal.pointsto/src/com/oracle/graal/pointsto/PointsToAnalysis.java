@@ -102,6 +102,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
      * immediately represented as {@link com.oracle.graal.pointsto.flow.AnyPrimitiveSourceTypeFlow}.
      */
     private final boolean trackPrimitiveValues;
+    private final AnalysisType longType;
+    private final AnalysisType voidType;
+    private final boolean usePredicates;
     private AnyPrimitiveSourceTypeFlow anyPrimitiveSourceTypeFlow;
 
     protected final boolean trackTypeFlowInputs;
@@ -121,10 +124,15 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                     ClassInclusionPolicy classInclusionPolicy) {
         super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection, classInclusionPolicy);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
-        this.trackPrimitiveValues = PointstoOptions.TrackPrimitiveValues.getValue(options);
-        this.anyPrimitiveSourceTypeFlow = new AnyPrimitiveSourceTypeFlow(null, null);
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
+        this.longType = metaAccess.lookupJavaType(long.class);
+        this.voidType = metaAccess.lookupJavaType(void.class);
+
+        this.trackPrimitiveValues = PointstoOptions.TrackPrimitiveValues.getValue(options);
+        this.usePredicates = PointstoOptions.UsePredicates.getValue(options);
+        this.anyPrimitiveSourceTypeFlow = new AnyPrimitiveSourceTypeFlow(null, longType);
+        this.anyPrimitiveSourceTypeFlow.enableFlow(null);
         /*
          * Make sure the all-instantiated type flow is created early. We do not have any
          * instantiated types yet, so the state is empty at first.
@@ -268,6 +276,14 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     public AnalysisType getObjectType() {
         return universe.objectType();
+    }
+
+    public AnalysisType getLongType() {
+        return longType;
+    }
+
+    public AnalysisType getVoidType() {
+        return voidType;
     }
 
     public AnalysisType getObjectArrayType() {
@@ -536,6 +552,10 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     @Override
     public boolean trackPrimitiveValues() {
         return trackPrimitiveValues;
+    }
+
+    public boolean usePredicates() {
+        return usePredicates;
     }
 
     public interface TypeFlowRunnable extends DebugContextRunnable {

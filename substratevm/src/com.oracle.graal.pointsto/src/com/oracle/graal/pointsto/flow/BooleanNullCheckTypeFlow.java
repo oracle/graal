@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,23 +26,32 @@ package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.common.meta.MultiMethod.MultiMethodKey;
+import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 
-public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow {
-    protected AbstractStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, MultiMethodKey callerMultiMethodKey) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, callerMultiMethodKey);
+/**
+ * This flow represents a null check used by {@link ConditionalFlow}.
+ */
+public class BooleanNullCheckTypeFlow extends BooleanCheckTypeFlow {
+
+    public BooleanNullCheckTypeFlow(BytecodePosition source, AnalysisType inputType) {
+        super(source, inputType);
     }
 
-    protected AbstractStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractStaticInvokeTypeFlow original) {
-        super(bb, methodFlows, original);
+    private BooleanNullCheckTypeFlow(MethodFlowsGraph methodFlows, BooleanNullCheckTypeFlow original) {
+        super(original, methodFlows);
     }
 
     @Override
-    public String toString() {
-        return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
+    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+        return new BooleanNullCheckTypeFlow(methodFlows, this);
+    }
+
+    @Override
+    public TypeState filter(PointsToAnalysis bb, TypeState newState) {
+        var hasNull = newState.canBeNull();
+        var hasTypes = newState.typesCount() > 0;
+        return convertToBoolean(hasNull, hasTypes);
     }
 }
