@@ -48,6 +48,22 @@ copy_tree("../src/com.oracle.truffle.sl.test/src/tests", "simplelanguage/languag
 copy_tree("../src/com.oracle.truffle.sl.launcher/src/com/", "simplelanguage/launcher/src/main/java/com")
 copy_tree("../src/com.oracle.truffle.sl.tck/src", "simplelanguage/tck/src")
 
+# Create simplelanguage module-info
+module_info = """
+module com.oracle.truffle.sl {
+  requires java.base;
+  requires java.logging;
+  requires jdk.unsupported;
+  requires org.antlr.antlr4.runtime;
+  requires org.graalvm.sdk;
+  requires org.graalvm.truffle;
+  provides  com.oracle.truffle.api.provider.TruffleLanguageProvider with
+    com.oracle.truffle.sl.SLLanguageProvider;
+}
+"""
+with open('simplelanguage/language/src/main/java/module-info.java', 'w') as f:
+    f.write(module_info)
+
 # Populate simpletool
 copy_tree("../src/com.oracle.truffle.st/src/com/", "simpletool/src/main/java/com")
 copy_tree("../src/com.oracle.truffle.st.test/src/com/", "simpletool/src/test/java/com")
