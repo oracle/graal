@@ -60,7 +60,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -191,14 +190,6 @@ public class ProgressReporter {
         colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
         stagePrinter = SubstrateOptions.BuildOutputProgress.getValue(options) ? new CharacterwiseStagePrinter() : new LinewiseStagePrinter();
         linkStrategy = SubstrateOptions.BuildOutputLinks.getValue(options) ? new LinkyStrategy() : new LinklessStrategy();
-
-        if (SubstrateOptions.useEconomyCompilerConfig(options)) {
-            l().magentaBold().a("You enabled -Ob for this image build. This will configure some optimizations to reduce image build time.").println();
-            l().magentaBold().a("This feature should only be used during development and never for deployment.").reset().println();
-        }
-        if (PointstoOptions.UseExperimentalReachabilityAnalysis.getValue(options)) {
-            l().magentaBold().a("This build uses the experimental reachability analysis rather than the default points-to analysis.").reset().println();
-        }
     }
 
     public void setNumRuntimeCompiledMethods(int value) {
