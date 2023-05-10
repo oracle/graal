@@ -51,7 +51,7 @@ class MemoryUtil {
     private static final long MAX_HEAP_BYTES = 32_000_000_000L;
 
     /* Use 80% of total system memory in case available memory cannot be determined. */
-    private static final double FALLBACK_MAX_RAM_PERCENTAGE = 80.0;
+    private static final double FALLBACK_TOTAL_MEMORY_RATIO = 0.8;
 
     public static List<String> determineMemoryFlags() {
         return List.of(
@@ -88,7 +88,13 @@ class MemoryUtil {
             case WINDOWS -> getAvailableMemorySizeWindows();
         };
         if (reasonableMaxMemorySize < 0 || reasonableMaxMemorySize > totalMemorySize) {
-            return FALLBACK_MAX_RAM_PERCENTAGE;
+            /*
+             * The amount of available memory was not at all or incorrectly detected. Fall back to a
+             * value based on total memory. OperatingSystemMXBean.getTotalMemorySize() is
+             * container-aware whereas, for example, /proc/meminfo is not and thus may report
+             * available memory of the host which can exceed the memory limit of a container.
+             */
+            reasonableMaxMemorySize = (long) (totalMemorySize * FALLBACK_TOTAL_MEMORY_RATIO);
         }
         if (reasonableMaxMemorySize < MIN_HEAP_BYTES) {
             throw new NativeImageError(
@@ -102,7 +108,9 @@ class MemoryUtil {
 
     /**
      * Returns the total amount of available memory in bytes on Linux based on
-     * <code>/proc/meminfo</code>, otherwise <code>-1</code>.
+     * <code>/proc/meminfo</code>, otherwise <code>-1</code>. Note that this metric is not
+     * container-aware (does not take cgroups into account) and may report available memory of the
+     * host.
      *
      * @see <a href=
      *      "https://github.com/torvalds/linux/blob/865fdb08197e657c59e74a35fa32362b12397f58/mm/page_alloc.c#L5137">page_alloc.c#L5137</a>
