@@ -109,9 +109,8 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
             ResolvedJavaMethod callee = t.targetMethod();
             if (callee.getDeclaringClass().equals(systemType)) {
                 if (callee.getName().equals("getProperty") || callee.getName().equals("getProperties")) {
-                    throw new VerificationError("Call to %s at callsite %s is prohibited. Call Services.getSavedProperties().get(String) instead.",
-                                    callee.format("%H.%n(%p)"),
-                                    caller.format("%H.%n(%p)"));
+                    throw new VerificationError(t, "call to %s is prohibited. Call Services.getSavedProperties().get(String) instead.",
+                                    callee.format("%H.%n(%p)"));
                 }
             } else {
                 for (int i = 0; i < boxTypes.length; i++) {
@@ -119,9 +118,8 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
                     if (callee.getDeclaringClass().equals(boxType)) {
                         String simpleName = boxType.toJavaName(false);
                         if (callee.getName().equals("get" + simpleName)) {
-                            throw new VerificationError("Call to %s at callsite %s is prohibited. Call %s.parse%s(Services.getSavedProperties().get(String)) instead.",
+                            throw new VerificationError(t, "call to %s is prohibited. Call %s.parse%s(Services.getSavedProperties().get(String)) instead.",
                                             callee.format("%H.%n(%p)"),
-                                            caller.format("%H.%n(%p)"),
                                             simpleName, simpleName);
                         }
                     }

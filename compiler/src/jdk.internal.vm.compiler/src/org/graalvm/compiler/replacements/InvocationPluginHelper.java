@@ -387,21 +387,22 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     /**
-     * Emits the {@code origReturnValue} and connects it to any other return values emitted before.
+     * Emits the {@code returnValue} and connects it to any other return values emitted before.
      * <p/>
      *
      * This will add the return value to the graph if necessary. If the return value is a
      * {@link StateSplit}, it should <em>not</em> be added to the graph using
      * {@link GraphBuilderContext#add(ValueNode)} before calling this method.
      */
-    public void emitFinalReturn(JavaKind kind, ValueNode origReturnValue) {
-        ValueNode returnValue = origReturnValue;
+    public void emitFinalReturn(JavaKind kind, ValueNode returnValue) {
         assert !emittedReturn : "must only have one final return";
-        if (returnValue.isUnregistered()) {
-            returnValue = b.append(returnValue);
-        }
+        assert kind == returnKind : "mismatch in return kind";
+        b.addPush(kind, returnValue);
 
         if (returns.size() > 0) {
+            // Restore the previous frame state
+            b.pop(returnKind);
+
             EndNode end = b.append(new EndNode());
             addReturnValue(end, kind, returnValue);
             MergeNode returnMerge = b.append(new MergeNode());
@@ -418,9 +419,8 @@ public class InvocationPluginHelper implements DebugCloseable {
                     assert r.returnValue == null;
                 }
             }
-            returnValue = returnPhi.singleValueOrThis();
+            b.addPush(returnKind, returnPhi.singleValueOrThis());
         }
-        b.addPush(returnKind, returnValue);
         emittedReturn = true;
     }
 
