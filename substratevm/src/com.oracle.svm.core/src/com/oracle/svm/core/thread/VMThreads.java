@@ -603,12 +603,12 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static OSThreadHandle findOSThreadHandleForIsolateThread(IsolateThread isolateThread) {
+    public static OSThreadHandle getOSThreadHandle(IsolateThread isolateThread) {
         return OSThreadHandleTL.get(isolateThread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static OSThreadId findOSThreadIdForIsolateThread(IsolateThread isolateThread) {
+    public static OSThreadId getOSThreadId(IsolateThread isolateThread) {
         return OSThreadIdTL.get(isolateThread);
     }
 

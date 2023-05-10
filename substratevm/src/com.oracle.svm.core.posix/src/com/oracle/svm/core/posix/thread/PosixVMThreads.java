@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -36,17 +37,18 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Sched;
+import com.oracle.svm.core.posix.headers.Syscall;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
+import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
-
-import com.oracle.svm.core.os.IsDefined;
-import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
+import com.oracle.svm.core.util.VMError;
 
 @AutomaticallyRegisteredImageSingleton(VMThreads.class)
 public final class PosixVMThreads extends VMThreads {
@@ -60,10 +62,14 @@ public final class PosixVMThreads extends VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected OSThreadId getCurrentOSThreadId() {
-        if (IsDefined.isLinux()) {
-            return LinuxPthread.gettid();
+        if (IsDefined.isDarwin()) {
+            Pthread.pthread_t pthread = Pthread.pthread_self();
+            return WordFactory.unsigned(DarwinPthread.pthread_mach_thread_np(pthread));
         }
-        return Pthread.pthread_self();
+
+        SignedWord result = Syscall.NoTransitions.syscall(Syscall.SYS_gettid());
+        VMError.guarantee(result.rawValue() != -1, "SYS_gettid failed");
+        return (OSThreadId) result;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -49,6 +49,7 @@ public class PosixDirectives implements CContext.Directives {
                     "<sys/mman.h>",
                     "<sys/resource.h>",
                     "<sys/stat.h>",
+                    "<sys/syscall.h>",
                     "<sys/time.h>",
                     "<sys/times.h>",
                     "<sys/types.h>",

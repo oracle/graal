@@ -27,80 +27,59 @@
 #ifdef __linux__
 
 #include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-#define NANOS_PER_SECOND 1000000000
-#define STAT_FILE_NAME_SIZE 64
-#define STAT_SIZE 2048
-
 /*
- * Returns the thread user time. Based on slow_thread_cpu_time(...) method from
- * https://github.com/openjdk/jdk/blob/612d8c6cb1d0861957d3f6af96556e2739283800/src/hotspot/os/linux/os_linux.cpp#L5012
+ * Returns the thread user time.
+ * Based on slow_thread_cpu_time(...) from jdk-20-ga, see
+ * https://github.com/openjdk/jdk/blob/df6cf1e41d0fc2dd5f5c094f66c7c8969cf5548d/src/hotspot/os/linux/os_linux.cpp#L5032
  */
-long getThreadUserTime(long tid) {
-    char statFileName[STAT_FILE_NAME_SIZE];
-    char stat[STAT_SIZE];
-    int statSize;
-    char *s;
-    int matchedCount;
-    long userTime;
-    FILE *fp;
+long getThreadUserTimeSlow(pid_t tid) {
+  char *s;
+  char stat[2048];
+  int statlen;
+  char proc_name[64];
+  int count;
+  long sys_time, user_time;
+  char cdummy;
+  int idummy;
+  long ldummy;
+  FILE *fp;
+  
+  static long clock_tics_per_sec = -1;
 
-    static long clockTicksPerSeconds = -1;
+  if (clock_tics_per_sec == -1) {
+    clock_tics_per_sec = sysconf(_SC_CLK_TCK);
+  }
 
-    if (clockTicksPerSeconds == -1) {
-        clockTicksPerSeconds = sysconf(_SC_CLK_TCK);
-    }
+  snprintf(proc_name, 64, "/proc/self/task/%d/stat", tid);
+  fp = fopen(proc_name, "re");
+  if (fp == NULL) return -1;
+  statlen = fread(stat, 1, 2047, fp);
+  stat[statlen] = '\0';
+  fclose(fp);
 
-    snprintf(statFileName, STAT_FILE_NAME_SIZE, "/proc/self/task/%ld/stat", tid);
-    fp = fopen(statFileName, "r");
+  // Skip pid and the command string. Note that we could be dealing with
+  // weird command names, e.g. user could decide to rename java launcher
+  // to "java 1.4.2 :)", then the stat file would look like
+  //                1234 (java 1.4.2 :)) R ... ...
+  // We don't really need to know the command string, just find the last
+  // occurrence of ")" and then start parsing from there. See bug 4726580.
+  s = strrchr(stat, ')');
+  if (s == NULL) return -1;
 
-    if (fp == NULL) {
-        return -1;
-    }
+  // Skip blank chars
+  do { s++; } while (s && isspace(*s));
 
-    statSize = fread(stat, 1, STAT_SIZE - 1, fp);
-    stat[statSize] = '\0';
-    fclose(fp);
+  count = sscanf(s,"%c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu",
+                 &cdummy, &idummy, &idummy, &idummy, &idummy, &idummy,
+                 &ldummy, &ldummy, &ldummy, &ldummy, &ldummy,
+                 &user_time, &sys_time);
+  if (count != 13) return -1;
 
-    // File /proc/self/task/tid/stat
-    // Field 1 is the process id
-    // Field 2 is a command in parentheses
-    // Field 3 is a character
-    // Fields 1,4-8 are integers
-    // Fields 9-14 are unsigned integers
-    // Field 14 is the CPU time spent in user code
-    //
-    // Skip pid and the command string. Note that we could be dealing with
-    // weird command names, e.g. user could decide to rename java launcher
-    // to "java 1.4.2 :)", then the stat file would look like
-    //                1234 (java 1.4.2 :)) R ... ...
-    // We don't really need to know the command string, just find the last
-    // occurrence of ")" and then start parsing from there. See bug 4726580.
-    s = strrchr(stat, ')');
-
-    if (s == NULL)  {
-        return -1;
-    }
-
-    // Skip blank chars
-    do {
-        s++;
-    } while (s && isspace(*s));
-
-    matchedCount = sscanf(s, "%*c %*d %*d %*d %*d %*d %*lu %*lu %*lu %*lu %*lu %lu", &userTime);
-
-    if (matchedCount != 1) {
-        return -1;
-    }
-
-    return userTime * NANOS_PER_SECOND / clockTicksPerSeconds;
-}
-
-#else
-
-long getThreadUserTime(long tid) {
-    return -1;
+  return user_time * (1000000000 / clock_tics_per_sec);
 }
 
 #endif
