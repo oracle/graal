@@ -242,7 +242,7 @@ public class ProgressReporter {
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_OPTIMIZATION_LEVEL, optimizationLevel);
         String march = CPUType.getSelectedOrDefaultMArch();
         recordJsonMetric(GeneralInfo.GRAAL_COMPILER_MARCH, march);
-        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: '%s', target machine: '%s'", optimizationLevel, march);
+        DirectPrinter graalLine = l().a(" ").doclink("Graal compiler", "#glossary-graal-compiler").a(": optimization level: %s, target machine: %s", optimizationLevel, march);
         ImageSingletons.lookup(ProgressReporterFeature.class).appendGraalSuffix(graalLine);
         graalLine.println();
         String cCompilerShort = null;
