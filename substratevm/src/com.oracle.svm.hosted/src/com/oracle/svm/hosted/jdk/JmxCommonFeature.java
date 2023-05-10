@@ -128,15 +128,16 @@ public class JmxCommonFeature implements InternalFeature {
      * registrations for PlatformMXBeans because they are known and there are a finite number of
      * them. If a user wishes to register a custom standard MBean with the MBeanServer, they will
      * have to provide their own proxy configuration in a JSON file. This is documented in the
-     * remote JMX guide.
-     *
-     * <P>
+     * <a href=
+     * "https://www.graalvm.org/dev/reference-manual/native-image/guides/build-and-run-native-executable-with-remote-jmx/">remote
+     * JMX guide</a>.
+     * <p>
      * PlatformMXBeans require proxy configuration so that JMX client implementations can use
      * proxies to simplify the client's interaction with MBeans on the server (in a different
      * application). Using proxies makes the connection/sending/receiving of data transparent.
-     * </P>
+     * </p>
      *
-     * <P>
+     * <p>
      * Proxy registration also registers the methods of these MXBeans for reflection. This is
      * important because they are accessed in many places in the JMX infrastructure. For example:
      * <ul>
@@ -147,7 +148,7 @@ public class JmxCommonFeature implements InternalFeature {
      * <li>{@link com.sun.jmx.mbeanserver.MXBeanProxy}</li>
      * <li>{@code javax.management.MBeanServerInvocationHandler#isLocal(Object, Method)}</li>
      * </ul>
-     * </P>
+     * </p>
      */
     private static void configureProxy(BeforeAnalysisAccess access) {
         DynamicProxyRegistry dynamicProxySupport = ImageSingletons.lookup(DynamicProxyRegistry.class);
