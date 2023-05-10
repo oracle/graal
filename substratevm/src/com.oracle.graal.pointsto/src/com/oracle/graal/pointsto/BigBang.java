@@ -94,6 +94,8 @@ public interface BigBang extends ReachabilityAnalysis {
 
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;
 
+    boolean trackPrimitiveValues();
+
     /** You can blacklist certain callees here. */
     @SuppressWarnings("unused")
     default boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, BytecodePosition srcPosition) {

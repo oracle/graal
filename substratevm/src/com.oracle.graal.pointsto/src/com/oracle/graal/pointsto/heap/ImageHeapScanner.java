@@ -422,6 +422,8 @@ public abstract class ImageHeapScanner {
             analysisModified = scanningObserver.forNullFieldValue(receiver, field, reason);
         } else if (fieldValue.getJavaKind() == JavaKind.Object) {
             analysisModified = scanningObserver.forNonNullFieldValue(receiver, field, fieldValue, reason);
+        } else if (bb.trackPrimitiveValues() && fieldValue.getJavaKind().isNumericInteger()) {
+            analysisModified = scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
         }
         return analysisModified;
     }

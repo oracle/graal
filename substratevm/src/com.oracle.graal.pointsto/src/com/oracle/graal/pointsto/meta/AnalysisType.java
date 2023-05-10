@@ -49,6 +49,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
 import com.oracle.graal.pointsto.heap.TypeData;
@@ -228,6 +229,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         isArray = wrapped.isArray();
         isJavaLangObject = wrapped.isJavaLangObject();
         this.storageKind = storageKind;
+
+        if (!(isPrimitive() || isWordType())) {
+            this.instantiatedTypes = new AllInstantiatedTypeFlow(this, true);
+            this.instantiatedTypesNonNull = new AllInstantiatedTypeFlow(this, false);
+        }
+
         if (universe.analysisPolicy().needsConstantCache()) {
             this.constantObjectsCache = new ConcurrentHashMap<>();
         }
@@ -422,15 +429,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * type is marked as instantiated, e.g., a saturated field access type flow needs to be notified
      * when a sub-type of its declared type is marked as instantiated.
      */
-    public AllInstantiatedTypeFlow instantiatedTypes = new AllInstantiatedTypeFlow(this, true);
-    public AllInstantiatedTypeFlow instantiatedTypesNonNull = new AllInstantiatedTypeFlow(this, false);
+    public AllInstantiatedTypeFlow instantiatedTypes;
+    public AllInstantiatedTypeFlow instantiatedTypesNonNull;
 
     /*
      * Returns a type flow containing all types that are assignable from this type and are also
      * instantiated.
      */
-    public AllInstantiatedTypeFlow getTypeFlow(@SuppressWarnings("unused") BigBang bb, boolean includeNull) {
-        if (includeNull) {
+    public TypeFlow<?> getTypeFlow(@SuppressWarnings("unused") BigBang bb, boolean includeNull) {
+        if (isPrimitive() || isWordType()) {
+            return ((PointsToAnalysis) bb).getAnyPrimitiveSourceTypeFlow();
+        } else if (includeNull) {
             return instantiatedTypes;
         } else {
             return instantiatedTypesNonNull;

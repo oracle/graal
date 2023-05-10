@@ -119,9 +119,9 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
     public static boolean nonMethodFlow(TypeFlow<?> flow) {
         /*
-         * All-instantiated flow doesn't belong to any method, but it can be reachable from a use.
+         * These flows do not belong to any method, but can be reachable from a use.
          */
-        return flow instanceof AllInstantiatedTypeFlow || flow instanceof AllSynchronizedTypeFlow;
+        return flow instanceof AllInstantiatedTypeFlow || flow instanceof AllSynchronizedTypeFlow || flow instanceof AnyPrimitiveSourceTypeFlow;
     }
 
     /**

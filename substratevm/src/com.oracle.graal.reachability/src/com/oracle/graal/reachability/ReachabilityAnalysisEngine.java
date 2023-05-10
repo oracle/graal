@@ -366,4 +366,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
         reachabilityMethodProcessingHandler.processGraph(this, graph);
     }
 
+    @Override
+    public boolean trackPrimitiveValues() {
+        return false;
+    }
 }
