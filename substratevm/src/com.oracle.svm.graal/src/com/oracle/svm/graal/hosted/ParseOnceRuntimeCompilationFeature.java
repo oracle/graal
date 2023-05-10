@@ -266,6 +266,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             }
             return result;
         }
+
+        @Override
+        protected boolean shouldVerifyFrameStates() {
+            return true;
+        }
     }
 
     private final Set<AnalysisMethod> registeredRuntimeCompilations = ConcurrentHashMap.newKeySet();
