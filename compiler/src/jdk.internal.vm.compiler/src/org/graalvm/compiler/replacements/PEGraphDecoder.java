@@ -136,7 +136,6 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -873,27 +872,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     protected PEMethodScope createMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method, InvokeData invokeData,
                     int inliningDepth, ValueNode[] arguments) {
         return new PEMethodScope(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
-    }
-
-    private void recordGraphElements(EncodedGraph encodedGraph) {
-        List<ResolvedJavaMethod> inlinedMethods = encodedGraph.getInlinedMethods();
-        if (inlinedMethods != null) {
-            for (ResolvedJavaMethod other : inlinedMethods) {
-                graph.recordMethod(other);
-            }
-        }
-        Assumptions assumptions = graph.getAssumptions();
-        Assumptions inlinedAssumptions = encodedGraph.getAssumptions();
-        if (assumptions != null) {
-            if (inlinedAssumptions != null) {
-                assumptions.record(inlinedAssumptions);
-            }
-        } else {
-            assert inlinedAssumptions == null : String.format("cannot inline graph (%s) which makes assumptions into a graph (%s) that doesn't", encodedGraph, graph);
-        }
-        if (encodedGraph.hasUnsafeAccess()) {
-            graph.markUnsafeAccess();
-        }
     }
 
     @Override

@@ -46,7 +46,6 @@ import org.graalvm.compiler.graph.NodeList;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 
 import jdk.vm.ci.code.Architecture;
@@ -503,11 +502,12 @@ public class GraphEncoder {
     public boolean verifyEncoding(StructuredGraph originalGraph, EncodedGraph encodedGraph) {
         DebugContext debugContext = debug != null ? debug : originalGraph.getDebug();
         // @formatter:off
-        StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), debugContext, AllowAssumptions.YES).
+        StructuredGraph decodedGraph = new StructuredGraph.Builder(originalGraph.getOptions(), debugContext, originalGraph.allowAssumptions()).
                         method(originalGraph.method()).
                         profileProvider(originalGraph.getProfileProvider()).
                         setIsSubstitution(originalGraph.isSubstitution()).
                         trackNodeSourcePosition(originalGraph.trackNodeSourcePosition()).
+                        recordInlinedMethods(originalGraph.isRecordingInlinedMethods()).
                         build();
         // @formatter:off
         GraphDecoder decoder = new GraphDecoder(architecture, decodedGraph);
@@ -531,6 +531,19 @@ class GraphComparison {
     public static boolean verifyGraphsEqual(StructuredGraph expectedGraph, StructuredGraph actualGraph) {
         NodeMap<Node> nodeMapping = new NodeMap<>(expectedGraph);
         Deque<Pair<Node, Node>> workList = new ArrayDeque<>();
+
+
+        assert actualGraph.isRecordingInlinedMethods() == expectedGraph.isRecordingInlinedMethods();
+        if (actualGraph.isRecordingInlinedMethods()) {
+            assert expectedGraph.getMethods().equals(actualGraph.getMethods());
+        }
+
+        assert actualGraph.allowAssumptions() == expectedGraph.allowAssumptions();
+        if (actualGraph.getAssumptions() != null) {
+            assert expectedGraph.getAssumptions().equals(actualGraph.getAssumptions());
+        }
+
+        assert expectedGraph.hasUnsafeAccess() == actualGraph.hasUnsafeAccess();
 
         pushToWorklist(expectedGraph.start(), actualGraph.start(), nodeMapping, workList);
         while (!workList.isEmpty()) {
