@@ -824,7 +824,6 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
                          '-cp', classpath('com.oracle.svm.test'),
                          '-Dgraal.LogFile=graal.log',
                          '-g',
-                         '-H:-OmitInlinedMethodDebugLineInfo',
                          '-H:+SourceLevelDebug',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
