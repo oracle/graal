@@ -2175,8 +2175,6 @@ public final class VM extends NativeEnv {
     private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Lib = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Sym = new ConcurrentHashMap<>();
 
-    private static final AtomicLong libraryHandles = new AtomicLong(1);
-
     public @Pointer TruffleObject getFunction(long handle) {
         return handle2Sym.get(handle);
     }
@@ -2232,17 +2230,9 @@ public final class VM extends NativeEnv {
     }
 
     private static long getLibraryHandle(TruffleObject lib) {
-        // TODO(peterssen): Add a proper API to get native handle for libraries.
         try {
-            // Try NFI internals first.
-            // TODO(peterssen): Expose library handle via interop asPointer?
-            java.lang.reflect.Field f = lib.getClass().getDeclaredField("handle");
-            f.setAccessible(true);
-            return (long) f.get(lib);
-        } catch (NoSuchFieldException e) {
-            // Probably a Sulong library, cannot get its native handle, create a fake one.
-            return libraryHandles.getAndIncrement();
-        } catch (IllegalAccessException e) {
+            return InteropLibrary.getUncached().asPointer(lib);
+        } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
     }
