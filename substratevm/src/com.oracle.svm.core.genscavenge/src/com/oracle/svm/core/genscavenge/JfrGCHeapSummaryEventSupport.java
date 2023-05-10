@@ -43,28 +43,20 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 
 class JfrGCHeapSummaryEventSupport {
 
-    private final JfrGCWhen before;
-    private final JfrGCWhen after;
+    public void emitGCHeapSummaryEventBeforeGC(UnsignedWord gcEpoch, long start, long committedSize, long heapUsed) {
 
-    JfrGCHeapSummaryEventSupport(JfrGCWhen before, JfrGCWhen after) {
-        this.before = before;
-        this.after = after;
-    }
-
-    public void emitGCHeapSummaryEventBeforeGC(UnsignedWord gcEpoch, long start, long heapUsed) {
-
-        emitGCHeapSummaryEvent(gcEpoch, start, heapUsed, before);
+        emitGCHeapSummaryEvent(gcEpoch, start, committedSize, heapUsed, JfrGCWhens.singleton().getBeforeGCWhen());
 
     }
 
-    public void emitGCHeapSummaryEventAfterGC(UnsignedWord gcEpoch, long start, long heapUsed) {
+    public void emitGCHeapSummaryEventAfterGC(UnsignedWord gcEpoch, long start, long committedSize, long heapUsed) {
 
-        emitGCHeapSummaryEvent(gcEpoch, start, heapUsed, after);
+        emitGCHeapSummaryEvent(gcEpoch, start, committedSize, heapUsed, JfrGCWhens.singleton().getAfterGCWhen());
 
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public void emitGCHeapSummaryEvent(UnsignedWord gcEpoch, long start, long heapUsed, JfrGCWhen gcWhen) {
+    public void emitGCHeapSummaryEvent(UnsignedWord gcEpoch, long start, long committedSize, long heapUsed, JfrGCWhen gcWhen) {
 
         if (JfrEvent.GCHeapSummary.shouldEmit()) {
 
@@ -83,7 +75,7 @@ class JfrGCHeapSummaryEventSupport {
             // VirtualSpace
             JfrNativeEventWriter.putLong(data, 0L); // start
             JfrNativeEventWriter.putLong(data, 0L); // committedEnd : ulong
-            JfrNativeEventWriter.putLong(data, 0L); // committedSize : ulong
+            JfrNativeEventWriter.putLong(data, committedSize); // committedSize : ulong
             JfrNativeEventWriter.putLong(data, 0L); // reservedEnd : ulong
             JfrNativeEventWriter.putLong(data, 0L); // reservedSize : ulong
 
@@ -106,15 +98,11 @@ class JfrGCHeapSummaryEventFeature implements InternalFeature {
         return SubstrateOptions.UseSerialGC.getValue();
     }
 
-
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (HasJfrSupport.get()) {
 
-            JfrGCWhen before = JfrGCWhens.singleton().getBeforeGCWhen();
-            JfrGCWhen after = JfrGCWhens.singleton().getAfterGCWhen();
-
-            ImageSingletons.add(JfrGCHeapSummaryEventSupport.class, new JfrGCHeapSummaryEventSupport(before, after));
+            ImageSingletons.add(JfrGCHeapSummaryEventSupport.class, new JfrGCHeapSummaryEventSupport());
         }
     }
 

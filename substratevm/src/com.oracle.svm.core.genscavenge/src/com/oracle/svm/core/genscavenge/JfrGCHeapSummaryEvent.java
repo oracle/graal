@@ -30,15 +30,15 @@ import org.graalvm.word.UnsignedWord;
 
 class JfrGCHeapSummaryEvent {
 
-    public static void emitJfrGCHeapSummaryEventBeforeGC(UnsignedWord gcEpoch, long start, long heapUsed) {
+    public static void emitJfrGCHeapSummaryEventBeforeGC(UnsignedWord gcEpoch, long start, long committedSize, long heapUsed) {
         if (hasJfrSupport()) {
-            jfrSupport().emitGCHeapSummaryEventBeforeGC(gcEpoch, start, heapUsed);
+            jfrSupport().emitGCHeapSummaryEventBeforeGC(gcEpoch, start, committedSize, heapUsed);
         }
     }
 
-    public static void emitJfrGCHeapSummaryEventAfterGC(UnsignedWord gcEpoch, long start, long heapUsed) {
+    public static void emitJfrGCHeapSummaryEventAfterGC(UnsignedWord gcEpoch, long start, long committedSize, long heapUsed) {
         if (hasJfrSupport()) {
-            jfrSupport().emitGCHeapSummaryEventAfterGC(gcEpoch, start, heapUsed);
+            jfrSupport().emitGCHeapSummaryEventAfterGC(gcEpoch, start, committedSize, heapUsed);
         }
     }
 
