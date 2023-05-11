@@ -1,45 +1,52 @@
 package org.graalvm.compiler.truffle.test.operation;
 
+import java.util.List;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
-import com.oracle.truffle.api.operation.test.example.OperationTestLanguage;
-import com.oracle.truffle.api.operation.test.example.TestOperations;
-import com.oracle.truffle.api.operation.test.example.TestOperationsGen;
+import com.oracle.truffle.api.operation.test.TestOperationsLanguage;
+import com.oracle.truffle.api.operation.test.TestOperations;
+import com.oracle.truffle.api.operation.test.TestOperationsBuilder;
+import com.oracle.truffle.api.operation.test.TestOperationsCommon;
 
+import static com.oracle.truffle.api.operation.test.TestOperationsCommon.parseNode;
+
+@RunWith(Parameterized.class)
 public class OperationPartialEvaluationTest extends PartialEvaluationTest {
-    private static final OperationTestLanguage LANGUAGE = null;
+    // @formatter:off
 
-    private static TestOperations parseNode(String rootName, OperationParser<TestOperationsGen.Builder> builder) {
-        OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
-        TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
-        op.setName(rootName);
-        return op;
+    private static final TestOperationsLanguage LANGUAGE = null;
+
+    @Parameters(name = "{0}")
+    public static List<Class<? extends TestOperations>> getInterpreterClasses() {
+        return TestOperationsCommon.allInterpreters();
     }
+
+    @Parameter(0) public Class<? extends TestOperations> interpreterClass;
 
     private static Supplier<Object> supplier(Object result) {
         return () -> result;
     }
 
-    // TODO: this is a hack to force the interpreter to tier 1. we should generate a version of the
-    // interpreter without tier 0.
-    private static void warmup(TestOperations root, Object... args) {
-        for (int i = 0; i < 16; i++) {
-            root.getCallTarget().call(args);
-        }
+    private static <T extends TestOperationsBuilder> TestOperations parseNodeForPE(Class<? extends TestOperations> interpreterClass, String rootName, OperationParser<T> builder) {
+        TestOperations result = parseNode(interpreterClass, rootName, builder);
+        result.setBaselineInterpreterThreshold(0); // force interpreter to skip tier 0
+        return result;
     }
 
     @Test
     public void testAddTwoConstants() {
         // return 20 + 22;
 
-        TestOperations root = parseNode("addTwoConstants", b -> {
+        TestOperations root = parseNodeForPE(interpreterClass, "addTwoConstants", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -52,8 +59,6 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
             b.endRoot();
         });
 
-        warmup(root);
-
         assertPartialEvalEquals(supplier(42L), root);
     }
 
@@ -61,7 +66,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
     public void testAddThreeConstants() {
         // return 40 + 22 + - 20;
 
-        TestOperations root = parseNode("addThreeConstants", b -> {
+        TestOperations root = parseNodeForPE(interpreterClass, "addThreeConstants", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -81,8 +86,6 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
             b.endRoot();
         });
 
-        warmup(root);
-
         assertPartialEvalEquals(supplier(42L), root);
     }
 
@@ -91,14 +94,14 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
         // i = 0;
         // sum = 0;
         // while (i < 10) {
-        // i += 1;
-        // sum += i;
+        //   i += 1;
+        //   sum += i;
         // }
         // return sum
 
         long endValue = 10L;
 
-        TestOperations root = parseNode("sum", b -> {
+        TestOperations root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal i = b.createLocal();
@@ -145,21 +148,19 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
             b.endRoot();
         });
 
-        warmup(root);
-
         assertPartialEvalEquals(supplier(endValue * (endValue + 1) / 2), root);
     }
 
     @Test
     public void testTryCatch() {
         // try {
-        // throw 1;
+        //   throw 1;
         // } catch x {
-        // return x + 1;
+        //   return x + 1;
         // }
         // return 3;
 
-        TestOperations root = parseNode("sum", b -> {
+        TestOperations root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal ex = b.createLocal();
@@ -190,8 +191,6 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
 
             b.endRoot();
         });
-
-        warmup(root);
 
         assertPartialEvalEquals(supplier(2L), root);
     }

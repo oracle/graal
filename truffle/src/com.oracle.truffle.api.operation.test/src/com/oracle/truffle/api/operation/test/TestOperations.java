@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.test.example;
+package com.oracle.truffle.api.operation.test;
 
 import java.util.List;
 
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateNodeFactory;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -68,19 +67,15 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
-import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants;
 import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Variant;
 
-//@GenerateOperations(//
-//                languageClass = OperationTestLanguage.class, //
-//                enableYield = true, //
-//                enableSerialization = true, //
-//                allowUnsafe = true, //
-//                boxingEliminationTypes = {long.class}, //
-//                decisionsFile = "decisions.json")
 @GenerateOperationsTestVariants({
-                @Variant(name = "Base", configuration = @GenerateOperations(languageClass = OperationTestLanguage.class, enableYield = true, enableSerialization = true)),
-                @Variant(name = "Unsafe", configuration = @GenerateOperations(languageClass = OperationTestLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true))
+                @Variant(name = "Base", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true)),
+                @Variant(name = "Unsafe", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true)),
+                @Variant(name = "WithBaseline", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, enableBaselineInterpreter = true)),
+                @Variant(name = "WithOptimizations", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "test_operations_decisions.json")),
+                // A typical "production" configuration with all of the bells and whistles.
+                @Variant(name = "Production", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableBaselineInterpreter = true, decisionsFile = "test_operations_decisions.json"))
 })
 @GenerateAOT
 @OperationProxy(SomeOperationNode.class)

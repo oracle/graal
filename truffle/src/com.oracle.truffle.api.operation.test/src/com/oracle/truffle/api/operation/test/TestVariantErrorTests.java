@@ -1,4 +1,4 @@
-package com.oracle.truffle.api.operation.test.dsl_tests;
+package com.oracle.truffle.api.operation.test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -8,8 +8,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
-import com.oracle.truffle.api.operation.test.ExpectError;
-import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants;
 import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Variant;
 
 public class TestVariantErrorTests {

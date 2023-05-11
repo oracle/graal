@@ -84,10 +84,19 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
     default void executeEpilog(VirtualFrame frame, Object returnValue, Throwable throwable) {
     }
 
+    // Sets an invocation threshold that must be reached before the baseline interpreter switches to
+    // a specializing interpreter. This method has no effect if the node has already switched to a
+    // specializing interpreter.
+    @SuppressWarnings("unused")
+    default void setBaselineInterpreterThreshold(int invocationCount) {
+    }
+
+    @SuppressWarnings("unused")
     default SourceSection getSourceSectionAtBci(int bci) {
         throw new AbstractMethodError();
     }
 
+    @SuppressWarnings("unused")
     default InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
         throw new AbstractMethodError();
     }

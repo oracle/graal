@@ -258,6 +258,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
                         ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "storeParentFrameInArguments"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments"),
+                        ElementUtils.findMethod(types.OperationRootNode, "setBaselineInterpreterThreshold"),
                         ElementUtils.findMethod(types.OperationRootNode, "materializeInstrumentTree"),
                         ElementUtils.findMethod(types.OperationRootNode, "getSourceSectionAtBci"));
 

@@ -104,15 +104,12 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeM
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
-import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
-
-import sun.misc.Unsafe;
 
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 
@@ -172,7 +169,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             continuationRoot = null;
             continuationLocationImpl = null;
         }
-
     }
 
     public CodeTypeElement create() {
@@ -183,6 +179,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Define the interpreter implementations.
         if (model.enableBaselineInterpreter) {
             operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER0).create());
+            operationNodeGen.add(createSetBaselineInterpreterThreshold());
         }
         operationNodeGen.addAll(createInterpreterTiers());
         operationNodeGen.add(createCurrentTierField());
@@ -293,7 +290,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "localBoxingState")));
         }
         if (model.enableBaselineInterpreter) {
-            operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
+            operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "baselineExecuteCount")).createInitBuilder().string("16");
         }
         if (model.enableTracing) {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary")));
@@ -419,13 +416,25 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.statement("clone.cachedNodes = null"); // cachedNodes will be set on first execution
 
         if (model.enableBaselineInterpreter) {
-            b.statement("clone.uncachedExecuteCount = 16");
+            b.statement("clone.baselineExecuteCount = 16");
             b.statement("clone.currentTier = " + InterpreterTier.TIER0.name());
         } else {
             b.statement("clone.currentTier = " + InterpreterTier.TIER1.name());
         }
 
         b.startReturn().string("clone").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createSetBaselineInterpreterThreshold() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.OperationRootNode, "setBaselineInterpreterThreshold");
+
+        CodeTreeBuilder b = ex.createBuilder();
+        b.startAssign("baselineExecuteCount").string("invocationCount").end();
+        b.startIf().string("invocationCount == 0").end().startBlock();
+        b.startAssign("currentTier").string(InterpreterTier.TIER1.name()).end();
+        b.end();
 
         return ex;
     }
@@ -3636,7 +3645,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             if (tier.isUncached) {
-                b.statement("int uncachedExecuteCount = $this.uncachedExecuteCount");
+                b.statement("int baselineExecuteCount = $this.baselineExecuteCount");
             }
 
             b.string("loop: ").startWhile().string("true").end().startBlock();
@@ -3678,7 +3687,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case BRANCH_BACKWARD:
                         if (tier.isUncached) {
-                            b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
+                            b.startIf().string("baselineExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("$this.changeInterpreters(TIER1)");
                             b.statement("return (sp << 16) | " + readBc("bci + 1"));
@@ -3746,11 +3755,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case RETURN:
                         if (tier.isUncached) {
-                            b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
+                            b.startIf().string("baselineExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
                             b.statement("$this.changeInterpreters(TIER1)");
                             b.end().startElseBlock();
-                            b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
+                            b.statement("$this.baselineExecuteCount = baselineExecuteCount");
                             b.end();
                         }
 

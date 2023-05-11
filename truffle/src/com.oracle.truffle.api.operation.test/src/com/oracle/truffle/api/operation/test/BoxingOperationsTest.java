@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.test.example;
+package com.oracle.truffle.api.operation.test;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -62,7 +62,7 @@ import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.OperationRootNode;
-import com.oracle.truffle.api.operation.test.example.BoxingOperations.ObjectProducer;
+import com.oracle.truffle.api.operation.test.BoxingOperations.ObjectProducer;
 
 public class BoxingOperationsTest {
 
