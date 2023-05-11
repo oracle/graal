@@ -25,15 +25,15 @@ suite = {
       "packedResource": True
     },
 
-    "PETCLINIC_0.1.6": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.6.zip"],
-      "digest": "sha512:d16f251e4b5727c8a0e2f653a7d1d2b41967414d960e6a490d8e9fa4715f752b7f7bfc73dd069a001053bc1a4f75583abb40577c79017fef4c8f5cc972c0ed25",
-      "packedResource": True,
-    },
-
     "PETCLINIC_0.1.7": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.7.zip"],
       "digest": "sha512:fe8f34a6cbb24099e3cc68051c857e82536c6d81498c604157e6312c04e675745d6f77dd292adde006307d5319b77917bbc9e5f301501ab1e9c072870be113a5",
+      "packedResource": True,
+    },
+
+    "PETCLINIC_3.0.0": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-petclinic-3.0.0.zip"],
+      "digest": "sha512:cacbedf0456a769ae5bd022480b1ceeb8f157684b79f682b70c27fd715a4523cd80e030f127c7a9cff8c6b256a83677d2285e6197b82ecd53f99a5231dfd76e9",
       "packedResource": True,
     },
 
@@ -43,9 +43,9 @@ suite = {
       "packedResource": True,
     },
 
-    "SPRING_HW_1.0.1": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-1.0.1.zip"],
-      "digest": "sha512:a7c48a7e9bebfe25c926888aec6d66b9a74c622413be5d0d1ece053f4ba2f8a353086b0652362bdc7b31055ceffba1ada9cff2ab7c838f6e9ec1d48755eb1fd7",
+    "SPRING_HW_3.0.5": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-3.0.5.zip"],
+      "digest": "sha512:fc016eecfdbb8fe29a825470630fbfe7fe2742d5241894bf0a15cbb14170b8d6eff540714a9a4f66cf233422570c8918665d8564a7a8a3d73c003df71b370a52",
       "packedResource": True,
     },
 
