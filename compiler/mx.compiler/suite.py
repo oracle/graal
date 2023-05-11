@@ -484,6 +484,7 @@ suite = {
       "dependencies" : [
         "jdk.internal.vm.compiler.test",
         "org.graalvm.nativebridge.processor.test",
+        "org.graalvm.compiler.hotspot.jdk20.test",
       ],
       "distDependencies" : [
         "GRAAL",
