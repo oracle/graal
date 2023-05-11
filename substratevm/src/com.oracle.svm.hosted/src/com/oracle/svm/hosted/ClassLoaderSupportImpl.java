@@ -106,6 +106,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     public void collectResources(ResourceCollector resourceCollector) {
         /* Collect resources from modules */
         NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
+                        .parallel()
                         .flatMap(ClassLoaderSupportImpl::extractModuleLookupData)
                         .forEach(lookup -> collectResourceFromModule(resourceCollector, lookup));
 
