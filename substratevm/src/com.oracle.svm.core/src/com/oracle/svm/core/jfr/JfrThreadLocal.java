@@ -137,8 +137,9 @@ public class JfrThreadLocal implements ThreadListener {
         }
 
         /*
-         * Try to free the Java-level JFR buffer, no matter if recording is currently active or not
-         * because the thread could still reference a retired buffer.
+         * The thread may still reference a retired Java-level JFR buffer that needs to be freed
+         * (i.e., a buffer that couldn't be freed when recording was stopped). So, we always try to
+         * free the Java-level JFR buffer, no matter if recording is currently active or not.
          */
         stopRecording(isolateThread, true);
     }
