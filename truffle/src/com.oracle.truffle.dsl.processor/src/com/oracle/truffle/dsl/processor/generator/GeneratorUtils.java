@@ -435,7 +435,9 @@ public class GeneratorUtils {
         if (method == null) {
             return null;
         }
-        return CodeExecutableElement.clone(method);
+        CodeExecutableElement result = CodeExecutableElement.clone(method);
+        result.getModifiers().remove(Modifier.DEFAULT);
+        return result;
     }
 
     public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {

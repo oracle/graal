@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.test.dsl_tests;
+package com.oracle.truffle.api.operation.test;
 
 import java.util.Set;
 
@@ -59,7 +59,6 @@ import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
-import com.oracle.truffle.api.operation.test.ExpectError;
 import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings({"unused", "static-method", "truffle"})
@@ -182,7 +181,7 @@ public class ErrorTests {
         }
     }
 
-    @ExpectError("The used type system 'com.oracle.truffle.api.operation.test.dsl_tests.ErrorTests.ErroredTypeSystem' is invalid. Fix errors in the type system first.")
+    @ExpectError("The used type system 'com.oracle.truffle.api.operation.test.ErrorTests.ErroredTypeSystem' is invalid. Fix errors in the type system first.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @TypeSystemReference(ErroredTypeSystem.class)
     public abstract class BadTypeSystem extends RootNode implements OperationRootNode {
