@@ -466,6 +466,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.profiler",
                 "exports" : [
+                    "com.oracle.truffle.tools.profiler",
                     # chromeinspector uses com.oracle.truffle.tools.utils.json from profiler
                     # TODO: com.oracle.truffle.tools.utils.json should become a module shared by
                     # chromeinspector, profiler, coverage, dap, lsp, warmup
