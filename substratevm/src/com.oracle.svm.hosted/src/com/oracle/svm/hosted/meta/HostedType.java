@@ -43,6 +43,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class HostedType extends HostedElement implements SharedType, WrappedJavaType, OriginalClassProvider {
 
+    public static final HostedType[] EMPTY_ARRAY = new HostedType[0];
+
     protected final HostedUniverse universe;
     protected final AnalysisType wrapped;
 

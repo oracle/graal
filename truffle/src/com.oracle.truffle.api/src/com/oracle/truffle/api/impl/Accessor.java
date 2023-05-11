@@ -802,7 +802,7 @@ public abstract class Accessor {
 
         public abstract OptionDescriptors describeOptions(TruffleLanguage<?> language, String requiredGroup);
 
-        public abstract void onThrowable(Node callNode, RootCallTarget root, Throwable e, Frame frame);
+        public abstract void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable e, Frame frame);
 
         public abstract boolean isThreadAccessAllowed(Env env, Thread current, boolean singleThread);
 

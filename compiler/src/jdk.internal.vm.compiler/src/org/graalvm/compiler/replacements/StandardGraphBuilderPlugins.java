@@ -2229,12 +2229,7 @@ public class StandardGraphBuilderPlugins {
                 ValueNode encryptedCounterAddr = readFieldArrayStart(b, helper, receiverType, "encryptedCounter", nonNullReceiver, JavaKind.Byte);
                 // Compute address of CounterModeCrypt.used field
                 ValueNode usedPtr = b.add(new ComputeObjectAddressNode(nonNullReceiver, helper.asWord(usedOffset)));
-                CounterModeAESNode counterModeAESNode = b.append(new CounterModeAESNode(inAddr, outAddr, kAddr, counterAddr, len, encryptedCounterAddr, usedPtr));
-                /*
-                 * readEmbeddedAESCryptKArrayStart has a fallback path, so the final return will
-                 * involve a merge with a valid frame state. We can use a placeholder state here.
-                 */
-                b.setStateAfterSkipVerification(counterModeAESNode);
+                CounterModeAESNode counterModeAESNode = new CounterModeAESNode(inAddr, outAddr, kAddr, counterAddr, len, encryptedCounterAddr, usedPtr);
                 helper.emitFinalReturn(JavaKind.Int, counterModeAESNode);
                 return true;
             } catch (ClassNotFoundException e) {
@@ -2267,12 +2262,7 @@ public class StandardGraphBuilderPlugins {
                 ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, receiverType, typeAESCrypt, nonNullReceiver);
                 // Read CipherBlockChaining.r
                 ValueNode rAddr = readFieldArrayStart(b, helper, receiverType, "r", nonNullReceiver, JavaKind.Byte);
-                CipherBlockChainingAESNode call = b.append(new CipherBlockChainingAESNode(inAddr, outAddr, kAddr, rAddr, inLength, mode));
-                /*
-                 * readEmbeddedAESCryptKArrayStart has a fallback path, so the final return will
-                 * involve a merge with a valid frame state. We can use a placeholder state here.
-                 */
-                b.setStateAfterSkipVerification(call);
+                CipherBlockChainingAESNode call = new CipherBlockChainingAESNode(inAddr, outAddr, kAddr, rAddr, inLength, mode);
                 helper.emitFinalReturn(JavaKind.Int, call);
                 return true;
             } catch (ClassNotFoundException e) {

@@ -32,7 +32,6 @@ import java.util.concurrent.ThreadFactory;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -42,7 +41,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * In a JDK that supports Project Loom virtual threads (JEP 425, starting with JDK 19 as preview
@@ -77,49 +75,9 @@ final class LoomVirtualThreads implements VirtualThreads {
         }
     }
 
-    @Platforms({}) // fails image build if reachable
-    private static RuntimeException unreachable() {
-        return VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
-    }
-
     @Override
     public boolean getAndClearInterrupt(Thread thread) {
         return cast(thread).getAndClearInterrupt();
-    }
-
-    @Override
-    public void yield() {
-        throw unreachable();
-    }
-
-    @Override
-    public void sleepMillis(long millis) {
-        throw unreachable();
-    }
-
-    @Override
-    public boolean isAlive(Thread thread) {
-        throw unreachable();
-    }
-
-    @Override
-    public void unpark(Thread thread) {
-        throw unreachable();
-    }
-
-    @Override
-    public void park() {
-        throw unreachable();
-    }
-
-    @Override
-    public void parkNanos(long nanos) {
-        throw unreachable();
-    }
-
-    @Override
-    public void parkUntil(long deadline) {
-        throw unreachable();
     }
 
     @Override
@@ -269,5 +227,4 @@ final class LoomVirtualThreads implements VirtualThreads {
         }
         return StackTraceUtils.getThreadStackTraceAtSafepoint(isolateThread, WordFactory.nullPointer());
     }
-
 }

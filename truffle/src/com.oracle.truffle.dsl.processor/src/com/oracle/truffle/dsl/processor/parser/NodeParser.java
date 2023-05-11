@@ -610,9 +610,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     break;
                 }
             }
+
             if (usesInlinedNodes) {
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
                 if (node.isGenerateInline()) {
+                    /*
+                     * For inlined nodes we need pass down the inlineTarget Node even for shared
+                     * nodes using the first specialization parameter.
+                     */
                     boolean firstParameterNode = false;
                     for (Parameter p : specialization.getSignatureParameters()) {
                         firstParameterNode = p.isDeclared();
@@ -629,8 +634,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                         "To resolve this add the static keyword to the specialization method. ",
                                         getSimpleName(types.GenerateInline));
                     }
-                } else if (FlatNodeGenFactory.useSpecializationClass(specialization) || mode == ParseMode.EXPORTED_MESSAGE) {
-
+                } else if (mode == ParseMode.EXPORTED_MESSAGE || FlatNodeGenFactory.substituteNodeWithSpecializationClass(specialization)) {
+                    /*
+                     * For exported message we need to use @Bind("$node") always even for any
+                     * inlined cache as the "this" receiver refers to the library receiver.
+                     *
+                     * For regular cached nodes @Bind("this") must be used if a specialization data
+                     * class is in use. If all inlined caches are shared we can use this and avoid
+                     * the warning.
+                     */
                     boolean hasNodeParameter = false;
                     for (CacheExpression cache : specialization.getCaches()) {
                         if (cache.isBind() && specialization.isNodeReceiverBound(cache.getDefaultExpression())) {

@@ -22,7 +22,7 @@ local common_json = import "../common.json";
     for name in ["oraclejdk20"] + variants("labsjdk-ce-20") + variants("labsjdk-ee-20")
   } + {
     [name]: common_json.jdks[name] + { jdk_version:: 21 }
-    for name in ["oraclejdk21"]
+    for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
 
@@ -58,7 +58,7 @@ local common_json = import "../common.json";
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk21": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
-    "linux-jdk17": { packages+: { "devkit:gcc10.3.0-OL6.4+1": "==0" }},
+    "linux-jdk17": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
   },

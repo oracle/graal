@@ -689,8 +689,8 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode inAddr = helper.arrayElementPointer(in, JavaKind.Byte, inOffset);
                 ValueNode outAddr = helper.arrayElementPointer(out, JavaKind.Byte, outOffset);
                 ValueNode kAddr = readEmbeddedAESCryptKArrayStart(b, helper, receiverType, typeAESCrypt, nonNullReceiver);
-                ForeignCallNode call = b.add(new ForeignCallNode(mode.isEncrypt() ? ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT : ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT,
-                                inAddr, outAddr, kAddr, len));
+                ForeignCallNode call = new ForeignCallNode(mode.isEncrypt() ? ELECTRONIC_CODEBOOK_ENCRYPT_AESCRYPT : ELECTRONIC_CODEBOOK_DECRYPT_AESCRYPT,
+                                inAddr, outAddr, kAddr, len);
                 helper.emitFinalReturn(JavaKind.Int, call);
                 return true;
             }
@@ -736,8 +736,8 @@ public class HotSpotGraphBuilderPlugins {
                 // Read GHASH.subkeyHtbl
                 ValueNode subkeyHtblAddr = readFieldArrayStart(b, helper, typeGHASH, "subkeyHtbl", nonNullGHASH, JavaKind.Long);
 
-                ForeignCallNode call = b.add(new ForeignCallNode(GALOIS_COUNTER_MODE_CRYPT,
-                                inAddr, len, ctAddr, outAddr, kAddr, stateAddr, subkeyHtblAddr, counterAddr));
+                ForeignCallNode call = new ForeignCallNode(GALOIS_COUNTER_MODE_CRYPT,
+                                inAddr, len, ctAddr, outAddr, kAddr, stateAddr, subkeyHtblAddr, counterAddr);
                 helper.emitFinalReturn(JavaKind.Int, call);
                 return true;
             }
@@ -1055,8 +1055,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode aLimbsStart = helper.arrayStart(aLimbsNotNull, JavaKind.Long);
                     ValueNode rLimbsStart = helper.arrayStart(rLimbsNotNull, JavaKind.Long);
 
-                    ForeignCallNode call = b.add(new ForeignCallNode(POLY1305_PROCESSBLOCKS, inputStart, length, aLimbsStart, rLimbsStart));
-                    b.add(call);
+                    b.add(new ForeignCallNode(POLY1305_PROCESSBLOCKS, inputStart, length, aLimbsStart, rLimbsStart));
                 }
                 return true;
             }

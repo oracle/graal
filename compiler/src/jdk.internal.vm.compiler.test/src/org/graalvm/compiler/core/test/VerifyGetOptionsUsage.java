@@ -28,9 +28,9 @@ import java.lang.reflect.MalformedParametersException;
 import java.lang.reflect.Method;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.VerifyPhase;
 
@@ -60,8 +60,8 @@ public class VerifyGetOptionsUsage extends VerifyPhase<CoreProviders> {
         MetaAccessProvider metaAccess = context.getMetaAccess();
         ResolvedJavaType canonicalizerToolClass = metaAccess.lookupJavaType(CanonicalizerTool.class);
         boolean hasTool = false;
-        ResolvedJavaMethod method = graph.method();
         try {
+            ResolvedJavaMethod method = graph.method();
             Parameter[] parameters = method.getParameters();
             if (parameters != null) {
                 for (ResolvedJavaMethod.Parameter parameter : parameters) {
@@ -80,8 +80,7 @@ public class VerifyGetOptionsUsage extends VerifyPhase<CoreProviders> {
                 ResolvedJavaMethod callee = t.targetMethod();
                 if (callee.equals(getOptionsMethod)) {
                     if (hasTool) {
-                        throw new VerificationError("Must use CanonicalizerTool.getOptions() instead of Node.getOptions() in method '%s' of class '%s'.",
-                                        method.getName(), method.getDeclaringClass().getName());
+                        throw new VerificationError(t, "must use CanonicalizerTool.getOptions() instead of Node.getOptions().");
                     }
                 }
             }

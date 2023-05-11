@@ -234,19 +234,23 @@ public class ImplicitExceptions {
         return new ArithmeticException("/ by zero");
     }
 
+    // Checkstyle: allow inconsistent exceptions and errors
+
     /** Foreign call: {@link #CREATE_INTEGER_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createIntegerOverflowException() {
         vmErrorIfImplicitExceptionsAreFatal();
-        return new ArithmeticException("Integer overflow");
+        return new ArithmeticException("integer overflow");
     }
 
     /** Foreign call: {@link #CREATE_LONG_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createLongOverflowException() {
         vmErrorIfImplicitExceptionsAreFatal();
-        return new ArithmeticException("Long overflow");
+        return new ArithmeticException("long overflow");
     }
+
+    // Checkstyle: disallow inconsistent exceptions and errors
 
     /** Foreign call: {@link #CREATE_ASSERTION_ERROR_NULLARY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
@@ -354,19 +358,23 @@ public class ImplicitExceptions {
         throw new ArithmeticException("/ by zero");
     }
 
+    // Checkstyle: allow inconsistent exceptions and errors
+
     /** Foreign call: {@link #THROW_NEW_INTEGER_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewIntegerOverflowException() {
         vmErrorIfImplicitExceptionsAreFatal();
-        throw new ArithmeticException("Integer overflow");
+        throw new ArithmeticException("integer overflow");
     }
 
     /** Foreign call: {@link #THROW_NEW_LONG_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewLongOverflowException() {
         vmErrorIfImplicitExceptionsAreFatal();
-        throw new ArithmeticException("Long overflow");
+        throw new ArithmeticException("long overflow");
     }
+
+    // Checkstyle: disallow inconsistent exceptions and errors
 
     /** Foreign call: {@link #THROW_NEW_ASSERTION_ERROR_NULLARY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
