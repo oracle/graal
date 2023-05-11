@@ -68,14 +68,20 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
+import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants;
+import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Variant;
 
-@GenerateOperations(//
-                languageClass = OperationTestLanguage.class, //
-                enableYield = true, //
-                enableSerialization = true, //
-                allowUnsafe = true, //
-                boxingEliminationTypes = {long.class}, //
-                decisionsFile = "decisions.json")
+//@GenerateOperations(//
+//                languageClass = OperationTestLanguage.class, //
+//                enableYield = true, //
+//                enableSerialization = true, //
+//                allowUnsafe = true, //
+//                boxingEliminationTypes = {long.class}, //
+//                decisionsFile = "decisions.json")
+@GenerateOperationsTestVariants({
+                @Variant(name = "Base", configuration = @GenerateOperations(languageClass = OperationTestLanguage.class, enableYield = true, enableSerialization = true)),
+                @Variant(name = "Unsafe", configuration = @GenerateOperations(languageClass = OperationTestLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true))
+})
 @GenerateAOT
 @OperationProxy(SomeOperationNode.class)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScAnd", continueWhen = true)

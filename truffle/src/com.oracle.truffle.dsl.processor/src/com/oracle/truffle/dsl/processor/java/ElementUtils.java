@@ -86,6 +86,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeNames.NameImpl;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
@@ -194,6 +195,15 @@ public class ElementUtils {
 
     public static TypeElement getTypeElement(DeclaredType type) {
         return (TypeElement) type.asElement();
+    }
+
+    public static TypeElement findTypeElement(CodeTypeElement typeElement, String name) {
+        for (TypeElement nestedType : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
+            if (nestedType.getSimpleName().toString().equals(name)) {
+                return nestedType;
+            }
+        }
+        return null;
     }
 
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {

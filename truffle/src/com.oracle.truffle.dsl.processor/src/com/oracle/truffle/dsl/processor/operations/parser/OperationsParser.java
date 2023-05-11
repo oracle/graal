@@ -76,6 +76,7 @@ import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
+import com.oracle.truffle.dsl.processor.operations.model.OperationsModelList;
 import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel;
 import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.CommonInstructionDecision;
 import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.QuickenDecision;
@@ -87,17 +88,95 @@ import com.oracle.truffle.tools.utils.json.JSONException;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.tools.utils.json.JSONTokener;
 
-public class OperationsParser extends AbstractParser<OperationsModel> {
+public class OperationsParser extends AbstractParser<OperationsModelList> {
 
     private static final EnumSet<TypeKind> BOXABLE_TYPE_KINDS = EnumSet.of(TypeKind.BOOLEAN, TypeKind.BYTE, TypeKind.INT, TypeKind.FLOAT, TypeKind.LONG, TypeKind.DOUBLE);
 
     @SuppressWarnings("unchecked")
     @Override
-    protected OperationsModel parse(Element element, List<AnnotationMirror> mirror) {
+    protected OperationsModelList parse(Element element, List<AnnotationMirror> mirror) {
         TypeElement typeElement = (TypeElement) element;
-        AnnotationMirror generateOperationsMirror = ElementUtils.findAnnotationMirror(mirror, types.GenerateOperations);
 
-        OperationsModel model = new OperationsModel(context, typeElement, generateOperationsMirror);
+        // In regular usage, a language annotates a RootNode with {@link GenerateOperations} and the
+        // DSL generates a single bytecode interpreter. However, for internal testing purposes, we
+        // may use {@link GenerateOperationsTestVariants} to generate multiple interpreters. In the
+        // latter case, we need to parse multiple configurations and ensure they agree.
+
+        AnnotationMirror generateOperationsTestVariantsMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateOperationsTestVariants);
+        List<OperationsModel> models;
+        AnnotationMirror topLevelAnnotationMirror;
+        if (generateOperationsTestVariantsMirror != null) {
+            topLevelAnnotationMirror = generateOperationsTestVariantsMirror;
+            models = parseGenerateOperationsTestVariants(typeElement, generateOperationsTestVariantsMirror);
+        } else {
+            AnnotationMirror generateOperationsMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateOperations);
+            assert generateOperationsMirror != null;
+            topLevelAnnotationMirror = generateOperationsMirror;
+            models = List.of(new OperationsModel(context, typeElement, generateOperationsMirror, "Gen"));
+        }
+
+        OperationsModelList modelList = new OperationsModelList(context, typeElement, topLevelAnnotationMirror, models);
+
+        for (OperationsModel model : models) {
+            parseOperationsModel(typeElement, model, model.getTemplateTypeAnnotation());
+            if (model.hasErrors()) {
+                // we only need one copy of the error messages.
+                break;
+            }
+        }
+
+        return modelList;
+    }
+
+    private List<OperationsModel> parseGenerateOperationsTestVariants(TypeElement typeElement, AnnotationMirror mirror) {
+        List<AnnotationMirror> variants = ElementUtils.getAnnotationValueList(AnnotationMirror.class, mirror, "value");
+
+        boolean first = true;
+        Set<String> names = new HashSet<>();
+        TypeMirror languageClass = null;
+        boolean enableYield = false;
+
+        List<OperationsModel> result = new ArrayList<>();
+
+        for (AnnotationMirror variant : variants) {
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(variant, "name");
+            String name = ElementUtils.resolveAnnotationValue(String.class, nameValue);
+
+            AnnotationValue generateOperationsMirrorValue = ElementUtils.getAnnotationValue(variant, "configuration");
+            AnnotationMirror generateOperationsMirror = ElementUtils.resolveAnnotationValue(AnnotationMirror.class, generateOperationsMirrorValue);
+
+            OperationsModel model = new OperationsModel(context, typeElement, generateOperationsMirror, name);
+
+            if (!first && names.contains(name)) {
+                model.addError(variant, nameValue, "A variant with name \"%s\" already exists. Each variant must have a unique name.", name);
+            }
+            names.add(name);
+
+            AnnotationValue variantLanguageClassValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass");
+            TypeMirror variantLanguageClass = ElementUtils.resolveAnnotationValue(TypeMirror.class, variantLanguageClassValue);
+            if (first) {
+                languageClass = variantLanguageClass;
+            } else if (!languageClass.equals(variantLanguageClass)) {
+                model.addError(generateOperationsMirror, variantLanguageClassValue, "Incompatible variant: all variants must use the same language class.");
+            }
+
+            AnnotationValue variantEnableYieldValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield");
+            boolean variantEnableYield = ElementUtils.resolveAnnotationValue(Boolean.class,
+                            variantEnableYieldValue);
+            if (first) {
+                enableYield = variantEnableYield;
+            } else if (variantEnableYield != enableYield) {
+                model.addError(generateOperationsMirror, variantEnableYieldValue, "Incompatible variant: all variants must have the same value for enableYield.");
+            }
+
+            first = false;
+            result.add(model);
+        }
+
+        return result;
+    }
+
+    private void parseOperationsModel(TypeElement typeElement, OperationsModel model, AnnotationMirror generateOperationsMirror) {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
         model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();
         model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableSerialization", true).getValue();
@@ -148,7 +227,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
                             getSimpleName(types.TruffleLanguage),
                             getSimpleName(types.FrameDescriptor),
                             getSimpleName(types.FrameDescriptor_Builder));
-            return model;
+            return;
         }
 
         Map<String, List<ExecutableElement>> constructorsByFDType = viableConstructors.stream().collect(Collectors.groupingBy(ctor -> {
@@ -200,7 +279,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         }
 
         if (model.hasErrors()) {
-            return model;
+            return;
         }
 
         // TODO: metadata
@@ -219,7 +298,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             }
             if (typeSystem == null) {
                 model.addError("The used type system '%s' is invalid. Fix errors in the type system first.", getQualifiedName(typeSystemType));
-                return model;
+                return;
             }
 
             model.typeSystem = typeSystem;
@@ -271,7 +350,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
 
         // error sync
         if (model.hasErrors()) {
-            return model;
+            return;
         }
 
         // custom operations
@@ -312,7 +391,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
 
         // error sync
         if (model.hasErrors()) {
-            return model;
+            return;
         }
 
         // apply optimization decisions
@@ -368,7 +447,7 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
             model.serializedFields = serializedFields;
         }
 
-        return model;
+        return;
     }
 
     private String errorPrefix() {
@@ -464,4 +543,11 @@ public class OperationsParser extends AbstractParser<OperationsModel> {
         return types.GenerateOperations;
     }
 
+    @Override
+    public DeclaredType getRepeatAnnotationType() {
+        // This annotation is not technically a Repeatable container for @GenerateOperations, but it
+        // is a convenient way to get the processor framework to forward a node with this annotation
+        // to the OperationsParser.
+        return types.GenerateOperationsTestVariants;
+    }
 }

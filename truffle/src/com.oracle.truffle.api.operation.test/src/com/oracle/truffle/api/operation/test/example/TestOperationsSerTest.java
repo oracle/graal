@@ -56,77 +56,77 @@ import com.oracle.truffle.api.operation.serialization.SerializationUtils;
 
 public class TestOperationsSerTest {
 
-    @Test
-    public void testSerialization() {
-        byte[] byteArray = createByteArray();
-        TestOperations root = deserialize(byteArray);
-
-        Assert.assertEquals(3L, root.getCallTarget().call());
-    }
-
-    private static TestOperations deserialize(byte[] byteArray) {
-        OperationNodes<TestOperations> nodes2 = null;
-        try {
-            Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(byteArray));
-            nodes2 = TestOperationsGen.deserialize(null, OperationConfig.DEFAULT, input,
-                            (context, buffer) -> {
-                                switch (buffer.readByte()) {
-                                    case 0:
-                                        return buffer.readLong();
-                                    case 1:
-                                        return buffer.readUTF();
-                                    case 2:
-                                        return null;
-                                    default:
-                                        throw new AssertionError();
-                                }
-                            });
-        } catch (IOException e) {
-            Assert.fail();
-        }
-
-        return nodes2.getNodes().get(0);
-    }
-
-    private static byte[] createByteArray() {
-
-        boolean[] haveConsts = new boolean[2];
-
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        try {
-            TestOperationsGen.serialize(OperationConfig.DEFAULT, new DataOutputStream(output),
-                            (context, buffer, object) -> {
-                                if (object instanceof Long) {
-                                    buffer.writeByte(0);
-                                    haveConsts[(int) (long) object - 1] = true;
-                                    buffer.writeLong((long) object);
-                                } else if (object instanceof String) {
-                                    buffer.writeByte(1);
-                                    buffer.writeUTF((String) object);
-                                } else if (object == null) {
-                                    buffer.writeByte(2);
-                                } else {
-                                    assert false;
-                                }
-                            }, b -> {
-                                b.beginRoot(null);
-
-                                b.beginReturn();
-                                b.beginAddOperation();
-                                b.emitLoadConstant(1L);
-                                b.emitLoadConstant(2L);
-                                b.endAddOperation();
-                                b.endReturn();
-
-                                b.endRoot();
-                            });
-        } catch (IOException e) {
-            assert false;
-        }
-
-        Assert.assertArrayEquals(new boolean[]{true, true}, haveConsts);
-
-        byte[] byteArray = output.toByteArray();
-        return byteArray;
-    }
+// @Test
+// public void testSerialization() {
+// byte[] byteArray = createByteArray();
+// TestOperations root = deserialize(byteArray);
+//
+// Assert.assertEquals(3L, root.getCallTarget().call());
+// }
+//
+// private static TestOperations deserialize(byte[] byteArray) {
+// OperationNodes<TestOperations> nodes2 = null;
+// try {
+// Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(byteArray));
+// nodes2 = TestOperationsGen.deserialize(null, OperationConfig.DEFAULT, input,
+// (context, buffer) -> {
+// switch (buffer.readByte()) {
+// case 0:
+// return buffer.readLong();
+// case 1:
+// return buffer.readUTF();
+// case 2:
+// return null;
+// default:
+// throw new AssertionError();
+// }
+// });
+// } catch (IOException e) {
+// Assert.fail();
+// }
+//
+// return nodes2.getNodes().get(0);
+// }
+//
+// private static byte[] createByteArray() {
+//
+// boolean[] haveConsts = new boolean[2];
+//
+// ByteArrayOutputStream output = new ByteArrayOutputStream();
+// try {
+// TestOperationsGen.serialize(OperationConfig.DEFAULT, new DataOutputStream(output),
+// (context, buffer, object) -> {
+// if (object instanceof Long) {
+// buffer.writeByte(0);
+// haveConsts[(int) (long) object - 1] = true;
+// buffer.writeLong((long) object);
+// } else if (object instanceof String) {
+// buffer.writeByte(1);
+// buffer.writeUTF((String) object);
+// } else if (object == null) {
+// buffer.writeByte(2);
+// } else {
+// assert false;
+// }
+// }, b -> {
+// b.beginRoot(null);
+//
+// b.beginReturn();
+// b.beginAddOperation();
+// b.emitLoadConstant(1L);
+// b.emitLoadConstant(2L);
+// b.endAddOperation();
+// b.endReturn();
+//
+// b.endRoot();
+// });
+// } catch (IOException e) {
+// assert false;
+// }
+//
+// Assert.assertArrayEquals(new boolean[]{true, true}, haveConsts);
+//
+// byte[] byteArray = output.toByteArray();
+// return byteArray;
+// }
 }

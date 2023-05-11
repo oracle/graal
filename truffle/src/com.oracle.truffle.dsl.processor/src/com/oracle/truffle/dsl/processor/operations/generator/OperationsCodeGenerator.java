@@ -40,19 +40,109 @@
  */
 package com.oracle.truffle.dsl.processor.operations.generator;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
+import com.oracle.truffle.dsl.processor.operations.model.OperationsModelList;
 
-public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsModel> {
+public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsModelList> {
 
     @Override
-    public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, OperationsModel m) {
-        return List.of(new OperationsNodeFactory(m).create());
+    public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, OperationsModelList modelList) {
+        List<CodeTypeElement> results = new ArrayList<>();
+
+        for (OperationsModel model : modelList.getModels()) {
+            results.add(new OperationsNodeFactory(model).create());
+        }
+
+        if (results.size() == 1) {
+            return results;
+        }
+
+        // For testing: when using {@link GenerateOperationsTestVariants}, we want to have a single
+        // shared Builder interface that can be used in tests.
+        List<CodeTypeElement> builders = results.stream().map(result -> (CodeTypeElement) ElementUtils.findTypeElement(result, "Builder")).toList();
+
+        boolean first = true;
+        List<ExecutableElement> expectedPublicInterface = new ArrayList<>();
+        Set<String> expectedPublicMethodNames = new HashSet();
+
+        for (TypeElement builder : builders) {
+            Set<String> publicMethodNames = new HashSet<>();
+            for (ExecutableElement method : ElementFilter.methodsIn(builder.getEnclosedElements())) {
+                if (!method.getModifiers().contains(Modifier.PUBLIC)) {
+                    continue;
+                }
+                publicMethodNames.add(method.getSimpleName().toString());
+                if (first) {
+                    expectedPublicInterface.add(method);
+                    expectedPublicMethodNames.add(method.getSimpleName().toString());
+                }
+            }
+
+            if (!first) {
+                Set<String> missing = new HashSet<>();
+                Set<String> remaining = publicMethodNames;
+
+                for (String method : expectedPublicMethodNames) {
+                    if (!remaining.remove(method)) {
+                        missing.add(method);
+                    }
+                }
+
+                if (!missing.isEmpty() || !remaining.isEmpty()) {
+                    String errorMessage = String.format("Incompatible public interface of builder %s:", builder.getQualifiedName());
+                    if (!missing.isEmpty()) {
+                        errorMessage += " missing method(s) ";
+                        errorMessage += missing.toString();
+                    }
+                    if (!remaining.isEmpty()) {
+                        errorMessage += " additional method(s) ";
+                        errorMessage += remaining.toString();
+                    }
+                    throw new AssertionError(errorMessage);
+
+                }
+            }
+            first = false;
+        }
+
+        TypeElement templateType = modelList.getTemplateType();
+        String builderName = templateType.getSimpleName() + "Builder";
+        CodeTypeElement abstractBuilderClass = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, ElementUtils.findPackageElement(templateType), builderName);
+        abstractBuilderClass.setSuperClass(types.OperationBuilder);
+        for (ExecutableElement method : expectedPublicInterface) {
+            Set<Modifier> modifiers = new HashSet<>(method.getModifiers());
+            modifiers.add(Modifier.ABSTRACT);
+            CodeExecutableElement interfaceMethod = new CodeExecutableElement(modifiers, method.getReturnType(), method.getSimpleName().toString());
+            method.getParameters().forEach(param -> interfaceMethod.addParameter(param));
+            abstractBuilderClass.add(interfaceMethod);
+        }
+
+        for (CodeTypeElement builder : builders) {
+            builder.setSuperClass(abstractBuilderClass.asType());
+        }
+
+        results.add(abstractBuilderClass);
+
+        return results;
+
     }
 
 }
