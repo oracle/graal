@@ -431,3 +431,79 @@ Now stepping into the use-site of `min` we see
 ...
 ```
 that value `14` was returned by `min` (as expected).
+
+#### Calling `svm_dbg_`-helper functions during debugging
+
+When the image gets built with `-H:+IncludeDebugHelperMethods` additional `@CEntryPoint`-functions are defined that can be called from GDB during debugging. For example:
+```text
+(gdb) p greeter 
+$3 = (hello.Hello$Greeter *) 0x7ffff6881900
+```
+Here again we have a local named `greeter` with the static-type `hello.Hello$Greeter`. To see its runtime-type we can use the methods already described above.
+Alternatively we can make use of the `svm_dbg_`-helper functions. For example, we can call
+```text
+void svm_dbg_print_hub(graal_isolatethread_t* thread, size_t hubPtr)
+```
+from within the running debug session. We have to pass a value for `graal_isolatethread_t` and the absolute address of the hub we want to get printed.
+In most situations, the value for graal_isolatethread_t is just the value of the current `IsolateThread` that can be found in a platform-specific register:
+
+| Platform  | Register |
+| --------- | -------- |
+| `amd64`   | `$r15`   |
+| `aarch64` | `$r28`   |
+
+Finally, before we can call `svm_dbg_print_hub` we also have to make sure we have the **absolute address** of the hub we want to print. Using
+```text
+(gdb) p greeter.hub
+$4 = (_z_.java.lang.Class *) 0x837820 <java.io.ObjectOutputStream::ObjectOutputStream(java.io.OutputStream*)+1120>
+```
+reveals that in the current situation the `hub`-field in `greeter` holds a compressed reference to the hub. This can be seen from the `_z_.`-prefix of the `hub`-type. 
+Thus, we need first need get the absolute address of the hub field by using another `svm_dbg_`-helper method.
+```text
+(gdb) call svm_dbg_obj_uncompress($r15, greeter.hub)
+$5 = 140737339160608
+(gdb) p/x $5
+$6 = 0x7ffff71b7820
+```
+With the help of calling `svm_dbg_obj_uncompress` we now know that the hub is located at address `0x7ffff71b7820` and we can finally call `svm_dbg_print_hub`:
+```text
+(gdb) call (void) svm_dbg_print_hub($r15, 0x7ffff71b7820)
+hello.Hello$NamedGreeter
+```
+Both calls to `svm_dbg_`-helper can be combined into a single command line:
+```text
+(gdb) call (void) svm_dbg_print_hub($r15, svm_dbg_obj_uncompress($r15, greeter.hub))
+hello.Hello$NamedGreeter
+```
+
+##### The following `svm_dbg_`-helper methods are currently defined:
+
+```text
+int svm_dbg_ptr_isInImageHeap(graal_isolatethread_t* thread, size_t ptr);
+int svm_dbg_ptr_isObject(graal_isolatethread_t* thread, size_t ptr);
+int svm_dbg_hub_getLayoutEncoding(graal_isolatethread_t* thread, size_t hubPtr);
+int svm_dbg_hub_getArrayElementSize(graal_isolatethread_t* thread, size_t hubPtr);
+int svm_dbg_hub_getArrayBaseOffset(graal_isolatethread_t* thread, size_t hubPtr);
+int svm_dbg_hub_isArray(graal_isolatethread_t* thread, size_t hubPtr);
+int svm_dbg_hub_isPrimitiveArray(graal_isolatethread_t* thread, size_t hubPtr);
+int svm_dbg_hub_isObjectArray(graal_isolatethread_t* thread, size_t hubPtr);
+int svm_dbg_hub_isInstance(graal_isolatethread_t* thread, size_t hubPtr);
+int svm_dbg_hub_isReference(graal_isolatethread_t* thread, size_t hubPtr);
+long long int svm_dbg_obj_getHub(graal_isolatethread_t* thread, size_t objPtr);
+long long int svm_dbg_obj_getObjectSize(graal_isolatethread_t* thread, size_t objPtr);
+int svm_dbg_obj_getArrayElementSize(graal_isolatethread_t* thread, size_t objPtr);
+long long int svm_dbg_obj_getArrayBaseOffset(graal_isolatethread_t* thread, size_t objPtr);
+int svm_dbg_obj_isArray(graal_isolatethread_t* thread, size_t objPtr);
+int svm_dbg_obj_isPrimitiveArray(graal_isolatethread_t* thread, size_t objPtr);
+int svm_dbg_obj_isObjectArray(graal_isolatethread_t* thread, size_t objPtr);
+int svm_dbg_obj_isInstance(graal_isolatethread_t* thread, size_t objPtr);
+int svm_dbg_obj_isReference(graal_isolatethread_t* thread, size_t objPtr);
+long long int svm_dbg_obj_uncompress(graal_isolatethread_t* thread, size_t compressedPtr);
+long long int svm_dbg_obj_compress(graal_isolatethread_t* thread, size_t objPtr);
+int svm_dbg_string_length(graal_isolatethread_t* thread, size_t strPtr);
+void svm_dbg_print_hub(graal_isolatethread_t* thread, size_t hubPtr);
+void svm_dbg_print_obj(graal_isolatethread_t* thread, size_t objPtr);
+void svm_dbg_print_string(graal_isolatethread_t* thread, size_t strPtr);
+void svm_dbg_print_fatalErrorDiagnostics(graal_isolatethread_t* thread, size_t sp, void * ip);
+void svm_dbg_print_locationInfo(graal_isolatethread_t* thread, size_t mem);
+```
