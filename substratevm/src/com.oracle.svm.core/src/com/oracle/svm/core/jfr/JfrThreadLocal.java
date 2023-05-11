@@ -36,6 +36,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.jfr.events.ThreadCPULoadEvent;
 import com.oracle.svm.core.jfr.events.ThreadEndEvent;
 import com.oracle.svm.core.jfr.events.ThreadStartEvent;
 import com.oracle.svm.core.sampler.SamplerBuffer;
@@ -125,6 +126,7 @@ public class JfrThreadLocal implements ThreadListener {
     public void beforeThreadStart(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             SubstrateJVM.getThreadRepo().registerThread(javaThread);
+            ThreadCPULoadEvent.initWallclockTime(isolateThread);
             ThreadStartEvent.emit(javaThread);
         }
     }
@@ -134,6 +136,7 @@ public class JfrThreadLocal implements ThreadListener {
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
         if (SubstrateJVM.get().isRecording()) {
             ThreadEndEvent.emit(javaThread);
+            ThreadCPULoadEvent.emit(isolateThread);
         }
 
         /*
