@@ -83,7 +83,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.util.LogUtils;
@@ -133,7 +132,7 @@ public final class ResourcesFeature implements InternalFeature {
     }
 
     private boolean sealed = false;
-    private final Set<String> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private Set<String> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
     private ImageClassLoader imageClassLoader;
@@ -220,6 +219,31 @@ public final class ResourcesFeature implements InternalFeature {
 
         resourcePatternWorkSet.addAll(Options.IncludeResources.getValue().values());
         excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());
+
+        if (!resourcePatternWorkSet.isEmpty()) {
+            FeatureImpl.BeforeAnalysisAccessImpl beforeAnalysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+            ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
+            if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+                for (ResourcePattern resourcePattern : includePatterns) {
+                    Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
+                }
+            }
+
+            ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
+            DebugContext debugContext = beforeAnalysisAccess.getDebugContext();
+            ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns);
+            try {
+                collector.prepareProgressReporter();
+                ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
+            } finally {
+                collector.shutDownProgressReporter();
+            }
+
+            // We set resourcePatternWorkSet to empty unmodifiable set, so we can be sure that it
+            // won't be populated in some later phase
+            resourcePatternWorkSet = Set.of();
+        }
+
         resourceRegistryImpl().flushConditionalConfiguration(access);
     }
 
@@ -318,34 +342,6 @@ public final class ResourcesFeature implements InternalFeature {
         public void registerNegativeQuery(Module module, String resourceName) {
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        resourceRegistryImpl().flushConditionalConfiguration(access);
-        if (resourcePatternWorkSet.isEmpty()) {
-            return;
-        }
-
-        access.requireAnalysisIteration();
-
-        DuringAnalysisAccessImpl duringAnalysisAccess = ((DuringAnalysisAccessImpl) access);
-        ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
-        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-            for (ResourcePattern resourcePattern : includePatterns) {
-                Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
-            }
-        }
-        ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
-        DebugContext debugContext = duringAnalysisAccess.getDebugContext();
-        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns);
-        try {
-            collector.prepareProgressReporter();
-            ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
-        } finally {
-            collector.shutDownProgressReporter();
-        }
-        resourcePatternWorkSet.clear();
     }
 
     private ResourcePattern[] compilePatterns(Set<String> patterns) {
