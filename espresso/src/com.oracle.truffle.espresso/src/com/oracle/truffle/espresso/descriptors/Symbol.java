@@ -674,6 +674,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_Cloneable = StaticSymbols.putType("Ljava/lang/Cloneable;");
 
         public static final Symbol<Type> java_lang_StackOverflowError = StaticSymbols.putType("Ljava/lang/StackOverflowError;");
+        public static final Symbol<Type> java_lang_VirtualMachineError = StaticSymbols.putType("Ljava/lang/VirtualMachineError;");
         public static final Symbol<Type> java_lang_OutOfMemoryError = StaticSymbols.putType("Ljava/lang/OutOfMemoryError;");
         public static final Symbol<Type> java_lang_AssertionError = StaticSymbols.putType("Ljava/lang/AssertionError;");
 
