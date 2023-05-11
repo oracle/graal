@@ -51,9 +51,11 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -504,8 +506,8 @@ public class SubstrateGraphBuilderPlugins {
      * Therefore, if <code>exact</code> is set to true we return null.
      *
      * 2. The node is a NewArrayNode. Then we track the stores in the array as long as all are
-     * constants and there is no control flow split. If the content of the array cannot be determine
-     * a null value is returned.
+     * constants and there is no control flow split. If the content of the array cannot be
+     * determined a null value is returned.
      */
     static Class<?>[] extractClassArray(GraphBuilderContext b, AnnotationSubstitutionProcessor annotationSubstitutions, SnippetReflectionProvider snippetReflection, ValueNode arrayNode,
                     boolean exact) {
@@ -525,7 +527,7 @@ public class SubstrateGraphBuilderPlugins {
                 return null;
             }
             CommitAllocationNode commitAllocationNode = allocatedObjectNode.getCommit();
-            if (skipBeginNodes(commitAllocationNode.next()) != null) {
+            if (skipNonInterferingNodes(commitAllocationNode.next()) != null) {
                 /* Nodes after the array materialization could interfere with the array. */
                 return null;
             }
@@ -624,13 +626,14 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     /**
-     * The graph decoding used for inlining before static analysis creates unnecessary block begin
-     * nodes. We can just ignore them.
+     * The graph decoding used for inlining before static analysis creates unnecessary block
+     * {@link BeginNode}s. Similarly, {@link FullInfopointNode}s are inserted for debugging. We can
+     * just ignore them.
      */
-    private static FixedNode skipBeginNodes(FixedNode node) {
+    private static FixedNode skipNonInterferingNodes(FixedNode node) {
         FixedNode cur = node;
-        while (cur instanceof AbstractBeginNode) {
-            cur = ((AbstractBeginNode) cur).next();
+        while (cur instanceof AbstractBeginNode || cur instanceof FullInfopointNode) {
+            cur = ((FixedWithNextNode) cur).next();
         }
         return cur;
     }
