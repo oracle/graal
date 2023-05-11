@@ -31,6 +31,7 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGC;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
@@ -98,7 +99,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
                 counters.noteForwardedReferent();
                 // Update the reference to point to the forwarded Object.
                 Object obj = ohi.getForwardedObject(p, header);
-                assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
+                assert ParallelGC.singleton().isInParallelPhase() || innerOffset < LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
                 Object offsetObj = (innerOffset == 0) ? obj : Word.objectToUntrackedPointer(obj).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetObj, compressed);
                 RememberedSet.get().dirtyCardIfNecessary(holderObject, obj);
@@ -111,7 +112,7 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             if (copy != obj) {
                 // ... update the reference to point to the copy, making the reference black.
                 counters.noteCopiedReferent();
-                assert innerOffset < LayoutEncoding.getSizeFromObjectInGC(copy).rawValue();
+                assert ParallelGC.singleton().isInParallelPhase() || innerOffset < LayoutEncoding.getSizeFromObjectInGC(copy).rawValue();
                 Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
                 ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
             } else {
