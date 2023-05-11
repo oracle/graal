@@ -45,6 +45,7 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <inttypes.h>
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
