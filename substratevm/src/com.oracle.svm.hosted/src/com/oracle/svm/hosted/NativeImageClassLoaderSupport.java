@@ -394,7 +394,7 @@ public class NativeImageClassLoaderSupport {
             processListModulesOption(moduleLayerForImageBuild);
         }
 
-        processOption(NativeImageClassLoaderOptions.AddExports).forEach(val -> {
+        processOption(SubstrateOptions.AddExports).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addExportsToAllUnnamed(val.module, val.packageName);
             } else {
@@ -403,7 +403,7 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         });
-        processOption(NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
+        processOption(SubstrateOptions.AddOpens).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addOpensToAllUnnamed(val.module, val.packageName);
             } else {
@@ -539,7 +539,7 @@ public class NativeImageClassLoaderSupport {
         String optionValue = valueOrigin.getLeft();
 
         boolean reads = option.equals(NativeImageClassLoaderOptions.AddReads);
-        String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
+        String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : SubstrateOptions.AddExportsAndOpensFormat;
         String syntaxErrorMessage = " Allowed value format: " + format;
 
         String[] modulePackageAndTargetModules = optionValue.split("=", 2);

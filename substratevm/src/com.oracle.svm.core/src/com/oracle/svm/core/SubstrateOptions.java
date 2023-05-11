@@ -72,6 +72,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.internal.misc.Unsafe;
 
 public class SubstrateOptions {
+    public static final String AddExportsAndOpensFormat = "<module>/<package>=<target-module>(,<target-module>)*";
 
     @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
@@ -96,6 +97,15 @@ public class SubstrateOptions {
 
     @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
+
+    @APIOption(name = "add-exports", extra = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
+    @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to export <package> to <target-module>, regardless of module declaration." +
+            " <target-module> can be ALL-UNNAMED to export to all unnamed modules.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddExports = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    @APIOption(name = "add-opens", extra = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
+    @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to open <package> to <target-module>, regardless of module declaration.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddOpens = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
     public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");

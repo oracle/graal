@@ -64,6 +64,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -113,8 +114,6 @@ public class NativeImage {
     static final String graalvmVendorUrl = VM.getVendorUrl();
     static final String graalvmVendorVersion = VM.getVendorVersion();
     private static final String ALL_UNNAMED = "ALL-UNNAMED";
-    private static final String ADD_OPENS_OPTION = "-H:AddOpens=";
-    private static final String ADD_EXPORTS_OPTION = "-H:AddExports=";
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
 
     private static Map<String, String[]> getCompilerFlags() {
@@ -923,19 +922,19 @@ public class NativeImage {
     void handleModuleAttributes(Attributes mainAttributes) {
         String addOpensValues = mainAttributes.getValue("Add-Opens");
         if (addOpensValues != null) {
-            handleModuleExports(addOpensValues, ADD_OPENS_OPTION);
+            handleModuleExports(addOpensValues, SubstrateOptions.AddOpens);
         }
 
         String addExportsValues = mainAttributes.getValue("Add-Exports");
         if (addExportsValues != null) {
-            handleModuleExports(addExportsValues, ADD_EXPORTS_OPTION);
+            handleModuleExports(addExportsValues, SubstrateOptions.AddExports);
         }
     }
 
-    private void handleModuleExports(String modulesValues, String option) {
+    private void handleModuleExports(String modulesValues, OptionKey<LocatableMultiOptionValue.Strings> option) {
         String []modules = modulesValues.split(" ");
         for (String fromModule : modules) {
-            imageBuilderArgs.add(option + fromModule + "=" + ALL_UNNAMED);
+            addPlainImageBuilderArg(oH(option) + fromModule + "=" + ALL_UNNAMED);
         }
     }
 
