@@ -148,8 +148,16 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
+        protected boolean shouldVerifyFrameStates() {
+            return false;
+        }
+
         @Override
         protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
+            if (!shouldVerifyFrameStates()) {
+                startFrameState.disableStateVerification();
+            }
+
             super.build(startInstruction, startFrameState);
 
             if (isMethodDeoptTarget()) {
