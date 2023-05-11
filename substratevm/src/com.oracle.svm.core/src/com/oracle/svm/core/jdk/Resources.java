@@ -134,6 +134,7 @@ public final class Resources {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         var resources = singleton().resources;
