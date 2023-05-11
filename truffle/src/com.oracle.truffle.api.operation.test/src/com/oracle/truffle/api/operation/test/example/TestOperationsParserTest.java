@@ -44,6 +44,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -53,6 +55,10 @@ import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -68,6 +74,7 @@ import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.operation.OperationParser;
 
+@RunWith(Parameterized.class)
 public class TestOperationsParserTest {
     // @formatter:off
 
@@ -76,22 +83,44 @@ public class TestOperationsParserTest {
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-    private static RootCallTarget parse(String rootName, OperationParser<TestOperationsGen.Builder> builder) {
+    @Parameters(name="{0}")
+    public static List<Class<? extends TestOperations>> getInterpreterClasses() {
+        return List.of(TestOperationsBase.class, TestOperationsUnsafe.class);
+    }
+
+
+    @Parameter(0)
+    public Class<? extends TestOperations> interpreterClass;
+
+    private <T extends TestOperationsBuilder> RootCallTarget parse(String rootName, OperationParser<T> builder) {
         OperationRootNode operationsNode = parseNode(rootName, builder);
         return ((RootNode) operationsNode).getCallTarget();
     }
 
-    private static TestOperations parseNode(String rootName, OperationParser<TestOperationsGen.Builder> builder) {
-        OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.DEFAULT, builder);
+    private <T extends TestOperationsBuilder> TestOperations parseNode(String rootName, OperationParser<T> builder) {
+        OperationNodes<TestOperations> nodes = createNode(OperationConfig.DEFAULT, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         op.setName(rootName);
         return op;
     }
-    private static TestOperations parseNodeWithSource(String rootName, OperationParser<TestOperationsGen.Builder> builder) {
-        OperationNodes<TestOperations> nodes = TestOperationsGen.create(OperationConfig.WITH_SOURCE, builder);
+    private <T extends TestOperationsBuilder> TestOperations parseNodeWithSource(String rootName, OperationParser<T> builder) {
+        OperationNodes<TestOperations> nodes = createNode(OperationConfig.WITH_SOURCE, builder);
         TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         op.setName(rootName);
         return op;
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends TestOperationsBuilder> OperationNodes<TestOperations> createNode(OperationConfig config, OperationParser<T> builder) {
+        try {
+            Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
+            return (OperationNodes<TestOperations>) create.invoke(null, config, builder);
+        } catch (InvocationTargetException e) {
+            throw new IllegalStateException(e.getCause());
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new AssertionError("Encountered exception: " + e.getMessage());
+        }
     }
 
     private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
@@ -124,20 +153,20 @@ public class TestOperationsParserTest {
         Assert.assertArrayEquals("expected " + Arrays.toString(order) + " got " + result, order, result.toArray());
     }
 
-    private static void emitReturn(TestOperationsGen.Builder b, long value) {
+    private static void emitReturn(TestOperationsBuilder b, long value) {
         b.beginReturn();
         b.emitLoadConstant(value);
         b.endReturn();
     }
 
-    private static void emitAppend(TestOperationsGen.Builder b, long value) {
+    private static void emitAppend(TestOperationsBuilder b, long value) {
         b.beginAppenderOperation();
         b.emitLoadArgument(0);
         b.emitLoadConstant(value);
         b.endAppenderOperation();
     }
 
-    private static void emitThrow(TestOperationsGen.Builder b, long value) {
+    private static void emitThrow(TestOperationsBuilder b, long value) {
         b.beginThrowOperation();
         b.emitLoadConstant(value);
         b.endThrowOperation();

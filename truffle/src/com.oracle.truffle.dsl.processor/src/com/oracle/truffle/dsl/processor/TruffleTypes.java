@@ -370,6 +370,8 @@ public class TruffleTypes {
     public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
     public static final String OperationTracingMetadata_Name = "com.oracle.truffle.api.operation.tracing.TracingMetadata";
     public static final String OperationTracingMetadata_SpecializationNames_Name = "com.oracle.truffle.api.operation.tracing.TracingMetadata.SpecializationNames";
+    public static final String GenerateOperationsTestVariants_Name = "com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants";
+    public static final String GenerateOperationsTestVariants_Variant_Name = "com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Variant";
 
     public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
     public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);
@@ -404,6 +406,8 @@ public class TruffleTypes {
     public final DeclaredType ExecutionTracer = c.getDeclaredTypeOptional(ExecutionTracer_Name);
     public final DeclaredType OperationTracingMetadata = c.getDeclaredTypeOptional(OperationTracingMetadata_Name);
     public final DeclaredType OperationTracingMetadata_SpecializationNames = c.getDeclaredTypeOptional(OperationTracingMetadata_SpecializationNames_Name);
+    public final DeclaredType GenerateOperationsTestVariants = c.getDeclaredTypeOptional(GenerateOperationsTestVariants_Name);
+    public final DeclaredType GenerateOperationsTestVariant_Variant = c.getDeclaredTypeOptional(GenerateOperationsTestVariants_Variant_Name);
 
     // Library API
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";

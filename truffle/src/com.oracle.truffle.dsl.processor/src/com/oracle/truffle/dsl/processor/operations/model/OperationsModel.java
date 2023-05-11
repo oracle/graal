@@ -73,11 +73,13 @@ public class OperationsModel extends Template implements InfoDumpable {
 
     private final ProcessorContext context;
     public final TypeElement templateType;
+    public final String name;
 
-    public OperationsModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror) {
+    public OperationsModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, String name) {
         super(context, templateType, mirror);
         this.context = context;
         this.templateType = templateType;
+        this.name = name;
     }
 
     private int operationId = 1;
@@ -312,4 +314,8 @@ public class OperationsModel extends Template implements InfoDumpable {
         return !boxingEliminatedTypes.isEmpty();
     }
 
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + "[" + ElementUtils.getSimpleName(getTemplateType()) + name + "]";
+    }
 }
