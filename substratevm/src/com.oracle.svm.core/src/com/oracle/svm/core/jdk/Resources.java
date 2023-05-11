@@ -35,7 +35,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.stream.StreamSupport;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import org.graalvm.collections.EconomicMap;
@@ -87,20 +86,6 @@ public final class Resources {
     Resources() {
     }
 
-    public static void replaceHostedModuleWithRuntimeModule(Module hostedModule, Module runtimeModule) {
-        var resources = singleton().resources;
-        synchronized (resources) {
-            var keysToUpdate = StreamSupport.stream(resources.getKeys().spliterator(), false)
-                            .filter(k -> hostedModule.equals(k.getLeft()))
-                            .toList();
-            for (var oldKey : keysToUpdate) {
-                ResourceStorageEntry entry = resources.removeKey(oldKey);
-                var newKey = createStorageKey(runtimeModule, oldKey.getRight());
-                resources.put(newKey, entry);
-            }
-        }
-    }
-
     public EconomicMap<Pair<Module, String>, ResourceStorageEntry> getResourceStorage() {
         return resources;
     }
@@ -137,9 +122,13 @@ public final class Resources {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
+        Module m = module != null && module.isNamed() ? module : null;
+        if (m != null) {
+            m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
+        }
         var resources = singleton().resources;
         synchronized (resources) {
-            Pair<Module, String> key = createStorageKey(module, resourceName);
+            Pair<Module, String> key = createStorageKey(m, resourceName);
             ResourceStorageEntry entry = resources.get(key);
             if (entry == null) {
                 if (singleton().lastModifiedTime == INVALID_TIMESTAMP) {
@@ -290,7 +279,7 @@ public final class Resources {
              * If module is not specified or is an unnamed module and entry was not found as
              * classpath-resource we have to search for the resource in all modules in the image.
              */
-            for (Module m : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+            for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
                 entry = Resources.get(m, resourceName);
                 if (entry != null) {
                     break;
@@ -319,7 +308,7 @@ public final class Resources {
         boolean shouldAppendTrailingSlash = hasTrailingSlash(resourceName);
         /* If module was unspecified or unnamed, we have to consider all modules in the image */
         if (moduleName(module) == null) {
-            for (Module m : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+            for (Module m : RuntimeModuleSupport.instance().getBootLayer().modules()) {
                 ResourceStorageEntry entry = Resources.get(m, resourceName);
                 addURLEntries(resourcesURLs, entry, m, shouldAppendTrailingSlash ? canonicalResourceName + '/' : canonicalResourceName);
             }
