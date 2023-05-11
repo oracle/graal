@@ -932,7 +932,7 @@ public class NativeImage {
     }
 
     private void handleModuleExports(String modulesValues, OptionKey<LocatableMultiOptionValue.Strings> option) {
-        String []modules = modulesValues.split(" ");
+        String[] modules = modulesValues.split(" ");
         for (String fromModule : modules) {
             addPlainImageBuilderArg(oH(option) + fromModule + "=" + ALL_UNNAMED);
         }
