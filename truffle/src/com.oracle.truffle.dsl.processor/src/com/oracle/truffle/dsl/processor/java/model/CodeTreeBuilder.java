@@ -994,6 +994,7 @@ public class CodeTreeBuilder {
                     }
                     break;
                 case TYPE:
+                case TYPE_LITERAL:
                     write(ElementUtils.getSimpleName(e.getType()));
                     break;
                 case STATIC_METHOD_REFERENCE:

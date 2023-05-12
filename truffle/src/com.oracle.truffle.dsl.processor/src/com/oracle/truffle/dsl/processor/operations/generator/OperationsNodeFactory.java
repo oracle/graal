@@ -157,10 +157,15 @@ public class OperationsNodeFactory implements ElementHelpers {
     // Singleton field for an empty array.
     private final CodeVariableElement emptyObjectArray;
 
+    // Singleton field for accessing arrays and the frame.
+    private final CodeVariableElement fastAccess;
+
     public OperationsNodeFactory(OperationsModel model) {
         this.model = model;
         operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.templateType.getSimpleName() + model.name, model.templateType.asType());
         emptyObjectArray = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
+        fastAccess = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.FastAccess, "ACCESS");
+        fastAccess.setInit(createFastAccessFieldInitializer());
 
         if (model.enableYield) {
             continuationRoot = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRoot");
@@ -246,20 +251,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
         }
 
-        // Define an Unsafe singleton, if Unsafe is allowed.
-        if (model.allowUnsafe) {
-            operationNodeGen.addAll(GeneratorUtils.createUnsafeSingleton());
-        }
-
         // Generate a {@link @TracingConfiguration} annotation, if tracing is enabled.
         if (model.enableTracing) {
             operationNodeGen.addAnnotationMirror(createTracingMetadata());
         }
-
-        // Define helpers used by the continueAt methods to access arrays.
-        operationNodeGen.add(createReadShortInBounds());
-        operationNodeGen.add(createReadNodeInBounds());
-        operationNodeGen.add(createReadObjectInBounds());
 
         // Define the method to change between interpreters.
         operationNodeGen.add(createChangeInterpreters());
@@ -338,6 +333,12 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createDumpBytecode());
 
         return operationNodeGen;
+    }
+
+    private CodeTree createFastAccessFieldInitializer() {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.staticReference(types.FastAccess, model.allowUnsafe ? "UNSAFE" : "SAFE");
+        return b.build();
     }
 
     private CodeExecutableElement createGetSourceSection() {
@@ -1617,7 +1618,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(createDoEmitLeaves());
             builder.add(createAllocateNode());
             builder.add(createInFinallyTryHandler());
-            builder.add(createWriteShortInBounds());
             if (model.enableSerialization) {
                 builder.add(createSerialize());
                 builder.add(createDeserialize());
@@ -3428,24 +3428,12 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createWriteShortInBounds() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "writeShortInBounds");
-            ex.addParameter(new CodeVariableElement(context.getType(short[].class), "array"));
-            ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
-            ex.addParameter(new CodeVariableElement(context.getType(short.class), "value"));
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.statement("array[index] = value");
-
-            return ex;
-        }
-
         private static String writeBc(String index, String value) {
-            return String.format("writeShortInBounds(bc, %s, %s)", index, value);
+            return String.format("ACCESS.shortArrayWrite(bc, %s, %s)", index, value);
         }
 
         private static String readHandlerBc(String index) {
-            return String.format("readShortInBounds(handlerBc, %s)", index);
+            return String.format("ACCESS.shortArrayRead(handlerBc, %s)", index);
         }
 
         // Finally handler code gets emitted in multiple locations. When a branch target is inside a
@@ -4054,63 +4042,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
     }
 
-    private CodeExecutableElement createReadShortInBounds() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(short.class), "readShortInBounds");
-        ex.addParameter(new CodeVariableElement(context.getType(short[].class), "array"));
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
-        CodeTreeBuilder b = ex.getBuilder();
-
-        b.startReturn();
-        if (model.allowUnsafe) {
-            b.startCall("UNSAFE", "getShort").string("array").string("Unsafe.ARRAY_SHORT_BASE_OFFSET + index * Unsafe.ARRAY_SHORT_INDEX_SCALE").end();
-        } else {
-            b.string("array[index]");
-        }
-        b.end();
-
-        return ex;
-    }
-
-    private CodeExecutableElement createReadNodeInBounds() {
-        CodeTypeParameterElement T = new CodeTypeParameterElement(CodeNames.of("T"), types.Node);
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), T.asType(), "readNodeInBounds");
-        ex.getTypeParameters().add(T);
-
-        ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "array"));
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
-        ex.addParameter(new CodeVariableElement(generic(context.getType(Class.class), T.asType()), "expectedType"));
-        CodeTreeBuilder b = ex.getBuilder();
-
-        b.startReturn().cast(T.asType());
-        if (model.allowUnsafe) {
-            b.startCall("UNSAFE", "getObject").string("array").string("Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE").end();
-        } else {
-            b.string("array[index]");
-        }
-        b.end();
-
-        addSuppressWarnings(context, ex, "unchecked");
-
-        return ex;
-    }
-
-    private CodeExecutableElement createReadObjectInBounds() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object.class), "readObjectInBounds");
-        ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "array"));
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "index"));
-        CodeTreeBuilder b = ex.getBuilder();
-
-        b.startReturn();
-        if (model.allowUnsafe) {
-            b.startCall("UNSAFE", "getObject").string("array").string("Unsafe.ARRAY_OBJECT_BASE_OFFSET + index * Unsafe.ARRAY_OBJECT_INDEX_SCALE").end();
-        } else {
-            b.string("array[index]");
-        }
-        b.end();
-
-        return ex;
-    }
-
     class OSRMembersFactory {
         final String METADATA_FIELD_NAME = "osrMetadata_";
 
@@ -4499,15 +4430,23 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private static String readBc(String index) {
-        return String.format("readShortInBounds(bc, %s)", index);
+        return String.format("ACCESS.shortArrayRead(bc, %s)", index);
     }
 
     private static String readConst(String index) {
-        return String.format("readObjectInBounds(constants, %s)", index);
+        return String.format("ACCESS.objectArrayRead(constants, %s)", index);
     }
 
     private static String readNode(TypeMirror expectedType, String index) {
-        return String.format("readNodeInBounds(cachedNodes, %s, %s.class)", index, expectedType);
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startCall("ACCESS.cast");
+        b.startCall("ACCESS.objectArrayRead");
+        b.string("cachedNodes");
+        b.string(index);
+        b.end();
+        b.typeLiteral(expectedType);
+        b.end();
+        return b.toString();
     }
 
     private static String cachedDataClassName(InstructionModel instr) {

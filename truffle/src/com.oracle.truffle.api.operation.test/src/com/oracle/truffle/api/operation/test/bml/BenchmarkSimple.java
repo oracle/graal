@@ -68,7 +68,7 @@ import com.oracle.truffle.api.operation.test.bml.ManualBytecodeNodedNode.AddNode
 import com.oracle.truffle.api.operation.test.bml.ManualBytecodeNodedNode.ModNode;
 
 @State(Scope.Benchmark)
-public class BenmarkSimple extends BaseBenchmark {
+public class BenchmarkSimple extends BaseBenchmark {
 
     private static final int TOTAL_ITERATIONS = 5000;
 

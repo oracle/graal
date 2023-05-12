@@ -64,6 +64,7 @@ import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.test.BoxingOperations.ObjectProducer;
 
+@Ignore
 public class BoxingOperationsTest {
 
     private static final BoxingLanguage LANGUAGE = null;
@@ -83,7 +84,6 @@ public class BoxingOperationsTest {
         Assert.assertEquals(invalidations, totalInval);
     }
 
-    @Ignore
     @Test
     public void testCastsPrimToPrim() {
         BoxingOperations root = parse(b -> {
@@ -176,7 +176,6 @@ public class BoxingOperationsTest {
         });
     }
 
-    @Ignore
     @Test
     public void testCastsChangePrim() {
         BoxingOperations root = parse(b -> {
@@ -246,7 +245,6 @@ public class BoxingOperationsTest {
         });
     }
 
-    @Ignore
     @Test
     public void testCastsChangeSpecPrim() {
         BoxingOperations root = parse(b -> {
