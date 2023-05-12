@@ -359,6 +359,24 @@ suite = {
       "workingSets" : "Graal,HotSpot,Test",
     },
 
+    "org.graalvm.compiler.hotspot.jdk21.test" : {
+      "testProject" : True,
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "jdk.internal.vm.compiler.test",
+      ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.util",
+        ],
+      },
+      "checkstyle": "jdk.internal.vm.compiler",
+      "javaCompliance" : "21+",
+      "javaPreviewNeeded": "21+",
+      "workingSets" : "Graal,HotSpot,Test",
+    },
+
     "org.graalvm.compiler.virtual.bench" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -484,6 +502,8 @@ suite = {
       "dependencies" : [
         "jdk.internal.vm.compiler.test",
         "org.graalvm.nativebridge.processor.test",
+        "org.graalvm.compiler.hotspot.jdk20.test",
+        "org.graalvm.compiler.hotspot.jdk21.test",
       ],
       "distDependencies" : [
         "GRAAL",
