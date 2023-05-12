@@ -349,7 +349,7 @@ Using this pattern has a positive side effect of improving security on the JVM a
 
 Wildcard patterns do the serialization registration only for lambda-proxy classes of an enclosing class. For example, to register lambda serialization in an enclosing class `pkg.LambdaHolder` use:
 ```java
-  ObjectInputFilter.Config.createFilter("pkg.LambdaHolder$$Lambda$*;")
+  ObjectInputFilter.Config.createFilter("pkg.LambdaHolder$$Lambda*;")
 ```
 
 Patterns like `"pkg.**"` and `"pkg.Prefix*"` will not perform serialization registration as they are too general and would increase image size significantly. 

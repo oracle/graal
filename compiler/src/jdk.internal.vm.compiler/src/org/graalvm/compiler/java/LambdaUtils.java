@@ -55,6 +55,8 @@ public final class LambdaUtils {
     private static final char[] HEX = "0123456789abcdef".toCharArray();
     public static final String LAMBDA_SPLIT_PATTERN;
     public static final String LAMBDA_CLASS_NAME_SUBSTRING;
+    public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING = "$$Lambda";
+    public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN = "\\$\\$Lambda";
 
     static {
         if (Runtime.version().feature() < 21) {
