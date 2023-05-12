@@ -312,7 +312,11 @@ public class HeapSnapshotVerifier {
         }
 
         private void ensureTypeScanned(JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
-            ensureTypeScanned(null, typeConstant, type, reason);
+            if (typeConstant instanceof ImageHeapConstant imageHeapConstant) {
+                ensureTypeScanned(null, imageHeapConstant.getHostedObject(), type, reason);
+            } else {
+                ensureTypeScanned(null, typeConstant, type, reason);
+            }
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})

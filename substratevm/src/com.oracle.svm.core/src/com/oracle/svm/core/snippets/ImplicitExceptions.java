@@ -181,10 +181,6 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArrayIndexOutOfBoundsException createOutOfBoundsException(int index, int length) {
         vmErrorIfImplicitExceptionsAreFatal();
-        /*
-         * JDK 11 added the length to the error message, we can do that for all Java versions to be
-         * consistent.
-         */
         return new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length);
     }
 
@@ -238,6 +234,8 @@ public class ImplicitExceptions {
         return new ArithmeticException("/ by zero");
     }
 
+    // Checkstyle: allow inconsistent exceptions and errors
+
     /** Foreign call: {@link #CREATE_INTEGER_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static ArithmeticException createIntegerOverflowException() {
@@ -251,6 +249,8 @@ public class ImplicitExceptions {
         vmErrorIfImplicitExceptionsAreFatal();
         return new ArithmeticException("long overflow");
     }
+
+    // Checkstyle: disallow inconsistent exceptions and errors
 
     /** Foreign call: {@link #CREATE_ASSERTION_ERROR_NULLARY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
@@ -284,10 +284,6 @@ public class ImplicitExceptions {
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewOutOfBoundsExceptionWithArgs(int index, int length) {
         vmErrorIfImplicitExceptionsAreFatal();
-        /*
-         * JDK 11 added the length to the error message, we can do that for all Java versions to be
-         * consistent.
-         */
         throw new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + length);
     }
 
@@ -362,6 +358,8 @@ public class ImplicitExceptions {
         throw new ArithmeticException("/ by zero");
     }
 
+    // Checkstyle: allow inconsistent exceptions and errors
+
     /** Foreign call: {@link #THROW_NEW_INTEGER_OVERFLOW_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewIntegerOverflowException() {
@@ -375,6 +373,8 @@ public class ImplicitExceptions {
         vmErrorIfImplicitExceptionsAreFatal();
         throw new ArithmeticException("long overflow");
     }
+
+    // Checkstyle: disallow inconsistent exceptions and errors
 
     /** Foreign call: {@link #THROW_NEW_ASSERTION_ERROR_NULLARY}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)

@@ -111,7 +111,10 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
         ValueNode fieldCheckStatusNode = b.add(new IsStaticFinalFieldInitializedNode(field));
         LogicNode isUninitializedNode = b.add(IntegerEqualsNode.create(fieldCheckStatusNode, ConstantNode.forBoolean(false), NodeView.DEFAULT));
 
-        JavaConstant uninitializedValue = b.getConstantReflection().readFieldValue(field, null);
+        JavaConstant uninitializedValue = aField.getConstantValue();
+        if (uninitializedValue == null) {
+            uninitializedValue = JavaConstant.defaultForKind(aField.getStorageKind());
+        }
         ConstantNode uninitializedValueNode = ConstantNode.forConstant(uninitializedValue, b.getMetaAccess());
         ConstantNode initializedValueNode = ConstantNode.forConstant(initializedValue, b.getMetaAccess());
 
@@ -125,9 +128,9 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
 
         ConstantNode[] phiValueNodes = {uninitializedValueNode, initializedValueNode};
         ValuePhiNode phi = new ValuePhiNode(StampTool.meet(Arrays.asList(phiValueNodes)), merge, phiValueNodes);
+        b.addPush(field.getJavaKind(), phi);
         b.setStateAfter(merge);
 
-        b.addPush(field.getJavaKind(), phi);
         return true;
     }
 

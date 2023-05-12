@@ -186,7 +186,7 @@ public class CodeReferenceMapDecoder {
     }
 
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
+    @Uninterruptible(reason = "Bridge between uninterruptible and potentially interruptible code.", mayBeInlined = true, calleeMustBe = false)
     private static boolean callVisitObjectReferenceInline(ObjectReferenceVisitor visitor, Pointer derivedRef, int innerOffset, boolean compressed, Object holderObject) {
         return visitor.visitObjectReferenceInline(derivedRef, innerOffset, compressed, holderObject);
     }

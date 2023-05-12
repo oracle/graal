@@ -29,7 +29,6 @@ import java.util.Arrays;
 import java.util.Objects;
 
 import jdk.internal.reflect.ConstantPool;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 public final class TypeAnnotationValue {
     private final byte[] targetInfo;
@@ -129,10 +128,10 @@ public final class TypeAnnotationValue {
         return locationInfo;
     }
 
-    static TypeAnnotationValue extract(SnippetReflectionProvider snippetReflection, ByteBuffer buf, ConstantPool cp, Class<?> container) {
+    static TypeAnnotationValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container) {
         byte[] targetInfo = extractTargetInfo(buf);
         byte[] locationInfo = extractLocationInfo(buf);
-        AnnotationValue annotation = AnnotationValue.extract(snippetReflection, buf, cp, container, false, false);
+        AnnotationValue annotation = AnnotationValue.extract(buf, cp, container, false, false);
 
         return new TypeAnnotationValue(targetInfo, locationInfo, annotation);
     }

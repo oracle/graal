@@ -266,7 +266,7 @@ public class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPoli
             } else if (cur instanceof ControlSinkNode) {
                 /* End of this control flow path. */
             } else {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHereUnexpectedValue(cur); // ExcludeFromJacocoGeneratedReport
             }
 
             if (cur instanceof AbstractMergeNode) {

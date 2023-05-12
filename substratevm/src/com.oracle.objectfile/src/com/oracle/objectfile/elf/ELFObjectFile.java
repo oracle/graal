@@ -166,7 +166,7 @@ public class ELFObjectFile extends ObjectFile {
     private ELFSymtab getSymtab(boolean isDynamic) {
         ELFSymtab symtab = (ELFSymtab) (isDynamic ? elementForName(".dynsym") : elementForName(".symtab"));
         if (symtab == null) {
-            throw new IllegalStateException("no appropriate symtab");
+            throw new IllegalStateException("No appropriate symtab");
         }
         return symtab;
     }
@@ -385,7 +385,7 @@ public class ELFObjectFile extends ObjectFile {
                         return (short) 0xFFFF;
                 }
             }
-            throw new IllegalStateException("should not reach here");
+            throw new IllegalStateException("Should not reach here");
         }
     }
 
@@ -723,7 +723,7 @@ public class ELFObjectFile extends ObjectFile {
                         return 0x7fffffff;
                 }
             }
-            throw new IllegalStateException("should not reach here");
+            throw new IllegalStateException("Should not reach here");
         }
     }
 
@@ -1138,7 +1138,7 @@ public class ELFObjectFile extends ObjectFile {
 
     @SuppressWarnings("unused")
     public ELFRelocationSection getOrCreateDynamicRelocSection(ELFSymtab syms, boolean withExplicitAddends) {
-        throw new AssertionError("can't create dynamic relocations in this kind of ELF file");
+        throw new AssertionError("Can't create dynamic relocations in this kind of ELF file");
     }
 
     public ELFRelocationSection getOrCreateRelocSection(ELFUserDefinedSection elfUserDefinedSection, ELFSymtab syms, boolean withExplicitAddends) {

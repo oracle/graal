@@ -38,6 +38,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class AnalysisMetaAccess extends UniverseMetaAccess {
 
+    @SuppressWarnings("this-escape")
     public AnalysisMetaAccess(AnalysisUniverse analysisUniverse, MetaAccessProvider originalMetaAccess) {
         super(analysisUniverse, originalMetaAccess);
 
@@ -89,12 +90,12 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
 
     @Override
     public int getArrayIndexScale(JavaKind elementKind) {
-        throw shouldNotReachHere();
+        throw shouldNotReachHere("should not be reached during analysis");
     }
 
     @Override
     public int getArrayBaseOffset(JavaKind elementKind) {
-        throw shouldNotReachHere();
+        throw shouldNotReachHere("should not be reached during analysis");
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static com.oracle.svm.hosted.image.NativeImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 
 import java.io.FileOutputStream;
@@ -37,8 +37,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -75,7 +73,6 @@ import com.oracle.svm.core.graal.llvm.util.LLVMTargetSpecific;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.image.LLVMToolchain;
 import com.oracle.svm.hosted.image.LLVMToolchain.RunFailureException;
 import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
@@ -97,7 +94,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private final LLVMObjectFileReader objectFileReader;
     private final List<ObjectFile.Symbol> globalSymbols = new ArrayList<>();
     private final StackMapDumper stackMapDumper;
-    private final NavigableMap<HostedMethod, CompilationResult> compilationsByStart = new TreeMap<>(Comparator.comparingInt(HostedMethod::getCodeAddressOffset));
 
     LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Path tempDir) {
         super(compilations, imageHeap, targetPlatform);
@@ -233,7 +229,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             method.setCodeAddressOffset(offset);
         });
 
-        getOrderedCompilations().forEach((pair) -> compilationsByStart.put(pair.getLeft(), pair.getRight()));
+        getOrderedCompilations().sort(Comparator.comparingInt(o -> o.getLeft().getCodeAddressOffset()));
         stackMapDumper.dumpOffsets(textSectionInfo);
         stackMapDumper.close();
 
@@ -245,24 +241,28 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
         List<String> args = new ArrayList<>();
+        List<String> passes = new ArrayList<>();
         if (LLVMOptions.BitcodeOptimizations.getValue()) {
             /*
              * This runs LLVM's bitcode optimizations in addition to the Graal optimizations.
              * Inlining has to be disabled in this case as the functions are already stored in the
              * image heap and inlining them would produce bogus runtime information for garbage
-             * collection and exception handling.
+             * collection and exception handling. Starting with LLVM 16, the -disable-inlining flag
+             * doesn't work anymore. But inlining is implicitly disabled by adding no-inline to all
+             * bitcode functions.
              */
-            args.add("-disable-inlining");
-            args.add("-O2");
+            passes.add("default<O2>");
         } else {
             /*
              * Mem2reg has to be run before rewriting statepoints as it promotes allocas, which are
              * not supported for statepoints.
              */
-            args.add("-mem2reg");
+            passes.add("function(mem2reg)");
         }
-        args.add("-rewrite-statepoints-for-gc");
-        args.add("-always-inline");
+        passes.add("rewrite-statepoints-for-gc");
+        passes.add("always-inline");
+
+        args.add("--passes=" + String.join(",", passes));
 
         args.add("-o");
         args.add(outputPath);
@@ -312,7 +312,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             case O2:
                 return 2;
             default:
-                throw VMError.shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(SubstrateOptions.optimizationLevel()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -406,7 +406,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                     function = "batch " + id + " (f" + getBatchStart(id) + "-f" + getBatchEnd(id) + "). Use -H:LLVMMaxFunctionsPerBatch=1 to compile each method individually.";
                     break;
                 default:
-                    throw shouldNotReachHere();
+                    throw shouldNotReachHereUnexpectedInput(type);
             }
         }
         return function + " (" + basePath.resolve(fileName).toString() + ")";
@@ -475,11 +475,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile) {
         return globalSymbols;
-    }
-
-    @Override
-    public Pair<HostedMethod, CompilationResult> getFirstCompilation() {
-        return Pair.create(compilationsByStart.firstKey(), compilationsByStart.firstEntry().getValue());
     }
 
     private static final class BatchExecutor {
@@ -555,8 +550,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         @Override
         public void dumpOffsets(LLVMTextSectionInfo textSectionInfo) {
             dump("\nOffsets\n=======\n");
-            compilationsByStart.forEach((method, compilationResult) -> {
-                int startOffset = method.getCodeAddressOffset();
+            getOrderedCompilations().forEach((pair) -> {
+                int startOffset = pair.getLeft().getCodeAddressOffset();
+                CompilationResult compilationResult = pair.getRight();
                 assert startOffset + compilationResult.getTargetCodeSize() == textSectionInfo.getNextOffset(startOffset) : compilationResult.getName();
 
                 String methodName = textSectionInfo.getSymbol(startOffset);

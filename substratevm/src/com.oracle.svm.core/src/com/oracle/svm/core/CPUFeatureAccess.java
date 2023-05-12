@@ -26,9 +26,17 @@ package com.oracle.svm.core;
 
 import java.util.EnumSet;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+
 import jdk.vm.ci.code.Architecture;
 
 public interface CPUFeatureAccess {
+    @Fold
+    static CPUFeatureAccess singleton() {
+        return ImageSingletons.lookup(CPUFeatureAccess.class);
+    }
+
     int verifyHostSupportsArchitectureEarly();
 
     void verifyHostSupportsArchitectureEarlyOrExit();

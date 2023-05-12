@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
@@ -418,7 +419,7 @@ public final class NativeImageHeapWriter {
                 }
             }
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(clazz); // ExcludeFromJacocoGeneratedReport
         }
     }
 

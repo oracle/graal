@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import java.util.Objects;
 import java.util.function.ObjIntConsumer;
 
 import org.graalvm.compiler.core.common.type.TypedConstant;
@@ -44,6 +45,7 @@ import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.ObjectConstantEquality;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
@@ -67,6 +69,21 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.classInitializationSupport = classInitializationSupport;
+    }
+
+    @Override
+    public Boolean constantEquals(Constant x, Constant y) {
+        if (x == y) {
+            return true;
+        } else if (x instanceof SubstrateObjectConstant && y instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) x, (SubstrateObjectConstant) y);
+        } else if (x instanceof ImageHeapConstant cx && cx.isBackedByHostedObject() && y instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) cx.getHostedObject(), (SubstrateObjectConstant) y);
+        } else if (y instanceof ImageHeapConstant cy && cy.isBackedByHostedObject() && x instanceof SubstrateObjectConstant) {
+            return ObjectConstantEquality.get().test((SubstrateObjectConstant) cy.getHostedObject(), (SubstrateObjectConstant) x);
+        } else {
+            return x.equals(y);
+        }
     }
 
     @Override
@@ -287,10 +304,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             } else if (obj instanceof Class) {
                 throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
             }
-        }
-        if (constant instanceof ImageHeapConstant) {
+        } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
             if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
-                throw VMError.shouldNotReachHere("ConstantReflectionProvider.asJavaType(Constant) not yet implemented for ImageHeapObject");
+                /* All constants of type DynamicHub/java.lang.Class must have a hosted object. */
+                return asJavaType(Objects.requireNonNull(imageHeapConstant.getHostedObject()));
             }
         }
         return null;

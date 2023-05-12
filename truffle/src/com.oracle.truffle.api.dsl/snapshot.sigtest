@@ -48,12 +48,16 @@ intf java.lang.annotation.Annotation
 meth public abstract java.lang.String[] value()
 
 CLSS public abstract com.oracle.truffle.api.dsl.DSLSupport
+innr public abstract interface static SpecializationDataNode
 meth public static <%0 extends com.oracle.truffle.api.nodes.NodeInterface> {%%0} maybeInsert(com.oracle.truffle.api.nodes.Node,{%%0})
 meth public static <%0 extends com.oracle.truffle.api.nodes.NodeInterface> {%%0}[] maybeInsert(com.oracle.truffle.api.nodes.Node,{%%0}[])
 meth public static <%0 extends java.lang.Enum<?>> {%%0}[] lookupEnumConstants(java.lang.Class<{%%0}>)
 meth public static boolean assertIdempotence(boolean)
 supr java.lang.Object
 hfds ENUM_CONSTANTS
+
+CLSS public abstract interface static com.oracle.truffle.api.dsl.DSLSupport$SpecializationDataNode
+ outer com.oracle.truffle.api.dsl.DSLSupport
 
 CLSS public abstract interface com.oracle.truffle.api.dsl.ExecuteTracingSupport
 meth public abstract boolean isTracingEnabled()
@@ -168,12 +172,14 @@ meth public !varargs static boolean validate(com.oracle.truffle.api.nodes.Node,c
 meth public static boolean validate(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.dsl.InlineSupport$InlinableField)
 meth public static boolean validate(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.dsl.InlineSupport$InlinableField,com.oracle.truffle.api.dsl.InlineSupport$InlinableField)
 supr java.lang.Object
+hfds PARENT
 hcls UnsafeField,VarHandleField
 
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$BooleanField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public boolean get(com.oracle.truffle.api.nodes.Node)
 meth public com.oracle.truffle.api.dsl.InlineSupport$BooleanField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.dsl.InlineSupport$BooleanField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
 meth public void set(com.oracle.truffle.api.nodes.Node,boolean)
 supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
@@ -182,6 +188,7 @@ CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$ByteField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public byte get(com.oracle.truffle.api.nodes.Node)
 meth public com.oracle.truffle.api.dsl.InlineSupport$ByteField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.dsl.InlineSupport$ByteField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
 meth public void set(com.oracle.truffle.api.nodes.Node,byte)
 supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
@@ -190,6 +197,7 @@ CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$CharField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public char get(com.oracle.truffle.api.nodes.Node)
 meth public com.oracle.truffle.api.dsl.InlineSupport$CharField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.dsl.InlineSupport$CharField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
 meth public void set(com.oracle.truffle.api.nodes.Node,char)
 supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
@@ -197,6 +205,7 @@ supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$DoubleField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public com.oracle.truffle.api.dsl.InlineSupport$DoubleField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public double get(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.dsl.InlineSupport$DoubleField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
 meth public void set(com.oracle.truffle.api.nodes.Node,double)
@@ -205,6 +214,7 @@ supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$FloatField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public com.oracle.truffle.api.dsl.InlineSupport$FloatField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public float get(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.dsl.InlineSupport$FloatField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
 meth public void set(com.oracle.truffle.api.nodes.Node,float)
@@ -214,7 +224,6 @@ CLSS public abstract static com.oracle.truffle.api.dsl.InlineSupport$InlinableFi
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public final boolean validate(com.oracle.truffle.api.nodes.Node)
 supr java.lang.Object
-hfds parentField
 
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$InlineTarget
  outer com.oracle.truffle.api.dsl.InlineSupport
@@ -229,6 +238,7 @@ hfds targetClass,updaters
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$IntField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public com.oracle.truffle.api.dsl.InlineSupport$IntField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public int get(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.dsl.InlineSupport$IntField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
 meth public void set(com.oracle.truffle.api.nodes.Node,int)
@@ -237,6 +247,7 @@ supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$LongField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public com.oracle.truffle.api.dsl.InlineSupport$LongField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public long get(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.dsl.InlineSupport$LongField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
 meth public void set(com.oracle.truffle.api.nodes.Node,long)
@@ -246,6 +257,7 @@ CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$ReferenceField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public boolean compareAndSet(com.oracle.truffle.api.nodes.Node,{com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0},{com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0})
 meth public com.oracle.truffle.api.dsl.InlineSupport$ReferenceField<{com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0}> createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static <%0 extends java.lang.Object> com.oracle.truffle.api.dsl.InlineSupport$ReferenceField<{%%0}> create(java.lang.invoke.MethodHandles$Lookup,java.lang.String,java.lang.Class<{%%0}>)
 meth public void set(com.oracle.truffle.api.nodes.Node,{com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0})
 meth public {com.oracle.truffle.api.dsl.InlineSupport$ReferenceField%0} get(com.oracle.truffle.api.nodes.Node)
@@ -273,6 +285,7 @@ meth public abstract com.oracle.truffle.api.dsl.InlineSupport$RequiredField[] va
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$ShortField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public com.oracle.truffle.api.dsl.InlineSupport$ShortField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public short get(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.dsl.InlineSupport$ShortField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)
 meth public void set(com.oracle.truffle.api.nodes.Node,short)
@@ -281,6 +294,7 @@ supr com.oracle.truffle.api.dsl.InlineSupport$InlinableField
 CLSS public final static com.oracle.truffle.api.dsl.InlineSupport$StateField
  outer com.oracle.truffle.api.dsl.InlineSupport
 meth public com.oracle.truffle.api.dsl.InlineSupport$StateField createParentAccessor(java.lang.Class<? extends com.oracle.truffle.api.nodes.Node>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public com.oracle.truffle.api.dsl.InlineSupport$StateField subUpdater(int,int)
 meth public int get(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.dsl.InlineSupport$StateField create(java.lang.invoke.MethodHandles$Lookup,java.lang.String)

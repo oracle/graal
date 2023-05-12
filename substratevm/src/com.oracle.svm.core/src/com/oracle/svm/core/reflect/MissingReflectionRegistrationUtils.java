@@ -25,51 +25,63 @@
 package com.oracle.svm.core.reflect;
 
 import java.io.Serial;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.Set;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
+import com.oracle.svm.core.MissingRegistrationSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.ExitStatus;
 
 public final class MissingReflectionRegistrationUtils {
     public static class Options {
-        @Option(help = "Enable termination caused by missing metadata.")//
-        public static final HostedOptionKey<Boolean> ExitOnMissingReflectionRegistration = new HostedOptionKey<>(false);
+        @Option(help = {"Select the mode in which the missing reflection registrations will be reported.",
+                        "Possible values are:",
+                        "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
+                        "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
+                        "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
+        public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(ReportingMode.Throw);
+    }
 
-        @Option(help = "Simulate exiting the program with an exception instead of calling System.exit() (for testing)")//
-        public static final HostedOptionKey<Boolean> ExitWithExceptionOnMissingReflectionRegistration = new HostedOptionKey<>(false);
+    public enum ReportingMode {
+        Warn,
+        Throw,
+        ExitTest,
+        Exit
     }
 
     public static boolean throwMissingRegistrationErrors() {
-        return SubstrateOptions.ThrowMissingRegistrationErrors.getValue();
+        return SubstrateOptions.ThrowMissingRegistrationErrors.hasBeenSet();
     }
 
-    public static MissingReflectionRegistrationError forClass(String className) {
+    public static ReportingMode missingRegistrationReportingMode() {
+        return Options.MissingRegistrationReportingMode.getValue();
+    }
+
+    public static void forClass(String className) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access class", className),
                         Class.class, null, className, null);
-        if (MissingReflectionRegistrationUtils.Options.ExitOnMissingReflectionRegistration.getValue()) {
-            exitOnMissingMetadata(exception);
-        }
-        return exception;
+        report(exception);
     }
 
-    public static MissingReflectionRegistrationError forField(Class<?> declaringClass, String fieldName) {
+    public static void forField(Class<?> declaringClass, String fieldName) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access field",
                         declaringClass.getTypeName() + "#" + fieldName),
                         Field.class, declaringClass, fieldName, null);
-        if (MissingReflectionRegistrationUtils.Options.ExitOnMissingReflectionRegistration.getValue()) {
-            exitOnMissingMetadata(exception);
-        }
-        return exception;
+        report(exception);
     }
 
-    public static MissingReflectionRegistrationError forMethod(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
+    public static void forMethod(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
         StringJoiner paramTypeNames = new StringJoiner(", ", "(", ")");
         for (Class<?> paramType : paramTypes) {
             paramTypeNames.add(paramType.getTypeName());
@@ -77,29 +89,25 @@ public final class MissingReflectionRegistrationUtils {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access method",
                         declaringClass.getTypeName() + "#" + methodName + paramTypeNames),
                         Method.class, declaringClass, methodName, paramTypes);
-        if (MissingReflectionRegistrationUtils.Options.ExitOnMissingReflectionRegistration.getValue()) {
-            exitOnMissingMetadata(exception);
-        }
-        return exception;
+        report(exception);
     }
 
-    public static MissingReflectionRegistrationError forQueriedOnlyExecutable(Executable executable) {
+    public static void forQueriedOnlyExecutable(Executable executable) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("invoke method", executable.toString()),
                         executable.getClass(), executable.getDeclaringClass(), executable.getName(), executable.getParameterTypes());
-        if (MissingReflectionRegistrationUtils.Options.ExitOnMissingReflectionRegistration.getValue()) {
-            exitOnMissingMetadata(exception);
-        }
-        return exception;
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        throw exception;
     }
 
-    public static MissingReflectionRegistrationError forBulkQuery(Class<?> declaringClass, String methodName) {
+    public static void forBulkQuery(Class<?> declaringClass, String methodName) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access",
                         declaringClass.getTypeName() + "." + methodName + "()"),
                         null, declaringClass, methodName, null);
-        if (MissingReflectionRegistrationUtils.Options.ExitOnMissingReflectionRegistration.getValue()) {
-            exitOnMissingMetadata(exception);
-        }
-        return exception;
+        report(exception);
     }
 
     private static String errorMessage(String failedAction, String elementDescriptor) {
@@ -108,13 +116,125 @@ public final class MissingReflectionRegistrationUtils {
                         "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#reflection for help.";
     }
 
-    private static void exitOnMissingMetadata(MissingReflectionRegistrationError exception) {
-        if (Options.ExitWithExceptionOnMissingReflectionRegistration.getValue()) {
-            throw new ExitException(exception);
-        } else {
-            exception.printStackTrace(System.out);
-            System.exit(ExitStatus.MISSING_METADATA.getValue());
+    private static final int CONTEXT_LINES = 4;
+
+    private static final Set<String> seenOutputs = Options.MissingRegistrationReportingMode.getValue() == ReportingMode.Warn ? ConcurrentHashMap.newKeySet() : null;
+
+    private static void report(MissingReflectionRegistrationError exception) {
+        StackTraceElement responsibleClass = getResponsibleClass(exception);
+        if (responsibleClass != null && !MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(responsibleClass)) {
+            return;
         }
+        switch (missingRegistrationReportingMode()) {
+            case Throw -> {
+                throw exception;
+            }
+            case Exit -> {
+                exception.printStackTrace(System.out);
+                System.exit(ExitStatus.MISSING_METADATA.getValue());
+            }
+            case ExitTest -> {
+                throw new ExitException(exception);
+            }
+            case Warn -> {
+                StackTraceElement[] stackTrace = exception.getStackTrace();
+                int printed = 0;
+                StackTraceElement entryPoint = null;
+                StringBuilder sb = new StringBuilder(exception.toString());
+                sb.append("\n");
+                for (StackTraceElement stackTraceElement : stackTrace) {
+                    if (printed == 0) {
+                        String moduleName = stackTraceElement.getModuleName();
+                        /*
+                         * Skip internal stack trace entries to include only the relevant part of
+                         * the trace in the output. The heuristic used is that any JDK and Graal
+                         * code is excluded except the first element, so that the rest of the trace
+                         * consists of meaningful application code entries.
+                         */
+                        if (moduleName != null && (moduleName.equals("java.base") || moduleName.startsWith("org.graalvm"))) {
+                            entryPoint = stackTraceElement;
+                        } else {
+                            printLine(sb, entryPoint);
+                            printed++;
+                        }
+                    }
+                    if (printed > 0) {
+                        printLine(sb, stackTraceElement);
+                        printed++;
+                    }
+                    if (printed >= CONTEXT_LINES) {
+                        break;
+                    }
+                }
+                if (seenOutputs.isEmpty()) {
+                    /* First output, we print an explanation message */
+                    System.out.println("Note: this run will print partial stack traces of the locations where a MissingReflectionRegistrationError would be thrown " +
+                                    "when the -H:+ThrowMissingRegistrationErrors option is set. The trace stops at the first entry of JDK code and provides 4 lines of context.");
+                }
+                String output = sb.toString();
+                if (seenOutputs.add(output)) {
+                    System.out.print(output);
+                }
+            }
+        }
+    }
+
+    private static void printLine(StringBuilder sb, Object object) {
+        sb.append("  ").append(object).append(System.lineSeparator());
+    }
+
+    /*
+     * This is a list of all public JDK methods that end up potentially throwing missing
+     * registration errors. This should be implemented using wrapping substitutions once they are
+     * available.
+     */
+    private static final Map<String, Set<String>> reflectionEntryPoints = Map.of(
+                    Class.class.getTypeName(), Set.of(
+                                    "forName",
+                                    "getClasses",
+                                    "getDeclaredClasses",
+                                    "getConstructor",
+                                    "getConstructors",
+                                    "getDeclaredConstructor",
+                                    "getDeclaredConstructors",
+                                    "getField",
+                                    "getFields",
+                                    "getDeclaredField",
+                                    "getDeclaredFields",
+                                    "getMethod",
+                                    "getMethods",
+                                    "getDeclaredMethod",
+                                    "getDeclaredMethods",
+                                    "getNestMembers",
+                                    "getPermittedSubclasses",
+                                    "getRecordComponents",
+                                    "getSigners",
+                                    "arrayType",
+                                    "newInstance"),
+                    Method.class.getTypeName(), Set.of("invoke"),
+                    Constructor.class.getTypeName(), Set.of("newInstance"),
+                    "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
+                    "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
+                    sun.misc.Unsafe.class.getName(), Set.of("allocateInstance"),
+                    /* For jdk.internal.misc.Unsafe.allocateInstance(), which is intrinsified */
+                    SubstrateAllocationSnippets.class.getName(), Set.of("instanceHubErrorStub"));
+
+    private static StackTraceElement getResponsibleClass(Throwable t) {
+        StackTraceElement[] stackTrace = t.getStackTrace();
+        boolean returnNext = false;
+        for (StackTraceElement stackTraceElement : stackTrace) {
+            if (reflectionEntryPoints.getOrDefault(stackTraceElement.getClassName(), Set.of()).contains(stackTraceElement.getMethodName())) {
+                /*
+                 * Multiple functions with the same name can be called in succession, like the
+                 * Class.forName caller-sensitive adapters. We skip those until we find a method
+                 * that is not a monitored reflection entry point.
+                 */
+                returnNext = true;
+            } else if (returnNext) {
+                return stackTraceElement;
+            }
+        }
+        return null;
     }
 
     public static final class ExitException extends Error {

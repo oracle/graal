@@ -707,6 +707,7 @@ public class NIOFileSystemTest {
 
     @Test
     public void testSetAttribute() throws IOException {
+        Assume.assumeFalse("GR-45948", Runtime.version().feature() == 21 && OSUtils.getCurrent() == OSUtils.OS.Darwin && FileSystemsTest.isAMD64());
         expectException(() -> config.fs().setAttribute(null, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis())), NullPointerException.class);
         expectException(() -> config.fs().setAttribute(fileAbsolute, null, FileTime.fromMillis(System.currentTimeMillis())), NullPointerException.class);
         expectException(() -> config.fs().setAttribute(fileAbsolute, "basic:lastModifiedTime", FileTime.fromMillis(System.currentTimeMillis()), (LinkOption[]) null), NullPointerException.class);

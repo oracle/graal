@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.GraphDecoder;
@@ -150,6 +151,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     protected AnalysisMethod[] implementations;
 
+    @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey, Map<MultiMethodKey, MultiMethod> multiMethodMap) {
         this.wrapped = wrapped;
         id = universe.nextMethodId.getAndIncrement();
@@ -197,6 +199,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         parsingContextMaxDepth = PointstoOptions.ParsingContextMaxDepth.getValue(declaringClass.universe.hostVM.options());
     }
 
+    @SuppressWarnings("this-escape")
     protected AnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         wrapped = original.wrapped;
         id = original.id;
@@ -221,7 +224,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static String createName(ResolvedJavaMethod wrapped, MultiMethodKey multiMethodKey) {
         String aName = wrapped.getName();
         if (multiMethodKey != ORIGINAL_METHOD) {
-            aName += MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
+            aName += StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR + multiMethodKey;
         }
         return aName;
     }
@@ -551,7 +554,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public WrappedSignature getSignature() {
-        return getUniverse().lookup(wrapped.getSignature(), getDeclaringClass().getWrappedWithResolve());
+        return getUniverse().lookup(wrapped.getSignature(), wrapped.getDeclaringClass());
     }
 
     @Override
@@ -667,7 +670,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     @Override
     public ConstantPool getConstantPool() {
-        return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass().getWrappedWithResolve());
+        return getUniverse().lookup(wrapped.getConstantPool(), wrapped.getDeclaringClass());
     }
 
     @Override

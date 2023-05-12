@@ -151,6 +151,11 @@ public class SubstrateJVM {
     }
 
     @Fold
+    public static JfrUnlockedChunkWriter getChunkWriter() {
+        return get().unlockedChunkWriter;
+    }
+
+    @Fold
     public static JfrTypeRepository getTypeRepository() {
         return get().typeRepo;
     }
@@ -697,9 +702,9 @@ public class SubstrateJVM {
 
         @Override
         protected void operate() {
-            SubstrateJVM.getThreadRepo().registerRunningThreads();
             SubstrateJVM.get().recording = true;
             /* Recording is enabled, so JFR events can be triggered at any time. */
+            SubstrateJVM.getThreadRepo().registerRunningThreads();
 
             JfrExecutionSampler.singleton().update();
         }

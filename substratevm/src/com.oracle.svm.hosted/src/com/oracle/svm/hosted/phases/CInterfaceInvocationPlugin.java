@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.phases;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.util.Arrays;
 
@@ -130,7 +131,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             } else if (parentInfo instanceof StructInfo || parentInfo instanceof PointerToInfo) {
                 return replaceAccessor(b, method, args, (AccessorInfo) methodInfo, 0);
             } else {
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(parentInfo); // ExcludeFromJacocoGeneratedReport
             }
         } else if (methodInfo instanceof ConstantInfo) {
             return replaceConstant(b, method, (ConstantInfo) methodInfo);
@@ -227,7 +228,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 return true;
             }
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(accessorInfo.getAccessorKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -343,7 +344,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
                 return true;
             }
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(accessorInfo.getAccessorKind()); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -426,7 +427,7 @@ public class CInterfaceInvocationPlugin implements NodePlugin {
             } else if (fromKind == JavaKind.Double && toKind == JavaKind.Float) {
                 op = FloatConvert.D2F;
             } else {
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(fromKind); // ExcludeFromJacocoGeneratedReport
             }
             return graph.unique(new FloatConvertNode(op, value));
         } else if (toKind == JavaKind.Boolean) {

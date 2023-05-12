@@ -33,6 +33,7 @@ import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
+import java.net.ServerSocket;
 import java.net.URI;
 import java.net.URL;
 import java.util.Collections;
@@ -42,6 +43,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
@@ -63,8 +65,6 @@ import org.graalvm.polyglot.Value;
  * Test handling of multiple engines by the Inspector.
  */
 public class MultiEngineTest extends EnginesGCedTest {
-
-    private static final int PORT = 9229;
 
     private static final String[] INITIAL_MESSAGES = {
                     "{\"id\":1,\"method\":\"Runtime.enable\"}",
@@ -121,28 +121,29 @@ public class MultiEngineTest extends EnginesGCedTest {
             isUp[i] = new CountDownLatch(1);
         }
         AtomicReference<Throwable> error = new AtomicReference<>();
-        verifySerialDebug(isUp, error);
+        AtomicInteger port = new AtomicInteger(0);
+        verifySerialDebug(port, isUp, error);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         for (int i = 0; i < sources.length; i++) {
-            runEngine(sources[i], out, isUp[i]);
+            runEngine(sources[i], port, out, isUp[i]);
         }
         if (error.get() != null) {
             throw new AssertionError(error.get());
         }
         String output = new String(out.toByteArray());
         for (int i = 0; i < sources.length; i++) {
-            assertTrue(output, output.contains(PORT + "/" + sources[i].getName()));
+            assertTrue(output, output.contains(port.get() + "/" + sources[i].getName()));
         }
     }
 
-    private static void verifySerialDebug(CountDownLatch[] isUp, AtomicReference<Throwable> error) {
+    private static void verifySerialDebug(AtomicInteger port, CountDownLatch[] isUp, AtomicReference<Throwable> error) {
         new Thread(() -> {
             try {
                 for (int i = 0; i < isUp.length; i++) {
                     isUp[i].await();
                     String path = "MTest" + (i + 1) + ".sl." + SecureInspectorPathGenerator.getToken();
-                    checkInfo(path);
-                    checkSuspendAndResume(path);
+                    checkInfo(port.get(), path);
+                    checkSuspendAndResume(port.get(), path);
                 }
             } catch (Throwable thr) {
                 thr.printStackTrace();
@@ -152,7 +153,7 @@ public class MultiEngineTest extends EnginesGCedTest {
     }
 
     @Test
-    public void testMultipleEnginesParallel() throws InterruptedException {
+    public void testMultipleEnginesParallel() throws InterruptedException, IOException {
         Source[] sources = new Source[]{
                         Source.newBuilder("sl", CODE1, "MTest1.sl").buildLiteral(),
                         Source.newBuilder("sl", CODE2, "MTest2.sl").buildLiteral(),
@@ -164,14 +165,15 @@ public class MultiEngineTest extends EnginesGCedTest {
             isUp[i] = new CountDownLatch(1);
         }
         List<Throwable> errors = Collections.synchronizedList(new LinkedList<>());
-        verifyParallelDebug(isUp, errors);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Thread[] threads = new Thread[sources.length];
+        int port = getFreePort();
+        verifyParallelDebug(port, isUp, errors);
         for (int i = 0; i < sources.length; i++) {
             int index = i;
             Thread t = new Thread(() -> {
                 try {
-                    runEngine(sources[index], out, isUp[index]);
+                    runEngine(sources[index], new AtomicInteger(port), out, isUp[index]);
                 } catch (Throwable thr) {
                     thr.printStackTrace();
                     errors.add(thr);
@@ -192,7 +194,14 @@ public class MultiEngineTest extends EnginesGCedTest {
         }
         String output = new String(out.toByteArray());
         for (int i = 0; i < sources.length; i++) {
-            assertTrue(output, output.contains(PORT + "/" + sources[i].getName()));
+            assertTrue(output, output.contains(port + "/" + sources[i].getName()));
+        }
+    }
+
+    private static int getFreePort() throws IOException {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            socket.setReuseAddress(true);
+            return socket.getLocalPort();
         }
     }
 
@@ -206,9 +215,10 @@ public class MultiEngineTest extends EnginesGCedTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         CountDownLatch isUp = new CountDownLatch(1);
         final String samePath = "samePath" + SecureInspectorPathGenerator.getToken();
+        AtomicInteger port = new AtomicInteger(0);
         Thread t = new Thread(() -> {
             try {
-                runEngine(sources[0], samePath, out, isUp);
+                runEngine(sources[0], port, samePath, out, isUp);
             } catch (Throwable thr) {
                 errors.add(thr);
                 isUp.countDown();
@@ -217,13 +227,13 @@ public class MultiEngineTest extends EnginesGCedTest {
         t.start();
         isUp.await();
         try {
-            runEngine(sources[1], samePath, out, isUp);
+            runEngine(sources[1], port, samePath, out, isUp);
             fail();
         } catch (Throwable thr) {
             String message = thr.getMessage();
             assertTrue(message, message.contains("Inspector session with the same path exists already"));
         }
-        checkSuspendAndResume(samePath);
+        checkSuspendAndResume(port.get(), samePath);
         t.join();
         if (!errors.isEmpty()) {
             AssertionError err = new AssertionError();
@@ -234,7 +244,7 @@ public class MultiEngineTest extends EnginesGCedTest {
         }
     }
 
-    private static void verifyParallelDebug(CountDownLatch[] isUp, List<Throwable> errors) {
+    private static void verifyParallelDebug(int port, CountDownLatch[] isUp, List<Throwable> errors) {
         new Thread(() -> {
             try {
                 for (int i = 0; i < isUp.length; i++) {
@@ -244,12 +254,12 @@ public class MultiEngineTest extends EnginesGCedTest {
                 for (int i = 0; i < paths.length; i++) {
                     paths[i] = "MTest" + (i + 1) + ".sl." + SecureInspectorPathGenerator.getToken();
                 }
-                checkInfo(paths);
+                checkInfo(port, paths);
                 for (int i = 0; i < paths.length; i++) {
                     int index = i;
                     new Thread(() -> {
                         try {
-                            checkSuspendAndResume(paths[index]);
+                            checkSuspendAndResume(port, paths[index]);
                         } catch (Throwable thr) {
                             thr.printStackTrace();
                             errors.add(thr);
@@ -263,14 +273,17 @@ public class MultiEngineTest extends EnginesGCedTest {
         }).start();
     }
 
-    private String runEngine(Source src, OutputStream out, CountDownLatch isUp) {
-        return runEngine(src, src.getName() + "." + SecureInspectorPathGenerator.getToken(), out, isUp);
+    private String runEngine(Source src, AtomicInteger port, OutputStream out, CountDownLatch isUp) {
+        return runEngine(src, port, src.getName() + "." + SecureInspectorPathGenerator.getToken(), out, isUp);
     }
 
-    private String runEngine(Source src, String path, OutputStream out, CountDownLatch isUp) {
-        try (Engine e = Engine.newBuilder().option("inspect.Path", path).err(out).build()) {
+    private String runEngine(Source src, AtomicInteger port, String path, OutputStream out, CountDownLatch isUp) {
+        try (Engine e = Engine.newBuilder().option("inspect", Integer.toString(port.get())).option("inspect.Path", path).err(out).build()) {
             addEngineReference(e);
             Context c = Context.newBuilder().engine(e).allowAllAccess(true).build();
+            if (port.get() == 0) {
+                port.set(InspectorAddressTest.parseWSPort(out.toString()));
+            }
             isUp.countDown();
             Value result = c.eval(src);
             if (result.fitsInLong()) {
@@ -282,8 +295,8 @@ public class MultiEngineTest extends EnginesGCedTest {
     }
 
     @SuppressWarnings("deprecation")
-    private static void checkInfo(String... paths) throws MalformedURLException, IOException {
-        URL url = new URL("http", InetAddress.getLoopbackAddress().getHostAddress(), PORT, "/json");
+    private static void checkInfo(int port, String... paths) throws MalformedURLException, IOException {
+        URL url = new URL("http", InetAddress.getLoopbackAddress().getHostAddress(), port, "/json");
         HttpURLConnection connection = ((HttpURLConnection) url.openConnection());
         assertEquals("application/json; charset=UTF-8", connection.getContentType());
         StringWriter out = new StringWriter(connection.getContentLength());
@@ -298,7 +311,7 @@ public class MultiEngineTest extends EnginesGCedTest {
         assertEquals(message, paths.length, infos.length());
         Set<String> endWs = new HashSet<>();
         for (int i = 0; i < paths.length; i++) {
-            endWs.add(PORT + "/" + paths[i]);
+            endWs.add(port + "/" + paths[i]);
         }
         for (int i = 0; i < paths.length; i++) {
             JSONObject info = (JSONObject) infos.get(i);
@@ -316,11 +329,11 @@ public class MultiEngineTest extends EnginesGCedTest {
         assertTrue(endWs.isEmpty());
     }
 
-    private static void checkSuspendAndResume(String path) throws Exception {
+    private static void checkSuspendAndResume(int port, String path) throws Exception {
         CountDownLatch closed = new CountDownLatch(1);
         AtomicBoolean paused = new AtomicBoolean(false);
         AtomicReference<Exception> exception = new AtomicReference<>(null);
-        final String url = "ws://" + InetAddress.getLoopbackAddress().getHostAddress() + ":" + PORT + "/" + path;
+        final String url = "ws://" + InetAddress.getLoopbackAddress().getHostAddress() + ":" + port + "/" + path;
         WebSocketClient wsc = new WebSocketClient(new URI(url)) {
             @Override
             public void onOpen(ServerHandshake sh) {

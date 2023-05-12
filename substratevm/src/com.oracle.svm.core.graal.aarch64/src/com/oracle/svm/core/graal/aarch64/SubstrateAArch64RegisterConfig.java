@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 import static jdk.vm.ci.aarch64.AArch64.allRegisters;
 import static jdk.vm.ci.aarch64.AArch64.r0;
 import static jdk.vm.ci.aarch64.AArch64.r1;
@@ -111,6 +111,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
     private final boolean preserveFramePointer;
     public static final Register fp = r29;
 
+    @SuppressWarnings("this-escape")
     public SubstrateAArch64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean preserveFramePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
@@ -176,7 +177,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
                 break;
 
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(config); // ExcludeFromJacocoGeneratedReport
 
         }
         attributesMap = RegisterAttributes.createMap(this, AArch64.allRegisters);
@@ -199,7 +200,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
             case Void:
                 return null;
             default:
-                throw shouldNotReachHere();
+                throw shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
         }
     }
 
@@ -230,7 +231,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
     @Override
     public RegisterArray getCallingConventionRegisters(Type t, JavaKind kind) {
-        throw VMError.unimplemented();
+        throw VMError.intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
     }
 
     public boolean shouldPreserveFramePointer() {
@@ -318,7 +319,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
                         }
                         break;
                     default:
-                        throw shouldNotReachHere();
+                        throw shouldNotReachHereUnexpectedInput(kind); // ExcludeFromJacocoGeneratedReport
                 }
 
             }
@@ -343,7 +344,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
                     } else if (Platform.includedIn(Platform.DARWIN.class)) {
                         currentStackOffset = darwinNativeStackParameterAssignment(valueKindFactory, locations, i, kind, currentStackOffset, type.outgoing);
                     } else {
-                        throw VMError.shouldNotReachHere();
+                        throw VMError.unsupportedPlatform(); // ExcludeFromJacocoGeneratedReport
                     }
                 } else {
                     currentStackOffset = javaStackParameterAssignment(valueKindFactory, locations, i, kind, currentStackOffset, type.outgoing);
@@ -368,4 +369,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         return new RegisterArray(list);
     }
 
+    public RegisterArray getJavaGeneralParameterRegs() {
+        return generalParameterRegs;
+    }
 }

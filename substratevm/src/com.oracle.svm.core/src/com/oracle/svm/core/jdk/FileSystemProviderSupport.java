@@ -182,11 +182,14 @@ final class Target_sun_nio_fs_UnixFileSystem {
      * at run time.
      */
 
-    @Alias @InjectAccessors(UnixFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(UnixFileSystemAccessors.class) //
     private byte[] defaultDirectory;
-    @Alias @InjectAccessors(UnixFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(UnixFileSystemAccessors.class) //
     private boolean needToResolveAgainstDefaultDirectory;
-    @Alias @InjectAccessors(UnixFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(UnixFileSystemAccessors.class) //
     private Target_sun_nio_fs_UnixPath rootDirectory;
 
     /**
@@ -197,16 +200,20 @@ final class Target_sun_nio_fs_UnixFileSystem {
      * not be allocated at run time, since only the singleton from the image heap should exist.
      * However, there were JDK bugs in various JDK versions where unwanted allocations happened.
      */
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
     volatile int needsReinitialization;
 
     /* Replacement injected fields that store the state at run time. */
 
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     byte[] injectedDefaultDirectory;
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     boolean injectedNeedToResolveAgainstDefaultDirectory;
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     Target_sun_nio_fs_UnixPath injectedRootDirectory;
 
     @Alias
@@ -327,17 +334,22 @@ final class Target_sun_nio_fs_WindowsFileSystem {
     @Alias //
     Target_sun_nio_fs_WindowsFileSystemProvider provider;
 
-    @Alias @InjectAccessors(WindowsFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(WindowsFileSystemAccessors.class) //
     private String defaultDirectory;
-    @Alias @InjectAccessors(WindowsFileSystemAccessors.class) //
+    @Alias //
+    @InjectAccessors(WindowsFileSystemAccessors.class) //
     private String defaultRoot;
 
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = NeedsReinitializationProvider.class)//
     volatile int needsReinitialization;
 
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     String injectedDefaultDirectory;
-    @Inject @RecomputeFieldValue(kind = Kind.Reset)//
+    @Inject //
+    @RecomputeFieldValue(kind = Kind.Reset)//
     String injectedDefaultRoot;
 
     @Alias
@@ -388,10 +400,13 @@ class WindowsFileSystemAccessors {
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 final class Target_java_io_UnixFileSystem {
 
-    @Alias @InjectAccessors(UserDirAccessors.class) //
+    @Alias //
+    @InjectAccessors(UserDirAccessors.class) //
     private String userDir;
 
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
+    @TargetElement(onlyWith = JDK20OrEarlier.class)//
     private Target_java_io_ExpiringCache cache;
 
     /*
@@ -400,12 +415,15 @@ final class Target_java_io_UnixFileSystem {
      * substituting the value of FileSystem.useCanonPrefixCache to false in the substitution below.
      */
     @Delete //
+    @TargetElement(onlyWith = JDK20OrEarlier.class)//
     private String javaHome;
     /*
      * Ideally, we would mark this field as @Delete too. However, the javaHomePrefixCache is cleared
      * from various methods, and we do not want to change those methods.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
+    @TargetElement(onlyWith = JDK20OrEarlier.class)//
     private Target_java_io_ExpiringCache javaHomePrefixCache;
 }
 
@@ -417,7 +435,9 @@ final class Target_java_io_FileSystem {
      * is not specific to the Java home directory and therefore can remain enabled.
      */
     @Platforms({Platform.LINUX.class, Platform.DARWIN.class}) //
-    @Alias @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.FromAlias, isFinal = true) //
+    @TargetElement(onlyWith = JDK20OrEarlier.class)//
     static boolean useCanonPrefixCache = false;
 
     @Alias
@@ -441,16 +461,21 @@ class UserDirAccessors {
 @Platforms(Platform.WINDOWS.class)
 final class Target_java_io_WinNTFileSystem {
 
-    @Alias @InjectAccessors(UserDirAccessors.class) //
+    @Alias //
+    @InjectAccessors(UserDirAccessors.class) //
     private String userDir;
 
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
+    @TargetElement(onlyWith = JDK20OrEarlier.class)//
     private Target_java_io_ExpiringCache cache;
 
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
+    @Alias //
+    @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
+    @TargetElement(onlyWith = JDK20OrEarlier.class)//
     private Target_java_io_ExpiringCache prefixCache;
 }
 
-@TargetClass(className = "java.io.ExpiringCache")
+@TargetClass(className = "java.io.ExpiringCache", onlyWith = JDK20OrEarlier.class)
 final class Target_java_io_ExpiringCache {
 }

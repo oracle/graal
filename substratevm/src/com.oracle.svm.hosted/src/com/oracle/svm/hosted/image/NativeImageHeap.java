@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
@@ -69,6 +69,7 @@ import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.jdk.StringInternSupport;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -160,7 +161,7 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
-        return objects.get(uncompress(constant));
+        return objects.get(maybeUnwrapString(uncompress(constant)));
     }
 
     protected HostedUniverse getUniverse() {
@@ -246,7 +247,16 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private Object readObjectField(HostedField field, JavaConstant receiver) {
-        return universe.getSnippetReflection().asObject(Object.class, field.readStorageValue(receiver));
+        /*
+         * This method is only used to read the special fields of hybrid objects, which are
+         * currently not maintained as separate ImageHeapConstant and therefore cannot we read via
+         * the snapshot heap.
+         */
+        JavaConstant hostedConstant = receiver;
+        if (receiver instanceof ImageHeapConstant imageHeapConstant) {
+            hostedConstant = imageHeapConstant.getHostedObject();
+        }
+        return universe.getSnippetReflection().asObject(Object.class, field.readStorageValue(hostedConstant));
     }
 
     private static JavaConstant readConstantField(HostedField field, JavaConstant receiver) {
@@ -287,7 +297,7 @@ public final class NativeImageHeap implements ImageHeap {
     public void addConstant(final JavaConstant constant, boolean immutableFromParent, final Object reason) {
         assert addObjectsPhase.isAllowed() : "Objects cannot be added at phase: " + addObjectsPhase.toString() + " with reason: " + reason;
 
-        if (constant.isNull() || metaAccess.isInstanceOf(constant, WordBase.class)) {
+        if (constant.getJavaKind().isPrimitive() || constant.isNull() || metaAccess.isInstanceOf(constant, WordBase.class)) {
             return;
         }
 
@@ -307,13 +317,14 @@ public final class NativeImageHeap implements ImageHeap {
             }
         }
 
-        JavaConstant uncompressed = uncompress(constant);
+        JavaConstant uncompressed = maybeUnwrapString(uncompress(constant));
 
         int identityHashCode = computeIdentityHashCode(uncompressed);
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
-        if (metaAccess.isInstanceOf(uncompressed, String.class)) {
-            handleImageString(universe.getSnippetReflection().asObject(String.class, uncompressed));
+        String stringConstant = universe.getSnippetReflection().asObject(String.class, uncompressed);
+        if (stringConstant != null) {
+            handleImageString(stringConstant);
         }
 
         final ObjectInfo existing = objects.get(uncompressed);
@@ -322,6 +333,22 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (objectReachabilityInfo != null) {
             objectReachabilityInfo.get(existing).addReason(reason);
         }
+    }
+
+    /**
+     * When a String is represented as an {@link ImageHeapConstant} we unwrap it before using it as
+     * a key for {@link NativeImageHeap#objects}. This is necessary to avoid duplication of
+     * {@link ObjectInfo} for the same String object which can happen when processing the
+     * {@link NativeImageHeap#internedStrings} since the String objects are stored raw and wrapped
+     * as a {@link SubstrateObjectConstant} when processed. Eventually, the constant representation
+     * of raw String objects will be extracted from the shadow heap, so it will always be
+     * {@link ImageHeapConstant} and this will be removed.
+     */
+    private JavaConstant maybeUnwrapString(JavaConstant constant) {
+        if (metaAccess.isInstanceOf(constant, String.class) && constant instanceof ImageHeapConstant ihc && ihc.getHostedObject() != null) {
+            return ihc.getHostedObject();
+        }
+        return constant;
     }
 
     /**
@@ -537,7 +564,7 @@ public final class NativeImageHeap implements ImageHeap {
             }
 
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
         }
 
         if (relocatable && !isKnownImmutableConstant(constant)) {
@@ -581,23 +608,19 @@ public final class NativeImageHeap implements ImageHeap {
         return msg.append("    root: ").append(reason).append(System.lineSeparator());
     }
 
-    /** Determine if a constant will be immutable in the native image heap. */
-    private boolean isKnownImmutableConstant(final JavaConstant constant) {
-        if (constant instanceof ImageHeapConstant) {
-            /* Currently injected ImageHeapObject cannot be marked as immutable. */
-            return false;
+    /**
+     * Determine if a constant will be immutable in the native image heap.
+     */
+    private boolean isKnownImmutableConstant(JavaConstant constant) {
+        JavaConstant hostedConstant = constant;
+        if (constant instanceof ImageHeapConstant imageHeapConstant) {
+            hostedConstant = imageHeapConstant.getHostedObject();
+            if (hostedConstant == null) {
+                /* A simulated ImageHeapConstant cannot be marked as immutable. */
+                return false;
+            }
         }
-        return isKnownImmutable(universe.getSnippetReflection().asObject(Object.class, constant));
-    }
-
-    /** Determine if an object in the host heap will be immutable in the native image heap. */
-    private boolean isKnownImmutable(final Object obj) {
-        if (obj instanceof String) {
-            // Strings need to have their hash code set or they are not immutable.
-            // If the hash is 0, then it will be recomputed again (and again)
-            // so the String is not immutable.
-            return obj.hashCode() != 0;
-        }
+        Object obj = universe.getSnippetReflection().asObject(Object.class, hostedConstant);
         return UniverseBuilder.isKnownImmutableType(obj.getClass()) || knownImmutableObjects.contains(obj);
     }
 
@@ -606,7 +629,8 @@ public final class NativeImageHeap implements ImageHeap {
         return addToImageHeap(universe.getSnippetReflection().forObject(object), clazz, size, identityHashCode, reason);
     }
 
-    private ObjectInfo addToImageHeap(JavaConstant constant, HostedClass clazz, long size, int identityHashCode, Object reason) {
+    private ObjectInfo addToImageHeap(JavaConstant add, HostedClass clazz, long size, int identityHashCode, Object reason) {
+        JavaConstant constant = maybeUnwrapString(add);
         ObjectInfo info = new ObjectInfo(constant, size, clazz, identityHashCode, reason);
         assert !objects.containsKey(constant) && !isCompressed(constant);
         objects.put(constant, info);
@@ -636,7 +660,7 @@ public final class NativeImageHeap implements ImageHeap {
         } else if (type.isArray()) {
             return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object), true);
         } else {
-            throw shouldNotReachHere();
+            throw shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
         }
     }
 

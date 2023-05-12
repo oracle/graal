@@ -34,6 +34,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.handles.PrimitiveArrayView;
 import com.oracle.svm.core.jni.access.JNIAccessibleField;
 import com.oracle.svm.core.jni.access.JNINativeLinkage;
 import com.oracle.svm.core.jni.headers.JNIEnvironment;
@@ -107,18 +108,19 @@ public final class JNIGeneratedMethodSupport {
         }
     }
 
-    static PointerBase pinArrayAndGetAddress(Object array, CCharPointer isCopy) throws Throwable {
+    static PointerBase createArrayViewAndGetAddress(Object array, CCharPointer isCopy) throws Throwable {
         if (array.getClass().isArray()) {
+            PrimitiveArrayView ref = JNIThreadLocalPrimitiveArrayViews.createArrayView(array);
             if (isCopy.isNonNull()) {
-                isCopy.write((byte) 0);
+                isCopy.write(ref.isCopy() ? (byte) 1 : (byte) 0);
             }
-            return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(array);
+            return ref.addressOfArrayElement(0);
         }
         return WordFactory.nullPointer();
     }
 
-    static boolean unpinArrayByAddress(PointerBase address) throws Throwable {
-        return JNIThreadLocalPinnedObjects.unpinArrayByAddress(address);
+    static boolean destroyArrayViewByAddress(PointerBase address, int mode) throws Throwable {
+        return JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(address, mode);
     }
 
     static void getPrimitiveArrayRegion(JavaKind elementKind, Object array, int start, int count, PointerBase buffer) {

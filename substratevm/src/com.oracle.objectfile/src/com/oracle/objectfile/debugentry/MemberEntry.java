@@ -32,7 +32,7 @@ package com.oracle.objectfile.debugentry;
  */
 public abstract class MemberEntry {
     protected FileEntry fileEntry;
-    protected int line;
+    protected final int line;
     protected final String memberName;
     protected final StructureTypeEntry ownerType;
     protected final TypeEntry valueType;
@@ -79,6 +79,10 @@ public abstract class MemberEntry {
 
     public FileEntry getFileEntry() {
         return fileEntry;
+    }
+
+    public int getFileIdx() {
+        return fileEntry.getIdx();
     }
 
     public int getLine() {

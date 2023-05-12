@@ -105,6 +105,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final NodeData parsingParent;
     private List<SpecializationData> reachableSpecializations;
 
+    @SuppressWarnings("this-escape")
     public NodeData(ProcessorContext context, NodeData inliningParent, TypeElement type, TypeSystemData typeSystem, boolean generateFactory, boolean generateUncached, boolean generatePackagePrivate) {
         super(context, type, null);
         this.parsingParent = inliningParent;

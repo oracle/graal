@@ -81,6 +81,7 @@ public class CompilationFragment extends CompilationUnit {
      * @param parentCompilationUnit the compilation unit from which this fragment was created
      * @param rootNode the root inlining node of this compilation fragment
      */
+    @SuppressWarnings("this-escape")
     public CompilationFragment(Method rootFragmentMethod, CompilationUnit parentCompilationUnit, InliningTreeNode rootNode) {
         super(rootFragmentMethod, parentCompilationUnit.getCompilationId(), parentCompilationUnit.getPeriod(), null);
         this.parentCompilationUnit = parentCompilationUnit;
@@ -99,6 +100,11 @@ public class CompilationFragment extends CompilationUnit {
     @Override
     public String getCompilationId() {
         return super.getCompilationId() + "#" + fragmentId;
+    }
+
+    @Override
+    protected String getCompilationKind() {
+        return "fragment";
     }
 
     /**

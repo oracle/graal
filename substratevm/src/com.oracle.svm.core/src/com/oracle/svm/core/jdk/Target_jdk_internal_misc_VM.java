@@ -28,9 +28,7 @@ import java.util.Map;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -51,10 +49,6 @@ public final class Target_jdk_internal_misc_VM {
     public static String getSavedProperty(String name) {
         return SystemPropertiesSupport.singleton().getSavedProperties().get(name);
     }
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static native Thread.State toThreadState(int threadStatus);
 
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")

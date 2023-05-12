@@ -37,12 +37,13 @@ import com.oracle.svm.core.util.VMError;
 public class PosixDirectives implements CContext.Directives {
     private static final String[] commonLibs = new String[]{
                     "<dlfcn.h>",
+                    "<dirent.h>",
                     "<fcntl.h>",
                     "<limits.h>",
                     "<locale.h>",
                     "<pthread.h>",
-                    "<semaphore.h>",
                     "<pwd.h>",
+                    "<semaphore.h>",
                     "<signal.h>",
                     "<errno.h>",
                     "<sys/mman.h>",
@@ -50,6 +51,7 @@ public class PosixDirectives implements CContext.Directives {
                     "<sys/stat.h>",
                     "<sys/time.h>",
                     "<sys/times.h>",
+                    "<sys/types.h>",
                     "<sys/utsname.h>",
                     "<time.h>",
                     "<unistd.h>",

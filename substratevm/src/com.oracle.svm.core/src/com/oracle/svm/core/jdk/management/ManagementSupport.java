@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,6 @@ import javax.management.ObjectName;
 import javax.management.StandardEmitterMBean;
 import javax.management.StandardMBean;
 
-import jdk.management.jfr.FlightRecorderMXBean;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -54,14 +53,16 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
+
+import jdk.management.jfr.FlightRecorderMXBean;
 
 /**
  * This class provides the SVM support implementation for the MXBean that provide VM introspection,
@@ -118,7 +119,6 @@ public final class ManagementSupport implements ThreadListener {
 
     private final SubstrateClassLoadingMXBean classLoadingMXBean;
     private final SubstrateCompilationMXBean compilationMXBean;
-    private final SubstrateRuntimeMXBean runtimeMXBean;
     private final SubstrateThreadMXBean threadMXBean;
 
     /* Initialized lazily at run time. */
@@ -129,13 +129,12 @@ public final class ManagementSupport implements ThreadListener {
     MBeanServer platformMBeanServer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    ManagementSupport(SubstrateThreadMXBean threadMXBean) {
+    ManagementSupport(SubstrateRuntimeMXBean runtimeMXBean, SubstrateThreadMXBean threadMXBean) {
         platformManagedObjectsMap = new HashMap<>();
         platformManagedObjectsSet = Collections.newSetFromMap(new IdentityHashMap<>());
 
         classLoadingMXBean = new SubstrateClassLoadingMXBean();
         compilationMXBean = new SubstrateCompilationMXBean();
-        runtimeMXBean = new SubstrateRuntimeMXBean();
         this.threadMXBean = threadMXBean;
 
         /*
@@ -369,7 +368,7 @@ public final class ManagementSupport implements ThreadListener {
     public interface PlatformManagedObjectSupplier extends Supplier<PlatformManagedObject>, PlatformManagedObject {
         @Override
         default ObjectName getObjectName() {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereOverrideInChild(); // ExcludeFromJacocoGeneratedReport
         }
     }
 

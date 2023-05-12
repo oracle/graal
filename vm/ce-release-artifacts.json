@@ -1,6 +1,6 @@
 [
     {
-        "name": "graalvm-ce-java17",
+        "name": "graalvm-community-java17",
         "core": true,
         "jdk": "jdk_17",
         "artifacts": [
@@ -27,7 +27,7 @@
         ]
     },
     {
-        "name": "graalvm-ce-java20",
+        "name": "graalvm-community-java20",
         "core": true,
         "jdk": "jdk_20",
         "artifacts": [
@@ -793,6 +793,60 @@
     },
     {
         "name": "visualvm-installable-ce-java20",
+        "core": false,
+        "jdk": "jdk_20",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "antlr4-installable-ce-java17",
+        "core": false,
+        "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "antlr4-installable-ce-java20",
         "core": false,
         "jdk": "jdk_20",
         "artifacts": [

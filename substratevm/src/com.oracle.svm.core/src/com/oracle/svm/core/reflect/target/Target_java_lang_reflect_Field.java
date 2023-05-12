@@ -42,9 +42,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
-import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.util.VMError;
 
@@ -98,14 +96,9 @@ public final class Target_java_lang_reflect_Field {
     native Target_jdk_internal_reflect_FieldAccessor acquireOverrideFieldAccessor();
 
     @Alias
-    @TargetElement(name = CONSTRUCTOR_NAME, onlyWith = JDK17OrLater.class)
+    @TargetElement(name = CONSTRUCTOR_NAME)
     @SuppressWarnings("hiding")
-    native void constructorJDK17OrLater(Class<?> declaringClass, String name, Class<?> type, int modifiers, boolean trustedFinal, int slot, String signature, byte[] annotations);
-
-    @Alias
-    @TargetElement(name = CONSTRUCTOR_NAME, onlyWith = JDK11OrEarlier.class)
-    @SuppressWarnings("hiding")
-    native void constructorJDK11OrEarlier(Class<?> declaringClass, String name, Class<?> type, int modifiers, int slot, String signature, byte[] annotations);
+    native void constructor(Class<?> declaringClass, String name, Class<?> type, int modifiers, boolean trustedFinal, int slot, String signature, byte[] annotations);
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrEarlier.class)

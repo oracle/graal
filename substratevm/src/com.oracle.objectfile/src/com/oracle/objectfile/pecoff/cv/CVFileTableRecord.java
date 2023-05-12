@@ -140,7 +140,7 @@ final class CVFileTableRecord extends CVSymbolRecord {
             } catch (IOException e) {
                 return null;
             } catch (NoSuchAlgorithmException e) {
-                throw GraalError.shouldNotReachHere(); // ExcludeFromJacocoGeneratedReport
+                throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

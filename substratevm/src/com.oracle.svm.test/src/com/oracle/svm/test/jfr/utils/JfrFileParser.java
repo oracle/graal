@@ -62,46 +62,46 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ThreadStateConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.VMOperationConstantPoolParser;
 
 public class JfrFileParser {
+    private final Path path;
+    private final HashMap<Long, ConstantPoolParser> supportedConstantPools = new HashMap<>();
+    private final ArrayList<AbstractSerializerParser> serializerParsers = new ArrayList<>();
 
-    private static final HashMap<Long, ConstantPoolParser> supportedConstantPools;
-    private static final ArrayList<AbstractSerializerParser> serializerParsers;
+    @SuppressWarnings("this-escape")
+    public JfrFileParser(Path path) {
+        this.path = path;
 
-    static {
-        supportedConstantPools = new HashMap<>();
-        serializerParsers = new ArrayList<>();
+        addParser(JfrType.Class, new ClassConstantPoolParser(this));
+        addParser(JfrType.ClassLoader, new ClassLoaderConstantPoolParser(this));
+        addParser(JfrType.Package, new PackageConstantPoolParser(this));
+        addParser(JfrType.Module, new ModuleConstantPoolParser(this));
 
-        addParser(JfrType.Class, new ClassConstantPoolParser());
-        addParser(JfrType.ClassLoader, new ClassLoaderConstantPoolParser());
-        addParser(JfrType.Package, new PackageConstantPoolParser());
-        addParser(JfrType.Module, new ModuleConstantPoolParser());
+        addParser(JfrType.Symbol, new SymbolConstantPoolParser(this));
+        addParser(JfrType.Method, new MethodConstantPoolParser(this));
+        addParser(JfrType.StackTrace, new StacktraceConstantPoolParser(this));
 
-        addParser(JfrType.Symbol, new SymbolConstantPoolParser());
-        addParser(JfrType.Method, new MethodConstantPoolParser());
-        addParser(JfrType.StackTrace, new StacktraceConstantPoolParser());
+        addParser(JfrType.Thread, new ThreadConstantPoolParser(this));
+        addParser(JfrType.ThreadGroup, new ThreadGroupConstantPoolParser(this));
 
-        addParser(JfrType.Thread, new ThreadConstantPoolParser());
-        addParser(JfrType.ThreadGroup, new ThreadGroupConstantPoolParser());
-
-        addParser(JfrType.FrameType, new FrameTypeConstantPoolParser());
-        addParser(JfrType.ThreadState, new ThreadStateConstantPoolParser());
-        addParser(JfrType.GCName, new GCNameConstantPoolParser());
-        addParser(JfrType.GCCause, new GCCauseConstantPoolParser());
-        addParser(JfrType.VMOperation, new VMOperationConstantPoolParser());
-        addParser(JfrType.MonitorInflationCause, new MonitorInflationCauseConstantPoolParser());
+        addParser(JfrType.FrameType, new FrameTypeConstantPoolParser(this));
+        addParser(JfrType.ThreadState, new ThreadStateConstantPoolParser(this));
+        addParser(JfrType.GCName, new GCNameConstantPoolParser(this));
+        addParser(JfrType.GCCause, new GCCauseConstantPoolParser(this));
+        addParser(JfrType.VMOperation, new VMOperationConstantPoolParser(this));
+        addParser(JfrType.MonitorInflationCause, new MonitorInflationCauseConstantPoolParser(this));
     }
 
-    private static void addParser(JfrType type, ConstantPoolParser parser) {
+    private void addParser(JfrType type, ConstantPoolParser parser) {
         supportedConstantPools.put(type.getId(), parser);
         if (parser instanceof AbstractSerializerParser p) {
             serializerParsers.add(p);
         }
     }
 
-    public static HashMap<Long, ConstantPoolParser> getSupportedConstantPools() {
+    public HashMap<Long, ConstantPoolParser> getSupportedConstantPools() {
         return supportedConstantPools;
     }
 
-    public static void parse(Path path) throws IOException {
+    public void verify() throws IOException {
         RecordingInput input = new RecordingInput(path.toFile());
         FileHeaderInfo header = parseFileHeader(input);
         parseMetadata(input, header.metadataPosition);
@@ -139,7 +139,7 @@ public class JfrFileParser {
 
         long startingTime = input.readRawLong();
         assertTrue("Starting time is invalid!", startingTime > 0);
-        assertTrue("Starting time is bigger than current time!", startingTime < JfrTicks.currentTimeNanos());
+        assertTrue("Starting time is bigger than current time!", startingTime <= JfrTicks.currentTimeNanos());
         input.readRawLong(); // Duration.
         assertTrue("Chunk start tick is invalid!", input.readRawLong() > 0);
         assertTrue("Tick frequency is invalid!", input.readRawLong() > 0);
@@ -172,7 +172,7 @@ public class JfrFileParser {
         return constantPoolOffsets;
     }
 
-    private static void verifyConstantPools(RecordingInput input, Collection<Long> constantPoolOffsets) throws IOException {
+    private void verifyConstantPools(RecordingInput input, Collection<Long> constantPoolOffsets) throws IOException {
         for (Long offset : constantPoolOffsets) {
             input.position(offset);
             int numberOfCPs = input.readInt();
@@ -185,24 +185,17 @@ public class JfrFileParser {
         }
 
         verifySerializers();
-        resetConstantPoolParsers();
     }
 
-    private static void verifySerializers() {
+    private void verifySerializers() {
         for (ConstantPoolParser parser : serializerParsers) {
             assertFalse("Serializer data must always be present in the chunk.", parser.isEmpty());
         }
     }
 
-    private static void compareFoundAndExpectedIds() {
+    private void compareFoundAndExpectedIds() {
         for (ConstantPoolParser parser : supportedConstantPools.values()) {
             parser.compareFoundAndExpectedIds();
-        }
-    }
-
-    public static void resetConstantPoolParsers() {
-        for (ConstantPoolParser parser : supportedConstantPools.values()) {
-            parser.reset();
         }
     }
 

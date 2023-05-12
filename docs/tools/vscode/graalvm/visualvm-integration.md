@@ -10,8 +10,6 @@ permalink: /tools/vscode/graalvm-extension/visualvm-integration/
 GraalVM Tools for Java extension provides integration with [VisualVM](https://visualvm.github.io), which is the all-in-one Java (and polyglot) monitoring and troubleshooting tool.
 This brings the visual Java tooling to VS Code.
 
-![VisualVM and VS Code Integration](images/vscode_visualvm.png)
-
 It you go to **View**, then **Command Palette**, and search for "VisualVM", the following actions related to VisualVM are available:
 
 ![VisualVM Commands available from Command Palette](images/visualvm_commands.png)
@@ -19,12 +17,8 @@ It you go to **View**, then **Command Palette**, and search for "VisualVM", the 
 To start monitoring from VS Code, do the following:
 
 1. Click **Gr** in the activity panel, install the latest GraalVM release, and activate it, as described [here](README.md#graalvm-installation-wizard).
-2. Run your Java application (with or without debugging), the process ID will be discovered automatically. You can see that in the VisualVM pane in VS Code:
-
-   ![Process ID detected](images/visualvm_commands.png)
-
-   While the project is starting, the Process node in VisualVM pane displays the project name with a "pid pending" label. 
-   Once the project process starts, the Process node is updated to show its process ID (PID).
+2. Run your Java application (with or without debugging), the process ID will be discovered automatically. You can see that in the VisualVM pane in VS Code. While the project is starting, the Process node in VisualVM pane displays the project name with a "pid pending" label. 
+Once the project process starts, the Process node is updated to show its process ID (PID). 
    > Note: VisualVM in VS Code screens the system and searches for the project process during the project startup.
 
 3. Click the play button:
@@ -205,7 +199,7 @@ The following settings can be configured using the Configure action:
 
 The following quick actions related to VisualVM become available if you install active the most recent GraalVM in VS Code:
 
-![VisualVM Commands available from Command Palette](images/visualvm_command_palette.png)
+![VisualVM Commands available from Command Palette](images/visualvm_commands.png)
 
 **VisualVM: Start VisualVM**
 

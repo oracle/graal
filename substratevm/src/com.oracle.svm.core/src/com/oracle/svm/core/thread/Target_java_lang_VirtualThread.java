@@ -39,15 +39,20 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
+import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
 public final class Target_java_lang_VirtualThread {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @TargetElement(onlyWith = JDK20OrEarlier.class)//
     private static boolean notifyJvmtiEvents;
 
     // Checkstyle: stop
@@ -70,15 +75,36 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK20OrLater.class)
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiMount(boolean hide, boolean firstMount) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiUnmount(boolean hide, boolean lastUnmount) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiHideFrames(boolean hide) {
+        // unimplemented (GR-45392)
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = {JDK20OrLater.class, JDK20OrEarlier.class}, name = "notifyJvmtiHideFrames")
+    @SuppressWarnings({"static-method", "unused"})
+    private void notifyJvmtiHideFramesJDK20(boolean hide) {
         /*
          * Unfortunately, resetting the `notifyJvmtiEvents` field is not enough to completely remove
          * calls to this method due to the way it's used from the `switchToVirtualThread` method, so
          * unlike the other `notifyJvmti*` methods, we need a substitution to prevent linker errors.
          */
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Alias Executor scheduler;
@@ -141,6 +167,9 @@ public final class Target_java_lang_VirtualThread {
         }
 
         carrier.setCurrentThread(asThread(this));
+        if (HasJfrSupport.get()) {
+            SubstrateJVM.getThreadRepo().registerThread(asThread(this));
+        }
     }
 
     @Substitute
@@ -187,14 +216,15 @@ public final class Target_java_lang_VirtualThread {
         } else if (state == PARKING || state == YIELDING) {
             return Thread.State.RUNNABLE;
         } else if (state == PARKED || state == PARKED_SUSPENDED || state == PINNED) {
-            switch (MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false)) {
+            int parkedThreadStatus = MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false);
+            switch (parkedThreadStatus) {
                 case ThreadStatus.BLOCKED_ON_MONITOR_ENTER:
                     return Thread.State.BLOCKED;
                 case ThreadStatus.PARKED:
                 case ThreadStatus.IN_OBJECT_WAIT:
                     return Thread.State.WAITING;
                 default:
-                    throw VMError.shouldNotReachHere();
+                    throw VMError.shouldNotReachHereUnexpectedInput(parkedThreadStatus); // ExcludeFromJacocoGeneratedReport
             }
         } else if (state == TERMINATED) {
             return Thread.State.TERMINATED;

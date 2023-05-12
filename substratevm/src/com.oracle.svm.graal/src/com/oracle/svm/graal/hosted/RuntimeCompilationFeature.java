@@ -47,6 +47,8 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.GraphEncoder;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.options.Option;
@@ -80,6 +82,7 @@ import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.heap.BarrierSetProvider;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
@@ -93,6 +96,7 @@ import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateType;
+import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -337,6 +341,8 @@ public abstract class RuntimeCompilationFeature {
     protected RuntimeCompilationCandidatePredicate runtimeCompilationCandidatePredicate;
     protected Predicate<ResolvedJavaMethod> deoptimizeOnExceptionPredicate;
 
+    private SubstrateUniverseFactory universeFactory = new SubstrateUniverseFactory();
+
     public HostedProviders getHostedProviders() {
         return hostedProviders;
     }
@@ -352,6 +358,10 @@ public abstract class RuntimeCompilationFeature {
         return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
     }
 
+    public void setUniverseFactory(SubstrateUniverseFactory universeFactory) {
+        this.universeFactory = universeFactory;
+    }
+
     protected final void duringSetupHelper(DuringSetupAccess c) {
         if (SubstrateOptions.useLLVMBackend()) {
             throw UserError.abort("Runtime compilation is currently unimplemented on the LLVM backend (GR-43073).");
@@ -364,7 +374,7 @@ public abstract class RuntimeCompilationFeature {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
         AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
         SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(aMetaAccess);
-        objectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), aMetaAccess, substrateProviders);
+        objectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, universeFactory);
         config.registerObjectReplacer(objectReplacer);
 
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
@@ -510,6 +520,18 @@ public abstract class RuntimeCompilationFeature {
 
     protected final void afterAnalysisHelper() {
         ProgressReporter.singleton().setNumRuntimeCompiledMethods(getRuntimeCompiledMethods().size());
+    }
+
+    /**
+     * Checks if any illegal nodes are present within the graph. Runtime Compiled methods should
+     * never have explicit BytecodeExceptions; instead they should have deoptimizations.
+     */
+    protected static boolean verifyNodes(StructuredGraph graph) {
+        for (var node : graph.getNodes()) {
+            boolean invalidNodeKind = node instanceof BytecodeExceptionNode || node instanceof ThrowBytecodeExceptionNode;
+            assert !invalidNodeKind : "illegal node in graph: " + node + " method: " + graph.method();
+        }
+        return true;
     }
 
     protected final void beforeCompilationHelper() {
@@ -692,7 +714,7 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
 
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
-        throw VMError.shouldNotReachHere();
+        throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 
     @Override

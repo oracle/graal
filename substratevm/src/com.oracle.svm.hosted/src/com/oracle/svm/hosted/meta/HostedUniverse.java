@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import static com.oracle.svm.common.meta.MultiMethod.ORIGINAL_METHOD;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -474,10 +476,37 @@ public class HostedUniverse implements Universe {
 
     private static final class TypeComparator implements Comparator<HostedType> {
 
+        private static boolean isProxy(HostedType type) {
+            boolean result = Proxy.isProxyClass(type.getJavaClass());
+            assert result == type.toJavaName(false).startsWith("$Proxy");
+            return result;
+        }
+
         @Override
         public int compare(HostedType o1, HostedType o2) {
             if (o1.equals(o2)) {
                 return 0;
+            }
+
+            /*
+             * Due to the unstable names of proxies (the name will be $ProxyN where N is an
+             * undeterministic Integer), when comparing proxies, we sort based on the interfaces the
+             * proxy implements. According to {@code Proxy.getProxyClass}, the proxy class is based
+             * on the interfaces the proxy implements. Note the proxy class is also tied to the
+             * order of the interfaces implemented, so {@code getInterfaces} should not be sorted.
+             */
+            if (isProxy(o1) || isProxy(o2)) {
+                boolean o1Proxy = isProxy(o1);
+                boolean o2Proxy = isProxy(o2);
+                HostedType[] array1 = o1Proxy ? o1.getInterfaces() : new HostedType[]{o1};
+                HostedType[] array2 = o2Proxy ? o2.getInterfaces() : new HostedType[]{o2};
+                int result = Arrays.compare(array1, array2, HostedUniverse.TYPE_COMPARATOR);
+                if (result == 0) {
+                    // proxy can match the interface it implements
+                    result = Boolean.compare(o1Proxy, o2Proxy);
+                }
+                VMError.guarantee(result != 0, "HostedType proxies not distinguishable: %s, %s", o1, o2);
+                return result;
             }
 
             if (!o1.getClass().equals(o2.getClass())) {
@@ -522,7 +551,7 @@ public class HostedUniverse implements Universe {
             } else if (type.getJavaKind() != JavaKind.Object) {
                 return 1;
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(type); // ExcludeFromJacocoGeneratedReport
             }
         }
     }

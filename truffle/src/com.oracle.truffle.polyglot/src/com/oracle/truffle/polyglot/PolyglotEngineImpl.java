@@ -68,7 +68,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -765,37 +764,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    static Map<String, String> readOptionsFromSystemProperties(Map<String, String> options) {
-        Properties properties = System.getProperties();
-        Map<String, String> newOptions = null;
-        synchronized (properties) {
-            for (Object systemKey : properties.keySet()) {
-                if (PolyglotImpl.PROP_ALLOW_EXPERIMENTAL_OPTIONS.equals(systemKey)) {
-                    continue;
-                }
-                String key = (String) systemKey;
-                if (key.startsWith(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX)) {
-                    final String optionKey = key.substring(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX.length());
-                    // Image build time options are not set in runtime options
-                    if (!optionKey.startsWith(OPTION_GROUP_IMAGE_BUILD_TIME)) {
-                        // system properties cannot override existing options
-                        if (!options.containsKey(optionKey)) {
-                            if (newOptions == null) {
-                                newOptions = new HashMap<>(options);
-                            }
-                            newOptions.put(optionKey, System.getProperty(key));
-                        }
-                    }
-                }
-            }
-        }
-        if (newOptions == null) {
-            return options;
-        } else {
-            return newOptions;
-        }
-    }
-
     static String parseOptionGroup(String key) {
         int groupIndex = key.indexOf('.');
         String group;
@@ -1212,7 +1180,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 for (PolyglotContextImpl context : localContexts) {
                     assert !Thread.holdsLock(context);
                     synchronized (context) {
-                        if (context.hasActiveOtherThread(false) && !context.state.isClosing()) {
+                        if (context.hasActiveOtherThread(false, false) && !context.state.isClosing()) {
                             throw PolyglotEngineException.illegalState(String.format("One of the context instances is currently executing. " +
                                             "Set cancelIfExecuting to true to stop the execution on this thread."));
                         }
@@ -1467,7 +1435,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             for (Future<Void> future : futures) {
                 boolean timedOut = false;
                 try {
-                    if (timeout != null) {
+                    if (timeout != null && timeout != Duration.ZERO) {
                         long timeElapsed = System.currentTimeMillis() - startMillis;
                         long timeoutMillis = timeout.toMillis();
                         if (timeElapsed < timeoutMillis) {
@@ -1503,7 +1471,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private static boolean waitForThreads(PolyglotContextImpl context, long startMillis, Duration timeout) {
         long cancelTimeoutMillis = timeout != Duration.ZERO ? timeout.toMillis() : 0;
         boolean success = true;
-        if (!context.waitForThreads(startMillis, cancelTimeoutMillis)) {
+        if (!context.waitForAllThreads(startMillis, cancelTimeoutMillis)) {
             success = false;
         }
         return success;
@@ -2062,7 +2030,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
          * thread. The slow path acquires context lock to ensure ordering for context operations
          * like close.
          */
-        prev = context.enterThreadChanged(true, enterReverted, pollSafepoint, false, false);
+        prev = context.enterThreadChanged(enterReverted, pollSafepoint, false, false, false);
         assert verifyContext(context);
         return prev;
     }
@@ -2111,7 +2079,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 return;
             }
         }
-        context.leaveThreadChanged(prev, true, entered, false);
+        context.leaveThreadChanged(prev, entered, false);
     }
 
     static final class LogConfig {

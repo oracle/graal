@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
@@ -71,6 +72,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
+import com.oracle.svm.core.jdk.management.SubstrateRuntimeMXBean;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -89,7 +91,7 @@ import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
-import com.oracle.svm.core.util.Counter;
+import com.oracle.svm.core.util.CounterSupport;
 
 public class SubstrateDiagnostics {
     private static final int MAX_THREADS_TO_PRINT = 100_000;
@@ -213,15 +215,6 @@ public class SubstrateDiagnostics {
      */
     public static boolean printFatalError(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
         log.newline();
-        /*
-         * Save the state of the initial error so that this state is consistently used, even if
-         * further errors occur while printing diagnostics.
-         */
-        if (!fatalErrorState().trySet(log, sp, ip, registerContext, frameHasCalleeSavedRegisters) && !isFatalErrorHandlingThread()) {
-            log.string("Error: printFatalError already in progress by another thread.").newline();
-            log.newline();
-            return false;
-        }
 
         /*
          * Execute an endless loop if requested. This makes it easier to attach a debugger lazily.
@@ -230,6 +223,16 @@ public class SubstrateDiagnostics {
          */
         while (loopOnFatalError) {
             PauseNode.pause();
+        }
+
+        /*
+         * Save the state of the initial error so that this state is consistently used, even if
+         * further errors occur while printing diagnostics.
+         */
+        if (!fatalErrorState().trySet(log, sp, ip, registerContext, frameHasCalleeSavedRegisters) && !isFatalErrorHandlingThread()) {
+            log.string("Error: printFatalError already in progress by another thread.").newline();
+            log.newline();
+            return false;
         }
 
         printFatalErrorForCurrentState();
@@ -242,10 +245,12 @@ public class SubstrateDiagnostics {
 
         FatalErrorState fatalErrorState = fatalErrorState();
         Log log = fatalErrorState.log;
-        if (fatalErrorState.diagnosticThunkIndex > 0) {
+        if (fatalErrorState.diagnosticThunkIndex >= 0) {
             // An error must have happened earlier as the code for printing diagnostics was invoked
             // recursively.
             log.resetIndentation().newline();
+        } else {
+            fatalErrorState.diagnosticThunkIndex = 0;
         }
 
         // Print the various sections of the diagnostics and skip all sections that were already
@@ -393,7 +398,7 @@ public class SubstrateDiagnostics {
         }
 
         if (matches == 0) {
-            throw new IllegalArgumentException("the pattern '" + entry + "' not match any diagnostic thunk.");
+            throw new IllegalArgumentException("The pattern '" + entry + "' not match any diagnostic thunk.");
         }
     }
 
@@ -460,7 +465,7 @@ public class SubstrateDiagnostics {
         @Platforms(Platform.HOSTED_ONLY.class)
         public FatalErrorState() {
             diagnosticThread = new AtomicWord<>();
-            diagnosticThunkIndex = 0;
+            diagnosticThunkIndex = -1;
             invocationCount = 0;
             log = null;
 
@@ -475,7 +480,7 @@ public class SubstrateDiagnostics {
         @SuppressWarnings("hiding")
         public boolean trySet(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context registerContext, boolean frameHasCalleeSavedRegisters) {
             if (diagnosticThread.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread())) {
-                assert diagnosticThunkIndex == 0;
+                assert diagnosticThunkIndex == -1;
                 assert invocationCount == 0;
                 this.log = log;
 
@@ -498,23 +503,10 @@ public class SubstrateDiagnostics {
             errorContext.setRegisterContext(WordFactory.nullPointer());
             errorContext.setFrameHasCalleeSavedRegisters(false);
 
-            diagnosticThunkIndex = 0;
+            diagnosticThunkIndex = -1;
             invocationCount = 0;
 
             diagnosticThread.set(WordFactory.nullPointer());
-        }
-    }
-
-    private static class DumpCurrentTimestamp extends DiagnosticThunk {
-        @Override
-        public int maxInvocationCount() {
-            return 1;
-        }
-
-        @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline().newline();
         }
     }
 
@@ -543,34 +535,32 @@ public class SubstrateDiagnostics {
     private static class DumpInstructions extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
-            return 3;
+            return 4;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (invocationCount < 3) {
-                printBytesBeforeAndAfterIp(log, context.getInstructionPointer(), invocationCount);
-            } else if (invocationCount == 3) {
-                printWord(log, context.getInstructionPointer());
+            CodePointer ip = context.getInstructionPointer();
+            log.string("Printing instructions (ip=").zhex(ip).string("):").indent(true);
+            if (ip.isNull()) {
+                // can't print any instructions
+            } else if (invocationCount < 4) {
+                // print 512, 128, or 32 instruction bytes.
+                int bytesToPrint = 1024 >> (invocationCount * 2);
+                hexDump(log, ip, bytesToPrint, bytesToPrint);
+            } else if (invocationCount == 4) {
+                // just print one word starting at the ip
+                hexDump(log, ip, 0, ConfigurationValues.getTarget().wordSize);
             }
-        }
-
-        private static void printBytesBeforeAndAfterIp(Log log, CodePointer ip, int invocationCount) {
-            // print 64 or 32 instruction bytes.
-            int bytesToPrint = 64 >> invocationCount;
-            hexDump(log, ip, bytesToPrint, bytesToPrint);
-        }
-
-        private static void printWord(Log log, CodePointer ip) {
-            // just print one word starting at the ip
-            hexDump(log, ip, 0, ConfigurationValues.getTarget().wordSize);
+            log.indent(false).newline();
         }
 
         private static void hexDump(Log log, CodePointer ip, int bytesBefore, int bytesAfter) {
-            log.string("Printing Instructions (ip=").zhex(ip).string("):").indent(true);
-            log.hexdump(((Pointer) ip).subtract(bytesBefore), 1, bytesBefore + bytesAfter);
-            log.indent(false).newline();
+            log.hexdump(((Pointer) ip).subtract(bytesBefore), 1, bytesBefore);
+            log.indent(false);
+            log.string("> ").redent(true);
+            log.hexdump(ip, 1, bytesAfter);
         }
     }
 
@@ -583,30 +573,42 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            /*
+             * We have to be careful here and not dump too much of the stack: if there are not many
+             * frames on the stack, we segfault when going past the beginning of the stack.
+             */
             Pointer sp = context.getStackPointer();
-            UnsignedWord stackBase = VMThreads.StackBase.get();
+            UnsignedWord stackEnd = VMThreads.StackEnd.get(); // low
+            UnsignedWord stackBase = VMThreads.StackBase.get(); // high
+            int wordSize = ConfigurationValues.getTarget().wordSize;
+
             log.string("Top of stack (sp=").zhex(sp).string("):").indent(true);
-
-            int bytesToPrint = computeBytesToPrint(sp, stackBase);
-            log.hexdump(sp, 8, bytesToPrint / 8);
-            log.indent(false).newline();
-        }
-
-        private static int computeBytesToPrint(Pointer sp, UnsignedWord stackBase) {
-            if (stackBase.equal(0)) {
-                /*
-                 * We have to be careful here and not dump too much of the stack: if there are not
-                 * many frames on the stack, we segfault when going past the beginning of the stack.
-                 */
-                return 128;
+            int bytesToPrintBelowSp = 32;
+            if (stackEnd.notEqual(0)) {
+                UnsignedWord availableBytes = sp.subtract(stackEnd);
+                if (availableBytes.belowThan(bytesToPrintBelowSp)) {
+                    bytesToPrintBelowSp = NumUtil.safeToInt(availableBytes.rawValue());
+                }
             }
 
-            int bytesToPrint = 512;
-            UnsignedWord availableBytes = stackBase.subtract(sp);
-            if (availableBytes.belowThan(bytesToPrint)) {
-                bytesToPrint = NumUtil.safeToInt(availableBytes.rawValue());
+            int bytesToPrintAboveSp = 128;
+            if (stackBase.notEqual(0)) {
+                bytesToPrintAboveSp = 512;
+                UnsignedWord availableBytes = stackBase.subtract(sp);
+                if (availableBytes.belowThan(bytesToPrintAboveSp)) {
+                    bytesToPrintAboveSp = NumUtil.safeToInt(availableBytes.rawValue());
+                }
             }
-            return bytesToPrint;
+
+            int wordsToPrintBelowSp = bytesToPrintBelowSp / wordSize;
+            log.hexdump(sp.subtract(wordsToPrintBelowSp * wordSize), wordSize, wordsToPrintBelowSp, 32);
+            log.indent(false);
+
+            log.string("> ").redent(true);
+            log.hexdump(sp, wordSize, bytesToPrintAboveSp / wordSize, 32);
+            log.indent(false);
+
+            log.newline();
         }
     }
 
@@ -619,13 +621,11 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (DeoptimizationSupport.enabled()) {
-                log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer()).newline().newline();
-            }
+            log.string("DeoptStubPointer address: ").zhex(DeoptimizationSupport.getDeoptStubPointer()).newline().newline();
         }
     }
 
-    private static class DumpTopFrame extends DiagnosticThunk {
+    private static class DumpTopDeoptimizedFrame extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -634,39 +634,19 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            // We already dump all safe values first, so there is nothing we could retry if an error
-            // occurs.
             Pointer sp = context.getStackPointer();
             CodePointer ip = context.getInstructionPointer();
 
             if (sp.isNonNull() && ip.isNonNull()) {
-                log.string("Top frame info:").indent(true);
                 long totalFrameSize = getTotalFrameSize(sp, ip);
                 DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
                 if (deoptFrame != null) {
+                    log.string("Top frame info:").indent(true);
                     log.string("RSP ").zhex(sp).string(" frame was deoptimized:").newline();
                     log.string("SourcePC ").zhex(deoptFrame.getSourcePC()).newline();
                     log.string("SourceTotalFrameSize ").signed(totalFrameSize).newline();
-                } else if (totalFrameSize != -1) {
-                    log.string("TotalFrameSize in CodeInfoTable ").signed(totalFrameSize).newline();
+                    log.indent(false);
                 }
-
-                if (totalFrameSize == -1) {
-                    log.string("Does not look like a Java Frame. Use JavaFrameAnchors to find LastJavaSP:").newline();
-                    JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-                    while (anchor.isNonNull() && anchor.getLastJavaSP().belowOrEqual(sp)) {
-                        anchor = anchor.getPreviousAnchor();
-                    }
-
-                    if (anchor.isNonNull()) {
-                        log.string("Found matching Anchor:").zhex(anchor).newline();
-                        Pointer lastSp = anchor.getLastJavaSP();
-                        log.string("LastJavaSP ").zhex(lastSp).newline();
-                        CodePointer lastIp = anchor.getLastJavaIP();
-                        log.string("LastJavaIP ").zhex(lastIp).newline();
-                    }
-                }
-                log.indent(false);
             }
         }
     }
@@ -680,8 +660,8 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 3;
-            boolean allowUnsafeOperations = DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel) && invocationCount < 2;
+            boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 2;
+            boolean allowUnsafeOperations = DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel) && invocationCount < 3;
             /*
              * If we are not at a safepoint, then it is unsafe to access the thread locals of
              * another thread as the IsolateThread could be freed at any time.
@@ -703,9 +683,13 @@ public class SubstrateDiagnostics {
 
                     if (allowJavaHeapAccess) {
                         Thread threadObj = PlatformThreads.fromVMThread(thread);
-                        log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
-                        if (threadObj != null && threadObj.isDaemon()) {
-                            log.string(", daemon");
+                        if (threadObj == null) {
+                            log.string(" null");
+                        } else {
+                            log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
+                            if (threadObj.isDaemon()) {
+                                log.string(", daemon");
+                            }
                         }
                     }
                     log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
@@ -780,10 +764,8 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (RuntimeCompilation.isEnabled()) {
-                boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 2;
-                RuntimeCodeInfoHistory.singleton().printRecentOperations(log, allowJavaHeapAccess);
-            }
+            boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 2;
+            RuntimeCodeInfoHistory.singleton().printRecentOperations(log, allowJavaHeapAccess);
         }
     }
 
@@ -796,11 +778,9 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (RuntimeCompilation.isEnabled()) {
-                boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 3;
-                boolean allowUnsafeOperations = DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel) && invocationCount < 2;
-                RuntimeCodeInfoMemory.singleton().printTable(log, allowJavaHeapAccess, allowUnsafeOperations);
-            }
+            boolean allowJavaHeapAccess = DiagnosticLevel.javaHeapAccessAllowed(maxDiagnosticLevel) && invocationCount < 3;
+            boolean allowUnsafeOperations = DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel) && invocationCount < 2;
+            RuntimeCodeInfoMemory.singleton().printTable(log, allowJavaHeapAccess, allowUnsafeOperations);
         }
     }
 
@@ -813,9 +793,41 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            if (DeoptimizationSupport.enabled()) {
-                Deoptimizer.logRecentDeoptimizationEvents(log);
-            }
+            Deoptimizer.logRecentDeoptimizationEvents(log);
+        }
+    }
+
+    static class DumpGeneralInfo extends DiagnosticThunk {
+        @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            log.string("General information:").indent(true);
+            log.string("VM version: ").string(ImageSingletons.lookup(VM.class).version);
+
+            Platform platform = ImageSingletons.lookup(Platform.class);
+            log.string(", ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
+
+            log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
+            log.string("VM uptime: ").signed(ImageSingletons.lookup(SubstrateRuntimeMXBean.class).getUptime()).string(" ms").newline();
+
+            CodeInfo info = CodeInfoTable.getImageCodeInfo();
+            Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
+            UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
+            Pointer codeEnd = codeStart.add(codeSize).subtract(1);
+            log.string("AOT compiled code: ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+
+            log.string("CPU features used for AOT compiled code: ").string(getBuildTimeCpuFeatures()).newline();
+            log.indent(false);
+        }
+
+        @Fold
+        static String getBuildTimeCpuFeatures() {
+            return String.join(", ", CPUFeatureAccess.singleton().buildtimeCPUFeatures().stream().map(Enum::toString).toList());
         }
     }
 
@@ -828,9 +840,12 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            log.string("Counters:").indent(true);
-            Counter.logValues(log);
-            log.indent(false);
+            CounterSupport counters = CounterSupport.singleton();
+            if (counters.hasCounters()) {
+                log.string("Counters:").indent(true);
+                counters.logValues(log);
+                log.indent(false);
+            }
         }
     }
 
@@ -862,28 +877,55 @@ public class SubstrateDiagnostics {
             Pointer sp = context.getStackPointer();
             CodePointer ip = context.getInstructionPointer();
 
-            log.string("Stacktrace for the failing thread ").zhex(CurrentIsolate.getCurrentThread()).string(":").indent(true);
+            log.string("Stacktrace for the failing thread ").zhex(CurrentIsolate.getCurrentThread()).string(" (A=AOT compiled, J=JIT compiled, D=deoptimized, i=inlined):").indent(true);
             boolean success = ThreadStackPrinter.printStacktrace(sp, ip, printVisitors[invocationCount - 1].reset(), log);
 
             if (!success && DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel)) {
                 /*
                  * If the stack pointer is not sufficiently aligned, then we might be in the middle
-                 * of a call (i.e., only the return address and the arguments are on the stack). In
-                 * that case, we can read the return address from the top of the stack, align the
-                 * stack pointer, and start a stack walk in the caller.
+                 * of a call (i.e., only the return address and the arguments are on the stack).
                  */
                 int expectedStackAlignment = ConfigurationValues.getTarget().stackAlignment;
                 if (sp.unsignedRemainder(expectedStackAlignment).notEqual(0) && sp.unsignedRemainder(ConfigurationValues.getTarget().wordSize).equal(0)) {
                     log.newline();
-                    log.string("WARNING: stack pointer is NOT aligned to ").signed(expectedStackAlignment).string(" bytes. Starting a stack walk in the most likely caller instead.").newline();
-                    ip = sp.readWord(0);
-                    sp = sp.add(ConfigurationValues.getTarget().wordSize);
-
-                    ThreadStackPrinter.printStacktrace(sp, ip, printVisitors[invocationCount - 1].reset(), log);
+                    log.string("WARNING: stack pointer is NOT aligned to ").signed(expectedStackAlignment).string(" bytes.").newline();
                 }
+
+                startStackWalkInMostLikelyCaller(log, invocationCount, sp);
             }
 
             log.indent(false);
+        }
+
+        private static void startStackWalkInMostLikelyCaller(Log log, int invocationCount, Pointer originalSp) {
+            UnsignedWord stackBase = VMThreads.StackBase.get();
+            if (stackBase.equal(0)) {
+                /* We don't know the stack boundaries, so only search within 32 bytes. */
+                stackBase = originalSp.add(32);
+            }
+
+            /* Search until we find a valid (return address, stack pointer) tuple. */
+            int wordSize = ConfigurationValues.getTarget().wordSize;
+            Pointer pos = originalSp;
+            while (pos.belowThan(stackBase)) {
+                CodePointer possibleIp = pos.readWord(0);
+                if (pointsIntoNativeImageCode(possibleIp)) {
+                    Pointer possibleCallerSp = pos.readWord(wordSize);
+                    if (possibleCallerSp.aboveThan(originalSp) && possibleCallerSp.belowThan(stackBase)) {
+                        Pointer sp = pos.add(wordSize);
+                        log.newline();
+                        log.string("Starting the stack walk in a possible caller:").newline();
+                        ThreadStackPrinter.printStacktrace(sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
+                        break;
+                    }
+                }
+                pos = pos.add(wordSize);
+            }
+        }
+
+        @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.")
+        private static boolean pointsIntoNativeImageCode(CodePointer possibleIp) {
+            return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
         }
     }
 
@@ -935,7 +977,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpAOTCompiledCodeInfo extends DiagnosticThunk {
+    private static class DumpCommandLine extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
             return 1;
@@ -944,13 +986,14 @@ public class SubstrateDiagnostics {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            CodeInfo info = CodeInfoTable.getImageCodeInfo();
-            Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
-            UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
-            Pointer codeEnd = codeStart.add(codeSize).subtract(1);
-
-            log.string("AOT compiled code is mapped at ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
-            log.newline();
+            String[] args = ImageSingletons.lookup(JavaMainWrapper.JavaMainSupport.class).mainArgs;
+            if (args != null) {
+                log.string("Command line: ");
+                for (String arg : args) {
+                    log.string("'").string(arg).string("' ");
+                }
+                log.newline().newline();
+            }
         }
     }
 
@@ -977,9 +1020,9 @@ public class SubstrateDiagnostics {
             }
 
             if (CodeInfoAccess.contains(imageCodeInfo, (CodePointer) value)) {
+                log.string("points into AOT compiled code ");
                 FrameInfoQueryResult compilationRoot = getCompilationRoot(imageCodeInfo, (CodePointer) value);
                 if (compilationRoot != null) {
-                    log.string("points into AOT compiled code ");
                     compilationRoot.log(log);
                 }
                 return true;
@@ -1087,11 +1130,34 @@ public class SubstrateDiagnostics {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         DiagnosticThunkRegistry() {
-            this.diagnosticThunks = new DiagnosticThunk[]{new DumpCurrentTimestamp(), new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(),
-                            new DumpTopFrame(), new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
-                            new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadDecodedStackTrace(),
-                            new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes(), new DumpAOTCompiledCodeInfo()};
+            ArrayList<DiagnosticThunk> thunks = new ArrayList<>();
+            thunks.add(new DumpRegisters());
+            thunks.add(new DumpInstructions());
+            thunks.add(new DumpTopOfCurrentThreadStack());
+            if (RuntimeCompilation.isEnabled()) {
+                thunks.add(new DumpTopDeoptimizedFrame());
+            }
+            thunks.add(new DumpCurrentThreadLocals());
+            thunks.add(new DumpCurrentThreadFrameAnchors());
+            thunks.add(new DumpCurrentThreadDecodedStackTrace());
+            thunks.add(new DumpThreads());
+            thunks.add(new DumpOtherStackTraces());
+            thunks.add(new DumpCurrentVMOperation());
+            thunks.add(new DumpVMOperationHistory());
+            thunks.add(new VMLockSupport.DumpVMMutexes());
+            thunks.add(new DumpGeneralInfo());
+            if (ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
+                thunks.add(new DumpCommandLine());
+            }
+            thunks.add(new DumpCounters());
+            if (RuntimeCompilation.isEnabled()) {
+                thunks.add(new DumpCodeCacheHistory());
+                thunks.add(new DumpRuntimeCodeInfoMemory());
+                thunks.add(new DumpDeoptStubPointer());
+                thunks.add(new DumpRecentDeoptimizations());
+            }
 
+            this.diagnosticThunks = thunks.toArray(new DiagnosticThunk[0]);
             this.initialInvocationCount = new int[diagnosticThunks.length];
             Arrays.fill(initialInvocationCount, 1);
         }

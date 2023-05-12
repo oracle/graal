@@ -117,11 +117,11 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import org.graalvm.compiler.truffle.compiler.host.HostInliningPhase;
+import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
-import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -130,8 +130,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -161,6 +161,7 @@ import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
+import com.oracle.svm.truffle.api.SubstrateTruffleUniverseFactory;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -170,9 +171,6 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -250,14 +248,6 @@ public class TruffleFeature implements InternalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
-        Architecture arch = providers.getLowerer().getTarget().arch;
-        if (arch instanceof AMD64 || arch instanceof AArch64) {
-            TruffleInvocationPlugins.register(arch, plugins.getInvocationPlugins(), providers.getReplacements());
-        }
-    }
-
-    @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
         return List.of(RuntimeCompilationFeature.getRuntimeCompilationFeature(), TruffleBaseFeature.class);
     }
@@ -273,9 +263,10 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime,
-                        "TruffleFeature requires SubstrateTruffleRuntime");
-        ((SubstrateTruffleRuntime) Truffle.getRuntime()).resetHosted();
+        UserError.guarantee(Truffle.getRuntime() instanceof SubstrateTruffleRuntime, "TruffleFeature requires SubstrateTruffleRuntime");
+        SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
+        truffleRuntime.resetHosted();
+        RuntimeCompilationFeature.singleton().setUniverseFactory(new SubstrateTruffleUniverseFactory(truffleRuntime));
     }
 
     @Override
@@ -293,6 +284,8 @@ public class TruffleFeature implements InternalFeature {
         if (!ImageSingletons.contains(TruffleSupport.class)) {
             ImageSingletons.add(TruffleSupport.class, new TruffleSupport());
         }
+
+        ImageSingletons.lookup(TruffleBaseFeature.class).setGraalGraphObjectReplacer(RuntimeCompilationFeature.singleton().getObjectReplacer());
     }
 
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {
@@ -340,6 +333,7 @@ public class TruffleFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
+        TruffleHostEnvironment.overrideLookup(new SubstrateTruffleHostEnvironmentLookup(truffleRuntime, config.getMetaAccess()));
 
         ImageSingletons.lookup(TruffleBaseFeature.class).setProfilingEnabled(truffleRuntime.isProfilingEnabled());
 
@@ -357,10 +351,10 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getUniverse().getOriginalMetaAccess());
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
-        registerKnownTruffleFields(config, partialEvaluator.getKnownTruffleTypes());
+        registerKnownTruffleFields(config, partialEvaluator.getTypes());
         TruffleSupport.singleton().registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
-        GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigPrototype();
+        GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
         if (Options.TruffleInlineDuringParsing.getValue() && !SubstrateOptions.parseOnce()) {
             graphBuilderConfig.getPlugins().appendInlineInvokePlugin(
@@ -534,7 +528,14 @@ public class TruffleFeature implements InternalFeature {
     private static boolean runtimeCompilationForbidden(ResolvedJavaMethod method) {
         if (method.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return true;
-        } else if (!((SubstrateTruffleRuntime) Truffle.getRuntime()).isInlineable(method)) {
+        } else if (Uninterruptible.Utils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
+            if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
+                /* The semantics of Uninterruptible would get lost during partial evaluation. */
+                return true;
+            }
+        }
+        if (!method.canBeInlined()) {
             return true;
         } else if (method.getAnnotation(TruffleCallBoundary.class) != null) {
             return true;
@@ -737,7 +738,7 @@ public class TruffleFeature implements InternalFeature {
                 method = clazz.getDeclaredMethod(name, parameterTypes);
             }
             if (!blocklistMethods.remove(metaAccess.lookupJavaMethod(method))) {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(method); // ExcludeFromJacocoGeneratedReport
             }
         } catch (NoSuchMethodException ex) {
             throw VMError.shouldNotReachHere(ex);
@@ -880,15 +881,19 @@ public class TruffleFeature implements InternalFeature {
 
     /**
      * Keep this method in sync with
-     * {@link SubstrateTruffleHostInliningPhase#isTruffleBoundary(ResolvedJavaMethod)}.
+     * {@link SubstrateHostInliningPhase#isTruffleBoundary(TruffleHostEnvironment, ResolvedJavaMethod)}.
      */
     private boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        if (TruffleHostInliningPhase.shouldDenyTrivialInliningInAllMethods(callee)) {
+        TruffleHostEnvironment env = TruffleHostEnvironment.get(callee);
+        if (env == null) {
+            return false;
+        }
+        if (HostInliningPhase.shouldDenyTrivialInliningInAllMethods(env, callee)) {
             /*
              * Some methods should never be trivial inlined.
              */
             return true;
-        } else if ((runtimeCompiledMethods == null || runtimeCompiledMethods.contains(caller)) && TruffleHostInliningPhase.shouldDenyTrivialInlining(callee)) {
+        } else if ((runtimeCompiledMethods == null || runtimeCompiledMethods.contains(caller)) && HostInliningPhase.shouldDenyTrivialInlining(env, callee)) {
             /*
              * Deny trivial inlining in methods which can be included as part of a runtime
              * compilation.
@@ -919,8 +924,8 @@ public class TruffleFeature implements InternalFeature {
         truffleRuntime.initializeHostedKnownMethods(config.getMetaAccess());
 
         runtimeCompiledMethods = new LinkedHashSet<>();
-        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods()));
-        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods()));
+        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerDirectives.class).getDeclaredMethods(false)));
+        runtimeCompiledMethods.addAll(Arrays.asList(config.getMetaAccess().lookupJavaType(CompilerAsserts.class).getDeclaredMethods(false)));
 
         for (RuntimeCompiledMethod runtimeCompiledMethod : RuntimeCompilationFeature.singleton().getRuntimeCompiledMethods()) {
 
@@ -932,7 +937,7 @@ public class TruffleFeature implements InternalFeature {
              * TruffleParsingInlineInvokePlugin}, which always inlines certain methods to improve
              * footprint. Luckily the Graal graph keeps track of all methods ever inlined in a
              * graph. So we just need to remember them. The set of runtime compiled methods is later
-             * used for driving the entry points of the TruffleHostInliningPhase.
+             * used for driving the entry points of the HostInliningPhase.
              */
             for (ResolvedJavaMethod method : runtimeCompiledMethod.getInlinedMethods()) {
                 if (!(method instanceof AnalysisMethod)) {
@@ -971,8 +976,12 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
-        if (hosted && TruffleHostInliningPhase.Options.TruffleHostInlining.getValue(HostedOptionValues.singleton()) && suites.getHighTier() instanceof HighTier) {
-            suites.getHighTier().prependPhase(new SubstrateTruffleHostInliningPhase(CanonicalizerPhase.create()));
+        /*
+         * Please keep this code in sync with the HotSpot configuration in
+         * TruffleCommunityCompilerConfiguration.
+         */
+        if (hosted && HostInliningPhase.Options.TruffleHostInlining.getValue(HostedOptionValues.singleton()) && suites.getHighTier() instanceof HighTier) {
+            suites.getHighTier().prependPhase(new SubstrateHostInliningPhase(CanonicalizerPhase.create()));
         }
     }
 }

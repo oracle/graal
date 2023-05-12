@@ -226,7 +226,7 @@ public class AnalysisUniverse implements Universe {
     @SuppressFBWarnings(value = {"ES_COMPARING_STRINGS_WITH_EQ"}, justification = "Bug in findbugs")
     private AnalysisType createType(ResolvedJavaType type) {
         if (!hostVM.platformSupported(type)) {
-            throw new UnsupportedFeatureException("type is not available in this platform: " + type.toJavaName(true));
+            throw new UnsupportedFeatureException("Type is not available in this platform: " + type.toJavaName(true));
         }
         if (sealed && !type.isArray()) {
             /*
@@ -402,7 +402,7 @@ public class AnalysisUniverse implements Universe {
 
     private AnalysisField createField(ResolvedJavaField field) {
         if (!hostVM.platformSupported(field)) {
-            throw new UnsupportedFeatureException("field is not available in this platform: " + field.format("%H.%n"));
+            throw new UnsupportedFeatureException("Field is not available in this platform: " + field.format("%H.%n"));
         }
         if (sealed) {
             return null;

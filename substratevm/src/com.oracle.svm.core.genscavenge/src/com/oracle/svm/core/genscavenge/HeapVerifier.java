@@ -38,6 +38,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
+import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
@@ -257,7 +258,7 @@ public final class HeapVerifier {
             return false;
         }
 
-        Word header = ObjectHeaderImpl.getObjectHeaderImpl().readHeaderFromPointer(ptr);
+        Word header = ObjectHeader.readHeaderFromPointer(ptr);
         if (ObjectHeaderImpl.isProducedHeapChunkZapped(header) || ObjectHeaderImpl.isConsumedHeapChunkZapped(header)) {
             Log.log().string("Object ").zhex(ptr).string(" has a zapped header: ").zhex(header).newline();
             return false;
@@ -325,11 +326,11 @@ public final class HeapVerifier {
 
     // This method is executed exactly once per object in the heap.
     private static boolean verifyReferences(Object obj) {
-        if (!SerialGCOptions.VerifyReferences.getValue()) {
+        if (!SerialGCOptions.VerifyReferences.getValue() && !SerialGCOptions.VerifyReferencesPointIntoValidChunk.getValue()) {
             return true;
         }
 
-        REFERENCE_VERIFIER.initialize(obj);
+        REFERENCE_VERIFIER.initialize();
         InteriorObjRefWalker.walkObject(obj, REFERENCE_VERIFIER);
 
         boolean success = REFERENCE_VERIFIER.result;
@@ -358,27 +359,27 @@ public final class HeapVerifier {
             return true;
         }
 
-        if (!HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
+        if (SerialGCOptions.VerifyReferencesPointIntoValidChunk.getValue() && !HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
             Log.log().string("Object reference at ").zhex(reference).string(" points outside the Java heap: ").zhex(referencedObject).string(". ");
-            printParentObject(parentObject);
+            printParent(parentObject);
             return false;
         }
 
         if (!ObjectHeaderImpl.getObjectHeaderImpl().pointsToObjectHeader(referencedObject)) {
             Log.log().string("Object reference at ").zhex(reference).string(" does not point to a Java object or the object header of the Java object is invalid: ").zhex(referencedObject)
                             .string(". ");
-            printParentObject(parentObject);
+            printParent(parentObject);
             return false;
         }
 
         return true;
     }
 
-    private static void printParentObject(Object parentObject) {
+    private static void printParent(Object parentObject) {
         if (parentObject != null) {
             Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
         } else {
-            Log.log().string("The invalid reference is on the stack.").newline();
+            Log.log().string("The invalid reference is on the stack").newline();
         }
     }
 
@@ -446,7 +447,6 @@ public final class HeapVerifier {
     }
 
     private static class ObjectReferenceVerifier implements ObjectReferenceVisitor {
-        private Object parentObject;
         private boolean result;
 
         @Platforms(Platform.HOSTED_ONLY.class)
@@ -454,14 +454,13 @@ public final class HeapVerifier {
         }
 
         @SuppressWarnings("hiding")
-        public void initialize(Object parentObject) {
-            this.parentObject = parentObject;
+        public void initialize() {
             this.result = true;
         }
 
         @Override
         public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
-            result &= verifyReference(parentObject, objRef, compressed);
+            result &= verifyReference(holderObject, objRef, compressed);
             return true;
         }
     }

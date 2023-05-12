@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,13 +56,19 @@ final class PolyglotThread extends Thread {
 
     private final CallTarget callTarget;
 
-    volatile boolean hardExitNotificationThread;
+    final Runnable beforeEnter;
+    final Runnable afterLeave;
 
-    PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group, long stackSize) {
+    volatile boolean hardExitNotificationThread;
+    private boolean enterAllowed = true;
+
+    PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group, long stackSize, Runnable beforeEnter, Runnable afterLeave) {
         super(group, runnable, createDefaultName(languageContext), stackSize);
         this.languageContext = languageContext;
         setUncaughtExceptionHandler(languageContext.getPolyglotExceptionHandler());
         this.callTarget = ThreadSpawnRootNode.lookup(languageContext.getLanguageInstance());
+        this.beforeEnter = beforeEnter;
+        this.afterLeave = afterLeave;
     }
 
     private static String createDefaultName(PolyglotLanguageContext creator) {
@@ -156,5 +162,15 @@ final class PolyglotThread extends Thread {
             }
             return target;
         }
+    }
+
+    boolean isEnterAllowed() {
+        assert Thread.currentThread() == this;
+        return enterAllowed;
+    }
+
+    void setEnterAllowed(boolean enterAllowed) {
+        assert Thread.currentThread() == this;
+        this.enterAllowed = enterAllowed;
     }
 }

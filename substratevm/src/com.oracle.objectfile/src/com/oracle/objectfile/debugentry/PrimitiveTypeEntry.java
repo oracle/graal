@@ -36,9 +36,9 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTy
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_SIGNED;
 
 public class PrimitiveTypeEntry extends TypeEntry {
-    char typeChar;
-    int flags;
-    int bitCount;
+    private char typeChar;
+    private int flags;
+    private int bitCount;
 
     public PrimitiveTypeEntry(String typeName, int size) {
         super(typeName, size);

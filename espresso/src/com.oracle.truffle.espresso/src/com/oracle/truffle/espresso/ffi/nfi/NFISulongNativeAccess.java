@@ -62,7 +62,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
         if (!Files.exists(libraryPath)) {
             return null;
         }
-        String nfiSource = String.format("with llvm load(RTLD_LAZY) '%s'", libraryPath);
+        String nfiSource = String.format("with llvm load(RTLD_LAZY|RTLD_LOCAL) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }
 

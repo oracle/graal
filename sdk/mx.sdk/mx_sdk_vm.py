@@ -60,6 +60,11 @@ from argparse import ArgumentParser
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
+# This can be incremented if a new GraalVM release needs to be built on exactly the same JDK as a previous GraalVM release.
+# It will be appended after a dot to the JDK build number an appear in the java.vendor.version.
+# This should be brought back down to 1 when the JDK version is updated (feature, interim, patch, or even build, see java.lang.Runtime.Version).
+release_build = '1'
+
 _suite = mx.suite('sdk')
 _graalvm_components = dict()  # By short_name
 _graalvm_components_by_name = dict()
@@ -760,6 +765,18 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
     """
     vm_options = []
     if jlink_supports_8232080(jdk):
+        if mx.get_env('CONTINUOUS_INTEGRATION', None) == 'true':
+            is_gate = mx.get_env('BUILD_TARGET', None) == 'gate'
+            is_bench = 'bench-' in mx.get_env('BUILD_NAME', '')
+            if is_gate or is_bench:
+                # For gate and benchmark jobs, we want to know about each compilation failure
+                # but only exit the VM on systemic compilation failure for gate jobs.
+                vm_options.append('-Dgraal.CompilationFailureAction=Diagnose')
+                mx.log('Adding -Dgraal.CompilationFailureAction=Diagnose VM option to image')
+                if is_gate:
+                    mx.log('Adding -Dgraal.SystemicCompilationFailureRate=-1 VM option to image')
+                    vm_options.append('-Dgraal.SystemicCompilationFailureRate=-1')
+
         if use_upgrade_module_path or _jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk):
             vm_options.append('-XX:ThreadPriorityPolicy=1')
         else:
@@ -1058,6 +1075,22 @@ def format_release_file(release_dict, skip_quoting=None):
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
 
 
+def ee_implementor(jdk_home=base_jdk().home):
+    """
+    Returns True if the value of the `IMPLEMENTOR` field of the `release` file of a given JDK is `Oracle Corporation`
+    :type jdk_home: str | None
+    :rtype bool
+    """
+    release_file_path = join(jdk_home, 'release')
+    release_dict = parse_release_file(release_file_path)
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        return implementor == 'Oracle Corporation'
+    else:
+        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
+        return False
+
+
 def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
     """
     Returns the edition name depending on the value of the `IMPLEMENTOR` field of the `release` file of a given JDK.
@@ -1066,17 +1099,7 @@ def extra_installable_qualifiers(jdk_home, ce_edition, oracle_edition):
     :type oracle_edition: list[str] | None
     :rtype: list[str] | None
     """
-    release_file_path = join(jdk_home, 'release')
-    release_dict = parse_release_file(release_file_path)
-    implementor = release_dict.get('IMPLEMENTOR')
-    if implementor is not None:
-        if implementor == 'Oracle Corporation':
-            return oracle_edition
-        else:
-            return ce_edition
-    else:
-        mx.warn(f"Release file for '{jdk_home}' ({release_file_path}) is missing the IMPLEMENTOR field")
-        return ce_edition
+    return oracle_edition if ee_implementor(jdk_home) else ce_edition
 
 
 @mx.command(_suite, 'verify-graalvm-configs')
@@ -1107,7 +1130,12 @@ def verify_graalvm_configs(suites=None, start_from=None):
             _env_file = env_file or dist_name
             started = started or _env_file == start_from
 
-            graalvm_dist_name = '{base_name}_{dist_name}_JAVA{jdk_version}'.format(base_name=mx_sdk_vm_impl._graalvm_base_name, dist_name=dist_name, jdk_version=mx_sdk_vm_impl._src_jdk_version).upper().replace('-', '_')
+            graalvm_dist_name = '{base_name}{delimiter}{dist_name}_JAVA{jdk_version}'.format(
+                base_name=mx_sdk_vm_impl._graalvm_base_name,
+                delimiter='_' if dist_name else '',
+                dist_name=dist_name,
+                jdk_version=mx_sdk_vm_impl._src_jdk_version
+            ).upper().replace('-', '_')
             mx.log("{}Checking that the env file '{}' in suite '{}' produces a GraalVM distribution named '{}'".format('' if started else '[SKIPPED] ', _env_file, suite.name, graalvm_dist_name))
 
             if started:

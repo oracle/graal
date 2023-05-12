@@ -66,6 +66,7 @@ public abstract class CCompilerInvoker {
     public final Path tempDirectory;
     public final CompilerInfo compilerInfo;
 
+    @SuppressWarnings("this-escape")
     protected CCompilerInvoker(Path tempDirectory) {
         this.tempDirectory = tempDirectory;
         try {

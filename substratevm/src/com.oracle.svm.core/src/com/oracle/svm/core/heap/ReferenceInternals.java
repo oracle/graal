@@ -69,6 +69,7 @@ public final class ReferenceInternals {
     }
 
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#referent} as a pointer. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getReferentPointer(Reference<T> instance) {
         return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset)));
     }
@@ -79,7 +80,7 @@ public final class ReferenceInternals {
     }
 
     /** Write {@link Target_java_lang_ref_Reference#referent}. */
-    @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setReferent(Reference<?> instance, Object value) {
         BarrieredAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), value);
     }
@@ -105,6 +106,7 @@ public final class ReferenceInternals {
         ObjectAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.referentFieldOffset), null);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getReferentFieldAddress(Reference<T> instance) {
         return Word.objectToUntrackedPointer(instance).add(WordFactory.unsigned(Target_java_lang_ref_Reference.referentFieldOffset));
     }
@@ -119,6 +121,7 @@ public final class ReferenceInternals {
     }
 
     /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered} as a pointer. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> Pointer getDiscoveredPointer(Reference<T> instance) {
         return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)));
     }
@@ -140,6 +143,7 @@ public final class ReferenceInternals {
     }
 
     /** Write {@link Target_java_lang_ref_Reference#discovered}. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> void setNextDiscovered(Reference<T> instance, Reference<?> newNext) {
         BarrieredAccess.writeObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset), newNext);
     }
@@ -251,6 +255,7 @@ public final class ReferenceInternals {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getSoftReferenceClock() {
         return Target_java_lang_ref_SoftReference.clock;
     }
@@ -262,6 +267,7 @@ public final class ReferenceInternals {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getSoftReferenceTimestamp(SoftReference<?> instance) {
         Target_java_lang_ref_SoftReference<?> ref = SubstrateUtil.cast(instance, Target_java_lang_ref_SoftReference.class);
         return ref.timestamp;
@@ -281,7 +287,7 @@ public final class ReferenceInternals {
                 return field;
             }
         }
-        throw new GraalError("missing field " + fieldName + " in type " + type);
+        throw new GraalError("Missing field " + fieldName + " in type " + type);
     }
 
     private ReferenceInternals() {

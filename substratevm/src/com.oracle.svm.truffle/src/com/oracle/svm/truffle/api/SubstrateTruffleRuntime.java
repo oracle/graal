@@ -34,20 +34,20 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
@@ -55,7 +55,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
@@ -81,6 +80,7 @@ import jdk.vm.ci.code.stack.StackIntrospection;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 
@@ -151,6 +151,24 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
         installDefaultListeners();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> teardown());
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public PartialEvaluationMethodInfo getPartialEvaluationMethodInfo(ResolvedJavaMethod method) {
+        return super.getPartialEvaluationMethodInfo(method);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public HostMethodInfo getHostMethodInfo(ResolvedJavaMethod method) {
+        return super.getHostMethodInfo(method);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {
+        return super.getConstantFieldInfo(field);
     }
 
     private void teardown() {
@@ -336,11 +354,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return super.getGraalOptions(type);
     }
 
-    @Override
-    protected boolean isPrintGraphEnabled() {
-        return DebugOptions.PrintGraph.getValue(getGraalOptions(OptionValues.class)) != DebugOptions.PrintGraphTarget.Disable;
-    }
-
     @Platforms(HOSTED_ONLY.class)
     public void resetNativeImageState() {
         clearState();
@@ -376,18 +389,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         if (!TruffleSupport.singleton().tryLog(this, loggerId, compilable, message)) {
             super.log(loggerId, compilable, message);
         }
-    }
-
-    @Override
-    public boolean isInlineable(ResolvedJavaMethod method) {
-        if (Uninterruptible.Utils.isUninterruptible(method)) {
-            Uninterruptible uninterruptibleAnnotation = Uninterruptible.Utils.getAnnotation(method);
-            if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
-                /* The semantics of Uninterruptible would get lost during partial evaluation. */
-                return false;
-            }
-        }
-        return super.isInlineable(method);
     }
 
     @Override
@@ -464,10 +465,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     /**
      * Compilation task used when Truffle runtime is run in single threaded mode.
      */
-    private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
+    private static class SingleThreadedCompilationTask extends AbstractCompilationTask {
         private final boolean lastTierCompilation;
         private final boolean hasNextTier;
-        TruffleInlining inlining = new TruffleInlining();
 
         SingleThreadedCompilationTask(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
             this.hasNextTier = !optimizedCallTarget.engine.firstTierOnly && !lastTierCompilation;
@@ -486,14 +486,10 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         @Override
-        public TruffleInliningData inliningData() {
-            return inlining;
-        }
-
-        @Override
         public boolean hasNextTier() {
             return hasNextTier;
         }
 
     }
+
 }

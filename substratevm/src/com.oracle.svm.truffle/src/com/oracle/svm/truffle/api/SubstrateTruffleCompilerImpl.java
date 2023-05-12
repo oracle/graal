@@ -39,6 +39,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
@@ -46,7 +47,6 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -87,7 +87,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
-                        new SubstratePostPartialEvaluationSuite(options.get(IterativePartialEscape)));
+                        new SubstratePostPartialEvaluationSuite(config.runtime().getGraalOptions(OptionValues.class), options.get(IterativePartialEscape)));
     }
 
     @Override
@@ -110,8 +110,8 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     }
 
     @Override
-    public TruffleCompilationIdentifier createCompilationIdentifier(CompilableTruffleAST optimizedCallTarget) {
-        return new SubstrateTruffleCompilationIdentifier((OptimizedCallTarget) optimizedCallTarget);
+    public TruffleCompilationIdentifier createCompilationIdentifier(TruffleCompilationTask task, CompilableTruffleAST compilable) {
+        return new SubstrateTruffleCompilationIdentifier(task, compilable);
     }
 
     @Override

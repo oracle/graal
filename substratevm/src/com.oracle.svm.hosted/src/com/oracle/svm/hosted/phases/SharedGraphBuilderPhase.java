@@ -148,8 +148,16 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
         }
 
+        protected boolean shouldVerifyFrameStates() {
+            return false;
+        }
+
         @Override
         protected void build(FixedWithNextNode startInstruction, FrameStateBuilder startFrameState) {
+            if (!shouldVerifyFrameStates()) {
+                startFrameState.disableStateVerification();
+            }
+
             super.build(startInstruction, startFrameState);
 
             if (isMethodDeoptTarget()) {
@@ -203,6 +211,20 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 throw VMError.shouldNotReachHere("Discovered an unresolved callee while parsing " + method.asStackTraceElement(bci()) + '.');
             }
             return result;
+        }
+
+        @Override
+        protected Object lookupConstant(int cpi, int opcode) {
+            try {
+                return super.lookupConstant(cpi, opcode);
+            } catch (BootstrapMethodError | IncompatibleClassChangeError | IllegalArgumentException ex) {
+                if (linkAtBuildTime) {
+                    reportUnresolvedElement("constant", method.format("%H.%n(%P)"), ex);
+                } else {
+                    replaceWithThrowingAtRuntime(this, ex);
+                }
+                return ex;
+            }
         }
 
         /**
@@ -342,15 +364,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             handleUnresolvedMethod(javaMethod);
         }
 
-        @Override
-        protected void handleBootstrapMethodError(BootstrapMethodError bme, JavaMethod javaMethod) {
-            if (linkAtBuildTime) {
-                reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"), bme);
-            } else {
-                replaceWithThrowingAtRuntime(this, bme);
-            }
-        }
-
         /**
          * This method is used to delay errors from image build-time to run-time. It does so by
          * invoking a synthesized method that throws an instance like the one given as throwable in
@@ -373,7 +386,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 var errorCtor = ReflectionUtil.lookupConstructor(throwable.getClass(), String.class, Throwable.class);
                 ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
                 ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwable.getMessage()), metaAccess, b.getGraph());
+                /*
+                 * As this invoke will always throw, its state after will not respect the expected
+                 * stack effect.
+                 */
+                boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
                 b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode, causeCtorInvoke.asNode()}, null);
+                b.getFrameStateBuilder().setStateVerification(verifyStates);
                 b.add(new LoweredDeadEndNode());
             } else {
                 replaceWithThrowingAtRuntime(b, throwable.getClass(), throwable.getMessage());
@@ -398,7 +417,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             var metaAccess = (UniverseMetaAccess) b.getMetaAccess();
             ResolvedJavaMethod throwingMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(errorCtor), true);
             ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(throwableMessage), b.getMetaAccess(), b.getGraph());
+            boolean verifyStates = b.getFrameStateBuilder().disableStateVerification();
             b.appendInvoke(InvokeKind.Static, throwingMethod, new ValueNode[]{messageNode}, null);
+            b.getFrameStateBuilder().setStateVerification(verifyStates);
             b.add(new LoweredDeadEndNode());
         }
 

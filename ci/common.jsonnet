@@ -20,6 +20,9 @@ local common_json = import "../common.json";
   } + {
     [name]: common_json.jdks[name] + { jdk_version:: 20 }
     for name in ["oraclejdk20"] + variants("labsjdk-ce-20") + variants("labsjdk-ee-20")
+  } + {
+    [name]: common_json.jdks[name] + { jdk_version:: 21 }
+    for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
 
@@ -36,15 +39,17 @@ local common_json = import "../common.json";
     },
     for name in std.objectFields(jdks_data)
   } + {
+    local latestJDKCE = self["labsjdk-ce-20"],
+    local latestJDKEE = self["labsjdk-ee-20"],
     # Some convenient JDK aliases which don't require ["name"] for frequently-used JDKs
     labsjdk17ce: self["labsjdk-ce-17"],
     labsjdk17ee: self["labsjdk-ee-17"],
 
-    labsjdk19ce: self["labsjdk-ce-19"],
-    labsjdk19ee: self["labsjdk-ee-19"],
+    labsjdk20ce: latestJDKCE,
+    labsjdk20ee: latestJDKEE,
 
-    labsjdk20ce: self["labsjdk-ce-20"],
-    labsjdk20ee: self["labsjdk-ee-20"],
+    labsjdkLatestCE: latestJDKCE,
+    labsjdkLatestEE: latestJDKEE,
   },
 
   # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)
@@ -52,7 +57,8 @@ local common_json = import "../common.json";
     "windows-jdk17": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
-    "linux-jdk17": { packages+: { "devkit:gcc10.3.0-OL6.4+1": "==0" }},
+    "windows-jdk21": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
+    "linux-jdk17": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
   },
@@ -200,6 +206,24 @@ local common_json = import "../common.json";
       # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
       " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",
     ],
+  },
+
+  // OS specific file handling
+  os_utils:: {
+    local lib_format = {
+      "windows": "%s.dll",
+      "linux":   "lib%s.so",
+      "darwin":  "lib%s.dylib"
+    },
+
+    # Converts unixpath to an OS specific path
+    os_path(unixpath):: if self.os == "windows" then std.strReplace(unixpath, "/", "\\") else unixpath,
+
+    # Converts unixpath to an OS specific path for an executable
+    os_exe(unixpath)::  if self.os == "windows" then self.os_path(unixpath) + ".exe" else unixpath,
+
+    # Converts a base library name to an OS specific file name
+    os_lib(name)::      lib_format[self.os] % name,
   },
 
   local ol7 = {

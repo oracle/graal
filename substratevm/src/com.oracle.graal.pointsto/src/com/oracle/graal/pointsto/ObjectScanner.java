@@ -69,14 +69,6 @@ public class ObjectScanner {
     private final Deque<WorklistEntry> worklist;
     private final ObjectScanningObserver scanningObserver;
 
-    public ObjectScanner(BigBang bb, ObjectScanningObserver scanningObserver) {
-        this(bb, null, new ObjectScanner.ReusableSet(), scanningObserver);
-    }
-
-    public ObjectScanner(BigBang bb, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
-        this(bb, null, scannedObjects, scanningObserver);
-    }
-
     public ObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
         this.bb = bb;
         this.scanningObserver = scanningObserver;
@@ -532,7 +524,6 @@ public class ObjectScanner {
         public FieldScan(AnalysisField field, JavaConstant receiver, ScanReason previous) {
             super(previous, receiver);
             this.field = field;
-            assert field.isRead();
         }
 
         public AnalysisField getField() {

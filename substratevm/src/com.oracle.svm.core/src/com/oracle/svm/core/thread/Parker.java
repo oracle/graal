@@ -54,10 +54,6 @@ public abstract class Parker {
     public interface ParkerFactory {
         @Fold
         static ParkerFactory singleton() {
-            /* Needed until ParkEvent is removed, see GR-44513. */
-            if (ImageSingletons.contains(ParkEvent.ParkEventFactory.class)) {
-                return ImageSingletons.lookup(ParkEvent.ParkEventFactory.class);
-            }
             return ImageSingletons.lookup(ParkerFactory.class);
         }
 

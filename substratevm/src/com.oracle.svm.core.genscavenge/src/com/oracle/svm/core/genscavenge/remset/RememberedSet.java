@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.AlwaysInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.GreyToBlackObjectVisitor;
 import com.oracle.svm.core.genscavenge.Space;
@@ -76,28 +77,35 @@ public interface RememberedSet extends BarrierSetProvider {
      * Enables remembered set tracking for an aligned chunk and its objects. Must be called when
      * adding a new chunk to the image heap or old generation.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void enableRememberedSetForChunk(AlignedHeader chunk);
 
     /**
      * Enables remembered set tracking for an unaligned chunk and its objects. Must be called when
      * adding a new chunk to the image heap or old generation.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void enableRememberedSetForChunk(UnalignedHeader chunk);
 
     /**
      * Enables remembered set tracking for a single object in an aligned chunk. Must be called when
      * an object is added to the image heap or old generation.
      */
+    @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void enableRememberedSetForObject(AlignedHeader chunk, Object obj);
 
     /** Clears the remembered set of an aligned chunk. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void clearRememberedSet(AlignedHeader chunk);
 
     /** Clears the remembered set of an unaligned chunk. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void clearRememberedSet(UnalignedHeader chunk);
 
     /** Checks if remembered set tracking is enabled for an object. */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean hasRememberedSet(UnsignedWord header);
 
     /**
@@ -122,21 +130,25 @@ public interface RememberedSet extends BarrierSetProvider {
      * tracking is enabled.
      */
     @AlwaysInline("GC performance")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void dirtyCardIfNecessary(Object holderObject, Object object);
 
     /**
      * Walks all dirty objects in an aligned chunk.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkDirtyObjects(AlignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**
      * Walks all dirty objects in an unaligned chunk.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkDirtyObjects(UnalignedHeader chunk, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**
      * Walks all dirty objects in a {@link Space}.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     void walkDirtyObjects(Space space, GreyToBlackObjectVisitor visitor, boolean clean);
 
     /**

@@ -7,17 +7,19 @@ permalink: /docs/getting-started/windows/
 
 # Installation on Windows Platforms
 
-We provide GraalVM Community Edition for Windows on AMD64 architecture. You can install it on Windows from an archive file (_zip_).
+GraalVM Community Edition is available for Windows on the x64 architecture. 
+You can install it on Windows from an archive file (_zip_).
+
 Follow these steps:
 
-1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java **11**, **17** or **19** based distribution for Windows, and download.
+1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java **17** or **19** based distribution for Windows, and download.
 
 2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
 
 3. Unzip the archive to your file system.
 
-4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 7, 8, and 10.
-  - Point the `PATH` environment variable to the GraalVM `bin` directory:
+4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
+  - Point the `PATH` environment variable to the GraalVM _bin_ directory:
     ```shell
     setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
     ```
@@ -36,15 +38,13 @@ Follow these steps:
 Alternatively, you can set up environment variables through a Windows GUI:
 
 1. Go to Windows Start Menu - Settings - ... - Advanced.
-2. Click Environment Variables. In the section System Variables find the `JAVA_HOME` variable and select it.
-3. Click Edit.
-4. Click New.
-5. Click Browse and reach the folder to add. Confirm by clicking OK.
+2. Click **Environment Variables**. In the section System Variables find the `JAVA_HOME` variable and select it.
+3. Click **Edit**.
+4. Click **New**.
+5. Click **Browse** to find the directory to add. Confirm by clicking **OK**.
 6. Restart Command Prompt to reload the environment variables.
 
 Repeat the same for the `PATH` environment variable.
-
-For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/22/docs/getting-started/installation-windows/).
 
 ## Installation Note
 
@@ -52,7 +52,6 @@ To run GraalVM Community Edition based on OpenJDK 8u292 on a Windows platform, t
 
 ## Supported Functionalities
 
-The GraalVM Community distribution for Windows platforms includes OpenJDK with the GraalVM compiler enabled, the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool to install additional functionalities and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
 Currently, the GraalVM environment on Windows can be extended with [Java on Truffle](../../reference-manual/java-on-truffle/README.md), [LLVM runtime](../../reference-manual/llvm/README.md), WebAssembly, JavaScript, and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows

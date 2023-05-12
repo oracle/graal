@@ -693,13 +693,6 @@ public abstract class ImageHeapScanner {
         return metaAccess.lookupJavaField(ReflectionUtil.lookupField(getClass(className), fieldName));
     }
 
-    public void postTask(AnalysisFuture<?> future) {
-        if (future.isDone()) {
-            return;
-        }
-        universe.getBigbang().postTask(debug -> future.ensureDone());
-    }
-
     public void postTask(Runnable task) {
         universe.getBigbang().postTask(debug -> task.run());
     }

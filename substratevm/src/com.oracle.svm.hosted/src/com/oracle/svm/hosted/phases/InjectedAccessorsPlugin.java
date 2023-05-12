@@ -76,7 +76,7 @@ public final class InjectedAccessorsPlugin implements NodePlugin {
         String longName = shortName + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
 
         ResolvedJavaMethod foundMethod = null;
-        for (ResolvedJavaMethod method : accessorsType.getDeclaredMethods()) {
+        for (ResolvedJavaMethod method : accessorsType.getDeclaredMethods(false)) {
             if (method.getName().equals(shortName) || method.getName().equals(longName)) {
                 if (foundMethod != null) {
                     error(field, accessorsType, null, "found two methods " + foundMethod.format("%n(%p)") + " and " + method.format("%n(%p)"));

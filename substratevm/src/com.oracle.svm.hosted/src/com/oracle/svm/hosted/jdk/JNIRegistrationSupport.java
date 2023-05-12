@@ -73,6 +73,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
 
+import jdk.internal.loader.BootLoader;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /** Registration of native JDK libraries. */
@@ -108,6 +109,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
         registerLoadLibraryPlugin(providers, plugins, System.class);
+        registerLoadLibraryPlugin(providers, plugins, BootLoader.class);
     }
 
     public void registerLoadLibraryPlugin(Providers providers, Plugins plugins, Class<?> clazz) {
@@ -170,6 +172,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         return Stream.empty();
     }
 
+    private String imageName;
+
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         if (SubstrateOptions.StaticExecutable.getValue() || isDarwin()) {
@@ -187,6 +191,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                             .forEach(linkerInvocation::addNativeLinkerOption);
             return linkerInvocation;
         });
+
+        imageName = ((BeforeImageWriteAccessImpl) access).getImageName();
     }
 
     private Stream<String> getShimExports() {
@@ -308,8 +314,9 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
         DebugContext debug = accessImpl.getDebugContext();
         try (Scope s = debug.scope("link");
                         Activation a = debug.activate()) {
-            if (FileUtils.executeCommand(linkerCommand) != 0) {
-                VMError.shouldNotReachHere();
+            int cmdResult = FileUtils.executeCommand(linkerCommand);
+            if (cmdResult != 0) {
+                VMError.shouldNotReachHereUnexpectedInput(cmdResult); // ExcludeFromJacocoGeneratedReport
             }
             BuildArtifacts.singleton().add(ArtifactType.JDK_LIBRARY_SHIM, shimLibrary);
             debug.log("%s: OK", shimLibrary.getFileName());
@@ -323,12 +330,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     /** Returns the import library of the native image. */
     private Path getImageImportLib() {
         assert isWindows();
-        Path image = accessImpl.getImagePath();
-        String imageName = String.valueOf(image.getFileName());
-        String importLibName = imageName.substring(0, imageName.lastIndexOf('.')) + ".lib";
-        Path importLib = accessImpl.getImageKind().isExecutable
-                        ? accessImpl.getTempDirectory().resolve(importLibName)
-                        : image.resolveSibling(importLibName);
+        Path importLib = accessImpl.getTempDirectory().resolve(imageName + ".lib");
         assert Files.exists(importLib);
         return importLib;
     }

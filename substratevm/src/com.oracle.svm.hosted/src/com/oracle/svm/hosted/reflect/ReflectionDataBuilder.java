@@ -78,7 +78,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -104,7 +103,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private boolean sealed;
 
     // Reflection data
-    private final Map<Class<?>, Object[]> registeredRecordComponents = new ConcurrentHashMap<>();
+    private final Map<Class<?>, RecordComponent[]> registeredRecordComponents = new ConcurrentHashMap<>();
     private final Map<Class<?>, Set<Class<?>>> innerClasses = new ConcurrentHashMap<>();
     private final Map<Class<?>, Integer> enabledQueriesFlags = new ConcurrentHashMap<>();
     private final Map<AnalysisField, Field> registeredFields = new ConcurrentHashMap<>();
@@ -349,7 +348,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 processAnnotationMethod(queriedOnly, (Method) reflectExecutable);
             }
 
-            if (!throwMissingRegistrationErrors() && RecordSupport.singleton().isRecord(declaringClass)) {
+            if (!throwMissingRegistrationErrors() && declaringClass.isRecord()) {
                 pendingRecordClasses.computeIfPresent(declaringClass, (clazz, unregisteredAccessors) -> {
                     if (unregisteredAccessors.remove(reflectExecutable) && unregisteredAccessors.isEmpty()) {
                         registerRecordComponents(declaringClass);
@@ -674,9 +673,13 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForGenericSignature(Type[] types) {
+        registerTypesForGenericSignature(types, 0);
+    }
+
+    private void registerTypesForGenericSignature(Type[] types, int dimension) {
         if (types != null) {
             for (Type type : types) {
-                registerTypesForGenericSignature(type);
+                registerTypesForGenericSignature(type, dimension);
             }
         }
     }
@@ -722,19 +725,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             ClassForNameSupport.registerClass(clazz);
         } else if (type instanceof TypeVariable<?>) {
             /* Bounds are reified lazily. */
-            registerTypesForGenericSignature(queryGenericInfo(((TypeVariable<?>) type)::getBounds));
+            registerTypesForGenericSignature(queryGenericInfo(((TypeVariable<?>) type)::getBounds), dimension);
         } else if (type instanceof GenericArrayType) {
-            registerTypesForGenericSignature(((GenericArrayType) type).getGenericComponentType(), dimension + 1);
+            registerTypesForGenericSignature(queryGenericInfo(((GenericArrayType) type)::getGenericComponentType), dimension + 1);
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
-            registerTypesForGenericSignature(parameterizedType.getActualTypeArguments());
-            registerTypesForGenericSignature(parameterizedType.getRawType(), dimension);
-            registerTypesForGenericSignature(parameterizedType.getOwnerType());
+            registerTypesForGenericSignature(queryGenericInfo(parameterizedType::getActualTypeArguments));
+            registerTypesForGenericSignature(queryGenericInfo(parameterizedType::getRawType), dimension);
+            registerTypesForGenericSignature(queryGenericInfo(parameterizedType::getOwnerType));
         } else if (type instanceof WildcardType) {
             /* Bounds are reified lazily. */
             WildcardType wildcardType = (WildcardType) type;
-            registerTypesForGenericSignature(queryGenericInfo(wildcardType::getLowerBounds));
-            registerTypesForGenericSignature(queryGenericInfo(wildcardType::getUpperBounds));
+            registerTypesForGenericSignature(queryGenericInfo(wildcardType::getLowerBounds), dimension);
+            registerTypesForGenericSignature(queryGenericInfo(wildcardType::getUpperBounds), dimension);
         }
     }
 
@@ -858,8 +861,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void maybeRegisterRecordComponents(Class<?> clazz) {
-        RecordSupport support = RecordSupport.singleton();
-        if (!support.isRecord(clazz)) {
+        if (!clazz.isRecord()) {
             return;
         }
 
@@ -874,7 +876,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * components in that case will throw an exception at image run time, see
          * DynamicHub.getRecordComponents0().
          */
-        Method[] accessors = support.getRecordComponentAccessorMethods(clazz);
+        Method[] accessors = RecordUtils.getRecordComponentAccessorMethods(clazz);
         Set<Method> unregisteredAccessors = ConcurrentHashMap.newKeySet();
         for (Method accessor : accessors) {
             if (SubstitutionReflectivityFilter.shouldExclude(accessor, metaAccess, universe)) {
@@ -948,7 +950,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
-    public Object[] getRecordComponents(Class<?> type) {
+    public RecordComponent[] getRecordComponents(Class<?> type) {
         assert sealed;
         return registeredRecordComponents.get(type);
     }

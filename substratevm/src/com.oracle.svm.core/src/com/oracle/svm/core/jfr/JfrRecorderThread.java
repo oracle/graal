@@ -62,6 +62,7 @@ public class JfrRecorderThread extends Thread {
     private volatile boolean stopped;
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    @SuppressWarnings("this-escape")
     public JfrRecorderThread(JfrGlobalMemory globalMemory, JfrUnlockedChunkWriter unlockedChunkWriter) {
         super("JFR recorder");
         this.globalMemory = globalMemory;

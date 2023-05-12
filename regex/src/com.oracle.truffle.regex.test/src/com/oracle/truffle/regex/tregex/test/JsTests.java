@@ -227,4 +227,12 @@ public class JsTests extends RegexTestBase {
         test(String.format("x{%d,}", max + 1), "", "x", 0, false);
         expectSyntaxError(String.format("x{%d,%d}", max + 1, max), "", JsErrorMessages.QUANTIFIER_OUT_OF_ORDER);
     }
+
+    @Test
+    public void gr45479() {
+        // minimized test case
+        test("\\s*(p$)?", "", "px", 0, true, 0, 0, -1, -1);
+        // original test case
+        test("^(\\d{1,2})[:.,;\\-]?(\\d{1,2})?[:.,;\\-]?(\\d{1,2})?[:.,;\\-]?(\\d{1,3})?[:.,;\\-]?\\s*([ap](?=[m]|^\\w|$))?", "i", "08:00:00.000 PDT", 0, true, 0, 13, 0, 2, 3, 5, 6, 8, 9, 12, -1, -1);
+    }
 }

@@ -51,6 +51,10 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
         assert !isSaturated();
+
+        /* The receiver state must contain only types that receiverType is assignable from. */
+        assert allAssignable(bb, receiverType, getReceiver().getState());
+
         /* The receiver state has changed. Process the invoke. */
 
         /*

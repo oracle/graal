@@ -130,6 +130,7 @@ import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -485,7 +486,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         @Override
         public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
-            throw VMError.shouldNotReachHere();
+            throw VMError.shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
         }
 
         @Override
@@ -602,7 +603,9 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         /* We do all the word type rewriting because parameters to the lambda can be word types. */
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
-        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()),
+        ConstantReflectionProvider originalConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
+        WordOperationPlugin wordOperationPlugin = new WordOperationPlugin(originalSnippetReflection, originalConstantReflection,
+                        new SubstrateWordTypes(parsingProviders.getMetaAccess(), FrameAccess.getWordKind()),
                         parsingProviders.getPlatformConfigurationProvider().getBarrierSet());
         graphBuilderPlugins.appendInlineInvokePlugin(wordOperationPlugin);
         graphBuilderPlugins.appendTypePlugin(wordOperationPlugin);
@@ -752,36 +755,48 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             } else if (oNode.getClass() == FixedGuardNode.class) {
                 FixedGuardNode oGuard = (FixedGuardNode) oNode;
 
-                BytecodeExceptionKind tExceptionKind;
-                ValueNode[] tExceptionArguments;
-                if (oGuard.getReason() == DeoptimizationReason.NullCheckException) {
-                    tExceptionKind = BytecodeExceptionKind.NULL_POINTER;
-                    tExceptionArguments = ValueNode.EMPTY_ARRAY;
-                } else if (oGuard.getReason() == DeoptimizationReason.ClassCastException && oGuard.condition().getClass() == InstanceOfNode.class) {
+                if (b.needsExplicitException()) {
+                    BytecodeExceptionKind tExceptionKind;
+                    ValueNode[] tExceptionArguments;
+                    if (oGuard.getReason() == DeoptimizationReason.NullCheckException) {
+                        tExceptionKind = BytecodeExceptionKind.NULL_POINTER;
+                        tExceptionArguments = ValueNode.EMPTY_ARRAY;
+                    } else if (oGuard.getReason() == DeoptimizationReason.ClassCastException && oGuard.condition().getClass() == InstanceOfNode.class) {
+                        /*
+                         * Throwing the ClassCastException requires the checked object and the
+                         * expected type as arguments, which we can get for the InstanceOfNode.
+                         */
+                        InstanceOfNode oCondition = (InstanceOfNode) oGuard.condition();
+                        tExceptionKind = BytecodeExceptionKind.CLASS_CAST;
+                        tExceptionArguments = new ValueNode[]{
+                                        node(oCondition.getValue()),
+                                        ConstantNode.forConstant(b.getConstantReflection().asJavaClass(lookup(oCondition.type().getType())), b.getMetaAccess(), b.getGraph())};
+                    } else {
+                        /*
+                         * Several other deoptimization reasons could be supported easily, but for
+                         * now there is no need for them.
+                         */
+                        return false;
+                    }
+
+                    AbstractBeginNode tPassingSuccessor = b.emitBytecodeExceptionCheck((LogicNode) node(oGuard.condition()), !oGuard.isNegated(), tExceptionKind, tExceptionArguments);
                     /*
-                     * Throwing the ClassCastException requires the checked object and the expected
-                     * type as arguments, which we can get for the InstanceOfNode.
+                     * Anchor-usages of the guard are redirected to the BeginNode after the explicit
+                     * exception check. If the check was eliminated, we add a new temporary
+                     * BeginNode.
                      */
-                    InstanceOfNode oCondition = (InstanceOfNode) oGuard.condition();
-                    tExceptionKind = BytecodeExceptionKind.CLASS_CAST;
-                    tExceptionArguments = new ValueNode[]{
-                                    node(oCondition.getValue()),
-                                    ConstantNode.forConstant(b.getConstantReflection().asJavaClass(lookup(oCondition.type().getType())), b.getMetaAccess(), b.getGraph())};
+                    transplanted.put(oGuard, tPassingSuccessor != null ? tPassingSuccessor : b.add(new BeginNode()));
+                    return true;
+
                 } else {
                     /*
-                     * Several other deoptimization reasons could be supported easily, but for now
-                     * there is no need for them.
+                     * When explicit exceptions are unneeded, then directly convert the guard node.
                      */
-                    return false;
+                    LogicNode condition = (LogicNode) node(oGuard.condition().asNode());
+                    FixedGuardNode tGuard = b.add(new FixedGuardNode(condition, oGuard.getReason(), oGuard.getAction(), oGuard.isNegated()));
+                    transplanted.put(oGuard, tGuard);
+                    return true;
                 }
-
-                AbstractBeginNode tPassingSuccessor = b.emitBytecodeExceptionCheck((LogicNode) node(oGuard.condition()), !oGuard.isNegated(), tExceptionKind, tExceptionArguments);
-                /*
-                 * Anchor-usages of the guard are redirected to the BeginNode after the explicit
-                 * exception check. If the check was eliminated, we add a new temporary BeginNode.
-                 */
-                transplanted.put(oGuard, tPassingSuccessor != null ? tPassingSuccessor : b.add(new BeginNode()));
-                return true;
 
             } else if (oNode.getClass() == LoadFieldNode.class) {
                 LoadFieldNode oLoad = (LoadFieldNode) oNode;
@@ -918,6 +933,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 if (pred.getClass() == NewInstanceNode.class && transplanted.containsKey(pred)) {
                     Node tNew = transplanted.get(pred);
                     pushToFrameStack((ValueNode) tNew);
+                } else {
+                    /*
+                     * Not an invokedynamic. A void method handle call returns null, push it to the
+                     * bytecode stack in case the following instruction wants to consume it.
+                     */
+                    pushToFrameStack(ConstantNode.forConstant(JavaConstant.NULL_POINTER, b.getMetaAccess(), b.getGraph()));
                 }
             }
 

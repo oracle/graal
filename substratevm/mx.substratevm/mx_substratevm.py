@@ -814,10 +814,11 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
                          '-cp', classpath('com.oracle.svm.test'),
                          '-Dgraal.LogFile=graal.log',
                          '-g',
-                         '-H:-OmitInlinedMethodDebugLineInfo',
                          '-H:+SourceLevelDebug',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
+                         # We do not want to step into class initializer, so initialize everything at build time.
+                         '--initialize-at-build-time=hello',
                          'hello.Hello'] + args
 
     def build_debug_test(extra_args):
@@ -1068,6 +1069,18 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         "-Dorg.graalvm.polyglot.nativeapi.libraryPath=${java.home}/lib/polyglot/",
         "-H:CStandard=C11",
         "-H:+SpawnIsolates",
+        # Temporary solution for polyglot-native-api.jar on classpath, will be fixed by modularization, GR-45104.
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.c.function=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.handles=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.jvmstat=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.thread=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.threadlocal=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.core.util=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c=ALL-UNNAMED",
+        "--add-exports org.graalvm.nativeimage.builder/com.oracle.svm.hosted.c.util=ALL-UNNAMED",
+        "--add-exports org.graalvm.sdk/org.graalvm.nativeimage.impl=ALL-UNNAMED",
     ],
     polyglot_lib_jar_dependencies=[
         "substratevm:POLYGLOT_NATIVE_API",
@@ -1113,6 +1126,8 @@ libgraal_build_args = [
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.options=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common.hotspot=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common=ALL-UNNAMED',
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler=ALL-UNNAMED',
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler.hotspot=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.jniutils=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni.annotation=ALL-UNNAMED',
     '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni=ALL-UNNAMED',
@@ -1158,7 +1173,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
             jar_distributions=libgraal_jar_distributions,
-            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
+            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature,org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleLibGraalFeature'],
             add_to_module='java.base',
             headers=False,
         ),
@@ -1694,6 +1709,8 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
         # Currently JDK 20 and JDK 19 have the same flags
         graal_compiler_flags_map['20'] = graal_compiler_flags_map['19']
+        # Currently JDK 21 and JDK 20 have the same flags
+        graal_compiler_flags_map['21'] = graal_compiler_flags_map['20']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
         # Instead provide the correct requiresConcealed entries in the moduleInfo

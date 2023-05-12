@@ -49,6 +49,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.java.StableMethodNameFormatter;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordBase;
 
@@ -71,7 +72,6 @@ import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
 import com.oracle.svm.hosted.lambda.LambdaSubstitutionType;
@@ -212,6 +212,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     @Override
+    public int compiledCodeMax() {
+        return codeCache.getCodeCacheSize();
+    }
+
+    @Override
     public int oopTagsMask() {
         return tagsMask;
     }
@@ -297,8 +302,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         ResolvedJavaType javaType = hostedType.getWrapped().getWrapped();
         if (javaType instanceof SubstitutionType) {
             return ((SubstitutionType) javaType).getOriginal();
-        } else if (javaType instanceof CustomSubstitutionType<?, ?>) {
-            return ((CustomSubstitutionType<?, ?>) javaType).getOriginal();
         } else if (javaType instanceof LambdaSubstitutionType) {
             return ((LambdaSubstitutionType) javaType).getOriginal();
         } else if (javaType instanceof InjectedFieldsType) {
@@ -1091,7 +1094,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (method instanceof HostedMethod) {
                 return ((HostedMethod) method).isDeoptTarget();
             }
-            return name().endsWith(HostedMethod.MULTI_METHOD_KEY_SEPARATOR);
+            return name().endsWith(StableMethodNameFormatter.MULTI_METHOD_KEY_SEPARATOR);
         }
 
         @Override
@@ -1244,12 +1247,24 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (fileName().length() == 0) {
                 return Stream.empty();
             }
-            final CallNode root = new Builder(debugContext, compilation.getTargetCodeSize(), true).build(compilation);
+            boolean omitInline = SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue();
+            int maxDepth = SubstrateOptions.DebugCodeInfoMaxDepth.getValue();
+            boolean useSourceMappings = SubstrateOptions.DebugCodeInfoUseSourceMappings.getValue();
+            if (omitInline) {
+                if (!SubstrateOptions.DebugCodeInfoMaxDepth.hasBeenSet()) {
+                    /* TopLevelVisitor will not go deeper than level 2 */
+                    maxDepth = 2;
+                }
+                if (!SubstrateOptions.DebugCodeInfoUseSourceMappings.hasBeenSet()) {
+                    /* Skip expensive CompilationResultFrameTree building with SourceMappings */
+                    useSourceMappings = false;
+                }
+            }
+            final CallNode root = new Builder(debugContext, compilation.getTargetCodeSize(), maxDepth, useSourceMappings, true).build(compilation);
             if (root == null) {
                 return Stream.empty();
             }
             final List<DebugLocationInfo> locationInfos = new ArrayList<>();
-            final boolean omitInline = SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue();
             int frameSize = getFrameSize();
             final Visitor visitor = (omitInline ? new TopLevelVisitor(locationInfos, frameSize) : new MultiLevelVisitor(locationInfos, frameSize));
             // arguments passed by visitor to apply are

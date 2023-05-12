@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,6 +109,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
     private final SnippetInfo monitorEnter;
     private final SnippetInfo monitorExit;
 
+    @SuppressWarnings("this-escape")
     protected MonitorSnippets(OptionValues options, Providers providers) {
         super(options, providers);
 
@@ -156,7 +157,7 @@ public class MonitorSnippets extends SubstrateTemplates implements Snippets {
             } else if (node instanceof MonitorExitNode) {
                 snippet = monitorExit;
             } else {
-                throw VMError.shouldNotReachHere();
+                throw VMError.shouldNotReachHereUnexpectedInput(node); // ExcludeFromJacocoGeneratedReport
             }
             Arguments args = new Arguments(snippet, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("obj", node.object());

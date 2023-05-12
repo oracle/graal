@@ -31,6 +31,7 @@ package org.graalvm.profdiff.args;
 public class FlagArgument extends Argument {
     private boolean value;
 
+    @SuppressWarnings("this-escape")
     public FlagArgument(String name, String help) {
         super(name, false, help);
         assert isOptionArgument();

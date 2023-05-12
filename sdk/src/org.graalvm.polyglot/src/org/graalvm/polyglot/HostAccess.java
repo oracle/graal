@@ -274,13 +274,19 @@ public final class HostAccess {
      *
      * <pre>
      * <code>
-     * HostAccess.newBuilder(ISOLATED).build();
+     * HostAccess.newBuilder().
+     *           allowAccessAnnotatedBy(Export.class).
+     *           allowMutableTargetMappings().
+     *           methodScoping(true).build();
      * </code>
      * </pre>
      *
      * @since 23.0
      */
-    public static final HostAccess UNTRUSTED = HostAccess.newBuilder(ISOLATED).//
+    public static final HostAccess UNTRUSTED = HostAccess.newBuilder().//
+                    allowAccessAnnotatedBy(Export.class).//
+                    allowMutableTargetMappings().//
+                    methodScoping(true).//
                     name("HostAccess.UNTRUSTED").build();
 
     /**
