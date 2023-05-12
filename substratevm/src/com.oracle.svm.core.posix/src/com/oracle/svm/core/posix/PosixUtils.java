@@ -302,7 +302,7 @@ public class PosixUtils {
      * signals.
      */
     private static int sigaction(int signum, Signal.sigaction structSigAction, Signal.sigaction old) {
-        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling.");
+        VMError.guarantee(SubstrateOptions.EnableSignalHandling.getValue(), "Trying to install a signal handler while signal handling is disabled.");
 
         if (VMOperation.isInProgress()) {
             /*
