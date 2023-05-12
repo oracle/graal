@@ -1,10 +1,11 @@
 /*
  * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
+ * published by the Free Software Foundation. Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,26 +23,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
-import org.graalvm.word.SignedWord;
+#ifdef __linux__
 
-// Checkstyle: stop
+#include <sys/syscall.h>
+#include <sys/types.h>
 
-/**
- * Definitions manually translated from the C header file sys/syscall.h.
+/*
+ * Based on os::Linux::gettid() from jdk-20-ga, see
+ * https://github.com/openjdk/jdk20/blob/82749901b1497f524e53e47c45708c8e4a63c8b9/src/hotspot/os/linux/os_linux.cpp#L361
+ *
+ * syscall() uses varargs, so we can't use @CFunction.
  */
-@CContext(PosixDirectives.class)
-public class Syscall {
-    @CConstant
-    public static native int SYS_gettid();
-
-    public static class NoTransitions {
-        @CFunction(transition = Transition.NO_TRANSITION)
-        public static native SignedWord syscall(long number);
-    }
+pid_t getThreadId() {
+  return (pid_t)syscall(SYS_gettid);
 }
+
+#endif
+

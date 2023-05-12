@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -41,10 +40,11 @@ import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Sched;
-import com.oracle.svm.core.posix.headers.Syscall;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
+import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
+import com.oracle.svm.core.posix.linux.LinuxLibCHelper;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -67,9 +67,9 @@ public final class PosixVMThreads extends VMThreads {
             return WordFactory.unsigned(DarwinPthread.pthread_mach_thread_np(pthread));
         }
 
-        SignedWord result = Syscall.NoTransitions.syscall(Syscall.SYS_gettid());
+        LinuxPthread.pid_t result = LinuxLibCHelper.getThreadId();
         VMError.guarantee(result.rawValue() != -1, "SYS_gettid failed");
-        return (OSThreadId) result;
+        return result;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
