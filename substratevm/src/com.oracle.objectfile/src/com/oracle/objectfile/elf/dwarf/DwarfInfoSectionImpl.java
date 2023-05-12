@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -40,6 +41,7 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
+import com.oracle.objectfile.debugentry.ForeignTypeEntry;
 import com.oracle.objectfile.debugentry.HeaderTypeEntry;
 import com.oracle.objectfile.debugentry.InterfaceClassEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
@@ -69,9 +71,18 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
      * An info header section always contains a fixed number of bytes.
      */
     private static final int DW_DIE_HEADER_SIZE = 11;
+    /**
+     * Normally the offset of DWARF type declarations are tracked using the type/class entry properties
+     * but that means they are only available to be read during the second pass when filling in type
+     * cross-references. However, we need to use the offset of the void type during the first pass
+     * as the target of later-generated  foreign pointer types. So, this field saves it up front.
+     */
+    private int voidOffset;
 
     public DwarfInfoSectionImpl(DwarfDebugInfo dwarfSections) {
         super(dwarfSections);
+        // initialize to an invalid value
+        voidOffset = -1;
     }
 
     @Override
@@ -267,6 +278,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          * an indirect type.
          */
         setIndirectTypeIndex(primitiveTypeEntry, pos);
+        // specially record void type offset for immediate use during first pass of info generation
+        // we need to use it as the base layout for foreign types
+        assert voidOffset == -1 || voidOffset == pos;
+        voidOffset = pos;
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_void_type;
         log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
@@ -353,6 +368,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) classEntry;
             pos = writeInterfaceLayout(context, interfaceClassEntry, buffer, pos);
             pos = writeInterfaceType(context, interfaceClassEntry, buffer, pos);
+        } else if (classEntry.isForeign()) {
+            ForeignTypeEntry foreignTypeEntry = (ForeignTypeEntry) classEntry;
+            pos = writeForeignLayout(context, foreignTypeEntry, buffer,pos);
+            pos = writeForeignType(context, foreignTypeEntry, buffer,pos);
         } else {
             pos = writeClassLayout(context, classEntry, buffer, pos);
             pos = writeClassType(context, classEntry, buffer, pos);
@@ -848,6 +867,136 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    private int writeForeignLayout(DebugContext context, ForeignTypeEntry foreignTypeEntry, byte[] buffer, int p) {
+        int pos = p;
+        int size = foreignTypeEntry.getSize();
+        int layoutOffset = pos;
+        if (foreignTypeEntry.isWord()) {
+            // define the type as a typedef for an signed or unsigned word i.e. we don't have a layout type
+            pos = writeForeignWordLayout(context, foreignTypeEntry, size, foreignTypeEntry.isSigned(), buffer, pos);
+        } else if (foreignTypeEntry.isIntegral()) {
+            // use a suitably sized signed or unsigned integral type as the layout type
+            pos = writeForeignIntegerLayout(context, foreignTypeEntry, size, foreignTypeEntry.isSigned(), buffer, pos);
+        } else if (foreignTypeEntry.isFloat()) {
+            // use a suitably sized signed or unsigned float type as the layout type
+            pos = writeForeignFloatLayout(context, foreignTypeEntry, size, buffer, pos);
+        } else {
+            // pointer or unknown - layout id as a foreign stucture if we have fields otherwise use void
+            Stream<FieldEntry> fields = foreignTypeEntry.fields();
+            if (fields.findFirst().isPresent()) {
+                // define this type using a structure layout
+                pos = writeForeignStructLayout(context, foreignTypeEntry, size, fields, buffer, pos);
+            } else {
+                // define this type as a typedef for a primitive word or void type
+                log(context, "  [0x%08x] foreign void pointer type for %s", pos, foreignTypeEntry.getTypeName());
+                layoutOffset = voidOffset;
+            }
+        }
+        setLayoutIndex(foreignTypeEntry, layoutOffset);
+
+        /*
+         * Write declarations for methods of the foreign types as functions
+         *
+         * n.b. these appear as standalone declarations rather than as children of a
+         * class layout DIE so we don't need a terminating  attribute.
+         */
+        pos = writeMethodDeclarations(context, foreignTypeEntry, buffer, pos);
+        /*
+         * We don't need an indirect type because foreign pointers are never compressed
+         */
+        setIndirectLayoutIndex(foreignTypeEntry, layoutOffset);
+
+        return pos;
+    }
+
+    private int writeForeignStructLayout(DebugContext context, ForeignTypeEntry foreignTypeEntry, int size, Stream<FieldEntry> fields, byte[] buffer, int pos) {
+        // treat this as a word type for
+        log(context, "  [0x%08x] foreign struct type for %s", pos, foreignTypeEntry.getTypeName());
+        log(context, "  [0x%08x] treating struct as foreign unsigned word for now", pos);
+        return writeForeignWordLayout(context, foreignTypeEntry, dwarfSections.pointerSize(), false, buffer, pos);
+    }
+
+    private int writeForeignWordLayout(DebugContext context, ForeignTypeEntry foreignTypeEntry, int size, boolean isSigned, byte[] buffer, int p) {
+        int pos = p;
+        log(context, "  [0x%08x] foreign primitive word type for %s", pos, foreignTypeEntry.getTypeName());
+        /* Record the location of this type entry. */
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_primitive_type;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        assert size >= 0;
+        byte byteSize = (byte) (size > 0 ? size : dwarfSections.pointerSize());
+        log(context, "  [0x%08x]     byte_size  %d", pos, byteSize);
+        pos = writeAttrData1(byteSize, buffer, pos);
+        byte bitCount = (byte) (byteSize * 8);
+        log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
+        pos = writeAttrData1(bitCount, buffer, pos);
+        // treat the layout as an unsigned word
+        byte encoding = (isSigned ? DwarfDebugInfo.DW_ATE_signed : DwarfDebugInfo.DW_ATE_unsigned);
+        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
+        pos = writeAttrData1(encoding, buffer, pos);
+        String name = uniqueDebugString(integralTypeName(byteSize, isSigned));
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
+        return writeStrSectionOffset(name, buffer, pos);
+    }
+
+    private int writeForeignIntegerLayout(DebugContext context, ForeignTypeEntry foreignTypeEntry, int size, boolean isSigned, byte[] buffer, int p) {
+        int pos = p;
+        log(context, "  [0x%08x] foreign primitive integral type for %s", pos, foreignTypeEntry.getTypeName());
+        /* Record the location of this type entry. */
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_primitive_type;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        assert size > 0;
+        byte byteSize = (byte) size;
+        log(context, "  [0x%08x]     byte_size  %d", pos, byteSize);
+        pos = writeAttrData1(byteSize, buffer, pos);
+        byte bitCount = (byte) (byteSize * 8);
+        log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
+        pos = writeAttrData1(bitCount, buffer, pos);
+        // treat the layout as an unsigned word
+        byte encoding = (isSigned ? DwarfDebugInfo.DW_ATE_signed : DwarfDebugInfo.DW_ATE_unsigned);
+        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
+        pos = writeAttrData1(encoding, buffer, pos);
+        String name = uniqueDebugString(integralTypeName(byteSize, isSigned));
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
+        return writeStrSectionOffset(name, buffer, pos);
+    }
+
+    private int writeForeignFloatLayout(DebugContext context, ForeignTypeEntry foreignTypeEntry, int size, byte[] buffer, int p) {
+        int pos = p;
+        log(context, "  [0x%08x] foreign primitive float type for %s", pos, foreignTypeEntry.getTypeName());
+        /* Record the location of this type entry. */
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_primitive_type;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        assert size > 0;
+        byte byteSize = (byte) size;
+        log(context, "  [0x%08x]     byte_size  %d", pos, byteSize);
+        pos = writeAttrData1(byteSize, buffer, pos);
+        byte bitCount = (byte) (byteSize * 8);
+        log(context, "  [0x%08x]     bitCount  %d", pos, bitCount);
+        pos = writeAttrData1(bitCount, buffer, pos);
+        // treat the layout as an unsigned word
+        byte encoding = DwarfDebugInfo.DW_ATE_float;
+        log(context, "  [0x%08x]     encoding  0x%x", pos, encoding);
+        pos = writeAttrData1(encoding, buffer, pos);
+        String name = uniqueDebugString(size == 4 ? "float" : (size == 8 ? "double" : "long double"));
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
+        return writeStrSectionOffset(name, buffer, pos);
+    }
+
+    private String integralTypeName(int byteSize, boolean isSigned) {
+        assert (byteSize & (byteSize - 1)) == 0 : "expecting a power of 2!";
+        StringBuilder stringBuilder = new StringBuilder();
+        if (!isSigned) {
+            stringBuilder.append('u');
+        }
+        stringBuilder.append("int");
+        stringBuilder.append(8 * byteSize);
+        stringBuilder.append("_t");
+        return stringBuilder.toString();
+    }
+
     private int writeClassType(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
 
@@ -922,6 +1071,44 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
+    private int writeForeignType(DebugContext context, ForeignTypeEntry foreignTypeEntry, byte[] buffer, int p) {
+        int pos = p;
+        int layoutOffset = getLayoutIndex(foreignTypeEntry);
+
+        // Unlike with Java we use the Java name for the pointer type rather than the
+        // underlying base type, or rather for a typedef that targets the pointer type.
+        // That ensures that e.g. CCharPointer is a typedef for char*. 
+
+        /* Define a pointer type referring to the base type */
+        int refTypeIdx = pos;
+        log(context, "  [0x%08x] foreign pointer type", pos);
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_foreign_pointer;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        int pointerSize = dwarfSections.pointerSize();
+        log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
+        pos = writeAttrData1((byte) pointerSize, buffer, pos);
+        log(context, "  [0x%08x]     type 0x%x", pos, layoutOffset);
+        pos = writeInfoSectionOffset(layoutOffset, buffer, pos);
+
+        /* Define a typedef for the layout type using the Java name. */
+        int typedefIdx = pos;
+        log(context, "  [0x%08x] foreign typedef", pos);
+        abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_foreign_typedef;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        String name = uniqueDebugString(foreignTypeEntry.getTypeName());
+        log(context, "  [0x%08x]     name %s", pos, name);
+        pos = writeStrSectionOffset(name, buffer, pos);
+        log(context, "  [0x%08x]     type 0x%x", pos, refTypeIdx);
+        pos = writeInfoSectionOffset(refTypeIdx, buffer, pos);
+
+        setTypeIndex(foreignTypeEntry, typedefIdx);
+        // foreign pointers are never stored compressed so don't need a separate indirect type
+        setIndirectTypeIndex(foreignTypeEntry, typedefIdx);
+
+        return pos;
+    }
     private int writeStaticFieldLocations(DebugContext context, byte[] buffer, int p) {
         Cursor cursor = new Cursor(p);
         instanceClassStream().forEach(classEntry -> {

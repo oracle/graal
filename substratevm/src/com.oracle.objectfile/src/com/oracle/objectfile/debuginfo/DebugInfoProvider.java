@@ -96,7 +96,8 @@ public interface DebugInfoProvider {
             INSTANCE,
             INTERFACE,
             ARRAY,
-            HEADER;
+            HEADER,
+            FOREIGN;
 
             @Override
             public String toString() {
@@ -113,6 +114,8 @@ public interface DebugInfoProvider {
                         return "array";
                     case HEADER:
                         return "header";
+                    case FOREIGN:
+                        return "foreign";
                     default:
                         return "???";
                 }
@@ -140,8 +143,6 @@ public interface DebugInfoProvider {
     }
 
     interface DebugInstanceTypeInfo extends DebugTypeInfo {
-        int headerSize();
-
         String loaderName();
 
         Stream<DebugFieldInfo> fieldInfoProvider();
@@ -157,6 +158,15 @@ public interface DebugInfoProvider {
     }
 
     interface DebugInterfaceTypeInfo extends DebugInstanceTypeInfo {
+    }
+
+    interface DebugForeignTypeInfo extends DebugInstanceTypeInfo {
+        public String typedefName();
+        public boolean isWord();
+        public boolean isPointer();
+        public boolean isIntegral();
+        public boolean isFloat();
+        public boolean isSigned();
     }
 
     interface DebugArrayTypeInfo extends DebugTypeInfo {

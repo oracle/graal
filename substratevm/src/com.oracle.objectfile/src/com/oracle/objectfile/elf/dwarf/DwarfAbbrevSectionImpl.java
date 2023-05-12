@@ -832,6 +832,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeInterfaceLayoutAbbrev(context, buffer, pos);
         pos = writeInterfaceReferenceAbbrev(context, buffer, pos);
 
+        pos = writeForeignReferenceAbbrev(context, buffer, pos);
+        pos = writeForeignTypedefAbbrev(context, buffer, pos);
+
         pos = writeHeaderFieldAbbrev(context, buffer, pos);
         pos = writeArrayDataTypeAbbrev(context, buffer, pos);
         pos = writeMethodLocationAbbrev(context, buffer, pos);
@@ -1235,6 +1238,44 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_accessibility, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeForeignReferenceAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* A pointer to the class struct type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_foreign_pointer, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_pointer_type, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_byte_size, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeForeignTypedefAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+
+        /* A pointer to the class struct type. */
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_foreign_typedef, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_typedef, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         /*
          * Now terminate.
          */
