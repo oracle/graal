@@ -61,6 +61,10 @@ common + common.frequencies + {
   labsjdk20Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-20Debug"],
   labsjdk20LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-20-llvm"],
 
+  labsjdk21::            self["labsjdk-" + repo_config.graalvm_edition + "-21"],
+  labsjdk21Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-21Debug"],
+  labsjdk21LLVM::        self["labsjdk-" + repo_config.graalvm_edition + "-21-llvm"],
+
   // Hardware definitions
   // ********************
   local graal_common_extras = common.deps.pylint + {

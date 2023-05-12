@@ -42,14 +42,14 @@ public final class AnnotationArrayValue extends AnnotationMemberValue {
 
     private final AnnotationMemberValue[] elements;
 
-    static AnnotationArrayValue extract(SnippetReflectionProvider snippetReflection, ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
+    static AnnotationArrayValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
         int length = buf.getShort() & 0xFFFF;
         if (length == 0) {
             return EMPTY_ARRAY_VALUE;
         }
         AnnotationMemberValue[] elements = new AnnotationMemberValue[length];
         for (int i = 0; i < length; ++i) {
-            elements[i] = AnnotationMemberValue.extract(snippetReflection, buf, cp, container, skip);
+            elements[i] = AnnotationMemberValue.extract(buf, cp, container, skip);
         }
         return skip ? null : new AnnotationArrayValue(elements);
     }
@@ -94,10 +94,10 @@ public final class AnnotationArrayValue extends AnnotationMemberValue {
     }
 
     @Override
-    public List<JavaConstant> getExceptionProxies() {
+    public List<JavaConstant> getExceptionProxies(SnippetReflectionProvider snippetReflection) {
         List<JavaConstant> exceptionProxies = new ArrayList<>();
         for (AnnotationMemberValue element : elements) {
-            exceptionProxies.addAll(element.getExceptionProxies());
+            exceptionProxies.addAll(element.getExceptionProxies(snippetReflection));
         }
         return exceptionProxies;
     }

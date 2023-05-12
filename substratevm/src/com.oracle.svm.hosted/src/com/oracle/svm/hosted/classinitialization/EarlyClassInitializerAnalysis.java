@@ -225,7 +225,7 @@ final class EarlyClassInitializerAnalysis {
             if (!EnsureClassInitializedNode.needsRuntimeInitialization(clinitMethod.getDeclaringClass(), type)) {
                 return false;
             }
-            if (classInitializationSupport.computeInitKindAndMaybeInitializeClass(ProvenSafeClassInitializationSupport.getJavaClass(type), true, analyzedClasses) != InitKind.RUN_TIME) {
+            if (classInitializationSupport.computeInitKindAndMaybeInitializeClass(OriginalClassProvider.getJavaClass(type), true, analyzedClasses) != InitKind.RUN_TIME) {
                 assert type.isInitialized() : "Type must be initialized now";
                 return false;
             }

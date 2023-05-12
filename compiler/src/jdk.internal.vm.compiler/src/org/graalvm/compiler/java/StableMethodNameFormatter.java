@@ -53,6 +53,17 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * similarly to {@link LambdaUtils}.
  */
 public class StableMethodNameFormatter implements Function<ResolvedJavaMethod, String> {
+
+    /**
+     * Separates method names and multi-method keys.
+     *
+     * For example, consider method {@code java.util.HashMap.size()}. A specialized variant of the
+     * method may be created for different compilation scenarios. When a variant of the method is
+     * created, it is named {@code java.util.HashMap.size%%key()}. The sequence after the separator
+     * ({@code "key"} in this case) is the multi-method key of the variant.
+     */
+    public static final String MULTI_METHOD_KEY_SEPARATOR = "%%";
+
     /**
      * A pattern that matches the unstable part of the name of a lambda method that is replaced.
      */

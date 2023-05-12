@@ -94,7 +94,7 @@ public class ExperimentMatcher {
             writer.increaseIndent();
             if (writer.getOptionValues().shouldDiffCompilations()) {
                 for (CompilationUnitPair compilationUnitPair : methodPair.getHotCompilationUnitPairsByDescendingPeriod()) {
-                    writer.writeln(compilationUnitPair.formatHeaderForHotCompilations());
+                    compilationUnitPair.writeHeadersForHotCompilations(writer);
                     writer.increaseIndent();
                     if (compilationUnitPair.bothHot()) {
                         CompilationUnit.TreePair treePair1 = compilationUnitPair.getCompilationUnit1().loadTrees();

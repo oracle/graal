@@ -29,6 +29,7 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.AnnotationWrapper;
 
@@ -40,6 +41,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Type which fully substitutes its original type, i.e. @{@link Substitute} on the class level.
+ *
+ * @see InjectedFieldsType
+ */
 public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
 
     private final ResolvedJavaType original;

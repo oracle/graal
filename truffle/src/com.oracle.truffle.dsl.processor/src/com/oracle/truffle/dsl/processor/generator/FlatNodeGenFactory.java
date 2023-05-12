@@ -750,7 +750,7 @@ public class FlatNodeGenFactory {
     }
 
     /* Whether a new class should be generated for specialization instance fields. */
-    public static boolean useSpecializationClass(SpecializationData specialization) {
+    private static boolean useSpecializationClass(SpecializationData specialization) {
         if (shouldUseSpecializationClassBySize(specialization)) {
             return true;
         } else {
@@ -6960,7 +6960,7 @@ public class FlatNodeGenFactory {
         return localVariable;
     }
 
-    private static boolean substituteNodeWithSpecializationClass(SpecializationData specialization) {
+    public static boolean substituteNodeWithSpecializationClass(SpecializationData specialization) {
         if (!useSpecializationClass(specialization)) {
             return false;
         }

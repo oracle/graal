@@ -158,7 +158,7 @@ public final class Pod<T> {
             guaranteeUnbuilt();
             Objects.requireNonNull(type);
             if (type == void.class) {
-                throw new IllegalArgumentException("void is an illegal field type");
+                throw new IllegalArgumentException("Fields cannot be of type void");
             }
 
             JavaKind kind = JavaKind.fromJavaClass(type);

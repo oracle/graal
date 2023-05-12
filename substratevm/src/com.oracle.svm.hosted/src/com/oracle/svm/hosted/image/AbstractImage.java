@@ -61,7 +61,7 @@ public abstract class AbstractImage {
                     case PECOFF:
                         return ".dll";
                     default:
-                        throw new AssertionError("unreachable");
+                        throw new AssertionError("Unreachable");
                 }
             }
         },

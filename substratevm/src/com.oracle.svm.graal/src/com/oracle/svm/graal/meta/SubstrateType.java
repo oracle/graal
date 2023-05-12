@@ -157,7 +157,7 @@ public class SubstrateType implements SharedType {
 
     @Override
     public boolean isEnum() {
-        throw new InternalError("isEnum for " + hub.getName() + " unimplemented");
+        throw VMError.unimplemented("Enum support not implemented");
     }
 
     @Override
@@ -286,7 +286,7 @@ public class SubstrateType implements SharedType {
              * The type was created at run time from the Class, so we do not have field information.
              * If we need the fields for a type, the type has to be created during image generation.
              */
-            throw VMError.shouldNotReachHere("no instance fields for " + hub.getName() + " available");
+            throw VMError.shouldNotReachHere("No instance fields for " + hub.getName() + " available");
         }
 
         SubstrateType superclass = getSuperclass();

@@ -39,8 +39,13 @@ public class TTYTest {
 
     @Test
     @SuppressWarnings("try")
-    public void testTTYNoFilter() throws Exception {
+    public void testTTYNoFilter() {
+        // This test exists to get coverage of the non-filter paths in TTY
+        // so its console output cannot be suppressed. As such, the source
+        // of the console output should be made clear.
+        TTY.printf("<%s.testTTYNoFilter>%n", TTYTest.class.getName());
         printAll();
+        TTY.printf("%n</%s.testTTYNoFilter>%n", TTYTest.class.getName());
     }
 
     private static void printAll() {

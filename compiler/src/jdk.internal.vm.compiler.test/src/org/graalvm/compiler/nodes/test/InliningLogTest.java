@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.test;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
@@ -55,12 +56,15 @@ public class InliningLogTest extends GraalCompilerTest {
      * Verifies that the invokes created by peeling the loop in {@link #snippetB(Foo)} are siblings
      * of the original call-tree node.
      */
+    @SuppressWarnings("try")
     @Test
     public void duplicatedInvokesAttachedCorrectly() {
         OptionValues optionValues = new OptionValues(getInitialOptions(), GraalOptions.TraceInlining, true, LoopPolicies.Options.PeelALot, true);
         ResolvedJavaMethod method = getResolvedJavaMethod("snippetA");
         StructuredGraph graph = parseEager(method, StructuredGraph.AllowAssumptions.YES, getCompilationId(method), optionValues);
-        compile(method, graph);
+        try (TTY.Filter suppress = new TTY.Filter()) {
+            compile(method, graph);
+        }
         InliningLog inliningLog = graph.getInliningLog();
         InliningLog.Callsite root = inliningLog.getRootCallsite();
         Assert.assertEquals(1, root.getChildren().size());

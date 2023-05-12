@@ -80,7 +80,7 @@ final class Target_java_lang_invoke_ClassSpecializer_Factory {
         }
 
         if (!speciesData.isResolved()) {
-            throw new InternalError("bad species class linkage for " + className + ": " + speciesData);
+            throw new InternalError("Bad species class linkage for " + className + ": " + speciesData);
         }
         return speciesData;
     }

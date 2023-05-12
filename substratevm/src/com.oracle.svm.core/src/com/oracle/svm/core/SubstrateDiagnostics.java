@@ -398,7 +398,7 @@ public class SubstrateDiagnostics {
         }
 
         if (matches == 0) {
-            throw new IllegalArgumentException("the pattern '" + entry + "' not match any diagnostic thunk.");
+            throw new IllegalArgumentException("The pattern '" + entry + "' not match any diagnostic thunk.");
         }
     }
 

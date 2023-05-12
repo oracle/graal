@@ -81,13 +81,17 @@ public class SubstrateDataBuilder extends DataBuilder {
 
         @Override
         protected void emit(ByteBuffer buffer, Patches patches) {
+            emit(buffer, patches, getSize(), constant);
+        }
+
+        public static void emit(ByteBuffer buffer, Patches patches, int size, VMConstant constant) {
             int position = buffer.position();
-            if (getSize() == Integer.BYTES) {
+            if (size == Integer.BYTES) {
                 buffer.putInt(0);
-            } else if (getSize() == Long.BYTES) {
+            } else if (size == Long.BYTES) {
                 buffer.putLong(0L);
             } else {
-                shouldNotReachHere("Unsupported object constant reference size: " + getSize());
+                shouldNotReachHere("Unsupported object constant reference size: " + size);
             }
             patches.registerPatch(position, constant);
         }

@@ -29,21 +29,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-
 import jdk.internal.reflect.ConstantPool;
 import sun.reflect.annotation.ExceptionProxy;
 
 public final class AnnotationClassValue extends AnnotationMemberValue {
     private final Class<?> value;
 
-    static AnnotationMemberValue extract(SnippetReflectionProvider snippetReflection, ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
+    static AnnotationMemberValue extract(ByteBuffer buf, ConstantPool cp, Class<?> container, boolean skip) {
         Object typeOrException = AnnotationMetadata.extractType(buf, cp, container, skip);
         if (skip) {
             return null;
         }
         if (typeOrException instanceof ExceptionProxy) {
-            return new AnnotationExceptionProxyValue(snippetReflection, (ExceptionProxy) typeOrException);
+            return new AnnotationExceptionProxyValue((ExceptionProxy) typeOrException);
         }
         return new AnnotationClassValue((Class<?>) typeOrException);
     }

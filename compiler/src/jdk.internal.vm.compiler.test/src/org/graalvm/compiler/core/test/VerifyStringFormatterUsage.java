@@ -38,17 +38,14 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.VerifyPhase;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -73,7 +70,7 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
         return false;
     }
 
-    protected void verifyParameters(MetaAccessProvider metaAccess, MethodCallTargetNode callTarget, StructuredGraph callerGraph, NodeInputList<? extends ValueNode> args, ResolvedJavaType stringType,
+    protected void verifyParameters(MetaAccessProvider metaAccess, MethodCallTargetNode callTarget, NodeInputList<? extends ValueNode> args, ResolvedJavaType stringType,
                     int startArgIdx) {
         if (callTarget.targetMethod().isVarArgs() && args.get(args.count() - 1) instanceof NewArrayNode) {
             // unpack the arguments to the var args
@@ -86,13 +83,13 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
                     unpacked.add(si.value());
                 }
             }
-            verifyParameters(metaAccess, callerGraph, callTarget, unpacked, stringType, startArgIdx, firstVarArg);
+            verifyParameters(metaAccess, callTarget, unpacked, stringType, startArgIdx, firstVarArg);
         } else {
-            verifyParameters(metaAccess, callerGraph, callTarget, args, stringType, startArgIdx, -1);
+            verifyParameters(metaAccess, callTarget, args, stringType, startArgIdx, -1);
         }
     }
 
-    protected void verifyParameters(MetaAccessProvider metaAccess, StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType,
+    protected void verifyParameters(MetaAccessProvider metaAccess, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType,
                     int startArgIdx, int varArgsIndex) {
         ResolvedJavaMethod verifiedCallee = debugCallTarget.targetMethod();
         int argIdx = startArgIdx;
@@ -107,22 +104,18 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
                 if (callTarget instanceof MethodCallTargetNode) {
                     ResolvedJavaMethod m = callTarget.targetMethod();
                     if (m.getName().equals("toString")) {
-                        int bci = invoke.bci();
                         int nonVarArgIdx = reportVarArgs ? argIdx - varArgsElementIndex : argIdx;
-                        verifyStringConcat(callerGraph, verifiedCallee, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1, m);
-                        verifyToStringCall(callerGraph, verifiedCallee, stringType, m, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
+                        verifyStringConcat(verifiedCallee, invoke, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1, m);
+                        verifyToStringCall(verifiedCallee, stringType, m, invoke, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
                     } else if (m.getName().equals("format")) {
-                        int bci = invoke.bci();
                         int nonVarArgIdx = reportVarArgs ? argIdx - varArgsElementIndex : argIdx;
-                        verifyFormatCall(callerGraph, verifiedCallee, stringType, m, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
+                        verifyFormatCall(verifiedCallee, stringType, m, invoke, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
 
                     } else if (m.getName().equals("linkToTargetMethod") &&
                                     (m.getDeclaringClass().getName().equals("Ljava/lang/invoke/Invokers$Holder;") || m.getDeclaringClass().getName().startsWith("Ljava/lang/invoke/LambdaForm$MH"))) {
                         // This is the shape of an indy'fied string concatenation (JDK-8085796)
-                        int bci = invoke.bci();
-                        StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
                         throw new VerificationError(
-                                        "In %s: parameter %d of call to %s appears to be an indy'fied String concatenation expression.", e, argIdx, verifiedCallee.format("%H.%n(%p)"));
+                                        debugCallTarget, "parameter %d of call to %s appears to be an indy'fied String concatenation expression.", argIdx, verifiedCallee.format("%H.%n(%p)"));
 
                     }
                 }
@@ -192,9 +185,7 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
         }
         final String formatStringVal = getSnippetReflection().asObject(String.class, formatString.asJavaConstant());
         if (formatStringVal == null) {
-            throw new VerificationError(
-                            String.format("Printf call %s (%s) in %s violates printf format printing: format string constant could not be read from the VM.", t.targetMethod().format("%H.%n(%p)"),
-                                            approximateLineNumber(t), t.graph().method().format("%H.%n(%p)")));
+            throw new VerificationError(t, "Printf call %s violates printf format printing: format string constant could not be read from the VM.", t.targetMethod().format("%H.%n(%p)"));
         }
         if (!formatStringVal.contains("%")) {
             return;
@@ -248,8 +239,7 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
 
     private static void verifyCorrectFormatString(String formatString, MethodCallTargetNode callee) {
         if (formatString.contains("\n")) {
-            throw new VerificationError(String.format("Printf call %s (%s) in %s violates printf format specifiers, do not use \\n, use %%n instead", callee.targetMethod().format("%H.%n(%p)"),
-                            approximateLineNumber(callee), callee.graph().method().format("%H.%n(%p)")));
+            throw new VerificationError(callee, "Printf call %s violates printf format specifiers, do not use \\n, use %%n instead", callee.targetMethod().format("%H.%n(%p)"));
         }
     }
 
@@ -257,16 +247,9 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
         try {
             String.format(formatString, argsBoxed.toArray());
         } catch (Throwable th) {
-            throw new VerificationError(String.format("Printf call %s (%s) in %s violates printf format specifiers, argument types %s, cause (%s) = %s ", callee.targetMethod().format("%H.%n(%p)"),
-                            approximateLineNumber(callee), callee.graph().method().format("%H.%n(%p)"), Arrays.toString(argTypes.toArray()), th.getClass(), th.getMessage()));
+            throw new VerificationError(callee, "Printf call %s violates printf format specifiers, argument types %s, cause (%s) = %s ", callee.targetMethod().format("%H.%n(%p)"),
+                            Arrays.toString(argTypes.toArray()), th.getClass(), th.getMessage());
         }
-    }
-
-    private static String approximateLineNumber(CallTargetNode c) {
-        FrameState stateBefore = GraphUtil.findLastFrameState((FixedNode) c.invoke().predecessor());
-        String stateAfterLineNumber = c.invoke().stateAfter().getCode().asStackTraceElement(c.invoke().stateAfter().bci).toString();
-        String stateBeforeLineNumber = stateBefore.getCode().asStackTraceElement(stateBefore.bci).toString();
-        return "Between " + stateBeforeLineNumber + " and " + stateAfterLineNumber;
     }
 
     private static Object getBoxedDefaultForKind(JavaKind stackKind) {
@@ -313,16 +296,15 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
      * Checks that a given call is not to {@link StringBuffer#toString()} or
      * {@link StringBuilder#toString()}.
      */
-    protected static void verifyStringConcat(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, int bci, int argIdx, int varArgsElementIndex, ResolvedJavaMethod callee) {
+    protected static void verifyStringConcat(ResolvedJavaMethod verifiedCallee, Invoke invoke, int argIdx, int varArgsElementIndex, ResolvedJavaMethod callee) {
         if (callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuilder;") || callee.getDeclaringClass().getName().equals("Ljava/lang/StringBuffer;")) {
-            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
             if (varArgsElementIndex >= 0) {
                 throw new VerificationError(
-                                "In %s: element %d of parameter %d of call to %s appears to be a String concatenation expression.%n", e, varArgsElementIndex, argIdx,
+                                invoke, "element %d of parameter %d of call to %s appears to be a String concatenation expression.%n", varArgsElementIndex, argIdx,
                                 verifiedCallee.format("%H.%n(%p)"));
             } else {
                 throw new VerificationError(
-                                "In %s: parameter %d of call to %s appears to be a String concatenation expression.", e, argIdx, verifiedCallee.format("%H.%n(%p)"));
+                                invoke, "parameter %d of call to %s appears to be a String concatenation expression.", argIdx, verifiedCallee.format("%H.%n(%p)"));
             }
         }
     }
@@ -330,16 +312,16 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
     /**
      * Checks that a given call is not to {@link Object#toString()}.
      */
-    protected static void verifyToStringCall(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx,
+    protected static void verifyToStringCall(ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, Invoke invoke, int argIdx,
                     int varArgsElementIndex) {
         if (callee.getSignature().getParameterCount(false) == 0 && callee.getSignature().getReturnType(callee.getDeclaringClass()).equals(stringType)) {
-            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
             if (varArgsElementIndex >= 0) {
-                throw new VerificationError(
-                                "In %s: element %d of parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.",
-                                e, varArgsElementIndex, argIdx, verifiedCallee.format("%H.%n(%p)"));
+                throw new VerificationError(invoke,
+                                "element %d of parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.",
+                                varArgsElementIndex, argIdx, verifiedCallee.format("%H.%n(%p)"));
             } else {
-                throw new VerificationError("In %s: parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.", e, argIdx,
+                throw new VerificationError(invoke,
+                                "parameter %d of call to %s is a call to toString() which is redundant (the callee will do it) and forces unnecessary eager evaluation.", argIdx,
                                 verifiedCallee.format("%H.%n(%p)"));
             }
         }
@@ -349,16 +331,16 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
      * Checks that a given call is not to {@link String#format(String, Object...)} or
      * {@link String#format(java.util.Locale, String, Object...)}.
      */
-    protected static void verifyFormatCall(StructuredGraph callerGraph, ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, int bci, int argIdx,
+    protected static void verifyFormatCall(ResolvedJavaMethod verifiedCallee, ResolvedJavaType stringType, ResolvedJavaMethod callee, Invoke invoke, int argIdx,
                     int varArgsElementIndex) {
         if (callee.getDeclaringClass().equals(stringType) && callee.getSignature().getReturnType(callee.getDeclaringClass()).equals(stringType)) {
-            StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
             if (varArgsElementIndex >= 0) {
-                throw new VerificationError(
-                                "In %s: element %d of parameter %d of call to %s is a call to String.format() which is redundant (%s does formatting) and forces unnecessary eager evaluation.",
-                                e, varArgsElementIndex, argIdx, verifiedCallee.format("%H.%n(%p)"), verifiedCallee.format("%h.%n"));
+                throw new VerificationError(invoke,
+                                "element %d of parameter %d of call to %s is a call to String.format() which is redundant (%s does formatting) and forces unnecessary eager evaluation.",
+                                varArgsElementIndex, argIdx, verifiedCallee.format("%H.%n(%p)"), verifiedCallee.format("%h.%n"));
             } else {
-                throw new VerificationError("In %s: parameter %d of call to %s is a call to String.format() which is redundant (%s does formatting) and forces unnecessary eager evaluation.", e,
+                throw new VerificationError(invoke,
+                                "parameter %d of call to %s is a call to String.format() which is redundant (%s does formatting) and forces unnecessary eager evaluation.",
                                 argIdx,
                                 verifiedCallee.format("%H.%n(%p)"), verifiedCallee.format("%h.%n"));
             }

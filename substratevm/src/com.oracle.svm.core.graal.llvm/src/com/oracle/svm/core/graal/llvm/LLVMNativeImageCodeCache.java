@@ -37,8 +37,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableMap;
-import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -96,7 +94,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private final LLVMObjectFileReader objectFileReader;
     private final List<ObjectFile.Symbol> globalSymbols = new ArrayList<>();
     private final StackMapDumper stackMapDumper;
-    private final NavigableMap<HostedMethod, CompilationResult> compilationsByStart = new TreeMap<>(Comparator.comparingInt(HostedMethod::getCodeAddressOffset));
 
     LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Path tempDir) {
         super(compilations, imageHeap, targetPlatform);
@@ -232,7 +229,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             method.setCodeAddressOffset(offset);
         });
 
-        getOrderedCompilations().forEach((pair) -> compilationsByStart.put(pair.getLeft(), pair.getRight()));
+        getOrderedCompilations().sort(Comparator.comparingInt(o -> o.getLeft().getCodeAddressOffset()));
         stackMapDumper.dumpOffsets(textSectionInfo);
         stackMapDumper.close();
 
@@ -480,11 +477,6 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         return globalSymbols;
     }
 
-    @Override
-    public Pair<HostedMethod, CompilationResult> getFirstCompilation() {
-        return Pair.create(compilationsByStart.firstKey(), compilationsByStart.firstEntry().getValue());
-    }
-
     private static final class BatchExecutor {
         private CompletionExecutor executor;
 
@@ -558,8 +550,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         @Override
         public void dumpOffsets(LLVMTextSectionInfo textSectionInfo) {
             dump("\nOffsets\n=======\n");
-            compilationsByStart.forEach((method, compilationResult) -> {
-                int startOffset = method.getCodeAddressOffset();
+            getOrderedCompilations().forEach((pair) -> {
+                int startOffset = pair.getLeft().getCodeAddressOffset();
+                CompilationResult compilationResult = pair.getRight();
                 assert startOffset + compilationResult.getTargetCodeSize() == textSectionInfo.getNextOffset(startOffset) : compilationResult.getName();
 
                 String methodName = textSectionInfo.getSymbol(startOffset);

@@ -59,7 +59,7 @@ public final class SerialAndEpsilonGCOptions {
      * fit in an aligned chunk.
      */
     @Option(help = "The size at or above which an array will be allocated in its own unaligned chunk. Serial, parallel, and epsilon GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(0L, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
+    public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(128 * 1024L, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);
 
     @Option(help = "Fill unused memory chunks with a sentinel value. Serial, parallel, and epsilon GC only.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> ZapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::serialOrParallelOrEpsilonGCOnly);

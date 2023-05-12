@@ -55,7 +55,7 @@ public final class Target_sun_reflect_NativeConstructorAccessorImpl {
                         @JavaType(Object[].class) StaticObject args0,
                         @Inject EspressoLanguage language,
                         @Inject Meta meta,
-                        @Cached ToEspressoNode toEspressoNode) {
+                        @Cached ToEspressoNode.DynamicToEspresso toEspressoNode) {
             Klass klass = meta.java_lang_reflect_Constructor_clazz.getObject(constructor).getMirrorKlass(meta);
             klass.safeInitialize();
             if (klass.isArray() || klass.isPrimitive() || klass.isInterface() || klass.isAbstract()) {

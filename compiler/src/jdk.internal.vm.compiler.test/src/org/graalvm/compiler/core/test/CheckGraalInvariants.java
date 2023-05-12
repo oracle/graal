@@ -342,6 +342,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyProfileMethodUsage());
         verifiers.add(new VerifyMemoryKillCheck());
         verifiers.add(new VerifySnippetProbabilities());
+        verifiers.add(new VerifyPluginFrameState());
 
         loadVerifiers(verifiers);
 

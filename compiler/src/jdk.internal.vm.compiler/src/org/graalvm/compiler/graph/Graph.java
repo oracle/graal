@@ -957,6 +957,11 @@ public class Graph {
         };
     }
 
+    // Remove once GR-42126 is fixed
+    public Node[] getRawNodes() {
+        return nodes;
+    }
+
     private static final CounterKey GraphCompressions = DebugContext.counter("GraphCompressions");
 
     @SuppressWarnings("unused")

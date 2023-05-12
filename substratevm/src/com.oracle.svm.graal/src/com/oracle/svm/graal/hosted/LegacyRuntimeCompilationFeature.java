@@ -175,6 +175,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
             }
             return result;
         }
+
+        @Override
+        protected boolean shouldVerifyFrameStates() {
+            return true;
+        }
     }
 
     @Override
@@ -295,6 +300,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
+                assert RuntimeCompilationFeature.verifyNodes(graph);
 
             } catch (Throwable ex) {
                 debug.handle(ex);
@@ -459,6 +465,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                     convertDeoptimizeToGuard.apply(graph, hostedProviders);
 
                     graphEncoder.prepare(graph);
+                    assert RuntimeCompilationFeature.verifyNodes(graph);
                 } catch (Throwable ex) {
                     debug.handle(ex);
                 }

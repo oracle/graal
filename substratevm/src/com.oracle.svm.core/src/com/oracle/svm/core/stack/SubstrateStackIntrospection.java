@@ -217,7 +217,7 @@ class SubstrateInspectedFrame implements InspectedFrame {
     public Object getLocal(int index) {
         JavaConstant result = getLocalConstant(index);
         if (result.getJavaKind() != JavaKind.Object) {
-            throw new IllegalArgumentException("can only access Object local variables for now: " + result.getJavaKind());
+            throw new IllegalArgumentException("Can only access Object local variables for now: " + result.getJavaKind());
         }
         return SubstrateObjectConstant.asObject(Object.class, result);
     }

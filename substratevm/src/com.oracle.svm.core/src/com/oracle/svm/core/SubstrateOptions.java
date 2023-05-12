@@ -139,9 +139,6 @@ public class SubstrateOptions {
         }
     };
 
-    @Option(help = "Support continuations (without requiring a Project Loom JDK)") //
-    public static final HostedOptionKey<Boolean> SupportContinuations = new HostedOptionKey<>(false);
-
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
     public static final int NoFallback = 0;
@@ -353,8 +350,21 @@ public class SubstrateOptions {
     @Option(help = "The size of each internal thread stack, in bytes.", type = OptionType.Expert)//
     public static final HostedOptionKey<Long> InternalThreadStackSize = new HostedOptionKey<>(2L * 1024 * 1024);
 
-    @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
-    public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(1024);
+    /**
+     * Cached value of {@link ConcealedOptions#MaxJavaStackTraceDepth}. Also used as default value.
+     */
+    private static int maxJavaStackTraceDepth = 1024;
+
+    /**
+     * Cached accessor for {@link ConcealedOptions#MaxJavaStackTraceDepth}.
+     */
+    public static int maxJavaStackTraceDepth() {
+        return maxJavaStackTraceDepth;
+    }
+
+    public static void updateMaxJavaStackTraceDepth(EconomicMap<OptionKey<?>, Object> runtimeValues, int newValue) {
+        ConcealedOptions.MaxJavaStackTraceDepth.update(runtimeValues, newValue);
+    }
 
     /* Same option name and specification as the Java HotSpot VM. */
     @Option(help = "Maximum total size of NIO direct-buffer allocations")//
@@ -686,6 +696,10 @@ public class SubstrateOptions {
     @Option(help = "Use old debuginfo", deprecated = true, deprecationMessage = "Please use the -g option.")//
     public static final HostedOptionKey<Boolean> UseOldDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateUseOldDebugInfo);
 
+    public static boolean useDebugInfoGeneration() {
+        return useLIRBackend() && GenerateDebugInfo.getValue() > 0 && !UseOldDebugInfo.getValue();
+    }
+
     private static void validateUseOldDebugInfo(HostedOptionKey<Boolean> optionKey) {
         if (optionKey.getValue() && SubstrateOptions.GenerateDebugInfo.getValue() < 1) {
             throw UserError.abort("The option '%s' can only be used together with '%s'.",
@@ -720,7 +734,13 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
-    public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(false);
+
+    @Option(help = "Specify maximum inlining depth to consider when building DebugCodeInfo") //
+    public static final HostedOptionKey<Integer> DebugCodeInfoMaxDepth = new HostedOptionKey<>(Integer.MAX_VALUE);
+
+    @Option(help = "Do not use SourceMappings for generating DebugCodeInfo (i.e. only use Infopoints)") //
+    public static final HostedOptionKey<Boolean> DebugCodeInfoUseSourceMappings = new HostedOptionKey<>(false);
 
     @Option(help = "Emit debuginfo debug.svm.imagebuild.* sections with detailed image-build options.")//
     public static final HostedOptionKey<Boolean> UseImagebuildDebugSections = new HostedOptionKey<>(true);
@@ -786,6 +806,16 @@ public class SubstrateOptions {
         /** Use {@link com.oracle.svm.core.jvmstat.PerfManager#usePerfData()} instead. */
         @Option(help = "Flag to disable jvmstat instrumentation for performance testing.")//
         public static final RuntimeOptionKey<Boolean> UsePerfData = new RuntimeOptionKey<>(true, Immutable);
+
+        /** Use {@link SubstrateOptions#maxJavaStackTraceDepth()} instead. */
+        @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
+        public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(maxJavaStackTraceDepth) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
+                super.onValueUpdate(values, oldValue, newValue);
+                maxJavaStackTraceDepth = newValue;
+            }
+        };
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//

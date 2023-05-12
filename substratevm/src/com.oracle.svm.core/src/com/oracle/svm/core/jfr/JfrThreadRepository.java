@@ -78,6 +78,8 @@ public final class JfrThreadRepository implements JfrRepository {
     @Uninterruptible(reason = "Prevent any JFR events from triggering.")
     public void registerRunningThreads() {
         assert VMOperation.isInProgressAtSafepoint();
+        assert SubstrateJVM.get().isRecording();
+
         for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
             /*
              * IsolateThreads without a Java thread just started executing and will register
@@ -86,12 +88,21 @@ public final class JfrThreadRepository implements JfrRepository {
             Thread thread = PlatformThreads.fromVMThread(isolateThread);
             if (thread != null) {
                 registerThread(thread);
+                // Re-register vthreads that are already mounted.
+                Thread vthread = PlatformThreads.getVThread(thread);
+                if (vthread != null) {
+                    registerThread(vthread);
+                }
             }
         }
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void registerThread(Thread thread) {
+        if (!SubstrateJVM.get().isRecording()) {
+            return;
+        }
+
         long threadId = JavaThreads.getThreadId(thread);
 
         JfrVisited visitedThread = StackValue.get(JfrVisited.class);

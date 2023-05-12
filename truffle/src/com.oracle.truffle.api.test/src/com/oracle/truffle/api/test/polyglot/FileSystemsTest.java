@@ -2016,8 +2016,14 @@ public class FileSystemsTest {
         }
     }
 
+    static boolean isAMD64() {
+        String arch = System.getProperty("os.arch");
+        return arch.equals("x86_64") || arch.equals("amd64");
+    }
+
     @Test
     public void testSetAttribute() throws IOException {
+        Assume.assumeFalse("GR-45948", Runtime.version().feature() == 21 && OSUtils.getCurrent() == OSUtils.OS.Darwin && isAMD64());
         Context ctx = cfg.getContext();
         String configuration = cfg.getName();
         String path = cfg.getPath().toString();

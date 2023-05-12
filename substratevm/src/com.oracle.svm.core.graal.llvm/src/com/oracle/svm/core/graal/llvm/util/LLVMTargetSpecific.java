@@ -79,6 +79,11 @@ public interface LLVMTargetSpecific {
     String getAddInlineAssembly(String outputRegisterName, String inputRegisterName);
 
     /**
+     * Snippet representing a nop instruction.
+     */
+    String getNopInlineAssembly();
+
+    /**
      * Name of the architecture to be passed to the LLVM compiler.
      */
     String getLLVMArchName();
@@ -199,6 +204,11 @@ class LLVMAMD64TargetSpecificFeature implements InternalFeature {
             }
 
             @Override
+            public String getNopInlineAssembly() {
+                return "nop";
+            }
+
+            @Override
             public String getLLVMArchName() {
                 return "x86-64";
             }
@@ -297,6 +307,11 @@ class LLVMAArch64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
                 return "ADD " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+            }
+
+            @Override
+            public String getNopInlineAssembly() {
+                return "NOP";
             }
 
             @Override
@@ -402,6 +417,11 @@ class LLVMRISCV64TargetSpecificFeature implements InternalFeature {
             @Override
             public String getAddInlineAssembly(String outputRegister, String inputRegister) {
                 return "add " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
+            }
+
+            @Override
+            public String getNopInlineAssembly() {
+                return "nop";
             }
 
             @Override

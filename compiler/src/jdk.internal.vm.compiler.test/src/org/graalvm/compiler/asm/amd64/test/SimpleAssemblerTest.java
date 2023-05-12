@@ -91,6 +91,7 @@ public class SimpleAssemblerTest extends AssemblerTest {
         assertReturn("doubleStub", test, 84.72);
     }
 
+    @SuppressWarnings("unlikely-arg-type")
     @Test
     public void rawDoubleTest() {
         CodeGenTest test = new CodeGenTest() {
