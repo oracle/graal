@@ -43,6 +43,7 @@ import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.graph.NodeMap.NodeMapIterable;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -211,9 +212,12 @@ public abstract class LoopFragment {
                 Formatter f = new Formatter(sb);
                 StructuredGraph graph = graph();
                 if (duplicationMap instanceof NodeMap<?>) {
+                    NodeMap<?> nm = (NodeMap<?>) duplicationMap;
+                    @SuppressWarnings("rawtypes")
+                    NodeMap.NodeMapIterable nmIterable = (NodeMapIterable) duplicationNodes;
+                    f.format("GR-42126 iterable data: i=%s pos=%s nmSize=%s %n", nmIterable.getI(), nmIterable.getPos(), nm.capacity());
                     int nodeCount = graph.getNodeCount();
                     f.format("GR-42126 data: graph size %s,loop begin node count %s%n", nodeCount, graph.getNodes(LoopBeginNode.TYPE).count());
-                    NodeMap<?> nm = (NodeMap<?>) duplicationMap;
                     Object[] rawValues = nm.rawValues();
                     int nullEntries = 0;
                     for (int i = 0; i < rawValues.length; i++) {
