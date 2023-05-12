@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.ameta;
 
+import java.util.Objects;
 import java.util.function.ObjIntConsumer;
 
 import org.graalvm.compiler.core.common.type.TypedConstant;
@@ -303,10 +304,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             } else if (obj instanceof Class) {
                 throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
             }
-        }
-        if (constant instanceof ImageHeapConstant) {
+        } else if (constant instanceof ImageHeapConstant imageHeapConstant) {
             if (metaAccess.isInstanceOf((JavaConstant) constant, Class.class)) {
-                throw VMError.shouldNotReachHere("ConstantReflectionProvider.asJavaType(Constant) not yet implemented for ImageHeapObject");
+                /* All constants of type DynamicHub/java.lang.Class must have a hosted object. */
+                return asJavaType(Objects.requireNonNull(imageHeapConstant.getHostedObject()));
             }
         }
         return null;

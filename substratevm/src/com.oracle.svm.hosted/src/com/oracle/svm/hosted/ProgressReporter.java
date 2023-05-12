@@ -803,6 +803,9 @@ public class ProgressReporter {
         }
 
         private static int getInternalByteArrayLength(String string) {
+            if (string == null) {
+                return 0;
+            }
             try {
                 return ((byte[]) STRING_VALUE.get(string)).length;
             } catch (ReflectiveOperationException ex) {

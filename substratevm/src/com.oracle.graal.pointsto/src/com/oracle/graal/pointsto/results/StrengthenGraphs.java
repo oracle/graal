@@ -629,7 +629,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             if (newStampOrConstant instanceof JavaConstant) {
                 JavaConstant constant = (JavaConstant) newStampOrConstant;
                 if (input.isConstant()) {
-                    assert input.asConstant().equals(constant);
+                    assert bb.getConstantReflectionProvider().constantEquals(input.asConstant(), constant);
                     return null;
                 }
                 return ConstantNode.forConstant(constant, bb.getMetaAccess(), graph);

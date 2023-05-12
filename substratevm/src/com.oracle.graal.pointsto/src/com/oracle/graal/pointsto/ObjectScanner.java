@@ -524,7 +524,6 @@ public class ObjectScanner {
         public FieldScan(AnalysisField field, JavaConstant receiver, ScanReason previous) {
             super(previous, receiver);
             this.field = field;
-            assert field.isRead();
         }
 
         public AnalysisField getField() {
