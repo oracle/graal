@@ -618,7 +618,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.end();
         b.end();
 
-        b.startAssign("returnValue").string("frame.getObject((state >> 16) & 0xffff)").end();
+        b.startAssign("returnValue").string(getFrameObject("(state >> 16) & 0xffff")).end();
         b.statement("return returnValue");
 
         b.end().startCatchBlock(context.getType(Throwable.class), "th");
@@ -882,8 +882,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.statement("Object[] result = new Object[variadicCount]");
         b.startFor().string("int i = 0; i < variadicCount; i++").end().startBlock();
         b.statement("int index = sp - variadicCount + i");
-        b.statement("result[i] = frame.getObject(index)");
-        b.statement("frame.clear(index)");
+        b.statement("result[i] = " + getFrameObject("index"));
+        b.statement(clearFrame("index"));
         b.end();
 
         b.statement("return result");
@@ -957,7 +957,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTreeBuilder b = ex.createBuilder();
 
         b.startIf().string("(boxing & 0xffff0000) == 0xffff0000 || frame.isObject(slot)").end().startBlock(); // {
-        b.startReturn().string("frame.getObject(slot)").end();
+        b.startReturn().string(getFrameObject("slot")).end();
         b.end(); // }
 
         b.tree(createTransferToInterpreterAndInvalidate("$this"));
@@ -981,7 +981,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTreeBuilder b = ex.createBuilder();
 
         b.startIf().string("(boxing & 0xffff0000) == 0xffff0000").end().startBlock(); // {
-        b.statement("Object result = frame.getObject(slot)");
+        b.statement("Object result = " + getFrameObject("slot"));
 
         b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
         b.startReturn().cast(resultType).string("result").end();
@@ -3693,7 +3693,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             b.end(2);
 
                             b.startIf().string("osrResult != null").end().startBlock();
-                            b.statement("frame.setObject(sp, osrResult)");
+                            b.statement(setFrameObject("sp", "osrResult"));
                             b.statement("sp++");
                             b.startReturn().string("((sp - 1) << 16) | 0xffff").end();
                             b.end();
@@ -3704,7 +3704,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("continue loop");
                         break;
                     case BRANCH_FALSE:
-                        b.startIf().string("(Boolean) frame.getObject(sp - 1) == Boolean.TRUE").end().startBlock();
+                        b.startIf().string("(Boolean) " + getFrameObject("sp - 1") + " == Boolean.TRUE").end().startBlock();
                         b.statement("sp -= 1");
                         b.statement("bci += 2");
                         b.statement("continue loop");
@@ -3721,24 +3721,24 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case INSTRUMENTATION_LEAVE:
                         break;
                     case LOAD_ARGUMENT:
-                        b.statement("frame.setObject(sp, frame.getArguments()[" + readBc("bci + 1") + "])");
+                        b.statement(setFrameObject("sp", "frame.getArguments()[" + readBc("bci + 1") + "]"));
                         b.statement("sp += 1");
                         break;
                     case LOAD_CONSTANT:
-                        b.statement("frame.setObject(sp, " + readConst(readBc("bci + 1")) + ")");
+                        b.statement(setFrameObject("sp", readConst(readBc("bci + 1"))));
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        b.statement("frame.setObject(sp, " + localFrame + ".getObject(" + readBc("bci + 1") + "))");
+                        b.statement(setFrameObject("sp", getFrameObject(localFrame, readBc("bci + 1"))));
                         b.statement("sp += 1");
                         break;
                     }
                     case LOAD_LOCAL_MATERIALIZED:
-                        b.statement("frame.setObject(sp - 1, ((VirtualFrame) frame.getObject(sp - 1)).getObject(" + readBc("bci + 1") + "))");
+                        b.statement(setFrameObject("sp - 1", getFrameObject("(VirtualFrame) " + getFrameObject("sp - 1"), readBc("bci + 1"))));
                         break;
                     case POP:
-                        b.statement("frame.clear(sp - 1)");
+                        b.statement(clearFrame("sp - 1"));
                         b.statement("sp -= 1");
                         break;
                     case RETURN:
@@ -3755,47 +3755,41 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case STORE_LOCAL: {
                         String localFrame = model.enableYield ? "generatorFrame" : "frame";
-                        b.statement(localFrame + ".setObject(" + readBc("bci + 1") + ", frame.getObject(sp - 1))");
-                        b.statement("frame.clear(sp - 1)");
+                        b.statement(setFrameObject(localFrame, readBc("bci + 1"), getFrameObject("sp - 1")));
+                        b.statement(clearFrame("sp - 1"));
                         b.statement("sp -= 1");
                         break;
                     }
                     case STORE_LOCAL_MATERIALIZED:
-                        b.statement("((VirtualFrame) frame.getObject(sp - 2)).setObject(" + readBc("bci + 1") + ", frame.getObject(sp - 1))");
-                        b.statement("frame.clear(sp - 1)");
-                        b.statement("frame.clear(sp - 2)");
+                        b.statement("((VirtualFrame) " + getFrameObject("sp - 2") + ").setObject(" + readBc("bci + 1") + ", " + getFrameObject("sp - 1") + ")");
+                        b.statement(clearFrame("sp - 1"));
+                        b.statement(clearFrame("sp - 2"));
                         b.statement("sp -= 2");
                         break;
                     case THROW:
-                        b.statement("throw sneakyThrow((Throwable) frame.getObject(" + readBc("bci + 1") + "))");
+                        b.statement("throw sneakyThrow((Throwable) " + getFrameObject(readBc("bci + 1")) + ")");
                         break;
                     case YIELD:
                         b.statement("int numLocals = $this.numLocals");
-                        b.statement("frame.copyTo(numLocals, generatorFrame, numLocals, (sp - 1 - numLocals))");
-                        b.statement("frame.setObject(sp - 1, ((ContinuationLocation) " + readConst(readBc("bci + 1")) + ").createResult(generatorFrame, frame.getObject(sp - 1)))");
+                        b.statement(copyFrameTo("frame", "numLocals", "generatorFrame", "numLocals", "(sp - 1 - numLocals)"));
+                        b.statement(setFrameObject("sp - 1", "((ContinuationLocation) " + readConst(readBc("bci + 1")) + ").createResult(generatorFrame, " + getFrameObject("sp - 1") + ")"));
                         b.statement("return (((sp - 1) << 16) | 0xffff)");
                         break;
                     case SUPERINSTRUCTION:
                         // todo: implement superinstructions
                         break;
                     case STORE_NULL:
-                        b.statement("frame.setObject(sp, null)");
+                        b.statement(setFrameObject("sp", "null"));
                         b.statement("sp += 1");
                         break;
                     case LOAD_VARIADIC:
                         int effect = -instr.variadicPopCount + 1;
                         b.startStatement();
-                        b.string("frame.setObject(sp");
-                        if (instr.variadicPopCount != 0) {
-                            b.string(" - ").string(instr.variadicPopCount);
-                        }
-                        b.string(", ");
                         if (instr.variadicPopCount == 0) {
-                            b.staticReference(emptyObjectArray);
+                            b.string(setFrameObject("sp", emptyObjectArray.getSimpleName().toString()));
                         } else {
-                            b.string("readVariadic(frame, sp, ").string(instr.variadicPopCount).string(")");
+                            b.string(setFrameObject("sp - " + instr.variadicPopCount, "readVariadic(frame, sp, " + instr.variadicPopCount + ")"));
                         }
-                        b.string(")");
                         b.end();
 
                         if (effect != 0) {
@@ -3807,7 +3801,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         }
                         break;
                     case MERGE_VARIADIC:
-                        b.statement("frame.setObject(sp - 1, mergeVariadic((Object[]) frame.getObject(sp - 1)))");
+                        b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
                         break;
                     case CUSTOM: {
                         results.add(buildCustomInstructionExecute(b, instr, false));
@@ -3821,7 +3815,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("bci = " + readBc("bci + 1"));
                         b.statement("continue loop");
                         b.end().startElseBlock();
-                        b.statement("frame.clear(sp - 1)");
+                        b.statement(clearFrame("sp - 1"));
                         b.statement("sp -= 1");
                         b.statement("bci += " + instr.getInstructionLength());
                         b.statement("continue loop");
@@ -3848,13 +3842,11 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("int[] handlers = $this.handlers");
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
 
-            // todo: this could get improved
             b.startIf().string("handlers[idx] > bci").end().startBlock().statement("continue").end();
             b.startIf().string("handlers[idx + 1] <= bci").end().startBlock().statement("continue").end();
-
             b.statement("bci = handlers[idx + 2]");
             b.statement("sp = handlers[idx + 3] + $this.numLocals");
-            b.statement("frame.setObject(handlers[idx + 4], ex)");
+            b.statement(setFrameObject("handlers[idx + 4]", "ex"));
 
             b.statement("continue loop");
 
@@ -3968,10 +3960,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     if (!ElementUtils.isObject(targetType)) {
                         b.cast(targetType);
                     }
-                    b.startCall("frame.getObject").startGroup();
-                    b.string("sp");
-                    b.string(" - " + (instr.signature.valueCount - i));
-                    b.end(2);
+                    b.string(getFrameObject("sp - " + (instr.signature.valueCount - i)));
                     b.end();
                 }
 
@@ -3995,14 +3984,14 @@ public class OperationsNodeFactory implements ElementHelpers {
             // Update the stack.
             if (!isVoid && !isShortCircuit) {
                 if (stackEffect == 1) {
-                    b.statement("frame.setObject(sp, result)");
+                    b.statement(setFrameObject("sp", "result"));
                 } else {
-                    b.statement("frame.setObject(sp - " + (1 - stackEffect) + ", result)");
+                    b.statement(setFrameObject("sp - " + (1 - stackEffect), "result"));
                 }
             }
             for (int i = stackEffect; i < 0; i++) {
                 // When stackEffect is negative, values should be cleared from the top of the stack.
-                b.statement("frame.clear(sp - " + -i + ")");
+                b.statement(clearFrame("sp - " + -i));
             }
 
             // In continueAt, call the helper and adjust sp.
@@ -4196,8 +4185,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             b.declaration("int", "sp", "((target >> 16) & 0xffff) + root.numLocals");
-            b.statement("parentFrame.copyTo(root.numLocals, frame, root.numLocals, sp - 1 - root.numLocals)");
-            b.statement("frame.setObject(sp - 1, inputValue)");
+            b.statement(copyFrameTo("parentFrame", "root.numLocals", "frame", "root.numLocals", "sp - 1 - root.numLocals"));
+            b.statement(setFrameObject("sp - 1", "inputValue"));
 
             b.statement("return root.continueAt(frame, parentFrame, (sp << 16) | (target & 0xffff))");
 
@@ -4429,6 +4418,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         return CodeTreeBuilder.createBuilder().staticReference(operationsElement.asType(), op.getConstantName()).build();
     }
 
+    // Helpers to generate common strings
     private static String readBc(String index) {
         return String.format("ACCESS.shortArrayRead(bc, %s)", index);
     }
@@ -4447,6 +4437,30 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.typeLiteral(expectedType);
         b.end();
         return b.toString();
+    }
+
+    private static String getFrameObject(String index) {
+        return getFrameObject("frame", index);
+    }
+
+    private static String getFrameObject(String frame, String index) {
+        return String.format("ACCESS.uncheckedGetObject(%s, %s)", frame, index);
+    }
+
+    private static String setFrameObject(String index, String value) {
+        return setFrameObject("frame", index, value);
+    }
+
+    private static String setFrameObject(String frame, String index, String value) {
+        return String.format("ACCESS.setObject(%s, %s, %s)", frame, index, value);
+    }
+
+    private static String clearFrame(String index) {
+        return String.format("ACCESS.clear(frame, %s)", index);
+    }
+
+    private static String copyFrameTo(String srcFrame, String srcOffset, String dstFrame, String dstOffset, String length) {
+        return String.format("ACCESS.copyTo(%s, %s, %s, %s, %s)", srcFrame, srcOffset, dstFrame, dstOffset, length);
     }
 
     private static String cachedDataClassName(InstructionModel instr) {

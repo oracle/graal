@@ -106,16 +106,11 @@ public class OperationNodeGeneratorPlugs implements NodeGeneratorPlugs {
         int index = idx;
 
         if (index < instr.signature.valueCount) {
-
-            String slotString = "$sp - " + (instr.signature.valueCount - index);
-
             TypeMirror targetType = instr.signature.getParameterType(index);
             if (!ElementUtils.isObject(targetType)) {
                 b.cast(targetType);
             }
-            b.startCall(frame, "getObject");
-            b.string(slotString);
-            b.end();
+            b.string("ACCESS.uncheckedGetObject(" + frame.toString() + ", $sp - " + (instr.signature.valueCount - index) + ")");
             return false;
         }
 
