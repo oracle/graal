@@ -206,11 +206,11 @@ public class ClassEntry extends StructureTypeEntry {
         return compiledEntries();
     }
 
-    private void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    protected void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String interfaceName = interfaceType.toJavaName();
         debugContext.log("typename %s adding interface %s%n", typeName, interfaceName);
         ClassEntry entry = debugInfoBase.lookupClassEntry(interfaceType);
-        assert entry instanceof InterfaceClassEntry;
+        assert entry instanceof InterfaceClassEntry || (entry instanceof ForeignTypeEntry && this instanceof ForeignTypeEntry);
         InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) entry;
         interfaces.add(interfaceClassEntry);
         interfaceClassEntry.addImplementor(this, debugContext);
