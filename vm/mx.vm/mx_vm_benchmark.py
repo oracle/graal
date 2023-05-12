@@ -25,6 +25,7 @@
 # questions.
 #
 # ----------------------------------------------------------------------------------------------------
+import datetime
 import os
 import re
 import shutil
@@ -520,7 +521,7 @@ class NativeImageVM(GraalVm):
             self.stderr_file = open(self.stderr_path, 'w')
 
             self.separator_line()
-            mx.log('Entering stage: ' + self.current_stage + ' for ' + self.final_image_name)
+            mx.log(self.get_timestamp() + 'Entering stage: ' + self.current_stage + ' for ' + self.final_image_name)
             self.separator_line()
 
             mx.log('Running: ')
@@ -540,15 +541,15 @@ class NativeImageVM(GraalVm):
             if self.exit_code == 0 and (tb is None):
                 self.successfully_finished_stages.append(self.current_stage)
                 if self.current_stage.startswith(self.config.last_stage):
-                    self.bench_out('Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
+                    self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
                 else:
-                    mx.log('Successfully finished stage:' + ' ' + self.current_stage)
+                    mx.log(self.get_timestamp() + 'Successfully finished stage:' + ' ' + self.current_stage)
 
                 self.separator_line()
             else:
                 self.failed = True
                 if self.exit_code is not None and self.exit_code != 0:
-                    mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
+                    mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
 
                 if self.stdout_path:
                     mx.log(mx.colorize('--------- Standard output:', 'blue'))
@@ -561,7 +562,7 @@ class NativeImageVM(GraalVm):
                         mx.log(stderr.read())
 
                 if tb:
-                    mx.log(mx.colorize('Failed in stage ' + self.current_stage + ' with ', 'red'))
+                    mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.current_stage + ' with ', 'red'))
                     print_tb(tb)
 
                 self.separator_line()
@@ -583,7 +584,7 @@ class NativeImageVM(GraalVm):
 
                 self.separator_line()
                 if self.non_zero_is_fatal:
-                    mx.abort('Exiting the benchmark due to the failure.')
+                    mx.abort(self.get_timestamp() + 'Exiting the benchmark due to the failure.')
 
             self.stdout_file.close()
             self.stderr_file.close()
@@ -622,6 +623,10 @@ class NativeImageVM(GraalVm):
         @staticmethod
         def separator_line():
             mx.log(mx.colorize('-' * 120, 'green'))
+
+        @staticmethod
+        def get_timestamp():
+            return '[' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + '] '
 
         def set_command(self, command):
             self.command = command
