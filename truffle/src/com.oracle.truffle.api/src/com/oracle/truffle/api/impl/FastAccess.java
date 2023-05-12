@@ -114,6 +114,8 @@ public abstract class FastAccess {
 
     public abstract void copyPrimitive(Frame frame, int srcSlot, int dstSlot);
 
+    public abstract void clear(Frame frame, int slot);
+
     private FastAccess() {
     }
 
@@ -286,6 +288,11 @@ public abstract class FastAccess {
         public void copyPrimitive(Frame frame, int srcSlot, int dstSlot) {
             ((FrameWithoutBoxing) frame).unsafeCopyPrimitive(srcSlot, dstSlot);
         }
+
+        @Override
+        public void clear(Frame frame, int slot) {
+            ((FrameWithoutBoxing) frame).unsafeClear(slot);
+        }
     }
 
     private static final class SafeImpl extends FastAccess {
@@ -454,6 +461,11 @@ public abstract class FastAccess {
         @Override
         public void copyPrimitive(Frame frame, int srcSlot, int dstSlot) {
             frame.copyPrimitive(srcSlot, dstSlot);
+        }
+
+        @Override
+        public void clear(Frame frame, int slot) {
+            frame.clear(slot);
         }
 
     }
