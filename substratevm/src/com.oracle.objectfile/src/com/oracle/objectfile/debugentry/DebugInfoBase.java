@@ -34,20 +34,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.objectfile.debugentry.range.PrimaryRange;
-import com.oracle.objectfile.debugentry.range.Range;
-import com.oracle.objectfile.debugentry.range.SubRange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.DebugContext;
 
+import com.oracle.objectfile.debugentry.range.PrimaryRange;
+import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * An abstract class which indexes the information presented by the DebugInfoProvider in an
@@ -349,13 +350,15 @@ public abstract class DebugInfoBase {
         }));
 
         debugInfoProvider.dataInfoProvider().forEach(debugDataInfo -> debugDataInfo.debugContext((debugContext) -> {
-            String provenance = debugDataInfo.getProvenance();
-            String typeName = debugDataInfo.getTypeName();
-            String partitionName = debugDataInfo.getPartition();
-            /* Address is heap-register relative pointer. */
-            long address = debugDataInfo.getAddress();
-            long size = debugDataInfo.getSize();
-            debugContext.log(DebugContext.INFO_LEVEL, "Data: address 0x%x size 0x%x type %s partition %s provenance %s ", address, size, typeName, partitionName, provenance);
+            if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                String provenance = debugDataInfo.getProvenance();
+                String typeName = debugDataInfo.getTypeName();
+                String partitionName = debugDataInfo.getPartition();
+                /* Address is heap-register relative pointer. */
+                long address = debugDataInfo.getAddress();
+                long size = debugDataInfo.getSize();
+                debugContext.log(DebugContext.INFO_LEVEL, "Data: address 0x%x size 0x%x type %s partition %s provenance %s ", address, size, typeName, partitionName, provenance);
+            }
         }));
     }
 
