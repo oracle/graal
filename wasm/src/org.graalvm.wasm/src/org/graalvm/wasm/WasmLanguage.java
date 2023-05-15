@@ -72,7 +72,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     private boolean isFirst = true;
     @CompilationFinal private volatile boolean isMultiContext;
 
-    private final ContextThreadLocal<MultiValueStack> multiValueStackThreadLocal = createContextThreadLocal(((context, thread) -> new MultiValueStack()));
+    private final ContextThreadLocal<MultiValueStack> multiValueStackThreadLocal = localsBuilder.createContextThreadLocal(((context, thread) -> new MultiValueStack()));
 
     @Override
     protected WasmContext createContext(Env env) {

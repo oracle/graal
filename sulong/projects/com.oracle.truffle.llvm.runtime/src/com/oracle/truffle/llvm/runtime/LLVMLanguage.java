@@ -156,7 +156,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
 
-    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
+    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = localsBuilder.createContextThreadLocal(LLVMThreadLocalValue::new);
 
     static final class LibraryCacheEntry extends WeakReference<CallTarget> {
         final String path;
