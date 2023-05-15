@@ -74,6 +74,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -394,7 +395,7 @@ public class NativeImageClassLoaderSupport {
             processListModulesOption(moduleLayerForImageBuild);
         }
 
-        processOption(SubstrateOptions.AddExports).forEach(val -> {
+        processOption(NativeImageClassLoaderOptions.AddExports).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addExportsToAllUnnamed(val.module, val.packageName);
             } else {
@@ -403,7 +404,7 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         });
-        processOption(SubstrateOptions.AddOpens).forEach(val -> {
+        processOption(NativeImageClassLoaderOptions.AddOpens).forEach(val -> {
             if (val.targetModules.isEmpty()) {
                 Modules.addOpensToAllUnnamed(val.module, val.packageName);
             } else {
@@ -539,7 +540,7 @@ public class NativeImageClassLoaderSupport {
         String optionValue = valueOrigin.getLeft();
 
         boolean reads = option.equals(NativeImageClassLoaderOptions.AddReads);
-        String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : SubstrateOptions.AddExportsAndOpensFormat;
+        String format = reads ? NativeImageClassLoaderOptions.AddReadsFormat : NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
         String syntaxErrorMessage = " Allowed value format: " + format;
 
         String[] modulePackageAndTargetModules = optionValue.split("=", 2);

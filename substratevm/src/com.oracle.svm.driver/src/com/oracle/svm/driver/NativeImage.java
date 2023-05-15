@@ -65,6 +65,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -922,19 +923,12 @@ public class NativeImage {
     void handleModuleAttributes(Attributes mainAttributes) {
         String addOpensValues = mainAttributes.getValue("Add-Opens");
         if (addOpensValues != null) {
-            handleModuleExports(addOpensValues, SubstrateOptions.AddOpens);
+            handleModuleExports(addOpensValues, NativeImageClassLoaderOptions.AddOpens);
         }
 
         String addExportsValues = mainAttributes.getValue("Add-Exports");
         if (addExportsValues != null) {
-            handleModuleExports(addExportsValues, SubstrateOptions.AddExports);
-        }
-    }
-
-    private void handleModuleExports(String modulesValues, OptionKey<LocatableMultiOptionValue.Strings> option) {
-        String[] modules = modulesValues.split(" ");
-        for (String fromModule : modules) {
-            addPlainImageBuilderArg(oH(option) + fromModule + "=" + ALL_UNNAMED);
+            handleModuleExports(addExportsValues, NativeImageClassLoaderOptions.AddExports);
         }
     }
 
@@ -964,6 +958,13 @@ public class NativeImage {
                 /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
                 addImageClasspathEntry(destination, manifestClassPath.normalize(), false);
             }
+        }
+    }
+
+    private void handleModuleExports(String modulesValues, OptionKey<?> option) {
+        String[] modules = modulesValues.split(" ");
+        for (String fromModule : modules) {
+            addPlainImageBuilderArg(oH(option) + fromModule + "=" + ALL_UNNAMED);
         }
     }
 
