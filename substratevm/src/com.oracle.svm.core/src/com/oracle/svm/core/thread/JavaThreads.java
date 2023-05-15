@@ -313,10 +313,20 @@ public final class JavaThreads {
             tjlt.contextClassLoader = Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER;
         } else if (inheritThreadLocals) {
             Target_java_lang_ThreadLocal_ThreadLocalMap parentMap = toTarget(parent).inheritableThreadLocals;
-            if (parentMap != null && (JavaVersionUtil.JAVA_SPEC < 19 ||
-                            ((JavaVersionUtil.JAVA_SPEC > 20 || parentMap != Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED) &&
-                                            parentMap.size() > 0))) {
-                tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(parentMap);
+            if (parentMap != null) {
+                boolean inherit = false;
+                if (JavaVersionUtil.JAVA_SPEC < 19) {
+                    inherit = true;
+                } else if (parentMap.size() > 0) {
+                    if (JavaVersionUtil.JAVA_SPEC > 20) {
+                        inherit = true;
+                    } else {
+                        inherit = parentMap != Target_java_lang_ThreadLocal_ThreadLocalMap.NOT_SUPPORTED;
+                    }
+                }
+                if (inherit) {
+                    tjlt.inheritableThreadLocals = Target_java_lang_ThreadLocal.createInheritedMap(parentMap);
+                }
             }
             ClassLoader parentLoader = parent.getContextClassLoader();
             if (JavaVersionUtil.JAVA_SPEC < 19 || JavaVersionUtil.JAVA_SPEC > 20 || parentLoader != Target_java_lang_Thread_Constants.NOT_SUPPORTED_CLASSLOADER) {
