@@ -37,7 +37,7 @@ public class NativeImageClassLoaderOptions {
 
     @APIOption(name = "add-exports", extra = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
     @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to export <package> to <target-module>, regardless of module declaration." +
-            " <target-module> can be ALL-UNNAMED to export to all unnamed modules.")//
+                    " <target-module> can be ALL-UNNAMED to export to all unnamed modules.")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddExports = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 
     @APIOption(name = "add-opens", extra = true, valueSeparator = {APIOption.WHITESPACE_SEPARATOR, '='})//
