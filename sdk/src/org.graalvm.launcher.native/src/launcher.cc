@@ -41,6 +41,7 @@
 
 #include <jni.h>
 #include <string.h>
+#include <cstdint>
 #include <string>
 #include <iostream>
 #include <sstream>
