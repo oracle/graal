@@ -27,6 +27,8 @@ package com.oracle.svm.hosted.image;
 import java.util.List;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.hosted.c.NativeLibraries;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -85,6 +87,21 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         }
     }
 
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /*
+         * Make the name provider aware of the native libs
+         */
+        if (!UniqueShortNameProviderDefaultImpl.UseDefault.useDefaultProvider()) {
+            if (ImageSingletons.contains(UniqueShortNameProvider.class)) {
+                UniqueShortNameProvider provider = ImageSingletons.lookup(UniqueShortNameProvider.class);
+                if (provider instanceof  NativeImageBFDNameProvider) {
+                    var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl)  access;
+                    ((NativeImageBFDNameProvider) provider).setNativeLibs(((FeatureImpl.BeforeAnalysisAccessImpl) access).getNativeLibraries());
+                }
+            }
+        }
+    }
     @Override
     @SuppressWarnings("try")
     public void beforeImageWrite(BeforeImageWriteAccess access) {
