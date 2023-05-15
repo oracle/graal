@@ -2175,6 +2175,8 @@ public final class VM extends NativeEnv {
     private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Lib = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, @Pointer TruffleObject> handle2Sym = new ConcurrentHashMap<>();
 
+    private static final AtomicLong libraryHandles = new AtomicLong(1);
+
     public @Pointer TruffleObject getFunction(long handle) {
         return handle2Sym.get(handle);
     }
@@ -2231,7 +2233,12 @@ public final class VM extends NativeEnv {
 
     private static long getLibraryHandle(TruffleObject lib) {
         try {
-            return InteropLibrary.getUncached().asPointer(lib);
+            if (InteropLibrary.getUncached().isPointer(lib)) {
+                return InteropLibrary.getUncached().asPointer(lib);
+            } else {
+                // Probably a Sulong library, cannot get its native handle, create a fake one.
+                return libraryHandles.getAndIncrement();
+            }
         } catch (UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
