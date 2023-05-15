@@ -20,55 +20,55 @@ Below is the example output when building a native executable of the `HelloWorld
 ================================================================================
 GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
-[1/8] Initializing...                                            (3.3s @ 0.15GB)
- Java version: 17.0.7+4, vendor version: GraalVM CE 17.0.7+4.1
- Graal compiler: optimization level: '2', target machine: 'x86-64-v3'
+[1/8] Initializing...                                            (2.8s @ 0.15GB)
+ Java version: 20+34, vendor version: GraalVM CE 20-dev+34.1
+ Graal compiler: optimization level: 2, target machine: x86-64-v3
  C compiler: gcc (linux, x86_64, 12.2.0)
  Garbage collector: Serial GC (max heap size: 80% of RAM)
-[2/8] Performing analysis...  [***]                              (6.4s @ 0.83GB)
-   2,905 (71.75%) of  4,049 types reachable
-   3,534 (51.13%) of  6,912 fields reachable
-  13,234 (43.97%) of 30,095 methods reachable
-     901 types,     0 fields, and   344 methods registered for reflection
-      58 types,    58 fields, and    52 methods registered for JNI access
+[2/8] Performing analysis...  [****]                             (4.5s @ 0.54GB)
+   3,175 (72.62%) of  4,372 types reachable
+   3,842 (50.58%) of  7,596 fields reachable
+  15,260 (45.61%) of 33,458 methods reachable
+     962 types,    83 fields, and   492 methods registered for reflection
+      57 types,    55 fields, and    52 methods registered for JNI access
        4 native libraries: dl, pthread, rt, z
-[3/8] Building universe...                                       (1.2s @ 0.34GB)
-[4/8] Parsing methods...      [*]                                (0.8s @ 0.84GB)
-[5/8] Inlining methods...     [***]                              (0.5s @ 1.19GB)
-[6/8] Compiling methods...    [***]                              (5.6s @ 0.84GB)
-[7/8] Layouting methods...    [*]                                (1.1s @ 1.03GB)
-[8/8] Creating image...       [**]                               (3.9s @ 2.14GB)
-   4.42MB (23.20%) for code area:     7,526 compilation units
-   8.18MB (42.92%) for image heap:  107,049 objects and 5 resources
-   5.87MB (30.78%) for debug info generated in 1.2s
- 605.20kB ( 3.10%) for other data
-  19.06MB in total
+[3/8] Building universe...                                       (0.8s @ 0.99GB)
+[4/8] Parsing methods...      [*]                                (0.6s @ 0.75GB)
+[5/8] Inlining methods...     [***]                              (0.3s @ 0.32GB)
+[6/8] Compiling methods...    [**]                               (3.7s @ 0.60GB)
+[7/8] Layouting methods...    [*]                                (0.8s @ 0.83GB)
+[8/8] Creating image...       [**]                               (3.1s @ 0.58GB)
+   5.32MB (24.22%) for code area:     8,702 compilation units
+   7.03MB (32.02%) for image heap:   93,301 objects and 5 resources
+   8.96MB (40.83%) for debug info generated in 1.0s
+ 659.13kB ( 2.93%) for other data
+  21.96MB in total
 --------------------------------------------------------------------------------
 Top 10 origins of code area:            Top 10 object types in image heap:
-   3.37MB java.base                     1008.75kB byte[] for code metadata
- 792.12kB svm.jar (Native Image)         995.63kB java.lang.String
- 112.32kB java.logging                   887.47kB byte[] for general heap data
-  62.07kB org.graalvm.nativeimage.base   685.47kB byte[] for java.lang.String
-  24.15kB jdk.internal.vm.ci             670.38kB java.lang.Class
-  23.14kB org.graalvm.sdk                490.13kB java.util.HashMap$Node
-   6.11kB jdk.internal.vm.compiler       297.43kB byte[] for embedded resources
-   1.35kB jdk.proxy1                     249.65kB c.o.s.c.h.DynamicHubCompanion
-   1.27kB jdk.proxy3                     195.52kB java.util.HashMap$Node[]
-   1.18kB jdk.localedata                 171.84kB java.lang.String[]
-  594.00B for 2 more packages              1.68MB for 824 more object types
+   4.03MB java.base                        1.14MB byte[] for code metadata
+ 927.05kB svm.jar (Native Image)         927.31kB java.lang.String
+ 111.71kB java.logging                   839.68kB byte[] for general heap data
+  63.38kB org.graalvm.nativeimage.base   736.91kB java.lang.Class
+  47.59kB jdk.proxy1                     713.13kB byte[] for java.lang.String
+  35.85kB jdk.proxy3                     272.85kB c.o.s.c.h.DynamicHubCompanion
+  27.06kB jdk.internal.vm.ci             250.83kB java.util.HashMap$Node
+  23.44kB org.graalvm.sdk                196.52kB java.lang.Object[]
+  11.42kB jdk.proxy2                     182.77kB java.lang.String[]
+   8.07kB jdk.internal.vm.compiler       154.26kB byte[] for embedded resources
+   1.39kB for 2 more packages              1.38MB for 884 more object types
 --------------------------------------------------------------------------------
 Recommendations:
  HEAP: Set max heap for improved and more predictable memory usage.
  CPU:  Enable more CPU features with '-march=native' for improved performance.
 --------------------------------------------------------------------------------
-    0.5s (2.0% of total time) in 17 GCs | Peak RSS: 3.29GB | CPU load: 10.97
+    0.8s (4.6% of total time) in 35 GCs | Peak RSS: 1.93GB | CPU load: 9.61
 --------------------------------------------------------------------------------
 Produced artifacts:
  /home/janedoe/helloworld/helloworld (executable)
  /home/janedoe/helloworld/helloworld.debug (debug_info)
  /home/janedoe/helloworld/sources (debug_info)
 ================================================================================
-Finished generating 'helloworld' in 23.3s.
+Finished generating 'helloworld' in 17.0s.
 ```
 
 ## Build Stages
@@ -87,7 +87,8 @@ Please report version and vendor when you [file issues](https://github.com/oracl
 #### <a name="glossary-graal-compiler"></a>Graal Compiler
 The selected optimization level and targeted machine type used by the Graal compiler.
 The optimization level can be controlled with the `-O` option and defaults to `2`, which enables aggressive optimizations.
-Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#stage-compiling) during development.
+Use `-Ob` to enable quick build mode, which speeds up the [compilation stage](#stage-compiling).
+This is useful during development, or when peak throughput is less important and you would like to optimize for size.
 The targeted machine type can be selected with the `-march` option and defaults to `x86-64-v3` on AMD64 and `armv8-a` on AArch64.
 See [here](#recommendation-cpu) for recommendations on how to use this option.
 
@@ -257,7 +258,10 @@ Increase the amount of available memory to reduce the time to build the native b
 #### <a name="glossary-peak-rss"></a>Peak RSS
 Peak [resident set size](https://en.wikipedia.org/wiki/Resident_set_size) as reported by the operating system.
 This value indicates the maximum amount of memory consumed by the build process.
-If the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of available memory of the system can be reduced to a value closer to the peak RSS.
+By default, the process will only use available memory, so memory that the operating system can make available without having to swap out memory used by other processes.
+Therefore, consider freeing up memory if builds are slow, for example, by closing applications that you do not need.
+Note that, by default, the build process will also not use more than 32GB if available.
+If the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of total memory of the system can be reduced to a value closer to the peak RSS to lower operational costs.
 
 #### <a name="glossary-cpu-load"></a>CPU load
 The CPU time used by the process divided by the total process time.
