@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.thread;
 
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
@@ -36,7 +37,6 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Sched;
@@ -62,14 +62,16 @@ public final class PosixVMThreads extends VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected OSThreadId getCurrentOSThreadId() {
-        if (IsDefined.isDarwin()) {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
             Pthread.pthread_t pthread = Pthread.pthread_self();
             return WordFactory.unsigned(DarwinPthread.pthread_mach_thread_np(pthread));
+        } else if (Platform.includedIn(Platform.LINUX.class)) {
+            int result = LinuxLibCHelper.getThreadId();
+            VMError.guarantee(result != -1, "SYS_gettid failed");
+            return WordFactory.signed(result);
         }
 
-        LinuxPthread.pid_t result = LinuxLibCHelper.getThreadId();
-        VMError.guarantee(result.rawValue() != -1, "SYS_gettid failed");
-        return result;
+        throw VMError.unsupportedFeature("PosixVMThreads.getCurrentOSThreadId() on unknown OS");
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

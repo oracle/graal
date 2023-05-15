@@ -27,6 +27,7 @@ package com.oracle.svm.core.posix.thread;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -60,7 +61,6 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
-import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
@@ -161,7 +161,7 @@ public final class PosixPlatformThreads extends PlatformThreads {
             return;
         }
 
-        if (IsDefined.isDarwin() && thread != Thread.currentThread()) {
+        if (Platform.includedIn(Platform.DARWIN.class) && thread != Thread.currentThread()) {
             /* Darwin only allows setting the name of the current thread. */
             return;
         }
@@ -171,9 +171,9 @@ public final class PosixPlatformThreads extends PlatformThreads {
         final String pthreadName = name.substring(startIndex);
         assert pthreadName.length() < 16 : "thread name for pthread has a maximum length of 16 characters including the terminating 0";
         try (CCharPointerHolder threadNameHolder = CTypeConversion.toCString(pthreadName)) {
-            if (IsDefined.isLinux()) {
+            if (Platform.includedIn(Platform.LINUX.class)) {
                 LinuxPthread.pthread_setname_np(getPthreadIdentifier(thread), threadNameHolder.get());
-            } else if (IsDefined.isDarwin()) {
+            } else if (Platform.includedIn(Platform.DARWIN.class)) {
                 assert thread == Thread.currentThread() : "Darwin only allows setting the name of the current thread";
                 DarwinPthread.pthread_setname_np(threadNameHolder.get());
             } else {
