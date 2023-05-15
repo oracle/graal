@@ -64,7 +64,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
         FILETIME exit = StackValue.get(FILETIME.class);
         FILETIME kernel = StackValue.get(FILETIME.class);
         FILETIME user = StackValue.get(FILETIME.class);
-        if (!Process.NoTransitions.GetThreadTimes(hThread, create, exit, kernel, user)) {
+        if (Process.NoTransitions.GetThreadTimes(hThread, create, exit, kernel, user) == 0) {
             return -1;
         }
 

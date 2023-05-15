@@ -152,6 +152,6 @@ public class Process {
         public static native void WakeAllConditionVariable(PCONDITION_VARIABLE cond);
 
         @CFunction(transition = Transition.NO_TRANSITION)
-        public static native boolean GetThreadTimes(HANDLE hThread, FILETIME creationTime, FILETIME exitTime, FILETIME kernelTime, FILETIME userTime);
+        public static native int GetThreadTimes(HANDLE hThread, FILETIME creationTime, FILETIME exitTime, FILETIME kernelTime, FILETIME userTime);
     }
 }
