@@ -175,6 +175,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
             }
             return result;
         }
+
+        @Override
+        protected boolean shouldVerifyFrameStates() {
+            return true;
+        }
     }
 
     @Override

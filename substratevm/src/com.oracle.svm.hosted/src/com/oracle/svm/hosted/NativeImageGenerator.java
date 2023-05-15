@@ -1002,7 +1002,6 @@ public class NativeImageGenerator {
         }
         SubstrateAnnotationExtractor annotationExtractor = (SubstrateAnnotationExtractor) loader.classLoaderSupport.annotationExtractor;
         SubstrateSnippetReflectionProvider snippetReflection = new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind()));
-        annotationExtractor.setSnippetReflection(snippetReflection);
         return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, snippetReflection, analysisFactory, annotationExtractor);
     }
 
