@@ -92,76 +92,101 @@ import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 public class CustomOperationParser extends AbstractParser<OperationModel> {
 
-    private final OperationsModel parent;
-    private final AnnotationMirror mirror;
-    private final boolean isShortCircuit;
-
-    public CustomOperationParser(OperationsModel parent, AnnotationMirror mirror) {
-        this(parent, mirror, false);
+    private enum ParseMode {
+        OPERATION,
+        OPERATION_PROXY,
+        SHORT_CIRCUIT_OPERATION
     }
 
-    public CustomOperationParser(OperationsModel parent, AnnotationMirror mirror, boolean isShortCircuit) {
+    private final OperationsModel parent;
+    private final AnnotationMirror mirror;
+    private final ParseMode mode;
+
+    private CustomOperationParser(OperationsModel parent, AnnotationMirror mirror, ParseMode mode) {
         this.parent = parent;
         this.mirror = mirror;
-        this.isShortCircuit = isShortCircuit;
+        this.mode = mode;
+    }
+
+    public static CustomOperationParser forOperation(OperationsModel parent, AnnotationMirror mirror) {
+        return new CustomOperationParser(parent, mirror, ParseMode.OPERATION);
+    }
+
+    public static CustomOperationParser forOperationProxy(OperationsModel parent, AnnotationMirror mirror) {
+        return new CustomOperationParser(parent, mirror, ParseMode.OPERATION_PROXY);
+    }
+
+    public static CustomOperationParser forShortCircuitOperation(OperationsModel parent, AnnotationMirror mirror) {
+        return new CustomOperationParser(parent, mirror, ParseMode.SHORT_CIRCUIT_OPERATION);
     }
 
     @Override
     protected OperationModel parse(Element element, List<AnnotationMirror> ignored) {
-        TypeElement te = (TypeElement) element;
+        TypeElement typeElement = (TypeElement) element;
+        OperationModel result = parseImpl(typeElement);
+        if (result.hasErrors() && mode == ParseMode.OPERATION_PROXY) {
+            AnnotationValue proxiedClassValue = ElementUtils.getAnnotationValue(mirror, "value", false);
+            parent.addError(mirror, proxiedClassValue, "Encountered errors using %s as an OperationProxy. These errors must be resolved before the DSL can proceed.", typeElement.getQualifiedName());
+        }
+        return result;
+    }
 
-        OperationKind kind = isShortCircuit
+    private OperationModel parseImpl(TypeElement typeElement) {
+        OperationKind kind = mode == ParseMode.SHORT_CIRCUIT_OPERATION
                         ? OperationKind.CUSTOM_SHORT_CIRCUIT
                         : OperationKind.CUSTOM_SIMPLE;
 
-        String name = te.getSimpleName().toString();
+        String name = typeElement.getSimpleName().toString();
         if (name.endsWith("Node")) {
             name = name.substring(0, name.length() - 4);
         }
 
-        if (mirror != null) {
-            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, isShortCircuit ? "name" : "operationName", false);
+        if (mode == ParseMode.OPERATION_PROXY) {
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "operationName", false);
+            if (nameValue != null) {
+                name = (String) nameValue.getValue();
+            }
+        } else if (mode == ParseMode.SHORT_CIRCUIT_OPERATION) {
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "name", false);
             if (nameValue != null) {
                 name = (String) nameValue.getValue();
             }
         }
 
-        OperationModel data = parent.operation(te, kind, name);
+        OperationModel data = parent.operation(typeElement, kind, name);
 
         if (name.contains("_")) {
             data.addError("Operation class name cannot contain underscores.");
         }
 
-        if (mirror != null) {
-            data.proxyMirror = mirror;
-        }
+        data.annotationMirror = mirror;
 
-        boolean isNode = isAssignable(te.asType(), types.NodeInterface);
+        boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);
 
         if (!isNode) {
             // operation specification
 
-            if (!te.getModifiers().contains(Modifier.FINAL)) {
+            if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
                 data.addError("Operation class must be declared final. Inheritance in operation specifications is not supported.");
             }
 
-            if (te.getEnclosingElement().getKind() != ElementKind.PACKAGE && !te.getModifiers().contains(Modifier.STATIC)) {
+            if (typeElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !typeElement.getModifiers().contains(Modifier.STATIC)) {
                 data.addError("Operation class must not be an inner class (non-static nested class). Declare the class as static.");
             }
 
-            if (te.getModifiers().contains(Modifier.PRIVATE)) {
+            if (typeElement.getModifiers().contains(Modifier.PRIVATE)) {
                 data.addError("Operation class must not be declared private. Remove the private modifier to make it visible.");
             }
 
             // TODO: Add cross-package visibility check
 
-            if (!ElementUtils.isObject(te.getSuperclass()) || !te.getInterfaces().isEmpty()) {
+            if (!ElementUtils.isObject(typeElement.getSuperclass()) || !typeElement.getInterfaces().isEmpty()) {
                 data.addError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.");
             }
 
             // Ensure all non-private methods are static (except the default 0-argument
             // constructor).
-            for (Element el : te.getEnclosedElements()) {
+            for (Element el : typeElement.getEnclosedElements()) {
                 if (el.getModifiers().contains(Modifier.PRIVATE)) {
                     continue;
                 }
@@ -175,7 +200,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             }
         }
 
-        for (ExecutableElement cel : findSpecializations(te)) {
+        for (ExecutableElement cel : findSpecializations(typeElement)) {
             if (!cel.getModifiers().contains(Modifier.STATIC)) {
                 data.addError("Operation specifications can only contain static specializations. Use @Bind(\"this\") parameter if you need a Node instance.");
             }
@@ -187,7 +212,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
 
         CodeTypeElement nodeType;
         if (isNode) {
-            nodeType = cloneTypeHierarchy(te, ct -> {
+            nodeType = cloneTypeHierarchy(typeElement, ct -> {
                 // Remove annotations that will cause {@link FlatNodeGenFactory} to generate
                 // unnecessary code. We programmatically add @NodeChildren later, so remove them
                 // here.
@@ -196,7 +221,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 ct.getEnclosedElements().removeIf(e -> !e.getModifiers().contains(Modifier.STATIC) || e.getModifiers().contains(Modifier.PRIVATE));
             });
         } else {
-            nodeType = CodeTypeElement.cloneShallow(te);
+            nodeType = CodeTypeElement.cloneShallow(typeElement);
             nodeType.setSuperClass(types.Node);
         }
 
@@ -230,7 +255,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         }
 
         data.numChildren = signature.valueCount;
-        data.isVariadic = signature.isVariadic || isShortCircuit;
+        data.isVariadic = signature.isVariadic || isShortCircuit();
         data.isVoid = signature.isVoid;
 
         data.operationArguments = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
@@ -249,6 +274,14 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         data.instruction = createCustomInstruction(data, nodeType, signature, name);
 
         return data;
+    }
+
+    private boolean isShortCircuit() {
+        return mode == ParseMode.SHORT_CIRCUIT_OPERATION;
+    }
+
+    private boolean isProxy() {
+        return mode == ParseMode.OPERATION_PROXY;
     }
 
     private List<AnnotationMirror> createNodeChildAnnotations(Signature signature) {
@@ -360,8 +393,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
     }
 
     private InstructionModel createCustomInstruction(OperationModel data, CodeTypeElement nodeType, Signature signature, String nameSuffix) {
-        InstructionKind kind = !isShortCircuit ? InstructionKind.CUSTOM : InstructionKind.CUSTOM_SHORT_CIRCUIT;
-        String namePrefix = !isShortCircuit ? "c." : "sc.";
+        InstructionKind kind = isShortCircuit() ? InstructionKind.CUSTOM_SHORT_CIRCUIT : InstructionKind.CUSTOM;
+        String namePrefix = isShortCircuit() ? "sc." : "c.";
 
         InstructionModel instr = parent.instruction(kind, namePrefix + nameSuffix);
         instr.nodeType = nodeType;
@@ -388,7 +421,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         instr.nodeData.redirectMessages(parent);
         instr.nodeData.redirectMessagesOnGeneratedElements(parent);
 
-        if (isShortCircuit) {
+        if (isShortCircuit()) {
             instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(mirror, "continueWhen").getValue();
             instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
             instr.addImmediate(ImmediateKind.NODE, "node");
@@ -436,7 +469,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 isValid = mergeSignatures(data, signature, other, spec) && isValid;
             }
 
-            if (other != null && isShortCircuit) {
+            if (other != null && isShortCircuit()) {
                 if (spec.getReturnType().getKind() != TypeKind.BOOLEAN || other.valueCount != 1 || other.isVariadic || other.localSetterCount > 0 || other.localSetterRangeCount > 0) {
                     data.addError(spec, "Boolean converter operation specializations must only take one value parameter and return boolean.");
                     isValid = false;

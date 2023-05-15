@@ -361,7 +361,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
                 continue;
             }
 
-            new CustomOperationParser(model, op).parse(te);
+            CustomOperationParser.forOperation(model, op).parse(te);
         }
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.OperationProxy)) {
@@ -374,7 +374,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
 
             TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
 
-            new CustomOperationParser(model, mir).parse(te);
+            CustomOperationParser.forOperationProxy(model, mir).parse(te);
         }
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation)) {
@@ -387,7 +387,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
 
             TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
 
-            new CustomOperationParser(model, mir, true).parse(te);
+            CustomOperationParser.forShortCircuitOperation(model, mir).parse(te);
         }
 
         // error sync
