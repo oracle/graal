@@ -38,7 +38,6 @@ import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxTime;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.thread.VMThreads.OSThreadHandle;
 import com.oracle.svm.core.util.TimeUtils;
 
 @AutomaticallyRegisteredImageSingleton(ThreadCpuTimeSupport.class)
@@ -62,8 +61,8 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
             return LinuxLibCHelper.getThreadUserTimeSlow(tid);
         }
 
-        OSThreadHandle osThreadHandle = VMThreads.getOSThreadHandle(isolateThread);
-        return fastCpuTime(osThreadHandle);
+        pthread_t pthread = (pthread_t) VMThreads.getOSThreadHandle(isolateThread);
+        return fastCpuTime(pthread);
     }
 
     /**
@@ -71,9 +70,9 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      * "https://github.com/openjdk/jdk/blob/df6cf1e41d0fc2dd5f5c094f66c7c8969cf5548d/src/hotspot/os/linux/os_linux.cpp#L4976">fast_cpu_time(...)</a>.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static long fastCpuTime(OSThreadHandle osThreadHandle) {
+    private static long fastCpuTime(pthread_t pthread) {
         CIntPointer threadsClockId = StackValue.get(Integer.BYTES);
-        if (LinuxPthread.pthread_getcpuclockid((pthread_t) osThreadHandle, threadsClockId) != 0) {
+        if (LinuxPthread.pthread_getcpuclockid(pthread, threadsClockId) != 0) {
             return -1;
         }
         return fastThreadCpuTime(threadsClockId.read());

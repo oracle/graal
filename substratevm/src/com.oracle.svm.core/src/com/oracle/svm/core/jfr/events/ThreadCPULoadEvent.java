@@ -153,8 +153,7 @@ public class ThreadCPULoadEvent {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
-        long threadCpuTime = ThreadCpuTimeSupport.getInstance().getThreadCpuTime(
-                        VMThreads.findOSThreadHandleForIsolateThread(isolateThread), includeSystemTime);
+        long threadCpuTime = ThreadCpuTimeSupport.getInstance().getThreadCpuTime(isolateThread, includeSystemTime);
         return (threadCpuTime < 0) ? 0 : threadCpuTime;
     }
 
