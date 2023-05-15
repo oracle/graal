@@ -402,6 +402,9 @@ suite = {
             # This distribution defines a module.
             "moduleInfo" : {
                 "name" : "org.graalvm.tools.insight",
+                "exports" : [
+                  "org.graalvm.tools.insight"
+                ],
             },
             "dependencies": [
                 "org.graalvm.tools.insight",
@@ -466,13 +469,12 @@ suite = {
             "moduleInfo" : {
                 "name" : "com.oracle.truffle.tools.profiler",
                 "exports" : [
+                    # chromeinspector and smoke tests use CPUSampler
                     "com.oracle.truffle.tools.profiler",
                     # chromeinspector uses com.oracle.truffle.tools.utils.json from profiler
                     # TODO: com.oracle.truffle.tools.utils.json should become a module shared by
                     # chromeinspector, profiler, coverage, dap, lsp, warmup
                     "com.oracle.truffle.tools.utils.json to com.oracle.truffle.tools.chromeinspector",
-                    # chromeinspector uses CPUSampler
-                    "com.oracle.truffle.tools.profiler to com.oracle.truffle.tools.chromeinspector",
                 ],
             },
             "dependencies": [
