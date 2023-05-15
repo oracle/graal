@@ -420,7 +420,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         return {}
 
     def inNativeMode(self):
-        return self.jvm(self.bmSuiteArgs) == "native-image"
+        return "native-image" in self.jvm(self.bmSuiteArgs)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         return self.vmArgs(bmSuiteArgs) + ["-jar", self.applicationPath()]
