@@ -663,10 +663,8 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     @Registration(id = SHARED1, name = SHARED1, contextPolicy = ContextPolicy.SHARED)
     public static class Shared1 extends TruffleLanguage<LanguageContext> {
 
-        @SuppressWarnings("this-escape")//
-        final ContextLocal<ContextLocalValue> local = createContextLocal((e) -> new ContextLocalValue());
-        @SuppressWarnings("this-escape")//
-        final ContextThreadLocal<ContextLocalValue> threadLocal = createContextThreadLocal((e, t) -> new ContextLocalValue());
+        final ContextLocal<ContextLocalValue> local = localsBuilder.createContextLocal((e) -> new ContextLocalValue());
+        final ContextThreadLocal<ContextLocalValue> threadLocal = localsBuilder.createContextThreadLocal((e, t) -> new ContextLocalValue());
 
         @Override
         protected LanguageContext createContext(Env env) {
@@ -691,10 +689,8 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
     @Registration(id = SHARED2, name = SHARED2, contextPolicy = ContextPolicy.SHARED)
     public static class Shared2 extends TruffleLanguage<LanguageContext> {
 
-        @SuppressWarnings("this-escape")//
-        final ContextLocal<ContextLocalValue> local = createContextLocal((e) -> new ContextLocalValue());
-        @SuppressWarnings("this-escape")//
-        final ContextThreadLocal<ContextLocalValue> threadLocal = createContextThreadLocal((e, t) -> new ContextLocalValue());
+        final ContextLocal<ContextLocalValue> local = localsBuilder.createContextLocal((e) -> new ContextLocalValue());
+        final ContextThreadLocal<ContextLocalValue> threadLocal = localsBuilder.createContextThreadLocal((e, t) -> new ContextLocalValue());
 
         @Override
         protected LanguageContext createContext(Env env) {
