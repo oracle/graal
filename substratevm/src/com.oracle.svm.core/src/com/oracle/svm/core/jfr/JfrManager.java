@@ -46,6 +46,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents;
 import com.oracle.svm.core.jfr.events.EveryChunkNativePeriodicEvents;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 
@@ -86,6 +87,7 @@ public class JfrManager {
         return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
             periodicEventSetup();
+            parseFlightRecorderOptions();
             if (isJFREnabled()) {
                 initRecording();
             }
@@ -102,6 +104,18 @@ public class JfrManager {
                 FlightRecorder.removePeriodicEvent(EndChunkNativePeriodicEvents::emit);
             }
         };
+    }
+
+    private static void parseFlightRecorderOptions() {
+        final Map<JfrRecorderOptionArgument, String> options = parseArguments(SubstrateOptions.FlightRecorderOptions, JfrRecorderOptionArgument.values());
+        final String oldObjectQueueSizeArg = options.get(JfrRecorderOptionArgument.OldObjectQueueSize);
+        if (oldObjectQueueSizeArg != null) {
+            try {
+                SubstrateJVM.getJfrOldObjectProfiler().configure(Integer.parseInt(oldObjectQueueSizeArg));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Unable to parse old object queue size argument", e);
+            }
+        }
     }
 
     private static void parseFlightRecorderLogging(String option) {
@@ -299,16 +313,19 @@ public class JfrManager {
     }
 
     private static Map<JfrStartArgument, String> parseStartFlightRecording() {
-        Map<JfrStartArgument, String> optionsMap = new HashMap<>();
-        String text = SubstrateOptions.StartFlightRecording.getValue();
+        return parseArguments(SubstrateOptions.StartFlightRecording, JfrStartArgument.values());
+    }
+
+    private static <T extends JfrCmdLineArgument> Map<T, String> parseArguments(RuntimeOptionKey<String> runtimeOptionKey, T[] possibleArguments) {
+        Map<T, String> optionsMap = new HashMap<>();
+        String text = runtimeOptionKey.getValue();
         if (!text.isEmpty()) {
-            JfrStartArgument[] possibleArguments = JfrStartArgument.values();
             String[] options = text.split(",");
             for (String option : options) {
                 String[] keyVal = option.split("=");
-                JfrStartArgument arg = findArgument(possibleArguments, keyVal[0]);
+                T arg = findArgument(possibleArguments, keyVal[0]);
                 if (arg == null) {
-                    throw VMError.shouldNotReachHere("Unknown argument '" + keyVal[0] + "' in " + SubstrateOptions.StartFlightRecording.getName());
+                    throw VMError.shouldNotReachHere("Unknown argument '" + keyVal[0] + "' in " + runtimeOptionKey.getName());
                 }
                 optionsMap.put(arg, keyVal[1]);
             }
@@ -432,16 +449,20 @@ public class JfrManager {
         return idx;
     }
 
-    private static JfrStartArgument findArgument(JfrStartArgument[] possibleArguments, String value) {
-        for (JfrStartArgument arg : possibleArguments) {
-            if (arg.cmdLineKey.equals(value)) {
+    private static <T extends JfrCmdLineArgument> T findArgument(T[] possibleArguments, String value) {
+        for (T arg : possibleArguments) {
+            if (arg.getCmdLineKey().equals(value)) {
                 return arg;
             }
         }
         return null;
     }
 
-    private enum JfrStartArgument {
+    private interface JfrCmdLineArgument {
+        String getCmdLineKey();
+    }
+
+    private enum JfrStartArgument implements JfrCmdLineArgument {
         Name("name"),
         Settings("settings"),
         Delay("delay"),
@@ -457,6 +478,26 @@ public class JfrManager {
 
         JfrStartArgument(String key) {
             this.cmdLineKey = key;
+        }
+
+        @Override
+        public String getCmdLineKey() {
+            return this.cmdLineKey;
+        }
+    }
+
+    private enum JfrRecorderOptionArgument implements JfrCmdLineArgument {
+        OldObjectQueueSize("old-object-queue-size");
+
+        private final String cmdLineKey;
+
+        JfrRecorderOptionArgument(String key) {
+            this.cmdLineKey = key;
+        }
+
+        @Override
+        public String getCmdLineKey() {
+            return cmdLineKey;
         }
     }
 }

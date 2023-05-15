@@ -30,6 +30,9 @@ import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLA
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
 import jdk.graal.compiler.word.Word;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -75,6 +78,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.util.VMError;
+
+import java.lang.ref.WeakReference;
 
 /**
  * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
@@ -218,8 +223,11 @@ public final class ThreadLocalAllocation {
         try {
             DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().dynamicHubFromObjectHeader(objectHeader);
 
-            Object result = slowPathNewInstanceWithoutAllocating(hub);
+            UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
+            Object result = slowPathNewInstanceWithoutAllocating(hub, size);
             runSlowPathHooks();
+
+            sampleSlowPathAllocation(result, size.rawValue(), Integer.MIN_VALUE);
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -227,10 +235,9 @@ public final class ThreadLocalAllocation {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of allocation.")
-    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
+    private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub, UnsignedWord size) {
         DeoptTester.disableDeoptTesting();
         long startTicks = JfrTicks.elapsedTicks();
-        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation(size);
@@ -284,6 +291,8 @@ public final class ThreadLocalAllocation {
 
             Object result = slowPathNewArrayLikeObject0(hub, length, size, podReferenceMap);
             runSlowPathHooks();
+
+            sampleSlowPathAllocation(result, size.rawValue(), length);
             return result;
         } finally {
             StackOverflowCheck.singleton().protectYellowZone();
@@ -527,5 +536,18 @@ public final class ThreadLocalAllocation {
             allocatedBytes.set(thread, allocatedBytes.get(thread).add(usedTlabSize));
         }
         return tlab;
+    }
+
+    private static boolean sampleSlowPathAllocation(Object obj, long allocatedSize, int arrayLength) {
+        if (HasJfrSupport.get() && shouldEmitOldObjectSample()) {
+            // Instantiate weak reference before allocations are forbidden
+            return SubstrateJVM.getJfrOldObjectProfiler().sample(new WeakReference<>(obj), allocatedSize, arrayLength);
+        }
+        return false;
+    }
+
+    @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.")
+    private static boolean shouldEmitOldObjectSample() {
+        return JfrEvent.OldObjectSample.shouldEmit();
     }
 }

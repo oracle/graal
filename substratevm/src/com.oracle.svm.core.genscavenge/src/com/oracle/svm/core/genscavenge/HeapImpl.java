@@ -121,6 +121,7 @@ public final class HeapImpl extends Heap {
 
     /** A cached list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
+    private long usedAtLastGC;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl(int pageSize) {
@@ -709,6 +710,21 @@ public final class HeapImpl extends Heap {
         }
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
         return HeapChunk.getIdentityHashSalt(chunk).rawValue();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getUsedAtLastGC() {
+        return usedAtLastGC;
+    }
+
+    @Override
+    public void updateUsedAtGC() {
+        usedAtLastGC = getUncheckedUsedBytes().rawValue();
+    }
+
+    private UnsignedWord getUncheckedUsedBytes() {
+        return getOldGeneration().getUncheckedChunkBytes().add(getAccounting().getUncheckedYoungUsedBytes()).add(getAccounting().getSurvivorUsedBytes());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

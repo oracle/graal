@@ -558,6 +558,11 @@ public final class Space {
         return accounting.getAlignedChunkBytes();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    UnsignedWord getUncheckedChunkBytes() {
+        return getAlignedChunkBytes().add(accounting.getUnalignedChunkBytes());
+    }
+
     UnsignedWord computeObjectBytes() {
         assert !isEdenSpace() || areEdenBytesCorrect() : "eden bytes are only accurate during a GC, or at a safepoint after a TLAB flush";
         return computeAlignedObjectBytes().add(computeUnalignedObjectBytes());

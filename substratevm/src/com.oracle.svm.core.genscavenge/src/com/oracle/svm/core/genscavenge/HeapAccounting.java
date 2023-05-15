@@ -95,6 +95,10 @@ public final class HeapAccounting {
         return edenUsedBytes.get();
     }
 
+    UnsignedWord getUncheckedYoungUsedBytes() {
+        return youngUsedBytes.get();
+    }
+
     @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
     @SuppressWarnings("static-method")
     public UnsignedWord getSurvivorUsedBytes() {

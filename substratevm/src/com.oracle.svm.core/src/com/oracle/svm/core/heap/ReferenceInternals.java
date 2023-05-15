@@ -75,6 +75,7 @@ public final class ReferenceInternals {
     }
 
     @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T> T getReferent(Reference<T> instance) {
         return (T) SubstrateUtil.cast(instance, Target_java_lang_ref_Reference.class).referent;
     }

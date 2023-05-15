@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.heap.Heap;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -222,6 +223,7 @@ public final class GCImpl implements GC {
         GenScavengeMemoryPoolMXBeans.singleton().notifyAfterCollection();
 
         printGCAfter(cause);
+        Heap.getHeap().updateUsedAtGC();
         JfrGCHeapSummaryEvent.emit(JfrGCWhen.AFTER_GC);
 
         collectionEpoch = collectionEpoch.add(1);

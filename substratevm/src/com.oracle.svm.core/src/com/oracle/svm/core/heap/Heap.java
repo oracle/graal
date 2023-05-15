@@ -268,4 +268,9 @@ public abstract class Heap {
      */
     @Uninterruptible(reason = "Ensure that no GC can occur between this call and usage of the salt.", callerMustBe = true)
     public abstract long getIdentityHashSalt(Object obj);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract long getUsedAtLastGC();
+
+    public abstract void updateUsedAtGC();
 }
