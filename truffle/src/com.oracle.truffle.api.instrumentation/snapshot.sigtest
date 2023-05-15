@@ -376,18 +376,28 @@ meth public abstract void onThreadInitialized(com.oracle.truffle.api.TruffleCont
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument
 cons protected init()
+fld protected final com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalBuilder localsBuilder
 innr protected abstract interface static ContextLocalFactory
 innr protected abstract interface static ContextThreadLocalFactory
+innr protected final static ContextLocalBuilder
 innr public abstract interface static !annotation Registration
 innr public abstract interface static Provider
 innr public final static Env
 meth protected abstract void onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalFactory<{%%0}>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth protected final <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextThreadLocalFactory<{%%0}>)
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth protected org.graalvm.options.OptionDescriptors getContextOptionDescriptors()
 meth protected org.graalvm.options.OptionDescriptors getOptionDescriptors()
 meth protected void onDispose(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 meth protected void onFinalize(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
+supr java.lang.Object
+
+CLSS protected final static com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalBuilder
+ outer com.oracle.truffle.api.instrumentation.TruffleInstrument
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalFactory<{%%0}>)
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextThreadLocalFactory<{%%0}>)
 supr java.lang.Object
 hfds contextLocals,contextThreadLocals
 
