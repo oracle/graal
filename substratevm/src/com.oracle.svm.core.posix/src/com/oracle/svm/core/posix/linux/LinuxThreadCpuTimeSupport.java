@@ -48,7 +48,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCurrentThreadCpuTime(boolean includeSystemTime) {
         if (!includeSystemTime) {
-            LinuxPthread.pid_t tid = (LinuxPthread.pid_t) VMThreads.getOSThreadId(CurrentIsolate.getCurrentThread());
+            int tid = (int) VMThreads.getOSThreadId(CurrentIsolate.getCurrentThread()).rawValue();
             return LinuxLibCHelper.getThreadUserTimeSlow(tid);
         }
         return fastThreadCpuTime(LinuxTime.CLOCK_THREAD_CPUTIME_ID());
@@ -58,7 +58,7 @@ final class LinuxThreadCpuTimeSupport implements ThreadCpuTimeSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadCpuTime(IsolateThread isolateThread, boolean includeSystemTime) {
         if (!includeSystemTime) {
-            LinuxPthread.pid_t tid = (LinuxPthread.pid_t) VMThreads.getOSThreadId(isolateThread);
+            int tid = (int) VMThreads.getOSThreadId(isolateThread).rawValue();
             return LinuxLibCHelper.getThreadUserTimeSlow(tid);
         }
 

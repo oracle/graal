@@ -28,24 +28,18 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
-import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_t;
-import com.oracle.svm.core.thread.VMThreads.OSThreadId;
 
 // Checkstyle: stop
 
 @CContext(PosixDirectives.class)
 @CLibrary("pthread")
 public class LinuxPthread {
-    @CStruct
-    public interface pid_t extends OSThreadId {
-    }
-
     @CFunction
     public static native int pthread_setname_np(pthread_t target_thread, CCharPointer name);
 

@@ -28,13 +28,11 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
 
-import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
-
 @CLibrary(value = "libchelper", requireStatic = true)
 public class LinuxLibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native LinuxPthread.pid_t getThreadId();
+    public static native int getThreadId();
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native long getThreadUserTimeSlow(LinuxPthread.pid_t tid);
+    public static native long getThreadUserTimeSlow(int tid);
 }
