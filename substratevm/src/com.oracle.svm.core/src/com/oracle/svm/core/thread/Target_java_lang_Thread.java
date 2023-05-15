@@ -360,7 +360,7 @@ public final class Target_java_lang_Thread {
         this.threadData = new ThreadData();
 
         String nameLocal = (name != null) ? name : genThreadName();
-        boolean allowThreadLocals = JavaVersionUtil.JAVA_SPEC >= 21 ? true : (characteristics & NO_THREAD_LOCALS) == 0;
+        boolean allowThreadLocals = JavaVersionUtil.JAVA_SPEC >= 21 || (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initializeNewThread(this, g, target, nameLocal, stackSize, acc, allowThreadLocals, inheritThreadLocals);
 
@@ -388,7 +388,7 @@ public final class Target_java_lang_Thread {
         this.tid = Target_java_lang_Thread_ThreadIdentifiers.next();
         this.inheritedAccessControlContext = Target_java_lang_Thread_Constants.NO_PERMISSIONS_ACC;
 
-        boolean allowThreadLocals = JavaVersionUtil.JAVA_SPEC >= 21 ? true : (characteristics & NO_THREAD_LOCALS) == 0;
+        boolean allowThreadLocals = JavaVersionUtil.JAVA_SPEC >= 21 || (characteristics & NO_THREAD_LOCALS) == 0;
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initNewThreadLocalsAndLoader(this, allowThreadLocals, inheritThreadLocals, Thread.currentThread());
 
