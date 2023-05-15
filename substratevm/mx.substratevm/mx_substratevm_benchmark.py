@@ -588,7 +588,12 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return ["9.12-MR1-git+2baec49"]
 
     def daCapoIterations(self):
-        return _daCapo_iterations
+        iterations = _daCapo_iterations.copy()
+        jdk = mx.get_jdk()
+        if "avrora" in iterations and jdk.javaCompliance >= '21':
+            # avrora uses java.lang.Compiler which was removed in JDK 21 (JDK-8307125)
+            del iterations["avrora"]
+        return iterations
 
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
