@@ -82,6 +82,10 @@ public class ClassSetContentsAccumulator {
         return strings;
     }
 
+    public boolean isCodePointSetOnly() {
+        return strings.isEmpty();
+    }
+
     public boolean mayContainStrings() {
         return mayContainStrings;
     }
@@ -89,16 +93,5 @@ public class ClassSetContentsAccumulator {
     public void clear() {
         codePointSet.clear();
         strings.clear();
-    }
-
-    public ClassSetContents finish(boolean invert, Encoding encoding) {
-        if (invert) {
-            assert !mayContainStrings && strings.isEmpty();
-            return ClassSetContents.createCharacterClass(codePointSet.toCodePointSet().createInverse(encoding));
-        } else {
-            EconomicSet<String> stringsCopy = EconomicSet.create(strings.size());
-            stringsCopy.addAll(strings);
-            return ClassSetContents.createClass(codePointSet.toCodePointSet(), stringsCopy, mayContainStrings);
-        }
     }
 }

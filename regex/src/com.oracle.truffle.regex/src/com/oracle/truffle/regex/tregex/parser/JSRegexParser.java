@@ -51,6 +51,7 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.CaseFoldTable.CaseFoldingAlgorithm;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
@@ -72,16 +73,8 @@ public final class JSRegexParser implements RegexParser {
         this.globals = language.parserGlobals;
         this.source = source;
         this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new JSRegexLexer(source, flags);
+        this.lexer = new JSRegexLexer(source, flags, compilationBuffer);
         this.astBuilder = new RegexASTBuilder(language, source, flags, flags.isEitherUnicode(), compilationBuffer);
-    }
-
-    public JSRegexParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer, RegexSource originalSource) throws RegexSyntaxException {
-        this.globals = language.parserGlobals;
-        this.source = source;
-        this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new JSRegexLexer(source, flags);
-        this.astBuilder = new RegexASTBuilder(language, originalSource, flags, flags.isEitherUnicode(), compilationBuffer);
     }
 
     public static Group parseRootLess(RegexLanguage language, String pattern) throws RegexSyntaxException {
@@ -146,7 +139,6 @@ public final class JSRegexParser implements RegexParser {
                         astBuilder.replaceCurTermWithDeadNode();
                         break;
                     }
-                    // TODO: Check that this is correct for UnicodeSets.
                     if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
                         astBuilder.addCopy(token, globals.getJsUnicodeIgnoreCaseWordBoundarySubstitution());
                     } else {
@@ -161,7 +153,6 @@ public final class JSRegexParser implements RegexParser {
                         astBuilder.replaceCurTermWithDeadNode();
                         break;
                     }
-                    // TODO: Check that this is correct for UnicodeSets.
                     if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
                         astBuilder.addCopy(token, globals.getJsUnicodeIgnoreCaseNonWordBoundarySubsitution());
                     } else {
@@ -211,7 +202,7 @@ public final class JSRegexParser implements RegexParser {
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
                 case classSet:
-                    astBuilder.addClassSet((Token.ClassSet) token);
+                    astBuilder.addClassSet((Token.ClassSet) token, flags.isIgnoreCase() ? CaseFoldingAlgorithm.ECMAScriptUnicode : null);
                     break;
             }
         }

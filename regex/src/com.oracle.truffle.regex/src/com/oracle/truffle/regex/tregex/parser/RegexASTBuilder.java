@@ -522,7 +522,9 @@ public final class RegexASTBuilder {
      * @param token aside from the source sections, the token most importantly contains the set of
      *            code points and strings to be included in the class set
      */
-    public void addClassSet(Token.ClassSet token) {
+    public void addClassSet(Token.ClassSet token, CaseFoldTable.CaseFoldingAlgorithm caseUnfoldAlgo) {
+        CodePointSetAccumulator buf = compilationBuffer.getCodePointSetAccumulator1();
+
         ClassSetContents contents = token.getContents();
         pushGroup();
 
@@ -531,27 +533,35 @@ public final class RegexASTBuilder {
         Arrays.sort(sortedStrings, Comparator.comparingInt(String::length).reversed());
         boolean firstString = true;
         for (String string : sortedStrings) {
+            if (string.isEmpty()) {
+                continue;
+            }
             if (firstString) {
                 firstString = false;
             } else {
                 nextSequence();
             }
-            if (string.isEmpty()) {
-                continue;
-            }
-            if (shouldExplodeUTF16()) {
-                string.chars().forEachOrdered(ch -> addCharClass(CodePointSet.create(ch)));
-            } else {
-                string.codePoints().forEachOrdered(cp -> addCharClass(CodePointSet.create(cp)));
-            }
+            string.codePoints().forEachOrdered(cp -> {
+                if (caseUnfoldAlgo != null) {
+                    buf.clear();
+                    buf.addCodePoint(cp);
+                    CaseFoldTable.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
+                    addCharClass(buf.toCodePointSet());
+                } else {
+                    addCharClass(CodePointSet.create(cp));
+                }
+            });
         }
 
-        CodePointSet codePointSet = pruneCharClass(contents.getCodePointSet());
-        if (!codePointSet.isEmpty()) {
-            if (shouldExplodeUTF16()) {
-                addTerm(translateUnicodeCharClass(codePointSet, token, codePointSet.matchesSingleChar()));
+        if (!contents.getCodePointSet().isEmpty()) {
+            nextSequence();
+            if (caseUnfoldAlgo != null) {
+                buf.clear();
+                buf.addSet(contents.getCodePointSet());
+                CaseFoldTable.applyCaseFoldUnfold(buf, compilationBuffer.getCodePointSetAccumulator2(), caseUnfoldAlgo);
+                addCharClass(buf.toCodePointSet());
             } else {
-                addTerm(createCharClass(codePointSet, token, codePointSet.matchesSingleChar()));
+                addCharClass(contents.getCodePointSet());
             }
         }
 

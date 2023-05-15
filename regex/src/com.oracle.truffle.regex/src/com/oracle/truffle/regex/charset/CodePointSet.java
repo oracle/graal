@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.charset;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -107,6 +108,14 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
         return constant;
     }
 
+    public static CodePointSet create(SortedListOfRanges ranges) {
+        CodePointSetAccumulator accum = new CodePointSetAccumulator();
+        for (int i = 0; i < ranges.size(); i++) {
+            accum.addRange(ranges.getLo(i), ranges.getHi(i));
+        }
+        return accum.toCodePointSet();
+    }
+
     private static CodePointSet checkConstants(int[] ranges, int length) {
         if (length == 0) {
             return CONSTANT_EMPTY;
@@ -153,6 +162,10 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
     @Override
     public CodePointSet createInverse(Encoding encoding) {
         return createInverse(this, encoding);
+    }
+
+    public CodePointSet createInverse(CodePointSet allCharacters, CompilationBuffer compilationBuffer) {
+        return createInverse(compilationBuffer.getEncoding()).subtract(allCharacters, compilationBuffer);
     }
 
     public static CodePointSet createInverse(SortedListOfRanges src, Encoding encoding) {

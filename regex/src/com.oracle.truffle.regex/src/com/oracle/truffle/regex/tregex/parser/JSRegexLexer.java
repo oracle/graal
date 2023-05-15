@@ -51,6 +51,7 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class JSRegexLexer extends RegexLexer {
@@ -62,10 +63,9 @@ public final class JSRegexLexer extends RegexLexer {
     private static final TBitSet CLASS_SET_RESERVED_PUNCTUATORS = TBitSet.valueOf('!', '#', '%', '&', ',', '-', ':', ';', '<', '=', '>', '@', '`', '~');
     private static final TBitSet CLASS_SET_RESERVED_DOUBLE_PUNCTUATORS = TBitSet.valueOf('!', '#', '$', '%', '&', '*', '+', ',', '.', ':', ';', '<', '=', '>', '?', '@', '^', '`', '~');
     private final RegexFlags flags;
-    private final CodePointSetAccumulator caseFoldTmp = new CodePointSetAccumulator();
 
-    public JSRegexLexer(RegexSource source, RegexFlags flags) {
-        super(source);
+    public JSRegexLexer(RegexSource source, RegexFlags flags, CompilationBuffer compilationBuffer) {
+        super(source, compilationBuffer);
         this.flags = flags;
     }
 
@@ -120,10 +120,27 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void caseFold(CodePointSetAccumulator charClass) {
-        // TODO: Do not case-fold here UnicodeSets mode.
-        CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
-        CaseFoldTable.applyCaseFold(charClass, caseFoldTmp, caseFolding);
+    protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
+        CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isEitherUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+        CaseFoldTable.applyCaseFoldUnfold(charClass, compilationBuffer.getCodePointSetAccumulator1(), caseFolding);
+    }
+
+    @Override
+    protected CodePointSet complementClassSet(CodePointSet codePointSet) {
+        if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
+            return codePointSet.createInverse(Constants.FOLDABLE_CHARACTERS, compilationBuffer);
+        } else {
+            return codePointSet.createInverse(source.getEncoding());
+        }
+    }
+
+    @Override
+    protected ClassSetContents caseFoldClassSetAtom(ClassSetContents classSetContents) {
+        if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
+            return classSetContents.caseFold(compilationBuffer.getCodePointSetAccumulator1());
+        } else {
+            return classSetContents;
+        }
     }
 
     @Override
@@ -166,15 +183,17 @@ public final class JSRegexLexer extends RegexLexer {
             case 'D':
                 return Constants.NON_DIGITS;
             case 'w':
-                // TODO: Check that this is correct for UnicodeSets.
-                if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
+                if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
+                    return Constants.WORD_CHARS_UNICODE_SETS_IGNORE_CASE;
+                } else if (flags.isUnicode() && flags.isIgnoreCase()) {
                     return Constants.WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.WORD_CHARS;
                 }
             case 'W':
-                // TODO: Check that this is correct for UnicodeSets.
-                if (flags.isEitherUnicode() && flags.isIgnoreCase()) {
+                if (flags.isUnicodeSets() && flags.isIgnoreCase()) {
+                    return Constants.NON_WORD_CHARS_UNICODE_SETS_IGNORE_CASE;
+                } else if (flags.isUnicode() && flags.isIgnoreCase()) {
                     return Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.NON_WORD_CHARS;

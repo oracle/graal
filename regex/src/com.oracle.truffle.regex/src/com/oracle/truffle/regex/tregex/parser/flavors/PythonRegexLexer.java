@@ -57,7 +57,9 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.PyErrorMessages;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+import com.oracle.truffle.regex.tregex.parser.ClassSetContents;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -160,8 +162,8 @@ public final class PythonRegexLexer extends RegexLexer {
     private final CodePointSetAccumulator caseFoldTmp = new CodePointSetAccumulator();
     private PythonLocaleData localeData;
 
-    public PythonRegexLexer(RegexSource source, PythonREMode mode) {
-        super(source);
+    public PythonRegexLexer(RegexSource source, PythonREMode mode, CompilationBuffer compilationBuffer) {
+        super(source, compilationBuffer);
         this.mode = mode;
         this.globalFlags = new PythonFlags(source.getFlags());
         parseInlineGlobalFlags();
@@ -371,13 +373,23 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void caseFold(CodePointSetAccumulator charClass) {
+    protected void caseFoldUnfold(CodePointSetAccumulator charClass) {
         if (getLocalFlags().isLocale()) {
-            getLocaleData().caseFold(charClass, caseFoldTmp);
+            getLocaleData().caseFoldUnfold(charClass, caseFoldTmp);
         } else {
             CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode(mode) ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
-            CaseFoldTable.applyCaseFold(charClass, caseFoldTmp, caseFolding);
+            CaseFoldTable.applyCaseFoldUnfold(charClass, caseFoldTmp, caseFolding);
         }
+    }
+
+    @Override
+    protected CodePointSet complementClassSet(CodePointSet codePointSet) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    protected ClassSetContents caseFoldClassSetAtom(ClassSetContents classSetContents) {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override

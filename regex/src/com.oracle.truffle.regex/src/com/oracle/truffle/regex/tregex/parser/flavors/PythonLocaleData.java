@@ -98,7 +98,7 @@ public final class PythonLocaleData {
         return nonWordChars;
     }
 
-    public void caseFold(CodePointSetAccumulator charClass, CodePointSetAccumulator copy) {
+    public void caseFoldUnfold(CodePointSetAccumulator charClass, CodePointSetAccumulator copy) {
         charClass.copyTo(copy);
         int iFolding = 0;
         for (Range r : copy) {

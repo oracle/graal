@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 
 public class JSRegexValidator implements RegexValidator {
 
@@ -59,7 +60,7 @@ public class JSRegexValidator implements RegexValidator {
     public JSRegexValidator(RegexSource source) {
         this.source = source;
         this.flags = RegexFlags.parseFlags(source);
-        this.lexer = new JSRegexLexer(source, flags);
+        this.lexer = new JSRegexLexer(source, flags, new CompilationBuffer(source.getEncoding()));
     }
 
     @Override
