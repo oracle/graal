@@ -135,7 +135,7 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getfullargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName()
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
@@ -453,7 +453,11 @@ class NativeImageVM(GraalVm):
     def extract_benchmark_arguments(args):
         i = 0
         clean_args = args[:]
+        split_run = None
         while i < len(args):
+            if args[i].startswith('--split-run'):
+                split_run = clean_args.pop(i + 1)
+                clean_args.pop(i)
             if args[i].startswith('--jvmArgsPrepend'):
                 clean_args[i + 1] = ' '.join([x for x in args[i + 1].split(' ') if "-Dnative-image" not in x])
                 i += 2
@@ -486,7 +490,7 @@ class NativeImageVM(GraalVm):
                     image_vm_args.append(vm_arg)
                     i += 1
 
-        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args
+        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args, split_run
 
     class Stages:
         def __init__(self, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
@@ -539,6 +543,9 @@ class NativeImageVM(GraalVm):
             self.stderr_file.flush()
 
             if self.exit_code == 0 and (tb is None):
+                if self.config.split_run:
+                    with open(self.config.split_run, 'a') as stdout:
+                        stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.current_stage + ': PASS\n')
                 self.successfully_finished_stages.append(self.current_stage)
                 if self.current_stage.startswith(self.config.last_stage):
                     self.bench_out(self.get_timestamp() + 'Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
@@ -547,6 +554,9 @@ class NativeImageVM(GraalVm):
 
                 self.separator_line()
             else:
+                if self.config.split_run:
+                    with open(self.config.split_run, 'a') as stdout:
+                        stdout.write(self.get_timestamp() + self.config.bmSuite.name() + ':' + self.config.benchmark_name + ' ' + self.current_stage + ': FAILURE\n')
                 self.failed = True
                 if self.exit_code is not None and self.exit_code != 0:
                     mx.log(mx.colorize(self.get_timestamp() + 'Failed in stage ' + self.current_stage + ' for ' + self.final_image_name + ' with exit code ' + str(self.exit_code), 'red'))
