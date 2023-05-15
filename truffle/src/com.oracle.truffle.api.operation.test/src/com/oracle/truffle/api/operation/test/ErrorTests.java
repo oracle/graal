@@ -208,6 +208,15 @@ public class ErrorTests {
     }
 
     @GenerateOperations(languageClass = ErrorLanguage.class)
+    @ExpectError({
+                    "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.NonFinalOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.NonStaticInnerOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.PrivateOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.CloneableOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.BadSignatureOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+    })
     @OperationProxy(NonFinalOperationProxy.class)
     @OperationProxy(NonStaticInnerOperationProxy.class)
     @OperationProxy(PrivateOperationProxy.class)
@@ -291,7 +300,7 @@ public class ErrorTests {
         }
     }
 
-    // Proxy node definitions
+// Proxy node definitions
 
     @ExpectError("Operation class must be declared final. Inheritance in operation specifications is not supported.")
     public static class NonFinalOperationProxy {
@@ -360,7 +369,7 @@ public class ErrorTests {
     public static final class Underscored_Operation_Proxy {
     }
 
-    // todo: test for bad quicken decision when we parse those
+// todo: test for bad quicken decision when we parse those
     @ExpectError({
                     "Unknown optimization decision type: 'MadeUpType'.",
                     "Error reading optimization decisions: Super-instruction 'si.made.up.instruction' defines a sub-instruction 'made.up.instruction' which does not exist.",

@@ -88,7 +88,7 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
     public final String name;
 
     public final TypeElement templateType;
-    public AnnotationMirror proxyMirror;
+    public AnnotationMirror annotationMirror;
 
     public boolean isTransparent;
     public boolean isVoid;
@@ -161,7 +161,7 @@ public class OperationModel extends MessageContainer implements InfoDumpable {
 
     @Override
     public AnnotationMirror getMessageAnnotation() {
-        return proxyMirror;
+        return annotationMirror;
     }
 
     @Override
