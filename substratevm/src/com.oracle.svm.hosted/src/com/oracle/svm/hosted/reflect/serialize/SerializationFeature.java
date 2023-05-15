@@ -25,7 +25,6 @@
  */
 package com.oracle.svm.hosted.reflect.serialize;
 
-import static com.oracle.svm.hosted.reflect.serialize.SerializationFeature.capturingClasses;
 import static com.oracle.svm.hosted.reflect.serialize.SerializationFeature.warn;
 
 import java.io.Externalizable;
@@ -59,8 +58,10 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -92,6 +93,7 @@ import com.oracle.svm.hosted.reflect.RecordUtils;
 import com.oracle.svm.hosted.reflect.ReflectionFeature;
 import com.oracle.svm.hosted.reflect.proxy.DynamicProxyFeature;
 import com.oracle.svm.hosted.reflect.proxy.ProxyRegistry;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.reflect.ReflectionFactory;
@@ -105,7 +107,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticallyRegisteredFeature
 public class SerializationFeature implements InternalFeature {
-    static final Set<Class<?>> capturingClasses = ConcurrentHashMap.newKeySet();
+    final Set<Class<?>> capturingClasses = ConcurrentHashMap.newKeySet();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
@@ -143,7 +145,10 @@ public class SerializationFeature implements InternalFeature {
     }
 
     @SuppressWarnings("try")
-    private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, DebugContext debug) {
+    private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, OptionValues options) {
+        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getName());
+        DebugContext debug = new DebugContext.Builder(options, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).description(description).build();
+
         HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug)
                         .method(method)
@@ -211,9 +216,9 @@ public class SerializationFeature implements InternalFeature {
     }
 
     @SuppressWarnings("try")
-    private static void registerLambdasFromMethod(ResolvedJavaMethod method, DebugContext debug) {
+    private static void registerLambdasFromMethod(ResolvedJavaMethod method, OptionValues options) {
         GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
-        StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, debug);
+        StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, options);
         registerLambdasFromConstantNodesInGraph(graph);
     }
 
@@ -227,6 +232,7 @@ public class SerializationFeature implements InternalFeature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+        OptionValues options = impl.getBigBang().getOptions();
         serializationBuilder.flushConditionalConfiguration(access);
 
         /*
@@ -240,7 +246,7 @@ public class SerializationFeature implements InternalFeature {
                         .map(metaAccess::lookupJavaType)
                         .flatMap(SerializationFeature::allExecutablesDeclaredInClass)
                         .filter(m -> m.getCode() != null)
-                        .forEach(m -> registerLambdasFromMethod(m, impl.getDebugContext()));
+                        .forEach(m -> registerLambdasFromMethod(m, options));
 
         capturingClasses.clear();
     }
@@ -447,7 +453,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         registerConditionalConfiguration(condition, () -> {
-            capturingClasses.add(serializationTargetClass);
+            ImageSingletons.lookup(SerializationFeature.class).capturingClasses.add(serializationTargetClass);
             RuntimeReflection.register(serializationTargetClass);
             RuntimeReflection.register(ReflectionUtil.lookupMethod(serializationTargetClass, "$deserializeLambda$", SerializedLambda.class));
         });
