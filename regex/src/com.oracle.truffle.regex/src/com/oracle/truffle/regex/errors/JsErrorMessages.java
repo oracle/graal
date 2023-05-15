@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.errors;
 
+import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
 
 public class JsErrorMessages {
@@ -47,12 +48,13 @@ public class JsErrorMessages {
     /* syntax errors */
 
     public static final String CHAR_CLASS_RANGE_OUT_OF_ORDER = "Range out of order in character class";
-    public static final String COMPLEMENT_OF_STRING_SET = "Using complement operator ^ on class set containing strings";
+    public static final String COMPLEMENT_OF_STRING_SET = "Negated character class may contain strings";
     public static final String EMPTY_GROUP_NAME = "Empty named capture group name";
     public static final String ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE = "Ends with an unfinished escape sequence";
     public static final String ENDS_WITH_UNFINISHED_UNICODE_PROPERTY = "Ends with an unfinished Unicode property escape";
     public static final String INCOMPLETE_QUANTIFIER = "Incomplete quantifier";
     public static final String INVALID_CHARACTER_CLASS = "Invalid character class";
+    public static final String INVALID_CHARACTER_IN_CHARACTER_CLASS = "Invalid character in character class";
     public static final String INVALID_CONTROL_CHAR_ESCAPE = "Invalid control char escape";
     public static final String INVALID_ESCAPE = "Invalid escape";
     public static final String INVALID_GROUP = "Invalid group";
@@ -95,6 +97,10 @@ public class JsErrorMessages {
 
     public static String missingClassSetOperand(RegexLexer.ClassSetOperator operator) {
         return String.format("Missing operand for %s operator", operator);
+    }
+
+    public static String invalidRegularExpression(RegexSource source, String message) {
+        return String.format("Invalid regular expression: /%s/: %s", source.getPattern(), message);
     }
 
     /* flag related errors */

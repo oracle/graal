@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.EnumSet;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
@@ -204,6 +205,8 @@ public final class JSRegexParser implements RegexParser {
                 case classSet:
                     astBuilder.addClassSet((Token.ClassSet) token, flags.isIgnoreCase() ? CaseFoldingAlgorithm.ECMAScriptUnicode : null);
                     break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
             }
         }
         if (!astBuilder.curGroupIsRoot()) {

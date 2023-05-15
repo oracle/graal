@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
@@ -117,6 +118,7 @@ public class JSRegexValidator implements RegexValidator {
                 case nonWordBoundary:
                 case backReference:
                 case charClass:
+                case classSet:
                     curTermState = CurTermState.Other;
                     break;
                 case quantifier:
@@ -168,6 +170,8 @@ public class JSRegexValidator implements RegexValidator {
                             break;
                     }
                     break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
             }
         }
         if (!syntaxStack.isEmpty()) {

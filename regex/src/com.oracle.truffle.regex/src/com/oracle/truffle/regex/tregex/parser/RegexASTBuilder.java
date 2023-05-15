@@ -179,7 +179,7 @@ public final class RegexASTBuilder {
      */
     public void pushRootGroup(boolean rootCapture) {
         RegexASTRootNode rootParent = ast.createRootNode();
-        ast.setRoot(pushGroup(null, rootCapture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup(), rootParent));
+        ast.setRoot(pushGroup(null, rootCapture ? ast.createCaptureGroup(groupCount.inc()) : ast.createGroup(), rootParent, true));
         setGroupStartPosition(ast.getRoot(), 0);
         if (options.isDumpAutomataWithSourceSections()) {
             // set leading and trailing '/' as source sections of root
@@ -208,7 +208,7 @@ public final class RegexASTBuilder {
      *            sections, or {@code null} if none
      */
     public void pushGroup(Token token) {
-        pushGroup(token, ast.createGroup(), null);
+        pushGroup(token, ast.createGroup(), null, true);
     }
 
     public void pushGroup() {
@@ -223,7 +223,7 @@ public final class RegexASTBuilder {
      *            sections, or {@code null} if none
      */
     public void pushCaptureGroup(Token token) {
-        pushGroup(token, ast.createCaptureGroup(groupCount.inc()), null);
+        pushGroup(token, ast.createCaptureGroup(groupCount.inc()), null, true);
     }
 
     public void pushCaptureGroup() {
@@ -242,7 +242,7 @@ public final class RegexASTBuilder {
         LookAheadAssertion lookAhead = ast.createLookAheadAssertion(negate);
         ast.addSourceSection(lookAhead, token);
         addTerm(lookAhead);
-        pushGroup(token, ast.createGroup(), lookAhead);
+        pushGroup(token, ast.createGroup(), lookAhead, true);
     }
 
     public void pushLookAheadAssertion(boolean negate) {
@@ -261,7 +261,7 @@ public final class RegexASTBuilder {
         LookBehindAssertion lookBehind = ast.createLookBehindAssertion(negate);
         ast.addSourceSection(lookBehind, token);
         addTerm(lookBehind);
-        pushGroup(token, ast.createGroup(), lookBehind);
+        pushGroup(token, ast.createGroup(), lookBehind, true);
     }
 
     public void pushLookBehindAssertion(boolean negate) {
@@ -279,7 +279,7 @@ public final class RegexASTBuilder {
         AtomicGroup atomicGroup = ast.createAtomicGroup();
         ast.addSourceSection(atomicGroup, token);
         addTerm(atomicGroup);
-        pushGroup(token, ast.createGroup(), atomicGroup);
+        pushGroup(token, ast.createGroup(), atomicGroup, true);
     }
 
     public void pushAtomicGroup() {
@@ -295,14 +295,14 @@ public final class RegexASTBuilder {
      */
     public void pushConditionalBackReferenceGroup(Token.BackReference token) {
         assert token.kind == Token.Kind.conditionalBackreference;
-        pushGroup(token, ast.createConditionalBackReferenceGroup(token.getGroupNr()), null);
+        pushGroup(token, ast.createConditionalBackReferenceGroup(token.getGroupNr()), null, true);
     }
 
     public void pushConditionalBackReferenceGroup(int referencedGroupNumber, boolean namedReference) {
         pushConditionalBackReferenceGroup(Token.createConditionalBackReference(referencedGroupNumber, namedReference));
     }
 
-    private Group pushGroup(Token token, Group group, RegexASTSubtreeRootNode parent) {
+    private Group pushGroup(Token token, Group group, RegexASTSubtreeRootNode parent, boolean openFirstSequence) {
         if (parent != null) {
             parent.setGroup(group);
         } else {
@@ -312,8 +312,17 @@ public final class RegexASTBuilder {
         setGroupStartPosition(group, token);
         curGroup = group;
         curGroup.setEnclosedCaptureGroupsLow(groupCount.getCount());
-        nextSequence();
+        if (openFirstSequence) {
+            nextSequence();
+        } else {
+            curSequence = null;
+            curTerm = null;
+        }
         return group;
+    }
+
+    private void pushGroup(boolean openNextSequence) {
+        pushGroup(null, ast.createGroup(), null, openNextSequence);
     }
 
     /**
@@ -526,21 +535,16 @@ public final class RegexASTBuilder {
         CodePointSetAccumulator buf = compilationBuffer.getCodePointSetAccumulator1();
 
         ClassSetContents contents = token.getContents();
-        pushGroup();
+        pushGroup(false);
 
         String[] sortedStrings = new String[contents.getStrings().size()];
         contents.getStrings().toArray(sortedStrings);
         Arrays.sort(sortedStrings, Comparator.comparingInt(String::length).reversed());
-        boolean firstString = true;
         for (String string : sortedStrings) {
             if (string.isEmpty()) {
                 continue;
             }
-            if (firstString) {
-                firstString = false;
-            } else {
-                nextSequence();
-            }
+            nextSequence();
             string.codePoints().forEachOrdered(cp -> {
                 if (caseUnfoldAlgo != null) {
                     buf.clear();

@@ -490,6 +490,11 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected RegexSyntaxException handleInvalidCharInCharClass() {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
     protected RegexSyntaxException handleInvalidGroupBeginQ() {
         retreat();
         return syntaxErrorAtAbs(PyErrorMessages.unknownExtensionQ(curChar()), getLastTokenPosition() + 1);

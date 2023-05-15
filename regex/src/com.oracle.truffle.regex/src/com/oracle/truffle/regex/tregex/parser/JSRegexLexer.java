@@ -244,7 +244,7 @@ public final class JSRegexLexer extends RegexLexer {
 
     @Override
     protected RegexSyntaxException handleComplementOfStringSet() {
-        return syntaxError(JsErrorMessages.COMPLEMENT_OF_STRING_SET);
+        return syntaxError(JsErrorMessages.invalidRegularExpression(source, JsErrorMessages.COMPLEMENT_OF_STRING_SET));
     }
 
     @Override
@@ -274,6 +274,11 @@ public final class JSRegexLexer extends RegexLexer {
     @Override
     protected void handleInvalidBackReference(String reference) {
         throw syntaxError(JsErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+    }
+
+    @Override
+    protected RegexSyntaxException handleInvalidCharInCharClass() {
+        throw syntaxError(JsErrorMessages.INVALID_CHARACTER_IN_CHARACTER_CLASS);
     }
 
     private int handleInvalidEscape(int c) {

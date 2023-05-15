@@ -236,6 +236,8 @@ public abstract class RegexLexer {
      */
     protected abstract void handleInvalidBackReference(String reference);
 
+    protected abstract RegexSyntaxException handleInvalidCharInCharClass();
+
     /**
      * Handle groups starting with {@code (?} and invalid next char.
      */
@@ -1106,6 +1108,9 @@ public abstract class RegexLexer {
 
     private ClassSetOperator parseClassSetOperator() {
         if (consumingLookahead("&&")) {
+            if (lookahead("&")) {
+                throw handleInvalidCharInCharClass();
+            }
             return ClassSetOperator.Intersection;
         } else if (consumingLookahead("--")) {
             return ClassSetOperator.Difference;
