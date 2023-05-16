@@ -154,7 +154,7 @@ public class MethodHandleFeature implements InternalFeature {
         Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
 
         access.registerReachabilityHandler(MethodHandleFeature::registerMHImplFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(mhImplClazz, "createFunction", byte.class));
+                        ReflectionUtil.lookupMethod(mhImplClazz, "getFunction", byte.class));
 
         access.registerReachabilityHandler(MethodHandleFeature::registerMHImplConstantHandlesForReflection,
                         ReflectionUtil.lookupMethod(mhImplClazz, "makeConstantHandle", int.class));
@@ -163,7 +163,7 @@ public class MethodHandleFeature implements InternalFeature {
                         access.findClassByName("java.lang.invoke.MethodHandleImpl$CountingWrapper"));
 
         access.registerReachabilityHandler(MethodHandleFeature::registerInvokersFunctionsForReflection,
-                        ReflectionUtil.lookupMethod(access.findClassByName("java.lang.invoke.Invokers"), "createFunction", byte.class));
+                        ReflectionUtil.lookupMethod(access.findClassByName("java.lang.invoke.Invokers"), "getFunction", byte.class));
 
         access.registerReachabilityHandler(MethodHandleFeature::registerValueConversionBoxFunctionsForReflection,
                         ReflectionUtil.lookupMethod(ValueConversions.class, "boxExact", Wrapper.class));

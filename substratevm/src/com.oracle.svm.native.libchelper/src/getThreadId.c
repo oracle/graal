@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, BELLSOFT. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,14 +24,20 @@
  * questions.
  */
 
-#include <stdint.h>
+#ifdef __linux__
 
-typedef struct {
-  uint8_t fI;
-  uint8_t fM;
-  uint8_t fA;
-  uint8_t fF;
-  uint8_t fD;
-  uint8_t fC;
-  uint8_t fV;
-} CPUFeatures;
+#include <sys/syscall.h>
+#include <sys/types.h>
+
+/*
+ * Based on os::Linux::gettid() from jdk-20-ga, see
+ * https://github.com/openjdk/jdk20/blob/82749901b1497f524e53e47c45708c8e4a63c8b9/src/hotspot/os/linux/os_linux.cpp#L361
+ *
+ * syscall() uses varargs, so we can't use @CFunction.
+ */
+pid_t getThreadId() {
+  return (pid_t)syscall(SYS_gettid);
+}
+
+#endif
+

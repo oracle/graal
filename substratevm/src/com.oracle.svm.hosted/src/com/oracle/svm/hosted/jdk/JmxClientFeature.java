@@ -35,6 +35,10 @@ import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import javax.management.remote.JMXServiceURL;
+import java.io.ObjectOutput;
+import java.util.Map;
+
 @AutomaticallyRegisteredFeature
 public class JmxClientFeature extends JNIRegistrationUtil implements InternalFeature {
     @Override
@@ -57,12 +61,26 @@ public class JmxClientFeature extends JNIRegistrationUtil implements InternalFea
         JNIRuntimeAccess.register(ReflectionUtil.lookupMethod(Boolean.class, "getBoolean", String.class));
     }
 
+    /**
+     * This method configures reflection metadata only required by a JMX client.
+     * <ul>
+     * <li>Register {@link com.sun.jmx.remote.protocol.rmi.ClientProvider} which can be reflectively
+     * looked up on a code path starting from
+     * {@link javax.management.remote.JMXConnectorFactory#newJMXConnector(JMXServiceURL, Map)}</li>
+     * <li>Register {@link sun.rmi.server.UnicastRef2}, which can be reflectively accessed with
+     * {@link sun.rmi.server.UnicastRef2#getRefClass(ObjectOutput)}.</li>
+     * <li>Register {@link sun.rmi.server.UnicastRef}, which can be reflectively accessed with
+     * {@link sun.rmi.server.UnicastRef#getRefClass(ObjectOutput)}.</li>
+     * </ul>
+     */
     private static void configureReflection(BeforeAnalysisAccess access) {
         RuntimeReflection.register(access.findClassByName("com.sun.jndi.url.rmi.rmiURLContextFactory"));
         RuntimeReflection.register(access.findClassByName("sun.rmi.server.UnicastRef"));
 
+        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ClientProvider"));
         RuntimeReflection.register(access.findClassByName("com.sun.jndi.url.rmi.rmiURLContextFactory").getConstructors());
         RuntimeReflection.register(access.findClassByName("sun.rmi.server.UnicastRef").getConstructors());
         RuntimeReflection.register(access.findClassByName("sun.rmi.server.UnicastRef2").getConstructors());
+        RuntimeReflection.register(access.findClassByName("com.sun.jmx.remote.protocol.rmi.ClientProvider").getConstructors());
     }
 }

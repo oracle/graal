@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation. Oracle designates this
+ * published by the Free Software Foundation.  Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,15 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.posix.linux;
 
-#include <stdint.h>
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
+import org.graalvm.nativeimage.c.function.CLibrary;
 
-typedef struct {
-  uint8_t fI;
-  uint8_t fM;
-  uint8_t fA;
-  uint8_t fF;
-  uint8_t fD;
-  uint8_t fC;
-  uint8_t fV;
-} CPUFeatures;
+@CLibrary(value = "libchelper", requireStatic = true)
+public class LinuxLibCHelper {
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int getThreadId();
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native long getThreadUserTimeSlow(int tid);
+}

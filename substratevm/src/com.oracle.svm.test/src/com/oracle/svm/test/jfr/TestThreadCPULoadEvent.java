@@ -59,18 +59,22 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
 
     private static void validateEvents(List<RecordedEvent> events) {
         assertEquals(2, events.size());
-        Map<String, Float> systemTimes = new HashMap<>();
+        Map<String, Float> userTimes = new HashMap<>();
+        Map<String, Float> cpuTimes = new HashMap<>();
 
         for (RecordedEvent e : events) {
+            String threadName = e.getThread().getJavaName();
             float userTime = e.<Float> getValue("user");
             float systemTime = e.<Float> getValue("system");
             assertTrue("User time is outside 0..1 range", 0.0 <= userTime && userTime <= 1.0);
             assertTrue("System time is outside 0..1 range", 0.0 <= systemTime && systemTime <= 1.0);
-            systemTimes.put(e.getThread().getJavaName(), systemTime);
+
+            userTimes.put(threadName, userTime);
+            cpuTimes.put(threadName, userTime + systemTime);
         }
 
-        assertTrue("Thread-1 system cpu time is greater than Thread-2 system cpu time",
-                        systemTimes.get(THREAD_NAME_1) < systemTimes.get(THREAD_NAME_2));
+        assertTrue(userTimes.get(THREAD_NAME_1) < userTimes.get(THREAD_NAME_2));
+        assertTrue(cpuTimes.get(THREAD_NAME_1) < cpuTimes.get(THREAD_NAME_2));
     }
 
     private static Thread createAndStartBusyWaitThread(String name, double busyPercent) {
