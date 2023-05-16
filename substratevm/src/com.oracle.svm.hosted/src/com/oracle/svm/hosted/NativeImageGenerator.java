@@ -1085,16 +1085,17 @@ public class NativeImageGenerator {
             bb.registerTypeAsInHeap(bb.addRootClass(CFunctionPointer[].class, false, false), "root class");
             bb.registerTypeAsInHeap(bb.addRootClass(PointerBase[].class, false, false), "root class");
 
-            bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true);
-            bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
+            bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
+                            "Runtime support, registered in " + NativeImageGenerator.class);
+            bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, "Runtime support, registered in " + NativeImageGenerator.class);
 
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
                     bb.addRootClass(kind.toJavaClass(), false, true);
                     bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap("root class");
                     bb.addRootField(kind.toBoxedJavaClass(), "value");
-                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true);
-                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true);
+                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, "Runtime support, registered in " + NativeImageGenerator.class);
+                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, "Runtime support, registered in " + NativeImageGenerator.class);
                     /*
                      * Register the cache location as reachable.
                      * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
@@ -1237,7 +1238,7 @@ public class NativeImageGenerator {
     @Platforms(Platform.HOSTED_ONLY.class)
     static class SubstitutionInvocationPlugins extends InvocationPlugins {
 
-        private AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
+        private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
         private EconomicMap<String, Integer> missingIntrinsicMetrics;
 
         SubstitutionInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {

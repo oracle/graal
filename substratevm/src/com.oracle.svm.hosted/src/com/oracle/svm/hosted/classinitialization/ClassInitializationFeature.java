@@ -170,7 +170,8 @@ public class ClassInitializationFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : EnsureClassInitializedSnippets.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true,
+                            "Class initialization foreign call, registered in " + ClassInitializationFeature.class);
         }
     }
 

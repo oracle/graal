@@ -79,13 +79,13 @@ public interface ReachabilityAnalysis {
      *            it is itself an override. If the method is static this flag is ignored.
      * @param otherRoots other versions of this method to also register as roots.
      */
-    AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots);
+    AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
 
     /**
-     * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean,
+     * @see ReachabilityAnalysis#addRootMethod(AnalysisMethod, boolean, Object,
      *      MultiMethod.MultiMethodKey...)
      */
-    AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, MultiMethod.MultiMethodKey... otherRoots);
+    AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots);
 
     default void registerAsFrozenUnsafeAccessed(AnalysisField field) {
         field.setUnsafeFrozenTypeState(true);

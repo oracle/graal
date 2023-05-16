@@ -84,7 +84,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     /**
      * Metadata about the table pointed to by the {@code JNIEnv*} C pointer.
-     * 
+     *
      * @see <a href=
      *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html#interface_function_table">Documentation
      *      for the Interface Function Table</a>
@@ -94,7 +94,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     /**
      * Metadata about the table pointed to by the {@code JavaVM*} C pointer.
-     * 
+     *
      * @see <a href=
      *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/invocation.html#invocation_api_functions">Documentation
      *      for the Invocation API Function Table</a>
@@ -158,7 +158,7 @@ public class JNIFunctionTablesFeature implements Feature {
                     JNIFieldAccessorMethod method = ImageSingletons.lookup(JNIFieldAccessorMethod.Factory.class).create(kind, isSetter, isStatic, generatedMethodClass, constantPool,
                                     wrappedMetaAccess);
                     AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
-                    access.getBigBang().addRootMethod(analysisMethod, true).registerAsEntryPoint(method.createEntryPointData());
+                    access.getBigBang().addRootMethod(analysisMethod, true, "JNI field accessors, registered in " + JNIFunctionTablesFeature.class).registerAsEntryPoint(method.createEntryPointData());
                     generated.add(method);
                 }
             }
@@ -171,7 +171,8 @@ public class JNIFunctionTablesFeature implements Feature {
             for (Operation op : Operation.values()) {
                 JNIPrimitiveArrayOperationMethod method = new JNIPrimitiveArrayOperationMethod(kind, op, generatedMethodClass, constantPool, wrappedMetaAccess);
                 AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
-                access.getBigBang().addRootMethod(analysisMethod, true).registerAsEntryPoint(method.createEntryPointData());
+                access.getBigBang().addRootMethod(analysisMethod, true, "JNI primitive array operations, registered in " + JNIFunctionTablesFeature.class)
+                                .registerAsEntryPoint(method.createEntryPointData());
                 generated.add(method);
             }
         }
@@ -269,7 +270,7 @@ public class JNIFunctionTablesFeature implements Feature {
 
     /**
      * Finds the field holding a pointer to a given method in a functions table.
-     * 
+     *
      * @param info the functions table to search in
      * @param name name of the method to search for
      * @return information about the field holding a pointer to the method named {@code name} in

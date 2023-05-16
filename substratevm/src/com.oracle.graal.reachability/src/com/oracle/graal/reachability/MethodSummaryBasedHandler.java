@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * This handler analyzes methods using method summaries, which are obtained via an instance of
  * MethodSummaryProvider.
- * 
+ *
  * @see MethodSummaryProvider
  */
 public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHandler {
@@ -102,7 +102,7 @@ public class MethodSummaryBasedHandler implements ReachabilityMethodProcessingHa
             bb.handleEmbeddedConstant(method, constant, method);
         }
         for (AnalysisMethod rootMethod : summary.foreignCallTargets) {
-            bb.addRootMethod(rootMethod, false);
+            bb.addRootMethod(rootMethod, false, method);
         }
     }
 }

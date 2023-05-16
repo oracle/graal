@@ -37,9 +37,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.code.IsolateLeaveStub;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.meta.MethodPointer;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -97,7 +97,7 @@ public final class CEntryPointCallStubSupport {
                 CEntryPointData entryPointData = entryPointDataSupplier.get();
                 CEntryPointCallStubMethod stub = CEntryPointCallStubMethod.create(method, entryPointData, bb.getMetaAccess());
                 AnalysisMethod wrapped = bb.getUniverse().lookup(stub);
-                bb.addRootMethod(wrapped, true).registerAsEntryPoint(entryPointData);
+                bb.addRootMethod(wrapped, true, "Registered in " + CEntryPointCallStubSupport.class).registerAsEntryPoint(entryPointData);
                 value = wrapped;
             }
             return value;

@@ -93,16 +93,16 @@ public final class DeoptimizationFeature implements InternalFeature {
          * The deoptimization stub is never called directly. It is patched in as the new return
          * address during deoptimization.
          */
-        access.registerAsRoot(deoptStubMethod, true);
+        access.registerAsRoot(deoptStubMethod, true, "Deoptimization stub, registered in " + DeoptimizationFeature.class);
 
         /*
          * The deoptimize run time call is not used for method in the native image, but only for
          * runtime compiled methods. Make sure it gets compiled.
          */
-        access.registerAsRoot((AnalysisMethod) DeoptimizationRuntime.DEOPTIMIZE.findMethod(access.getMetaAccess()), true);
+        access.registerAsRoot((AnalysisMethod) DeoptimizationRuntime.DEOPTIMIZE.findMethod(access.getMetaAccess()), true, "Deoptimization, registered in " + DeoptimizationFeature.class);
 
         if (DeoptTester.enabled()) {
-            access.getBigBang().addRootMethod((AnalysisMethod) DeoptTester.DEOPTTEST.findMethod(access.getMetaAccess()), true);
+            access.getBigBang().addRootMethod((AnalysisMethod) DeoptTester.DEOPTTEST.findMethod(access.getMetaAccess()), true, "Deoptimization test, registered in " + DeoptimizationFeature.class);
         }
     }
 

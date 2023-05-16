@@ -529,7 +529,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
         if (!runtimeCompiledMethodMap.containsKey(aMethod)) {
             runtimeCompiledMethodMap.put(aMethod, new CallTreeNode(aMethod, aMethod, null, ""));
-            config.registerAsRoot(aMethod, true);
+            config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + LegacyRuntimeCompilationFeature.class);
         }
 
         return sMethod;

@@ -257,7 +257,7 @@ public class JNIAccessFeature implements Feature {
         access.registerAsAccessed(access.getUniverse().lookup(field), "it is registered for JNI accessed");
         String name = JNIJavaCallTrampolineHolder.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolineHolder.class, name);
-        access.registerAsRoot(method, true);
+        access.registerAsRoot(method, true, "Registered in " + JNIAccessFeature.class);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {
@@ -290,7 +290,7 @@ public class JNIAccessFeature implements Feature {
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
 
         if (JNIAccessFeature.Options.PrintJNIMethods.getValue()) {
-            System.out.println("Creating a new JNINativeLinkage: " + key.toString());
+            System.out.println("Creating a new JNINativeLinkage: " + key);
         }
 
         return nativeLinkages.computeIfAbsent(key, linkage -> {
@@ -364,20 +364,20 @@ public class JNIAccessFeature implements Feature {
             JNIJavaCallWrapperMethod.Factory factory = ImageSingletons.lookup(JNIJavaCallWrapperMethod.Factory.class);
             AnalysisMethod aTargetMethod = universe.lookup(targetMethod);
             if (!targetMethod.isConstructor() || factory.canInvokeConstructorOnObject(targetMethod, originalMetaAccess)) {
-                access.registerAsRoot(aTargetMethod, false);
+                access.registerAsRoot(aTargetMethod, false, "JNI method, registered in " + JNIAccessFeature.class);
             } // else: function pointers will be an error stub
 
             ResolvedJavaMethod newObjectMethod = null;
             if (targetMethod.isConstructor() && !targetMethod.getDeclaringClass().isAbstract()) {
                 var aFactoryMethod = (AnalysisMethod) FactoryMethodSupport.singleton().lookup(access.getMetaAccess(), aTargetMethod, false);
-                access.registerAsRoot(aFactoryMethod, true);
+                access.registerAsRoot(aFactoryMethod, true, "JNI constructor, registered in " + JNIAccessFeature.class);
                 newObjectMethod = aFactoryMethod.getWrapped();
             }
 
             SimpleSignature compatibleSignature = JNIJavaCallWrapperMethod.getGeneralizedSignatureForTarget(targetMethod, originalMetaAccess);
             JNIJavaCallWrapperMethod callWrapperMethod = javaCallWrapperMethods.computeIfAbsent(compatibleSignature,
                             signature -> factory.create(signature, originalMetaAccess, access.getBigBang().getWordTypes()));
-            access.registerAsRoot(universe.lookup(callWrapperMethod), true);
+            access.registerAsRoot(universe.lookup(callWrapperMethod), true, "JNI call wrapper, registered in " + JNIAccessFeature.class);
 
             JNIJavaCallVariantWrapperGroup variantWrappers = createJavaCallVariantWrappers(access, callWrapperMethod.getSignature(), false);
             JNIJavaCallVariantWrapperGroup nonvirtualVariantWrappers = null;
@@ -402,7 +402,7 @@ public class JNIAccessFeature implements Feature {
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
-                access.getBigBang().addRootMethod(analysisWrapper, true);
+                access.getBigBang().addRootMethod(analysisWrapper, true, "Registerd in " + JNIAccessFeature.class);
                 analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
             });
             return new JNIJavaCallVariantWrapperGroup(varargs, array, valist);
