@@ -22,7 +22,7 @@ local common_json = import "../common.json";
     for name in ["oraclejdk20"] + variants("labsjdk-ce-20") + variants("labsjdk-ee-20")
   } + {
     [name]: common_json.jdks[name] + { jdk_version:: 21 }
-    for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
+    for name in variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
 
