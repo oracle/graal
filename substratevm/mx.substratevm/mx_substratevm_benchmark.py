@@ -588,12 +588,8 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return ["9.12-MR1-git+2baec49"]
 
     def daCapoIterations(self):
-        iterations = _daCapo_iterations.copy()
-        jdk = mx.get_jdk()
-        if "avrora" in iterations and jdk.javaCompliance >= '21':
-            # avrora uses java.lang.Compiler which was removed in JDK 21 (JDK-8307125)
-            del iterations["avrora"]
-        return iterations
+        compiler_iterations = super(DaCapoNativeImageBenchmarkSuite, self).daCapoIterations()
+        return {key: _daCapo_iterations[key] for key in compiler_iterations.keys() if key in _daCapo_iterations.keys()}
 
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
@@ -716,7 +712,8 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         return 'scala-dacapo'
 
     def daCapoIterations(self):
-        return _scala_dacapo_iterations
+        compiler_iterations = super(ScalaDaCapoNativeImageBenchmarkSuite, self).daCapoIterations()
+        return {key: _scala_dacapo_iterations[key] for key in compiler_iterations.keys() if key in _scala_dacapo_iterations.keys()}
 
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
