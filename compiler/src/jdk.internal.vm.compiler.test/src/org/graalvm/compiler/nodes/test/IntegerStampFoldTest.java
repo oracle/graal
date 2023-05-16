@@ -31,6 +31,8 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.Test;
 
+import jdk.vm.ci.meta.JavaConstant;
+
 /**
  * This class tests that integer stamps are created correctly for constants.
  */
@@ -98,12 +100,35 @@ public class IntegerStampFoldTest extends GraalTest {
             IntegerStamp constant = IntegerStamp.create(stamp.getBits(), a, a);
             IntegerStamp foldedStamp = (IntegerStamp) op.foldStamp(stamp, constant);
             assertTrue(!foldedStamp.isEmpty(), "%s %s %s is empty", stamp, op, constant);
+
+            if (a == 0 && (op.equals(IntegerStamp.OPS.getDiv()) || op.equals(IntegerStamp.OPS.getRem()))) {
+                // Can't constant fold div/rem by 0.
+                continue;
+            }
+            /*
+             * The folded stamp must contain the result of op(x, a) for all x in the original stamp.
+             * Don't test all x, but at least the stamp's lower and upper bounds.
+             */
+            JavaConstant aConstant = JavaConstant.forPrimitiveInt(stamp.getBits(), a);
+            JavaConstant lower = JavaConstant.forPrimitiveInt(stamp.getBits(), stamp.lowerBound());
+            JavaConstant lowerFolded = (JavaConstant) op.foldConstant(lower, aConstant);
+            assertTrue(foldedStamp.contains(lowerFolded.asLong()), "%s %s %s = %s, should be contained in %s", lower, op, aConstant, lowerFolded, foldedStamp);
+            JavaConstant upper = JavaConstant.forPrimitiveInt(stamp.getBits(), stamp.upperBound());
+            JavaConstant upperFolded = (JavaConstant) op.foldConstant(upper, aConstant);
+            assertTrue(foldedStamp.contains(upperFolded.asLong()), "%s %s %s = %s, should be contained in %s", upper, op, aConstant, upperFolded, foldedStamp);
         }
     }
 
     private static void testFoldStamp(ArithmeticOpTable.UnaryOp<?> op, IntegerStamp stamp) {
         IntegerStamp foldedStamp = (IntegerStamp) op.foldStamp(stamp);
         assertTrue(!foldedStamp.isEmpty(), "%s %s is empty", op, stamp);
+
+        JavaConstant lower = JavaConstant.forPrimitiveInt(stamp.getBits(), stamp.lowerBound());
+        JavaConstant lowerFolded = (JavaConstant) op.foldConstant(lower);
+        assertTrue(foldedStamp.contains(lowerFolded.asLong()), "%s %s = %s, should be contained in %s", op, lower, lowerFolded, foldedStamp);
+        JavaConstant upper = JavaConstant.forPrimitiveInt(stamp.getBits(), stamp.upperBound());
+        JavaConstant upperFolded = (JavaConstant) op.foldConstant(upper);
+        assertTrue(foldedStamp.contains(upperFolded.asLong()), "%s %s = %s, should be contained in %s", op, upper, upperFolded, foldedStamp);
     }
 
     private static void testFoldStamp(ArithmeticOpTable.ShiftOp<?> op, IntegerStamp stamp) {
@@ -111,6 +136,13 @@ public class IntegerStampFoldTest extends GraalTest {
             IntegerStamp constant = IntegerStamp.create(32, a, a);
             IntegerStamp foldedStamp = (IntegerStamp) op.foldStamp(stamp, constant);
             assertTrue(!foldedStamp.isEmpty(), "%s %s is empty", op, stamp);
+
+            JavaConstant lower = JavaConstant.forPrimitiveInt(stamp.getBits(), stamp.lowerBound());
+            JavaConstant lowerFolded = (JavaConstant) op.foldConstant(lower, (int) a);
+            assertTrue(foldedStamp.contains(lowerFolded.asLong()), "%s %s %s = %s, should be contained in %s", lower, op, a, lowerFolded, foldedStamp);
+            JavaConstant upper = JavaConstant.forPrimitiveInt(stamp.getBits(), stamp.upperBound());
+            JavaConstant upperFolded = (JavaConstant) op.foldConstant(upper, (int) a);
+            assertTrue(foldedStamp.contains(upperFolded.asLong()), "%s %s %s = %s, should be contained in %s", upper, op, a, upperFolded, foldedStamp);
         }
     }
 }
