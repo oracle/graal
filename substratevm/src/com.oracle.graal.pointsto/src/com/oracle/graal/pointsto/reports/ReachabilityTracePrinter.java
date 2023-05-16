@@ -24,45 +24,57 @@
  */
 package com.oracle.graal.pointsto.reports;
 
-import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.StringWriter;
+
+import org.graalvm.compiler.debug.MethodFilter;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import org.graalvm.compiler.debug.MethodFilter;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 public final class ReachabilityTracePrinter {
-    public static Path printTraceForTypes(String typesTraceOpt, BigBang bb, String reportsPath, String imageName) {
-        return ReportUtils.report("trace for types", reportsPath, "trace_types_" + imageName, "txt",
-                        writer -> printTraceForTypesImpl(typesTraceOpt, bb, writer));
+    private static String traceMessage(String trace) {
+        return trace.isEmpty() ? "" : ". Trace:\n" + trace;
     }
 
-    public static Path printTraceForMethods(String methodsTraceOpt, BigBang bb, String reportsPath, String imageName) {
-        return ReportUtils.report("trace for methods", reportsPath, "trace_methods_" + imageName, "txt",
-                        writer -> printTraceForMethodsImpl(methodsTraceOpt, bb, writer));
-    }
-
-    public static Path printTraceForFields(String fieldsTraceOpt, BigBang bb, String reportsPath, String imageName) {
-        return ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + imageName, "txt",
-                        writer -> printTraceForFieldsImpl(fieldsTraceOpt, bb, writer));
-    }
-
-    public static String readTrace(Path path) {
-        String content;
-        try {
-            content = Files.readString(path);
-        } catch (IOException ex) {
-            content = "";
+    public static void printTraceForTypesImpl(String typesTraceOpt, BigBang bb, String reportsPath, String imageName) {
+        StringWriter stringWriter = new StringWriter();
+        boolean reached = ReachabilityTracePrinter.printTraceForTypesImpl(typesTraceOpt, bb, new PrintWriter(stringWriter));
+        if (reached) {
+            String trace = stringWriter.toString();
+            ReportUtils.report("trace for types", reportsPath, "trace_types_" + imageName, "txt",
+                            writer -> writer.print(trace));
+            throw AnalysisError.interruptAnalysis("Compilation stopped as the type is reachable: " + typesTraceOpt + traceMessage(trace));
         }
-        return content;
     }
 
-    private static void printTraceForTypesImpl(String typesTraceOpt, BigBang bb, PrintWriter writer) {
+    public static void printTraceForMethods(String methodsTraceOpt, BigBang bb, String reportsPath, String imageName) {
+        StringWriter stringWriter = new StringWriter();
+        boolean reached = ReachabilityTracePrinter.printTraceForMethodsImpl(methodsTraceOpt, bb, new PrintWriter(stringWriter));
+        if (reached) {
+            String trace = stringWriter.toString();
+            ReportUtils.report("trace for methods", reportsPath, "trace_methods_" + imageName, "txt",
+                            writer -> writer.print(trace));
+            throw AnalysisError.interruptAnalysis("Compilation stopped as the method is reachable: " + methodsTraceOpt + traceMessage(trace));
+        }
+    }
+
+    public static void printTraceForFields(String fieldsTraceOpt, BigBang bb, String reportsPath, String imageName) {
+        StringWriter stringWriter = new StringWriter();
+        boolean reached = ReachabilityTracePrinter.printTraceForFieldsImpl(fieldsTraceOpt, bb, new PrintWriter(stringWriter));
+        if (reached) {
+            String trace = stringWriter.toString();
+            ReportUtils.report("trace for fields", reportsPath, "trace_fields_" + imageName, "txt",
+                            writer -> writer.print(trace));
+            throw AnalysisError.interruptAnalysis("Compilation stopped as the field is reachable: " + fieldsTraceOpt + traceMessage(trace));
+        }
+    }
+
+    private static boolean printTraceForTypesImpl(String typesTraceOpt, BigBang bb, PrintWriter writer) {
         String[] patterns = typesTraceOpt.split(",");
         ObjectTreePrinter.SimpleMatcher matcher = new ObjectTreePrinter.SimpleMatcher(patterns);
         for (AnalysisType type : bb.getUniverse().getTypes()) {
@@ -74,22 +86,24 @@ public final class ReachabilityTracePrinter {
                 String header = "Type " + type.toJavaName() + " is marked as allocated";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getAllocatedReason(), header);
                 writer.println(trace);
-                break;
+                return true;
             } else if (type.isInHeap()) {
                 String header = "Type " + type.toJavaName() + " is marked as in-heap";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getInHeapReason(), header);
                 writer.println(trace);
-                break;
+                return true;
             } else if (type.isReachable()) {
                 String header = "Type " + type.toJavaName() + " is marked as reachable";
                 String trace = AnalysisElement.ReachabilityTraceBuilder.buildReachabilityTrace(bb, type.getReachableReason(), header);
                 writer.println(trace);
-                break;
+                return true;
             }
         }
+
+        return false;
     }
 
-    private static void printTraceForMethodsImpl(String methodsTraceOpt, BigBang bb, PrintWriter writer) {
+    private static boolean printTraceForMethodsImpl(String methodsTraceOpt, BigBang bb, PrintWriter writer) {
         MethodFilter matcher = MethodFilter.parse(methodsTraceOpt);
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
             if (!method.isReachable() || !matcher.matches(method)) {
@@ -107,11 +121,13 @@ public final class ReachabilityTracePrinter {
             }
 
             // print the first trace to avoid overwhelming users with information
-            break;
+            return true;
         }
+
+        return false;
     }
 
-    private static void printTraceForFieldsImpl(String fieldsTraceOpt, BigBang bb, PrintWriter writer) {
+    private static boolean printTraceForFieldsImpl(String fieldsTraceOpt, BigBang bb, PrintWriter writer) {
         String[] patterns = fieldsTraceOpt.split(",");
         ObjectTreePrinter.SimpleMatcher matcher = new ObjectTreePrinter.SimpleMatcher(patterns);
         for (AnalysisField field : bb.getUniverse().getFields()) {
@@ -144,7 +160,9 @@ public final class ReachabilityTracePrinter {
             }
 
             // print the first trace to avoid overwhelming users with information
-            break;
+            return true;
         }
+
+        return false;
     }
 }

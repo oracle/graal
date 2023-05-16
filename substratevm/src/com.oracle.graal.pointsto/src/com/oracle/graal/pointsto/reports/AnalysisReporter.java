@@ -25,11 +25,8 @@
  */
 package com.oracle.graal.pointsto.reports;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.options.OptionValues;
@@ -39,7 +36,6 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
-import com.oracle.graal.pointsto.util.AnalysisError;
 
 public class AnalysisReporter {
     public static void printAnalysisReports(String imageName, OptionValues options, String reportsPath, BigBang bb) {
@@ -59,27 +55,19 @@ public class AnalysisReporter {
                 AnalysisHeapHistogramPrinter.print(bb, reportsPath, baseImageName);
             }
 
-            Function<String, String> traceMessage = (trace) -> trace.isEmpty() ? "" : ". Trace:\n" + trace;
-
             String typesTraceOpt = AnalysisReportsOptions.ThrowOnTypeReachable.getValue(options);
             if (!typesTraceOpt.isEmpty()) {
-                Path path = ReachabilityTracePrinter.printTraceForTypes(typesTraceOpt, bb, reportsPath, baseImageName);
-                String trace = ReachabilityTracePrinter.readTrace(path);
-                throw AnalysisError.interruptAnalysis("Compilation stopped as the type is reachable: " + typesTraceOpt + traceMessage.apply(trace));
+                ReachabilityTracePrinter.printTraceForTypesImpl(typesTraceOpt, bb, reportsPath, imageName);
             }
 
             String methodsTraceOpt = AnalysisReportsOptions.ThrowOnMethodReachable.getValue(options);
             if (!methodsTraceOpt.isEmpty()) {
-                Path path = ReachabilityTracePrinter.printTraceForMethods(methodsTraceOpt, bb, reportsPath, baseImageName);
-                String trace = ReachabilityTracePrinter.readTrace(path);
-                throw AnalysisError.interruptAnalysis("Compilation stopped as the method is reachable: " + methodsTraceOpt + traceMessage.apply(trace));
+                ReachabilityTracePrinter.printTraceForMethods(methodsTraceOpt, bb, reportsPath, baseImageName);
             }
 
             String fieldsTraceOpt = AnalysisReportsOptions.ThrowOnFieldReachable.getValue(options);
             if (!fieldsTraceOpt.isEmpty()) {
-                Path path = ReachabilityTracePrinter.printTraceForFields(fieldsTraceOpt, bb, reportsPath, baseImageName);
-                String trace = ReachabilityTracePrinter.readTrace(path);
-                throw AnalysisError.interruptAnalysis("Compilation stopped as the field is reachable: " + fieldsTraceOpt + traceMessage.apply(trace));
+                ReachabilityTracePrinter.printTraceForFields(fieldsTraceOpt, bb, reportsPath, baseImageName);
             }
 
             if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {
