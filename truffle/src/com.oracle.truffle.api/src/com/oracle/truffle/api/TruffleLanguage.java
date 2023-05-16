@@ -1419,8 +1419,8 @@ public abstract class TruffleLanguage<C> {
      * Builder for creating context local and context thread local references.
      *
      * @see TruffleLanguage#localsBuilder
-     * @see ContextLocalBuilder#createContextLocal
-     * @see ContextLocalBuilder#createContextThreadLocal
+     * @see TruffleLanguage.ContextLocalBuilder#createContextLocal(TruffleLanguage.ContextLocalFactory)
+     * @see TruffleLanguage.ContextLocalBuilder#createContextThreadLocal(TruffleLanguage.ContextThreadLocalFactory)
      * @since 23.1
      */
     protected static final class ContextLocalBuilder<C> {
@@ -1579,8 +1579,8 @@ public abstract class TruffleLanguage<C> {
     /**
      * Builder for creating context local and context thread local references.
      *
-     * @see ContextLocalBuilder#createContextLocal
-     * @see ContextLocalBuilder#createContextThreadLocal
+     * @see TruffleLanguage.ContextLocalBuilder#createContextLocal(TruffleLanguage.ContextLocalFactory)
+     * @see TruffleLanguage.ContextLocalBuilder#createContextThreadLocal(TruffleLanguage.ContextThreadLocalFactory)
      * @since 23.1
      */
     protected final ContextLocalBuilder<C> localsBuilder = new ContextLocalBuilder<>();
@@ -1589,9 +1589,12 @@ public abstract class TruffleLanguage<C> {
      * Creates a new context local reference for this Truffle language.
      *
      * Starting with JDK 21, using this method leads to a this-escape warning. Use
-     * {@link ContextLocalBuilder#createContextLocal} instead.
+     * {@link TruffleLanguage.ContextLocalBuilder#createContextLocal(TruffleLanguage.ContextLocalFactory)}
+     * instead.
      *
-     * @deprecated in 23.1, use {@link ContextLocalBuilder#createContextLocal} instead
+     * @deprecated in 23.1, use
+     *             {@link TruffleLanguage.ContextLocalBuilder#createContextLocal(TruffleLanguage.ContextLocalFactory)}
+     *             instead
      * @since 20.3
      */
     @Deprecated
@@ -1603,9 +1606,12 @@ public abstract class TruffleLanguage<C> {
      * Creates a new context thread local reference for this Truffle language.
      *
      * Starting with JDK 21, using this method leads to a this-escape warning. Use
-     * {@link ContextLocalBuilder#createContextThreadLocal} instead.
+     * {@link TruffleLanguage.ContextLocalBuilder#createContextThreadLocal(TruffleLanguage.ContextThreadLocalFactory)}
+     * instead.
      *
-     * @deprecated in 23.1, use {@link ContextLocalBuilder#createContextThreadLocal} instead
+     * @deprecated in 23.1, use
+     *             {@link TruffleLanguage.ContextLocalBuilder#createContextThreadLocal(TruffleLanguage.ContextThreadLocalFactory)}
+     *             instead
      * @since 20.3
      */
     @Deprecated
@@ -1663,7 +1669,7 @@ public abstract class TruffleLanguage<C> {
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
          * messages may be executed without a context being entered.
          *
-         * @see TruffleLanguage.ContextLocalBuilder#createContextLocal(ContextLocalFactory)
+         * @see TruffleLanguage.ContextLocalBuilder#createContextLocal(TruffleLanguage.ContextLocalFactory)
          * @since 20.3
          */
         T create(C context);
@@ -1687,7 +1693,7 @@ public abstract class TruffleLanguage<C> {
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
          * messages may be executed without a context being entered.
          *
-         * @see TruffleLanguage.ContextLocalBuilder#createContextThreadLocal(ContextThreadLocalFactory)
+         * @see TruffleLanguage.ContextLocalBuilder#createContextThreadLocal(TruffleLanguage.ContextThreadLocalFactory)
          * @since 20.3
          */
         T create(C context, Thread thread);

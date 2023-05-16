@@ -263,8 +263,8 @@ public abstract class TruffleInstrument {
      * Builder for creating context local and context thread local references.
      *
      * @see TruffleInstrument#localsBuilder
-     * @see ContextLocalBuilder#createContextLocal
-     * @see ContextLocalBuilder#createContextThreadLocal
+     * @see TruffleInstrument.ContextLocalBuilder#createContextLocal(TruffleInstrument.ContextLocalFactory)
+     * @see TruffleInstrument.ContextLocalBuilder#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)
      * @since 23.1
      */
     protected static final class ContextLocalBuilder {
@@ -430,8 +430,8 @@ public abstract class TruffleInstrument {
     /**
      * Builder for creating context local and context thread local references.
      *
-     * @see ContextLocalBuilder#createContextLocal
-     * @see ContextLocalBuilder#createContextThreadLocal
+     * @see TruffleInstrument.ContextLocalBuilder#createContextLocal(TruffleInstrument.ContextLocalFactory)
+     * @see TruffleInstrument.ContextLocalBuilder#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)
      * @since 23.1
      */
     protected final ContextLocalBuilder localsBuilder = new ContextLocalBuilder();
@@ -440,9 +440,12 @@ public abstract class TruffleInstrument {
      * Creates a new context local reference for this Truffle instrument.
      *
      * Starting with JDK 21, using this method leads to a this-escape warning. Use
-     * {@link ContextLocalBuilder#createContextLocal} instead.
+     * {@link TruffleInstrument.ContextLocalBuilder#createContextLocal(TruffleInstrument.ContextLocalFactory)}
+     * instead.
      *
-     * @deprecated in 23.1, use {@link ContextLocalBuilder#createContextLocal} instead
+     * @deprecated in 23.1, use
+     *             {@link TruffleInstrument.ContextLocalBuilder#createContextLocal(TruffleInstrument.ContextLocalFactory)}
+     *             instead
      * @since 20.3
      */
     @Deprecated
@@ -454,9 +457,12 @@ public abstract class TruffleInstrument {
      * Creates a new context thread local reference for this Truffle instrument.
      *
      * Starting with JDK 21, using this method leads to a this-escape warning. Use
-     * {@link ContextLocalBuilder#createContextThreadLocal} instead.
+     * {@link TruffleInstrument.ContextLocalBuilder#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)}
+     * instead.
      *
-     * @deprecated in 23.1, use {@link ContextLocalBuilder#createContextThreadLocal} instead
+     * @deprecated in 23.1, use
+     *             {@link TruffleInstrument.ContextLocalBuilder#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)}
+     *             instead
      * @since 20.3
      */
     @Deprecated
@@ -480,7 +486,7 @@ public abstract class TruffleInstrument {
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
          * messages may be executed without a context being entered.
          *
-         * @see TruffleInstrument.ContextLocalBuilder#createContextLocal(ContextLocalFactory)
+         * @see TruffleInstrument.ContextLocalBuilder#createContextLocal(TruffleInstrument.ContextLocalFactory)
          * @since 20.3
          */
         T create(TruffleContext context);
@@ -503,7 +509,7 @@ public abstract class TruffleInstrument {
          * {@link com.oracle.truffle.api.exception.AbstractTruffleException} the exception interop
          * messages may be executed without a context being entered.
          *
-         * @see TruffleInstrument.ContextLocalBuilder#createContextThreadLocal(ContextThreadLocalFactory)
+         * @see TruffleInstrument.ContextLocalBuilder#createContextThreadLocal(TruffleInstrument.ContextThreadLocalFactory)
          * @since 20.3
          */
         T create(TruffleContext context, Thread thread);
