@@ -325,8 +325,8 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
      */
     public void processComputedValueFields(BigBang bb) {
         for (ResolvedJavaField field : fieldSubstitutions.values()) {
-            if (field instanceof ComputedValue) {
-                ComputedValue cvField = (ComputedValue) field;
+            if (field instanceof ComputedValueField) {
+                ComputedValueField cvField = (ComputedValueField) field;
 
                 switch (cvField.getRecomputeValueKind()) {
                     case FieldOffset:
