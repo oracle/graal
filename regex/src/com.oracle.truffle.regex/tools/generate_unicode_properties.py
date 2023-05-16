@@ -177,9 +177,6 @@ def add_txt_entry_to_str_property(code_points_str, prop_name):
 def complement_property(prop):
     return sorted(set(range(0, 0x110000)) - set(prop))
 
-def union_str_properties(props):
-    return sorted(set([elem for prop in props for elem in prop]))
-
 def unicode_file_lines_without_comments(file_name):
     lines = []
     with open(file_name) as unicode_file:
@@ -258,8 +255,6 @@ for line in unicode_file_lines_without_comments('emoji-data.txt'):
 for line in unicode_file_lines_without_comments('emoji-sequences.txt') + unicode_file_lines_without_comments('emoji-zwj-sequences.txt'):
     [code_points_str, prop_name, ignored] = [x.strip() for x in line.split(';')]
     add_txt_entry_to_str_property(code_points_str, prop_name)
-
-str_prop_contents['RGI_Emoji'] = union_str_properties([str_prop_contents[prop_name] for prop_name in bin_props_emoji_str])
 
 # Add special properties from Unicode TR18
 
@@ -355,7 +350,7 @@ GENERAL_CATEGORY_ALIASES = aliases_to_java_initializer('GENERAL_CATEGORY_ALIASES
 SCRIPT_ALIASES = aliases_to_java_initializer('SCRIPT_ALIASES', sc_aliases)
 
 POPULATE_CALLS = '\n'.join(['populate%s();' % mangle_prop_name(name)
-                            for (name, _) in sorted(list(prop_contents.items()) + list(str_prop_contents.items()))])
+                            for name in sorted(prop_contents.keys()) + sorted(str_prop_contents.keys()) + ['RGI_Emoji']])
 
 POPULATE_DEFS = '\n\n'.join(['''private static void populate%s() {
     SET_ENCODINGS.put("%s", %s);
@@ -368,6 +363,14 @@ POPULATE_STR_DEFS = '\n\n'.join(['''private static void populate%s() {
     CLASS_SET_ENCODINGS.put("%s", ClassSetContents.createUnicodePropertyOfStrings(codePointSet, strings));
 }''' % (mangle_prop_name(name), str_property_strings(prop), str_property_single_code_points_to_java_array_init(prop), name)
                            for (name, prop) in sorted(str_prop_contents.items())])
+
+POPULATE_STR_DEFS = POPULATE_STR_DEFS + '''
+
+private static void populateRGI_EMOJI() {
+    ClassSetContentsAccumulator rgiEmoji = new ClassSetContentsAccumulator();
+''' + '\n'.join(['''    rgiEmoji.addAll(CLASS_SET_ENCODINGS.get("%s"));''' % prop_name for prop_name in bin_props_emoji_str]) + '''
+    CLASS_SET_ENCODINGS.put("RGI_Emoji", ClassSetContents.createClass(rgiEmoji.getCodePointSet(), rgiEmoji.getStrings(), rgiEmoji.mayContainStrings()));
+}'''
 
 print('''/*
  * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
@@ -417,6 +420,7 @@ print('''/*
 package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.regex.tregex.parser.ClassSetContents;
+import com.oracle.truffle.regex.tregex.parser.ClassSetContentsAccumulator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
@@ -460,6 +464,6 @@ class UnicodePropertyData {
 %s
 
 %s
-}''' % (len(prop_aliases), len(gc_aliases), len(sc_aliases), len(prop_contents), len(str_prop_contents),
+}''' % (len(prop_aliases), len(gc_aliases), len(sc_aliases), len(prop_contents), len(str_prop_contents) + 1,
         indent(PROPERTY_ALIASES, 8), indent(GENERAL_CATEGORY_ALIASES, 8), indent(SCRIPT_ALIASES, 8), indent(POPULATE_CALLS, 8),
         indent(POPULATE_DEFS, 4), indent(POPULATE_STR_DEFS, 4)))

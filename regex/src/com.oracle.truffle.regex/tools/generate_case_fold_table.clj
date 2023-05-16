@@ -339,7 +339,7 @@
   "Renders a case fold table with name `table-name`. This is the main product of
   this script."
   [entries table-name]
-  (let [header               (str "    private static final CaseFoldTableImpl " table-name " = new CaseFoldTableImpl(new int[]{\n")
+  (let [header               (str "    public static final CaseFoldTableImpl " table-name " = new CaseFoldTableImpl(new int[]{\n")
         item-prefix          "                    "
         item-sep             ",\n"
         footer               "\n    });\n"

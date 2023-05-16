@@ -256,7 +256,7 @@ public class CaseFoldTable {
                     rangeSet(0x0003a9, 0x0003a9, 0x0003c9, 0x0003c9, 0x002126, 0x002126),
                     rangeSet(0x000049, 0x000049, 0x000069, 0x000069, 0x000130, 0x000131)};
 
-    private static final CaseFoldTableImpl NON_UNICODE_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
+    public static final CaseFoldTableImpl NON_UNICODE_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,
                     0x000061, 0x00007a, INTEGER_OFFSET, -32,
                     0x0000b5, 0x0000b5, DIRECT_MAPPING, 0,
@@ -596,7 +596,7 @@ public class CaseFoldTable {
                     0x00ff41, 0x00ff5a, INTEGER_OFFSET, -32
     });
 
-    private static final CaseFoldTableImpl UNICODE_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
+    public static final CaseFoldTableImpl UNICODE_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
                     0x000041, 0x00004a, INTEGER_OFFSET, 32,
                     0x00004b, 0x00004b, DIRECT_MAPPING, 23,
                     0x00004c, 0x000052, INTEGER_OFFSET, 32,
@@ -991,12 +991,12 @@ public class CaseFoldTable {
                     0x01e922, 0x01e943, INTEGER_OFFSET, -34
     });
 
-    private static final CaseFoldTableImpl PYTHON_ASCII_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
+    public static final CaseFoldTableImpl PYTHON_ASCII_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
                     0x000041, 0x00005a, INTEGER_OFFSET, 32,
                     0x000061, 0x00007a, INTEGER_OFFSET, -32
     });
 
-    private static final CaseFoldTableImpl PYTHON_UNICODE_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
+    public static final CaseFoldTableImpl PYTHON_UNICODE_TABLE_ENTRIES = new CaseFoldTableImpl(new int[]{
                     0x000041, 0x000048, INTEGER_OFFSET, 32,
                     0x000049, 0x000049, DIRECT_MAPPING, 28,
                     0x00004a, 0x00004a, INTEGER_OFFSET, 32,
