@@ -23,10 +23,9 @@ permalink: /reference-manual/native-image/guides/debuginfo-walkthrough/
     sources
     ```
   * GDB automatically loads the `<imagename>.debug` file for a given native executable `<imagename>`. (There is a link between the image and its `*.debug`-file)
-* Combining `-g` with `-O0` generally gives a better debugging experience. Because `-O0` among other things
-  * restricts inlining (helps, because accessing params and locals in inlined methods does not work reliably)
-  * sets `GraphBuilderConfiguration#withRetainLocalVariables` 
-  * enables `SubstrateOptions.SourceLevelDebug` which sets `GraphBuilderConfiguration.withFullInfopoints`  
+* For a better debugging experience, we recommend combining `-g` with `-O0`.
+The latter option disables inlining and other optimizations of the Graal compiler, which otherwise would be observable in the debugger (for example, the debugger may jump back and forth between lines instead of allowing you to step from one line to the next one).
+At the same time, `-O0` also enables additional metadata to be collected in the compiler, which then helps the debugger to resolve, for example, local variables.
 
 ### Using GDB with the new debuginfo
 
