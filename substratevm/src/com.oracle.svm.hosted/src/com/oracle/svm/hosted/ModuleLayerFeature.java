@@ -54,6 +54,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.jdk.Resources;
 import jdk.internal.module.DefaultRoots;
 import jdk.internal.module.ModuleBootstrap;
 import jdk.internal.module.SystemModuleFinders;
@@ -68,6 +69,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * This feature:
@@ -176,12 +179,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          * is required when filtering the analysis reachable module set.
          */
         Set<String> extraModules = ModuleLayerFeatureUtils.parseModuleSetModifierProperty(ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES);
-        Set<String> includedResourceModules = ImageSingletons.lookup(ResourcesFeature.class).includedResourcesModules
-                        .stream()
-                        .map(Module::getName)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toSet());
-        extraModules.addAll(includedResourceModules);
+        extraModules.addAll(Resources.getIncludedResourcesModules());
         extraModules.stream().filter(Predicate.not(ModuleSupport.nonExplicitModules::contains)).forEach(moduleName -> {
             Optional<?> module = accessImpl.imageClassLoader.findModule(moduleName);
             if (module.isEmpty()) {
@@ -540,6 +538,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         runtimeModuleLayer.modules();
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static final class ModuleLayerFeatureUtils {
         private final Map<ClassLoader, Map<String, Module>> runtimeModules;
         private final ImageClassLoader imageClassLoader;

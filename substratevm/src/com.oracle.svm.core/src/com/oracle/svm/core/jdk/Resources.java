@@ -35,6 +35,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import com.oracle.svm.core.BuildPhaseProvider;
 import org.graalvm.collections.EconomicMap;
@@ -106,9 +110,17 @@ public final class Resources {
         return module == null ? null : module.getName();
     }
 
-    public static Pair<Module, String> createStorageKey(Module module, String resourceName) {
+    private static Pair<Module, String> createStorageKey(Module module, String resourceName) {
         Module m = module != null && module.isNamed() ? module : null;
         return Pair.create(m, resourceName);
+    }
+
+    public static Set<String> getIncludedResourcesModules() {
+        return StreamSupport.stream(singleton().resources.getKeys().spliterator(), false)
+                        .map(Pair::getLeft)
+                        .filter(Objects::nonNull)
+                        .map(Module::getName)
+                        .collect(Collectors.toSet());
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {
