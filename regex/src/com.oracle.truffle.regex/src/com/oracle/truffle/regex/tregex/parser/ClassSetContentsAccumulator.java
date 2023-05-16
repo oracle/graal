@@ -66,7 +66,7 @@ public class ClassSetContentsAccumulator {
     public void retainAll(ClassSetContents classSet) {
         codePointSet.intersectWith(classSet.getCodePointSet());
         strings.retainAll(classSet.getStrings());
-        mayContainStrings &= classSet.mayContainStrings();
+        mayContainStrings = mayContainStrings && classSet.mayContainStrings();
     }
 
     public void removeAll(ClassSetContents classSet, Encoding encoding) {
