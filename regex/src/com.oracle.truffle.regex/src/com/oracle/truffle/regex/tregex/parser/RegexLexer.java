@@ -1195,10 +1195,6 @@ public abstract class RegexLexer {
         return sb.toString();
     }
 
-    private CodePointSet pruneCodePointSet(CodePointSet codePointSet) {
-        return encoding.getFullSet().createIntersection(codePointSet, curCharClass.getTmp());
-    }
-
     private ClassSetContents parseUnicodeCharacterProperty(boolean invert) throws RegexSyntaxException {
         if (!consumingLookahead("{")) {
             throw syntaxError(JsErrorMessages.INVALID_UNICODE_PROPERTY);
@@ -1220,13 +1216,12 @@ public abstract class RegexLexer {
                     }
                     assert property.isCodePointSetOnly();
                     property = caseFoldClassSetAtom(property);
-                    return ClassSetContents.createCharacterClass(complementClassSet(pruneCodePointSet(property.getCodePointSet())));
+                    return ClassSetContents.createCharacterClass(complementClassSet(property.getCodePointSet()));
                 } else {
-                    // TODO: check if 'return property;' is enough
-                    return caseFoldClassSetAtom(property.pruneCodePointSet(encoding, curCharClass.getTmp()));
+                    return caseFoldClassSetAtom(property);
                 }
             } else {
-                CodePointSet propertySet = pruneCodePointSet(UnicodeProperties.getProperty(propertyName));
+                CodePointSet propertySet = UnicodeProperties.getProperty(propertyName);
                 return ClassSetContents.createCharacterClass(invert ? propertySet.createInverse(encoding) : propertySet);
             }
         } catch (IllegalArgumentException e) {

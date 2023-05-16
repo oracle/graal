@@ -42,8 +42,6 @@ package com.oracle.truffle.regex.tregex.parser;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
-import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
-import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import org.graalvm.collections.EconomicSet;
@@ -91,10 +89,6 @@ public final class ClassSetContents implements JsonConvertible {
 
     public static ClassSetContents createRange(int lo, int hi) {
         return new ClassSetContents(Kind.Range, CodePointSet.create(lo, hi), EconomicSet.create(), false);
-    }
-
-    public ClassSetContents pruneCodePointSet(Encoding encoding, IntRangesBuffer buffer) {
-        return new ClassSetContents(kind, encoding.getFullSet().createIntersection(codePointSet, buffer), strings, mayContainStrings);
     }
 
     public ClassSetContents caseFold(CodePointSetAccumulator tmp) {
