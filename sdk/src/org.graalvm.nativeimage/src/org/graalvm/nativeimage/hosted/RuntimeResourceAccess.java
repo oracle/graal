@@ -69,8 +69,7 @@ public final class RuntimeResourceAccess {
     public static void addResource(Module module, String resourcePath) {
         Objects.requireNonNull(module);
         Objects.requireNonNull(resourcePath);
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(),
-                        withModuleName(module, Pattern.quote(resourcePath)));
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(module, resourcePath);
     }
 
     /**

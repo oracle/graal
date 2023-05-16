@@ -27,12 +27,14 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
+import java.net.URL;
 import java.nio.file.FileSystem;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +42,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -153,6 +156,27 @@ public final class ResourcesFeature implements InternalFeature {
                 UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
                 resourcePatternWorkSet.add(pattern);
             });
+        }
+
+        @Override
+        public void addResources(Module module, String resourcePath) {
+            InputStream is;
+            boolean fromJar;
+
+            if (module.isNamed()) {
+                try {
+                    fromJar = new File(Objects.requireNonNull(module.getClassLoader().getResource(resourcePath)).getPath()).isDirectory();
+                    is = module.getResourceAsStream(resourcePath);
+                } catch (IOException e) {
+                    // we ignore if user provided resource that doesn't exist
+                    return;
+                }
+            } else {
+                fromJar = new File(Objects.requireNonNull(imageClassLoader.getClassLoader().getResource(resourcePath)).getPath()).isDirectory();
+                is = imageClassLoader.getClassLoader().getResourceAsStream(resourcePath);
+            }
+
+            Resources.registerResource(module, resourcePath, is, fromJar);
         }
 
         @Override
