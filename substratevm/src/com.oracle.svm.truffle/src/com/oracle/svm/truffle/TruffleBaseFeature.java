@@ -557,7 +557,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     public void afterCompilation(AfterCompilationAccess access) {
         FeatureImpl.AfterCompilationAccessImpl config = (FeatureImpl.AfterCompilationAccessImpl) access;
 
-        graalGraphObjectReplacer.updateSubstrateDataAfterCompilation(config.getUniverse(), config.getProviders().getConstantFieldProvider());
+        graalGraphObjectReplacer.updateSubstrateDataAfterCompilation(config.getUniverse(), config.getProviders());
         graalGraphObjectReplacer.registerImmutableObjects(access);
     }
 

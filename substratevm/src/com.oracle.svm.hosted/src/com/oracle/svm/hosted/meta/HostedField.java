@@ -29,10 +29,8 @@ import java.lang.reflect.Field;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
 
@@ -41,8 +39,6 @@ import jdk.vm.ci.meta.JavaTypeProfile;
  */
 public class HostedField extends HostedElement implements OriginalFieldProvider, SharedField, WrappedJavaField {
 
-    private final HostedUniverse universe;
-    private final HostedMetaAccess metaAccess;
     public final AnalysisField wrapped;
 
     private final HostedType holder;
@@ -54,9 +50,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     static final int LOC_UNMATERIALIZED_STATIC_CONSTANT = -10;
 
-    public HostedField(HostedUniverse universe, HostedMetaAccess metaAccess, AnalysisField wrapped, HostedType holder, HostedType type, JavaTypeProfile typeProfile) {
-        this.universe = universe;
-        this.metaAccess = metaAccess;
+    public HostedField(AnalysisField wrapped, HostedType holder, HostedType type, JavaTypeProfile typeProfile) {
         this.wrapped = wrapped;
         this.holder = holder;
         this.type = type;
@@ -146,26 +140,6 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
     @Override
     public int hashCode() {
         return wrapped.hashCode();
-    }
-
-    public JavaConstant readValue(JavaConstant receiver) {
-        assert checkHub(receiver) : "Receiver " + receiver + " of field " + this + " read should not be java.lang.Class. Expecting to see DynamicHub here.";
-        return universe.lookup(universe.getConstantReflectionProvider().readValue(metaAccess, wrapped, receiver));
-    }
-
-    private boolean checkHub(JavaConstant constant) {
-        if (metaAccess.isInstanceOf(constant, Class.class)) {
-            Object classObject = universe.getSnippetReflection().asObject(Object.class, constant);
-            return classObject instanceof DynamicHub;
-        }
-        return true;
-    }
-
-    public JavaConstant readStorageValue(JavaConstant receiver) {
-        JavaConstant result = readValue(receiver);
-        assert result != null : "Cannot read value for field " + this.format("%H.%n");
-        assert result.getJavaKind() == getType().getStorageKind() : this;
-        return result;
     }
 
     @Override

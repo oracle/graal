@@ -66,7 +66,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.FactoryMethod;
@@ -456,10 +455,6 @@ public class HostedUniverse implements Universe {
 
     public Inflation getBigBang() {
         return bb;
-    }
-
-    public AnalysisConstantReflectionProvider getConstantReflectionProvider() {
-        return (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
     }
 
     @Override
