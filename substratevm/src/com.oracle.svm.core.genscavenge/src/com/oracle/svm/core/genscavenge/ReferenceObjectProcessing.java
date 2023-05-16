@@ -115,6 +115,10 @@ final class ReferenceObjectProcessing {
             return;
         }
 
+        /*
+         * The parallel GC may modify the object header at any time, so we only read the object
+         * header once.
+         */
         UnsignedWord referentHeader = ObjectHeader.readHeaderFromPointer(referentAddr);
         if (maybeUpdateForwardedReference(dr, referentAddr, referentHeader)) {
             // Some other object had a strong reference to the referent, so the referent was already
