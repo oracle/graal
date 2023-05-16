@@ -106,6 +106,6 @@ public class JsErrorMessages {
     /* flag related errors */
 
     public static final String REPEATED_FLAG = "Repeated regex flag";
-    public static final String UNSUPPORTED_FLAG = "Unsupported regex flag";
+    public static final String UNSUPPORTED_FLAG = "Invalid regular expression flags";
     public static final String BOTH_FLAGS_SET_U_V = "Both flags 'u' and 'v' cannot be set at same time";
 }

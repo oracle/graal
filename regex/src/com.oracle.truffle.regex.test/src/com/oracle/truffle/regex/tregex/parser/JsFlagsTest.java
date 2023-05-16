@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
@@ -53,7 +54,8 @@ import static org.junit.Assert.assertTrue;
 public class JsFlagsTest {
 
     private static RegexFlags parse(String flags) {
-        return RegexFlags.parseFlags(new RegexSource("", flags, RegexOptions.DEFAULT, null));
+        Source source = Source.newBuilder("regex", "/./" + flags, "flagsTest").build();
+        return RegexFlags.parseFlags(new RegexSource(".", flags, RegexOptions.DEFAULT, source));
     }
 
     @Test
