@@ -291,6 +291,7 @@ final class ObjectSizeCalculator {
         increaseSize(calculationState, roundToObjectAlignment(layout.baseOffset + length * layout.indexScale, getObjectAlignment()));
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean isContextHeapBoundary(Object obj) {
         if (obj == null) {
             return true;
@@ -299,6 +300,7 @@ final class ObjectSizeCalculator {
         assert (!(obj instanceof PolyglotImpl.VMObject) || obj instanceof PolyglotLanguageContext || obj instanceof PolyglotContextImpl) &&
                         !(obj instanceof PolyglotContextConfig) &&
                         !(obj instanceof TruffleLanguageProvider) &&
+                        !(obj instanceof TruffleLanguage.Provider) &&
                         !(obj instanceof ExecutionEventListener) &&
                         !(obj instanceof ClassValue) &&
                         !(obj instanceof PolyglotWrapper) &&
@@ -347,6 +349,7 @@ final class ObjectSizeCalculator {
                         (obj instanceof PolyglotImpl.VMObject) ||
                         (obj instanceof PolyglotContextConfig) ||
                         (obj instanceof TruffleLanguageProvider) ||
+                        (obj instanceof TruffleLanguage.Provider) ||
                         (obj instanceof ExecutionEventListener) ||
                         (obj instanceof ClassValue) ||
                         (obj instanceof PolyglotWrapper) ||

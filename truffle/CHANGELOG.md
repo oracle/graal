@@ -15,11 +15,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44211 Added `TruffleSafepoint#setBlockedFunction(Node, Interrupter, InterruptibleFunction, Object, Runnable, Consumer)` to be able to return an object from the interruptible functional method.
 * GR-44211 Added `TruffleSafepoint#setBlockedThreadInterruptibleFunction(Node, InterruptibleFunction, Object)` as a short-cut method to allow setting the blocked status for methods that throw `InterruptedException` and support interrupting using `Thread#interrupt()`.
 * GR-44829 TruffleStrings: added specialized TruffleStringBuilder types for better performance on UTF encodings.
-* GR-44217 TruffleLanguages and TruffleInstruments are loaded as Java modules.
-  * `TruffleLanguage.Provider` is deprecated and replaced by the `TruffleLanguageProvider`.
-  * `TruffleInstrument.Provider` is deprecated and replaced by the `TruffleInstrumentProvider`.
-  * For named Java modules the `EagerExportProvider` instances are not loaded using the `ServiceLoader`. The exported libraries used for AOT must be registered using the `TruffleLanguage.Registration#aotLibraryExports` or `TruffleInstrument.Registration#aotLibraryExports`.
-  * For named Java modules the `DefaultExportProvider` instances are not loaded using the `ServiceLoader`. The exported libraries with enabled default export lookup must be registered using the `TruffleLanguage.Registration#defaultLibraryExports` or `TruffleInstrument.Registration#defaultLibraryExports`.
+* GR-44217 Truffle languages or instruments are now loaded as Java modules by default if they are installed as GraalVM component into a GraalVM JDK. If you need your language installed as GraalVM component please follow the [module migration guide](https://github.com/oracle/graal/blob/master/truffle/docs/ModuleMigration.md).
+* GR-44217 In the past, on a GraalVM JDK, languages or instruments could be provided using `-Dtruffle.class.path.append`, but are now loaded from the application module path. The truffle class path is deprecated and should no longer be used, but remains functional. Languages are not picked up from the application class path, so the language first needs to be [migrated](https://github.com/oracle/graal/blob/master/truffle/docs/ModuleMigration.md).
+* GR-44217 (Breaking change) If your language or instrument was specified as Java module, any usages of `@ExportLibrary(useForAOT = true)` or `@GenerateLibrary(defaultExportLookupEnabled = true)` now need to be registered with `@Registration#aotLibraryExports` and `@Registration#defaultLibraryExports`. If your language did not use any of these features, no changes are necessary.
 
 
 
