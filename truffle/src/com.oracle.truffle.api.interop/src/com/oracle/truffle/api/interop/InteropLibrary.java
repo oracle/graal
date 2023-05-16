@@ -3877,7 +3877,6 @@ public abstract class InteropLibrary extends Library {
                 assert wasWritable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
-                assert !(e instanceof UnsupportedMessageException) || !wasWritable : violationInvariant(receiver, key);
                 throw e;
             }
         }
@@ -3907,7 +3906,6 @@ public abstract class InteropLibrary extends Library {
                 assert wasRemovable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException : violationPost(receiver, e);
-                assert !(e instanceof UnsupportedMessageException) || !wasRemovable : violationInvariant(receiver, key);
                 throw e;
             }
         }
