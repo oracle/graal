@@ -23,7 +23,6 @@ Here you will learn how to:
 - [Containerise a Native Executable and Run in a Docker Container](containerise-native-executable-with-docker.md)
 - [Create a Heap Dump from a Native Executable](create-heap-dump-from-native-executable.md)
 - [Debug Native Executables with GDB](debug-native-executables-with-gdb.md)
-- [Debuginfo Generation Walkthrough](debuginfo-walkthrough.md)
 - [Include Resources in a Native Executable](include-resources.md)
 - [Optimize a Native Executable with Profile-Guided Optimizations](optimize-native-executable-with-pgo.md)
 - [Use GraalVM Dashboard to Optimize the Size of a Native Executable](use-graalvm-dashboard.md)
