@@ -32,17 +32,22 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Iterator;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -186,6 +191,45 @@ public class MethodHandleFeature implements InternalFeature {
                         access.findClassByName("java.lang.invoke.VarHandle"));
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, boundMethodHandleClass);
+
+        AnalysisMetaAccess metaAccess = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getMetaAccess();
+        access.registerFieldValueTransformer(
+                        ReflectionUtil.lookupField(ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer"), "cache"),
+                        new FieldValueTransformerWithAvailability() {
+                            private static final Class<?> speciesDataClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.ClassSpecializer$SpeciesData");
+
+                            /*
+                             * The value of the ClassSpecializer.cache is not seen by the analysis
+                             * because the transformer declares the AfterAnalysis availability. This
+                             * is unsafe, and it relies on the fact that the underlying data
+                             * structure, a ConcurrentHashMap, was already seen by the analysis from
+                             * other uses, and that the analysis already has a full view of its type
+                             * structure. GR-46027 will implement a safe solution.
+                             */
+                            @Override
+                            public FieldValueTransformerWithAvailability.ValueAvailability valueAvailability() {
+                                return FieldValueTransformerWithAvailability.ValueAvailability.AfterAnalysis;
+                            }
+
+                            @Override
+                            @SuppressWarnings("unchecked")
+                            public Object transform(Object receiver, Object originalValue) {
+                                ConcurrentHashMap<Object, Object> originalMap = (ConcurrentHashMap<Object, Object>) originalValue;
+                                ConcurrentHashMap<Object, Object> filteredMap = new ConcurrentHashMap<>();
+                                originalMap.forEach((key, speciesData) -> {
+                                    if (isSpeciesReachable(speciesData)) {
+                                        filteredMap.put(key, speciesData);
+                                    }
+                                });
+                                return filteredMap;
+                            }
+
+                            private boolean isSpeciesReachable(Object speciesData) {
+                                Class<?> speciesClass = ReflectionUtil.readField(speciesDataClass, "speciesCode", speciesData);
+                                Optional<AnalysisType> analysisType = metaAccess.optionalLookupJavaType(speciesClass);
+                                return analysisType.isPresent() && analysisType.get().isReachable();
+                            }
+                        });
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
