@@ -62,7 +62,7 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class JSRegexParser implements RegexParser {
 
-    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
+    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.classSet, Token.Kind.groupEnd, Token.Kind.backReference);
     private final RegexParserGlobals globals;
     private final RegexSource source;
     private final RegexFlags flags;
