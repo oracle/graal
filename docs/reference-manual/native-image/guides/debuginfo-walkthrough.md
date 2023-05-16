@@ -9,14 +9,14 @@ permalink: /reference-manual/native-image/guides/debuginfo-walkthrough/
 
 ### Which GDB to use?
 
-* Please use GDB 10.2 or higher. Gate checks (`mx debuginfotest`) use 10.2.
-* Later versions might have slightly different formatting of debugger output (makes e.g. gate checks fail)
+* Please use GDB 10.2 or later. The debug info is tested via `mx debuginfotest` against 10.2.
+* Note that later versions might have slightly different formatting of debugger output (makes e.g. gate checks fail)
 * GDB bundled in recent Linux releases works just fine for debugging sessions 
 
 ### Building images with debuginfo
 
-* Adding `-g` to the native-image arguments causes debuginfo to be generated.
-  * Next to the image there will be a `<imagename>.debug` file that contains debuginfo and a `sources` folder that contains java source files needed b the debugger to show sources for lineinfo debuginfo. For example:
+* Adding `-g` to the `native-image` arguments causes debuginfo to be generated.
+  * Next to the image, there will be an `<imagename>.debug` file that contains debuginfo and a `sources` folder that contains Java source files, which the debugger uses to show sources for lineinfo. For example:
     ```text
     hello_image
     hello_image.debug
@@ -31,7 +31,7 @@ permalink: /reference-manual/native-image/guides/debuginfo-walkthrough/
 ### Using GDB with the new debuginfo
 
 #### Image build information
-When `-g` is used, in addition to debuginfo, image build information gets recorded in the `*.debug`-file. For example:
+The `*.debug`-file contains additional information about the image build, which can be accessed as follows:
 ```text
 readelf -p .debug.svm.imagebuild.classpath hello_image.debug
 ```
@@ -51,12 +51,12 @@ The following sections are available
 .debug.svm.imagebuild.java.properties
 ```
 
-#### Where is main?
+#### Where is the main function?
 Use
 ```text
 info functions ::main
 ```
-to find all methods named `main` and then use `b <main method name>`. E.g.
+to find all methods named `main` and then use `b <main method name>`, for example:
 ```text
 (gdb) info functions ::main
 All functions matching regular expression "::main":
@@ -72,7 +72,7 @@ Breakpoint 1 at 0x83c030: file hello/Hello.java, line 76.
 ```
 
 #### Setting breakpoints
-First find the type of the method you want to set a breakpoint in. E.g.
+First, find the type of the method you want to set a breakpoint in, for example:
 ```text
 (gdb) info types ArrayList
 All types matching regular expression "ArrayList":
@@ -89,7 +89,7 @@ Now use the following GDB autocompletion
 ```text
 (gdb) b 'java.util.ArrayList::
 ```
-Pressing tab twice now shows all ArrayList methods to choose from:
+Pressing tab twice now shows all `ArrayList` methods to choose from:
 ```text
 java.util.ArrayList::ArrayList(int)                                                java.util.ArrayList::iterator()
 java.util.ArrayList::ArrayList(java.util.Collection*)                              java.util.ArrayList::lastIndexOf(java.lang.Object*)
@@ -107,7 +107,7 @@ If we complete with
 breakpoints in all variants of `add` are installed.
 
 #### Arrays
-Arrays have a **`data`-field** with that can be accessed via index to access the individual array elements, e.g.
+Arrays have a **`data`-field** that can be accessed via an index to get the individual array elements, for example:
 ```text
 Thread 1 "hello_image" hit Breakpoint 1, hello.Hello::main(java.lang.String[]*) (args=0x7ff33f800898) at hello/Hello.java:76
 76	        Greeter greeter = Greeter.greeter(args);
@@ -129,14 +129,15 @@ $3 = 0x7ff33f8008a0
 type = class _z_.java.lang.String : public java.lang.String {
 } *[0]
 ``` 
-Here `args.data` can be accessed via index. E.g. The first of the four array elements is a pointer to a String
+Here `args.data` can be accessed via an index.
+In this case, the first of the four array elements is a pointer to a String:
 ```text
 (gdb) p args.data[0]
 $4 = (_z_.java.lang.String *) 0x27011a
 ```
 
 #### Strings
-To see the actual contents of a Java String object we have to look at its **`value`-field**, e.g.
+To see the actual contents of a Java String object, we have to look at its **`value`-field**, for example:
 ```text
 (gdb) p args.data[0]
 $4 = (_z_.java.lang.String *) 0x27011a
@@ -160,18 +161,21 @@ $5 = {
     static COMPACT_STRINGS = true
   }, <No data fields>}
 ```
-The `value` field holds the String data. Let's see what type `value` is:
+The `value` field holds the String data.
+Let's check the type of `value`:
 ```text
 (gdb) p args.data[0].value
 $3 = (_z_.byte[] *) 0x250119
 ```
-It's a byte array. As we already learned before, the elements of an array can be accessed via its `data`-field.
+`value` is of type `byte[]`.
+As we already learned before, the elements of an array can be accessed via its `data`-field.
 ```text
 (gdb) p args.data[0].value.data
 $10 = 0x7ff33f8008c8 "this\376\376\376\376\200G\273\001\030\001'"
 ```
 GDB is smart enough to interpret the byte-pointer as a C string out of the box.
-But in essence it's an array. The following gives us the `t` from `this`.
+But in essence, it is an array.
+The following gives us the `t` from `this`.
 ```text
 (gdb) p args.data[0].value.data[0]
 $13 = 116 't'
@@ -268,15 +272,15 @@ For example if you have:
 
 $38 = (_z_.java.lang.Object *) 0x290fcc
 ```
-in the internal array of an ArrayList, you can see that the first entry points to a `java.lang.Object` via a **compressed ref**. This can be seen by the `_z_.` prefix in the type-name.
-To check what the runtime-type of that object is we use:
+in the internal array of an `ArrayList`, the first entry points to a `java.lang.Object` with a `_z_.` prefix, which denotes that this is a **compressed ref**.
+To check what the runtime-type of that object is, we use:
 ```text
 (gdb) p elementData.data[0].hub.name.value.data
 
 $40 = 0x7ff7f8665600 "java.lang.String=\256\271`"
 ```
 Now we know that the compressed ref actually points to a `java.lang.String`.
-**When we now cast we must not forget to use the `_z_.` prefix.**
+**When we now cast, we must not forget to use the `_z_.` prefix.**
 ```text
 (gdb) p ('_z_.java.lang.String' *) elementData.data[0]
 
@@ -293,7 +297,7 @@ $43 = {
     value = 0x290fce,
     ...
 ```
-To see the contents of that String we use again
+To see the contents of that String, we again use:
 ```text
 (gdb) p $41.value.data
 
@@ -326,7 +330,7 @@ $2 = {
 (gdb) p this.name
 $3 = (_z_.java.lang.String *) 0x270119
 ```
-Just like in Java (C++) code, in instance-methods, prefixing with `this.` is not needed. 
+Just like in Java or C++ code, in instance-methods, prefixing with `this.` is not needed. 
 ```text
 (gdb) p name
 $7 = (_z_.java.lang.String *) 0x270119
@@ -335,19 +339,18 @@ $8 = 0x7ff7f91008c0 "FooBar\376\376\200G\273\001\027\001'"
 ```
 
 #### Accessing static fields
-While static fields are shown whenever we print an instance of an object sometimes we just want to see the value of
-a specific static field.
+While static fields are shown whenever we print an instance of an object sometimes, we just want to see the value of a specific static field.
 ```text
 (gdb) p 'java.math.BigDecimal::BIG_TEN_POWERS_TABLE'
 $23 = (_z_.java.math.BigInteger[] *) 0x132b95
 ```
-To get a list of all static fields use
+To get a list of all static fields, use:
 ```text
 (gdb) info variables ::
 ```
 
 #### Inspecting `.class` Objects
-For every Java type in the image there exists an easy way to access its class object (aka the hub).
+For every Java type in the image, there exists an easy way to access its class object (aka the hub).
 ```text
 (gdb) info types PrintStream
 All types matching regular expression "PrintStream":
@@ -358,7 +361,7 @@ File java/io/PrintStream.java:
 	java.io.PrintStream$1;
 ...
 ```
-To access the hub of `java.io.PrintStream` we can use the `.class` suffix.
+To access the hub of `java.io.PrintStream`, we can use the `.class` suffix:
 ```text
 (gdb) p 'java.io.PrintStream.class'
 $4 = {
@@ -412,7 +415,7 @@ Now we navigate to
 #13 com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_e6899342f5939c89e6e2f78e2c71f5f4926b786d(int, org.graalvm.nativeimage.c.type.CCharPointerPointer*) (__0=<optimized out>, __1=<optimized out>)
     at com/oracle/svm/core/code/IsolateEnterStub.java:1
 ```
-If we query extra info about the top frame we see
+If we query extra info about the top frame, we see
 ```text
 (gdb) info frame
 Stack level 0, frame at 0x7fffffffdb20:
@@ -423,7 +426,7 @@ Stack level 0, frame at 0x7fffffffdb20:
  Locals at unknown address, Previous frame's sp in rsp
 ```
 that `min` got inlined into `implWrite`.
-Now stepping into the use-site of `min` we see
+Now stepping into the use-site of `min`, we see
 ```text
 (gdb) bt
 #0  java.lang.String::getChars(int, int, char[]*, int) (this=0x7ff7f9101230, srcBegin=0, srcEnd=14, dst=0x7ff7f858ac58, dstBegin=0) at java/lang/String.java:1688
@@ -434,18 +437,20 @@ that value `14` was returned by `min` (as expected).
 
 #### Calling `svm_dbg_`-helper functions during debugging
 
-When the image gets built with `-H:+IncludeDebugHelperMethods` additional `@CEntryPoint`-functions are defined that can be called from GDB during debugging. For example:
+When the image gets built with `-H:+IncludeDebugHelperMethods`, additional `@CEntryPoint`-functions are defined that can be called from GDB during debugging, for example:
 ```text
 (gdb) p greeter 
 $3 = (hello.Hello$Greeter *) 0x7ffff6881900
 ```
-Here again we have a local named `greeter` with the static-type `hello.Hello$Greeter`. To see its runtime-type we can use the methods already described above.
-Alternatively we can make use of the `svm_dbg_`-helper functions. For example, we can call
+Here again, we have a local named `greeter` with the static-type `hello.Hello$Greeter`.
+To see its runtime-type, we can use the methods already described above.
+Alternatively, we can make use of the `svm_dbg_`-helper functions.
+For example, we can call
 ```text
 void svm_dbg_print_hub(graal_isolatethread_t* thread, size_t hubPtr)
 ```
 from within the running debug session. We have to pass a value for `graal_isolatethread_t` and the absolute address of the hub we want to get printed.
-In most situations, the value for graal_isolatethread_t is just the value of the current `IsolateThread` that can be found in a platform-specific register:
+In most situations, the value for `graal_isolatethread_t` is just the value of the current `IsolateThread` that can be found in a platform-specific register:
 
 | Platform  | Register |
 | --------- | -------- |
@@ -457,15 +462,15 @@ Finally, before we can call `svm_dbg_print_hub` we also have to make sure we hav
 (gdb) p greeter.hub
 $4 = (_z_.java.lang.Class *) 0x837820 <java.io.ObjectOutputStream::ObjectOutputStream(java.io.OutputStream*)+1120>
 ```
-reveals that in the current situation the `hub`-field in `greeter` holds a compressed reference to the hub. This can be seen from the `_z_.`-prefix of the `hub`-type. 
-Thus, we need first need get the absolute address of the hub field by using another `svm_dbg_`-helper method.
+reveals that in the current situation, the `hub`-field in `greeter` holds a compressed reference to the hub (the `hub-type` is prefixed with `_z_.`). 
+Thus, we first need to get the absolute address of the hub field by using another `svm_dbg_`-helper method.
 ```text
 (gdb) call svm_dbg_obj_uncompress($r15, greeter.hub)
 $5 = 140737339160608
 (gdb) p/x $5
 $6 = 0x7ffff71b7820
 ```
-With the help of calling `svm_dbg_obj_uncompress` we now know that the hub is located at address `0x7ffff71b7820` and we can finally call `svm_dbg_print_hub`:
+With the help of calling `svm_dbg_obj_uncompress`, we now know that the hub is located at address `0x7ffff71b7820` and we can finally call `svm_dbg_print_hub`:
 ```text
 (gdb) call (void) svm_dbg_print_hub($r15, 0x7ffff71b7820)
 hello.Hello$NamedGreeter
