@@ -124,7 +124,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
     protected OperationModel parse(Element element, List<AnnotationMirror> ignored) {
         TypeElement typeElement = (TypeElement) element;
         OperationModel result = parseImpl(typeElement);
-        if (result.hasErrors() && mode == ParseMode.OPERATION_PROXY) {
+        if (result.hasErrors() && isProxy()) {
             AnnotationValue proxiedClassValue = ElementUtils.getAnnotationValue(mirror, "value", false);
             parent.addError(mirror, proxiedClassValue, "Encountered errors using %s as an OperationProxy. These errors must be resolved before the DSL can proceed.", typeElement.getQualifiedName());
         }
@@ -195,14 +195,19 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                     if (el.getKind() == ElementKind.CONSTRUCTOR && ((ExecutableElement) el).getParameters().size() == 0) {
                         continue;
                     }
-                    data.addError(el, "@Operation annotated class must not contain non-static members.");
+                    if (ElementUtils.findAnnotationMirror(el, types.Specialization) != null) {
+                        continue; // non-static specializations get a different message; see below
+                    }
+                    data.addError(el, "Operation class must not contain non-static members.");
                 }
             }
         }
 
-        for (ExecutableElement cel : findSpecializations(typeElement)) {
-            if (!cel.getModifiers().contains(Modifier.STATIC)) {
-                data.addError("Operation specifications can only contain static specializations. Use @Bind(\"this\") parameter if you need a Node instance.");
+        for (ExecutableElement specialization : findSpecializations(typeElement)) {
+            if (!specialization.getModifiers().contains(Modifier.STATIC)) {
+                // TODO: add docs explaining how to convert a non-static specialization method and
+                // reference it in this error message.
+                data.addError(specialization, "Operation class must only contain static specializations. This method should be rewritten as a static specialization.");
             }
         }
 

@@ -252,9 +252,9 @@ public class ErrorTests {
         @Operation
         public static final class NonStaticMemberOperation {
 
-            @ExpectError("@Operation annotated class must not contain non-static members.") public int field;
+            @ExpectError("Operation class must not contain non-static members.") public int field;
 
-            @ExpectError("@Operation annotated class must not contain non-static members.")
+            @ExpectError("Operation class must not contain non-static members.")
             public void doSomething() {
             }
         }
@@ -318,13 +318,12 @@ public class ErrorTests {
     public static final class CloneableOperationProxy implements Cloneable {
     }
 
-    @ExpectError("Operation specifications can only contain static specializations. Use @Bind(\"this\") parameter if you need a Node instance.")
     public static final class NonStaticMemberOperationProxy {
 
-        @ExpectError("@Operation annotated class must not contain non-static members.") public int field;
+        @ExpectError("Operation class must not contain non-static members.") public int field;
 
         @Specialization
-        @ExpectError("@Operation annotated class must not contain non-static members.")
+        @ExpectError("Operation class must only contain static specializations. This method should be rewritten as a static specialization.")
         public int add(int x, int y) {
             return x + y;
         }
