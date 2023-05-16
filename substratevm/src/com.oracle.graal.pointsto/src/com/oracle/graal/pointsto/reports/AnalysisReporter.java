@@ -57,7 +57,7 @@ public class AnalysisReporter {
 
             String typesTraceOpt = AnalysisReportsOptions.ThrowOnTypeReachable.getValue(options);
             if (!typesTraceOpt.isEmpty()) {
-                ReachabilityTracePrinter.printTraceForTypesImpl(typesTraceOpt, bb, reportsPath, imageName);
+                ReachabilityTracePrinter.printTraceForTypesImpl(typesTraceOpt, bb, reportsPath, baseImageName);
             }
 
             String methodsTraceOpt = AnalysisReportsOptions.ThrowOnMethodReachable.getValue(options);
