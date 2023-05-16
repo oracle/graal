@@ -44,12 +44,10 @@ String dump of section '.debug.svm.imagebuild.classpath':
   [   1a9]  /home/user/graal/substratevm/mxbuild/jdk20/com.oracle.svm.test/bin
 ```
 The following sections are available
-```text
-.debug.svm.imagebuild.classpath
-.debug.svm.imagebuild.modulepath
-.debug.svm.imagebuild.arguments
-.debug.svm.imagebuild.java.properties
-```
+* .debug.svm.imagebuild.classpath
+* .debug.svm.imagebuild.modulepath
+* .debug.svm.imagebuild.arguments
+* .debug.svm.imagebuild.java.properties
 
 #### Where is the main function?
 Use
