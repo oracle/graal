@@ -207,7 +207,8 @@ $18 = {
       hub = 0x1d1cae0
     }, <No data fields>}, <No data fields>}
 ```
-But we do have the `hub`-field that allows us to see that the runtime-type of the Greeter object at address `0x7ff7f9101208` is:
+But we do have the `hub`-field, which points to the class-object of an object.
+Therefore, it allows us to determine the runtime-type of the Greeter object at address `0x7ff7f9101208`:
 ```text
 (gdb) p greeter.hub
 $19 = (_z_.java.lang.Class *) 0x1d1cae0
