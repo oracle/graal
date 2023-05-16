@@ -49,7 +49,7 @@ The following sections are available
 * .debug.svm.imagebuild.arguments
 * .debug.svm.imagebuild.java.properties
 
-#### Where is the main function?
+#### Where is the main method?
 Use
 ```text
 info functions ::main
