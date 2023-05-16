@@ -1182,8 +1182,6 @@ class SvmSupport(object):
     def get_debug_flags(self, image_config):
         assert self.is_debug_supported()
         flags = ['-g']
-        if mx.is_darwin():
-            flags += ['-H:+UseOldDebugInfo']
         if self.generate_separate_debug_info(image_config):
             flags += ['-H:+StripDebugInfo']
         return flags

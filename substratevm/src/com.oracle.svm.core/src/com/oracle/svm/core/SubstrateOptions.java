@@ -642,32 +642,13 @@ public class SubstrateOptions {
     };
 
     private static void validateGenerateDebugInfo(HostedOptionKey<Integer> optionKey) {
-        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0 && !SubstrateOptions.UseOldDebugInfo.getValue()) {
+        if (OS.getCurrent() == OS.DARWIN && optionKey.hasBeenSet() && optionKey.getValue() > 0) {
             LogUtils.warning("Using %s is not supported on macOS", SubstrateOptionsParser.commandArgument(optionKey, optionKey.getValue().toString()));
         }
     }
 
-    @Option(help = "Control debug information output: 0 - no debuginfo, 1 - AOT code debuginfo, 2 - AOT and runtime code debuginfo (runtime code support only with -H:+UseOldDebugInfo).", //
-                    deprecated = true, deprecationMessage = "Please use the -g option.")//
-    public static final HostedOptionKey<Integer> Debug = new HostedOptionKey<>(0) {
-        @Override
-        public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {
-            GenerateDebugInfo.update(values, newValue);
-        }
-    };
-
-    @Option(help = "Use old debuginfo", deprecated = true, deprecationMessage = "Please use the -g option.")//
-    public static final HostedOptionKey<Boolean> UseOldDebugInfo = new HostedOptionKey<>(false, SubstrateOptions::validateUseOldDebugInfo);
-
     public static boolean useDebugInfoGeneration() {
-        return useLIRBackend() && GenerateDebugInfo.getValue() > 0 && !UseOldDebugInfo.getValue();
-    }
-
-    private static void validateUseOldDebugInfo(HostedOptionKey<Boolean> optionKey) {
-        if (optionKey.getValue() && SubstrateOptions.GenerateDebugInfo.getValue() < 1) {
-            throw UserError.abort("The option '%s' can only be used together with '%s'.",
-                            SubstrateOptionsParser.commandArgument(optionKey, "+"), SubstrateOptionsParser.commandArgument(SubstrateOptions.GenerateDebugInfo, "2"));
-        }
+        return useLIRBackend() && GenerateDebugInfo.getValue() > 0;
     }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
