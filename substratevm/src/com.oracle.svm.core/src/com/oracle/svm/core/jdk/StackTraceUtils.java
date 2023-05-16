@@ -260,7 +260,7 @@ public class StackTraceUtils {
 final class BacktraceVisitor extends StackFrameVisitor {
 
     private int index = 0;
-    private final int limit = SubstrateOptions.maxJavaStackTraceDepth();
+    private final int limit = computeNativeLimit();
 
     /*
      * Empirical data suggests that most stack traces tend to be relatively short (<100). We choose
@@ -268,6 +268,30 @@ final class BacktraceVisitor extends StackFrameVisitor {
      */
     private static final int INITIAL_TRACE_SIZE = 80;
     private long[] trace = new long[INITIAL_TRACE_SIZE];
+
+    public static final int NATIVE_FRAME_LIMIT_MARGIN = 10;
+
+    /**
+     * Gets the number of native frames to collect. Native frames and Java frames do not directly
+     * relate. We cannot tell how many Java frames a native frame represents. Usually, a single
+     * native represents multiple Java frames, but that is not true in general. Frames might be
+     * skipped because they represent a {@link Throwable} constructor, or are otherwise special
+     * ({@link StackTraceUtils#shouldShowFrame}). To mitigate this, we always decode
+     * {@linkplain #NATIVE_FRAME_LIMIT_MARGIN a few more} native frames than the
+     * {@linkplain SubstrateOptions#maxJavaStackTraceDepth() Java frame limit} and hope that we can
+     * decode enough Java frames later on.
+     *
+     * @see SubstrateOptions#maxJavaStackTraceDepth()
+     */
+    private static int computeNativeLimit() {
+        int maxJavaStackTraceDepth = SubstrateOptions.maxJavaStackTraceDepth();
+        if (maxJavaStackTraceDepth <= 0) {
+            /* Unlimited backtrace. */
+            return Integer.MAX_VALUE;
+        }
+        int maxJavaStackTraceDepthExtended = maxJavaStackTraceDepth + NATIVE_FRAME_LIMIT_MARGIN;
+        return maxJavaStackTraceDepthExtended > maxJavaStackTraceDepth ? maxJavaStackTraceDepthExtended : Integer.MAX_VALUE;
+    }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
     private static boolean decodeCodePointer(BuildStackTraceVisitor visitor, CodePointer ip) {
@@ -296,15 +320,11 @@ final class BacktraceVisitor extends StackFrameVisitor {
 
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        if (index >= limit) {
-            // cutoff
-            return false;
-        }
         VMError.guarantee(deoptimizedFrame == null, "Deoptimization not supported");
         long rawValue = ip.rawValue();
         VMError.guarantee(rawValue != 0, "Unexpected code pointer: 0");
         add(rawValue);
-        return true;
+        return index != limit;
     }
 
     private void add(long value) {
@@ -382,10 +402,7 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 
         StackTraceElement sourceReference = frameInfo.getSourceReference();
         trace.add(sourceReference);
-        if (trace.size() == limit) {
-            return false;
-        }
-        return true;
+        return trace.size() != limit;
     }
 }
 

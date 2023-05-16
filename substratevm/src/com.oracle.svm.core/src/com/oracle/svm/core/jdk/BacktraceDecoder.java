@@ -45,10 +45,11 @@ public abstract class BacktraceDecoder {
      * @param backtrace internal backtrace stored in {@link Target_java_lang_Throwable#backtrace}
      * @param maxFramesProcessed the maximum number of frames that should be
      *            {@linkplain #processFrameInfo processed}
-     * @param maxFramesDecode the maximum number of frames that should be decoded
+     * @param maxFramesDecode the maximum number of frames that should be decoded (0 means all)
      * @return the number of decoded frames
      */
     protected final int visitBacktrace(Object backtrace, int maxFramesProcessed, int maxFramesDecode) {
+        int maxFramesDecodeLimit = maxFramesDecode > 0 ? maxFramesDecode : Integer.MAX_VALUE;
         int framesDecoded = 0;
         if (backtrace != null) {
             final long[] trace = (long[]) backtrace;
@@ -57,8 +58,8 @@ public abstract class BacktraceDecoder {
                     break;
                 }
                 CodePointer ip = WordFactory.pointer(address);
-                framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecode);
-                if (framesDecoded == maxFramesDecode) {
+                framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecodeLimit);
+                if (framesDecoded == maxFramesDecodeLimit) {
                     break;
                 }
             }
