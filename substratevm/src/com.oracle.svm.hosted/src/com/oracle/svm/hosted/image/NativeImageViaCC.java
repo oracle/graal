@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Formatter;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -88,13 +89,13 @@ public abstract class NativeImageViaCC extends NativeImage {
 
     @Override
     @SuppressWarnings("try")
-    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
+    public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config, ForkJoinPool forkJoinPool) {
         try (Indent indent = debug.logAndIndent("Writing native image")) {
             // 0. Free codecache to make space for writing the objectFile
             codeCache.purge();
 
             // 1. write the relocatable file
-            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
+            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()), forkJoinPool);
             if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                 return null;
             }

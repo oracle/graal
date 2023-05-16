@@ -729,7 +729,7 @@ public class NativeImageGenerator {
                  * not is an implementation detail of the image.
                  */
                 Path tmpDir = ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory();
-                LinkerInvocation inv = image.write(debug, generatedFiles(HostedOptionValues.singleton()), tmpDir, imageName, beforeConfig);
+                LinkerInvocation inv = image.write(debug, generatedFiles(HostedOptionValues.singleton()), tmpDir, imageName, beforeConfig, compilationExecutor);
                 if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                     return;
                 }
@@ -934,9 +934,14 @@ public class NativeImageGenerator {
                                 (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue() && CAnnotationProcessorCache.Options.UseCAPCache.getValue());
 
                 if (!withoutCompilerInvoker) {
-                    CCompilerInvoker compilerInvoker = CCompilerInvoker.create(ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
+                    CCompilerInvoker compilerInvoker;
+                    if (ImageSingletons.contains(CCompilerInvoker.class)) {
+                        compilerInvoker = ImageSingletons.lookup(CCompilerInvoker.class);
+                    } else {
+                        compilerInvoker = CCompilerInvoker.create(ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
+                        ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
+                    }
                     compilerInvoker.verifyCompiler();
-                    ImageSingletons.add(CCompilerInvoker.class, compilerInvoker);
                 }
 
                 nativeLibraries = setupNativeLibraries(aProviders.getConstantReflection(), aMetaAccess, aProviders.getSnippetReflection(), cEnumProcessor, classInitializationSupport,
