@@ -2528,63 +2528,53 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private class NativeImageDebugDataInfo implements DebugDataInfo {
-        HostedClass hostedClass;
-        ImageHeapPartition partition;
-        long offset;
-        long address;
-        long size;
-        String typeName;
-        String provenance;
+        private final NativeImageHeap.ObjectInfo objectInfo;
 
         @SuppressWarnings("try")
         @Override
         public void debugContext(Consumer<DebugContext> action) {
-            try (DebugContext.Scope s = debugContext.scope("DebugDataInfo", provenance)) {
+            try (DebugContext.Scope s = debugContext.scope("DebugDataInfo")) {
                 action.accept(debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
         }
 
+        /* Accessors. */
+
         NativeImageDebugDataInfo(ObjectInfo objectInfo) {
-            hostedClass = objectInfo.getClazz();
-            partition = objectInfo.getPartition();
-            offset = objectInfo.getOffset();
-            address = objectInfo.getAddress();
-            size = objectInfo.getSize();
-            provenance = objectInfo.toString();
-            typeName = hostedClass.toJavaName();
+            this.objectInfo = objectInfo;
         }
 
-        /* Accessors. */
         @Override
         public String getProvenance() {
-            return provenance;
+            return objectInfo.toString();
         }
 
         @Override
         public String getTypeName() {
-            return typeName;
+            return objectInfo.getClazz().toJavaName();
         }
 
         @Override
         public String getPartition() {
+            ImageHeapPartition partition = objectInfo.getPartition();
             return partition.getName() + "{" + partition.getSize() + "}@" + partition.getStartOffset();
         }
 
         @Override
         public long getOffset() {
-            return offset;
+            return objectInfo.getOffset();
         }
 
         @Override
         public long getAddress() {
-            return address;
+            return objectInfo.getAddress();
         }
 
         @Override
         public long getSize() {
-            return size;
+            return objectInfo.getSize();
         }
     }
 
