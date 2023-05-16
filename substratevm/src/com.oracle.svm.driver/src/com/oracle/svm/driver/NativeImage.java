@@ -90,6 +90,7 @@ import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
+import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -1420,6 +1421,7 @@ public class NativeImage {
             if (!imageBuilderEnvironment.isEmpty()) {
                 throw showError("Option -E<env-var-key>[=<env-var-value>] is not compatible with environment variable %s=%s.".formatted(deprecatedSanitationKey, deprecatedSanitationValue));
             }
+            LogUtils.warningDeprecatedEnvironmentVariable(deprecatedSanitationKey);
             deprecatedSanitizeJVMEnvironment(environment);
         } else {
             sanitizeJVMEnvironment(environment, imageBuilderEnvironment);
