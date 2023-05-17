@@ -69,6 +69,7 @@ import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
 import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
 import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.headers.WindowsAPIs;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode.CapturableState;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
@@ -133,9 +134,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
     @Uninterruptible(reason = "Interruptions might change call state.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    public static void captureCallState(int states, CIntPointer captureBuffer) {
+    public static void captureCallState(int statesToCapture, CIntPointer captureBuffer) {
         /*
-         * Note that this method is called from inside the CFunction prologue, more precisely before
+         * This method is called from inside the CFunction prologue, more precisely before
          * transitioning back into Java. This means that the calls we do here should not transition
          * to/from native, as this would introduce a safepoint.
          *
@@ -148,7 +149,23 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
          * what is done in DowncallLinker::capture_state in HotSpot).
          */
         int i = 0;
-        if ((states & CapturableState.ERRNO.mask()) != 0 && LibC.isSupported()) {
+        if ((statesToCapture & CapturableState.GET_LAST_ERROR.mask()) != 0 && WindowsAPIs.isSupported()) {
+            /*
+             * com.oracle.svm.core.windows.headers.WinBase#GetLastError does not transition to
+             * native
+             */
+            captureBuffer.write(i, WindowsAPIs.GetLastError());
+            ++i;
+        }
+        if ((statesToCapture & CapturableState.WSA_GET_LAST_ERROR.mask()) != 0 && WindowsAPIs.isSupported()) {
+            /*
+             * com.oracle.svm.core.windows.headers.WinSock#WSAGetLastError does not transition to
+             * native
+             */
+            captureBuffer.write(i, WindowsAPIs.WSAGetLastError());
+            ++i;
+        }
+        if ((statesToCapture & CapturableState.ERRNO.mask()) != 0 && LibC.isSupported()) {
             // Despite the appearances, getting errno is NOT a function call.
             captureBuffer.write(i, LibC.errno());
             ++i;
@@ -166,14 +183,14 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
     }
 
     @Snippet
-    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus, @ConstantParameter int states, CIntPointer captureBuffer) {
+    private static void epilogueSnippet(@ConstantParameter int oldThreadStatus, @ConstantParameter int statesToCapture, CIntPointer captureBuffer) {
         /*
          * Putting this trivial check in a separate function might be a bit overkill, but this
          * ensures that it is correctly folded, which should be sufficient to ensure that the
          * if-the-else is itself folded.
          */
-        if (checkIfCaptureNeeded(states)) {
-            call(CAPTURE_CALL_STATE, states, captureBuffer);
+        if (checkIfCaptureNeeded(statesToCapture)) {
+            call(CAPTURE_CALL_STATE, statesToCapture, captureBuffer);
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
@@ -248,7 +265,7 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
-            args.addConst("states", CapturableState.mask(node.getStatesToCapture()), StampFactory.objectNonNull());
+            args.addConst("statesToCapture", CapturableState.mask(node.getStatesToCapture()), StampFactory.objectNonNull());
             ValueNode buffer = node.getCaptureBuffer();
             if (buffer != null) {
                 args.add("captureBuffer", buffer);

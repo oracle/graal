@@ -42,6 +42,9 @@ import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 @Platforms(Platform.WINDOWS.class)
 public class WinSock {
 
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int WSAGetLastError();
+
     /**
      * Structure containing information about the WinSock implementation
      */

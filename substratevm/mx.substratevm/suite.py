@@ -668,7 +668,8 @@ suite = {
                     "jdk.internal.foreign",
                     "jdk.internal.foreign.abi",
                     "jdk.internal.foreign.abi.x64",
-                    "jdk.internal.foreign.abi.x64.sysv"
+                    "jdk.internal.foreign.abi.x64.sysv",
+                    "jdk.internal.foreign.abi.x64.windows",
             	],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",
@@ -2014,7 +2015,8 @@ suite = {
                         "jdk.internal.foreign",
                         "jdk.internal.foreign.abi",
                         "jdk.internal.foreign.abi.x64",
-                        "jdk.internal.foreign.abi.x64.sysv"
+                        "jdk.internal.foreign.abi.x64.sysv",
+                        "jdk.internal.foreign.abi.x64.windows",
                     ],
                 },
             },
