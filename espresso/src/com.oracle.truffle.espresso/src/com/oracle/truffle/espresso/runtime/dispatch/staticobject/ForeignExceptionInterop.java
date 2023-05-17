@@ -33,6 +33,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessageFactory;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodes;
+import com.oracle.truffle.espresso.substitutions.Collect;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
@@ -94,29 +96,28 @@ public class ForeignExceptionInterop extends ThrowableInterop {
         throw (RuntimeException) getRawForeignObject(object);
     }
 
-    static class Nodes {
+    @Collect(value = InteropNodes.class, getter = "getInstance")
+    public static class Nodes extends InteropNodes {
 
-        static {
-            Nodes.registerMessages(ForeignExceptionInterop.class);
+        private static final InteropNodes INSTANCE = new Nodes();
+
+        public static InteropNodes getInstance() {
+            return INSTANCE;
         }
 
-        public static void ensureInitialized() {
+        public Nodes() {
+            super(ForeignExceptionInterop.class, ThrowableInterop.Nodes.getInstance());
         }
 
-        public static void registerMessages(Class<? extends ForeignExceptionInterop> cls) {
-            EspressoInterop.Nodes.registerMessages(cls);
+        public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.HasExceptionStackTraceNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.GetExceptionStackTraceNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionTypeNode", ForeignExceptionInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
-        }
-
-        static {
-            registerMessages(ForeignExceptionInterop.class);
+            InteropMessageFactory.register(cls, "hasExceptionCause", ForeignExceptionInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionCause", ForeignExceptionInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "hasExceptionMessage", ForeignExceptionInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionMessage", ForeignExceptionInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "hasExceptionStackTrace", ForeignExceptionInteropFactory.NodesFactory.HasExceptionStackTraceNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionStackTrace", ForeignExceptionInteropFactory.NodesFactory.GetExceptionStackTraceNodeGen::create);
+            InteropMessageFactory.register(cls, "throwException", ForeignExceptionInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
         }
 
         abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {

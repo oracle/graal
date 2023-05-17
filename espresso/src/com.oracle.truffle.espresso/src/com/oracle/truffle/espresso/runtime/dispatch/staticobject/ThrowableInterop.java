@@ -136,12 +136,12 @@ public class ThrowableInterop extends EspressoInterop {
 
         public void registerMessages(Class<?> cls) {
             InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.GetExceptionTypeNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.IsExceptionNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
-            InteropMessageFactory.register(cls, "getExceptionType", ThrowableInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "isException", ThrowableInteropFactory.NodesFactory.IsExceptionNodeGen::create);
+            InteropMessageFactory.register(cls, "throwException", ThrowableInteropFactory.NodesFactory.ThrowExceptionNodeGen::create);
+            InteropMessageFactory.register(cls, "hasExceptionCause", ThrowableInteropFactory.NodesFactory.HasExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionCause", ThrowableInteropFactory.NodesFactory.GetExceptionCauseNodeGen::create);
+            InteropMessageFactory.register(cls, "hasExceptionMessage", ThrowableInteropFactory.NodesFactory.HasExceptionMessageNodeGen::create);
+            InteropMessageFactory.register(cls, "getExceptionMessage", ThrowableInteropFactory.NodesFactory.GetExceptionMessageNodeGen::create);
         }
 
         abstract static class GetExceptionTypeNode extends InteropMessage.GetExceptionType {

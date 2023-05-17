@@ -246,6 +246,8 @@ public class BaseInterop {
             InteropMessageFactory.register(cls, "isMetaInstance", BaseInteropFactory.NodesFactory.IsMetaInstanceNodeGen::create);
             InteropMessageFactory.register(cls, "hasMetaObject", BaseInteropFactory.NodesFactory.HasMetaObjectNodeGen::create);
             InteropMessageFactory.register(cls, "getMetaObject", BaseInteropFactory.NodesFactory.GetMetaObjectNodeGen::create);
+            InteropMessageFactory.register(cls, "hasMetaParents", BaseInteropFactory.NodesFactory.HasMetaParentsNodeGen::create);
+            InteropMessageFactory.register(cls, "getMetaParents", BaseInteropFactory.NodesFactory.GetMetaParentsNodeGen::create);
             InteropMessageFactory.register(cls, "isIdenticalOrUndefined", BaseInteropFactory.NodesFactory.IsIdenticalOrUndefinedNodeGen::create);
             InteropMessageFactory.register(cls, "identityHashCode", BaseInteropFactory.NodesFactory.IdentityHashCodeNodeGen::create);
             InteropMessageFactory.register(cls, "hasLanguage", BaseInteropFactory.NodesFactory.HasLanguageNodeGen::create);
@@ -342,6 +344,22 @@ public class BaseInterop {
                 }
                 error.enter();
                 throw UnsupportedMessageException.create();
+            }
+        }
+
+        abstract static class HasMetaParentsNode extends InteropMessage.HasMetaParents {
+            @Specialization
+            public static boolean hasMetaParents(StaticObject object) {
+                return BaseInterop.hasMetaParents(object);
+            }
+
+        }
+
+        abstract static class GetMetaParentsNode extends InteropMessage.GetMetaParents {
+            @Specialization
+            public static Object getMetaParents(StaticObject object,
+                            @Cached BranchProfile error) throws UnsupportedMessageException {
+                return BaseInterop.getMetaParents(object, error);
             }
         }
 
