@@ -74,6 +74,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.common.option.CommonOptions;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -113,6 +114,7 @@ public class NativeImage {
     static final String graalvmVendor = VM.getVendor();
     static final String graalvmVendorUrl = VM.getVendorUrl();
     static final String graalvmVendorVersion = VM.getVendorVersion();
+    private static final String ALL_UNNAMED = "ALL-UNNAMED";
     static final String graalvmVersion = System.getProperty("org.graalvm.version", "dev");
 
     private static Map<String, String[]> getCompilerFlags() {
@@ -513,7 +515,7 @@ public class NativeImage {
                      * into:
                      * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=ALL-UNNAMED
                      */
-                    builderJavaArgs.add(line.substring(0, line.lastIndexOf('=') + 1) + "ALL-UNNAMED");
+                    builderJavaArgs.add(line.substring(0, line.lastIndexOf('=') + 1) + ALL_UNNAMED);
                 } else {
                     builderJavaArgs.add(line);
                 }
@@ -904,6 +906,11 @@ public class NativeImage {
         }
     }
 
+    void handleManifestFileAttributes(Path jarFilePath, Attributes mainAttributes) {
+        handleMainClassAttribute(jarFilePath, mainAttributes);
+        handleModuleAttributes(mainAttributes);
+    }
+
     void handleMainClassAttribute(Path jarFilePath, Attributes mainAttributes) {
         String mainClassValue = mainAttributes.getValue("Main-Class");
         if (mainClassValue == null) {
@@ -911,6 +918,18 @@ public class NativeImage {
         }
         String origin = "manifest from " + jarFilePath.toUri();
         addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(oHClass + mainClassValue, origin));
+    }
+
+    void handleModuleAttributes(Attributes mainAttributes) {
+        String addOpensValues = mainAttributes.getValue("Add-Opens");
+        if (addOpensValues != null) {
+            handleModuleExports(addOpensValues, NativeImageClassLoaderOptions.AddOpens);
+        }
+
+        String addExportsValues = mainAttributes.getValue("Add-Exports");
+        if (addExportsValues != null) {
+            handleModuleExports(addExportsValues, NativeImageClassLoaderOptions.AddExports);
+        }
     }
 
     void handleClassPathAttribute(LinkedHashSet<Path> destination, Path jarFilePath, Attributes mainAttributes) {
@@ -939,6 +958,13 @@ public class NativeImage {
                 /* Invalid entries in Class-Path are allowed (i.e. use strict false) */
                 addImageClasspathEntry(destination, manifestClassPath.normalize(), false);
             }
+        }
+    }
+
+    private void handleModuleExports(String modulesValues, OptionKey<?> option) {
+        String[] modules = modulesValues.split(" ");
+        for (String fromModule : modules) {
+            addPlainImageBuilderArg(oH(option) + fromModule + "=" + ALL_UNNAMED);
         }
     }
 
