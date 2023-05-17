@@ -43,7 +43,6 @@ import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -69,20 +68,13 @@ public final class EspressoBindings implements TruffleObject {
     public static final String JAVA_VM = "<JavaVM>";
     public static final String ADD_PATH = "addPath";
 
-    final StaticObject loader;
     final boolean useBindingsLoader;
 
     boolean withNativeJavaVM;
 
-    public EspressoBindings(@JavaType(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM, boolean useBindingsLoader) {
+    public EspressoBindings(boolean withNativeJavaVM, boolean useBindingsLoader) {
         this.withNativeJavaVM = withNativeJavaVM;
-        assert StaticObject.notNull(loader) : "boot classloader (null) not supported";
-        this.loader = loader;
         this.useBindingsLoader = useBindingsLoader;
-    }
-
-    public StaticObject getBindingsLoader() {
-        return loader;
     }
 
     @ExportMessage
@@ -144,7 +136,7 @@ public final class EspressoBindings implements TruffleObject {
         Meta meta = context.getMeta();
         try {
             StaticObject clazz = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null,
-                            meta.toGuestString(member), false, loader);
+                            meta.toGuestString(member), false, context.getBindingsLoader());
             return clazz.getMirrorKlass(meta);
         } catch (EspressoException e) {
             error.enter();

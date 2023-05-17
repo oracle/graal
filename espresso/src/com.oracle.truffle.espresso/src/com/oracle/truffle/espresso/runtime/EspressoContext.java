@@ -191,6 +191,7 @@ public final class EspressoContext {
     @CompilationFinal private EspressoException outOfMemory;
 
     @CompilationFinal private EspressoBindings topBindings;
+    @CompilationFinal private StaticObject bindingsLoader;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
     @CompilationFinal private DowncallStubs downcallStubs;
     @CompilationFinal private UpcallStubs upcallStubs;
@@ -523,8 +524,8 @@ public final class EspressoContext {
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(espressoEnv.getTimers())) {
                 systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
             }
-            StaticObject bindingsLoader = createBindingsLoader(systemClassLoader);
-            topBindings = new EspressoBindings(bindingsLoader,
+            bindingsLoader = createBindingsLoader(systemClassLoader);
+            topBindings = new EspressoBindings(
                             getEnv().getOptions().get(EspressoOptions.ExposeNativeJavaVM),
                             bindingsLoader != systemClassLoader);
 
@@ -1047,6 +1048,10 @@ public final class EspressoContext {
 
     public EspressoBindings getBindings() {
         return topBindings;
+    }
+
+    public StaticObject getBindingsLoader() {
+        return bindingsLoader;
     }
 
     public WeakHashMap<StaticObject, SignalHandler> getHostSignalHandlers() {

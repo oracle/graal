@@ -60,7 +60,7 @@ public class AddPathToBindingsCache {
         newFile = DirectCallNode.create(doLookup(fileKlass, NEW_FILE, lookup).getCallTargetForceInit());
         toUri = DirectCallNode.create(doLookup(fileKlass, TO_URI, lookup).getCallTargetForceInit());
         toUrl = DirectCallNode.create(doLookup(uriKlass, TO_URL, lookup).getCallTargetForceInit());
-        loader = context.getBindings().getBindingsLoader();
+        loader = context.getBindingsLoader();
         addUrl = DirectCallNode.create(doLookup(loader.getKlass(), ADD_URL, lookup).getCallTargetForceInit());
     }
 
