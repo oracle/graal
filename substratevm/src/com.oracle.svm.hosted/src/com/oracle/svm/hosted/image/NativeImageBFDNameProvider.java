@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.image;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.util.VMError;

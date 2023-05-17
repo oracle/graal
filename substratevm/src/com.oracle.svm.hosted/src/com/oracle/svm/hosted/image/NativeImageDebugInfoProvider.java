@@ -46,7 +46,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.AccessorInfo;
 import com.oracle.svm.hosted.c.info.ElementInfo;

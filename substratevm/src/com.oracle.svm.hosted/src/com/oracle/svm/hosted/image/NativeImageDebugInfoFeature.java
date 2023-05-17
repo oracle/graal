@@ -27,8 +27,6 @@ package com.oracle.svm.hosted.image;
 import java.util.List;
 import java.util.function.Function;
 
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.ImageSingletons;
