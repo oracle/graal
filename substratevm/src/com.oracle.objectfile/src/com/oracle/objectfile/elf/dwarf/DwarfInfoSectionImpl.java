@@ -309,20 +309,22 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeStrSectionOffset(name, buffer, pos);
         log(context, "  [0x%08x]     byte_size  0x%x", pos, size);
         pos = writeAttrData1(size, buffer, pos);
-        pos = writeHeaderFields(context, headerTypeEntry, buffer, pos);
+        pos = writeStructFields(context, headerTypeEntry.fields(), buffer, pos);
         /*
          * Write a terminating null attribute.
          */
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeHeaderFields(DebugContext context, HeaderTypeEntry headerTypeEntry, byte[] buffer, int p) {
-        return headerTypeEntry.fields().reduce(p,
-                        (pos, fieldEntry) -> writeHeaderField(context, fieldEntry, buffer, pos),
-                        (oldPos, newPos) -> newPos);
+    private int writeStructFields(DebugContext context, Stream<FieldEntry> fields, byte[] buffer, int p) {
+        Cursor cursor = new Cursor(p);
+        fields.forEach( fieldEntry -> {
+            cursor.set(writeStructField(context, fieldEntry, buffer, cursor.get()));
+        });
+        return cursor.get();
     }
 
-    private int writeHeaderField(DebugContext context, FieldEntry fieldEntry, byte[] buffer, int p) {
+    private int writeStructField(DebugContext context, FieldEntry fieldEntry, byte[] buffer, int p) {
         int pos = p;
         String fieldName = fieldEntry.fieldName();
         TypeEntry valueType = fieldEntry.getValueType();
@@ -872,7 +874,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int size = foreignTypeEntry.getSize();
         int layoutOffset = pos;
         if (foreignTypeEntry.isWord()) {
-            // define the type as a typedef for an signed or unsigned word i.e. we don't have a layout type
+            // define the type as a typedef for a signed or unsigned word i.e. we don't have a layout type
             pos = writeForeignWordLayout(context, foreignTypeEntry, size, foreignTypeEntry.isSigned(), buffer, pos);
         } else if (foreignTypeEntry.isIntegral()) {
             // use a suitably sized signed or unsigned integral type as the layout type
@@ -882,14 +884,22 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeForeignFloatLayout(context, foreignTypeEntry, size, buffer, pos);
         } else {
             // pointer or unknown - layout id as a foreign stucture if we have fields otherwise use void
-            Stream<FieldEntry> fields = foreignTypeEntry.fields();
-            if (fields.findFirst().isPresent()) {
+            if (foreignTypeEntry.fieldCount() > 0) {
                 // define this type using a structure layout
-                pos = writeForeignStructLayout(context, foreignTypeEntry, size, fields, buffer, pos);
+                pos = writeForeignStructLayout(context, foreignTypeEntry, size, buffer, pos);
             } else {
-                // define this type as a typedef for a primitive word or void type
-                log(context, "  [0x%08x] foreign void pointer type for %s", pos, foreignTypeEntry.getTypeName());
+                // by default the referent of the pointer type will be void
                 layoutOffset = voidOffset;
+                String referentName = "void";
+                if (foreignTypeEntry.isPointer()) {
+                    TypeEntry pointerTo = foreignTypeEntry.getPointerTo();
+                    if (pointerTo != null) {
+                        // define this type as a typedef for a pointer to the referent
+                        layoutOffset = getTypeIndex(foreignTypeEntry.getPointerTo());
+                        referentName = foreignTypeEntry.getTypeName();
+                    }
+                }
+                log(context, "  [0x%08x] foreign pointer type %s referent 0x%x (%s)", pos, foreignTypeEntry.getTypeName(), layoutOffset, referentName);
             }
         }
         setLayoutIndex(foreignTypeEntry, layoutOffset);
@@ -909,11 +919,34 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeForeignStructLayout(DebugContext context, ForeignTypeEntry foreignTypeEntry, int size, Stream<FieldEntry> fields, byte[] buffer, int pos) {
-        // treat this as a word type for
+    private int writeForeignStructLayout(DebugContext context, ForeignTypeEntry foreignTypeEntry, int size, byte[] buffer, int p) {
+        // we should only arrive here if we have fields
+        assert foreignTypeEntry.fieldCount() > 0;
+        int pos = p;
         log(context, "  [0x%08x] foreign struct type for %s", pos, foreignTypeEntry.getTypeName());
-        log(context, "  [0x%08x] treating struct as foreign unsigned word for now", pos);
-        return writeForeignWordLayout(context, foreignTypeEntry, dwarfSections.pointerSize(), false, buffer, pos);
+        int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_foreign_struct;
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        String typedefName = foreignTypeEntry.getTypedefName();
+        if (typedefName.startsWith("struct ")) {
+            // log this before correcting it so we have some hope of clearing it up
+            log(context, "  [0x%08x]     typedefName includes redundant keyword struct %s", pos, typedefName);
+            typedefName = typedefName.substring("struct ".length());
+        }
+        if (typedefName == null) {
+            typedefName = "_" + foreignTypeEntry.getTypeName();
+            verboseLog(context, "  [0x%08x]   using synthetic typedef name %s", pos, typedefName);
+        }
+        typedefName = uniqueDebugString(typedefName);
+        log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(typedefName), typedefName);
+        pos = writeStrSectionOffset(typedefName, buffer, pos);
+        log(context, "  [0x%08x]     byte_size  0x%x", pos, size);
+        pos = writeAttrData1((byte) size, buffer, pos);
+        pos = writeStructFields(context, foreignTypeEntry.fields(), buffer, pos);
+        /*
+         * Write a terminating null attribute.
+         */
+        return writeAttrNull(buffer, pos);
     }
 
     private int writeForeignWordLayout(DebugContext context, ForeignTypeEntry foreignTypeEntry, int size, boolean isSigned, byte[] buffer, int p) {

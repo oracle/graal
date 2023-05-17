@@ -167,6 +167,8 @@ public interface DebugInfoProvider {
         public boolean isIntegral();
         public boolean isFloat();
         public boolean isSigned();
+
+        ResolvedJavaType pointerTo();
     }
 
     interface DebugArrayTypeInfo extends DebugTypeInfo {

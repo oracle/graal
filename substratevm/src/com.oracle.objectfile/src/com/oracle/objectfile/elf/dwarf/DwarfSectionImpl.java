@@ -792,7 +792,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
 
     protected int getTypeIndex(TypeEntry typeEntry) {
         if (!contentByteArrayCreated()) {
-            return 0;
+            return -1;
         }
         return dwarfSections.getTypeIndex(typeEntry);
     }

@@ -54,6 +54,10 @@ public abstract class StructureTypeEntry extends TypeEntry {
         return fields.stream();
     }
 
+    public int fieldCount() {
+        return fields.size();
+    }
+
     protected void processField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         /* Delegate this so superclasses can override this and inspect the computed FieldEntry. */
         addField(debugFieldInfo, debugInfoBase, debugContext);

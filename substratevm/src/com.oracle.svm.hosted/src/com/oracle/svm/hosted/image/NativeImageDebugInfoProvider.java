@@ -123,6 +123,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
 import org.graalvm.nativeimage.c.constant.CConstant;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
@@ -840,6 +841,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.elementInfo = elementInfo;
             assert verifyElementInfo() : "unexpected element info kind";
         }
+
         private boolean verifyElementInfo() {
             // word types and some pointer types do not have element info
             if (elementInfo == null || !(elementInfo instanceof SizableInfo)) {
@@ -875,21 +877,25 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public int size() {
             return elementSize(elementInfo);
         }
+
         DebugFieldInfo createForeignDebugFieldInfo(StructFieldInfo structFieldInfo) {
             return new NativeImageForeignDebugFieldInfo(hostedType, elementInfo, structFieldInfo);
         }
 
         @Override
         public String typedefName() {
-            if (elementInfo instanceof PointerToInfo) {
-                return ((PointerToInfo)elementInfo).getTypedefName();
-            } else if (elementInfo instanceof StructInfo) {
-                return ((StructInfo)elementInfo).getTypedefName();
-            } else if (elementInfo instanceof RawStructureInfo) {
-                return ((RawStructureInfo)elementInfo).getTypedefName();
-            } else {
-                return null;
+            String name = null;
+            if (elementInfo != null) {
+                if (elementInfo instanceof PointerToInfo) {
+                    name = ((PointerToInfo) elementInfo).getTypedefName();
+                } else if (elementInfo instanceof StructInfo) {
+                    name = ((StructInfo) elementInfo).getTypedefName();
+                }
+                if (name == null) {
+                    name = elementName(elementInfo);
+                }
             }
+            return name;
         }
 
         @Override
@@ -932,6 +938,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return (nativeLibs.isSigned(hostedType.getWrapped()) || (isIntegral() && !((SizableInfo) elementInfo).isUnsigned()));
         }
 
+        @Override
+        public ResolvedJavaType pointerTo() {
+            if (isPointer()) {
+                CPointerTo cPointerTo = hostedType.getAnnotation(CPointerTo.class);
+                if (cPointerTo != null) {
+                    HostedType pointerTo = heap.getMetaAccess().lookupJavaType(cPointerTo.value());
+                    return getOriginal(pointerTo);
+                }
+            }
+            return null;
+        }
     }
 
     private class NativeImageForeignDebugFieldInfo extends NativeImageDebugFileInfo implements DebugInfoProvider.DebugFieldInfo {
