@@ -83,6 +83,7 @@ final class WindowsThreadCpuTimeSupport implements ThreadCpuTimeSupport {
      * Do not cast a pointer to a FILETIME structure to a CLongPointer, it can cause alignment
      * faults on 64-bit Windows.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static UnsignedWord fileTimeToNanos(FILETIME ft) {
         UnsignedWord value = WordFactory.unsigned(ft.dwHighDateTime()).shiftLeft(32).or(WordFactory.unsigned(ft.dwLowDateTime()));
         return value.multiply(100);
