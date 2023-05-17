@@ -115,8 +115,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
             RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class, java.nio.charset.Charset.class));
             RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes", java.nio.charset.Charset.class));
         }
-        if (JavaVersionUtil.JAVA_SPEC <= 21) {
-            // TODO: change condition to < 21 once fully migrated to 21+20 or later.
+        if (JavaVersionUtil.JAVA_SPEC < 21) {
             RuntimeJNIAccess.register(method(a, "java.nio.charset.Charset", "isSupported", String.class));
             RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
             RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes", String.class));
