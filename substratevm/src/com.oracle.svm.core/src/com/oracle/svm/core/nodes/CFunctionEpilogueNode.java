@@ -53,9 +53,9 @@ import com.oracle.svm.core.Uninterruptible;
 @NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN, allowedUsageTypes = {Memory})
 public final class CFunctionEpilogueNode extends AbstractStateSplit implements Lowerable, SingleMemoryKill, ControlFlowAnchored, DeoptBefore {
     public enum CapturableState {
-        ERRNO(1 << 0);
-// GET_LAST_ERROR(1 << 1),
-// WSA_GET_LAST_ERROR(1 << 2),
+        ERRNO(1 << 0),
+        GET_LAST_ERROR(1 << 1),
+        WSA_GET_LAST_ERROR(1 << 2);
 
         private final int mask;
 

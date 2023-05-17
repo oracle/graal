@@ -83,7 +83,12 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     private static final Map<String, String[]> REQUIRES_CONCEALED = Map.of(
                     "jdk.internal.vm.ci", new String[]{"jdk.vm.ci.code", "jdk.vm.ci.meta", "jdk.vm.ci.amd64"},
-                    "java.base", new String[]{"jdk.internal.foreign", "jdk.internal.foreign.abi", "jdk.internal.foreign.abi.x64", "jdk.internal.foreign.abi.x64.sysv"});
+                    "java.base", new String[]{
+                                    "jdk.internal.foreign",
+                                    "jdk.internal.foreign.abi",
+                                    "jdk.internal.foreign.abi.x64",
+                                    "jdk.internal.foreign.abi.x64.sysv",
+                                    "jdk.internal.foreign.abi.x64.windows"});
 
     private boolean sealed = false;
     private final RuntimeForeignFunctionsAccessSupportImpl accessSupport = new RuntimeForeignFunctionsAccessSupportImpl();
