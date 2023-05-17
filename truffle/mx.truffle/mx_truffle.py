@@ -839,7 +839,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dependencies=['Graal SDK'],
     jar_distributions=[
         'truffle:TRUFFLE_DSL_PROCESSOR',
-        'truffle:TRUFFLE_TCK',
     ],
     jvmci_parent_jars=[
         'truffle:TRUFFLE_API',
