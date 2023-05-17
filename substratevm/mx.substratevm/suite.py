@@ -694,7 +694,7 @@ suite = {
                 },
                 "windows": {
                     "<others>": {
-                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN", "-DJDK_VER=<jdk_ver>"],
+                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
                     },
                 },
                 "<others>": {
