@@ -197,7 +197,7 @@ public class UniverseBuilder {
             hUniverse.orderedMethods = new ArrayList<>(hUniverse.methods.values());
             Collections.sort(hUniverse.orderedMethods, HostedUniverse.METHOD_COMPARATOR);
             hUniverse.orderedFields = new ArrayList<>(hUniverse.fields.values());
-            Collections.sort(hUniverse.orderedFields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
+            Collections.sort(hUniverse.orderedFields, HostedUniverse.FIELD_COMPARATOR_RELAXED_WITH_NAME);
             profilingInformationBuildTask.join();
         }
     }
@@ -637,7 +637,7 @@ public class UniverseBuilder {
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
-        Collections.sort(fields, HostedUniverse.FIELD_COMPARATOR_RELAXED);
+        Collections.sort(fields, HostedUniverse.FIELD_COMPARATOR_RELAXED_WITH_NAME);
 
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
