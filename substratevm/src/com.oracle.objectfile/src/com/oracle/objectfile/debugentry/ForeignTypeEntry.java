@@ -42,12 +42,12 @@ public class ForeignTypeEntry extends ClassEntry {
     private final static int FLAG_SIGNED = 1 << 3;
     private final static int FLAG_FLOAT = 1 << 4;
     String typedefName;
-    ArrayList<ClassEntry> parents;
+    TypeEntry pointerTo;
     int flags;
     public ForeignTypeEntry(String className, FileEntry fileEntry, int size) {
         super(className, fileEntry, size);
         typedefName = null;
-        parents = null;
+        pointerTo = null;
         flags = 0;
     }
 
@@ -66,6 +66,10 @@ public class ForeignTypeEntry extends ClassEntry {
             flags = FLAG_WORD;
         } else if (debugForeignTypeInfo.isPointer()) {
             flags = FLAG_POINTER;
+            ResolvedJavaType referent =  debugForeignTypeInfo.pointerTo();
+            if (referent != null) {
+                pointerTo = debugInfoBase.lookupTypeEntry(referent);
+            }
         } else if (debugForeignTypeInfo.isIntegral()) {
             flags = FLAG_INTEGRAL;
         } else if (debugForeignTypeInfo.isFloat()) {
@@ -74,28 +78,19 @@ public class ForeignTypeEntry extends ClassEntry {
         if (debugForeignTypeInfo.isSigned()) {
             flags |= FLAG_SIGNED;
         }
-        debugContext.log("foreign type %s flags 0x%x", typeName, flags);
+        if (isPointer() && pointerTo != null) {
+            debugContext.log("foreign type %s flags 0x%x referent %s ", typeName, flags, pointerTo.getTypeName());
+        } else {
+            debugContext.log("foreign type %s flags 0x%x", typeName, flags);
+        }
     }
 
     public String getTypedefName() {
         return typedefName;
     }
 
-    private void addParent(ForeignTypeEntry parent) {
-        if (parents == null) {
-            parents = new ArrayList<>();
-        }
-        if (!parents.contains(parent)) {
-            parents.add(parent);
-        }
-    }
-
-    public Stream<ClassEntry> parentStream() {
-        if (parents == null) {
-            return Stream.empty();
-        } else {
-            return parents.stream();
-        }
+    public TypeEntry getPointerTo() {
+        return pointerTo;
     }
 
     public boolean isWord() {
@@ -117,15 +112,11 @@ public class ForeignTypeEntry extends ClassEntry {
     @Override
     protected void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         ClassEntry parentEntry = debugInfoBase.lookupClassEntry(interfaceType);
+        // don't model the interface relationship when the Java interface actually identifies a foreign type
         if (parentEntry instanceof InterfaceClassEntry) {
             super.processInterface(interfaceType, debugInfoBase, debugContext);
         } else {
             assert parentEntry instanceof ForeignTypeEntry : "was only expecting an interface or a foreign type";
-            // track this type as a 'parent' type for the foreign type
-            // we can use this parent relationship to relate any underlying foreign
-            // primitive, pointer or struct types that this type points to, whether that
-            // is via a typedef chain or, in the latter case (of a struct), a super chain.
-            addParent((ForeignTypeEntry) parentEntry);
         }
     }
 }

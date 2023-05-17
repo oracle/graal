@@ -81,40 +81,41 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final int DW_ABBREV_CODE_class_pointer = 8;
     public static final int DW_ABBREV_CODE_foreign_pointer = 9;
     public static final int DW_ABBREV_CODE_foreign_typedef = 10;
-    public static final int DW_ABBREV_CODE_method_location = 11;
-    public static final int DW_ABBREV_CODE_static_field_location = 12;
-    public static final int DW_ABBREV_CODE_array_layout = 13;
-    public static final int DW_ABBREV_CODE_array_pointer = 14;
-    public static final int DW_ABBREV_CODE_interface_layout = 15;
-    public static final int DW_ABBREV_CODE_interface_pointer = 16;
-    public static final int DW_ABBREV_CODE_indirect_layout = 17;
-    public static final int DW_ABBREV_CODE_indirect_pointer = 18;
+    public static final int DW_ABBREV_CODE_foreign_struct = 11;
+    public static final int DW_ABBREV_CODE_method_location = 12;
+    public static final int DW_ABBREV_CODE_static_field_location = 13;
+    public static final int DW_ABBREV_CODE_array_layout = 14;
+    public static final int DW_ABBREV_CODE_array_pointer = 15;
+    public static final int DW_ABBREV_CODE_interface_layout = 16;
+    public static final int DW_ABBREV_CODE_interface_pointer = 17;
+    public static final int DW_ABBREV_CODE_indirect_layout = 18;
+    public static final int DW_ABBREV_CODE_indirect_pointer = 19;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_declaration = 19;
-    public static final int DW_ABBREV_CODE_method_declaration_static = 20;
-    public static final int DW_ABBREV_CODE_field_declaration1 = 21;
-    public static final int DW_ABBREV_CODE_field_declaration2 = 22;
-    public static final int DW_ABBREV_CODE_field_declaration3 = 23;
-    public static final int DW_ABBREV_CODE_field_declaration4 = 24;
-    public static final int DW_ABBREV_CODE_class_constant = 25;
-    public static final int DW_ABBREV_CODE_header_field = 26;
-    public static final int DW_ABBREV_CODE_array_data_type = 27;
-    public static final int DW_ABBREV_CODE_super_reference = 28;
-    public static final int DW_ABBREV_CODE_interface_implementor = 29;
+    public static final int DW_ABBREV_CODE_method_declaration = 20;
+    public static final int DW_ABBREV_CODE_method_declaration_static = 21;
+    public static final int DW_ABBREV_CODE_field_declaration1 = 22;
+    public static final int DW_ABBREV_CODE_field_declaration2 = 23;
+    public static final int DW_ABBREV_CODE_field_declaration3 = 24;
+    public static final int DW_ABBREV_CODE_field_declaration4 = 25;
+    public static final int DW_ABBREV_CODE_class_constant = 26;
+    public static final int DW_ABBREV_CODE_header_field = 27;
+    public static final int DW_ABBREV_CODE_array_data_type = 28;
+    public static final int DW_ABBREV_CODE_super_reference = 29;
+    public static final int DW_ABBREV_CODE_interface_implementor = 30;
     /* Level 2+K DIEs (where inline depth K >= 0) */
-    public static final int DW_ABBREV_CODE_inlined_subroutine = 30;
-    public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 31;
+    public static final int DW_ABBREV_CODE_inlined_subroutine = 31;
+    public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 32;
     /* Level 2 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 32;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 33;
-    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 34;
-    public static final int DW_ABBREV_CODE_method_local_declaration1 = 35;
-    public static final int DW_ABBREV_CODE_method_local_declaration2 = 36;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 33;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 34;
+    public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 35;
+    public static final int DW_ABBREV_CODE_method_local_declaration1 = 36;
+    public static final int DW_ABBREV_CODE_method_local_declaration2 = 37;
     /* Level 3 DIEs. */
-    public static final int DW_ABBREV_CODE_method_parameter_location1 = 37;
-    public static final int DW_ABBREV_CODE_method_parameter_location2 = 38;
-    public static final int DW_ABBREV_CODE_method_local_location1 = 39;
-    public static final int DW_ABBREV_CODE_method_local_location2 = 40;
+    public static final int DW_ABBREV_CODE_method_parameter_location1 = 38;
+    public static final int DW_ABBREV_CODE_method_parameter_location2 = 39;
+    public static final int DW_ABBREV_CODE_method_local_location1 = 40;
+    public static final int DW_ABBREV_CODE_method_local_location2 = 41;
 
     /*
      * Define all the Dwarf tags we need for our DIEs.
