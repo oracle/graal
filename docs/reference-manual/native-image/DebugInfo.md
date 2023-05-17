@@ -991,6 +991,15 @@ When `callgrind` is used in combination with a viewer like
 information about native image execution aand relate it back to
 specific source code lines.
 
-### Related Documentation
+### Call-graph recording with `perf record`
+
+Normally when perf does stack frame recording (i.e. when `--call-graph` is used), it uses frame pointers to recognize the individual stack frames.
+This assumes that the executable that gets profiled actually preserves frame pointers whenever a function gets called.
+For native-images this can be achieved by using `-H:+PreserveFramePointer` as an image build argument.
+
+An alternative solution is to make perf use dwarf debug info (specifically debug_frame data) to help unwinding stack frames.
+To make this work, the image needs to be built with `-g` (to generate debuginfo) and `perf record` needs to use argument `--call-graph dwarf` to make sure dwarf debug info (instead of frame pointers) is used for stack unwinding.
+
+## Related Documentation
 
 - [Debug Native Executables with GDB](guides/debug-native-executables-with-gdb.md)
