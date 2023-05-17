@@ -44,7 +44,7 @@ public abstract class BacktraceDecoder {
      * 
      * @param backtrace internal backtrace stored in {@link Target_java_lang_Throwable#backtrace}
      * @param maxFramesProcessed the maximum number of frames that should be
-     *            {@linkplain #processFrameInfo processed}
+     *            {@linkplain #processSourceReference processed}
      * @param maxFramesDecode the maximum number of frames that should be decoded (0 means all)
      * @return the number of decoded frames
      */
@@ -106,7 +106,7 @@ public abstract class BacktraceDecoder {
                 continue;
             }
             if (framesDecoded < maxFramesProcessed) {
-                processFrameInfo(frameInfo);
+                processSourceReference(frameInfo.getSourceClass(), frameInfo.getSourceMethodName(), frameInfo.getSourceLineNumber());
             }
             framesDecoded++;
             if (framesDecoded == maxFramesDecode) {
@@ -117,5 +117,5 @@ public abstract class BacktraceDecoder {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Some implementations allocate.")
-    protected abstract void processFrameInfo(FrameInfoQueryResult frameInfo);
+    protected abstract void processSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber);
 }

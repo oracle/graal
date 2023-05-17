@@ -369,8 +369,8 @@ final class StackTraceBuilder extends BacktraceDecoder {
     private final ArrayList<StackTraceElement> trace = new ArrayList<>();
 
     @Override
-    protected void processFrameInfo(FrameInfoQueryResult frameInfo) {
-        StackTraceElement sourceReference = frameInfo.getSourceReference();
+    protected void processSourceReference(Class<?> sourceClass, String sourceMethodName, int sourceLineNumber) {
+        StackTraceElement sourceReference = FrameInfoQueryResult.getSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
         trace.add(sourceReference);
     }
 }
