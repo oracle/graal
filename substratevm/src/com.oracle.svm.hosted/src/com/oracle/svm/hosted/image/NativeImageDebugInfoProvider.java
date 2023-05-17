@@ -122,7 +122,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
 /**
@@ -145,7 +144,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private final Set<HostedMethod> allOverrides;
     HostedType hubType;
     private HostedType wordBaseType;
-    private HostedType pointerBaseType;
     HashMap<JavaKind, HostedType> javaKindToHostedType;
 
     NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess) {
@@ -180,7 +178,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                         .collect(Collectors.toSet());
         hubType = metaAccess.lookupJavaType(Class.class);
         wordBaseType = metaAccess.lookupJavaType(WordBase.class);
-        pointerBaseType = metaAccess.lookupJavaType(PointerBase.class);
         javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
     }
 
@@ -872,12 +869,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return orderedFieldsStream(elementInfo).map(this::createForeignDebugFieldInfo);
         }
 
+        @Override
         public int size() {
             return elementSize(elementInfo);
         }
 
         DebugFieldInfo createForeignDebugFieldInfo(StructFieldInfo structFieldInfo) {
-            return new NativeImageForeignDebugFieldInfo(hostedType, elementInfo, structFieldInfo);
+            return new NativeImageForeignDebugFieldInfo(hostedType, structFieldInfo);
         }
 
         @Override
@@ -950,14 +948,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private class NativeImageForeignDebugFieldInfo extends NativeImageDebugFileInfo implements DebugInfoProvider.DebugFieldInfo {
-        HostedType hostedType;
-        ElementInfo elementInfo;
         StructFieldInfo structFieldInfo;
 
-        NativeImageForeignDebugFieldInfo(HostedType hostedType, ElementInfo elementInfo, StructFieldInfo structFieldInfo) {
+        NativeImageForeignDebugFieldInfo(HostedType hostedType, StructFieldInfo structFieldInfo) {
             super(hostedType);
-            this.hostedType = hostedType;
-            this.elementInfo = elementInfo;
             this.structFieldInfo = structFieldInfo;
         }
 
@@ -980,7 +974,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public ResolvedJavaType valueType() {
             // we need to ensure the hosted type identified for the field value gets translated to
             // an original in order to be consistent with id types for substitutions
-            return getOriginal(getFieldType(hostedType, structFieldInfo));
+            return getOriginal(getFieldType(structFieldInfo));
         }
 
         @Override
@@ -1194,7 +1188,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             int nextSize = elementSize(field);
             assert nextOffset > currentOffset : "raw struct has two fields at same offset " + currentOffset;
             String fieldName = field.getName();
-            ResolvedJavaType type = getFieldType(hostedType, field);
+            ResolvedJavaType type = getFieldType(field);
             debugContext.log("    %s %s;", type.toJavaName(), fieldName);
             totalSize += nextSize;
         }
@@ -1231,7 +1225,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             int nextSize = elementSize(field);
             assert nextOffset > currentOffset : "raw struct has two fields at same offset " + currentOffset;
             String fieldName = field.getName();
-            ResolvedJavaType type = getFieldType(hostedType, field);
+            ResolvedJavaType type = getFieldType(field);
             debugContext.log("    %s %s;", type.toJavaName(), fieldName);
             totalSize += nextSize;
         }
@@ -1241,7 +1235,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         debugContext.log("  } %s;", rawStructureInfo.getName());
     }
 
-    private HostedType getFieldType(HostedType hostedType, StructFieldInfo field) {
+    private HostedType getFieldType(StructFieldInfo field) {
         // we should always some sort of accessor, preferably a GETTER or a SETTER
         // but possibly an ADDRESS accessor or even just an OFFSET accessor
         for (ElementInfo elt : field.getChildren()) {
@@ -1284,7 +1278,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return size;
     }
 
-    String elementName(ElementInfo elementInfo) {
+    private static String elementName(ElementInfo elementInfo) {
         if (elementInfo == null) {
             return "";
         } else {
@@ -1329,13 +1323,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private String formatElementInfo(ElementInfo elementInfo) {
+    private static String formatElementInfo(ElementInfo elementInfo) {
         StringBuilder stringBuilder = new StringBuilder();
         formatElementInfo(elementInfo, stringBuilder, 0);
         return stringBuilder.toString();
     }
 
-    private void formatElementInfo(ElementInfo elementInfo, StringBuilder stringBuilder, int indent) {
+    private static void formatElementInfo(ElementInfo elementInfo, StringBuilder stringBuilder, int indent) {
         indentElementInfo(stringBuilder, indent);
         formatSingleElement(elementInfo, stringBuilder);
         List<ElementInfo> children = elementInfo.getChildren();
@@ -1351,7 +1345,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private void formatSingleElement(ElementInfo elementInfo, StringBuilder stringBuilder) {
+    private static void formatSingleElement(ElementInfo elementInfo, StringBuilder stringBuilder) {
         stringBuilder.append(ClassUtil.getUnqualifiedName(elementInfo.getClass()));
         stringBuilder.append(" : ");
         stringBuilder.append(elementName(elementInfo));
@@ -1361,11 +1355,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private <T> void formatPropertyInfo(PropertyInfo<T> propertyInfo, StringBuilder stringBuilder) {
+    private static <T> void formatPropertyInfo(PropertyInfo<T> propertyInfo, StringBuilder stringBuilder) {
         stringBuilder.append(propertyInfo.getProperty());
     }
 
-    private void indentElementInfo(StringBuilder stringBuilder, int indent) {
+    private static void indentElementInfo(StringBuilder stringBuilder, int indent) {
         for (int i = 0; i <= indent; i++) {
             stringBuilder.append("  ");
         }
@@ -1606,45 +1600,30 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      */
     private boolean isForeignWordType(JavaType type, ResolvedJavaType accessingType) {
         assert accessingType instanceof HostedType : "must be!";
-        ResolvedJavaType resolvedJavaType = type.resolve(accessingType);
+        HostedType resolvedJavaType = (HostedType) type.resolve(accessingType);
         return isForeignWordType(resolvedJavaType);
     }
 
     /**
      * Identify a hosted type which is being used to model a foreign memory word or pointer type.
      *
-     * @param resolvedJavaType the type to be tested which must be an instance of HostedType
+     * @param hostedType the type to be tested
      * @return true if the type models a foreign memory word or pointer type
      */
-    private boolean isForeignWordType(ResolvedJavaType resolvedJavaType) {
-        assert resolvedJavaType instanceof HostedType : "must be!";
+    private boolean isForeignWordType(HostedType hostedType) {
         // unwrap because native libs operates on the analysis type universe
-        return nativeLibs.isWordBase(((HostedType) resolvedJavaType).getWrapped());
-    }
-
-    /**
-     * Identify a Java type which is being used to model a foreign pointer type.
-     *
-     * @param type the type to be tested
-     * @param accessingType another type relative to which the first type may need to be resolved
-     * @return true if the type models a foreign pointer type
-     */
-    private boolean isForeignPointerType(JavaType type, ResolvedJavaType accessingType) {
-        assert accessingType instanceof HostedType : "must be!";
-        ResolvedJavaType resolvedJavaType = type.resolve(accessingType);
-        return isForeignPointerType(resolvedJavaType);
+        return nativeLibs.isWordBase(hostedType.getWrapped());
     }
 
     /**
      * Identify a hosted type which is being used to model a foreign pointer type.
      *
-     * @param resolvedJavaType the type to be tested which must be an instance of HostedType
+     * @param hostedType the type to be tested
      * @return true if the type models a foreign pointer type
      */
-    private boolean isForeignPointerType(ResolvedJavaType resolvedJavaType) {
-        assert resolvedJavaType instanceof HostedType : "must be!";
+    private boolean isForeignPointerType(HostedType hostedType) {
         // unwrap because native libs operates on the analysis type universe
-        return nativeLibs.isPointerBase(((HostedType) resolvedJavaType).getWrapped());
+        return nativeLibs.isPointerBase(hostedType.getWrapped());
     }
 
     private static boolean isIntegralKindPromotion(JavaKind promoted, JavaKind original) {

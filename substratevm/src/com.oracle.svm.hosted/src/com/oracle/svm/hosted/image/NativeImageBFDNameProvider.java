@@ -353,7 +353,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          * i.e. after "$_" for index 0, successive encodings for index i embded the base 36 digits for
          * (i - 1) between "S" and "_".
          */
-        return new BFDMangler(this, nativeLibs).mangle(loaderName, declaringClass, memberName, methodSignature, isConstructor);
+        return new BFDMangler(this).mangle(loaderName, declaringClass, memberName, methodSignature, isConstructor);
     }
 
     /**
@@ -368,7 +368,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
      * @return a unique mangled name for the method
      */
     public String bfdMangle(Member m) {
-        return new BFDMangler(this, nativeLibs).mangle(m);
+        return new BFDMangler(this).mangle(m);
     }
 
     /**
@@ -376,7 +376,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
      * is created in a feature after registration but the native libraries are only available before
      * analysis.
      * 
-     * @param nativeLibs the
+     * @param nativeLibs the current native libraries singleton.
      */
     public void setNativeLibs(NativeLibraries nativeLibs) {
         this.nativeLibs = nativeLibs;
@@ -386,13 +386,11 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         final NativeImageBFDNameProvider nameProvider;
         final StringBuilder sb;
         final List<String> prefixes;
-        final NativeLibraries nativeLibs;
 
-        BFDMangler(NativeImageBFDNameProvider provider, NativeLibraries libs) {
+        BFDMangler(NativeImageBFDNameProvider provider) {
             nameProvider = provider;
             sb = new StringBuilder("_Z");
             prefixes = new ArrayList<>();
-            nativeLibs = libs;
         }
 
         public String mangle(String loaderName, ResolvedJavaType declaringClass, String memberName, Signature methodSignature, boolean isConstructor) {
