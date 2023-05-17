@@ -42,6 +42,7 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -505,6 +506,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
     }
 
+    @Idempotent
     public boolean isShared() {
         return isShared;
     }

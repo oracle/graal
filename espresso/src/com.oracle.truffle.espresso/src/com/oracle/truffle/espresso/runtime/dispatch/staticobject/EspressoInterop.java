@@ -631,7 +631,7 @@ public class EspressoInterop extends BaseInterop {
         for (String str : members) {
             array[pos++] = str;
         }
-        return new KeysArray(array);
+        return new KeysArray<>(array);
     }
 
     @ExportMessage

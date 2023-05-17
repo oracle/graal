@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NonIdempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
@@ -118,6 +119,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
 
+    @NonIdempotent
     static EspressoLanguage getLang(Node node) {
         return EspressoLanguage.get(node);
     }
@@ -307,10 +309,11 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                             ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached());
         }
 
-        static final Object invokeMember(Klass receiver, String member,
+        @Specialization
+        static Object invokeMember(Klass receiver, String member,
                         Object[] arguments,
-                        @Shared("lookupMethod") @Cached LookupDeclaredMethod lookupMethod,
-                        @Shared("overloadSelector") @Cached OverLoadedMethodSelectorNode overloadSelector,
+                        @Cached LookupDeclaredMethod lookupMethod,
+                        @Cached OverLoadedMethodSelectorNode overloadSelector,
                         @Exclusive @Cached InvokeEspressoNode invoke,
                         @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
                         throws ArityException, UnknownIdentifierException, UnsupportedTypeException {

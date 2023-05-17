@@ -31,6 +31,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Objects;
+import java.util.logging.Level;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -74,6 +75,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropNodesCollect
  * @see InteropMessageFactory
  */
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class SharedInterop {
     /*
      * Force initialization of necessary classes. They must be initialized before trying to access a
@@ -90,6 +92,7 @@ public class SharedInterop {
         assert !StaticObject.isNull(receiver);
         // Find not shared dispatch class.
         Class<?> dispatch = receiver.getKlass().getDispatch();
+        ctx.getLogger().log(Level.FINER, () -> "Looking up shared target for : " + message + " for dispatch class " + dispatch.getSimpleName());
         return ctx.getLazyCaches().getInteropMessage(message, dispatch, InteropMessageFactory.getFactory(ctx.getLanguage(), dispatch, message));
     }
 
