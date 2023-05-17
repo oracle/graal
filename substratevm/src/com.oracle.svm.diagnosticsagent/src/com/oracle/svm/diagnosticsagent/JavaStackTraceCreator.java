@@ -42,7 +42,6 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
 import com.oracle.svm.jvmtiagentbase.Support;
-import com.oracle.svm.jvmtiagentbase.Support.WrongPhaseException;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
@@ -62,7 +61,7 @@ public class JavaStackTraceCreator {
     protected void inspectStackTraceElementMethod(@SuppressWarnings("unused") JNIMethodId jMethodID) {
     }
 
-    private int getCurrentThreadStackFrameCount() throws WrongPhaseException {
+    private int getCurrentThreadStackFrameCount() {
         CIntPointer countPointer = StackValue.get(CIntPointer.class);
         checkPhase(jvmti.getFunctions().GetFrameCount().invoke(jvmti, nullHandle(), countPointer));
         return countPointer.read();
@@ -80,7 +79,7 @@ public class JavaStackTraceCreator {
         }
     }
 
-    private static int getFrameSourceLineNumber(JvmtiEnv jvmti, JvmtiFrameInfo frameInfo) throws WrongPhaseException {
+    private static int getFrameSourceLineNumber(JvmtiEnv jvmti, JvmtiFrameInfo frameInfo) {
         CIntPointer entryCountPointer = StackValue.get(CIntPointer.class);
         WordPointer lineEntryTablePointer = StackValue.get(WordPointer.class);
         JvmtiError errorCode = jvmti.getFunctions().GetLineNumberTable().invoke(jvmti, frameInfo.getMethod(), entryCountPointer, lineEntryTablePointer);
@@ -105,7 +104,7 @@ public class JavaStackTraceCreator {
         return previousLineNumber;
     }
 
-    private StackTraceElement constructStackTraceElement(JvmtiFrameInfo frameInfo) throws WrongPhaseException {
+    private StackTraceElement constructStackTraceElement(JvmtiFrameInfo frameInfo) {
         JNIObjectHandle declaringClass = Support.getMethodDeclaringClass(frameInfo.getMethod());
 
         String methodName = Support.getMethodNameOr(frameInfo.getMethod(), "");
@@ -123,39 +122,37 @@ public class JavaStackTraceCreator {
         return new StackTraceElement(declaringClassName, methodName, fileName, lineNumber);
     }
 
-    public JNIObjectHandle getStackTraceArray() throws WrongPhaseException {
+    public JNIObjectHandle getStackTraceArray() {
         int threadStackFrameCount = getCurrentThreadStackFrameCount();
         int frameInfoSize = SizeOf.get(JvmtiFrameInfo.class);
         Pointer stackFramesPtr = UnmanagedMemory.malloc(frameInfoSize * threadStackFrameCount);
         CIntPointer readStackFramesPtr = StackValue.get(CIntPointer.class);
         try {
             checkPhase(jvmti.getFunctions().GetStackTrace().invoke(jvmti, nullHandle(), 0, threadStackFrameCount, (WordPointer) stackFramesPtr, readStackFramesPtr));
-        } catch (WrongPhaseException exception) {
+            VMError.guarantee(readStackFramesPtr.read() == threadStackFrameCount);
+
+            NativeImageDiagnosticsAgent agent = JvmtiAgentBase.singleton();
+            JNIObjectHandle stackTraceArray = jni.getFunctions().getNewObjectArray().invoke(jni, threadStackFrameCount, agent.handles().javaLangStackTraceElement, nullHandle());
+            for (int i = 0; i < threadStackFrameCount; ++i) {
+                JvmtiFrameInfo frameInfo = (JvmtiFrameInfo) stackFramesPtr.add(i * frameInfoSize);
+                StackTraceElement stackTraceElement = constructStackTraceElement(frameInfo);
+
+                JNIObjectHandle classNameHandle = Support.toJniString(jni, stackTraceElement.getClassName());
+                JNIObjectHandle methodNameHandle = Support.toJniString(jni, stackTraceElement.getMethodName());
+                JNIObjectHandle sourceFileNameHandle = Support.toJniString(jni, stackTraceElement.getFileName());
+                int lineNumber = stackTraceElement.getLineNumber();
+
+                JNIObjectHandle stackTraceElementHandle = Support.newObjectLLLJ(jni, agent.handles().javaLangStackTraceElement, agent.handles().javaLangStackTraceElementCtor4, classNameHandle,
+                                methodNameHandle,
+                                sourceFileNameHandle, lineNumber);
+                jni.getFunctions().getSetObjectArrayElement().invoke(jni, stackTraceArray, i, stackTraceElementHandle);
+
+                inspectStackTraceElementMethod(frameInfo.getMethod());
+            }
+
+            return stackTraceArray;
+        } finally {
             UnmanagedMemory.free(stackFramesPtr);
-            throw exception;
         }
-        VMError.guarantee(readStackFramesPtr.read() == threadStackFrameCount);
-
-        NativeImageDiagnosticsAgent agent = JvmtiAgentBase.singleton();
-        JNIObjectHandle stackTraceArray = jni.getFunctions().getNewObjectArray().invoke(jni, threadStackFrameCount, agent.handles().javaLangStackTraceElement, nullHandle());
-        for (int i = 0; i < threadStackFrameCount; ++i) {
-            JvmtiFrameInfo frameInfo = (JvmtiFrameInfo) stackFramesPtr.add(i * frameInfoSize);
-            StackTraceElement stackTraceElement = constructStackTraceElement(frameInfo);
-
-            JNIObjectHandle classNameHandle = Support.toJniString(jni, stackTraceElement.getClassName());
-            JNIObjectHandle methodNameHandle = Support.toJniString(jni, stackTraceElement.getMethodName());
-            JNIObjectHandle sourceFileNameHandle = Support.toJniString(jni, stackTraceElement.getFileName());
-            int lineNumber = stackTraceElement.getLineNumber();
-
-            JNIObjectHandle stackTraceElementHandle = Support.newObjectLLLJ(jni, agent.handles().javaLangStackTraceElement, agent.handles().javaLangStackTraceElementCtor4, classNameHandle,
-                            methodNameHandle,
-                            sourceFileNameHandle, lineNumber);
-            jni.getFunctions().getSetObjectArrayElement().invoke(jni, stackTraceArray, i, stackTraceElementHandle);
-
-            inspectStackTraceElementMethod(frameInfo.getMethod());
-        }
-
-        UnmanagedMemory.free(stackFramesPtr);
-        return stackTraceArray;
     }
 }

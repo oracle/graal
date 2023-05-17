@@ -58,7 +58,7 @@ import com.oracle.svm.jvmtiagentbase.AgentIsolate;
 import com.oracle.svm.jvmtiagentbase.JNIHandleSet;
 import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
 import com.oracle.svm.jvmtiagentbase.Support;
-import com.oracle.svm.jvmtiagentbase.Support.WrongPhaseException;
+import com.oracle.svm.jvmtiagentbase.Support.WrongPhaseError;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiCapabilities;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent;
@@ -225,19 +225,19 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
                 throw VMError.shouldNotReachHere(
                                 "Breakpoint hit for a method that isn't tracked in the diagnostics agent. (For developers: have you set a breakpoint in a method that isn't <clinit> or <init>)");
             }
-        } catch (WrongPhaseException exception) {
+        } catch (WrongPhaseError exception) {
             // The VM is shutting down, it's too late to report anything
         }
     }
 
-    private void handleClinitBreakpoint(JvmtiEnv jvmti, JNIEnvironment jni, JNIMethodId method) throws WrongPhaseException {
+    private void handleClinitBreakpoint(JvmtiEnv jvmti, JNIEnvironment jni, JNIMethodId method) {
         JNIObjectHandle clazz = clinitClassMap.get(method.rawValue()).clazz;
         JavaStackTraceCreator stackTraceCreator = new JavaStackTraceCreator(jvmti, jni);
         JNIObjectHandle threadStackTrace = stackTraceCreator.getStackTraceArray();
         reportClassInitialized(jni, clazz, threadStackTrace);
     }
 
-    private void handleInitBreakpoint(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) throws WrongPhaseException {
+    private void handleInitBreakpoint(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
         JNIObjectHandle thisHandle = Support.getReceiver(thread);
         if (thisHandle.equal(nullHandle())) {
             return;
