@@ -32,22 +32,26 @@ import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -259,7 +263,16 @@ public class StackTraceUtils {
  */
 final class BacktraceVisitor extends StackFrameVisitor {
 
+    /**
+     * Index into {@link #trace}
+     */
     private int index = 0;
+
+    /**
+     * Number of frames stored (native or Java frames). Because Java frames take up more than one
+     * entry in {@link #trace} this number might be different to {@link #index}.
+     */
+    private int numFrames = 0;
     private final int limit = computeNativeLimit();
 
     /*
@@ -270,6 +283,7 @@ final class BacktraceVisitor extends StackFrameVisitor {
     private long[] trace = new long[INITIAL_TRACE_SIZE];
 
     public static final int NATIVE_FRAME_LIMIT_MARGIN = 10;
+    static final int MAX_ENTRIES_PER_FRAME = useCompressedReferences() ? 2 : 3;
 
     /**
      * Gets the number of native frames to collect. Native frames and Java frames do not directly
@@ -293,45 +307,197 @@ final class BacktraceVisitor extends StackFrameVisitor {
         return maxJavaStackTraceDepthExtended > maxJavaStackTraceDepth ? maxJavaStackTraceDepthExtended : Integer.MAX_VALUE;
     }
 
-    @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
-    private static boolean decodeCodePointer(BuildStackTraceVisitor visitor, CodePointer ip) {
-        UntetheredCodeInfo untetheredInfo = CodeInfoTable.lookupCodeInfo(ip);
-        if (untetheredInfo.isNull()) {
-            /* Unknown frame. Must not happen for AOT-compiled code. */
-            throw VMError.shouldNotReachHere("Stack walk must walk only frames of known code.");
-        }
-
-        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-        try {
-            CodeInfo tetheredCodeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            if (!visitFrame(visitor, ip, tetheredCodeInfo)) {
-                return true;
-            }
-        } finally {
-            CodeInfoAccess.releaseTether(untetheredInfo, tether);
-        }
-        return false;
-    }
-
-    @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
-    private static boolean visitFrame(BuildStackTraceVisitor visitor, CodePointer ip, CodeInfo tetheredCodeInfo) {
-        return visitor.visitFrame(WordFactory.nullPointer(), ip, tetheredCodeInfo, null);
-    }
-
     @Override
     protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
-        VMError.guarantee(deoptimizedFrame == null, "Deoptimization not supported");
-        long rawValue = ip.rawValue();
-        VMError.guarantee(rawValue != 0, "Unexpected code pointer: 0");
-        add(rawValue);
-        return index != limit;
+        if (deoptimizedFrame != null) {
+            for (DeoptimizedFrame.VirtualFrame frame = deoptimizedFrame.getTopFrame(); frame != null; frame = frame.getCaller()) {
+                FrameInfoQueryResult frameInfo = frame.getFrameInfo();
+                if (!visitFrameInfo(frameInfo)) {
+                    return false;
+                }
+            }
+        } else if (!isAOTCodePointer(ip)) {
+            CodeInfoQueryResult queryResult = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip);
+            for (FrameInfoQueryResult frameInfo = queryResult.getFrameInfo(); frameInfo != null; frameInfo = frameInfo.getCaller()) {
+                if (!visitFrameInfo(frameInfo)) {
+                    return false;
+                }
+            }
+        } else {
+            visitAOTFrame(ip);
+        }
+        return numFrames != limit;
     }
 
-    private void add(long value) {
-        if (index == trace.length) {
-            trace = Arrays.copyOf(trace, Math.min(trace.length * 2, limit));
+    private void visitAOTFrame(CodePointer ip) {
+        long rawValue = ip.rawValue();
+        VMError.guarantee(rawValue != 0, "Unexpected code pointer: 0");
+        VMError.guarantee(!isSourceReference(rawValue), "Not a code pointer: 0x%x", rawValue);
+        ensureSize(index + 1);
+        trace[index++] = rawValue;
+        numFrames++;
+    }
+
+    private boolean visitFrameInfo(FrameInfoQueryResult frameInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {
+            /* Always ignore the frame. It is an internal frame of the VM. */
+            return true;
+
+        } else if (index == 0 && Throwable.class.isAssignableFrom(frameInfo.getSourceClass())) {
+            /*
+             * We are still in the constructor invocation chain at the beginning of the stack trace,
+             * which is also filtered by the Java HotSpot VM.
+             */
+            return true;
         }
-        trace[index++] = value;
+        int sourceLineNumber = frameInfo.getSourceLineNumber();
+        Class<?> sourceClass = frameInfo.getSourceClass();
+        String sourceMethodName = frameInfo.getSourceMethodName();
+
+        VMError.guarantee(Heap.getHeap().isInImageHeap(sourceClass), "Source class must be in the image heap");
+        VMError.guarantee(Heap.getHeap().isInImageHeap(sourceMethodName), "Source method name string must be in the image heap");
+
+        ensureSize(index + MAX_ENTRIES_PER_FRAME);
+        index += writeSourceReference(trace, index, sourceLineNumber, sourceClass, sourceMethodName);
+        numFrames++;
+        return numFrames != limit;
+    }
+
+    /**
+     * Determines whether a {@link CodePointer} refers to AOT compiled code that is stored in the
+     * image heap and therefore cannot be garbage collected.
+     */
+    public static boolean isAOTCodePointer(CodePointer ip) {
+        return CodeInfoAccess.contains(CodeInfoTable.getImageCodeInfo(), ip);
+    }
+
+    /**
+     * Determines whether an entry in the {@link Target_java_lang_Throwable#backtrace} array is a
+     * source reference, as written by {@link #writeSourceReference}.
+     *
+     * @implNote A source reference entry has their high bit set, i.e., it is a negative number in
+     *           the tows complement representation (see {@link #encodeLineNumber}).
+     * @see #writeSourceReference
+     * @see #encodeLineNumber
+     */
+    public static boolean isSourceReference(long entry) {
+        return entry < 0;
+    }
+
+    /**
+     * Encodes line number information of a source reference to be stored in the
+     * {@link Target_java_lang_Throwable#backtrace} array. Line numbers can be positive for regular
+     * line number, or zero or negative for to mark special source references.
+     *
+     * @implNote A line number ({@code int}) is stored as a negative {@code long} value to
+     *           distinguish it from an ordinary {@link CodePointer}.
+     *
+     * @see #isSourceReference
+     */
+    public static long encodeLineNumber(int lineNumber) {
+        return 0xffffffff_00000000L | lineNumber;
+    }
+
+    /**
+     * Decodes a line number previously encoded by {@link #encodeLineNumber}.
+     */
+    public static int decodeLineNumber(long entry) {
+        return (int) entry;
+    }
+
+    /**
+     * Writes source reference to a backtrace array.
+     *
+     * @return the numbers of elements written
+     */
+    static int writeSourceReference(long[] backtrace, int pos, int sourceLineNumber, Class<?> sourceClass, String sourceMethodName) {
+        long encodedLineNumber = encodeLineNumber(sourceLineNumber);
+        VMError.guarantee(isSourceReference(encodedLineNumber), "Encoded line number looks like a code pointer: %s", encodedLineNumber);
+        backtrace[pos] = encodedLineNumber;
+        if (useCompressedReferences()) {
+            long sourceClassOop = assertNonZero(ReferenceAccess.singleton().getCompressedRepresentation(sourceClass).rawValue());
+            long sourceMethodNameOop = assertNonZero(ReferenceAccess.singleton().getCompressedRepresentation(sourceMethodName).rawValue());
+            backtrace[pos + 1] = (sourceClassOop << 32) | (0xfffffffL & sourceMethodNameOop);
+        } else {
+            backtrace[pos + 1] = assertNonZero(Word.objectToUntrackedPointer(sourceClass).rawValue());
+            backtrace[pos + 2] = assertNonZero(Word.objectToUntrackedPointer(sourceMethodName).rawValue());
+        }
+        return MAX_ENTRIES_PER_FRAME;
+    }
+
+    /**
+     * Return the source line number of a source reference entry created by
+     * {@link #writeSourceReference}.
+     * 
+     * @param backtrace the backtrace array
+     * @param pos the start position of the source reference entry
+     * @return the source line number
+     */
+    static int readSourceLineNumber(long[] backtrace, int pos) {
+        return BacktraceVisitor.decodeLineNumber(backtrace[pos]);
+    }
+
+    /**
+     * Return the source class of a source reference entry created by {@link #writeSourceReference}.
+     *
+     * @param backtrace the backtrace array
+     * @param pos the start position of the source reference entry
+     * @return the source class
+     */
+    static Class<?> readSourceClass(long[] backtrace, int pos) {
+        if (useCompressedReferences()) {
+            UnsignedWord ref = WordFactory.unsigned(backtrace[pos + 1]).unsignedShiftRight(32);
+            return (Class<?>) ReferenceAccess.singleton().uncompressReference(ref);
+        } else {
+            Word sourceClassPtr = WordFactory.pointer(backtrace[pos + 1]);
+            return sourceClassPtr.toObject(Class.class, true);
+        }
+    }
+
+    /**
+     * Return the source method name of a source reference entry created by
+     * {@link #writeSourceReference}.
+     *
+     * @param backtrace the backtrace array
+     * @param pos the start position of the source reference entry
+     * @return the source method name
+     */
+    static String readSourceMethodName(long[] backtrace, int pos) {
+        if (useCompressedReferences()) {
+            UnsignedWord ref = WordFactory.unsigned(backtrace[pos + 1]).and(WordFactory.unsigned(0xffffffffL));
+            return (String) ReferenceAccess.singleton().uncompressReference(ref);
+        } else {
+            Word sourceMethodNamePtr = WordFactory.pointer(backtrace[pos + 2]);
+            return sourceMethodNamePtr.toObject(String.class, true);
+        }
+    }
+
+    /**
+     * Determines whether compressed references are enabled. If so, two references can be packed in
+     * a single {@code long} entry.
+     */
+    @Fold
+    static boolean useCompressedReferences() {
+        return ReferenceAccess.singleton().getCompressEncoding().hasShift();
+    }
+
+    private static long assertNonZero(long rawValue) {
+        VMError.guarantee(rawValue != 0, "Must not write 0 values to backtrace");
+        return rawValue;
+    }
+
+    private void ensureSize(int minLength) {
+        if (minLength > trace.length) {
+            trace = Arrays.copyOf(trace, saturatedMultiply(trace.length, 2));
+        }
+    }
+
+    static int saturatedMultiply(int a, int b) {
+        long r = (long) a * (long) b;
+        if ((int) r != r) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) r;
     }
 
     /**

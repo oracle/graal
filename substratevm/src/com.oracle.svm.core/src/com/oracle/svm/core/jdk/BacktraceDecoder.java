@@ -37,6 +37,10 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.util.VMError;
 
+/**
+ * Decoder for backtraces computed by {@link BacktraceVisitor} and stored in
+ * {@link Target_java_lang_Throwable#backtrace}.
+ */
 public abstract class BacktraceDecoder {
 
     /**
@@ -53,18 +57,37 @@ public abstract class BacktraceDecoder {
         int framesDecoded = 0;
         if (backtrace != null) {
             final long[] trace = (long[]) backtrace;
-            for (long address : trace) {
-                if (address == 0) {
-                    break;
+            int backtraceIndex = 0;
+            while (backtraceIndex < trace.length && trace[backtraceIndex] != 0) {
+                long entry = trace[backtraceIndex];
+                if (BacktraceVisitor.isSourceReference(entry)) {
+                    /* Entry is an encoded source reference. */
+                    VMError.guarantee(backtraceIndex + BacktraceVisitor.MAX_ENTRIES_PER_FRAME <= trace.length, "Truncated backtrace array");
+                    backtraceIndex += visitSourceReference(maxFramesProcessed, framesDecoded, trace, backtraceIndex);
+                    framesDecoded++;
+                } else {
+                    /* Entry is a raw code pointer. */
+                    CodePointer ip = WordFactory.pointer(entry);
+                    framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecodeLimit);
+                    backtraceIndex++;
                 }
-                CodePointer ip = WordFactory.pointer(address);
-                framesDecoded = visitCodePointer(ip, framesDecoded, maxFramesProcessed, maxFramesDecodeLimit);
                 if (framesDecoded == maxFramesDecodeLimit) {
                     break;
                 }
             }
         }
         return framesDecoded - maxFramesProcessed;
+    }
+
+    private int visitSourceReference(int maxFramesProcessed, int framesDecoded, long[] trace, int backtraceIndex) {
+        int sourceLineNumber = BacktraceVisitor.readSourceLineNumber(trace, backtraceIndex);
+        Class<?> sourceClass = BacktraceVisitor.readSourceClass(trace, backtraceIndex);
+        String sourceMethodName = BacktraceVisitor.readSourceMethodName(trace, backtraceIndex);
+
+        if (framesDecoded < maxFramesProcessed) {
+            processSourceReference(sourceClass, sourceMethodName, sourceLineNumber);
+        }
+        return BacktraceVisitor.MAX_ENTRIES_PER_FRAME;
     }
 
     @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo object.")
