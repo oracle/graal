@@ -216,58 +216,39 @@ public final class UnmanagedMemoryUtil {
         }
     }
 
-    /**
-     * Compares two memory areas one long word at a time. Returns the word index at which the two
-     * long words differ.
-     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static UnsignedWord compareLongOffset(Pointer from, Pointer to, UnsignedWord size) {
+    private static UnsignedWord compareLongs(Pointer x, Pointer y, UnsignedWord size) {
         UnsignedWord offset = WordFactory.zero();
-
-        while (offset.belowThan(size)) {
-            if (from.readLong(offset) != to.readLong(offset)) {
-                return offset;
-            }
-            offset = offset.add(Long.BYTES);
+        UnsignedWord next = offset.add(Long.BYTES);
+        while (next.belowOrEqual(size) && x.readLong(offset) == y.readLong(offset)) {
+            offset = next;
+            next = offset.add(Long.BYTES);
         }
-
-        return WordFactory.signed(-1);
+        return offset;
     }
 
-    /**
-     * Compares two memory areas one byte at a time. Returns the byte index at which the first
-     * difference occurs.
-     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static UnsignedWord compareBytesOffset(Pointer from, Pointer to, UnsignedWord initialOffset, UnsignedWord end) {
-        UnsignedWord offset = initialOffset;
-
-        while (offset.belowThan(end)) {
-            if (from.readByte(offset) != to.readByte(offset)) {
+    private static UnsignedWord compareBytes(Pointer x, Pointer y, UnsignedWord size) {
+        UnsignedWord offset = WordFactory.zero();
+        while (offset.belowThan(size)) {
+            if (x.readByte(offset) != y.readByte(offset)) {
                 return offset;
             }
             offset = offset.add(1);
         }
-
-        return WordFactory.signed(-1);
+        return offset;
     }
 
     /**
-     * Compares two memory areas one byte at a time. Returns the byte index at which the first
-     * difference occurs.
+     * Compares two memory areas. Returns the number of bytes from the beginning which are
+     * equivalent, which, if a difference is found, is the offset of the first different byte.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord compareOffset(Pointer from, Pointer to, UnsignedWord size) {
+    public static UnsignedWord compare(Pointer x, Pointer y, UnsignedWord size) {
         UnsignedWord alignBits = WordFactory.unsigned(0x7);
         UnsignedWord alignedSize = size.and(alignBits.not());
-
-        UnsignedWord compareLong = compareLongOffset(from, to, alignedSize);
-        if (compareLong.equal(WordFactory.signed(-1))) {
-            return compareBytesOffset(from, to, alignedSize, size);
-        }
-
-        // get the exact offset
-        return compareBytesOffset(from, to, compareLong, size);
+        UnsignedWord offset = compareLongs(x, y, alignedSize);
+        return offset.add(compareBytes(x.add(offset), y.add(offset), size.subtract(offset)));
     }
 
     /**

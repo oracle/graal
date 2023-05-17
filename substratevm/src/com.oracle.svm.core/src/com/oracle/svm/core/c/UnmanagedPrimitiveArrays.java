@@ -111,7 +111,7 @@ public final class UnmanagedPrimitiveArrays {
     }
 
     @Uninterruptible(reason = "Destination array must not move.")
-    public static <T> T compareCopyToHeap(UnmanagedPrimitiveArray<?> src, int srcPos, T dest, int destPos, int length) {
+    public static <T> T compareOrCopyToHeap(UnmanagedPrimitiveArray<?> src, int srcPos, T dest, int destPos, int length) {
         DynamicHub destHub = KnownIntrinsics.readHub(dest);
         VMError.guarantee(LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding()), "Copying is only supported for primitive arrays");
         VMError.guarantee(srcPos >= 0 && destPos >= 0 && length >= 0 && destPos + length <= ArrayLengthNode.arrayLength(dest));
@@ -120,14 +120,12 @@ public final class UnmanagedPrimitiveArrays {
 
         UnsignedWord size = WordFactory.unsigned(length).shiftLeft(LayoutEncoding.getArrayIndexShift(destHub.getLayoutEncoding()));
 
-        // first compare up until the first difference
-        UnsignedWord result = UnmanagedMemoryUtil.compareOffset(srcAddressAtPos, destAddressAtPos, size);
-        if (result.notEqual(WordFactory.signed(-1))) {
-            assert result.belowThan(length);
+        // First compare until a difference is found
+        UnsignedWord equalBytes = UnmanagedMemoryUtil.compare(srcAddressAtPos, destAddressAtPos, size);
+        if (equalBytes.belowThan(size)) {
+            // If the two arrays are not equal, copy over the remaining bytes
             UnsignedWord alignBits = WordFactory.unsigned(0x7);
-
-            // if the two arrays are not equal, overwrite the remaining bytes
-            UnsignedWord offset = result.and(alignBits.not());
+            UnsignedWord offset = equalBytes.and(alignBits.not());
             JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos.add(offset), destAddressAtPos.add(offset), size.subtract(offset));
         }
         return dest;
