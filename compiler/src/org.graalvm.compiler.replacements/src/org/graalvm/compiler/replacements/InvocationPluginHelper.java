@@ -263,7 +263,7 @@ public class InvocationPluginHelper implements DebugCloseable {
             x = origY;
             y = origX;
         }
-        GraalError.guarantee(!canonicalizedCondition.mustNegate(), "negate is unhandled: %s", canonicalizedCondition);
+        // canonicalizedCondition.mustNegate() is expected to be handled by the caller
         return createCompare(x, canonicalizedCondition.getCanonicalCondition(), y);
     }
 
