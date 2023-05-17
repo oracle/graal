@@ -50,7 +50,12 @@ public final class ModuleSupport {
     }
 
     private static boolean isModulePathBuild() {
-        return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+        if (!"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM))) {
+            return true;
+        } else {
+            LogUtils.warningDeprecatedEnvironmentVariable(ENV_VAR_USE_MODULE_SYSTEM);
+            return false;
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
