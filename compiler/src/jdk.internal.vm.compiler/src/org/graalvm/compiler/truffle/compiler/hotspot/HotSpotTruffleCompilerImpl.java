@@ -52,6 +52,7 @@ import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
 import org.graalvm.compiler.hotspot.HotSpotCompiledCodeBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory;
+import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
@@ -122,6 +123,11 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         backends.add(createTruffleBackend(graalRuntime, options, null, null));
         backends.add(createTruffleBackend(graalRuntime, options, null, EconomyCompilerConfigurationFactory.NAME));
         return backends;
+    }
+
+    @Override
+    protected OptionValues getGraalOptions() {
+        return HotSpotGraalOptionValues.defaultOptions();
     }
 
     public static HotSpotTruffleCompilerImpl create(final TruffleCompilerRuntime runtime) {

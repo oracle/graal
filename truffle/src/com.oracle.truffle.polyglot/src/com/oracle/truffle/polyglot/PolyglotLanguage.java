@@ -201,7 +201,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         if (optionValues == null) {
             synchronized (engine.lock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(getOptionsInternal(), engine.sandboxPolicy, false);
+                    optionValues = new OptionValuesImpl(getOptionsInternal(), engine.sandboxPolicy, false, false);
                 }
             }
         }

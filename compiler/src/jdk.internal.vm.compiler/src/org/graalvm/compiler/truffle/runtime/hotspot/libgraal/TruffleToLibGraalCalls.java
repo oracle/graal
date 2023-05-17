@@ -52,6 +52,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
+import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id;
 
 /**
  * Native methods linked to libgraal entry points.
@@ -68,6 +69,15 @@ final class TruffleToLibGraalCalls {
      */
     @TruffleToLibGraal(RegisterRuntime)
     static native boolean registerRuntime(long isolateThreadId, Object truffleRuntime);
+
+    @TruffleToLibGraal(Id.ListCompilerOptions)
+    static native byte[] listCompilerOptions(long isolateThreadId);
+
+    @TruffleToLibGraal(Id.ExistsCompilerOption)
+    static native boolean existsCompilerOption(long isolateThreadId, String optionName);
+
+    @TruffleToLibGraal(Id.ValidateCompilerOption)
+    static native String validateCompilerOption(long isolateThreadId, String optionName, String optionValue);
 
     @TruffleToLibGraal(GetCompilerConfigurationFactoryName)
     static native String getCompilerConfigurationFactoryName(long isolateThreadId, long truffleRuntimeHandle);

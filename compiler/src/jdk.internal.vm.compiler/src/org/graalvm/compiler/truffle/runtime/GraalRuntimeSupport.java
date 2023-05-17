@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.function.Function;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.CompilerOptionsDescriptors;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -184,8 +185,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public OptionDescriptors getEngineOptionDescriptors() {
-        return GraalTruffleRuntime.getRuntime().getEngineOptionDescriptors();
+    public OptionDescriptors getRuntimeOptionDescriptors() {
+        return GraalTruffleRuntime.getRuntime().getOptionDescriptors();
     }
 
     @Override
@@ -289,8 +290,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
-        return new EngineData(options, loggerFactory);
+    public Object createRuntimeData(OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
+        return new EngineData(engineOptions, loggerFactory);
     }
 
     @Override
@@ -299,8 +300,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> loggerFactory) {
-        ((EngineData) runtimeData).onEnginePatch(options, loggerFactory);
+    public void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+        ((EngineData) runtimeData).onEnginePatch(runtimeOptions, loggerFactory);
     }
 
     @Override
@@ -336,6 +337,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public int getBaseInstanceSize(Class<?> type) {
         return GraalTruffleRuntime.getRuntime().getBaseInstanceSize(type);
+    }
+
+    @Override
+    public boolean isLegacyCompilerOption(String key) {
+        return CompilerOptionsDescriptors.isLegacyOption(key);
     }
 
     @Override

@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.common;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -153,5 +154,18 @@ public interface CompilableTruffleAST {
      *         otherwise.
      */
     boolean isTrivial();
+
+    /**
+     * Returns a process-unique id for the underlying engine. This may be used to cache the
+     * {@link #getCompilerOptions() compiler options} as they are guaranteed to be the same per
+     * engine.
+     */
+    long engineId();
+
+    /**
+     * Returns a set of compiler options that where specified by the user. The compiler options are
+     * immutable for each {@link #engineId() engine}.
+     */
+    Map<String, String> getCompilerOptions();
 
 }

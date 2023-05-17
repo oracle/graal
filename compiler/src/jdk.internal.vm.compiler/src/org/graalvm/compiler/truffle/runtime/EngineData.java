@@ -163,11 +163,11 @@ public final class EngineData {
      */
     private volatile Map<Class<?>, Object> engineLocals;
 
-    EngineData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
-        Objects.requireNonNull(options);
+    EngineData(OptionValues runtimeOptions, Function<String, TruffleLogger> loggerFactory) {
+        Objects.requireNonNull(runtimeOptions);
         this.id = engineCounter.incrementAndGet();
         this.loggerFactory = loggerFactory;
-        this.loadOptions(options);
+        this.loadOptions(runtimeOptions);
 
         // the splittingStatistics requires options to be initialized
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
@@ -224,9 +224,9 @@ public final class EngineData {
         getRuntime().getEngineCacheSupport().onEngineCreated(this);
     }
 
-    void onEnginePatch(OptionValues newOptions, Function<String, TruffleLogger> newLoggerFactory) {
+    void onEnginePatch(OptionValues newRuntimeOptions, Function<String, TruffleLogger> newLoggerFactory) {
         this.loggerFactory = newLoggerFactory;
-        loadOptions(newOptions);
+        loadOptions(newRuntimeOptions);
         getRuntime().getEngineCacheSupport().onEnginePatch(this);
     }
 
@@ -296,6 +296,10 @@ public final class EngineData {
         this.compilationFailureAction = options.get(CompilationFailureAction);
         validateOptions();
         parsedCompileOnly = null;
+    }
+
+    public Map<String, String> getCompilerOptions() {
+        return GraalTruffleRuntime.CompilerOptionsDescriptors.extractOptions(engineOptions);
     }
 
     /**

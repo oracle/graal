@@ -233,4 +233,5 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
                     ClientHandle<TruffleSourceLanguagePosition> positionHandle, int lineNumber, int offsetStart, int offsetEnd, int nodeId) {
         return IsolatedCompileContext.get().hand(new IsolatedTruffleSourceLanguagePosition(positionHandle, lineNumber, offsetStart, offsetEnd, nodeId));
     }
+
 }

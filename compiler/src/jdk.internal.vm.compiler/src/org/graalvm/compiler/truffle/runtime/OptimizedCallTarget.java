@@ -1797,4 +1797,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return rootNode instanceof BaseOSRRootNode;
     }
 
+    @Override
+    public long engineId() {
+        return engine.id;
+    }
+
+    @Override
+    public Map<String, String> getCompilerOptions() {
+        return engine.getCompilerOptions();
+    }
+
 }

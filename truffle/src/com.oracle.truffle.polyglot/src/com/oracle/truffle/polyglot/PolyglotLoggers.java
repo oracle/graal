@@ -51,6 +51,7 @@ import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -713,6 +714,13 @@ final class PolyglotLoggers {
                 throw shouldNotReachHere(e);
             }
         }
+
+        @Override
+        public String toString() {
+            return "ImmutableLogRecord [loggerName=" + getLoggerName() + ", level=" + getLevel() + ", sequence=" + getSequenceNumber() +
+                            ", message()=" + getMessage() + ", parameters=" + Arrays.toString(getParameters()) + ", instant=" + getInstant() + "]";
+        }
+
     }
 
     static final class EngineLoggerProvider implements Function<String, TruffleLogger> {

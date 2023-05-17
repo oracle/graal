@@ -246,7 +246,7 @@ public final class PolyglotCompilerOptions {
     private static final String PERFORMANCE_WARNING_SYNTAX = "none|all|<perfWarning>,<perfWarning>,...";
     private static final String PERFORMANCE_WARNING_LIST = "Performance warnings are: call, instanceof, store, frame_merge, trivial.";
 
-    // Compilation
+    // Engine Options
 
     @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.", //
                     usageSyntax = "latency|throughput", category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED) //
@@ -313,22 +313,12 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier (default: 1)", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(1);
 
-    @Option(help = "Whether to use the economy configuration in the first-tier compilations. (default: true)", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
-    public static final OptionKey<Boolean> FirstTierUseEconomy = new OptionKey<>(true);
-
     @Option(help = "Whether to emit look-back-edge counters in the first-tier compilations. (default: true)", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> FirstTierBackedgeCounts = new OptionKey<>(true);
 
-    // Failed compilation behavior
-
+    // TODO used in the compiler currently
     @Option(help = ExceptionAction.HELP, usageSyntax = "Silent|Print|Throw|Diagnose|ExitVM", category = OptionCategory.INTERNAL) //
     public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
-
-    @Option(help = "Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. " +
-                    PERFORMANCE_WARNING_LIST, usageSyntax = PERFORMANCE_WARNING_SYNTAX, category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Set<PerformanceWarningKind>> TreatPerformanceWarningsAsErrors = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
-
-    // Tracing
 
     @Option(help = "Print information for compilation results.", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> TraceCompilation = new OptionKey<>(false);
@@ -342,9 +332,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print the entire AST after each compilation", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraceCompilationAST = new OptionKey<>(false);
 
-    @Option(help = "Print information for inlining decisions.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
-
     @Option(help = "Print information for splitting decisions.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraceSplitting = new OptionKey<>(false);
 
@@ -354,52 +341,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print additional more verbose Truffle compilation statistics at the end of a run.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> CompilationStatisticDetails = new OptionKey<>(false);
 
-    @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
-
-    @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
-
     @Option(help = "Print stack trace on assumption invalidation", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraceAssumptions = new OptionKey<>(false);
-
-    @Option(help = "Print stack trace when deoptimizing a frame from the stack with `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)`.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> TraceDeoptimizeFrame = new OptionKey<>(false);
-
-    private static final String EXPANSION_VALUES = "Accepted values are:%n" +
-                    "    true - Collect data for the default tier 'truffleTier'.%n" +
-                    "    false - No data will be collected.%n" +
-                    "Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n" +
-                    "    peTier - After partial evaluation without additional phases applied.%n" +
-                    "    truffleTier - After partial evaluation with additional phases applied.%n" +
-                    "    lowTier - After low tier phases were applied.";
-
-    private static final String EXPANSION_SYNTAX = "true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...";
-
-    @Option(help = "Print a tree of all expanded Java methods with statistics after each compilation. " + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Set<CompilationTier>> TraceMethodExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
-
-    @Option(help = "Print a tree of all expanded Truffle nodes with statistics after each compilation. " + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Set<CompilationTier>> TraceNodeExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
-
-    @Option(help = "Print statistics on expanded Java methods during partial evaluation at the end of a run." + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Set<CompilationTier>> MethodExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
-
-    @Option(help = "Print statistics on expanded Truffle nodes during partial evaluation at the end of a run." + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Set<CompilationTier>> NodeExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
-
-    // Inlining
-
-    @Option(help = "Restrict inlined methods to ','-separated list of includes (or excludes prefixed with '~'). No restriction by default.", usageSyntax = "<name>,<name>,...", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<String> InlineOnly = new OptionKey<>(null, OptionType.defaultType(String.class));
-
-    @Option(help = "Enable automatic inlining of guest language call targets (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
-    public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
-
-    @Option(help = "Maximum depth for recursive inlining (default: 2).", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
-    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
-
-    // Splitting
 
     @Option(help = "Enable automatic duplication of compilation profiles (splitting) (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> Splitting = new OptionKey<>(true);
@@ -425,8 +368,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Should forced splits be allowed (default: true)", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> SplittingAllowForcedSplits = new OptionKey<>(true);
 
-    // OSR
-
     @Option(help = "Enable automatic on-stack-replacement of loops (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
     public static final OptionKey<Boolean> OSR = new OptionKey<>(true);
 
@@ -451,68 +392,10 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Sets the maximum non-trivial Truffle node size for partial compilation of BlockNode nodes (default: 10000).", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> PartialBlockMaximumSize = new OptionKey<>(10000);
 
-    /*
-     * TODO planned options (GR-13444):
-     *
-     * @Option(help = "Trace deoptimization of compilation units.", category =
-     * OptionCategory.EXPERT) public static final OptionKey<Boolean> TraceDeoptimization = new
-     * OptionKey<>(false);
-     */
-
-    // Compiler options
-    @Option(help = "Enable inlining across Truffle boundary", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> InlineAcrossTruffleBoundary = new OptionKey<>(false);
-
-    @Option(help = "Print potential performance problems, " + PERFORMANCE_WARNING_LIST, usageSyntax = PERFORMANCE_WARNING_SYNTAX, category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Set<PerformanceWarningKind>> TracePerformanceWarnings = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
-
-    @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> IterativePartialEscape = new OptionKey<>(false);
-
-    @Option(help = "Method filter for host methods in which to add instrumentation.", usageSyntax = "<method>,<method>,...", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<String> InstrumentFilter = new OptionKey<>("*.*.*");
-
-    @Option(help = "Maximum number of instrumentation counters available (default: 10000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Integer> InstrumentationTableSize = new OptionKey<>(10000);
-
-    @Option(help = "Stop partial evaluation when the graph exceeded this size (default: 150000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Integer> MaximumGraalGraphSize = new OptionKey<>(150_000);
-
-    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes (default: 150000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);
-
-    @Option(help = "Exclude assertion code from Truffle compilations (default: true)", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> ExcludeAssertions = new OptionKey<>(true);
-
-    @Option(help = "Enable node source positions in truffle partial evaluations.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> NodeSourcePositions = new OptionKey<>(false);
-
-    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> InstrumentBoundaries = new OptionKey<>(false);
-
-    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> InstrumentBoundariesPerInlineSite = new OptionKey<>(false);
-
-    @Option(help = "Instrument branches and output profiling information to the standard output.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> InstrumentBranches = new OptionKey<>(false);
-
-    @Option(help = "Instrument branches by considering different inlining sites as different branches.", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> InstrumentBranchesPerInlineSite = new OptionKey<>(false);
-
-    @Option(help = "Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
-    public static final OptionKey<Boolean> EncodedGraphCache = new OptionKey<>(true);
-
-    @Option(help = "Allow assumptions during parsing of seed graphs for partial evaluation. Disables the persistent encoded graph cache 'engine.EncodedGraphCache'. (default: false).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> ParsePEGraphsWithAssumptions = new OptionKey<>(false);
-
-    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).", //
-                    usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
-    public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
-
-    // Compilation queue
     @Option(help = "Use the priority of compilation jobs in the compilation queue (default: true).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> PriorityQueue = new OptionKey<>(true);
 
+    // Compilation queue
     @Option(help = "Use a traversing compilation queue. (default: true)", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraversingCompilationQueue = new OptionKey<>(true);
 
@@ -545,7 +428,97 @@ public final class PolyglotCompilerOptions {
                     usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Integer> DynamicCompilationThresholdsMaxNormalLoad = new OptionKey<>(90);
 
-    // Language agnostic inlining
+    // Compiler Options
+
+    @Option(help = "Whether to use the economy configuration in the first-tier compilations. (default: true)", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
+    public static final OptionKey<Boolean> FirstTierUseEconomy = new OptionKey<>(true);
+
+    @Option(help = "Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. " +
+                    PERFORMANCE_WARNING_LIST, usageSyntax = PERFORMANCE_WARNING_SYNTAX, category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Set<PerformanceWarningKind>> TreatPerformanceWarningsAsErrors = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
+
+    @Option(help = "Print information for inlining decisions.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> TraceInlining = new OptionKey<>(false);
+
+    @Option(help = "Print stack trace when deoptimizing a frame from the stack with `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)`.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> TraceDeoptimizeFrame = new OptionKey<>(false);
+
+    private static final String EXPANSION_VALUES = "Accepted values are:%n" +
+                    "    true - Collect data for the default tier 'truffleTier'.%n" +
+                    "    false - No data will be collected.%n" +
+                    "Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n" +
+                    "    peTier - After partial evaluation without additional phases applied.%n" +
+                    "    truffleTier - After partial evaluation with additional phases applied.%n" +
+                    "    lowTier - After low tier phases were applied.";
+
+    private static final String EXPANSION_SYNTAX = "true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...";
+
+    @Option(help = "Print a tree of all expanded Java methods with statistics after each compilation. " + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Set<CompilationTier>> TraceMethodExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print a tree of all expanded Truffle nodes with statistics after each compilation. " + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Set<CompilationTier>> TraceNodeExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print statistics on expanded Java methods during partial evaluation at the end of a run." + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Set<CompilationTier>> MethodExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print statistics on expanded Truffle nodes during partial evaluation at the end of a run." + EXPANSION_VALUES, usageSyntax = EXPANSION_SYNTAX, category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Set<CompilationTier>> NodeExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Restrict inlined methods to ','-separated list of includes (or excludes prefixed with '~'). No restriction by default.", usageSyntax = "<name>,<name>,...", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<String> InlineOnly = new OptionKey<>(null, OptionType.defaultType(String.class));
+
+    @Option(help = "Enable automatic inlining of guest language call targets (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT, deprecated = true, deprecationMessage = "Test") //
+    public static final OptionKey<Boolean> Inlining = new OptionKey<>(true);
+
+    @Option(help = "Maximum depth for recursive inlining (default: 2).", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
+    public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
+
+    @Option(help = "Enable inlining across Truffle boundary", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> InlineAcrossTruffleBoundary = new OptionKey<>(false);
+
+    @Option(help = "Print potential performance problems, " + PERFORMANCE_WARNING_LIST, usageSyntax = PERFORMANCE_WARNING_SYNTAX, category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Set<PerformanceWarningKind>> TracePerformanceWarnings = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
+
+    @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> IterativePartialEscape = new OptionKey<>(false);
+
+    @Option(help = "Method filter for host methods in which to add instrumentation.", usageSyntax = "<method>,<method>,...", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<String> InstrumentFilter = new OptionKey<>("*.*.*");
+
+    @Option(help = "Maximum number of instrumentation counters available (default: 10000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> InstrumentationTableSize = new OptionKey<>(10000);
+
+    @Option(help = "Stop partial evaluation when the graph exceeded this size (default: 150000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> MaximumGraalGraphSize = new OptionKey<>(150_000);
+
+    // TODO delete or deprecate?
+    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes (default: 150000).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);
+
+    @Option(help = "Exclude assertion code from Truffle compilations (default: true)", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> ExcludeAssertions = new OptionKey<>(true);
+
+    @Option(help = "Enable node source positions in truffle partial evaluations.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> NodeSourcePositions = new OptionKey<>(false);
+    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> InstrumentBoundaries = new OptionKey<>(false);
+
+    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> InstrumentBoundariesPerInlineSite = new OptionKey<>(false);
+
+    @Option(help = "Instrument branches and output profiling information to the standard output.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> InstrumentBranches = new OptionKey<>(false);
+
+    @Option(help = "Instrument branches by considering different inlining sites as different branches.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> InstrumentBranchesPerInlineSite = new OptionKey<>(false);
+
+    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when a Truffle compiler thread becomes idle (default: 10000).", //
+                    usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
+    public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
+
+    @Option(help = "Cache encoded graphs across Truffle compilations to speed up partial evaluation. (default: true).", usageSyntax = "true|false", category = OptionCategory.EXPERT) //
+    public static final OptionKey<Boolean> EncodedGraphCache = new OptionKey<>(true);
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraceInliningDetails = new OptionKey<>(false);
@@ -561,6 +534,37 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Use the graph size as a cost model during inlining (default: false).", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> InliningUseSize = new OptionKey<>(false);
+
+    // Failed compilation behavior
+
+    // Both compiler and runtime (duplicate)
+    @Option(help = "Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20).", usageSyntax = "[1, inf)", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> TraceStackTraceLimit = new OptionKey<>(20);
+
+    // transformation into compiler option
+    @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
+
+    @Option(help = "Allow assumptions during parsing of seed graphs for partial evaluation. Disables the persistent encoded graph cache 'engine.EncodedGraphCache'. (default: false).", usageSyntax = "true|false", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> ParsePEGraphsWithAssumptions = new OptionKey<>(false);
+
+    // Tracing
+
+    // Inlining
+
+    // Splitting
+
+    // OSR
+
+    /*
+     * TODO planned options (GR-13444):
+     *
+     * @Option(help = "Trace deoptimization of compilation units.", category =
+     * OptionCategory.EXPERT) public static final OptionKey<Boolean> TraceDeoptimization = new
+     * OptionKey<>(false);
+     */
+
+    // Compiler options
 
     public static OptionDescriptors getDescriptors() {
         return new PolyglotCompilerOptionsOptionDescriptors();

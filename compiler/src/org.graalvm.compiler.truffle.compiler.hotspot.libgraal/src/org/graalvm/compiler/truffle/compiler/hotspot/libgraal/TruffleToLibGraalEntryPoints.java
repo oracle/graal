@@ -65,8 +65,10 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.jniutils.JNI.JArray;
@@ -82,6 +84,8 @@ import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.FromLibGraalCalls;
 import org.graalvm.libgraal.jni.LibGraalUtil;
+import org.graalvm.nativebridge.BinaryOutput;
+import org.graalvm.nativebridge.BinaryOutput.ByteArrayBinaryOutput;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -412,6 +416,61 @@ final class TruffleToLibGraalEntryPoints {
             scope.setObjectResult(WordFactory.nullPointer());
         }
         return scope.getObjectResult();
+    }
+
+    @TruffleToLibGraal(Id.ListCompilerOptions)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_listCompilerOptions")
+    @SuppressWarnings({"unused", "try"})
+    public static JByteArray listCompilerOptions(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, Id.ListCompilerOptions, env);
+        try (JNIMethodScope s = scope) {
+            TruffleCompilerOptionDescriptor[] options = TruffleCompilerOptions.listOptions();
+            ByteArrayBinaryOutput out = BinaryOutput.create();
+
+            out.writeInt(options.length);
+            for (int i = 0; i < options.length; i++) {
+                TruffleCompilerOptionDescriptor descriptor = options[i];
+                out.writeUTF(descriptor.name());
+                out.writeInt(descriptor.type().ordinal());
+                out.writeBoolean(descriptor.deprecated());
+                out.writeUTF(descriptor.help());
+                out.writeUTF(descriptor.deprecationMessage());
+            }
+
+            JByteArray res = JNIUtil.createHSArray(env, out.getArray());
+            scope.setObjectResult(res);
+
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            scope.setObjectResult(WordFactory.nullPointer());
+        }
+        return scope.getObjectResult();
+    }
+
+    @TruffleToLibGraal(Id.ExistsCompilerOption)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_existsCompilerOption")
+    @SuppressWarnings({"unused", "try"})
+    public static boolean existsCompilerOption(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JString optionName) {
+        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, Id.ExistsCompilerOption, env);
+        try (JNIMethodScope s = scope) {
+            return TruffleCompilerOptions.existsOption(JNIUtil.createString(env, optionName));
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return false;
+        }
+    }
+
+    @TruffleToLibGraal(Id.ValidateCompilerOption)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_validateCompilerOption")
+    @SuppressWarnings({"unused", "try"})
+    public static JString validateCompilerOption(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, JString optionName, JString optionValue) {
+        JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, Id.ValidateCompilerOption, env);
+        try (JNIMethodScope s = scope) {
+            return JNIUtil.createHSString(env, TruffleCompilerOptions.validateOption(JNIUtil.createString(env, optionName), JNIUtil.createString(env, optionValue)));
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+            return WordFactory.nullPointer();
+        }
     }
 
     @TruffleToLibGraal(GetMarksCount)

@@ -1163,7 +1163,7 @@ public abstract class Accessor {
         /**
          * Returns the compiler options specified available from the runtime.
          */
-        public abstract OptionDescriptors getEngineOptionDescriptors();
+        public abstract OptionDescriptors getRuntimeOptionDescriptors();
 
         /**
          * Returns <code>true</code> if the java stack frame is a representing a guest language
@@ -1193,7 +1193,7 @@ public abstract class Accessor {
 
         public abstract void flushCompileQueue(Object runtimeData);
 
-        public abstract Object createRuntimeData(OptionValues options, Function<String, TruffleLogger> loggerFactory);
+        public abstract Object createRuntimeData(OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory);
 
         public abstract Object tryLoadCachedEngine(OptionValues runtimeData, Function<String, TruffleLogger> logger);
 
@@ -1201,7 +1201,7 @@ public abstract class Accessor {
 
         public abstract boolean isStoreEnabled(OptionValues options);
 
-        public abstract void onEnginePatch(Object runtimeData, OptionValues options, Function<String, TruffleLogger> logSupplier);
+        public abstract void onEnginePatch(Object runtimeData, OptionValues runtimeOptions, Function<String, TruffleLogger> logSupplier);
 
         public abstract boolean onEngineClosing(Object runtimeData);
 
@@ -1222,6 +1222,8 @@ public abstract class Accessor {
         public AbstractFastThreadLocal getContextThreadLocal() {
             return DefaultContextThreadLocal.SINGLETON;
         }
+
+        public abstract boolean isLegacyCompilerOption(String key);
     }
 
     public abstract static class LanguageProviderSupport extends Support {

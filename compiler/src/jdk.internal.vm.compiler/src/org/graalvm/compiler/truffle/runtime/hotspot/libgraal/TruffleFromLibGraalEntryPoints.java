@@ -188,6 +188,11 @@ final class TruffleFromLibGraalEntryPoints {
         return ((TruffleCompilationTask) task).getPosition(callNode);
     }
 
+    @TruffleFromLibGraal(Id.EngineId)
+    static long engineId(Object compilable) {
+        return ((OptimizedCallTarget) compilable).engineId();
+    }
+
     @TruffleFromLibGraal(Id.GetDebugProperties)
     static byte[] getDebugProperties(Object task, long callNodeHandle) {
         JavaConstant callNode = LibGraal.unhand(JavaConstant.class, callNodeHandle);
@@ -204,6 +209,20 @@ final class TruffleFromLibGraalEntryPoints {
                 value = value.toString();
             }
             output.writeTypedValue(value);
+        }
+        return output.getArray();
+    }
+
+    @TruffleFromLibGraal(Id.GetCompilerOptions)
+    static byte[] getCompilerOptions(Object o) {
+        CompilableTruffleAST compilable = ((CompilableTruffleAST) o);
+        Map<String, String> properties = compilable.getCompilerOptions();
+        ByteArrayBinaryOutput output = BinaryOutput.create();
+        output.writeInt(properties.size());
+        for (Map.Entry<String, String> e : properties.entrySet()) {
+            output.writeUTF(e.getKey());
+            String value = e.getValue();
+            output.writeUTF(value);
         }
         return output.getArray();
     }

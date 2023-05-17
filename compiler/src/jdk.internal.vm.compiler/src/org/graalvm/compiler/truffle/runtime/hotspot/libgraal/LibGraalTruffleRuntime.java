@@ -27,6 +27,8 @@ package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor.Type;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 import org.graalvm.libgraal.DestroyedIsolateException;
@@ -34,6 +36,7 @@ import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.libgraal.LibGraalScope.DetachAction;
+import org.graalvm.nativebridge.BinaryInput;
 
 import com.oracle.truffle.api.TruffleRuntime;
 
@@ -63,6 +66,40 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
                 long classLoaderDelegate = LibGraal.translate(type);
                 return new Handle(TruffleToLibGraalCalls.initializeRuntime(getIsolateThread(), LibGraalTruffleRuntime.this, classLoaderDelegate));
             }).getHandle();
+        }
+    }
+
+    @Override
+    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            byte[] binary = TruffleToLibGraalCalls.listCompilerOptions(getIsolateThread());
+            BinaryInput input = BinaryInput.create(binary);
+            int length = input.readInt();
+            TruffleCompilerOptionDescriptor[] descriptors = new TruffleCompilerOptionDescriptor[length];
+            Type[] types = Type.values();
+            for (int i = 0; i < length; i++) {
+                String name = input.readUTF();
+                int typeOrdinal = input.readInt();
+                boolean deprecated = input.readBoolean();
+                String help = input.readUTF();
+                String deprecationMessage = input.readUTF();
+                descriptors[i] = new TruffleCompilerOptionDescriptor(name, types[typeOrdinal], deprecated, help, deprecationMessage);
+            }
+            return descriptors;
+        }
+    }
+
+    @Override
+    public String validateCompilerOption(String key, String value) {
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            return TruffleToLibGraalCalls.validateCompilerOption(getIsolateThread(), key, value);
+        }
+    }
+
+    @Override
+    public boolean existsCompilerOption(String key) {
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            return TruffleToLibGraalCalls.existsCompilerOption(getIsolateThread(), key);
         }
     }
 

@@ -42,6 +42,8 @@ import org.graalvm.compiler.truffle.common.HostMethodInfo;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
@@ -271,6 +273,21 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
          * Nothing to do here. We print the stack trace in the Deoptimizer when the actual
          * deoptimization happened.
          */
+    }
+
+    @Override
+    public String validateCompilerOption(String key, String value) {
+        return TruffleCompilerOptions.validateOption(key, value);
+    }
+
+    @Override
+    public TruffleCompilerOptionDescriptor[] listCompilerOptions() {
+        return TruffleCompilerOptions.listOptions();
+    }
+
+    @Override
+    public boolean existsCompilerOption(String key) {
+        return TruffleCompilerOptions.existsOption(key);
     }
 
     @Override

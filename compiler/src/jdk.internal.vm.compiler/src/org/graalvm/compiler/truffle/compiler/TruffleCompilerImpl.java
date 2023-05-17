@@ -40,6 +40,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Itera
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -78,7 +79,9 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -115,6 +118,14 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public abstract class TruffleCompilerImpl implements TruffleCompiler, CompilationWatchDog.EventHandler {
 
+    public static final String FIRST_TIER_COMPILATION_SUFFIX = "#1";
+    public static final String SECOND_TIER_COMPILATION_SUFFIX = "#2";
+    public static final int FIRST_TIER_INDEX = 1;
+    public static final int LAST_TIER_INDEX = 2;
+
+    static final int NUMBER_OF_CACHED_OPTINS = 128;
+    static final TruffleCompilerOptionsOptionDescriptors OPTION_DESCRIPTORS = new TruffleCompilerOptionsOptionDescriptors();
+
     protected TruffleCompilerConfiguration config;
     protected final GraphBuilderConfiguration builderConfig;
     protected final PartialEvaluator partialEvaluator;
@@ -124,6 +135,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
     private volatile boolean initialized;
     // Effectively final, but initialized in #initialize
     private TruffleTier truffleTier;
+
+    @SuppressWarnings("serial") private final Map<Long, OptionValues> cachedOptions = Collections.synchronizedMap(new LRUCache<>(NUMBER_OF_CACHED_OPTINS));
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
@@ -210,10 +223,18 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         }
     }
 
+    /**
+     * General options configured for the compiler. E.g. default values set with
+     * -Dgraal.OptionKey=value.
+     */
+    protected abstract OptionValues getGraalOptions();
+
     @SuppressWarnings("try")
     public final void doCompile(TruffleCompilation compilation, Map<String, Object> optionsMap, TruffleCompilerListener listener) {
         CompilableTruffleAST compilable = compilation.getCompilable();
         TruffleCompilationTask task = compilation.getTask();
+        OptionValues compilerOptions = getOrCreateCompilerOptions(compilation.getCompilable());
+
         org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
         try (DebugContext debugContext = openDebugContext(optionsMap, compilation)) {
             try (DebugContext.Scope s = maybeOpenTruffleScope(task, compilable, debugContext)) {
@@ -230,6 +251,40 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                 notifyCompilableOfFailure(compilable, e, isSuppressedFailure(compilable, e));
             }
         }
+    }
+
+    private OptionValues getOrCreateCompilerOptions(CompilableTruffleAST compilable) throws IllegalArgumentException {
+        // Options are guaranteed to be unchanged per engine.
+        Long engineId = compilable.engineId();
+        return cachedOptions.computeIfAbsent(engineId, (id) -> {
+            OptionValues graalOptions = getGraalOptions();
+            Map<String, String> options = compilable.getCompilerOptions();
+            EconomicMap<OptionKey<?>, Object> map = parseOptions(options);
+            map.putAll(graalOptions.getMap());
+            return new OptionValues(map);
+        });
+    }
+
+    private EconomicMap<OptionKey<?>, Object> parseOptions(Map<String, String> options) {
+        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create();
+
+        for (var entry : options.entrySet()) {
+            String key = entry.getKey();
+            String uncheckedValue = entry.getValue();
+            // TODO update qualified path
+            org.graalvm.compiler.options.OptionDescriptor descriptor = OPTION_DESCRIPTORS.get(key);
+            if (descriptor == null) {
+                throw new IllegalArgumentException("Invalid option " + key);
+            }
+            Object value = TruffleCompilerOptions.parseCustom(descriptor, uncheckedValue);
+            if (value == null) {
+                value = OptionsParser.parseOptionValue(descriptor, uncheckedValue);
+            }
+
+            // TODO better handling of errors
+            map.put(descriptor.getOptionKey(), value);
+        }
+        return map;
     }
 
     @SuppressWarnings("static-method")
@@ -263,6 +318,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                 if (!initialized) {
                     try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(config.runtime(), compilable)))) {
                         final org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
+                        OptionValues graalOptions = getOrCreateCompilerOptions(compilable);
+
                         partialEvaluator.initialize(options);
                         truffleTier = newTruffleTier(options);
                         initialized = true;
@@ -456,7 +513,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
             // The Truffle compiler owns the last 2 characters of the compilation name, and uses
             // them to encode the compilation tier, so escaping the target name is not
             // necessary.
-            String compilationName = wrapper.compilable.toString() + (task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
+            String compilationName = wrapper.compilable.toString() + (task.isFirstTier() ? FIRST_TIER_COMPILATION_SUFFIX : SECOND_TIER_COMPILATION_SUFFIX);
             PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(task.isFirstTier() ? config.firstTier() : config.lastTier());
             InstalledCode[] installedCode = {null};
             CompilationResult compilationResult = compilePEGraph(graph,
@@ -691,6 +748,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
 
         @Override
         protected void exitHostVM(int status) {
+            // TODO throw an assertion here
             TruffleCompilerImpl.this.exitHostVM(status);
         }
 
@@ -874,6 +932,27 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         public Backend.CodeInstallationTask create() {
             return new TruffleCodeInstallationTask();
         }
+    }
+
+    private static final class LRUCache<K, V> extends LinkedHashMap<K, V> {
+
+        private static final long serialVersionUID = 7813848977534444613L;
+        private final int maxCacheSize;
+
+        LRUCache(int maxCacheSize) {
+            this(maxCacheSize, 16);
+        }
+
+        LRUCache(int maxCacheSize, int initialCapacity) {
+            super(initialCapacity, 0.75f, true);
+            this.maxCacheSize = maxCacheSize;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(java.util.Map.Entry<K, V> eldest) {
+            return size() > maxCacheSize;
+        }
+
     }
 
 }

@@ -52,6 +52,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
+import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.truffle.SubstrateTruffleCompilationIdentifier;
@@ -93,6 +94,11 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Override
     public PhaseSuite<HighTierContext> createGraphBuilderSuite(TruffleTierConfiguration tier) {
         return null;
+    }
+
+    @Override
+    protected OptionValues getGraalOptions() {
+        return RuntimeOptionValues.singleton();
     }
 
     @Override

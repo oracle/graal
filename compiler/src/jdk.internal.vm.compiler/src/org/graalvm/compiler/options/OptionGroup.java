@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,54 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.common.hotspot.libgraal;
+package org.graalvm.compiler.options;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.options.OptionDescriptor;
+
 /**
- * Annotates methods associated with both ends of a HotSpot to libgraal call. This annotation
- * simplifies navigating between these methods in an IDE.
+ * Describes the attributes of an option whose {@link OptionKey value} is in a static field
+ * annotated by this annotation type.
+ *
+ * @see OptionDescriptor
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface TruffleToLibGraal {
-    /**
-     * Gets the token identifying a call from HotSpot to libgraal.
-     */
-    Id value();
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
+public @interface OptionGroup {
 
     /**
-     * Identifier for a call from HotSpot to libgraal.
+     * Prefix string to be used for option names. For example setting it to <code>"compiler."</code>
+     * will make every specified option use that prefix. By default options directly use the field
+     * name and to do not use prefix.
      */
-    // Please keep sorted
-    enum Id {
-        DoCompile,
-        GetCompilerConfigurationFactoryName,
-        GetCompilerConfigurationName,
-        GetDataPatchesCount,
-        GetExceptionHandlersCount,
-        GetInfopoints,
-        GetInfopointsCount,
-        GetMarksCount,
-        GetNodeCount,
-        GetNodeTypes,
-        GetSuppliedString,
-        GetTargetCodeSize,
-        GetTotalFrameSize,
-        InitializeCompiler,
-        RegisterRuntime,
-        ListCompilerOptions,
-        ExistsCompilerOption,
-        ValidateCompilerOption,
-        InitializeRuntime,
-        InstallTruffleCallBoundaryMethod,
-        InstallTruffleReservedOopMethod,
-        NewCompiler,
-        PendingTransferToInterpreterOffset,
-        PurgePartialEvaluationCaches,
-        Shutdown;
-    }
+    String prefix() default "";
+
+    /**
+     * By default generated classes that specify an {@link Option} annotation are loaded as service.
+     * If this attribute is set to to <code>false</code> the generated options in this class are not
+     * loaded by the service mechanism. This allows to manually specify where the option
+     * descriptors.
+     * <p>
+     * Since option services are registered by name using the "_OptionDescriptors" class name suffix
+     * the generated class is also does not end with "_OptionDescriptors" but just with
+     * "OptionDescriptors". This is hopefully obsolete after GR-46195 is implemented.
+     */
+    boolean registerAsService() default true;
+
 }

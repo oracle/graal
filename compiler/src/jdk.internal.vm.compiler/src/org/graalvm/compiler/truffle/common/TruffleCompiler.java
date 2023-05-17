@@ -30,10 +30,6 @@ import java.util.Map;
  * A compiler that partially evaluates and compiles a {@link CompilableTruffleAST} to machine code.
  */
 public interface TruffleCompiler {
-    String FIRST_TIER_COMPILATION_SUFFIX = "#1";
-    String SECOND_TIER_COMPILATION_SUFFIX = "#2";
-    int FIRST_TIER_INDEX = 1;
-    int LAST_TIER_INDEX = 2;
 
     /**
      * Initializes the compiler before the first compilation.
@@ -66,4 +62,5 @@ public interface TruffleCompiler {
      * finalization tasks. This is typically performed when the process exits.
      */
     void shutdown();
+
 }

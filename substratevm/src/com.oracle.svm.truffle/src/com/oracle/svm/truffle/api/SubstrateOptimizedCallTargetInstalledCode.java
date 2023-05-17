@@ -27,7 +27,7 @@ package com.oracle.svm.truffle.api;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
-import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -202,7 +202,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         }
         UntetheredCodeInfo info = CodeInfoTable.lookupCodeInfo(WordFactory.pointer(entryPoint));
         return info.isNonNull() && info.notEqual(CodeInfoTable.getImageCodeInfo()) &&
-                        UntetheredCodeInfoAccess.getTier(info) == TruffleCompiler.LAST_TIER_INDEX;
+                        UntetheredCodeInfoAccess.getTier(info) == TruffleCompilerImpl.LAST_TIER_INDEX;
     }
 
     /*
