@@ -65,7 +65,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.util.ExitStatus;
+import com.oracle.svm.driver.launcher.BundleLauncher;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.util.json.JSONParser;
 import org.graalvm.util.json.JSONParserException;
 
@@ -952,6 +954,31 @@ final class BundleSupport {
             nativeImage.deleteAllFiles(metaInfDir);
         }
 
+        Path launcherFilePath = rootDir.resolve(BundleLauncher.class.getName().replace(".","/") + ".class");
+
+        try {
+            Files.createDirectories(launcherFilePath.getParent());
+            Files.copy(BundleLauncher.class.getResourceAsStream(BundleLauncher.class.getSimpleName() + ".class"), launcherFilePath);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to write bundle-file " + launcherFilePath, e);
+        }
+
+        /*
+        try (JarOutputStream jarOutStream = new JarOutputStream(Files.newOutputStream(launcherFilePath))) {
+            //String jarEntryName = BundleLauncher.class.getName().replace(".","/") + ".class";
+            String jarEntryName = BundleLauncher.class.getSimpleName() + ".class";
+            JarEntry entry = new JarEntry(jarEntryName);
+            jarOutStream.putNextEntry(entry);
+            Path tempLauncherFile = Files.createTempFile(BundleLauncher.class.getSimpleName(), null);
+            Files.copy(BundleLauncher.class.getResourceAsStream(BundleLauncher.class.getSimpleName() + ".class"), tempLauncherFile, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(tempLauncherFile, jarOutStream);
+            Files.delete(tempLauncherFile);
+            jarOutStream.closeEntry();
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to write bundle-file " + launcherFilePath, e);
+        }
+        */
+
         Path pathCanonicalizationsFile = stageDir.resolve("path_canonicalizations.json");
         try (JsonWriter writer = new JsonWriter(pathCanonicalizationsFile)) {
             /* Printing as list with defined sort-order ensures useful diffs are possible */
@@ -1006,10 +1033,10 @@ final class BundleSupport {
         }
 
         Path buildArgsFile = stageDir.resolve("build.json");
+        ArrayList<String> bundleArgs = new ArrayList<>(updatedNativeImageArgs != null ? updatedNativeImageArgs : nativeImageArgs);
         try (JsonWriter writer = new JsonWriter(buildArgsFile)) {
             List<String> equalsNonBundleOptions = List.of(CmdLineOptionHandler.VERBOSE_OPTION, CmdLineOptionHandler.DRY_RUN_OPTION);
             List<String> startsWithNonBundleOptions = List.of(BUNDLE_OPTION, DefaultOptionHandler.ADD_ENV_VAR_OPTION, nativeImage.oHPath);
-            ArrayList<String> bundleArgs = new ArrayList<>(updatedNativeImageArgs != null ? updatedNativeImageArgs : nativeImageArgs);
             ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
             while (bundleArgsIterator.hasNext()) {
                 String arg = bundleArgsIterator.next();
@@ -1027,6 +1054,24 @@ final class BundleSupport {
             JsonPrinter.printCollection(writer, bundleArgs, null, BundleSupport::printBuildArg);
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + buildArgsFile, e);
+        }
+
+        Path runArgsFile = stageDir.resolve("run.json");
+        try (JsonWriter writer = new JsonWriter(runArgsFile)) {
+            List<String> isPathArg = List.of("-cp", "-p", "-classpath", "--module-path");
+            ListIterator<String> bundleArgsIterator = bundleArgs.listIterator();
+            while (bundleArgsIterator.hasNext()) {
+                String arg = bundleArgsIterator.next();
+                if (isPathArg.contains(arg)) {
+                    bundleArgsIterator.remove();
+                    bundleArgsIterator.next();
+                    bundleArgsIterator.remove();
+                }
+            }
+            /* Printing as list with defined sort-order ensures useful diffs are possible */
+            JsonPrinter.printCollection(writer, bundleArgs, null, BundleSupport::printBuildArg);
+        } catch (IOException e) {
+            throw NativeImage.showError("Failed to write bundle-file " + runArgsFile, e);
         }
 
         bundleProperties.write();
@@ -1054,11 +1099,12 @@ final class BundleSupport {
         return bundleFilePath;
     }
 
-    private static Manifest createManifest() {
+    private Manifest createManifest() {
         Manifest mf = new Manifest();
         Attributes attributes = mf.getMainAttributes();
         attributes.put(Attributes.Name.MANIFEST_VERSION, "1.0");
         /* If we add run-bundle-as-java-application a launcher mainclass would be added here */
+        attributes.put(Attributes.Name.MAIN_CLASS, BundleLauncher.class.getName());
         return mf;
     }
 
