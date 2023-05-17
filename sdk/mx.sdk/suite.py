@@ -125,6 +125,8 @@ suite = {
         }
       }
     },
+    # NOTE: this is legacy shaded JLINE3 artifact. Explicitly include this in your dependencies, if you need it.
+    # Otherwise, all the necessary JLINE3 artifacts are inlined in LAUNCHER_COMMON
     "JLINE3" : {
       "digest" : "sha512:d9518c40e206950b3815593de83b1e3632896096407937f15646c81c69f167900c67bd88f3ff2b86258960bbd108d3c0cf09a1ad7cfbf1be489b2af4feccbb58",
       "version" : "3.16.0.3",
@@ -163,6 +165,86 @@ suite = {
         "org.graalvm.shadowed.org.jline.terminal.spi",
         "org.graalvm.shadowed.org.jline.utils",
         "org.graalvm.shadowed.org.jline.widget",
+      ],
+    },
+    "JLINE3_READER" : {
+      "digest" : "sha512:777733fa5d19f34386e4ff4ac578fb8ef3bbe160db5755dc551a5ec085dd3d966d74525be0e2d0c7bab222f03e09e28190cb5b263a92c63c6683a09332accf2e",
+      "maven" : {
+        "groupId" : "org.jline",
+        "artifactId" : "jline-reader",
+        "version" : "3.23.0",
+      },
+      "license" : "BSD-new",
+      "requires" : ["java.logging"],
+      "exports" : [
+        "org.jline.keymap",
+        "org.jline.reader",
+        "org.jline.reader.impl",
+        "org.jline.reader.impl.completer",
+        "org.jline.reader.impl.history",
+      ],
+    },
+    "JLINE3_TERMINAL" : {
+      "digest" : "sha512:d0d96389d750d6de82f4d8a29fc3756c0f28c19f520e761db69c6668b1e3fc9c2add30aee86ab7ac10426f2c075a63a0e5f7537096591fe585d8836f25c692ed",
+      "maven" : {
+        "groupId" : "org.jline",
+        "artifactId" : "jline-terminal",
+        "version" : "3.23.0",
+      },
+      "license" : "BSD-new",
+      "requires" : ["java.logging"],
+      "exports" : [
+        "org.jline.utils",
+        "org.jline.terminal",
+        "org.jline.terminal.spi",
+        "org.jline.terminal.impl",
+        "org.jline.terminal.impl.exec",
+      ],
+    },
+    "JLINE3_TERMINAL_JANSI" : {
+      "digest" : "sha512:dc108f6406eb8065b32d1c3097807b6b7fc7e1e322937057cd4e486c86e39869c235fb0c7e51fe66ed85b9bc64f97e0138671ecb134c92b9518188519962ec73",
+      "maven" : {
+        "groupId" : "org.jline",
+        "artifactId" : "jline-terminal-jansi",
+        "version" : "3.23.0",
+      },
+      "license" : "BSD-new",
+      "requires" : ["java.logging"],
+      "exports" : [
+        "org.jline.terminal.impl.jansi",
+        "org.jline.terminal.impl.jansi.freebsd",
+        "org.jline.terminal.impl.jansi.linux",
+        "org.jline.terminal.impl.jansi.osx",
+        "org.jline.terminal.impl.jansi.solaris",
+        "org.jline.terminal.impl.jansi.win",
+      ],
+    },
+    "JLINE3_NATIVE" : {
+      "digest" : "sha512:4249de3d0f0cf21d539716aa9e8e8453d487609a4b918315e80c548391c7e640c2a206495e2d981768b17485990024c958872ee815f9c545574906011fb81ec8",
+      "maven" : {
+        "groupId" : "org.jline",
+        "artifactId" : "jline-native",
+        "version" : "3.23.0",
+      },
+      "license" : "BSD-new",
+      "requires" : ["java.logging"],
+      "exports" : [
+        "org.jline.nativ",
+      ],
+    },
+    "JANSI" : {
+      "digest" : "sha512:7a6a8952b07302cd2ae1beec3241c36cdaa24215b23671ea4a47eb70b3430e99398e3b9a52c6fdaa017e464b5ee5ef5473da250df06c301c5331f7b4535ce4e7",
+      "maven" : {
+        "groupId" : "org.fusesource.jansi",
+        "artifactId" : "jansi",
+        "version" : "2.4.0",
+      },
+      "license" : "Apache-2.0",
+      "requires" : ["java.logging"],
+      "exports" : [
+        "org.fusesource.jansi",
+        "org.fusesource.jansi.internal",
+        "org.fusesource.jansi.io",
       ],
     },
     "LLVM_ORG" : {
@@ -296,6 +378,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.polyglot",
         "JLINE3",
+        "JLINE3_READER",
+        "JLINE3_TERMINAL",
+        "JLINE3_TERMINAL_JANSI",
+        "JLINE3_NATIVE",
+        "JANSI",
       ],
       "requires" : [
         "java.logging",
