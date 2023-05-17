@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -48,8 +47,6 @@ import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-
-import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The {@code ConditionalNode} class represents a comparison that yields one of two (eagerly
@@ -101,32 +98,11 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     }
 
     private static Stamp combineStamps(LogicNode condition, ValueNode trueValue, ValueNode falseValue, NodeView view) {
-        Stamp valueStamp = trueValue.stamp(view).meet(falseValue.stamp(view));
-        if (condition instanceof IntegerLessThanNode) {
-            IntegerLessThanNode lessThan = (IntegerLessThanNode) condition;
-            if (lessThan.getX() == trueValue && lessThan.getY() == falseValue) {
-                // this encodes a min operation
-                JavaConstant constant = lessThan.getX().asJavaConstant();
-                if (constant == null) {
-                    constant = lessThan.getY().asJavaConstant();
-                }
-                if (constant != null) {
-                    IntegerStamp bounds = StampFactory.forInteger(constant.getJavaKind(), constant.getJavaKind().getMinValue(), constant.asLong());
-                    valueStamp = valueStamp.join(bounds);
-                }
-            } else if (lessThan.getX() == falseValue && lessThan.getY() == trueValue) {
-                // this encodes a max operation
-                JavaConstant constant = lessThan.getX().asJavaConstant();
-                if (constant == null) {
-                    constant = lessThan.getY().asJavaConstant();
-                }
-                if (constant != null) {
-                    IntegerStamp bounds = StampFactory.forInteger(constant.getJavaKind(), constant.asLong(), constant.getJavaKind().getMaxValue());
-                    valueStamp = valueStamp.join(bounds);
-                }
-            }
+        ValueNode asMinMax = MinMaxNode.fromConditional(condition, trueValue, falseValue, view);
+        if (asMinMax != null) {
+            return asMinMax.stamp(view);
         }
-        return valueStamp;
+        return trueValue.stamp(view).meet(falseValue.stamp(view));
     }
 
     public ValueNode trueValue() {
