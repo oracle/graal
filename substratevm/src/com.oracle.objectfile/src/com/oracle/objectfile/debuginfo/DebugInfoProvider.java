@@ -161,12 +161,17 @@ public interface DebugInfoProvider {
     }
 
     interface DebugForeignTypeInfo extends DebugInstanceTypeInfo {
-        public String typedefName();
-        public boolean isWord();
-        public boolean isPointer();
-        public boolean isIntegral();
-        public boolean isFloat();
-        public boolean isSigned();
+        String typedefName();
+
+        boolean isWord();
+
+        boolean isPointer();
+
+        boolean isIntegral();
+
+        boolean isFloat();
+
+        boolean isSigned();
 
         ResolvedJavaType pointerTo();
     }

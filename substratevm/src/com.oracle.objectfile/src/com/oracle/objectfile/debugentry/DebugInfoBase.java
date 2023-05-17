@@ -469,7 +469,7 @@ public abstract class DebugInfoBase {
 
     public TypeEntry lookupVoidType() {
         // this should only be looked up after all types have been notified
-        assert voidType!= null;
+        assert voidType != null;
         return voidType;
     }
 

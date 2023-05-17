@@ -104,14 +104,15 @@ public abstract class TypeEntry {
     }
 
     /**
-     * Test whether this entry is a class type, either an instance class, an interface type, an enum type
-     * or a foreign type. The test excludes primitive and array types and the header type.
+     * Test whether this entry is a class type, either an instance class, an interface type, an enum
+     * type or a foreign type. The test excludes primitive and array types and the header type.
      *
-     * n.b. Foreign types are considered to be class types because they appear like interfaces or classes
-     * in the Java source and hence need to be modeled by a ClassEntry which can track properties of the
-     * java type. This also allows them to be decorated with properties that record details of the generated
-     * debug info. When it comes to encoding the model type as DWARF or PECOFF method {@link #isForeign()}
-     * may need to be called in order to allow foreign types ot be special cased.
+     * n.b. Foreign types are considered to be class types because they appear like interfaces or
+     * classes in the Java source and hence need to be modeled by a ClassEntry which can track
+     * properties of the java type. This also allows them to be decorated with properties that
+     * record details of the generated debug info. When it comes to encoding the model type as DWARF
+     * or PECOFF method {@link #isForeign()} may need to be called in order to allow foreign types
+     * ot be special cased.
      *
      * @return true if this entry is a class type otherwise false.
      */

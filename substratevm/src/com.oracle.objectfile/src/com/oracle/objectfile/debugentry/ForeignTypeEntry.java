@@ -32,18 +32,16 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugForeignTypeInfo;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
-import java.util.ArrayList;
-import java.util.stream.Stream;
-
 public class ForeignTypeEntry extends ClassEntry {
-    private final static int FLAG_WORD = 1 << 0;
-    private final static int FLAG_POINTER = 1 << 1;
-    private final static int FLAG_INTEGRAL = 1 << 2;
-    private final static int FLAG_SIGNED = 1 << 3;
-    private final static int FLAG_FLOAT = 1 << 4;
+    private static final int FLAG_WORD = 1 << 0;
+    private static final int FLAG_POINTER = 1 << 1;
+    private static final int FLAG_INTEGRAL = 1 << 2;
+    private static final int FLAG_SIGNED = 1 << 3;
+    private static final int FLAG_FLOAT = 1 << 4;
     String typedefName;
     TypeEntry pointerTo;
     int flags;
+
     public ForeignTypeEntry(String className, FileEntry fileEntry, int size) {
         super(className, fileEntry, size);
         typedefName = null;
@@ -66,7 +64,7 @@ public class ForeignTypeEntry extends ClassEntry {
             flags = FLAG_WORD;
         } else if (debugForeignTypeInfo.isPointer()) {
             flags = FLAG_POINTER;
-            ResolvedJavaType referent =  debugForeignTypeInfo.pointerTo();
+            ResolvedJavaType referent = debugForeignTypeInfo.pointerTo();
             if (referent != null) {
                 pointerTo = debugInfoBase.lookupTypeEntry(referent);
             }
@@ -96,15 +94,19 @@ public class ForeignTypeEntry extends ClassEntry {
     public boolean isWord() {
         return (flags & FLAG_WORD) != 0;
     }
+
     public boolean isPointer() {
         return (flags & FLAG_POINTER) != 0;
     }
+
     public boolean isIntegral() {
         return (flags & FLAG_INTEGRAL) != 0;
     }
+
     public boolean isSigned() {
         return (flags & FLAG_SIGNED) != 0;
     }
+
     public boolean isFloat() {
         return (flags & FLAG_FLOAT) != 0;
     }
@@ -112,7 +114,8 @@ public class ForeignTypeEntry extends ClassEntry {
     @Override
     protected void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         ClassEntry parentEntry = debugInfoBase.lookupClassEntry(interfaceType);
-        // don't model the interface relationship when the Java interface actually identifies a foreign type
+        // don't model the interface relationship when the Java interface actually identifies a
+        // foreign type
         if (parentEntry instanceof InterfaceClassEntry) {
             super.processInterface(interfaceType, debugInfoBase, debugContext);
         } else {
