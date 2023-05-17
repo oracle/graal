@@ -72,10 +72,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
      */
     private static final int DW_DIE_HEADER_SIZE = 11;
     /**
-     * Normally the offset of DWARF type declarations are tracked using the type/class entry properties
-     * but that means they are only available to be read during the second pass when filling in type
-     * cross-references. However, we need to use the offset of the void type during the first pass
-     * as the target of later-generated  foreign pointer types. So, this field saves it up front.
+     * Normally the offset of DWARF type declarations are tracked using the type/class entry
+     * properties but that means they are only available to be read during the second pass when
+     * filling in type cross-references. However, we need to use the offset of the void type during
+     * the first pass as the target of later-generated foreign pointer types. So, this field saves
+     * it up front.
      */
     private int voidOffset;
 
@@ -318,7 +319,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeStructFields(DebugContext context, Stream<FieldEntry> fields, byte[] buffer, int p) {
         Cursor cursor = new Cursor(p);
-        fields.forEach( fieldEntry -> {
+        fields.forEach(fieldEntry -> {
             cursor.set(writeStructField(context, fieldEntry, buffer, cursor.get()));
         });
         return cursor.get();
@@ -372,8 +373,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeInterfaceType(context, interfaceClassEntry, buffer, pos);
         } else if (classEntry.isForeign()) {
             ForeignTypeEntry foreignTypeEntry = (ForeignTypeEntry) classEntry;
-            pos = writeForeignLayout(context, foreignTypeEntry, buffer,pos);
-            pos = writeForeignType(context, foreignTypeEntry, buffer,pos);
+            pos = writeForeignLayout(context, foreignTypeEntry, buffer, pos);
+            pos = writeForeignType(context, foreignTypeEntry, buffer, pos);
         } else {
             pos = writeClassLayout(context, classEntry, buffer, pos);
             pos = writeClassType(context, classEntry, buffer, pos);
@@ -874,7 +875,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int size = foreignTypeEntry.getSize();
         int layoutOffset = pos;
         if (foreignTypeEntry.isWord()) {
-            // define the type as a typedef for a signed or unsigned word i.e. we don't have a layout type
+            // define the type as a typedef for a signed or unsigned word i.e. we don't have a
+            // layout type
             pos = writeForeignWordLayout(context, foreignTypeEntry, size, foreignTypeEntry.isSigned(), buffer, pos);
         } else if (foreignTypeEntry.isIntegral()) {
             // use a suitably sized signed or unsigned integral type as the layout type
@@ -883,7 +885,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             // use a suitably sized signed or unsigned float type as the layout type
             pos = writeForeignFloatLayout(context, foreignTypeEntry, size, buffer, pos);
         } else {
-            // pointer or unknown - layout id as a foreign stucture if we have fields otherwise use void
+            // pointer or unknown - layout id as a foreign stucture if we have fields otherwise use
+            // void
             if (foreignTypeEntry.fieldCount() > 0) {
                 // define this type using a structure layout
                 pos = writeForeignStructLayout(context, foreignTypeEntry, size, buffer, pos);
@@ -907,8 +910,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /*
          * Write declarations for methods of the foreign types as functions
          *
-         * n.b. these appear as standalone declarations rather than as children of a
-         * class layout DIE so we don't need a terminating  attribute.
+         * n.b. these appear as standalone declarations rather than as children of a class layout
+         * DIE so we don't need a terminating attribute.
          */
         pos = writeMethodDeclarations(context, foreignTypeEntry, buffer, pos);
         /*
@@ -1110,7 +1113,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         // Unlike with Java we use the Java name for the pointer type rather than the
         // underlying base type, or rather for a typedef that targets the pointer type.
-        // That ensures that e.g. CCharPointer is a typedef for char*. 
+        // That ensures that e.g. CCharPointer is a typedef for char*.
 
         /* Define a pointer type referring to the base type */
         int refTypeIdx = pos;
@@ -1142,6 +1145,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         return pos;
     }
+
     private int writeStaticFieldLocations(DebugContext context, byte[] buffer, int p) {
         Cursor cursor = new Cursor(p);
         instanceClassStream().forEach(classEntry -> {

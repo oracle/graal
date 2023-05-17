@@ -62,6 +62,7 @@ import java.util.List;
 class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
     private NativeLibraries nativeLibs;
+
     NativeImageBFDNameProvider(List<ClassLoader> ignore) {
         this.ignoredLoaders = ignore;
         this.nativeLibs = null;
@@ -372,9 +373,10 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
     }
 
     /**
-     * Make the provider aware of the current native libraries. This is needed because the
-     * provider is created in a feature after registration but the native libraries are only
-     * available before analysis.
+     * Make the provider aware of the current native libraries. This is needed because the provider
+     * is created in a feature after registration but the native libraries are only available before
+     * analysis.
+     * 
      * @param nativeLibs the
      */
     public void setNativeLibs(NativeLibraries nativeLibs) {
@@ -716,8 +718,9 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
     /**
      * Determine whether a type modeled as a Java object type needs to be encoded using pointer
      * prefix P.
+     * 
      * @param type The type to be checked.
-     * @return true if the  type needs to be encoded using pointer prefix P otherwise false.
+     * @return true if the type needs to be encoded using pointer prefix P otherwise false.
      */
     private boolean needsPointerPrefix(ResolvedJavaType type) {
         ResolvedJavaType target = type;

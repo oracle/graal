@@ -95,13 +95,14 @@ class NativeImageDebugInfoFeature implements InternalFeature {
         if (!UniqueShortNameProviderDefaultImpl.UseDefault.useDefaultProvider()) {
             if (ImageSingletons.contains(UniqueShortNameProvider.class)) {
                 UniqueShortNameProvider provider = ImageSingletons.lookup(UniqueShortNameProvider.class);
-                if (provider instanceof  NativeImageBFDNameProvider) {
-                    var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl)  access;
+                if (provider instanceof NativeImageBFDNameProvider) {
+                    var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
                     ((NativeImageBFDNameProvider) provider).setNativeLibs(((FeatureImpl.BeforeAnalysisAccessImpl) access).getNativeLibraries());
                 }
             }
         }
     }
+
     @Override
     @SuppressWarnings("try")
     public void beforeImageWrite(BeforeImageWriteAccess access) {
