@@ -220,8 +220,6 @@ class NativeImageVM(GraalVm):
             # TODO remove once there is load available for the specified benchmarks
             if self.benchmark_suite_name in ["mushop", "quarkus"]:
                 return False
-            if self.benchmark_suite_name == "petclinic-wrk":
-                return self.bmSuite.version() != "0.1.7"
             return True
 
         def get_bundle_path_if_present(self):

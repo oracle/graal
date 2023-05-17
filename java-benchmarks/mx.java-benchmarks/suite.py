@@ -25,12 +25,6 @@ suite = {
       "packedResource": True
     },
 
-    "PETCLINIC_0.1.7": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.7.zip"],
-      "digest": "sha512:fe8f34a6cbb24099e3cc68051c857e82536c6d81498c604157e6312c04e675745d6f77dd292adde006307d5319b77917bbc9e5f301501ab1e9c072870be113a5",
-      "packedResource": True,
-    },
-
     "PETCLINIC_3.0.0": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-petclinic-3.0.0.zip"],
       "digest": "sha512:cacbedf0456a769ae5bd022480b1ceeb8f157684b79f682b70c27fd715a4523cd80e030f127c7a9cff8c6b256a83677d2285e6197b82ecd53f99a5231dfd76e9",

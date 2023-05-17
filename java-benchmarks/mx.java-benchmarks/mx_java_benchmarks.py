@@ -229,21 +229,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.BenchmarkSuite):
 
 
 class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundleBasedBenchmarkMixin):
-    def mainClass(self):
-        raise NotImplementedError()
-
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        if self.uses_bundles():
-            return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
-
-        lib = self.applicationDist()
-        classpath = os.path.join(lib, "BOOT-INF/classes")
-        classpath += ':' + os.path.join(lib, "classes")
-        for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
-            if filename.endswith(".jar"):
-                classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
-        mainclass = self.mainClass()
-        return self.vmArgs(bmSuiteArgs) + ["-cp", classpath, mainclass]
+        return self.create_bundle_command_line_args(benchmarks, bmSuiteArgs)
 
     def extra_image_build_argument(self, _, args):
         return super(BaseSpringBenchmarkSuite, self).extra_image_build_argument(_, args) + self.create_bundle_image_build_arguments()
@@ -260,26 +247,19 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite, NativeImageBundle
         # This method overrides NativeImageMixin.stages
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
+    def uses_bundles(self):
+        return True
+
 
 class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
-    """
-    Version 0.1.7 MIGHT NOT be fully functional. So far, it was used only to collect image build time metrics.
-    """
     def availableSuiteVersions(self):
-        # 0.1.7 is based on Spring 3, hence with official GraalVM NI support, requires Java 17 or newer
-        return ["0.1.7", "3.0.0"]
+        return ["3.0.0"]
 
     def defaultSuiteVersion(self):
         return "3.0.0"
 
     def applicationDist(self):
         return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
-
-    def mainClass(self):
-        return "org.springframework.samples.petclinic.PetClinicApplication"
-
-    def uses_bundles(self):
-        return self.version() != "0.1.7"
 
 
 class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
@@ -325,12 +305,6 @@ class BaseSpringHelloWorldBenchmarkSuite(BaseSpringBenchmarkSuite):
 
     def applicationDist(self):
         return mx.library("SPRING_HW_" + self.version(), True).get_path(True)
-
-    def mainClass(self):
-        return "com.example.webmvc.WebmvcApplication"
-
-    def uses_bundles(self):
-        return True
 
 
 class SpringHelloWorldWrkBenchmarkSuite(BaseSpringHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
