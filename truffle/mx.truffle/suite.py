@@ -1050,6 +1050,10 @@ suite = {
           "com.oracle.truffle.api.TruffleLanguage.Provider", # Deprecated
           "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
         ],
+        "ignoredServiceTypes" : [
+          "com.oracle.truffle.api.library.DefaultExportProvider",
+          "com.oracle.truffle.api.library.EagerExportProvider",
+        ],
       },
       "moduleInfo:closed" : {
         # This is the module descriptor for the Truffle API modular jar deployed via maven.
@@ -1102,6 +1106,10 @@ suite = {
           "com.oracle.truffle.nfi.backend.spi.types",
           "com.oracle.truffle.nfi.backend.spi.util",
         ],
+        "ignoredServiceTypes" : [
+          "com.oracle.truffle.api.library.DefaultExportProvider",
+          "com.oracle.truffle.api.library.EagerExportProvider",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
@@ -1120,6 +1128,10 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
+        "ignoredServiceTypes" : [
+          "com.oracle.truffle.api.library.DefaultExportProvider",
+          "com.oracle.truffle.api.library.EagerExportProvider",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",

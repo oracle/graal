@@ -44,43 +44,79 @@ import java.lang.module.ModuleDescriptor;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 
 final class ModuleUtils {
 
-    static void exportTo(Module module) {
-        exportFromTo(module);
+    static void exportTo(Module clientModule) {
+        if (!isExportedTo(clientModule)) {
+            exportFromTo(clientModule);
+        }
     }
 
     static void exportToUnnamedModuleOf(ClassLoader loader) {
-        exportFromTo(loader.getUnnamedModule());
+        exportTo(loader.getUnnamedModule());
     }
 
-    static void exportTransitivelyTo(Module module) {
-        ModuleLayer layer = module.getLayer();
+    static void exportTransitivelyTo(Module clientModule) {
+        if (isExportedTo(clientModule)) {
+            return;
+        }
+        ModuleLayer layer = clientModule.getLayer();
         ClassLoader platformClassLoader = ClassLoader.getPlatformClassLoader();
         Set<Module> targetModules = new HashSet<>();
         Deque<Module> todo = new ArrayDeque<>();
-        todo.add(module);
+        todo.add(clientModule);
         while (!todo.isEmpty()) {
-            Module m = todo.removeFirst();
-            if (Objects.equals(m.getLayer(), layer)) {
-                ClassLoader classLoader = m.getClassLoader();
+            Module module = todo.removeFirst();
+            if (Objects.equals(module.getLayer(), layer)) {
+                ClassLoader classLoader = module.getClassLoader();
                 if (classLoader != null && !classLoader.equals(platformClassLoader)) {
-                    targetModules.add(m);
-                    ModuleDescriptor descriptor = m.getDescriptor();
-                    if (descriptor != null && !descriptor.isAutomatic()) {
-                        descriptor.requires().stream().//
-                                        map((d) -> layer.findModule(d.name()).get()).//
-                                        forEach(todo::add);
+                    targetModules.add(module);
+                    ModuleDescriptor descriptor = module.getDescriptor();
+                    if (descriptor != null) {
+                        if (descriptor.isAutomatic()) {
+                            // An automatic module descriptor does not have requires directives but
+                            // automatic modules reads the whole module graph. So we need to export
+                            // truffle to all automatic modules in the layer.
+                            module.getLayer().modules().stream().filter((m) -> m.getDescriptor().isAutomatic()).forEach(targetModules::add);
+                            break;
+                        } else {
+                            // Module graph with filtered automatic and unnamed modules cannot
+                            // contain cycles.
+                            descriptor.requires().stream().//
+                                            map((d) -> findModule(layer, d)).//
+                                            filter(Objects::nonNull).//
+                                            forEach(todo::add);
+                        }
                     }
                 }
             }
         }
-        targetModules.forEach(ModuleUtils::exportTo);
+        targetModules.forEach(ModuleUtils::exportFromTo);
+    }
+
+    private static Module findModule(ModuleLayer layer, ModuleDescriptor.Requires requires) {
+        Optional<Module> moduleOrNull = layer.findModule(requires.name());
+        if (moduleOrNull.isPresent()) {
+            return moduleOrNull.get();
+        } else if (requires.modifiers().contains(ModuleDescriptor.Requires.Modifier.STATIC)) {
+            // Optional runtime dependency may not be available.
+            return null;
+        } else {
+            throw new NoSuchElementException(requires.name());
+        }
+    }
+
+    private static boolean isExportedTo(Module clientModule) {
+        Module truffleModule = Truffle.class.getModule();
+        return truffleModule.isExported(TruffleLanguage.class.getPackageName(), clientModule);
     }
 
     private static void exportFromTo(Module clientModule) {
