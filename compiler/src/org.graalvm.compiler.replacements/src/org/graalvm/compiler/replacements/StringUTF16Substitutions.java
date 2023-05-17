@@ -43,6 +43,7 @@ import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.word.WordFactory;
 
 /**
  * Substitutions for {@code java.lang.StringUTF16} methods.
@@ -65,7 +66,7 @@ public class StringUTF16Substitutions {
     }
 
     private static Word charOffsetPointer(byte[] value, int offset) {
-        return pointer(value).add(offset * charArrayIndexScale(INJECTED));
+        return pointer(value).add(WordFactory.signed(offset).multiply(WordFactory.unsigned(charArrayIndexScale(INJECTED))));
     }
 
     /**
