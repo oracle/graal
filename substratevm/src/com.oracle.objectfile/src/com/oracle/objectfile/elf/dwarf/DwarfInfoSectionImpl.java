@@ -1021,7 +1021,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeStrSectionOffset(name, buffer, pos);
     }
 
-    private String integralTypeName(int byteSize, boolean isSigned) {
+    private static String integralTypeName(int byteSize, boolean isSigned) {
         assert (byteSize & (byteSize - 1)) == 0 : "expecting a power of 2!";
         StringBuilder stringBuilder = new StringBuilder();
         if (!isSigned) {
