@@ -282,6 +282,14 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         return getFeatures().contains(feature);
     }
 
+    public final boolean supports(String feature) {
+        try {
+            return getFeatures().contains(AMD64.CPUFeature.valueOf(feature));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     /**
      * Mitigates exception throwing by recording unknown CPU feature names.
      */

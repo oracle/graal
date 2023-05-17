@@ -4914,6 +4914,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0xF9);
     }
 
+    public void rdpid(Register dst) {
+        // GR-43733: Replace string by feature when we remove support for Java 17
+        assert supports("RDPID");
+        emitByte(0xF3);
+        prefix(dst);
+        emitByte(0x0F);
+        emitByte(0xC7);
+        emitModRM(7, dst);
+    }
+
     /**
      * Emits an instruction which is considered to be illegal. This is used if we deliberately want
      * to crash the program (debugging etc.).
