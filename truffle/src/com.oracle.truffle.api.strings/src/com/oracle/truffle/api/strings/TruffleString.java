@@ -3224,6 +3224,12 @@ public final class TruffleString extends AbstractTruffleString {
          * Convert the given byte index to a codepoint index, relative to starting point
          * {@code byteOffset}.
          *
+         * If the byteIndex falls after the last codepoint start, the resulting codepoint start will be:
+         * codepoint size + offset (from codepoint byte index) - 1
+         * For example:
+         * - String is "こんにちは" (5 codepoint, 3 byte wide, last codepoint byte index is 12)
+         * - execute("こんにちは", 0, 14, _) -> yields 6 (5 [codepoint size] + 2 [14 - 12] - 1)
+         *
          * @since 22.2
          */
         public abstract int execute(AbstractTruffleString a, int byteOffset, int byteIndex, Encoding expectedEncoding);
