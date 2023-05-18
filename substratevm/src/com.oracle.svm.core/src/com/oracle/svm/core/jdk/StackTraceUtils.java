@@ -181,7 +181,7 @@ public class StackTraceUtils {
 
         if (LoomSupport.isEnabled() && clazz == Target_jdk_internal_vm_Continuation.class) {
             String name = frameInfo.getSourceMethodName();
-            if ("enter0".equals(name) || "enterSpecial".equals(name)) {
+            if (name.startsWith("enter") || name.startsWith("yield")) {
                 return false;
             }
         }
