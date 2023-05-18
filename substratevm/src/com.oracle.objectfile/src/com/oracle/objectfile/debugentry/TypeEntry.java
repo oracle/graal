@@ -117,7 +117,7 @@ public abstract class TypeEntry {
      * @return true if this entry is a class type otherwise false.
      */
     public boolean isClass() {
-        return isInstance() | isInterface() || isEnum() || isForeign();
+        return isInstance() || isInterface() || isEnum() || isForeign();
     }
 
     public boolean isStructure() {
