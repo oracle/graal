@@ -46,6 +46,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.nodes.Node;
+
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Repeatable(OperationProxies.class)

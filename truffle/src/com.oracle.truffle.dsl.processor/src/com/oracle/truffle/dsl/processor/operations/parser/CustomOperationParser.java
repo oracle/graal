@@ -141,12 +141,12 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             name = name.substring(0, name.length() - 4);
         }
 
-        if (mode == ParseMode.OPERATION_PROXY) {
+        if (isProxy()) {
             AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "operationName", false);
             if (nameValue != null) {
                 name = (String) nameValue.getValue();
             }
-        } else if (mode == ParseMode.SHORT_CIRCUIT_OPERATION) {
+        } else if (isShortCircuit()) {
             AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "name", false);
             if (nameValue != null) {
                 name = (String) nameValue.getValue();
@@ -154,16 +154,26 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         }
 
         OperationModel data = parent.operation(typeElement, kind, name);
+        data.annotationMirror = mirror;
 
         if (name.contains("_")) {
             data.addError("Operation class name cannot contain underscores.");
         }
 
-        data.annotationMirror = mirror;
-
         boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);
 
-        if (!isNode) {
+        if (isNode) {
+            if (isProxy()) {
+                AnnotationMirror generateCached = NodeParser.findGenerateAnnotation(typeElement.asType(), types.GenerateCached);
+                if (generateCached != null && !ElementUtils.getAnnotationValue(Boolean.class, generateCached, "value")) {
+                    AnnotationValue proxyClass = ElementUtils.getAnnotationValue(mirror, "value");
+                    parent.addError(mirror, proxyClass,
+                                    "Class %s does not generate a cached node, so it cannot be used as an OperationProxy. Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.",
+                                    typeElement.getQualifiedName());
+                    return data;
+                }
+            }
+        } else {
             // operation specification
 
             if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
@@ -221,7 +231,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 // Remove annotations that will cause {@link FlatNodeGenFactory} to generate
                 // unnecessary code. We programmatically add @NodeChildren later, so remove them
                 // here.
-                ct.getAnnotationMirrors().removeIf(m -> typeEqualsAny(m.getAnnotationType(), types.NodeChild, types.NodeChildren, types.GenerateUncached, types.GenerateNodeFactory));
+                ct.getAnnotationMirrors().removeIf(
+                                m -> typeEqualsAny(m.getAnnotationType(), types.NodeChild, types.NodeChildren, types.GenerateUncached, types.GenerateNodeFactory, types.GenerateInline));
                 // Remove all non-static or private elements, including all of the execute methods.
                 ct.getEnclosedElements().removeIf(e -> !e.getModifiers().contains(Modifier.STATIC) || e.getModifiers().contains(Modifier.PRIVATE));
             });
@@ -411,11 +422,12 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         } catch (Throwable ex) {
             StringWriter wr = new StringWriter();
             ex.printStackTrace(new PrintWriter(wr));
-            data.addError("Error generating node: %s\n%s", signature, wr.toString());
+            data.addError("Error generating instruction for Operation node %s: \n%s", data.parent.getName(), wr.toString());
+            return instr;
         }
 
         if (instr.nodeData == null) {
-            data.addError("Error generating node: invalid node definition.");
+            data.addError("Error generating instruction for Operation node %s. This is likely a bug in the Operation DSL.", data.parent.getName());
             return instr;
         }
 
@@ -502,15 +514,15 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             isValid = false;
         }
         if (a.valueCount != b.valueCount) {
-            data.addError(el, "Error calculating operation signature: all specialization must have the same number of value arguments.");
+            data.addError(el, "Error calculating operation signature: all specializations must have the same number of value arguments.");
             isValid = false;
         }
         if (a.localSetterCount != b.localSetterCount) {
-            data.addError(el, "Error calculating operation signature: all specialization must have the same number of %s arguments.", getSimpleName(types.LocalSetter));
+            data.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types.LocalSetter));
             isValid = false;
         }
         if (a.localSetterRangeCount != b.localSetterRangeCount) {
-            data.addError(el, "Error calculating operation signature: all specialization must have the same number of %s arguments.", getSimpleName(types.LocalSetterRange));
+            data.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types.LocalSetterRange));
             isValid = false;
         }
 

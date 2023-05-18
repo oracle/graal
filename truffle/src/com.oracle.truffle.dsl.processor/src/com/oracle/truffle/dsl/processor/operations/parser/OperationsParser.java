@@ -132,25 +132,25 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         List<AnnotationMirror> variants = ElementUtils.getAnnotationValueList(AnnotationMirror.class, mirror, "value");
 
         boolean first = true;
-        Set<String> names = new HashSet<>();
+        Set<String> suffixes = new HashSet<>();
         TypeMirror languageClass = null;
         boolean enableYield = false;
 
         List<OperationsModel> result = new ArrayList<>();
 
         for (AnnotationMirror variant : variants) {
-            AnnotationValue nameValue = ElementUtils.getAnnotationValue(variant, "name");
-            String name = ElementUtils.resolveAnnotationValue(String.class, nameValue);
+            AnnotationValue suffixValue = ElementUtils.getAnnotationValue(variant, "suffix");
+            String suffix = ElementUtils.resolveAnnotationValue(String.class, suffixValue);
 
             AnnotationValue generateOperationsMirrorValue = ElementUtils.getAnnotationValue(variant, "configuration");
             AnnotationMirror generateOperationsMirror = ElementUtils.resolveAnnotationValue(AnnotationMirror.class, generateOperationsMirrorValue);
 
-            OperationsModel model = new OperationsModel(context, typeElement, generateOperationsMirror, name);
+            OperationsModel model = new OperationsModel(context, typeElement, generateOperationsMirror, suffix);
 
-            if (!first && names.contains(name)) {
-                model.addError(variant, nameValue, "A variant with name \"%s\" already exists. Each variant must have a unique name.", name);
+            if (!first && suffixes.contains(suffix)) {
+                model.addError(variant, suffixValue, "A variant with suffix \"%s\" already exists. Each variant must have a unique suffix.", suffix);
             }
-            names.add(name);
+            suffixes.add(suffix);
 
             AnnotationValue variantLanguageClassValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass");
             TypeMirror variantLanguageClass = ElementUtils.resolveAnnotationValue(TypeMirror.class, variantLanguageClassValue);
