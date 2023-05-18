@@ -2081,7 +2081,7 @@ final class EngineAccessor extends Accessor {
         }
     }
 
-    static final class ModulePathLoaderSupplier extends StrongClassLoaderSupplier {
+    private static final class ModulePathLoaderSupplier extends StrongClassLoaderSupplier {
 
         ModulePathLoaderSupplier(ClassLoader classLoader) {
             super(classLoader);

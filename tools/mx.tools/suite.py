@@ -471,10 +471,6 @@ suite = {
                 "exports" : [
                     # chromeinspector and smoke tests use CPUSampler
                     "com.oracle.truffle.tools.profiler",
-                    # chromeinspector uses com.oracle.truffle.tools.utils.json from profiler
-                    # GR-46205: Make com.oracle.truffle.tools.utils.json a module shared by
-                    # chromeinspector, profiler, coverage, dap, lsp, warmup
-                    "com.oracle.truffle.tools.utils.json to com.oracle.truffle.tools.chromeinspector",
                 ],
             },
             "dependencies": [

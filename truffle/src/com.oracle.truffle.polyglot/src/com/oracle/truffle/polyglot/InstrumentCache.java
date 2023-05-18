@@ -60,7 +60,6 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
-import com.oracle.truffle.polyglot.EngineAccessor.ModulePathLoaderSupplier;
 import com.oracle.truffle.polyglot.EngineAccessor.StrongClassLoaderSupplier;
 import org.graalvm.polyglot.SandboxPolicy;
 
@@ -159,8 +158,6 @@ final class InstrumentCache {
     static List<InstrumentCache> doLoad(List<AbstractClassLoaderSupplier> suppliers) {
         List<InstrumentCache> list = new ArrayList<>();
         Set<String> classNamesUsed = new HashSet<>();
-        Set<String> ids = new HashSet<>();
-        Set<String> modulePathIds = new HashSet<>();
         ClassLoader truffleClassLoader = InstrumentCache.class.getClassLoader();
         boolean usesTruffleClassLoader = false;
         for (AbstractClassLoaderSupplier supplier : suppliers) {
@@ -168,19 +165,9 @@ final class InstrumentCache {
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
-            Set<String> idsCollector = supplier instanceof ModulePathLoaderSupplier ? modulePathIds : ids;
             usesTruffleClassLoader |= truffleClassLoader == loader;
-            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, idsCollector));
-            loadDeprecatedProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, idsCollector));
-        }
-        /*
-         * Compute instruments that are loaded both from module-path and graalvm locator.
-         * Instruments on the module-path are preferred. Instruments duplicated in the graalvm
-         * locator are ignored and a warning is printed.
-         */
-        ids.retainAll(modulePathIds);
-        for (String ignoredId : ids) {
-            emitWarning("The instrument %s is loaded by both the graalmv locator and the JVM module-path. The JVM module-path is preferred.", ignoredId);
+            loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
+            loadDeprecatedProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
         }
         /*
          * Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
@@ -192,7 +179,7 @@ final class InstrumentCache {
             Module truffleModule = InstrumentCache.class.getModule();
             loadProviders(truffleClassLoader).//
                             filter((p) -> p.getProviderClass().getModule().equals(truffleModule)).//
-                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, modulePathIds));
+                            forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed));
         }
         list.sort(Comparator.comparing(InstrumentCache::getId));
         return list;
@@ -207,7 +194,7 @@ final class InstrumentCache {
         return StreamSupport.stream(ServiceLoader.load(TruffleInstrumentProvider.class, loader).spliterator(), false).map(NewProvider::new);
     }
 
-    private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed, Set<? super String> idsCollector) {
+    private static void loadInstrumentImpl(ProviderAdapter providerAdapter, List<? super InstrumentCache> list, Set<? super String> classNamesUsed) {
         Class<?> providerClass = providerAdapter.getProviderClass();
         Module providerModule = providerClass.getModule();
         ModuleUtils.exportTransitivelyTo(providerModule);
@@ -231,16 +218,12 @@ final class InstrumentCache {
         String website = reg.website();
         SandboxPolicy sandboxPolicy = reg.sandbox();
         boolean internal = reg.internal();
-        Set<String> servicesClassNames = new TreeSet<>();
-        for (String service : providerAdapter.getServicesClassNames()) {
-            servicesClassNames.add(service);
-        }
+        Set<String> servicesClassNames = new TreeSet<>(providerAdapter.getServicesClassNames());
         // we don't want multiple instruments with the same class name
         if (!classNamesUsed.contains(className)) {
             classNamesUsed.add(className);
             list.add(new InstrumentCache(id, name, version, className, internal, servicesClassNames, providerAdapter, website, sandboxPolicy));
         }
-        idsCollector.add(id);
     }
 
     private static boolean isValidLoader(ClassLoader loader) {
