@@ -36,6 +36,9 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.hosted.meta.HostedField;
+
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
@@ -62,15 +65,14 @@ public final class IsStaticFinalFieldInitializedNode extends FixedWithNextNode i
 
     @Override
     public void simplify(SimplifierTool tool) {
-        StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
-
-        if (feature.fieldInitializationStatus == null) {
+        if (field instanceof AnalysisField) {
             /*
              * Static analysis is still running, we do not know yet if class will get initialized at
              * image build time after static analysis.
              */
             return;
         }
+        assert field instanceof HostedField;
 
         ValueNode replacementNode;
         if (field.getDeclaringClass().isInitialized()) {
@@ -81,6 +83,7 @@ public final class IsStaticFinalFieldInitializedNode extends FixedWithNextNode i
             replacementNode = ConstantNode.forBoolean(true, graph());
 
         } else {
+            StaticFinalFieldFoldingFeature feature = StaticFinalFieldFoldingFeature.singleton();
             Integer fieldCheckIndex = feature.fieldCheckIndexMap.get(StaticFinalFieldFoldingFeature.toAnalysisField(field));
             assert fieldCheckIndex != null : "Field must be optimizable: " + field;
             ConstantNode fieldInitializationStatusNode = ConstantNode.forConstant(tool.getSnippetReflection().forObject(feature.fieldInitializationStatus), tool.getMetaAccess(), graph());
