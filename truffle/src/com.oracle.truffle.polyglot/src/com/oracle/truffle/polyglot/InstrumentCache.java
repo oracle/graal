@@ -173,23 +173,26 @@ final class InstrumentCache {
             loadProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, idsCollector));
             loadDeprecatedProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, idsCollector));
         }
-        // Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
-        // module. If the ClassLoader does not define module it has no ServiceCatalog. The
-        // ServiceLoader does not load module services from parent classloader. This code can be
-        // removed if we add system classloader into GraalVMLocator.
+        /*
+         * Compute instruments that are loaded both from module-path and graalvm locator.
+         * Instruments on the module-path are preferred. Instruments duplicated in the graalvm
+         * locator are ignored and a warning is printed.
+         */
+        ids.retainAll(modulePathIds);
+        for (String ignoredId : ids) {
+            emitWarning("The instrument %s is loaded by both the graalmv locator and the JVM module-path. The JVM module-path is preferred.", ignoredId);
+        }
+        /*
+         * Resolves a missing debugger instrument when the GuestLangToolsClassLoader does not define
+         * module. If the ClassLoader does not define module it has no ServiceCatalog. The
+         * ServiceLoader does not load module services from parent classloader. This code can be
+         * removed if we add system classloader into GraalVMLocator.
+         */
         if (!usesTruffleClassLoader) {
             Module truffleModule = InstrumentCache.class.getModule();
             loadProviders(truffleClassLoader).//
                             filter((p) -> p.getProviderClass().getModule().equals(truffleModule)).//
                             forEach((p) -> loadInstrumentImpl(p, list, classNamesUsed, modulePathIds));
-        }
-        // Compute instruments that are loaded both from module-path and graalvm locator.
-        // Instruments on the module-path are preferred. Instruments duplicated in the graalvm
-        // locator
-        // are ignored.
-        ids.retainAll(modulePathIds);
-        for (String ignoredId : ids) {
-            emitWarning("The instrument %s is loaded by both the graalmv locator and the JVM module-path. The JVM module-path is preferred.", ignoredId);
         }
         list.sort(Comparator.comparing(InstrumentCache::getId));
         return list;

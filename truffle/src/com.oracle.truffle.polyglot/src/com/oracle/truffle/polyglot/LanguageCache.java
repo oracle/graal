@@ -265,9 +265,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
             loadDeprecatedProviders(loader).filter((p) -> supplier.accepts(p.getProviderClass())).forEach((p) -> loadLanguageImpl(p, cachesCollector, idsCollector));
         }
 
-        // Compute languages that are loaded both from module-path and graalvm locator.
-        // Languages on the module-path are preferred. Languages duplicated in the graalvm locator
-        // and languages that depend on them are ignored.
+        /*
+         * Compute languages that are loaded both from module-path and graalvm locator. Languages on
+         * the module-path are preferred. Languages duplicated in the graalvm locator and languages
+         * that depend on them are ignored and a warning is printed.
+         */
         ids.retainAll(modulePathIds);
         // Add languages loaded by the graalvm locator depending on ignored duplicated languages.
         if (!ids.isEmpty()) {

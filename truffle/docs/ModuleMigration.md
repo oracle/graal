@@ -55,7 +55,9 @@ needs to be registered with `@Registration#defaultLibraryExports`.
 `@Registration#aotLibraryExports`.
 6. If your language already has a module descriptor, make sure that it does not provide any `EagerExportProvider` or
 `DefaultExportProvider` implementation as a service. Registering `EagerExportProvider` or `DefaultExportProvider` in the
-module descriptor will cause an error during the creation of the module layer on the closed Truffle.
+module descriptor will cause an error during creation of the module layer on the closed Truffle. If you build your
+language or instrument with `mx`, use the [ignoredServiceTypes](https://github.com/graalvm/mx/blob/master/README.md#java-modules-support)
+attribute to prevent adding `DefaultExportProvider` and `EagerExportProvider` implementations to `provides` clauses.
 7. If the language (instrument) does not expose any API, it is recommended to keep the module as encapsulated as
 possible and not to export any package. Otherwise, export the API packages. For the internal API, which is used only
 by known modules, it is recommended to use qualified export `export <package> to <module>`.

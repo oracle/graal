@@ -72,24 +72,29 @@ final class ModuleUtils {
         ClassLoader platformClassLoader = ClassLoader.getPlatformClassLoader();
         Set<Module> targetModules = new HashSet<>();
         Deque<Module> todo = new ArrayDeque<>();
+        /*
+         * The module graph with filtered automatic and unnamed modules forms a DAG. Even there are
+         * no cycles, keeping track of visited modules speeds up the graph traversal.
+         */
+        Set<Module> visited = new HashSet<>();
         todo.add(clientModule);
         while (!todo.isEmpty()) {
             Module module = todo.removeFirst();
-            if (Objects.equals(module.getLayer(), layer)) {
+            if (visited.add(module) && Objects.equals(module.getLayer(), layer)) {
                 ClassLoader classLoader = module.getClassLoader();
                 if (classLoader != null && !classLoader.equals(platformClassLoader)) {
                     targetModules.add(module);
                     ModuleDescriptor descriptor = module.getDescriptor();
                     if (descriptor != null) {
                         if (descriptor.isAutomatic()) {
-                            // An automatic module descriptor does not have requires directives but
-                            // automatic modules reads the whole module graph. So we need to export
-                            // truffle to all automatic modules in the layer.
+                            /*
+                             * An automatic module descriptor does not have requires directives but
+                             * automatic modules reads the whole module graph. So we need to export
+                             * truffle to all automatic modules in the layer.
+                             */
                             module.getLayer().modules().stream().filter((m) -> m.getDescriptor().isAutomatic()).forEach(targetModules::add);
                             break;
                         } else {
-                            // Module graph with filtered automatic and unnamed modules cannot
-                            // contain cycles.
                             descriptor.requires().stream().//
                                             map((d) -> findModule(layer, d)).//
                                             filter(Objects::nonNull).//
