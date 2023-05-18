@@ -359,7 +359,7 @@ public class UniverseBuilder {
          */
         HostedType type = lookupType(aField.getType());
 
-        HostedField hField = new HostedField(hUniverse, hMetaAccess, aField, holder, type, staticAnalysisResultsBuilder.makeTypeProfile(aField));
+        HostedField hField = new HostedField(aField, holder, type, staticAnalysisResultsBuilder.makeTypeProfile(aField));
         assert !hUniverse.fields.containsKey(aField);
         hUniverse.fields.put(aField, hField);
     }

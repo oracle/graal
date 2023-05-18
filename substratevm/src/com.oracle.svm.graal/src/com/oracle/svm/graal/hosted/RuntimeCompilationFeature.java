@@ -628,7 +628,7 @@ public abstract class RuntimeCompilationFeature {
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
-        objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders().getConstantFieldProvider());
+        objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders());
 
         objectReplacer.registerImmutableObjects(config);
         GraalSupport.registerImmutableObjects(config);

@@ -156,7 +156,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         primitiveStartOffset = (int) primitiveFields.getAddress();
         referenceStartOffset = (int) objectFields.getAddress();
         /* Calculate the set of all HostedMethods that are overrides. */
-        allOverrides = heap.getUniverse().getMethods().stream()
+        allOverrides = heap.hUniverse.getMethods().stream()
                         .filter(HostedMethod::hasVTableIndex)
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
@@ -224,7 +224,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     @Override
     public Stream<DebugTypeInfo> typeInfoProvider() {
         Stream<DebugTypeInfo> headerTypeInfo = computeHeaderTypeInfo();
-        Stream<DebugTypeInfo> heapTypeInfo = heap.getUniverse().getTypes().stream().map(this::createDebugTypeInfo);
+        Stream<DebugTypeInfo> heapTypeInfo = heap.hUniverse.getTypes().stream().map(this::createDebugTypeInfo);
         return Stream.concat(headerTypeInfo, heapTypeInfo);
     }
 
@@ -962,7 +962,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         private ResolvedJavaMethod promoteAnalysisToHosted(ResolvedJavaMethod m) {
             if (m instanceof AnalysisMethod) {
-                return heap.getUniverse().lookup(m);
+                return heap.hUniverse.lookup(m);
             }
             if (!(m instanceof HostedMethod)) {
                 debugContext.log(DebugContext.DETAILED_LEVEL, "Method is neither Hosted nor Analysis : %s.%s%s", m.getDeclaringClass().getName(), m.getName(),
