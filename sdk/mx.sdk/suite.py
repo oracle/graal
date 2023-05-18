@@ -126,7 +126,7 @@ suite = {
       }
     },
     # NOTE: this is legacy shaded JLINE3 artifact. Explicitly include this in your dependencies, if you need it.
-    # Otherwise, all the necessary JLINE3 artifacts are inlined in LAUNCHER_COMMON
+    # Otherwise, all the necessary JLINE3 artifacts are dependencies of LAUNCHER_COMMON
     "JLINE3" : {
       "digest" : "sha512:d9518c40e206950b3815593de83b1e3632896096407937f15646c81c69f167900c67bd88f3ff2b86258960bbd108d3c0cf09a1ad7cfbf1be489b2af4feccbb58",
       "version" : "3.16.0.3",
@@ -229,6 +229,7 @@ suite = {
       "license" : "BSD-new",
       "requires" : ["java.logging"],
       "exports" : [
+        # Note: this is not a typo, the package name is "nativ"
         "org.jline.nativ",
       ],
     },
