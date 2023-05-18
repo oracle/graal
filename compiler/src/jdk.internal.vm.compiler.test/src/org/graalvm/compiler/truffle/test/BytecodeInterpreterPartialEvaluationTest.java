@@ -628,9 +628,9 @@ public class BytecodeInterpreterPartialEvaluationTest extends PartialEvaluationT
                 Formatter msg = new Formatter();
                 msg.format("manyIfsProgram iteration %d took %d ms which is longer than the limit of %d ms%n", i, times[i], limit);
                 msg.format("%nDetailed info for each iteration%n");
-                for (int j = 0; j < times.length; j++) {
-                    msg.format("%nIteration %d took %d ms%n", i, times[i]);
-                    msg.format("Top phase times in iteration %d:%n%s%n", i, topPhases[i]);
+                for (int j = 0; j <= i; j++) {
+                    msg.format("%nIteration %d took %d ms%n", j, times[j]);
+                    msg.format("Top phase times in iteration %d:%n%s%n", j, topPhases[j]);
                 }
                 throw new AssertionError(msg.toString());
 
