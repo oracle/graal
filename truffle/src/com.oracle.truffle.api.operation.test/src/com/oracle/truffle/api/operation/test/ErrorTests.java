@@ -43,6 +43,7 @@ package com.oracle.truffle.api.operation.test;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.LocalSetter;
@@ -201,9 +203,27 @@ public class ErrorTests {
     @ExpectError("Could not proxy operation: the proxied type must be a class, not int.")
     @GenerateOperations(languageClass = ErrorLanguage.class)
     @OperationProxy(int.class)
-    public abstract class BadProxyType extends RootNode implements OperationRootNode {
-        protected BadProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
+    public abstract class PrimitiveProxyType extends RootNode implements OperationRootNode {
+        protected PrimitiveProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
+        }
+    }
+
+    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @ExpectError("Class com.oracle.truffle.api.operation.test.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy. Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.")
+    @OperationProxy(NoCachedProxyType.NodeWithNoCache.class)
+    public abstract class NoCachedProxyType extends RootNode implements OperationRootNode {
+        protected NoCachedProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @GenerateCached(false)
+        public static final class NodeWithNoCache extends Node {
+            @Specialization
+            public static int doInt() {
+                return 42;
+            }
+
         }
     }
 

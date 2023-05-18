@@ -73,13 +73,13 @@ public class OperationsModel extends Template implements InfoDumpable {
 
     private final ProcessorContext context;
     public final TypeElement templateType;
-    public final String name;
+    private final String suffix;
 
-    public OperationsModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, String name) {
+    public OperationsModel(ProcessorContext context, TypeElement templateType, AnnotationMirror mirror, String suffix) {
         super(context, templateType, mirror);
         this.context = context;
         this.templateType = templateType;
-        this.name = name;
+        this.suffix = suffix;
     }
 
     private int operationId = 1;
@@ -118,6 +118,10 @@ public class OperationsModel extends Template implements InfoDumpable {
     public InstructionModel[] popVariadicInstruction;
     public InstructionModel mergeVariadicInstruction;
     public InstructionModel storeNullInstruction;
+
+    public String getName() {
+        return templateType.getSimpleName() + suffix;
+    }
 
     public List<TypeMirror> getProvidedTags() {
         AnnotationMirror providedTags = ElementUtils.findAnnotationMirror(ElementUtils.castTypeElement(languageClass), types.ProvidedTags);
@@ -316,6 +320,6 @@ public class OperationsModel extends Template implements InfoDumpable {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[" + ElementUtils.getSimpleName(getTemplateType()) + name + "]";
+        return getClass().getSimpleName() + "[" + getName() + "]";
     }
 }

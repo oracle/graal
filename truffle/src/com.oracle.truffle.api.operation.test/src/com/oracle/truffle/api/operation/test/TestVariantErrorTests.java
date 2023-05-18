@@ -12,10 +12,10 @@ import com.oracle.truffle.api.operation.test.GenerateOperationsTestVariants.Vari
 
 public class TestVariantErrorTests {
 
-    @ExpectError("A variant with name \"A\" already exists. Each variant must have a unique name.")
+    @ExpectError("A variant with suffix \"A\" already exists. Each variant must have a unique suffix.")
     @GenerateOperationsTestVariants({
-                    @Variant(name = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class)),
-                    @Variant(name = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class))})
+                    @Variant(suffix = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class)),
+                    @Variant(suffix = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class))})
     @OperationProxy(ConstantOperation.class)
     public static abstract class SameName extends RootNode implements OperationRootNode {
         protected SameName(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -25,8 +25,8 @@ public class TestVariantErrorTests {
 
     @ExpectError("Incompatible variant: all variants must use the same language class.")
     @GenerateOperationsTestVariants({
-                    @Variant(name = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class)),
-                    @Variant(name = "B", configuration = @GenerateOperations(languageClass = AnotherErrorLanguage.class))
+                    @Variant(suffix = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class)),
+                    @Variant(suffix = "B", configuration = @GenerateOperations(languageClass = AnotherErrorLanguage.class))
     })
     @OperationProxy(ConstantOperation.class)
     public static abstract class DifferentLanguage extends RootNode implements OperationRootNode {
@@ -37,8 +37,8 @@ public class TestVariantErrorTests {
 
     @ExpectError("Incompatible variant: all variants must have the same value for enableYield.")
     @GenerateOperationsTestVariants({
-                    @Variant(name = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class, enableYield = true)),
-                    @Variant(name = "B", configuration = @GenerateOperations(languageClass = ErrorLanguage.class))
+                    @Variant(suffix = "A", configuration = @GenerateOperations(languageClass = ErrorLanguage.class, enableYield = true)),
+                    @Variant(suffix = "B", configuration = @GenerateOperations(languageClass = ErrorLanguage.class))
     })
     @OperationProxy(ConstantOperation.class)
     public static abstract class DifferentYield extends RootNode implements OperationRootNode {
@@ -49,8 +49,8 @@ public class TestVariantErrorTests {
 
     // no errors expected
     @GenerateOperationsTestVariants({
-                    @Variant(name = "Tier1", configuration = @GenerateOperations(languageClass = ErrorLanguage.class)),
-                    @Variant(name = "Tier0", configuration = @GenerateOperations(languageClass = ErrorLanguage.class, enableBaselineInterpreter = true))
+                    @Variant(suffix = "Tier1", configuration = @GenerateOperations(languageClass = ErrorLanguage.class)),
+                    @Variant(suffix = "Tier0", configuration = @GenerateOperations(languageClass = ErrorLanguage.class, enableBaselineInterpreter = true))
     })
     @OperationProxy(ConstantOperation.class)
     public static abstract class DifferentBaselineInterpreters extends RootNode implements OperationRootNode {

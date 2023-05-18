@@ -162,7 +162,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     public OperationsNodeFactory(OperationsModel model) {
         this.model = model;
-        operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.templateType.getSimpleName() + model.name, model.templateType.asType());
+        operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
         emptyObjectArray = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
         fastAccess = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.FastAccess, "ACCESS");
         fastAccess.setInit(createFastAccessFieldInitializer());

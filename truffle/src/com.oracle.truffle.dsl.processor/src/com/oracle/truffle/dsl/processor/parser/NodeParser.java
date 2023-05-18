@@ -1009,7 +1009,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return findGenerateAnnotation(templateType.asType(), ProcessorContext.getInstance().getTypes().GenerateInline);
     }
 
-    private static AnnotationMirror findGenerateAnnotation(TypeMirror nodeType, DeclaredType annotationType) {
+    public static AnnotationMirror findGenerateAnnotation(TypeMirror nodeType, DeclaredType annotationType) {
         TypeElement originalType = ElementUtils.castTypeElement(nodeType);
         TypeElement currentType = originalType;
         while (currentType != null) {

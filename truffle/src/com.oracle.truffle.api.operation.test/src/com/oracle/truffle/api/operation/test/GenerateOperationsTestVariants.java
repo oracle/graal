@@ -30,7 +30,7 @@ public @interface GenerateOperationsTestVariants {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     public @interface Variant {
-        public String name();
+        public String suffix();
 
         public GenerateOperations configuration();
     }
