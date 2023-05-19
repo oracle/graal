@@ -59,7 +59,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
 
     @Override
     protected Context.Builder newContextBuilder() {
-        return super.newContextBuilder().option("engine.EncodedGraphCache", "false");
+        return super.newContextBuilder().option("compiler.EncodedGraphCache", "false");
     }
 
     @Test

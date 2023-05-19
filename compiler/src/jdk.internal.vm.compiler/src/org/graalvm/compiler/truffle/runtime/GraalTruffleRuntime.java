@@ -1106,15 +1106,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * for a task and thus never terminate.
      */
     protected long getCompilerIdleDelay(OptimizedCallTarget callTarget) {
-        OptionValues options = callTarget.engine.getEngineOptions();
-        /*
-         * Compiler idle time is set to 0 to avoid that the compiler thread is shut down. We are
-         * collecting statistics if any of the flags are used.
-         */
-        if (!options.get(PolyglotCompilerOptions.MethodExpansionStatistics).isEmpty() || !options.get(PolyglotCompilerOptions.NodeExpansionStatistics).isEmpty() ||
-                        options.get(PolyglotCompilerOptions.InstrumentBranches) || options.get(PolyglotCompilerOptions.InstrumentBoundaries)) {
-            return 0L;
-        }
         return callTarget.getOptionValue(CompilerIdleDelay);
     }
 
@@ -1325,7 +1316,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         static OptionKey<String> getOrCreateOptionKey(String name) {
             return KEYS.computeIfAbsent(name, (k) -> {
                 OptionType<String> type = new OptionType<>("compilerOption", (s) -> s, (v) -> {
-                    String result = GraalTruffleRuntime.getRuntime().validateCompilerOption(name, v);
+                    String optionName = name;
+                    if (isLegacyOption(optionName)) {
+                        optionName = convertFromLegacyOptionName(optionName);
+                    }
+                    String result = GraalTruffleRuntime.getRuntime().validateCompilerOption(optionName, v);
                     if (result != null) {
                         throw new IllegalArgumentException(result);
                     }
@@ -1334,13 +1329,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 NAMES.put(key, name);
                 return key;
             });
+
         }
 
         static boolean isLegacyOption(String optionName) {
             switch (optionName) {
                 case "engine.EncodedGraphCache":
-                case "engine.EncodedGraphCachePurgeDelay":
                 case "engine.ExcludeAssertions":
+                case "engine.FirstTierInliningPolicy":
                 case "engine.FirstTierUseEconomy":
                 case "engine.InlineAcrossTruffleBoundary":
                 case "engine.InlineOnly":
@@ -1358,16 +1354,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 case "engine.InstrumentationTableSize":
                 case "engine.IterativePartialEscape":
                 case "engine.MaximumGraalGraphSize":
-                case "engine.MaximumInlineNodeCount":
                 case "engine.MethodExpansionStatistics":
                 case "engine.NodeExpansionStatistics":
                 case "engine.NodeSourcePositions":
-                case "engine.TraceDeoptimizeFrame":
+                case "engine.ParsePEGraphsWithAssumptions":
                 case "engine.TraceInlining":
                 case "engine.TraceInliningDetails":
                 case "engine.TraceMethodExpansion":
                 case "engine.TraceNodeExpansion":
                 case "engine.TracePerformanceWarnings":
+                case "engine.TraceStackTraceLimit":
                 case "engine.TreatPerformanceWarningsAsErrors":
                     return true;
             }

@@ -141,7 +141,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
             TruffleCompilerImpl compiler = getTruffleCompilerFromRuntime(target);
             TruffleCompilationTask task = newTask();
             try (TruffleCompilation compilation = compiler.openCompilation(task, target)) {
-                getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, compilation.getCompilationId(), task, null);
+                getTruffleCompilerFromRuntime(target).compileAST(debug, target, compilation.getCompilationId(), task, null);
                 assertTrue(target.isValid());
             }
             return target;
@@ -151,7 +151,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
     private void testHelper(boolean enableEncodedGraphCache, int purgeDelay, Consumer<TruffleCompilerImpl> verification) {
         setupContext(Context.newBuilder() //
                         .allowExperimentalOptions(true) //
-                        .option("engine.EncodedGraphCache", String.valueOf(enableEncodedGraphCache)) //
+                        .option("compiler.EncodedGraphCache", String.valueOf(enableEncodedGraphCache)) //
                         .option("engine.EncodedGraphCachePurgeDelay", String.valueOf(purgeDelay)) //
                         .option("engine.CompilerIdleDelay", "0") //
                         .option("engine.BackgroundCompilation", "false") //
@@ -183,7 +183,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         boolean encodedGraphCache = false;
         setupContext(Context.newBuilder() //
                         .allowExperimentalOptions(true) //
-                        .option("engine.EncodedGraphCache", String.valueOf(encodedGraphCache)));
+                        .option("compiler.EncodedGraphCache", String.valueOf(encodedGraphCache)));
 
         TruffleCompilerImpl truffleCompiler = getTruffleCompilerFromRuntime(compileAST(rootTestNode()));
 

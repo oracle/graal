@@ -50,10 +50,10 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationTier;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.CompilationTier;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -89,22 +89,28 @@ final class ExpansionStatistics {
         this.enabledStages.addAll(nodeExpansionStatistics);
     }
 
-    static ExpansionStatistics create(PartialEvaluator partialEvaluator, org.graalvm.options.OptionValues options) {
+    static ExpansionStatistics create(PartialEvaluator partialEvaluator, OptionValues options) {
         if (!isEnabled(options)) {
             return null;
         }
-        Set<CompilationTier> traceMethodExpansion = options.get(PolyglotCompilerOptions.TraceMethodExpansion);
-        Set<CompilationTier> traceNodeExpansion = options.get(PolyglotCompilerOptions.TraceNodeExpansion);
-        Set<CompilationTier> methodExpansionStatistics = options.get(PolyglotCompilerOptions.MethodExpansionStatistics);
-        Set<CompilationTier> nodeExpansionStatistics = options.get(PolyglotCompilerOptions.NodeExpansionStatistics);
+        Set<CompilationTier> traceMethodExpansion = TruffleCompilerOptions.TraceMethodExpansion.getValue(options).tiers();
+        Set<CompilationTier> traceNodeExpansion = TruffleCompilerOptions.TraceNodeExpansion.getValue(options).tiers();
+        Set<CompilationTier> methodExpansionStatistics = TruffleCompilerOptions.MethodExpansionStatistics.getValue(options).tiers();
+        Set<CompilationTier> nodeExpansionStatistics = TruffleCompilerOptions.NodeExpansionStatistics.getValue(options).tiers();
+
         return new ExpansionStatistics(partialEvaluator, traceMethodExpansion, traceNodeExpansion, methodExpansionStatistics, nodeExpansionStatistics);
     }
 
-    static boolean isEnabled(org.graalvm.options.OptionValues options) {
-        if (!options.get(PolyglotCompilerOptions.TraceMethodExpansion).isEmpty() ||
-                        !options.get(PolyglotCompilerOptions.TraceNodeExpansion).isEmpty() ||
-                        !options.get(PolyglotCompilerOptions.MethodExpansionStatistics).isEmpty() ||
-                        !options.get(PolyglotCompilerOptions.NodeExpansionStatistics).isEmpty()) {
+    static boolean isEnabled(OptionValues options) {
+        Set<CompilationTier> traceMethodExpansion = TruffleCompilerOptions.TraceMethodExpansion.getValue(options).tiers();
+        Set<CompilationTier> traceNodeExpansion = TruffleCompilerOptions.TraceNodeExpansion.getValue(options).tiers();
+        Set<CompilationTier> methodExpansionStatistics = TruffleCompilerOptions.MethodExpansionStatistics.getValue(options).tiers();
+        Set<CompilationTier> nodeExpansionStatistics = TruffleCompilerOptions.NodeExpansionStatistics.getValue(options).tiers();
+
+        if (!traceMethodExpansion.isEmpty() ||
+                        !traceNodeExpansion.isEmpty() ||
+                        !methodExpansionStatistics.isEmpty() ||
+                        !nodeExpansionStatistics.isEmpty()) {
             return true;
         }
         return false;

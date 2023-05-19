@@ -35,7 +35,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
@@ -84,6 +83,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
@@ -116,9 +116,6 @@ public final class EngineData {
     @CompilationFinal public int splittingMaxCalleeSize;
     @CompilationFinal public int splittingMaxPropagationDepth;
     @CompilationFinal public double splittingGrowthLimit;
-
-    // inlining options
-    @CompilationFinal public boolean inlining;
 
     // compilation options
     @CompilationFinal public boolean compilation;
@@ -155,6 +152,7 @@ public final class EngineData {
 
     // Cached parsed CompileOnly includes and excludes
     private volatile Pair<List<String>, List<String>> parsedCompileOnly;
+    private Map<String, String> compilerOptions;
 
     private Object polyglotEngine;
 
@@ -258,9 +256,6 @@ public final class EngineData {
         this.traceSplits = options.get(TraceSplitting);
         this.splittingGrowthLimit = options.get(SplittingGrowthLimit);
 
-        // inlining options
-        this.inlining = options.get(Inlining);
-
         // compilation options
         this.compilation = options.get(Compilation);
         this.compileOnly = options.get(CompileOnly);
@@ -296,10 +291,32 @@ public final class EngineData {
         this.compilationFailureAction = options.get(CompilationFailureAction);
         validateOptions();
         parsedCompileOnly = null;
+
+        Map<String, String> compilerOptionValues = GraalTruffleRuntime.CompilerOptionsDescriptors.extractOptions(engineOptions);
+        updateCompilerOptions(compilerOptionValues);
+        this.compilerOptions = compilerOptionValues;
+    }
+
+    /**
+     * Update compiler options based on runtime options. Note there is no support for compiler
+     * options yet.
+     */
+    private void updateCompilerOptions(Map<String, String> options) {
+        if (compilationFailureAction == ExceptionAction.ExitVM) {
+            options.put("compiler.DiagnoseFailure", "true");
+        } else if (compilationFailureAction == ExceptionAction.Diagnose) {
+            options.put("compiler.DiagnoseFailure", "true");
+        }
+        if (TruffleOptions.AOT && traceTransferToInterpreter) {
+            options.put("compiler.NodeSourcePositions", "true");
+        }
+        if (callTargetStatistics || callTargetStatisticDetails) {
+            options.put("compiler.LogInlinedTargets", "true");
+        }
     }
 
     public Map<String, String> getCompilerOptions() {
-        return GraalTruffleRuntime.CompilerOptionsDescriptors.extractOptions(engineOptions);
+        return compilerOptions;
     }
 
     /**

@@ -31,6 +31,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -39,7 +40,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
-import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -48,7 +48,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public final class TruffleTierContext extends HighTierContext {
     public final PartialEvaluator partialEvaluator;
-    public final OptionValues options;
+    public final OptionValues compilerOptions;
     public final DebugContext debug;
 
     public final JavaConstant compilableConstant;
@@ -61,18 +61,19 @@ public final class TruffleTierContext extends HighTierContext {
     public final StructuredGraph graph;
     public final PerformanceInformationHandler handler;
 
-    public TruffleTierContext(PartialEvaluator partialEvaluator, OptionValues options, DebugContext debug,
+    public TruffleTierContext(PartialEvaluator partialEvaluator,
+                    OptionValues compilerOptions,
+                    DebugContext debug,
                     CompilableTruffleAST compilable, ResolvedJavaMethod method,
                     CompilationIdentifier compilationId, SpeculationLog log,
                     TruffleCompilationTask task, PerformanceInformationHandler handler) {
         super(partialEvaluator.getProviders(), new PhaseSuite<>(), OptimisticOptimizations.NONE);
-        Objects.requireNonNull(options);
         Objects.requireNonNull(debug);
         Objects.requireNonNull(compilable);
         Objects.requireNonNull(compilationId);
         Objects.requireNonNull(task);
+        this.compilerOptions = compilerOptions;
         this.partialEvaluator = partialEvaluator;
-        this.options = options;
         this.debug = debug;
         this.compilableConstant = compilable.asJavaConstant();
         this.compilable = compilable;

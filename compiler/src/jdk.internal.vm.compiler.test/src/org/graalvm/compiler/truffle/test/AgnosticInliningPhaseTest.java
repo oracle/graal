@@ -30,6 +30,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -54,14 +55,17 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
     }
 
     protected StructuredGraph runLanguageAgnosticInliningPhase(OptimizedCallTarget callTarget) {
-        final PartialEvaluator partialEvaluator = getTruffleCompiler(callTarget).getPartialEvaluator();
+        TruffleCompilerImpl compiler = getTruffleCompiler(callTarget);
+        final PartialEvaluator partialEvaluator = compiler.getPartialEvaluator();
         final CompilationIdentifier compilationIdentifier = new CompilationIdentifier() {
             @Override
             public String toString(Verbosity verbosity) {
                 return "";
             }
         };
-        final TruffleTierContext context = new TruffleTierContext(partialEvaluator, callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
+        final TruffleTierContext context = new TruffleTierContext(partialEvaluator,
+                        compiler.getOrCreateCompilerOptions(callTarget),
+                        getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
                         compilationIdentifier, getSpeculationLog(),
                         new TruffleCompilationTask() {
 

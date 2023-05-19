@@ -693,9 +693,9 @@ public class OptimizedBlockNodeTest {
                         .option("engine.BackgroundCompilation", "false") //
                         .option("engine.MultiTier", "false") //
                         .option("engine.PartialBlockCompilationSize", String.valueOf(blockCompilationSize))//
-                        .option("engine.MaximumGraalGraphSize", String.valueOf(maxGraalNodeCount))//
+                        .option("compiler.MaximumGraalGraphSize", String.valueOf(maxGraalNodeCount))//
                         .option("engine.SingleTierCompilationThreshold", String.valueOf(TEST_COMPILATION_THRESHOLD))//
-                        .option("engine.EncodedGraphCache", "false");
+                        .option("compiler.EncodedGraphCache", "false");
         for (int i = 0; i < additionalContextOptions.length; i += 2) {
             builder.option(additionalContextOptions[i], additionalContextOptions[i + 1]);
         }

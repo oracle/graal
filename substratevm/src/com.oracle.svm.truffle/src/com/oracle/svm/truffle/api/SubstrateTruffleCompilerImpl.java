@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
-
 import java.io.PrintStream;
 import java.util.Map;
 
@@ -44,6 +42,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
@@ -85,10 +84,10 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     }
 
     @Override
-    protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
+    protected TruffleTier newTruffleTier(OptionValues options) {
         return new TruffleTier(options, partialEvaluator,
                         new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
-                        new SubstratePostPartialEvaluationSuite(config.runtime().getGraalOptions(OptionValues.class), options.get(IterativePartialEscape)));
+                        new SubstratePostPartialEvaluationSuite(config.runtime().getGraalOptions(OptionValues.class), TruffleCompilerOptions.IterativePartialEscape.getValue(options)));
     }
 
     @Override

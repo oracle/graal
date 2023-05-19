@@ -54,7 +54,7 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
                     "engine.FirstTierCompilationThreshold", Integer.toString(FIRST_TIER_THRESHOLD), //
                     "engine.DynamicCompilationThresholds", Boolean.FALSE.toString(), //
                     "engine.CompileImmediately", Boolean.FALSE.toString(), //
-                    "engine.EncodedGraphCache", Boolean.FALSE.toString()
+                    "compiler.EncodedGraphCache", Boolean.FALSE.toString()
     };
 
     @Before

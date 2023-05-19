@@ -51,8 +51,8 @@ import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.PerformanceWarningKind;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -280,7 +280,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     private void verifyTrivial(GraphManager.Entry entry) {
         if (trivial && !entry.trivial) {
             trivial = false;
-            PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.TRIVIAL_FAIL, directCallTarget, Collections.emptyList(),
+            PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.TRIVIAL_FAIL, directCallTarget, Collections.emptyList(),
                             "Root node of target marked trivial but not trivial after PE", Collections.emptyMap());
         }
     }

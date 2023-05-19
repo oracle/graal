@@ -46,10 +46,10 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.PEAgnosticInlineInvokePlugin;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -68,7 +68,7 @@ final class GraphManager {
         this.postPartialEvaluationSuite = postPartialEvaluationSuite;
         this.rootContext = rootContext;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
-        this.useSize = rootContext.options.get(PolyglotCompilerOptions.InliningUseSize);
+        this.useSize = TruffleCompilerOptions.InliningUseSize.getValue(rootContext.compilerOptions);
     }
 
     @SuppressWarnings("try")
@@ -101,7 +101,7 @@ final class GraphManager {
     private TruffleTierContext newContext(CompilableTruffleAST truffleAST, boolean finalize) {
         return new TruffleTierContext(
                         partialEvaluator,
-                        rootContext.options,
+                        rootContext.compilerOptions,
                         rootContext.debug,
                         truffleAST,
                         finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),

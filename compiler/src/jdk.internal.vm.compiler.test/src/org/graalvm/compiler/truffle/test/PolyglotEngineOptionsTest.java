@@ -66,14 +66,13 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         setupContext("engine.LastTierCompilationThreshold", "27", //
                         "engine.TraceCompilation", "true", //
                         "engine.TraceCompilationDetails", "true", //
-                        "engine.Inlining", "false", //
+                        "compiler.Inlining", "false", //
                         "engine.Splitting", "false", //
                         "engine.Mode", "latency");
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         Assert.assertEquals(27, (int) target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold));
         Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilation));
         Assert.assertEquals(true, target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails));
-        Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Inlining));
         Assert.assertEquals(false, target.getOptionValue(PolyglotCompilerOptions.Splitting));
         Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
     }
@@ -85,7 +84,6 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         setupContext("engine.Mode", "latency");
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
-        Assert.assertEquals(true, target.engine.inlining);
         Assert.assertEquals(false, target.engine.splitting);
     }
 

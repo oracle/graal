@@ -209,7 +209,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                  * survives the compiler isolate.
                  */
                 compilation.setCompilationId(new IsolatedTruffleCompilationIdentifier(compilationIdentifier, task, compilable));
-                delegate.doCompile(compilation, options, listener);
+                delegate.doCompile(compilation, listener);
             }
             return IsolatedHandles.nullHandle(); // no exception
         } catch (Throwable t) {

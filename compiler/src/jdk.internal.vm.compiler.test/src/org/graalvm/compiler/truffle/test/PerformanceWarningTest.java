@@ -133,7 +133,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
                 TruffleCompilationTask task = PartialEvaluationTest.newTask();
                 TruffleCompilerImpl compiler = getTruffleCompiler(target);
                 try (TruffleCompilation compilation = compiler.openCompilation(task, compilable)) {
-                    compiler.compileAST(compilable.getOptionValues(), debug, compilable, compilation.getCompilationId(), task, null);
+                    compiler.compileAST(debug, compilable, compilation.getCompilationId(), task, null);
                 }
 
                 assertTrue(compilable.isValid());

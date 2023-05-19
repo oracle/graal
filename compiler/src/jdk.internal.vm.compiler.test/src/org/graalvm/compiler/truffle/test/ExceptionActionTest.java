@@ -95,18 +95,6 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testPermanentBailoutPrint() throws Exception {
-        BiConsumer<String, String> verifier = (log, output) -> {
-            Assert.assertTrue(formatMessage("Expected bailout.", log, output), hasBailout(log));
-            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
-            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
-        };
-        executeInSubProcess(verifier,
-                        "engine.CompilationExceptionsArePrinted", "false",
-                        "engine.CompilationFailureAction", "Print");
-    }
-
-    @Test
     public void testPermanentBailoutExceptionsArePrinted() throws Exception {
         BiConsumer<String, String> verifier = (log, output) -> {
             Assert.assertTrue(formatMessage("Expected bailout.", log, output), hasBailout(log));
@@ -114,8 +102,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier,
-                        "engine.CompilationExceptionsArePrinted", "true",
-                        "engine.CompilationFailureAction", "Silent");
+                        "engine.CompilationFailureAction", "Print");
     }
 
     @Test
@@ -129,16 +116,6 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testPermanentBailoutExceptionsAreFatal() throws Exception {
-        BiConsumer<String, String> verifier = (log, output) -> {
-            Assert.assertTrue(formatMessage("Expected bailout.", log, output), hasBailout(log));
-            Assert.assertTrue(formatMessage("Expected exit.", log, output), hasExit(log));
-            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
-        };
-        executeInSubProcess(verifier, "engine.CompilationExceptionsAreFatal", "true");
-    }
-
-    @Test
     public void testPermanentBailoutThrow() throws Exception {
         BiConsumer<String, String> verifier = (log, output) -> {
             Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
@@ -146,16 +123,6 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertTrue(formatMessage("Expected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, "engine.CompilationFailureAction", "Throw");
-    }
-
-    @Test
-    public void testPermanentBailoutCompilationExceptionsAreThrown() throws Exception {
-        BiConsumer<String, String> verifier = (log, output) -> {
-            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
-            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
-            Assert.assertTrue(formatMessage("Expected OptimizationFailedException.", log, output), hasOptFailedException(log));
-        };
-        executeInSubProcess(verifier, "engine.CompilationExceptionsAreThrown", "true");
     }
 
     @Test
@@ -167,7 +134,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
                         new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
-                        "engine.PerformanceWarningsAreFatal", "all");
+                        "compiler.PerformanceWarningsAreFatal", "all");
     }
 
     @Test
