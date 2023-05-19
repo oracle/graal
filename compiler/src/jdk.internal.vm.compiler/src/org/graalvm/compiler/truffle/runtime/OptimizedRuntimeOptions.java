@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.options;
+package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
@@ -46,7 +46,7 @@ import com.oracle.truffle.api.Option;
  * org.graalvm.compiler.truffle.common.processor.Option
  */
 @Option.Group("engine")
-public final class PolyglotCompilerOptions {
+public final class OptimizedRuntimeOptions {
     public enum EngineModeEnum {
         DEFAULT,
         LATENCY,
@@ -309,7 +309,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraversingQueueWeightingBothTiers = new OptionKey<>(true);
 
     public static OptionDescriptors getDescriptors() {
-        return new PolyglotCompilerOptionsOptionDescriptors();
+        return new OptimizedRuntimeOptionsOptionDescriptors();
     }
 
 }

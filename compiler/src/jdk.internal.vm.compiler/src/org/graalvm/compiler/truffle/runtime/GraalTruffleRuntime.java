@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilerIdleDelay;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompilerIdleDelay;
 
 import java.io.CharArrayWriter;
 import java.io.PrintWriter;
@@ -61,9 +61,8 @@ import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerOptionDescriptor;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.debug.JFRListener;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.compiler.truffle.runtime.debug.TraceASTCompilationListener;
@@ -188,7 +187,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
         EngineCacheSupport support = loadGraalRuntimeServiceProvider(EngineCacheSupport.class, options, false);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
-        options.add(PolyglotCompilerOptions.getDescriptors());
+        options.add(OptimizedRuntimeOptions.getDescriptors());
         options.add(new CompilerOptionsDescriptors());
         this.runtimeOptionDescriptors = options.toArray(new OptionDescriptors[options.size()]);
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
@@ -823,7 +822,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 }
                 listeners.onCompilationQueued(blockTarget, task.tier());
                 int nodeCount = blockTarget.getNonTrivialNodeCount();
-                if (nodeCount > callTarget.engine.getEngineOptions().get(PolyglotCompilerOptions.PartialBlockMaximumSize)) {
+                if (nodeCount > callTarget.engine.getEngineOptions().get(OptimizedRuntimeOptions.PartialBlockMaximumSize)) {
                     listeners.onCompilationDequeued(blockTarget, null, "Partial block is too big to be compiled.", task.tier());
                     continue;
                 }
@@ -1124,14 +1123,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     /**
-     * Returns OptimizedCallTarget's {@link PolyglotCompilerOptions} as a {@link Map}. The returned
+     * Returns OptimizedCallTarget's {@link OptimizedRuntimeOptions} as a {@link Map}. The returned
      * map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
      */
     public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget target) {
         Map<String, Object> map = new HashMap<>();
         OptionValues values = target.engine.getEngineOptions();
 
-        for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
+        for (OptionDescriptor desc : OptimizedRuntimeOptions.getDescriptors()) {
             final OptionKey<?> key = desc.getKey();
             if (values.hasBeenSet(key)) {
                 Object value = values.get(key);
@@ -1191,7 +1190,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     public static class StackTraceHelper {
         public static void logHostAndGuestStacktrace(String reason, OptimizedCallTarget callTarget) {
-            final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
+            final int limit = callTarget.getOptionValue(OptimizedRuntimeOptions.TraceStackTraceLimit);
             final GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
             final StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append(reason).append(" at\n");

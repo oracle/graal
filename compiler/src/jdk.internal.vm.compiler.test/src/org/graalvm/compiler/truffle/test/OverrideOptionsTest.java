@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
@@ -42,7 +42,7 @@ public class OverrideOptionsTest extends TruffleCompilerImplTest {
                         Boolean.TRUE.toString()).build());
         OptimizedCallTarget callTarget = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         OptionValues values = callTarget.engine.getEngineOptions();
-        Assert.assertEquals(false, values.get(PolyglotCompilerOptions.BackgroundCompilation));
-        Assert.assertEquals(true, values.get(PolyglotCompilerOptions.CompileImmediately));
+        Assert.assertEquals(false, values.get(OptimizedRuntimeOptions.BackgroundCompilation));
+        Assert.assertEquals(true, values.get(OptimizedRuntimeOptions.CompileImmediately));
     }
 }

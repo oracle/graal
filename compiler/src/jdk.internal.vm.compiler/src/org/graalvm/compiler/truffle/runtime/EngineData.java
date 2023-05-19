@@ -24,44 +24,44 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ArgumentTypeSpeculation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.BackgroundCompilation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compilation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PriorityQueue;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PropagateLoopCountToLexicalSingleCaller;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PropagateLoopCountToLexicalSingleCallerMaxDepth;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingDumpDecisions;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingGrowthLimit;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxCalleeSize;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingMaxPropagationDepth;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingTraceEvents;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilation;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceCompilationDetails;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceDeoptimizeFrame;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierBonus;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierPriority;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueWeightingBothTiers;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.getRuntime;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ArgumentTypeSpeculation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.BackgroundCompilation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.Compilation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompilationFailureAction;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompilationStatisticDetails;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompilationStatistics;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompileAOTOnCreate;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompileImmediately;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.CompileOnly;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.FirstTierMinInvokeThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.MinInvokeThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.Mode;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.MultiTier;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.PriorityQueue;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.Profiling;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.PropagateLoopCountToLexicalSingleCaller;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.PropagateLoopCountToLexicalSingleCallerMaxDepth;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SingleTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.Splitting;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingAllowForcedSplits;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingDumpDecisions;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingGrowthLimit;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxCalleeSize;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingMaxPropagationDepth;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.SplittingTraceEvents;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceCompilation;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceCompilationDetails;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceDeoptimizeFrame;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceSplitting;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceSplittingSummary;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraceTransferToInterpreter;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierBonus;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueFirstTierPriority;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.TraversingQueueWeightingBothTiers;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -74,9 +74,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.EngineModeEnum;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
 import org.graalvm.options.OptionValues;
 
@@ -321,8 +320,8 @@ public final class EngineData {
 
     /**
      * Checks if the {@link OptimizedCallTarget} for the given {@link RootNode} should be compiled.
-     * The {@link PolyglotCompilerOptions#Compilation Compilation} and
-     * {@link PolyglotCompilerOptions#CompileOnly CompileOnly} options are used to determine if the
+     * The {@link OptimizedRuntimeOptions#Compilation Compilation} and
+     * {@link OptimizedRuntimeOptions#CompileOnly CompileOnly} options are used to determine if the
      * calltarget should be compiled.
      */
     boolean acceptForCompilation(RootNode rootNode) {
@@ -356,7 +355,7 @@ public final class EngineData {
     }
 
     /**
-     * Returns the include and exclude sets for the {@link PolyglotCompilerOptions#CompileOnly
+     * Returns the include and exclude sets for the {@link OptimizedRuntimeOptions#CompileOnly
      * CompileOnly} option. The returned value is {@code null} if the {@code CompileOnly} option is
      * not specified. Otherwise the {@link Pair#getLeft() left} value is the include set and the
      * {@link Pair#getRight() right} value is the exclude set.

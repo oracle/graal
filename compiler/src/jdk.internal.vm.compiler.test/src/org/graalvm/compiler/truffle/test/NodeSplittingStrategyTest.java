@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.polyglot.Context;
@@ -564,7 +564,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())) {
             @Override
             protected int computeSize() {
-                return PolyglotCompilerOptions.SplittingMaxCalleeSize.getDefaultValue() - 1;
+                return OptimizedRuntimeOptions.SplittingMaxCalleeSize.getDefaultValue() - 1;
             }
         }.getCallTarget();
         Object[] first = new Object[]{new DummyRootNode().getCallTarget()};
@@ -577,7 +577,7 @@ public class NodeSplittingStrategyTest extends AbstractSplittingStrategyTest {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) new SplittingTestRootNode(NodeSplittingStrategyTestFactory.HasInlineCacheNodeGen.create(new ReturnsFirstArgumentNode())) {
             @Override
             protected int computeSize() {
-                return PolyglotCompilerOptions.SplittingMaxCalleeSize.getDefaultValue() + 1;
+                return OptimizedRuntimeOptions.SplittingMaxCalleeSize.getDefaultValue() + 1;
             }
         }.getCallTarget();
         Object[] first = new Object[]{new DummyRootNode().getCallTarget()};

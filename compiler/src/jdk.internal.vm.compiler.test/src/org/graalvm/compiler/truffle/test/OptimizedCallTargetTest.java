@@ -36,7 +36,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
@@ -121,7 +121,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 return null;
             }
         }.getCallTarget();
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.LastTierCompilationThreshold);
         final int reprofileCount = 3;
         assertTrue(compilationThreshold >= 2);
 
@@ -200,7 +200,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 return child.execute(frame);
             }
         }).getCallTarget();
-        assertEquals(compilationThreshold, (int) innermostCallTarget.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));
+        assertEquals(compilationThreshold, (int) innermostCallTarget.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold));
 
         OptimizedCallTarget ct = innermostCallTarget;
         ct = (OptimizedCallTarget) new RootTestNode(new FrameDescriptor(), testName + 1, new CallTestNode(ct)).getCallTarget();
@@ -264,7 +264,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
         setupContext("engine.CompileOnly", "foobar", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar").getCallTarget();
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -283,7 +283,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         // test single exclude
         setupContext("engine.CompileOnly", "~foobar", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar").getCallTarget();
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -302,7 +302,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         // test two includes/excludes
         setupContext("engine.CompileOnly", "foo,baz", "engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar").getCallTarget();
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -336,7 +336,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         // OSR should not trigger for compile-only includes
         setupContext("engine.CompileOnly", "foobar");
         OptimizedCallTarget constant = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
-        final OSRRepeatingNode repeating = new OSRRepeatingNode(constant.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+        final OSRRepeatingNode repeating = new OSRRepeatingNode(constant.getOptionValue(OptimizedRuntimeOptions.OSRCompilationThreshold));
         final LoopNode loop = runtime.createLoopNode(repeating);
         OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar") {
 
@@ -367,7 +367,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         String[] options = compileOptionValue == null ? new String[]{"engine.MultiTier", "false"} : new String[]{"engine.Compilation", compileOptionValue.toString(), "engine.MultiTier", "false"};
         setupContext(options);
         OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar").getCallTarget();
-        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
+        final int compilationThreshold = target.getOptionValue(OptimizedRuntimeOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -399,7 +399,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         // OSR should trigger if compile-only with excludes
         setupContext("engine.CompileOnly", "~foobar");
         OptimizedCallTarget constant = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
-        final OSRRepeatingNode repeating = new OSRRepeatingNode(constant.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+        final OSRRepeatingNode repeating = new OSRRepeatingNode(constant.getOptionValue(OptimizedRuntimeOptions.OSRCompilationThreshold));
         final LoopNode loop = runtime.createLoopNode(repeating);
         OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar") {
 
@@ -497,7 +497,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 }
             }
         }.getCallTarget();
-        final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
+        final int compilationThreshold = outerTarget.getOptionValue(OptimizedRuntimeOptions.LastTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             outerTarget.call();
         }

@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.CompilerOptionsDescriptors;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -131,10 +130,10 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
             if (metadata == null) {
                 OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-                if (callTarget.engine.compilation && callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
+                if (callTarget.engine.compilation && callTarget.getOptionValue(OptimizedRuntimeOptions.OSR)) {
                     metadata = new BytecodeOSRMetadata(osrNode,
-                                    callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold),
-                                    callTarget.getOptionValue(PolyglotCompilerOptions.OSRMaxCompilationReAttempts));
+                                    callTarget.getOptionValue(OptimizedRuntimeOptions.OSRCompilationThreshold),
+                                    callTarget.getOptionValue(OptimizedRuntimeOptions.OSRMaxCompilationReAttempts));
                 } else {
                     metadata = BytecodeOSRMetadata.DISABLED;
                 }

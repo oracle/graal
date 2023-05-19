@@ -30,7 +30,7 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -49,7 +49,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
     @Before
     public void before() {
         setupContext();
-        Assume.assumeFalse(dummyTarget().getOptionValue(PolyglotCompilerOptions.CompileImmediately));
+        Assume.assumeFalse(dummyTarget().getOptionValue(OptimizedRuntimeOptions.CompileImmediately));
     }
 
     private static OptimizedCallTarget dummyTarget() {

@@ -37,8 +37,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.ExceptionAction;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
@@ -134,8 +133,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /**
      * The call threshold is counted up for each real call until it reaches a
-     * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * {@link OptimizedRuntimeOptions#FirstTierCompilationThreshold first tier} or
+     * {@link OptimizedRuntimeOptions#LastTierCompilationThreshold second tier} compilation
      * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
      * real call to the call target.
      */
@@ -143,8 +142,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /**
      * The call and loop threshold is counted up for each real call until it reaches a
-     * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * {@link OptimizedRuntimeOptions#FirstTierCompilationThreshold first tier} or
+     * {@link OptimizedRuntimeOptions#LastTierCompilationThreshold second tier} compilation
      * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
      * real call to the call target.
      */
@@ -418,7 +417,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private Assumption initializeAssumption(AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> updater, String name) {
-        Assumption newAssumption = runtime().createAssumption(!getOptionValue(PolyglotCompilerOptions.TraceAssumptions) ? name : name + " of " + rootNode);
+        Assumption newAssumption = runtime().createAssumption(!getOptionValue(OptimizedRuntimeOptions.TraceAssumptions) ? name : name + " of " + rootNode);
         if (updater.compareAndSet(this, null, newAssumption)) {
             return newAssumption;
         } else { // if CAS failed, assumption is already initialized; cannot be null after that.
@@ -1033,7 +1032,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             rt.logEvent(this, 0, "opt fail", toString(), properties, serializedException.get());
             if (action == ExceptionAction.ExitVM) {
                 String reason;
-                if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
+                if (getOptionValue(OptimizedRuntimeOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
                     reason = "engine.CompilationFailureAction=ExitVM";
                 } else {
                     reason = "engine.PerformanceWarningsAreFatal=true";

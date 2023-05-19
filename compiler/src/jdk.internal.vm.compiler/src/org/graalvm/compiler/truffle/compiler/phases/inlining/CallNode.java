@@ -86,7 +86,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     // Effectively final, populated only as part of expanded (unless root, root does not have
     // invoke)
     private Invoke invoke;
-    // Only used if PolyglotCompilerOptions.InliningUseSize is true
+    // Only used if TruffleCompilerOptions.InliningUseSize is true
     private int graphSize;
 
     private boolean forced;

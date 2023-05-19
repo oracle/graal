@@ -91,7 +91,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         TestTruffleCompilationTask task = new TestTruffleCompilationTask();
         try {
             TestListener listener = new TestListener();
-            compiler.doCompile(task, compilable, GraalTruffleRuntime.getOptionsForCompiler(compilable), listener);
+            compiler.doCompile(task, compilable, listener);
         } catch (Throwable t) {
             String message = t.getMessage();
             int runtimeIndex = findFrame(message, JNIExceptionWrapperTest.class, "testMergedStackTrace");

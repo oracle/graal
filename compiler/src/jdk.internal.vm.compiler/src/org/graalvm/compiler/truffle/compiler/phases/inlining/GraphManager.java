@@ -158,7 +158,7 @@ final class GraphManager {
         final boolean trivial;
         // Populated only when debug dump is enabled with debug dump level >= info.
         final StructuredGraph graphAfterPEForDebugDump;
-        // Only populated if PolyglotCompilerOptions.InliningUseSize is true
+        // Only populated if TruffleCompilerOptions.InliningUseSize is true
         final int graphSize;
 
         Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump, int graphSize) {

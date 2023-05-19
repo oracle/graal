@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.FirstTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions.LastTierCompilationThreshold;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;

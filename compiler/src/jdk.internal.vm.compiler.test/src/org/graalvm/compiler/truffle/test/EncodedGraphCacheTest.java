@@ -37,7 +37,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
@@ -236,7 +236,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
          * the default value for EncodedGraphCachePurgeDelay is used, so this test will take at
          * least EncodedGraphCachePurgeDelay milliseconds to finish.
          */
-        int purgeDelay = PolyglotCompilerOptions.EncodedGraphCachePurgeDelay.getDefaultValue();
+        int purgeDelay = OptimizedRuntimeOptions.EncodedGraphCachePurgeDelay.getDefaultValue();
 
         boolean[] cacheWasPurged = {false};
         for (int attempts = 0; attempts < 10 && !cacheWasPurged[0]; attempts++) {
