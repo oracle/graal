@@ -43,6 +43,7 @@ package com.oracle.truffle.api.operation.test;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
@@ -61,6 +62,8 @@ import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
+import com.oracle.truffle.api.operation.test.subpackage.NonPublicGuardExpressionOperationProxy;
+import com.oracle.truffle.api.operation.test.subpackage.NonPublicSpecializationOperationProxy;
 import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings({"unused", "static-method", "truffle"})
@@ -277,6 +280,18 @@ public class ErrorTests {
             @ExpectError("Operation class must not contain non-static members.")
             public void doSomething() {
             }
+
+            @Specialization
+            @ExpectError("Operation specializations must be static. This method should be rewritten as a static specialization.")
+            public int add(int x, int y) {
+                return x + y;
+            }
+
+            @Fallback
+            @ExpectError("Operation specializations must be static. This method should be rewritten as a static specialization.")
+            public Object fallback(Object a, Object b) {
+                return a;
+            }
         }
 
         @Operation
@@ -320,6 +335,62 @@ public class ErrorTests {
         }
     }
 
+    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @ExpectError({"Encountered errors using com.oracle.truffle.api.operation.test.subpackage.NonPublicSpecializationOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Encountered errors using com.oracle.truffle.api.operation.test.subpackage.NonPublicGuardExpressionOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed."
+    })
+    @OperationProxy(PackagePrivateSpecializationOperationProxy.class)
+    @OperationProxy(NonPublicSpecializationOperationProxy.class)
+    @OperationProxy(NonPublicGuardExpressionOperationProxy.class)
+    public abstract static class BadSpecializationOrDSLTests extends RootNode implements OperationRootNode {
+
+        protected BadSpecializationOrDSLTests(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
+        }
+
+        @Operation
+        public static final class NonStaticGuardExpressionOperation {
+            @Specialization(guards = "guardCondition()")
+            public static int addGuarded(int x, int y) {
+                return x + y;
+            }
+
+            @ExpectError("Operation class must not contain non-static members.")
+            public boolean guardCondition() {
+                return true;
+            }
+        }
+
+        // These should not cause an issue because they are in the same package as the generated
+        // root node would be. The generated node can see them. There are similar versions of these
+        // nodes defined in a separate package (e.g., {@link NonPublicSpecializationOperationProxy})
+        // which are not visible and should cause issues.
+        @Operation
+        public static final class PackagePrivateSpecializationOperation {
+            @Specialization
+            static int add(int x, int y) {
+                return x + y;
+            }
+
+            @Fallback
+            static Object fallback(Object a, Object b) {
+                return a;
+            }
+        }
+
+        @Operation
+        public static final class PackagePrivateGuardExpressionOperation {
+            @Specialization(guards = "guardCondition()")
+            public static int addGuarded(int x, int y) {
+                return x + y;
+            }
+
+            protected static boolean guardCondition() {
+                return true;
+            }
+        }
+    }
+
 // Proxy node definitions
 
     @ExpectError("Operation class must be declared final. Inheritance in operation specifications is not supported.")
@@ -343,13 +414,34 @@ public class ErrorTests {
         @ExpectError("Operation class must not contain non-static members.") public int field;
 
         @Specialization
-        @ExpectError("Operation class must only contain static specializations. This method should be rewritten as a static specialization.")
+        @ExpectError("Operation specializations must be static. This method should be rewritten as a static specialization.")
         public int add(int x, int y) {
             return x + y;
         }
+
+        @Fallback
+        @ExpectError("Operation specializations must be static. This method should be rewritten as a static specialization.")
+        public Object fallback(Object a, Object b) {
+            return a;
+        }
     }
 
-    @Operation
+    // These specializations should not be a problem. See {@link
+    // OperationErrorTests.PackagePrivateSpecializationOperation}
+    public static abstract class PackagePrivateSpecializationOperationProxy extends Node {
+        public abstract Object execute(Object x, Object y);
+
+        @Specialization
+        static int add(int x, int y) {
+            return x + y;
+        }
+
+        @Fallback
+        static Object fallback(Object a, Object b) {
+            return a;
+        }
+    }
+
     public static final class BadSignatureOperationProxy {
         @Specialization
         public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic parameters.") Object b) {

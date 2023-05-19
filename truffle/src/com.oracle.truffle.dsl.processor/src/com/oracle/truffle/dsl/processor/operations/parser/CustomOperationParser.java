@@ -127,6 +127,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         if (result.hasErrors() && isProxy()) {
             AnnotationValue proxiedClassValue = ElementUtils.getAnnotationValue(mirror, "value", false);
             parent.addError(mirror, proxiedClassValue, "Encountered errors using %s as an OperationProxy. These errors must be resolved before the DSL can proceed.", typeElement.getQualifiedName());
+
         }
         return result;
     }
@@ -205,7 +206,7 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                     if (el.getKind() == ElementKind.CONSTRUCTOR && ((ExecutableElement) el).getParameters().size() == 0) {
                         continue;
                     }
-                    if (ElementUtils.findAnnotationMirror(el, types.Specialization) != null) {
+                    if (el.getKind() == ElementKind.METHOD && isSpecialization((ExecutableElement) el)) {
                         continue; // non-static specializations get a different message; see below
                     }
                     data.addError(el, "Operation class must not contain non-static members.");
@@ -213,11 +214,29 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             }
         }
 
+        // The generated Node for this instruction does not subclass the original class defining the
+        // specializations. Thus, each specialization should:
+        // - be declared as static
+        // - be visible from the generated Node (i.e., public or package-private and in the same
+        // package as the root node)
+        //
+        // Specialization visibility can be checked easily before we try to generate the node.
+        //
+        // Similarly, the members (methods and fields) used in guard/cache expressions should:
+        // - not be instance fields/methods of the receiver
+        // - be visible from the generated Node
+        //
+        // The former is "enforced" when we filter non-static members from the Node; the {@link
+        // DSLExpressionResolver} should fail to resolve any instance member references. The latter
+        // is checked during the regular resolution process.
         for (ExecutableElement specialization : findSpecializations(typeElement)) {
             if (!specialization.getModifiers().contains(Modifier.STATIC)) {
                 // TODO: add docs explaining how to convert a non-static specialization method and
                 // reference it in this error message.
-                data.addError(specialization, "Operation class must only contain static specializations. This method should be rewritten as a static specialization.");
+                data.addError(specialization, "Operation specializations must be static. This method should be rewritten as a static specialization.");
+            }
+            if (!ElementUtils.isVisible(parent.getTemplateType(), specialization) || specialization.getModifiers().contains(Modifier.PRIVATE)) {
+                data.addError(specialization, "Operation specialization is not visible to the generated Operation node.");
             }
         }
 
@@ -232,7 +251,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
                 // unnecessary code. We programmatically add @NodeChildren later, so remove them
                 // here.
                 ct.getAnnotationMirrors().removeIf(
-                                m -> typeEqualsAny(m.getAnnotationType(), types.NodeChild, types.NodeChildren, types.GenerateUncached, types.GenerateNodeFactory, types.GenerateInline));
+                                m -> typeEqualsAny(m.getAnnotationType(), types.NodeChild, types.NodeChildren, types.GenerateUncached, types.GenerateCached, types.GenerateInline,
+                                                types.GenerateNodeFactory));
                 // Remove all non-static or private elements, including all of the execute methods.
                 ct.getEnclosedElements().removeIf(e -> !e.getModifiers().contains(Modifier.STATIC) || e.getModifiers().contains(Modifier.PRIVATE));
             });
@@ -417,8 +437,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         instr.signature = signature;
 
         try {
-            NodeParser parser = NodeParser.createOperationParser();
-            instr.nodeData = parser.parse(nodeType);
+            NodeParser parser = NodeParser.createOperationParser(parent.getTemplateType());
+            instr.nodeData = parser.parse(nodeType, false);
         } catch (Throwable ex) {
             StringWriter wr = new StringWriter();
             ex.printStackTrace(new PrintWriter(wr));
@@ -435,8 +455,8 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
             instr.nodeData.setTypeSystem(parent.typeSystem);
         }
 
-        instr.nodeData.redirectMessages(parent);
-        instr.nodeData.redirectMessagesOnGeneratedElements(parent);
+        instr.nodeData.redirectMessages(data);
+        instr.nodeData.redirectMessagesOnGeneratedElements(data);
 
         if (isShortCircuit()) {
             instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(mirror, "continueWhen").getValue();
@@ -677,12 +697,16 @@ public class CustomOperationParser extends AbstractParser<OperationModel> {
         List<ExecutableElement> result = findSpecializations(getTypeElement((DeclaredType) te.getSuperclass()));
 
         for (ExecutableElement ex : ElementFilter.methodsIn(te.getEnclosedElements())) {
-            if (ElementUtils.findAnnotationMirror(ex, types.Specialization) != null) {
+            if (isSpecialization(ex)) {
                 result.add(ex);
             }
         }
 
         return result;
+    }
+
+    private boolean isSpecialization(ExecutableElement ex) {
+        return ElementUtils.findAnnotationMirror(ex, types.Specialization) != null || ElementUtils.findAnnotationMirror(ex, types.Fallback) != null;
     }
 
     @Override
