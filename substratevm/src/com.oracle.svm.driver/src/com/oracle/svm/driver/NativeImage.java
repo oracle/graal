@@ -1457,6 +1457,9 @@ public class NativeImage {
             WindowsBuildEnvironmentUtil.propagateEnv(environment);
         }
         environment.put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(config.modulePathBuild));
+        if (!config.modulePathBuild) {
+            LogUtils.warningDeprecatedEnvironmentVariable(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM);
+        }
 
         List<String> completeCommandList = new ArrayList<>();
         completeCommandList.addAll(environment.entrySet().stream().map(e -> e.getKey() + "=" + e.getValue()).sorted().toList());
