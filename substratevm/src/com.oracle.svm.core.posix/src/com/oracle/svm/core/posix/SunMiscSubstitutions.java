@@ -117,7 +117,7 @@ final class Util_jdk_internal_misc_Signal {
      * Note this method can race with signal installation unless proper locking is used.
      */
     static boolean isCurrentDispatcher(int sig, SignalDispatcher dispatcher) {
-        Signal.sigaction handler = UnsafeStackValue.get(Signal.sigaction.class);
+        Signal.sigaction handler = StackValue.get(Signal.sigaction.class);
         Signal.sigaction(sig, WordFactory.nullPointer(), handler);
         return handler.sa_handler() == dispatcher;
     }
