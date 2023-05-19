@@ -94,6 +94,10 @@ public class ResourceConfigurationTest {
                 }
 
                 @Override
+                public void addResources(Module module, String resourcePath) {
+                }
+
+                @Override
                 public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
                 }
 

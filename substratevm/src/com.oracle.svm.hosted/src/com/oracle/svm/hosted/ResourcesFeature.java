@@ -165,14 +165,14 @@ public final class ResourcesFeature implements InternalFeature {
 
             if (module.isNamed()) {
                 try {
-                    fromJar = new File(Objects.requireNonNull(module.getClassLoader().getResource(resourcePath)).getPath()).isDirectory();
+                    fromJar = Objects.requireNonNull(module.getClassLoader().getResource(resourcePath)).getPath().contains(".jar");
                     is = module.getResourceAsStream(resourcePath);
                 } catch (IOException e) {
                     // we ignore if user provided resource that doesn't exist
                     return;
                 }
             } else {
-                fromJar = new File(Objects.requireNonNull(imageClassLoader.getClassLoader().getResource(resourcePath)).getPath()).isDirectory();
+                fromJar = Objects.requireNonNull(imageClassLoader.getClassLoader().getResource(resourcePath)).getPath().contains(".jar");
                 is = imageClassLoader.getClassLoader().getResourceAsStream(resourcePath);
             }
 
