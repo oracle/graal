@@ -27,7 +27,6 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -42,7 +41,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -89,6 +87,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.util.LogUtils;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -165,15 +164,36 @@ public final class ResourcesFeature implements InternalFeature {
 
             if (module.isNamed()) {
                 try {
-                    fromJar = Objects.requireNonNull(module.getClassLoader().getResource(resourcePath)).getPath().contains(".jar");
+                    String resourcePackage = jdk.internal.module.Resources.toPackageName(resourcePath);
+                    if (!resourcePackage.isEmpty()) {
+                        if (!module.getPackages().contains(resourcePackage)) {
+                            return;
+                        }
+                        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ResourcesFeature.class, module, resourcePackage);
+                    }
                     is = module.getResourceAsStream(resourcePath);
+                    if (is == null) {
+                        return;
+                    }
+
+                    fromJar = false;
                 } catch (IOException e) {
                     // we ignore if user provided resource that doesn't exist
                     return;
                 }
             } else {
-                fromJar = Objects.requireNonNull(imageClassLoader.getClassLoader().getResource(resourcePath)).getPath().contains(".jar");
-                is = imageClassLoader.getClassLoader().getResourceAsStream(resourcePath);
+                URL url = imageClassLoader.getClassLoader().getResource(resourcePath);
+                if (url != null) {
+                    fromJar = url.getProtocol().equalsIgnoreCase("jar");
+                    try {
+                        is = url.openStream();
+                    } catch (IOException e) {
+                        // we ignore if user provided resource that doesn't exist
+                        return;
+                    }
+                } else {
+                    return;
+                }
             }
 
             Resources.registerResource(module, resourcePath, is, fromJar);

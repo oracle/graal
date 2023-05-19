@@ -40,16 +40,15 @@
  */
 package org.graalvm.nativeimage.hosted;
 
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.regex.Pattern;
-
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.Objects;
 
 /**
  * This class can be used to register Java resources and ResourceBundles that should be accessible
