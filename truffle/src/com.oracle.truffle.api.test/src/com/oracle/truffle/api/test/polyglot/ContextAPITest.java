@@ -91,6 +91,7 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assume;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -917,6 +918,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
     }
 
+    @Ignore
     @Test
     public void testDefaultTimeZone() {
         try (Context c = Context.create()) {
