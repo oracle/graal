@@ -92,14 +92,6 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return EmptyMemoryAcessProvider.SINGLETON;
     }
 
-    @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        if (!source.getJavaKind().isPrimitive()) {
-            return null;
-        }
-        return SubstrateObjectConstant.forObject(source.asBoxedPrimitive());
-    }
-
     private static final Set<Class<?>> BOXING_CLASSES = Set.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class);
 
     @Override

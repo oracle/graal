@@ -70,12 +70,6 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
     }
 
     @Override
-    public JavaConstant boxPrimitive(JavaConstant source) {
-        /* Delegate to the AnalysisConstantReflectionProvider. */
-        return aConstantReflection.boxPrimitive(source);
-    }
-
-    @Override
     public JavaConstant unboxPrimitive(JavaConstant source) {
         /* Delegate to the AnalysisConstantReflectionProvider. */
         return aConstantReflection.unboxPrimitive(source);
