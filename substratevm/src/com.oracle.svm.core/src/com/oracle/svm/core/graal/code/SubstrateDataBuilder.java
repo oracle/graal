@@ -30,6 +30,8 @@ import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.Patches;
+import org.graalvm.compiler.core.common.type.CompressibleConstant;
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 
 import com.oracle.svm.core.FrameAccess;
@@ -48,9 +50,9 @@ public class SubstrateDataBuilder extends DataBuilder {
     @Override
     public Data createDataItem(Constant constant) {
         int size;
-        if (constant instanceof VMConstant) {
-            assert constant instanceof SubstrateObjectConstant : "should be only VMConstant";
-            return new ObjectData((SubstrateObjectConstant) constant);
+        if (constant instanceof VMConstant vmConstant) {
+            assert constant instanceof JavaConstant && constant instanceof CompressibleConstant && constant instanceof TypedConstant : constant;
+            return new ObjectData(vmConstant);
         } else if (JavaConstant.isNull(constant)) {
             if (SubstrateObjectConstant.isCompressed((JavaConstant) constant)) {
                 size = ConfigurationValues.getObjectLayout().getReferenceSize();
@@ -67,16 +69,17 @@ public class SubstrateDataBuilder extends DataBuilder {
     }
 
     public static class ObjectData extends Data {
-        private final SubstrateObjectConstant constant;
+        private final VMConstant constant;
 
-        protected ObjectData(SubstrateObjectConstant constant) {
+        protected ObjectData(VMConstant constant) {
             super(ConfigurationValues.getObjectLayout().getReferenceSize(), ConfigurationValues.getObjectLayout().getReferenceSize());
-            assert constant.isCompressed() == ReferenceAccess.singleton().haveCompressedReferences() : "Constant object references in compiled code must be compressed (base-relative)";
+            assert ((CompressibleConstant) constant).isCompressed() == ReferenceAccess.singleton()
+                            .haveCompressedReferences() : "Constant object references in compiled code must be compressed (base-relative)";
             this.constant = constant;
         }
 
-        public SubstrateObjectConstant getConstant() {
-            return constant;
+        public JavaConstant getConstant() {
+            return (JavaConstant) constant;
         }
 
         @Override
