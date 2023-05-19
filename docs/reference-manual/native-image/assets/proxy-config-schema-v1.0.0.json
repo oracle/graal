@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/assets/proxy-config-schema-v1.0.0.json",
+  "default": [],
+  "items": {
+    "properties": {
+      "condition": {
+        "properties": {
+          "typeReachable": {
+            "type": "string",
+            "title": "Fully qualified class name of the class that must be reachable in order to register the dynamic proxy"
+          }
+        },
+        "required": [
+          "typeReachable"
+        ],
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "interfaces": {
+        "default": [],
+        "items": {
+          "type": "string",
+          "title": "Interface that will be implemented by the dynamic proxy"
+        },
+        "type": "array",
+        "title": "List of interfaces that dynamic proxy implements"
+      }
+    },
+    "required": [
+      "interfaces"
+    ],
+    "additionalProperties": false,
+    "type": "object"
+  },
+  "type": "array",
+  "title": "JSON schema for the proxy-config that GraalVM Native Image uses"
+}
