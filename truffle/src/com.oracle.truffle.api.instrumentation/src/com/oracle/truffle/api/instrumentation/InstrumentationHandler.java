@@ -234,19 +234,19 @@ final class InstrumentationHandler {
 
         Env env = new Env(polyglotInstrument, out, err, in, messageInterceptor);
         TruffleInstrument instrument = (TruffleInstrument) instrumentSupplier.get();
-        if (instrument.localsBuilder.contextLocals == null) {
-            instrument.localsBuilder.contextLocals = Collections.emptyList();
+        if (instrument.locals.contextLocals == null) {
+            instrument.locals.contextLocals = Collections.emptyList();
         } else {
-            instrument.localsBuilder.contextLocals = Collections.unmodifiableList(instrument.localsBuilder.contextLocals);
+            instrument.locals.contextLocals = Collections.unmodifiableList(instrument.locals.contextLocals);
         }
-        ENGINE.initializeInstrumentContextLocal(instrument.localsBuilder.contextLocals, polyglotInstrument);
+        ENGINE.initializeInstrumentContextLocal(instrument.locals.contextLocals, polyglotInstrument);
 
-        if (instrument.localsBuilder.contextThreadLocals == null) {
-            instrument.localsBuilder.contextThreadLocals = Collections.emptyList();
+        if (instrument.locals.contextThreadLocals == null) {
+            instrument.locals.contextThreadLocals = Collections.emptyList();
         } else {
-            instrument.localsBuilder.contextThreadLocals = Collections.unmodifiableList(instrument.localsBuilder.contextThreadLocals);
+            instrument.locals.contextThreadLocals = Collections.unmodifiableList(instrument.locals.contextThreadLocals);
         }
-        ENGINE.initializeInstrumentContextThreadLocal(instrument.localsBuilder.contextThreadLocals, polyglotInstrument);
+        ENGINE.initializeInstrumentContextThreadLocal(instrument.locals.contextThreadLocals, polyglotInstrument);
 
         try {
             env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClassName);

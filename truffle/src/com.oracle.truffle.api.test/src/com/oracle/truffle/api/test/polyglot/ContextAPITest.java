@@ -1240,7 +1240,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
     public static class ValidExclusiveLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         static final String ID = getDefaultLanguageId(ValidExclusiveLanguage.class);
 
-        final ContextLocal<Env> contextLocal = localsBuilder.createContextLocal((e) -> e);
+        final ContextLocal<Env> contextLocal = locals.createContextLocal((e) -> e);
 
         @Override
         protected TruffleLanguage.Env createContext(TruffleLanguage.Env env) {

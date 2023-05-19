@@ -3,10 +3,10 @@
 
 CLSS public abstract com.oracle.truffle.api.TruffleLanguage<%0 extends java.lang.Object>
 cons protected init()
-fld protected final com.oracle.truffle.api.TruffleLanguage$ContextLocalBuilder<{com.oracle.truffle.api.TruffleLanguage%0}> localsBuilder
+fld protected final com.oracle.truffle.api.TruffleLanguage$ContextLocalProvider<{com.oracle.truffle.api.TruffleLanguage%0}> locals
 innr protected abstract interface static ContextLocalFactory
 innr protected abstract interface static ContextThreadLocalFactory
-innr protected final static ContextLocalBuilder
+innr protected final static ContextLocalProvider
 innr public abstract interface static !annotation Registration
 innr public abstract interface static Provider
 innr public abstract static ContextReference

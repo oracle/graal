@@ -376,10 +376,10 @@ meth public abstract void onThreadInitialized(com.oracle.truffle.api.TruffleCont
 
 CLSS public abstract com.oracle.truffle.api.instrumentation.TruffleInstrument
 cons protected init()
-fld protected final com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalBuilder localsBuilder
+fld protected final com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalProvider locals
 innr protected abstract interface static ContextLocalFactory
 innr protected abstract interface static ContextThreadLocalFactory
-innr protected final static ContextLocalBuilder
+innr protected final static ContextLocalProvider
 innr public abstract interface static !annotation Registration
 innr public abstract interface static Provider
 innr public final static Env
@@ -394,7 +394,7 @@ meth protected void onDispose(com.oracle.truffle.api.instrumentation.TruffleInst
 meth protected void onFinalize(com.oracle.truffle.api.instrumentation.TruffleInstrument$Env)
 supr java.lang.Object
 
-CLSS protected final static com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalBuilder
+CLSS protected final static com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalProvider
  outer com.oracle.truffle.api.instrumentation.TruffleInstrument
 meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextLocalFactory<{%%0}>)
 meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.instrumentation.TruffleInstrument$ContextThreadLocalFactory<{%%0}>)

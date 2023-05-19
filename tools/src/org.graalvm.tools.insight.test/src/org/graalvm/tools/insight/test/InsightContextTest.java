@@ -93,9 +93,9 @@ public class InsightContextTest {
             }
 
             @Override
-            public Object execute(VirtualFrame locals) {
+            public Object execute(VirtualFrame frame) {
                 executingCounter++;
-                Object insightObject = locals.getArguments()[idx];
+                Object insightObject = frame.getArguments()[idx];
 
                 InsightAPI api = Value.asValue(insightObject).as(InsightAPI.class);
                 assertNotNull("API found", api);

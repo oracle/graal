@@ -140,8 +140,8 @@ public class LanguageContextFreedTest {
 
     public abstract static class Base extends TruffleLanguage<LanguageContext> {
 
-        final ContextLocal<ContextLocalValue> contextLocal = localsBuilder.createContextLocal((e) -> new ContextLocalValue());
-        final ContextThreadLocal<ContextLocalValue> threadLocal = localsBuilder.createContextThreadLocal((e, t) -> new ContextLocalValue());
+        final ContextLocal<ContextLocalValue> contextLocal = locals.createContextLocal((e) -> new ContextLocalValue());
+        final ContextThreadLocal<ContextLocalValue> threadLocal = locals.createContextThreadLocal((e, t) -> new ContextLocalValue());
 
         @Override
         protected LanguageContext createContext(Env env) {

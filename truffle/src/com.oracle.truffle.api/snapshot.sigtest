@@ -385,10 +385,10 @@ meth public abstract java.nio.charset.Charset findEncoding(com.oracle.truffle.ap
 
 CLSS public abstract com.oracle.truffle.api.TruffleLanguage<%0 extends java.lang.Object>
 cons protected init()
-fld protected final com.oracle.truffle.api.TruffleLanguage$ContextLocalBuilder<{com.oracle.truffle.api.TruffleLanguage%0}> localsBuilder
+fld protected final com.oracle.truffle.api.TruffleLanguage$ContextLocalProvider<{com.oracle.truffle.api.TruffleLanguage%0}> locals
 innr protected abstract interface static ContextLocalFactory
 innr protected abstract interface static ContextThreadLocalFactory
-innr protected final static ContextLocalBuilder
+innr protected final static ContextLocalProvider
 innr public abstract interface static !annotation Registration
 innr public abstract interface static Provider
 innr public abstract static ContextReference
@@ -429,10 +429,10 @@ meth protected void initializeThread({com.oracle.truffle.api.TruffleLanguage%0},
 supr java.lang.Object
 hfds languageInfo,polyglotLanguageInstance
 
-CLSS protected final static com.oracle.truffle.api.TruffleLanguage$ContextLocalBuilder<%0 extends java.lang.Object>
+CLSS protected final static com.oracle.truffle.api.TruffleLanguage$ContextLocalProvider<%0 extends java.lang.Object>
  outer com.oracle.truffle.api.TruffleLanguage
-meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.TruffleLanguage$ContextLocalFactory<{com.oracle.truffle.api.TruffleLanguage$ContextLocalBuilder%0},{%%0}>)
-meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.TruffleLanguage$ContextThreadLocalFactory<{com.oracle.truffle.api.TruffleLanguage$ContextLocalBuilder%0},{%%0}>)
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextLocal<{%%0}> createContextLocal(com.oracle.truffle.api.TruffleLanguage$ContextLocalFactory<{com.oracle.truffle.api.TruffleLanguage$ContextLocalProvider%0},{%%0}>)
+meth public <%0 extends java.lang.Object> com.oracle.truffle.api.ContextThreadLocal<{%%0}> createContextThreadLocal(com.oracle.truffle.api.TruffleLanguage$ContextThreadLocalFactory<{com.oracle.truffle.api.TruffleLanguage$ContextLocalProvider%0},{%%0}>)
 supr java.lang.Object
 hfds contextLocals,contextThreadLocals
 

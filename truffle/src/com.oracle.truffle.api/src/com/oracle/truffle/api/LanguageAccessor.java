@@ -151,17 +151,17 @@ final class LanguageAccessor extends Accessor {
             impl.languageInfo = language;
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
             if (polyglotLanguageInstance != null) {
-                if (impl.localsBuilder.contextLocals == null) {
-                    impl.localsBuilder.contextLocals = Collections.emptyList();
+                if (impl.locals.contextLocals == null) {
+                    impl.locals.contextLocals = Collections.emptyList();
                 } else {
-                    ENGINE.initializeLanguageContextLocal(impl.localsBuilder.contextLocals, polyglotLanguageInstance);
-                    impl.localsBuilder.contextLocals = Collections.unmodifiableList(impl.localsBuilder.contextLocals);
+                    ENGINE.initializeLanguageContextLocal(impl.locals.contextLocals, polyglotLanguageInstance);
+                    impl.locals.contextLocals = Collections.unmodifiableList(impl.locals.contextLocals);
                 }
-                if (impl.localsBuilder.contextThreadLocals == null) {
-                    impl.localsBuilder.contextThreadLocals = Collections.emptyList();
+                if (impl.locals.contextThreadLocals == null) {
+                    impl.locals.contextThreadLocals = Collections.emptyList();
                 } else {
-                    ENGINE.initializeLanguageContextThreadLocal(impl.localsBuilder.contextThreadLocals, polyglotLanguageInstance);
-                    impl.localsBuilder.contextThreadLocals = Collections.unmodifiableList(impl.localsBuilder.contextThreadLocals);
+                    ENGINE.initializeLanguageContextThreadLocal(impl.locals.contextThreadLocals, polyglotLanguageInstance);
+                    impl.locals.contextThreadLocals = Collections.unmodifiableList(impl.locals.contextThreadLocals);
                 }
             }
         }
